@@ -1,0 +1,91 @@
+{
+  "project_info": {
+    "project_number": "1093335255199",
+    "firebase_url": "https://mana-poster-ap-default-rtdb.firebaseio.com",
+    "project_id": "mana-poster-ap",
+    "storage_bucket": "mana-poster-ap.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1093335255199:android:df10391a25cdab861bfaaa",
+        "android_client_info": {
+          "package_name": "com.mana.posterapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1093335255199-epku2qvq4engjo8m7a80qt8oavnp77up.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mana.posterapp",
+            "certificate_hash": "a0908e87e7981c4035ebbd64bc54900ad4d86e5c"
+          }
+        },
+        {
+          "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc_SrDCjsg-DmWGP3A7Gq6dqTj7AH9q5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1093335255199-ar6eh077lj97rhbfhvak4vi2dftr1bdl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.telugutouch.manaposter"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1093335255199:android:2b3e0d1f5edfb17c1bfaaa",
+        "android_client_info": {
+          "package_name": "com.telugutouch.manaposter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc_SrDCjsg-DmWGP3A7Gq6dqTj7AH9q5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1093335255199-ar6eh077lj97rhbfhvak4vi2dftr1bdl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.telugutouch.manaposter"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
