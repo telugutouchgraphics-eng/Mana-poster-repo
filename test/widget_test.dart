@@ -1,25 +1,26 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:mana_poster/src/app.dart';
+import 'package:mana_poster/app/app.dart';
+import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 
 void main() {
-  testWidgets('Splash navigates to login', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: ManaPosterApp(),
-      ),
-    );
-    expect(find.text('మనా పోస్టర్'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
+  testWidgets('app opens splash then language screen', (tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    tester.view.physicalSize = const ui.Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const ManaPosterApp());
+
+    expect(find.text('Mana Poster'), findsOneWidget);
+    expect(find.text('Loading...'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
-    expect(find.text('లాగిన్'), findsWidgets);
+
+    expect(find.byType(LanguageSelectionScreen), findsOneWidget);
   });
 }

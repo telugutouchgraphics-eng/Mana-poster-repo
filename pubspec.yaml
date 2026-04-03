@@ -1,4 +1,4 @@
-name: mana_poster
+﻿name: mana_poster
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -30,48 +30,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
   cupertino_icons: ^1.0.8
-  
-  # Core Firebase
+  image: ^4.5.4
+  image_gallery_saver_plus: ^4.0.1
+  path_provider: ^2.1.5
+  share_plus: ^12.0.0
   firebase_core: ^4.6.0
   firebase_auth: ^6.3.0
-  cloud_firestore: ^6.2.0
-  firebase_storage: ^13.2.0
-  
-  # State Management
-  flutter_riverpod: ^3.3.1
-  
-  # Navigation
-  go_router: ^17.0.0
-  
-  # Google Sign-in
-  google_sign_in: ^6.2.1
-
-  # UI & Images
-  cached_network_image: ^3.4.1
-  flutter_svg: ^2.0.10+1
-  image_picker: ^1.2.0
-  image_gallery_saver: ^2.0.3
-  
-  # System & Permissions
-  path_provider: ^2.1.5
-  shared_preferences: ^2.5.3
-  permission_handler: ^11.3.1
-
-  # Networking
-  dio: ^5.5.0+1
-  
-  # Others
-  intl: ^0.20.2
-  share_plus: ^12.0.2
-  in_app_purchase: ^3.2.3
+  google_sign_in: ^7.2.0
+  permission_handler: ^12.0.1
+  device_info_plus: ^12.4.0
+  shared_preferences: ^2.5.5
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -83,13 +59,290 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/
-    - assets/icons/
-    - assets/banners/
-    - assets/fonts/
+    - assets/branding/mana_poster_logo.png
+
+  fonts:
+    - family: Anek Telugu Condensed Bold
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_bold.ttf
+    - family: Anek Telugu Condensed Extra Bold
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_extrabold.ttf
+    - family: Anek Telugu Condensed Extra Light
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_extralight.ttf
+    - family: Anek Telugu Condensed Light
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_light.ttf
+    - family: Anek Telugu Condensed Medium
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_medium.ttf
+    - family: Anek Telugu Condensed Regular
+      fonts:
+        - asset: assets/fonts/telugu_unicode/anektelugu_condensed_regular.ttf
+    - family: Noto Sans Telugu Condensed Black
+      fonts:
+        - asset: assets/fonts/telugu_unicode/notosanstelugu_condensed_black.ttf
+    - family: Noto Sans Telugu Condensed Bold
+      fonts:
+        - asset: assets/fonts/telugu_unicode/notosanstelugu_condensed_bold.ttf
+    - family: Noto Sans Telugu Condensed Extra Bold
+      fonts:
+        - asset: assets/fonts/telugu_unicode/notosanstelugu_condensed_extrabold.ttf
+    - family: Noto Sans Telugu Condensed Extra Light
+      fonts:
+        - asset: assets/fonts/telugu_unicode/notosanstelugu_condensed_extralight.ttf
+    - family: Noto Sans Telugu Condensed Light
+      fonts:
+        - asset: assets/fonts/telugu_unicode/notosanstelugu_condensed_light.ttf
+    - family: Aaradhana
+      fonts:
+        - asset: assets/fonts/telugu_legacy/aaradhana.ttf
+    - family: Abhilasha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/abhilasha.ttf
+    - family: Ajantha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ajantha.ttf
+    - family: Akshara
+      fonts:
+        - asset: assets/fonts/telugu_legacy/akshara.ttf
+    - family: Amrutha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/amrutha.ttf
+    - family: Anjali
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anjali.ttf
+    - family: Anu Subhalekha Two
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anu_subhalekha_two.ttf
+    - family: Anupama Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anupama_bold.ttf
+    - family: Anupama Extra Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anupama_extra_bold.ttf
+    - family: Anupama Medium
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anupama_medium.ttf
+    - family: Anupama Thin
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anupama_thin.ttf
+    - family: Anusha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/anusha.ttf
+    - family: Apoorva
+      fonts:
+        - asset: assets/fonts/telugu_legacy/apoorva.ttf
+    - family: Ashwini
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ashwini.ttf
+    - family: Bapu Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/bapu_bold.ttf
+    - family: Bapu Brush
+      fonts:
+        - asset: assets/fonts/telugu_legacy/bapu_brush.ttf
+    - family: Bapu Script
+      fonts:
+        - asset: assets/fonts/telugu_legacy/bapu_script.ttf
+    - family: Bharghava
+      fonts:
+        - asset: assets/fonts/telugu_legacy/bharghava.ttf
+    - family: Bhavya
+      fonts:
+        - asset: assets/fonts/telugu_legacy/bhavya.ttf
+    - family: Brahma
+      fonts:
+        - asset: assets/fonts/telugu_legacy/brahma.ttf
+    - family: Brahma Script
+      fonts:
+        - asset: assets/fonts/telugu_legacy/brahma_script.ttf
+    - family: Chandra Script
+      fonts:
+        - asset: assets/fonts/telugu_legacy/chandra_script.ttf
+    - family: Deepika
+      fonts:
+        - asset: assets/fonts/telugu_legacy/deepika.ttf
+    - family: Dharani
+      fonts:
+        - asset: assets/fonts/telugu_legacy/dharani.ttf
+    - family: Geetha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/geetha.ttf
+    - family: Gowthami Black
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_black.ttf
+    - family: Gowthami Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_bold.ttf
+    - family: Gowthami Extra Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_extra_bold.ttf
+    - family: Gowthami Medium
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_medium.ttf
+    - family: Gowthami Narrow
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_narrow.ttf
+    - family: Gowthami Thin
+      fonts:
+        - asset: assets/fonts/telugu_legacy/gowthami_thin.ttf
+    - family: Harsha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/harsha.ttf
+    - family: Hiranya
+      fonts:
+        - asset: assets/fonts/telugu_legacy/hiranya.ttf
+    - family: Jyothi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/jyothi.ttf
+    - family: Kalaanjali
+      fonts:
+        - asset: assets/fonts/telugu_legacy/kalaanjali.ttf
+    - family: Keerthi Font
+      fonts:
+        - asset: assets/fonts/telugu_legacy/keerthi_font.ttf
+    - family: Kranthi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/kranthi.ttf
+    - family: Kusuma
+      fonts:
+        - asset: assets/fonts/telugu_legacy/kusuma.ttf
+    - family: Maanasa
+      fonts:
+        - asset: assets/fonts/telugu_legacy/maanasa.ttf
+    - family: Madhubala
+      fonts:
+        - asset: assets/fonts/telugu_legacy/madhubala.ttf
+    - family: Meena Script
+      fonts:
+        - asset: assets/fonts/telugu_legacy/meena_script.ttf
+    - family: Mohini
+      fonts:
+        - asset: assets/fonts/telugu_legacy/mohini.ttf
+    - family: Natyamayuri
+      fonts:
+        - asset: assets/fonts/telugu_legacy/natyamayuri.ttf
+    - family: Neelima
+      fonts:
+        - asset: assets/fonts/telugu_legacy/neelima.ttf
+    - family: Padmini
+      fonts:
+        - asset: assets/fonts/telugu_legacy/padmini.ttf
+    - family: Pallavi Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pallavi_bold.ttf
+    - family: Pallavi Medium
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pallavi_medium.ttf
+    - family: Pallavi Thin
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pallavi_thin.ttf
+    - family: Prabhava
+      fonts:
+        - asset: assets/fonts/telugu_legacy/prabhava.ttf
+    - family: Pragathi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pragathi.ttf
+    - family: Pragathi Italic
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pragathi_italic.ttf
+    - family: Pragathi Narrow
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pragathi_narrow.ttf
+    - family: Pragathi Special
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pragathi_special.ttf
+    - family: Preethi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/preethi.ttf
+    - family: Pridhvi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/pridhvi.ttf
+    - family: Priyaanka
+      fonts:
+        - asset: assets/fonts/telugu_legacy/priyaanka.ttf
+    - family: Priyaanka Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/priyaanka_bold.ttf
+    - family: Rachana
+      fonts:
+        - asset: assets/fonts/telugu_legacy/rachana.ttf
+    - family: Rachana Bold
+      fonts:
+        - asset: assets/fonts/telugu_legacy/rachana_bold.ttf
+    - family: Ramana Brush
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ramana_brush.ttf
+    - family: Ramana Script
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ramana_script.ttf
+    - family: Ramana Script Medium
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ramana_script_medium.ttf
+    - family: Ravali
+      fonts:
+        - asset: assets/fonts/telugu_legacy/ravali.ttf
+    - family: Reshma
+      fonts:
+        - asset: assets/fonts/telugu_legacy/reshma.ttf
+    - family: Rohini
+      fonts:
+        - asset: assets/fonts/telugu_legacy/rohini.ttf
+    - family: Saagari
+      fonts:
+        - asset: assets/fonts/telugu_legacy/saagari.ttf
+    - family: Sanghavi
+      fonts:
+        - asset: assets/fonts/telugu_legacy/sanghavi.ttf
+    - family: Sowmya
+      fonts:
+        - asset: assets/fonts/telugu_legacy/sowmya.ttf
+    - family: Sravya
+      fonts:
+        - asset: assets/fonts/telugu_legacy/sravya.ttf
+    - family: Subhadra
+      fonts:
+        - asset: assets/fonts/telugu_legacy/subhadra.ttf
+    - family: Suchithra
+      fonts:
+        - asset: assets/fonts/telugu_legacy/suchithra.ttf
+    - family: Sujatha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/sujatha.ttf
+    - family: Suneetha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/suneetha.ttf
+    - family: Supriya
+      fonts:
+        - asset: assets/fonts/telugu_legacy/supriya.ttf
+    - family: Tejafont
+      fonts:
+        - asset: assets/fonts/telugu_legacy/tejafont.ttf
+    - family: Thripura
+      fonts:
+        - asset: assets/fonts/telugu_legacy/thripura.ttf
+    - family: Udayam
+      fonts:
+        - asset: assets/fonts/telugu_legacy/udayam.ttf
+    - family: Vaibhav
+      fonts:
+        - asset: assets/fonts/telugu_legacy/vaibhav.ttf
+    - family: Vasantha
+      fonts:
+        - asset: assets/fonts/telugu_legacy/vasantha.ttf
+    - family: Vasundhara
+      fonts:
+        - asset: assets/fonts/telugu_legacy/vasundhara.ttf
+    - family: Veenaa
+      fonts:
+        - asset: assets/fonts/telugu_legacy/veenaa.ttf
+    - family: Vikaas
+      fonts:
+        - asset: assets/fonts/telugu_legacy/vikaas.ttf
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -116,3 +369,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/mana_poster_logo.png
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+
+

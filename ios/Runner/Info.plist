@@ -49,6 +49,12 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Poster personalization and save కోసం gallery access అవసరం.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Created posters ని మీ Photos లో save చేయడానికి access అవసరం.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>New templates and event reminders కోసం notifications అవసరం.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
