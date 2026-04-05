@@ -14,6 +14,15 @@ class ManaPosterApp extends StatefulWidget {
 }
 
 class _ManaPosterAppState extends State<ManaPosterApp> {
+  static const bool _showPerformanceOverlay = bool.fromEnvironment(
+    'MANA_POSTER_SHOW_PERF_OVERLAY',
+    defaultValue: false,
+  );
+  static const bool _showRasterCheckerboard = bool.fromEnvironment(
+    'MANA_POSTER_SHOW_RASTER_CHECKERBOARD',
+    defaultValue: false,
+  );
+
   late final AppLanguageController _languageController;
 
   @override
@@ -36,6 +45,8 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
       controller: _languageController,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
+        showPerformanceOverlay: _showPerformanceOverlay,
+        checkerboardRasterCacheImages: _showRasterCheckerboard,
         title: 'Mana Poster',
         theme: AppTheme.light(),
         initialRoute: AppRoutes.splash,

@@ -44,3 +44,26 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/key.properties
+
+# Local backend/install artifacts
+/functions/node_modules/
+
+# Local debugging captures
+/live_*.png
+/step_*.png
+/screen*.png
+/run*.png
+/verify_*.png
+/dcheck_*.png
+/picker_*.png
+/after_*.png
+/main_after_patch.png
+/home_ui.xml
+/lang.xml
+/onboard2.xml
+/window*.xml
+/live_step_start.xml
+/picker_selected.xml
+/picker_window.xml
+/tmp_ref_frames/
+/tmp_ref_pdf/
