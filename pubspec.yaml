@@ -64,6 +64,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/mana_poster_logo.png
+    - assets/elements/line_arts/
+    - assets/elements/political/logos/
 
   fonts:
     - family: Anek Telugu Condensed Bold

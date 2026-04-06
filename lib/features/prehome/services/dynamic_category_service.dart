@@ -39,24 +39,45 @@ class DynamicCategoryService {
     List<DynamicCalendarEvent> events = defaultEvents,
   }) {
     final today = DateTime(now.year, now.month, now.day);
-    final output = <DynamicCategory>[
-      DynamicCategory(label: _weekdayLabel(today.weekday, language)),
-    ];
+    final seenLabels = <String>{};
+    final output = <DynamicCategory>[];
+
+    final weekdayCategory = DynamicCategory(
+      label: _weekdayLabel(today.weekday, language),
+    );
+    _addUnique(output, seenLabels, weekdayCategory);
 
     for (final event in events) {
       if (!event.isRecurringYearly) {
         continue;
       }
+
       final eventStart = DateTime(today.year, event.month, event.day);
       final eventEnd = eventStart.add(Duration(days: event.durationDays - 1));
       final isActive = !today.isBefore(eventStart) && !today.isAfter(eventEnd);
 
-      if (isActive) {
-        output.add(DynamicCategory(label: _eventLabel(event, language)));
+      if (!isActive) {
+        continue;
       }
+
+      _addUnique(
+        output,
+        seenLabels,
+        DynamicCategory(label: _eventLabel(event, language)),
+      );
     }
 
     return output;
+  }
+
+  void _addUnique(
+    List<DynamicCategory> output,
+    Set<String> seenLabels,
+    DynamicCategory category,
+  ) {
+    if (seenLabels.add(category.label)) {
+      output.add(category);
+    }
   }
 
   String _weekdayLabel(int weekday, AppLanguage language) {

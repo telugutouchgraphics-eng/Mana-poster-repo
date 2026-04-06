@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -12,15 +12,14 @@ import 'package:image/image.dart' as img;
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../models/background_presets.dart';
+import '../models/elements_catalog.dart';
 import '../models/editor_page_config.dart';
 import '../services/background_removal_service.dart';
 import '../services/editor_draft_storage_service.dart';
-import '../services/pro_purchase_gateway.dart';
-import '../services/subscription_backend_service.dart';
-import '../widgets/export_paywall_screen.dart';
 
 enum _CanvasLayerType { photo, text, sticker }
 
@@ -174,12 +173,14 @@ class _EditorSnapshot {
     required this.selectedLayerId,
     required this.canvasBackgroundColor,
     required this.canvasBackgroundGradientIndex,
+    required this.stageBackgroundImageBytes,
   });
 
   final List<_CanvasLayer> layers;
   final String? selectedLayerId;
   final Color canvasBackgroundColor;
   final int canvasBackgroundGradientIndex;
+  final Uint8List? stageBackgroundImageBytes;
 }
 
 class _OptimizedPhotoPayload {
@@ -193,10 +194,7 @@ class _OptimizedPhotoPayload {
 }
 
 class ImageEditorScreen extends StatefulWidget {
-  const ImageEditorScreen({
-    super.key,
-    this.pageConfig,
-  });
+  const ImageEditorScreen({super.key, this.pageConfig});
 
   final EditorPageConfig? pageConfig;
 
@@ -204,9 +202,14 @@ class ImageEditorScreen extends StatefulWidget {
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
 }
 
-class _ImageEditorScreenState extends State<ImageEditorScreen> {
+class _ImageEditorScreenState extends State<ImageEditorScreen>
+    with SingleTickerProviderStateMixin {
   static const double _topBarHeight = 64;
-  static const double _bottomBarHeight = 104;
+  static const double _bottomBarHeight = 86;
+  static const double _cropBarHeight = 96;
+  static const double _floatingBarGap = 10;
+  static const double _photoControlsExtraHeight = 64;
+  static const double _textStyleBarHeight = 148;
   static const List<Color> _textColors = <Color>[
     Color(0xFF0F172A),
     Color(0xFF2563EB),
@@ -316,44 +319,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     'Veenaa',
     'Vikaas',
   ];
-  static const List<Color> _backgroundColors = <Color>[
-    Color(0xFFF4F7FC),
-    Color(0xFFFFFFFF),
-    Color(0xFFF8FAFC),
-    Color(0xFF111827),
-    Color(0xFF0F172A),
-    Color(0xFF1E293B),
-    Color(0xFFFEF3C7),
-    Color(0xFFDCFCE7),
-  ];
-  static const List<List<Color>> _backgroundGradients = <List<Color>>[
-    <Color>[Color(0xFFEEF2FF), Color(0xFFE0F2FE)],
-    <Color>[Color(0xFFECFEFF), Color(0xFFE0E7FF)],
-    <Color>[Color(0xFF0F172A), Color(0xFF1E293B)],
-    <Color>[Color(0xFF312E81), Color(0xFF0F766E)],
-  ];
-  static const List<String> _stickerCategories = <String>[
-    'All',
-    'Popular',
-    'Badges',
-    'Campaign',
-    'Festive',
-  ];
-  static const Map<String, List<String>> _stickerCatalog =
-      <String, List<String>>{
-        'Popular': <String>['⭐', '🔥', '✅', '🎉', '💥', '⚡'],
-        'Badges': <String>['🏆', '🎯', '✅', '📢', '⭐', '🔥'],
-        'Campaign': <String>['📢', '🚩', '✅', '⭐', '🎯', '🔥'],
-        'Festive': <String>['🎉', '❤️', '🙏', '⭐', '🔥', '💥'],
-      };
-
   final ImagePicker _imagePicker = ImagePicker();
   final TransformationController _transformationController =
       TransformationController();
+  final TransformationController _cropTransformationController =
+      TransformationController();
   final GlobalKey _stageRepaintKey = GlobalKey();
-  final ProPurchaseGateway _purchaseGateway = InAppPurchaseGateway();
-  final SubscriptionBackendService _subscriptionBackendService =
-      SubscriptionBackendService();
+  final GlobalKey _cropBoundaryKey = GlobalKey();
   final EditorDraftStorageService _draftStorageService =
       const EditorDraftStorageService();
   final OfflineBackgroundRemovalService _backgroundRemovalService =
@@ -367,14 +339,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   int _canvasBackgroundGradientIndex = -1;
   int _layerSeed = 0;
   static const int _maxHistory = 40;
-  static const String _proStatusKey = 'image_editor_is_pro_user';
   bool _isFontSizeEditing = false;
   bool _isExporting = false;
   bool _isSharing = false;
   bool _isRemovingBackground = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
-  bool _isProUser = false;
+  bool _isCropMode = false;
+  bool _suppressCanvasTapDown = false;
+  int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
   bool _showVerticalSnapGuide = false;
   bool _showHorizontalSnapGuide = false;
@@ -382,10 +355,19 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   int _removeBackgroundTaskId = 0;
   double? _pageAspectRatio;
   bool _pageAspectRatioAutoFromImage = false;
-  ui.Image? _watermarkLogoImage;
   Matrix4? _gestureStartMatrix;
   Offset _gestureStartFocalPoint = Offset.zero;
   Offset _gestureStartLocalFocalPoint = Offset.zero;
+  Offset _photoGestureLastFocalPoint = Offset.zero;
+  double _photoGestureLastScale = 1;
+  double _photoGestureLastRotation = 0;
+  double _stickerHandleStartAngle = 0;
+  double _stickerHandleStartDistance = 1;
+  Offset _photoGestureVelocity = Offset.zero;
+  int _photoGestureLastTimestampMicros = 0;
+  late final AnimationController _photoGlideController;
+  Offset _photoGlideTotalTravel = Offset.zero;
+  Offset _photoGlideAppliedTravel = Offset.zero;
   Timer? _selectedTextLongPressTimer;
   Offset? _selectedTextPressPosition;
   static const double _snapThreshold = 18;
@@ -394,6 +376,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   Timer? _autosaveTimer;
   bool _isRestoringDraft = false;
   bool _pendingAutosave = false;
+  Uint8List? _stageBackgroundImageBytes;
+  Uint8List? _cropSessionImageBytes;
+  String? _cropSessionLayerId;
+  double? _cropSessionAspectRatio;
+  double? _cropSessionInitialAspectRatio;
 
   _CanvasLayer? get _selectedLayer {
     final selectedId = _selectedLayerId;
@@ -425,10 +412,21 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   @override
   void initState() {
     super.initState();
+    _photoGlideController =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 460),
+          )
+          ..addListener(_handlePhotoGlideTick)
+          ..addStatusListener((AnimationStatus status) {
+            if (status == AnimationStatus.completed) {
+              _photoGlideAppliedTravel = Offset.zero;
+              _photoGlideTotalTravel = Offset.zero;
+              _syncSelectedLayerTransform();
+            }
+          });
     _pageAspectRatio = widget.pageConfig?.aspectRatio;
     _enterEditorImmersiveMode();
-    _loadProStatus();
-    unawaited(_loadWatermarkLogo());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_restoreAutosavedDraftIfAvailable());
     });
@@ -458,25 +456,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     );
   }
 
-  Future<void> _loadProStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _isProUser = prefs.getBool(_proStatusKey) ?? false;
-    });
-    unawaited(_syncEntitlementFromBackend(showErrors: false));
-  }
-
-  Future<void> _setProStatus(bool isPro) async {
-    setState(() {
-      _isProUser = isPro;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_proStatusKey, isPro);
-  }
-
+  /*
   Future<SubscriptionBackendResult?> _syncEntitlementFromBackend({
     required bool showErrors,
   }) async {
@@ -497,7 +477,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Subscription backend sync fail అయ్యింది. కొద్దిసేపటి తర్వాత మళ్లీ try చేయండి',
+            'Subscription backend sync fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ try à°šà±‡à°¯à°‚à°¡à°¿',
           ),
         ),
       );
@@ -516,7 +496,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Purchase verification data దొరకలేదు. Restore/Retry చేయండి',
+            'Purchase verification data à°¦à±Šà°°à°•à°²à±‡à°¦à±. Restore/Retry à°šà±‡à°¯à°‚à°¡à°¿',
           ),
         ),
       );
@@ -541,7 +521,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Purchase complete అయినా entitlement active కాలేదు. Support ని సంప్రదించండి',
+            'Purchase complete à°…à°¯à°¿à°¨à°¾ entitlement active à°•à°¾à°²à±‡à°¦à±. Support à°¨à°¿ à°¸à°‚à°ªà±à°°à°¦à°¿à°‚à°šà°‚à°¡à°¿',
           ),
         ),
       );
@@ -553,13 +533,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         content: Text(
           result.message?.isNotEmpty == true
               ? 'Verification fail: ${result.message}'
-              : 'Subscription verification fail అయ్యింది',
+              : 'Subscription verification fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
         ),
       ),
     );
     return false;
   }
 
+  */
   _CanvasLayer _cloneLayer(_CanvasLayer layer) {
     return layer.copyWith(transform: Matrix4.copy(layer.transform));
   }
@@ -570,6 +551,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       selectedLayerId: _selectedLayerId,
       canvasBackgroundColor: _canvasBackgroundColor,
       canvasBackgroundGradientIndex: _canvasBackgroundGradientIndex,
+      stageBackgroundImageBytes: _stageBackgroundImageBytes == null
+          ? null
+          : Uint8List.fromList(_stageBackgroundImageBytes!),
     );
   }
 
@@ -606,6 +590,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     _selectedLayerId = snapshot.selectedLayerId;
     _canvasBackgroundColor = snapshot.canvasBackgroundColor;
     _canvasBackgroundGradientIndex = snapshot.canvasBackgroundGradientIndex;
+    _stageBackgroundImageBytes = snapshot.stageBackgroundImageBytes == null
+        ? null
+        : Uint8List.fromList(snapshot.stageBackgroundImageBytes!);
     _syncControllerFromSelection();
   }
 
@@ -700,7 +687,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         orElse: () => TextAlign.center,
       );
       return _CanvasLayer(
-        id: raw['id'] as String? ?? 'layer_${DateTime.now().millisecondsSinceEpoch}',
+        id:
+            raw['id'] as String? ??
+            'layer_${DateTime.now().millisecondsSinceEpoch}',
         type: type,
         bytes: raw['bytes'] == null
             ? null
@@ -717,24 +706,21 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         fontFamily:
             raw['fontFamily'] as String? ?? 'Anek Telugu Condensed Regular',
         photoOpacity: (raw['photoOpacity'] as num?)?.toDouble() ?? 1,
-        flipPhotoHorizontally:
-            (raw['flipPhotoHorizontally'] as bool?) ?? false,
+        flipPhotoHorizontally: (raw['flipPhotoHorizontally'] as bool?) ?? false,
         flipPhotoVertically: (raw['flipPhotoVertically'] as bool?) ?? false,
         isLocked: (raw['isLocked'] as bool?) ?? false,
         isHidden: (raw['isHidden'] as bool?) ?? false,
         textLineHeight: (raw['textLineHeight'] as num?)?.toDouble() ?? 1.15,
-        textLetterSpacing:
-            (raw['textLetterSpacing'] as num?)?.toDouble() ?? 0,
-        textShadowOpacity:
-            (raw['textShadowOpacity'] as num?)?.toDouble() ?? 0,
+        textLetterSpacing: (raw['textLetterSpacing'] as num?)?.toDouble() ?? 0,
+        textShadowOpacity: (raw['textShadowOpacity'] as num?)?.toDouble() ?? 0,
         textShadowBlur: (raw['textShadowBlur'] as num?)?.toDouble() ?? 0,
-        textShadowOffsetY:
-            (raw['textShadowOffsetY'] as num?)?.toDouble() ?? 0,
+        textShadowOffsetY: (raw['textShadowOffsetY'] as num?)?.toDouble() ?? 0,
         isTextBold: (raw['isTextBold'] as bool?) ?? true,
         isTextItalic: (raw['isTextItalic'] as bool?) ?? false,
         isTextUnderline: (raw['isTextUnderline'] as bool?) ?? false,
-        textStrokeColor:
-            Color((raw['textStrokeColor'] as num?)?.toInt() ?? 0xFF000000),
+        textStrokeColor: Color(
+          (raw['textStrokeColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
         textStrokeWidth: (raw['textStrokeWidth'] as num?)?.toDouble() ?? 0,
         textBackgroundColor: Color(
           (raw['textBackgroundColor'] as num?)?.toInt() ?? 0x00000000,
@@ -757,6 +743,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       'selectedLayerId': _selectedLayerId,
       'canvasBackgroundColor': _canvasBackgroundColor.toARGB32(),
       'canvasBackgroundGradientIndex': _canvasBackgroundGradientIndex,
+      'stageBackgroundImageBytes': _stageBackgroundImageBytes == null
+          ? null
+          : base64Encode(_stageBackgroundImageBytes!),
       'pageAspectRatio': _pageAspectRatio,
       'pageAspectRatioAutoFromImage': _pageAspectRatioAutoFromImage,
       'layers': _layers.map(_serializeLayer).toList(growable: false),
@@ -807,6 +796,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       );
       _canvasBackgroundGradientIndex =
           (decoded['canvasBackgroundGradientIndex'] as num?)?.toInt() ?? -1;
+      _stageBackgroundImageBytes =
+          decoded['stageBackgroundImageBytes'] is String
+          ? base64Decode(decoded['stageBackgroundImageBytes'] as String)
+          : null;
       _pageAspectRatio = (decoded['pageAspectRatio'] as num?)?.toDouble();
       _pageAspectRatioAutoFromImage =
           (decoded['pageAspectRatioAutoFromImage'] as bool?) ?? false;
@@ -864,8 +857,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         return;
       }
       await _restoreFromDecodedDraft(decoded);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _saveCurrentManualDraft() async {
@@ -878,9 +870,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Draft save fail ayyindi')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Draft save fail ayyindi')));
     }
   }
 
@@ -903,9 +895,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   void dispose() {
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
+    _photoGlideController.dispose();
     _selectedTextLongPressTimer?.cancel();
-    _watermarkLogoImage?.dispose();
     _transformationController.dispose();
+    _cropTransformationController.dispose();
     unawaited(_restoreSystemUiMode());
     super.dispose();
   }
@@ -968,11 +961,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   }
 
   void _handleAddSticker(String sticker) {
+    final isAssetSticker = _isAssetElement(sticker);
     final layer = _CanvasLayer(
       id: 'layer_${_layerSeed++}',
       type: _CanvasLayerType.sticker,
       sticker: sticker,
-      fontSize: 64,
+      fontSize: isAssetSticker ? 120 : 64,
       transform: Matrix4.identity(),
     );
 
@@ -982,6 +976,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       _layers.add(layer);
       _selectedLayerId = layer.id;
     });
+  }
+
+  static bool _isAssetElement(String? value) {
+    if (value == null) {
+      return false;
+    }
+    return value.startsWith('assets/');
   }
 
   void _handleTextToolTap() {
@@ -1101,6 +1102,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     _isFontSizeEditing = false;
   }
 
+  /*
   Future<ui.Image?> _loadWatermarkLogo() async {
     final existing = _watermarkLogoImage;
     if (existing != null) {
@@ -1202,6 +1204,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     return output;
   }
 
+  */
   Future<Uint8List> _encodeExportImageBytes(
     ui.Image image, {
     required _ExportImageFormat format,
@@ -1210,7 +1213,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       switch (format) {
         case _ExportImageFormat.png:
         case _ExportImageFormat.pngTransparent:
-          final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+          final byteData = await image.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
           if (byteData == null) {
             throw Exception('PNG conversion failed');
           }
@@ -1235,15 +1240,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     }
   }
 
-  Future<void> _openProSheet() async {
-    final previewBytes = await _captureStagePreviewBytes();
-    if (!mounted) {
+  Future<void> _handleExportTap() async {
+    if (_isCropMode) {
       return;
     }
-    await _handlePaywallAction(previewBytes: previewBytes, forExport: false);
-  }
-
-  Future<void> _handleExportTap() async {
     if (_isExporting) {
       return;
     }
@@ -1252,28 +1252,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       return;
     }
 
-    var includeWatermark = !_isProUser;
-    if (!_isProUser) {
-      final previewBytes = await _captureStagePreviewBytes();
-      final shouldContinue = await _handlePaywallAction(
-        previewBytes: previewBytes,
-        forExport: true,
-      );
-      if (!shouldContinue) {
-        return;
-      }
-      includeWatermark = !_isProUser;
-    }
-
     final format = await _pickExportFormat();
     if (format == null) {
       return;
     }
 
-    await _performExport(
-      includeWatermark: includeWatermark,
-      format: format,
-    );
+    await _performExport(format: format);
   }
 
   Future<_ExportImageFormat?> _pickExportFormat() async {
@@ -1293,17 +1277,19 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                 ListTile(
                   leading: const Icon(Icons.image_rounded),
                   title: const Text('PNG'),
-                  subtitle: const Text('Default, best quality, transparent-safe'),
-                  onTap: () =>
-                      Navigator.of(context).pop(_ExportImageFormat.png),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.grid_3x3_rounded),
-                  title: const Text('Transparent PNG'),
-                  subtitle: const Text('No canvas background'),
+                  subtitle: const Text(
+                    'Transparent background, best for Remove BG',
+                  ),
                   onTap: () => Navigator.of(
                     context,
                   ).pop(_ExportImageFormat.pngTransparent),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.crop_square_rounded),
+                  title: const Text('PNG with Background'),
+                  subtitle: const Text('Includes poster/stage background'),
+                  onTap: () =>
+                      Navigator.of(context).pop(_ExportImageFormat.png),
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_rounded),
@@ -1329,18 +1315,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Canvas ఖాళీగా ఉంది'),
+          title: const Text('Canvas à°–à°¾à°³à±€à°—à°¾ à°‰à°‚à°¦à°¿'),
           content: const Text(
-            'Design layers ఏవి లేవు. అయినా కూడా background మాత్రమే export చేయాలా?',
+            'Design layers à°à°µà°¿ à°²à±‡à°µà±. à°…à°¯à°¿à°¨à°¾ à°•à±‚à°¡à°¾ background à°®à°¾à°¤à±à°°à°®à±‡ export à°šà±‡à°¯à°¾à°²à°¾?',
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('వద్దు'),
+              child: const Text('à°µà°¦à±à°¦à±'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('అవును, export చేయి'),
+              child: const Text('à°…à°µà±à°¨à±, export à°šà±‡à°¯à°¿'),
             ),
           ],
         );
@@ -1349,6 +1335,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     return decision ?? false;
   }
 
+  /*
   Future<bool> _handlePaywallAction({
     required Uint8List? previewBytes,
     required bool forExport,
@@ -1392,23 +1379,23 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
           return false;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pro విజయవంతంగా activate అయ్యింది')),
+          const SnackBar(content: Text('Pro à°µà°¿à°œà°¯à°µà°‚à°¤à°‚à°—à°¾ activate à°…à°¯à±à°¯à°¿à°‚à°¦à°¿')),
         );
         return forExport;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (result) {
-            PurchaseFlowResult.cancelled => 'Payment cancel చేశారు',
-            PurchaseFlowResult.failed => 'Payment fail అయ్యింది',
+            PurchaseFlowResult.cancelled => 'Payment cancel à°šà±‡à°¶à°¾à°°à±',
+            PurchaseFlowResult.failed => 'Payment fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
             PurchaseFlowResult.billingUnavailable =>
-              'Billing service అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
+              'Billing service à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
             PurchaseFlowResult.productNotFound =>
-              'Subscription ప్లాన్ storeలో కనిపించలేదు. support‌ని సంప్రదించండి',
+              'Subscription à°ªà±à°²à°¾à°¨à± storeà°²à±‹ à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±. supportâ€Œà°¨à°¿ à°¸à°‚à°ªà±à°°à°¦à°¿à°‚à°šà°‚à°¡à°¿',
             PurchaseFlowResult.timedOut =>
-              'Payment response ఆలస్యం అయ్యింది. purchase history చెక్ చేసి మళ్లీ ప్రయత్నించండి',
+              'Payment response à°†à°²à°¸à±à°¯à°‚ à°…à°¯à±à°¯à°¿à°‚à°¦à°¿. purchase history à°šà±†à°•à± à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
             PurchaseFlowResult.nothingToRestore =>
-              'Restore చేయడానికి purchase కనిపించలేదు',
+              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ purchase à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
             PurchaseFlowResult.success => '',
           }),
         ),
@@ -1432,7 +1419,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
           return false;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Purchase restore అయ్యింది')),
+          const SnackBar(content: Text('Purchase restore à°…à°¯à±à°¯à°¿à°‚à°¦à°¿')),
         );
         return forExport;
       }
@@ -1440,17 +1427,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         SnackBar(
           content: Text(switch (restoreResult) {
             PurchaseFlowResult.billingUnavailable =>
-              'Billing service అందుబాటులో లేదు. తర్వాత మళ్లీ ప్రయత్నించండి',
+              'Billing service à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
             PurchaseFlowResult.failed =>
-              'Restore fail అయ్యింది, మళ్లీ ప్రయత్నించండి',
-            PurchaseFlowResult.cancelled => 'Restore process cancel అయింది',
+              'Restore fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+            PurchaseFlowResult.cancelled => 'Restore process cancel à°…à°¯à°¿à°‚à°¦à°¿',
             PurchaseFlowResult.productNotFound =>
-              'Restore చేయడానికి product details కనిపించలేదు',
+              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ product details à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
             PurchaseFlowResult.timedOut =>
-              'Restore response ఆలస్యం అయింది. కొద్దిసేపటి తర్వాత ప్రయత్నించండి',
+              'Restore response à°†à°²à°¸à±à°¯à°‚ à°…à°¯à°¿à°‚à°¦à°¿. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
             PurchaseFlowResult.nothingToRestore =>
-              'Restore చేయడానికి active plan కనిపించలేదు',
-            PurchaseFlowResult.success => 'Purchase restore అయ్యింది',
+              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ active plan à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
+            PurchaseFlowResult.success => 'Purchase restore à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
           }),
         ),
       );
@@ -1459,25 +1446,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     return false;
   }
 
-  Future<Uint8List?> _captureStagePreviewBytes() async {
-    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final previewImage = await _captureStageImage(
-      pixelRatio: devicePixelRatio.clamp(1.0, 1.5),
-    );
-    if (previewImage == null) {
-      return null;
-    }
-    return _encodeExportImageBytes(
-      previewImage,
-      format: _ExportImageFormat.png,
-    );
-  }
-
+  */
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
+    final bottomToolsHeight =
+        _bottomBarHeight +
+        (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
+    final topInset = _topBarHeight + _floatingBarGap;
+    final bottomInset =
+        _floatingBarGap +
+        bottomToolsHeight +
+        (_hasSelectedTextLayer && _showTextControls ? _textStyleBarHeight : 0);
     final workspaceHeight = math.max(
       0.0,
-      canvasSize.height - _topBarHeight - _bottomBarHeight,
+      canvasSize.height - topInset - bottomInset,
     );
     final workspaceSize = Size(canvasSize.width, workspaceHeight);
     final hasPageSelection = _pageAspectRatio != null;
@@ -1488,10 +1470,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
           )
         : workspaceSize;
     return Rect.fromCenter(
-      center: Offset(
-        canvasSize.width / 2,
-        _topBarHeight + (workspaceHeight / 2),
-      ),
+      center: Offset(canvasSize.width / 2, topInset + (workspaceHeight / 2)),
       width: stageSize.width,
       height: stageSize.height,
     );
@@ -1518,9 +1497,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
       Paint(),
     );
-    final cropped = await recorder
-        .endRecording()
-        .toImage(outputWidth, outputHeight);
+    final cropped = await recorder.endRecording().toImage(
+      outputWidth,
+      outputHeight,
+    );
     source.dispose();
     return cropped;
   }
@@ -1561,10 +1541,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     }
   }
 
-  Future<void> _performExport({
-    required bool includeWatermark,
-    required _ExportImageFormat format,
-  }) async {
+  Future<void> _performExport({required _ExportImageFormat format}) async {
     if (_isExporting) {
       return;
     }
@@ -1581,6 +1558,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         });
         await Future<void>.delayed(const Duration(milliseconds: 16));
       }
+      final hasPermission = await _ensureGallerySavePermission();
+      if (!hasPermission) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Gallery permission ivvandi, taruvata malli export cheyyandi',
+            ),
+          ),
+        );
+        return;
+      }
       final image = await _captureStageImage(
         pixelRatio: _exportPixelRatio(devicePixelRatio),
       );
@@ -1589,37 +1580,50 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       }
       final shouldHaveTransparentBackground =
           format == _ExportImageFormat.pngTransparent;
-      final finalImage = await _buildWatermarkedImage(
-        image,
-        includeWatermark: includeWatermark,
-      );
       final exportedBytes = await _encodeExportImageBytes(
-        finalImage,
-        format: shouldHaveTransparentBackground ? _ExportImageFormat.png : format,
+        image,
+        format: shouldHaveTransparentBackground
+            ? _ExportImageFormat.png
+            : format,
       );
-
+      final fileName =
+          'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}';
       final result = await ImageGallerySaverPlus.saveImage(
         exportedBytes,
         quality: 100,
-        name:
-            'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}',
+        name: fileName,
       );
-      final isSuccess = result is Map<String, dynamic>
-          ? (result['isSuccess'] == true || result['success'] == true)
-          : false;
+      var isSuccess = _isGallerySaveSuccess(result);
+      dynamic finalResult = result;
+      if (!isSuccess) {
+        final tempDirectory = await getTemporaryDirectory();
+        final tempPath =
+            '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+        final tempFile = File(tempPath);
+        await tempFile.writeAsBytes(exportedBytes, flush: true);
+        final fallbackResult = await ImageGallerySaverPlus.saveFile(
+          tempFile.path,
+          name: fileName,
+        );
+        if (_isGallerySaveSuccess(fallbackResult)) {
+          isSuccess = true;
+          finalResult = fallbackResult;
+        }
+      }
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_exportResultMessage(result, isSuccess: isSuccess)),
+          content: Text(
+            _exportResultMessage(finalResult, isSuccess: isSuccess),
+          ),
           action: isSuccess
               ? SnackBarAction(
                   label: _isSharing ? 'Sharing...' : 'Share',
                   onPressed: _isSharing
                       ? () {}
-                      : () =>
-                            _shareLatestPoster(exportedBytes, format: format),
+                      : () => _shareLatestPoster(exportedBytes, format: format),
                 )
               : null,
         ),
@@ -1630,7 +1634,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
+          content: Text('Export fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿'),
         ),
       );
     } finally {
@@ -1642,19 +1646,58 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     }
   }
 
+  Future<bool> _ensureGallerySavePermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return true;
+    }
+    final storageStatus = await Permission.storage.status;
+    final photosStatus = await Permission.photos.status;
+    if (storageStatus.isGranted ||
+        photosStatus.isGranted ||
+        photosStatus.isLimited) {
+      return true;
+    }
+    final requested = await <Permission>[
+      Permission.storage,
+      Permission.photos,
+    ].request();
+    return requested.values.any(
+      (status) => status.isGranted || status.isLimited,
+    );
+  }
+
+  bool _isGallerySaveSuccess(dynamic saveResult) {
+    if (saveResult is bool) {
+      return saveResult;
+    }
+    if (saveResult is! Map) {
+      return false;
+    }
+    final status = saveResult['isSuccess'] ?? saveResult['success'];
+    if (status is bool) {
+      return status;
+    }
+    if (status is num) {
+      return status > 0;
+    }
+    final normalized = status?.toString().trim().toLowerCase();
+    return normalized == 'true' || normalized == '1';
+  }
+
   String _exportResultMessage(dynamic saveResult, {required bool isSuccess}) {
     if (isSuccess) {
-      return 'Poster gallery లో save అయ్యింది';
+      return 'Poster gallery à°²à±‹ save à°…à°¯à±à°¯à°¿à°‚à°¦à°¿';
     }
-    final errorText = saveResult is Map<String, dynamic>
+    final errorText = saveResult is Map
         ? (saveResult['errorMessage']?.toString() ??
               saveResult['message']?.toString() ??
+              saveResult['error']?.toString() ??
               '')
         : '';
     if (errorText.toLowerCase().contains('permission')) {
-      return 'Gallery permission ఇవ్వండి, తర్వాత మళ్లీ export చేయండి';
+      return 'Gallery permission à°‡à°µà±à°µà°‚à°¡à°¿, à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ export à°šà±‡à°¯à°‚à°¡à°¿';
     }
-    return 'Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి';
+    return 'Export fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿';
   }
 
   double _exportPixelRatio(double devicePixelRatio) {
@@ -1685,14 +1728,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       await file.writeAsBytes(imageBytes, flush: true);
       await Share.shareXFiles(<XFile>[
         XFile(file.path),
-      ], text: 'Mana Poster తో create చేసిన నా poster');
+      ], text: 'Mana Poster à°¤à±‹ create à°šà±‡à°¸à°¿à°¨ à°¨à°¾ poster');
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Share fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
+          content: Text('Share fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿'),
         ),
       );
     } finally {
@@ -1993,6 +2036,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
 
   void _setCanvasBackgroundColor(Color color) {
     if (_canvasBackgroundGradientIndex == -1 &&
+        _stageBackgroundImageBytes == null &&
         _canvasBackgroundColor.toARGB32() == color.toARGB32()) {
       return;
     }
@@ -2001,18 +2045,37 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     setState(() {
       _canvasBackgroundColor = color;
       _canvasBackgroundGradientIndex = -1;
+      _stageBackgroundImageBytes = null;
     });
   }
 
   void _setCanvasBackgroundGradient(int gradientIndex) {
-    if (_canvasBackgroundGradientIndex == gradientIndex) {
+    if (_canvasBackgroundGradientIndex == gradientIndex &&
+        _stageBackgroundImageBytes == null) {
       return;
     }
 
     _pushUndoSnapshot();
     setState(() {
       _canvasBackgroundGradientIndex = gradientIndex;
+      _stageBackgroundImageBytes = null;
     });
+  }
+
+  Future<bool> _setCanvasBackgroundImage() async {
+    final selected = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (selected == null) {
+      return false;
+    }
+
+    final bytes = await selected.readAsBytes();
+    final optimized = _optimizeEditorPhotoPayload(bytes);
+    _pushUndoSnapshot();
+    setState(() {
+      _stageBackgroundImageBytes = optimized.bytes;
+      _canvasBackgroundGradientIndex = -1;
+    });
+    return true;
   }
 
   Future<void> _openBackgroundPanel() async {
@@ -2020,12 +2083,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (BuildContext context) => _BackgroundPickerScreen(
-          colors: _backgroundColors,
-          gradients: _backgroundGradients,
+          colors: editorBackgroundColors,
+          gradients: editorBackgroundGradients,
           selectedColor: _canvasBackgroundColor,
           selectedGradientIndex: _canvasBackgroundGradientIndex,
+          hasSelectedImage: _stageBackgroundImageBytes != null,
           onColorSelected: _setCanvasBackgroundColor,
           onGradientSelected: _setCanvasBackgroundGradient,
+          onImageSelected: _setCanvasBackgroundImage,
         ),
       ),
     );
@@ -2036,8 +2101,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       MaterialPageRoute<String>(
         fullscreenDialog: true,
         builder: (BuildContext context) => _StickerPickerScreen(
-          categories: _stickerCategories,
-          catalog: _stickerCatalog,
+          categories: editorElementCategories,
+          catalog: editorElementCatalog,
         ),
       ),
     );
@@ -2073,7 +2138,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   }
 
   void _handleLayerSelected(String id) {
+    if (_isCropMode) {
+      return;
+    }
     if (_selectedLayerId == id) {
+      if (_showTextControls && _hasSelectedTextLayer) {
+        setState(() {
+          _showTextControls = false;
+        });
+      }
       return;
     }
 
@@ -2102,6 +2175,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     Rect pageRect,
     Size pageSize,
   ) {
+    if (_isCropMode) {
+      return;
+    }
+    if (_suppressCanvasTapDown) {
+      _suppressCanvasTapDown = false;
+      return;
+    }
     final resolvedId = _resolveTopLayerAtPoint(
       localPosition: localPosition,
       pageRect: pageRect,
@@ -2112,6 +2192,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       return;
     }
     _handleLayerSelected(resolvedId);
+  }
+
+  void _handleSelectedTransformHandlePointerDown() {
+    _suppressCanvasTapDown = true;
+    _suppressCanvasTapToken++;
+    final tokenAtSchedule = _suppressCanvasTapToken;
+    Future<void>.delayed(const Duration(milliseconds: 140), () {
+      if (!mounted || _suppressCanvasTapToken != tokenAtSchedule) {
+        return;
+      }
+      _suppressCanvasTapDown = false;
+    });
   }
 
   String? _resolveTopLayerAtPoint({
@@ -2130,6 +2222,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
       }
       final paddedSize = layer.isText
           ? Size(layerSize.width + 32, layerSize.height + 20)
+          : ((layer.isPhoto || layer.isSticker) && layer.id == _selectedLayerId)
+          ? Size(layerSize.width + 28, layerSize.height + 28)
           : layerSize;
       final transform = Matrix4.copy(layer.transform);
       final inverse = Matrix4.inverted(transform);
@@ -2137,9 +2231,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
         inverse,
         localPosition - center,
       );
+      if (layer.id == _selectedLayerId && (layer.isPhoto || layer.isSticker)) {
+        final handleCenter = Offset(
+          (layerSize.width / 2) + 14,
+          (layerSize.height / 2) + 14,
+        );
+        final handleHit = (localToLayer - handleCenter).distance <= 24;
+        if (handleHit) {
+          return layer.id;
+        }
+      }
       final halfWidth = paddedSize.width / 2;
       final halfHeight = paddedSize.height / 2;
-      final hit = localToLayer.dx >= -halfWidth &&
+      final hit =
+          localToLayer.dx >= -halfWidth &&
           localToLayer.dx <= halfWidth &&
           localToLayer.dy >= -halfHeight &&
           localToLayer.dy <= halfHeight;
@@ -2182,9 +2287,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
           ? Size(painter.size.width + 24, painter.size.height + 16)
           : painter.size;
     }
+    final sticker = layer.sticker;
+    if (_isAssetElement(sticker)) {
+      return Size.square(layer.fontSize);
+    }
     final painter = TextPainter(
       text: TextSpan(
-        text: layer.sticker ?? '*',
+        text: sticker ?? '*',
         style: TextStyle(fontSize: layer.fontSize),
       ),
       textDirection: TextDirection.ltr,
@@ -2212,6 +2321,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     if (!_hasSelectedTextLayer) {
       return;
     }
+    _cancelSelectedTextLongPress();
     setState(() {
       _showTextControls = true;
     });
@@ -2294,10 +2404,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     if (_isSelectedLayerLocked) {
       return;
     }
+    _stopPhotoGlide(sync: false);
     _cancelSelectedTextLongPress();
     _gestureStartMatrix = Matrix4.copy(_transformationController.value);
     _gestureStartFocalPoint = details.focalPoint;
     _gestureStartLocalFocalPoint = details.localFocalPoint;
+    _photoGestureLastFocalPoint = details.focalPoint;
+    _photoGestureLastScale = 1;
+    _photoGestureLastRotation = 0;
+    _photoGestureVelocity = Offset.zero;
+    _photoGestureLastTimestampMicros = DateTime.now().microsecondsSinceEpoch;
     if (_isLayerInteracting) {
       return;
     }
@@ -2306,19 +2422,190 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     });
   }
 
-  void _handleSelectedLayerScaleUpdate(ScaleUpdateDetails details) {
-    if (_selectedLayerId == null || _isSelectedLayerLocked) {
+  Offset _selectedTransformCenterGlobal() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox) {
+      return Offset.zero;
+    }
+    final stageRect = _currentStageLogicalRect();
+    final matrix = _transformationController.value;
+    final centerLocal = stageRect.center.translate(
+      matrix.storage[12],
+      matrix.storage[13],
+    );
+    return renderObject.localToGlobal(centerLocal);
+  }
+
+  void _handleSelectedStickerHandleStart(DragStartDetails details) {
+    final selected = _selectedLayer;
+    if (selected == null ||
+        !(selected.isSticker || selected.isPhoto) ||
+        _isSelectedLayerLocked) {
+      return;
+    }
+    _stopPhotoGlide(sync: false);
+    _cancelSelectedTextLongPress();
+    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
+    final center = _selectedTransformCenterGlobal();
+    final vector = details.globalPosition - center;
+    _stickerHandleStartAngle = math.atan2(vector.dy, vector.dx);
+    _stickerHandleStartDistance = math.max(vector.distance, 1);
+    _photoGestureVelocity = Offset.zero;
+    if (_isLayerInteracting) {
+      return;
+    }
+    setState(() {
+      _isLayerInteracting = true;
+    });
+  }
+
+  void _handleSelectedStickerHandleUpdate(DragUpdateDetails details) {
+    final selected = _selectedLayer;
+    if (selected == null ||
+        !(selected.isSticker || selected.isPhoto) ||
+        _isSelectedLayerLocked) {
       return;
     }
     final base = Matrix4.copy(
       _gestureStartMatrix ?? _transformationController.value,
     );
-    final delta = details.focalPoint - _gestureStartFocalPoint;
-    final updated = Matrix4.copy(base)
-      ..translateByDouble(delta.dx, delta.dy, 0, 1);
+    final updated = Matrix4.copy(base);
+    final center = _selectedTransformCenterGlobal();
+    final vector = details.globalPosition - center;
+    final angle = math.atan2(vector.dy, vector.dx);
+    final distance = math.max(vector.distance, 1);
+    final angleDelta = _shortestAngleDelta(
+      from: _stickerHandleStartAngle,
+      to: angle,
+    );
+    final scaleRatio = (distance / _stickerHandleStartDistance)
+        .clamp(0.25, 8.0)
+        .toDouble();
+    if (angleDelta.abs() > 0.0001) {
+      updated.rotateZ(angleDelta);
+    }
+    if ((scaleRatio - 1).abs() > 0.0001) {
+      updated.scaleByDouble(scaleRatio, scaleRatio, 1, 1);
+    }
+    if (!_isMatrixFinite(updated)) {
+      return;
+    }
+    _transformationController.value = updated;
+    _updateSmartGuides(updated);
+  }
+
+  void _handleSelectedStickerHandleEnd() {
+    _handleSelectedLayerInteractionEnd();
+  }
+
+  void _handleSelectedLayerScaleUpdate(ScaleUpdateDetails details) {
+    if (_selectedLayerId == null || _isSelectedLayerLocked) {
+      return;
+    }
+    final selectedLayer = _selectedLayer;
+    if (selectedLayer == null) {
+      return;
+    }
+    final base = Matrix4.copy(
+      _gestureStartMatrix ?? _transformationController.value,
+    );
+    final updated = Matrix4.copy(base);
+
+    if (selectedLayer.isPhoto || selectedLayer.isSticker) {
+      final incremental = Matrix4.copy(_transformationController.value);
+      final moveDelta = details.focalPoint - _photoGestureLastFocalPoint;
+      final nowMicros = DateTime.now().microsecondsSinceEpoch;
+      final elapsedMicros = _photoGestureLastTimestampMicros == 0
+          ? 0
+          : nowMicros - _photoGestureLastTimestampMicros;
+      _photoGestureLastTimestampMicros = nowMicros;
+
+      // One-finger transform drag follows the finger in screen-space only.
+      if (details.pointerCount < 2) {
+        if (moveDelta.distanceSquared < 0.04) {
+          _photoGestureLastFocalPoint = details.focalPoint;
+          return;
+        }
+        incremental.setTranslationRaw(
+          incremental.storage[12] + moveDelta.dx,
+          incremental.storage[13] + moveDelta.dy,
+          incremental.storage[14],
+        );
+        if (!_isMatrixFinite(incremental)) {
+          return;
+        }
+        _transformationController.value = incremental;
+        _updateSmartGuides(incremental);
+        if (elapsedMicros > 0) {
+          final dtSeconds = elapsedMicros / Duration.microsecondsPerSecond;
+          final instantVelocity = Offset(
+            moveDelta.dx / dtSeconds,
+            moveDelta.dy / dtSeconds,
+          );
+          _photoGestureVelocity = Offset(
+            (_photoGestureVelocity.dx * 0.72) + (instantVelocity.dx * 0.28),
+            (_photoGestureVelocity.dy * 0.72) + (instantVelocity.dy * 0.28),
+          );
+        }
+        _photoGestureLastFocalPoint = details.focalPoint;
+        _photoGestureLastScale = details.scale;
+        _photoGestureLastRotation = details.rotation;
+        return;
+      }
+
+      // Two-finger transform uses incremental deltas to avoid jumps when
+      // fingers are added/removed or focal point shifts between frames.
+      final scaleRatio =
+          (_photoGestureLastScale == 0
+                  ? 1.0
+                  : details.scale / _photoGestureLastScale)
+              .clamp(0.2, 8.0)
+              .toDouble();
+      final rotationDelta = details.rotation - _photoGestureLastRotation;
+      final currentRotation = _matrixRotationZ(incremental);
+      final targetRotation = currentRotation + rotationDelta;
+      final snappedRotation = _softSnapRotation(targetRotation);
+      final appliedRotationDelta = snappedRotation - currentRotation;
+
+      incremental.setTranslationRaw(
+        incremental.storage[12] + moveDelta.dx,
+        incremental.storage[13] + moveDelta.dy,
+        incremental.storage[14],
+      );
+      final focal = details.localFocalPoint;
+      incremental.translateByDouble(focal.dx, focal.dy, 0, 1);
+      if (appliedRotationDelta.abs() > 0.0001) {
+        incremental.rotateZ(appliedRotationDelta);
+      }
+      if ((scaleRatio - 1).abs() > 0.0001) {
+        incremental.scaleByDouble(scaleRatio, scaleRatio, 1, 1);
+      }
+      incremental.translateByDouble(-focal.dx, -focal.dy, 0, 1);
+
+      if (!_isMatrixFinite(incremental)) {
+        return;
+      }
+      _transformationController.value = incremental;
+      _updateSmartGuides(incremental);
+      _photoGestureLastFocalPoint = details.focalPoint;
+      _photoGestureLastScale = details.scale;
+      _photoGestureLastRotation = details.rotation;
+      _photoGestureVelocity = Offset.zero;
+      _photoGestureLastTimestampMicros = nowMicros;
+      return;
+    }
+
+    // Non-transform layers keep the existing gesture flow.
+
+    final effectiveBase = Matrix4.copy(
+      _gestureStartMatrix ?? _transformationController.value,
+    );
+    final effectiveDelta = details.focalPoint - _gestureStartFocalPoint;
+    updated.setFrom(effectiveBase);
+    updated.translateByDouble(effectiveDelta.dx, effectiveDelta.dy, 0, 1);
 
     final focal = _gestureStartLocalFocalPoint;
-    final baseRotation = _matrixRotationZ(base);
+    final baseRotation = _matrixRotationZ(effectiveBase);
     final targetRotation = baseRotation + details.rotation;
     final snappedRotation = _softSnapRotation(targetRotation);
     final deltaRotation = snappedRotation - baseRotation;
@@ -2345,10 +2632,39 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     if (_isSelectedLayerLocked) {
       return;
     }
+    final selectedLayer = _selectedLayer;
+    if ((selectedLayer?.isPhoto ?? false) ||
+        (selectedLayer?.isSticker ?? false)) {
+      final speed = _photoGestureVelocity.distance;
+      if (speed > 220) {
+        final clampedSpeed = speed.clamp(0, 1800).toDouble();
+        final direction = _photoGestureVelocity / speed;
+        final travel = clampedSpeed * 0.09;
+        _photoGlideTotalTravel = Offset(
+          direction.dx * travel,
+          direction.dy * travel,
+        );
+        _photoGlideAppliedTravel = Offset.zero;
+        _photoGlideController
+          ..stop()
+          ..reset()
+          ..forward();
+      } else {
+        _syncSelectedLayerTransform();
+      }
+    } else {
+      _syncSelectedLayerTransform();
+    }
     _gestureStartMatrix = null;
     _gestureStartFocalPoint = Offset.zero;
     _gestureStartLocalFocalPoint = Offset.zero;
-    _syncSelectedLayerTransform();
+    _photoGestureLastFocalPoint = Offset.zero;
+    _photoGestureLastScale = 1;
+    _photoGestureLastRotation = 0;
+    _stickerHandleStartAngle = 0;
+    _stickerHandleStartDistance = 1;
+    _photoGestureVelocity = Offset.zero;
+    _photoGestureLastTimestampMicros = 0;
     if (_pendingAutosave) {
       _scheduleAutosave();
     }
@@ -2361,6 +2677,46 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     }
     _transformationController.value = Matrix4.identity();
     _syncSelectedLayerTransform();
+  }
+
+  void _handlePhotoGlideTick() {
+    if (!_photoGlideController.isAnimating) {
+      return;
+    }
+    final progress = Curves.easeOutCubic.transform(_photoGlideController.value);
+    final nextTravel = Offset(
+      _photoGlideTotalTravel.dx * progress,
+      _photoGlideTotalTravel.dy * progress,
+    );
+    final delta = nextTravel - _photoGlideAppliedTravel;
+    if (delta.distanceSquared <= 0) {
+      return;
+    }
+    final incremental = Matrix4.copy(_transformationController.value);
+    incremental.setTranslationRaw(
+      incremental.storage[12] + delta.dx,
+      incremental.storage[13] + delta.dy,
+      incremental.storage[14],
+    );
+    if (!_isMatrixFinite(incremental)) {
+      return;
+    }
+    _photoGlideAppliedTravel = nextTravel;
+    _transformationController.value = incremental;
+  }
+
+  void _stopPhotoGlide({required bool sync}) {
+    if (!_photoGlideController.isAnimating &&
+        _photoGlideAppliedTravel == Offset.zero &&
+        _photoGlideTotalTravel == Offset.zero) {
+      return;
+    }
+    _photoGlideController.stop();
+    _photoGlideAppliedTravel = Offset.zero;
+    _photoGlideTotalTravel = Offset.zero;
+    if (sync) {
+      _syncSelectedLayerTransform();
+    }
   }
 
   void _handleDeleteSelectedLayer() {
@@ -2524,9 +2880,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
 
   Future<void> _handleCropPhotoTap() async {
     final selectedId = _selectedLayerId;
-    if (selectedId == null || !_hasSelectedPhotoLayer) {
+    if (selectedId == null || !_hasSelectedPhotoLayer || _isCropMode) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Crop kosam photo layer select cheyyandi')),
+        const SnackBar(
+          content: Text('Crop kosam photo layer select cheyyandi'),
+        ),
       );
       return;
     }
@@ -2538,28 +2896,93 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     if (layer.bytes == null) {
       return;
     }
-    final croppedBytes = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute<Uint8List>(
-        builder: (BuildContext context) => _PhotoCropScreen(
-          imageBytes: layer.bytes!,
-          cropAspectRatio: _pageAspectRatio,
-        ),
-      ),
-    );
-    if (!mounted || croppedBytes == null) {
+    setState(() {
+      _isCropMode = true;
+      _cropSessionLayerId = selectedId;
+      _cropSessionImageBytes = Uint8List.fromList(layer.bytes!);
+      _cropSessionInitialAspectRatio = null;
+      _cropSessionAspectRatio = _cropSessionInitialAspectRatio;
+      _cropTransformationController.value = Matrix4.identity();
+    });
+  }
+
+  void _discardCropSession() {
+    if (!_isCropMode) {
       return;
     }
-    final optimizedPhoto = await compute(_optimizeEditorPhotoPayload, croppedBytes);
+    setState(() {
+      _isCropMode = false;
+      _cropSessionLayerId = null;
+      _cropSessionImageBytes = null;
+      _cropSessionAspectRatio = null;
+      _cropSessionInitialAspectRatio = null;
+      _cropTransformationController.value = Matrix4.identity();
+    });
+  }
+
+  void _resetCropSession() {
+    if (!_isCropMode) {
+      return;
+    }
+    setState(() {
+      _cropTransformationController.value = Matrix4.identity();
+      _cropSessionAspectRatio = _cropSessionInitialAspectRatio;
+    });
+  }
+
+  void _setCropAspectRatio(double? ratio) {
+    if (!_isCropMode) {
+      return;
+    }
+    setState(() {
+      _cropSessionAspectRatio = ratio;
+    });
+  }
+
+  Future<void> _applyCropSession() async {
+    final layerId = _cropSessionLayerId;
+    final sessionBytes = _cropSessionImageBytes;
+    if (!_isCropMode || layerId == null || sessionBytes == null) {
+      return;
+    }
+    final boundary =
+        _cropBoundaryKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (boundary == null) {
+      return;
+    }
+    final image = await boundary.toImage(pixelRatio: 2.5);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    if (byteData == null || !mounted) {
+      return;
+    }
+
+    final croppedBytes = byteData.buffer.asUint8List();
+    final newAspectRatio = await compute(
+      _extractImageAspectRatio,
+      croppedBytes,
+    );
     if (!mounted) {
+      return;
+    }
+    final layerIndex = _layers.indexWhere((item) => item.id == layerId);
+    if (layerIndex == -1) {
+      _discardCropSession();
       return;
     }
     _pushUndoSnapshot();
     setState(() {
       _layers[layerIndex] = _layers[layerIndex].copyWith(
-        bytes: optimizedPhoto.bytes,
-        originalPhotoBytes: optimizedPhoto.bytes,
-        photoAspectRatio: optimizedPhoto.aspectRatio,
+        bytes: croppedBytes,
+        photoAspectRatio: newAspectRatio,
       );
+      _isCropMode = false;
+      _cropSessionLayerId = null;
+      _cropSessionImageBytes = null;
+      _cropSessionAspectRatio = null;
+      _cropSessionInitialAspectRatio = null;
+      _cropTransformationController.value = Matrix4.identity();
     });
   }
 
@@ -2658,7 +3081,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     final index = _layers.indexWhere((item) => item.id == layerId);
     if (index == -1) return;
     setState(() {
-      final updated = _layers[index].copyWith(isLocked: !_layers[index].isLocked);
+      final updated = _layers[index].copyWith(
+        isLocked: !_layers[index].isLocked,
+      );
       _layers[index] = updated;
       if (updated.id == _selectedLayerId) {
         _transformationController.value = Matrix4.copy(updated.transform);
@@ -2670,7 +3095,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
     final index = _layers.indexWhere((item) => item.id == layerId);
     if (index == -1) return;
     setState(() {
-      final updated = _layers[index].copyWith(isHidden: !_layers[index].isHidden);
+      final updated = _layers[index].copyWith(
+        isHidden: !_layers[index].isHidden,
+      );
       _layers[index] = updated;
       if (updated.isHidden && _selectedLayerId == layerId) {
         _selectedLayerId = null;
@@ -2781,10 +3208,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                                     color: Color(0xFF334155),
                                   )
                                 : Center(
-                                    child: Text(
-                                      layer.sticker ?? '⭐',
-                                      style: const TextStyle(fontSize: 22),
-                                    ),
+                                    child: _isAssetElement(layer.sticker)
+                                        ? Image.asset(
+                                            layer.sticker!,
+                                            fit: BoxFit.contain,
+                                            filterQuality: FilterQuality.low,
+                                          )
+                                        : Text(
+                                            layer.sticker ?? '⭐',
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                            ),
+                                          ),
                                   ),
                           ),
                           title: Text(
@@ -2876,14 +3311,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: const Color(0xFFF7F8FC),
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final canvasSize = Size(
               constraints.maxWidth,
               constraints.maxHeight,
             );
+            final bottomToolsHeight = _isCropMode
+                ? _cropBarHeight
+                : _bottomBarHeight +
+                      (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
+            final reservedTopInset = _topBarHeight + _floatingBarGap;
+            final reservedBottomInset =
+                _floatingBarGap +
+                bottomToolsHeight +
+                (!_isCropMode && _hasSelectedTextLayer && _showTextControls
+                    ? _textStyleBarHeight
+                    : 0);
             _lastCanvasSize = canvasSize;
 
             return Stack(
@@ -2897,11 +3344,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                       canvasBackgroundColor: _canvasBackgroundColor,
                       canvasBackgroundGradientIndex:
                           _canvasBackgroundGradientIndex,
+                      stageBackgroundImageBytes: _stageBackgroundImageBytes,
                       canvasSize: canvasSize,
                       pageAspectRatio: _pageAspectRatio,
                       hideAutoPageFrame: _pageAspectRatioAutoFromImage,
-                      topInset: _topBarHeight,
-                      bottomInset: _bottomBarHeight,
+                      topInset: reservedTopInset,
+                      bottomInset: reservedBottomInset,
                       transformationController: _transformationController,
                       onLayerSelected: _handleLayerSelected,
                       onSelectedLayerInteractionStart:
@@ -2910,32 +3358,64 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                           _handleSelectedLayerScaleUpdate,
                       onSelectedLayerInteractionEnd:
                           _handleSelectedLayerInteractionEnd,
+                      onSelectedTransformHandlePointerDown:
+                          _handleSelectedTransformHandlePointerDown,
+                      onSelectedStickerHandleStart:
+                          _handleSelectedStickerHandleStart,
+                      onSelectedStickerHandleUpdate:
+                          _handleSelectedStickerHandleUpdate,
+                      onSelectedStickerHandleEnd:
+                          _handleSelectedStickerHandleEnd,
                       onSelectedLayerDoubleTap: _resetSelectedLayerToFit,
                       onSelectedTextDoubleTap: _handleSelectedTextDoubleTap,
                       onSelectedTextPointerDown: _startSelectedTextLongPress,
                       onSelectedTextPointerMove: _updateSelectedTextLongPress,
                       onSelectedTextPointerCancel: _cancelSelectedTextLongPress,
-                      onCanvasTapDown: _handleCanvasTapDown,
-                      onCanvasTap: _clearSelection,
+                      onCanvasTapDown: _isCropMode
+                          ? (
+                              Offset _,
+                              Rect pageRectIgnored,
+                              Size pageSizeIgnored,
+                            ) {}
+                          : _handleCanvasTapDown,
+                      onCanvasTap: _isCropMode ? () {} : _clearSelection,
                       showCanvasBackground: !_isTransparentExportCapture,
                       showSelectionDecorations:
-                          !_isExporting && !_isCapturingStage,
+                          !_isCropMode && !_isExporting && !_isCapturingStage,
+                      showPageFramePreview: !_isExporting && !_isCapturingStage,
                       showVerticalSnapGuide:
-                          !_isCapturingStage && _showVerticalSnapGuide,
+                          !_isCropMode &&
+                          !_isCapturingStage &&
+                          _showVerticalSnapGuide,
                       showHorizontalSnapGuide:
-                          !_isCapturingStage && _showHorizontalSnapGuide,
+                          !_isCropMode &&
+                          !_isCapturingStage &&
+                          _showHorizontalSnapGuide,
                     ),
                   ),
                 ),
+                if (_isCropMode && _cropSessionImageBytes != null)
+                  Positioned.fill(
+                    child: _CropSessionOverlay(
+                      boundaryKey: _cropBoundaryKey,
+                      imageBytes: _cropSessionImageBytes!,
+                      controller: _cropTransformationController,
+                      topInset: reservedTopInset,
+                      bottomInset: reservedBottomInset,
+                      aspectRatio:
+                          _cropSessionAspectRatio ??
+                          (_selectedLayer?.photoAspectRatio ??
+                              _pageAspectRatio),
+                    ),
+                  ),
                 Positioned(
                   left: 12,
                   right: 12,
-                  top: 10,
+                  top: _floatingBarGap,
                   child: _TopBar(
                     height: _topBarHeight,
                     onUndoTap: _handleUndo,
                     onRedoTap: _handleRedo,
-                    onProTap: _openProSheet,
                     onDraftsTap: _openDraftsScreen,
                     onExportTap: _handleExportTap,
                     onDeleteTap: _handleDeleteSelectedLayer,
@@ -2944,7 +3424,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                     onSendBackTap: _moveSelectedLayerToBack,
                     canUndo: _canUndo,
                     canRedo: _canRedo,
-                    isProUser: _isProUser,
                     isExporting: _isExporting,
                     canDelete: _selectedLayerId != null,
                     canDuplicate: _selectedLayerId != null,
@@ -2957,26 +3436,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                 Positioned(
                   left: 12,
                   right: 12,
-                  bottom: _bottomBarHeight,
-                  child: _PhotoStyleBar(
-                    visible: _hasSelectedPhotoLayer,
-                    selectedLayer: _selectedLayer,
-                    onOpacityChanged: _setSelectedPhotoOpacity,
-                    onFlipHorizontalTap: _toggleSelectedPhotoFlipHorizontal,
-                    onFlipVerticalTap: _toggleSelectedPhotoFlipVertical,
-                    onRotateLeftTap: () => _rotateSelectedPhoto(-math.pi / 2),
-                    onRotateRightTap: () => _rotateSelectedPhoto(math.pi / 2),
-                  ),
-                ),
-                Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: _hasSelectedPhotoLayer ? 120 : _bottomBarHeight,
+                  bottom: bottomToolsHeight,
                   child: _TextStyleBar(
-                    visible: _hasSelectedTextLayer && _showTextControls,
+                    visible:
+                        !_isCropMode &&
+                        _hasSelectedTextLayer &&
+                        _showTextControls,
                     selectedLayer: _selectedLayer,
                     colors: _textColors,
-                    backgroundColors: _backgroundColors,
+                    backgroundColors: editorBackgroundColors,
                     gradients: _textGradients,
                     onEditTap: _openTextEditSheet,
                     onFontsTap: _openFontPickerScreen,
@@ -3005,24 +3473,56 @@ class _ImageEditorScreenState extends State<ImageEditorScreen> {
                 Positioned(
                   left: 12,
                   right: 12,
-                  bottom: 10,
-                  child: _BottomToolsBar(
-                    height: _bottomBarHeight,
-                    onAddPhotoTap: _handleAddPhoto,
-                    onAddTextTap: _handleTextToolTap,
-                    onStickerTap: _openStickerPanel,
-                    onBackgroundTap: _openBackgroundPanel,
-                    onLayersTap: _openLayersScreen,
-                    onCropPhotoTap: _handleCropPhotoTap,
-                    onRemoveBackgroundTap: _handleRemoveBackgroundTap,
-                    onRefinePhotoTap: _handleRefinePhotoTap,
-                    canCropPhoto: _hasSelectedPhotoLayer,
-                    canRemoveBackground:
-                        _hasSelectedPhotoLayer && !_isRemovingBackground,
-                    canRefinePhoto:
-                        _hasSelectedPhotoLayer && !_isRemovingBackground,
-                    isRemovingBackground: _isRemovingBackground,
-                  ),
+                  bottom: _floatingBarGap,
+                  child: _isCropMode
+                      ? _CropBottomToolsBar(
+                          height: bottomToolsHeight,
+                          onBack: _discardCropSession,
+                          onReset: _resetCropSession,
+                          onApply: _applyCropSession,
+                          selectedAspectRatio: _cropSessionAspectRatio,
+                          onAspectRatioChanged: _setCropAspectRatio,
+                        )
+                      : _hasSelectedTextLayer
+                      ? _TextBottomToolsBar(
+                          height: bottomToolsHeight,
+                          showOptionsSelected: _showTextControls,
+                          onEditTap: _openTextEditSheet,
+                          onFontsTap: _openFontPickerScreen,
+                          onToggleOptionsTap: () {
+                            setState(() {
+                              _showTextControls = !_showTextControls;
+                            });
+                          },
+                        )
+                      : _BottomToolsBar(
+                          height: bottomToolsHeight,
+                          onAddPhotoTap: _handleAddPhoto,
+                          onAddTextTap: _handleTextToolTap,
+                          onStickerTap: _openStickerPanel,
+                          onBackgroundTap: _openBackgroundPanel,
+                          onLayersTap: _openLayersScreen,
+                          onCropPhotoTap: _handleCropPhotoTap,
+                          onRemoveBackgroundTap: _handleRemoveBackgroundTap,
+                          onRefinePhotoTap: _handleRefinePhotoTap,
+                          canCropPhoto: _hasSelectedPhotoLayer,
+                          canRemoveBackground:
+                              _hasSelectedPhotoLayer && !_isRemovingBackground,
+                          canRefinePhoto:
+                              _hasSelectedPhotoLayer && !_isRemovingBackground,
+                          isRemovingBackground: _isRemovingBackground,
+                          selectedPhotoLayer: _hasSelectedPhotoLayer
+                              ? _selectedLayer
+                              : null,
+                          onOpacityChanged: _setSelectedPhotoOpacity,
+                          onFlipHorizontalTap:
+                              _toggleSelectedPhotoFlipHorizontal,
+                          onFlipVerticalTap: _toggleSelectedPhotoFlipVertical,
+                          onRotateLeftTap: () =>
+                              _rotateSelectedPhoto(-math.pi / 2),
+                          onRotateRightTap: () =>
+                              _rotateSelectedPhoto(math.pi / 2),
+                        ),
                 ),
                 if (_isRemovingBackground)
                   Positioned.fill(
@@ -3086,6 +3586,17 @@ double _normalizeAngle(double angle) {
     normalized += 2 * math.pi;
   }
   return normalized;
+}
+
+double _shortestAngleDelta({required double from, required double to}) {
+  var delta = to - from;
+  while (delta > math.pi) {
+    delta -= 2 * math.pi;
+  }
+  while (delta < -math.pi) {
+    delta += 2 * math.pi;
+  }
+  return delta;
 }
 
 double _matrixRotationZ(Matrix4 matrix) {
@@ -3159,12 +3670,21 @@ _OptimizedPhotoPayload _optimizeEditorPhotoPayload(Uint8List bytes) {
   );
 }
 
+double? _extractImageAspectRatio(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null || decoded.height == 0) {
+    return null;
+  }
+  return decoded.width / decoded.height;
+}
+
 class _CanvasWorkspace extends StatelessWidget {
   const _CanvasWorkspace({
     required this.layers,
     required this.selectedLayerId,
     required this.canvasBackgroundColor,
     required this.canvasBackgroundGradientIndex,
+    required this.stageBackgroundImageBytes,
     required this.canvasSize,
     required this.pageAspectRatio,
     required this.hideAutoPageFrame,
@@ -3175,6 +3695,10 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onSelectedLayerScaleUpdate,
     required this.onLayerSelected,
     required this.onSelectedLayerInteractionEnd,
+    required this.onSelectedTransformHandlePointerDown,
+    required this.onSelectedStickerHandleStart,
+    required this.onSelectedStickerHandleUpdate,
+    required this.onSelectedStickerHandleEnd,
     required this.onSelectedLayerDoubleTap,
     required this.onSelectedTextDoubleTap,
     required this.onSelectedTextPointerDown,
@@ -3184,6 +3708,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onCanvasTap,
     required this.showCanvasBackground,
     required this.showSelectionDecorations,
+    required this.showPageFramePreview,
     required this.showVerticalSnapGuide,
     required this.showHorizontalSnapGuide,
   });
@@ -3192,6 +3717,7 @@ class _CanvasWorkspace extends StatelessWidget {
   final String? selectedLayerId;
   final Color canvasBackgroundColor;
   final int canvasBackgroundGradientIndex;
+  final Uint8List? stageBackgroundImageBytes;
   final Size canvasSize;
   final double? pageAspectRatio;
   final bool hideAutoPageFrame;
@@ -3202,22 +3728,26 @@ class _CanvasWorkspace extends StatelessWidget {
   final ValueChanged<ScaleUpdateDetails> onSelectedLayerScaleUpdate;
   final ValueChanged<String> onLayerSelected;
   final VoidCallback onSelectedLayerInteractionEnd;
+  final VoidCallback onSelectedTransformHandlePointerDown;
+  final ValueChanged<DragStartDetails> onSelectedStickerHandleStart;
+  final ValueChanged<DragUpdateDetails> onSelectedStickerHandleUpdate;
+  final VoidCallback onSelectedStickerHandleEnd;
   final VoidCallback onSelectedLayerDoubleTap;
   final VoidCallback onSelectedTextDoubleTap;
   final ValueChanged<PointerDownEvent> onSelectedTextPointerDown;
   final ValueChanged<PointerMoveEvent> onSelectedTextPointerMove;
   final VoidCallback onSelectedTextPointerCancel;
   final void Function(Offset localPosition, Rect pageRect, Size pageSize)
-      onCanvasTapDown;
+  onCanvasTapDown;
   final VoidCallback onCanvasTap;
   final bool showCanvasBackground;
   final bool showSelectionDecorations;
+  final bool showPageFramePreview;
   final bool showVerticalSnapGuide;
   final bool showHorizontalSnapGuide;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     final unselectedPhotoCacheWidth =
         (canvasSize.width * devicePixelRatio * 1.5).round().clamp(720, 1600);
@@ -3227,7 +3757,8 @@ class _CanvasWorkspace extends StatelessWidget {
     );
     final workspaceSize = Size(canvasSize.width, workspaceHeight);
     final hasPageSelection = pageAspectRatio != null;
-    final showPageFrame = hasPageSelection && !hideAutoPageFrame;
+    final showPageFrame =
+        hasPageSelection && !hideAutoPageFrame && showPageFramePreview;
     final pageSize = hasPageSelection
         ? _fitPageSize(
             workspaceSize: workspaceSize,
@@ -3235,10 +3766,7 @@ class _CanvasWorkspace extends StatelessWidget {
           )
         : workspaceSize;
     final pageRect = Rect.fromCenter(
-      center: Offset(
-        canvasSize.width / 2,
-        topInset + (workspaceHeight / 2),
-      ),
+      center: Offset(canvasSize.width / 2, topInset + (workspaceHeight / 2)),
       width: pageSize.width,
       height: pageSize.height,
     );
@@ -3246,12 +3774,9 @@ class _CanvasWorkspace extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: showCanvasBackground
             ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[
-                  Color(0xFFF7FAFE),
-                  Color(0xFFEDF3FA),
-                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[Color(0xFFF9FAFF), Color(0xFFF2F6FB)],
               )
             : null,
         color: showCanvasBackground ? null : Colors.transparent,
@@ -3266,116 +3791,68 @@ class _CanvasWorkspace extends StatelessWidget {
               Positioned.fill(
                 child: Padding(
                   padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
-                    child: ClipRect(
-                      child: Stack(
-                        children: <Widget>[
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: canvasBackgroundGradientIndex >= 0 &&
+                  child: ClipRect(
+                    child: Stack(
+                      children: <Widget>[
+                        Center(
+                          child: Container(
+                            width: pageSize.width,
+                            height: pageSize.height,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              gradient:
+                                  stageBackgroundImageBytes == null &&
+                                      canvasBackgroundGradientIndex >= 0 &&
                                       canvasBackgroundGradientIndex <
-                                          _ImageEditorScreenState
-                                              ._backgroundGradients
-                                              .length &&
+                                          editorBackgroundGradients.length &&
                                       showCanvasBackground
-                                  ? BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: _ImageEditorScreenState
-                                            ._backgroundGradients[
-                                                canvasBackgroundGradientIndex],
-                                      ),
+                                  ? LinearGradient(
+                                      colors: editorBackgroundGradients[canvasBackgroundGradientIndex],
                                     )
-                                  : BoxDecoration(
-                                      color: showCanvasBackground
-                                          ? canvasBackgroundColor
-                                          : Colors.transparent,
-                                    ),
+                                  : null,
+                              color: showCanvasBackground
+                                  ? canvasBackgroundColor
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(2),
+                              border: showPageFrame && showCanvasBackground
+                                  ? Border.all(
+                                      color: const Color(0x331E293B),
+                                      width: 1,
+                                    )
+                                  : null,
                             ),
+                            child:
+                                stageBackgroundImageBytes != null &&
+                                    showCanvasBackground
+                                ? SizedBox.expand(
+                                    child: Image.memory(
+                                      stageBackgroundImageBytes!,
+                                      fit: BoxFit.cover,
+                                      gaplessPlayback: true,
+                                      filterQuality: FilterQuality.medium,
+                                    ),
+                                  )
+                                : null,
                           ),
-                          if (showPageFrame && showCanvasBackground)
-                            Center(
-                              child: Container(
-                                width: pageSize.width,
-                                height: pageSize.height,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(2),
-                                  border: Border.all(
-                                    color: const Color(0x331E293B),
-                                    width: 1,
-                                  ),
-                                  boxShadow: const <BoxShadow>[
-                                    BoxShadow(
-                                      color: Color(0x0F0F172A),
-                                      blurRadius: 22,
-                                      offset: Offset(0, 10),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          if (layers.isEmpty)
-                            Center(
-                              child: Container(
-                                width: math.min(pageSize.width, 320),
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  borderRadius: BorderRadius.circular(28),
-                                  border: Border.all(
-                                    color: const Color(0xFFDCE4F0),
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: <Widget>[
-                                    Container(
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE8F0FF),
-                                        borderRadius: BorderRadius.circular(18),
-                                      ),
-                                      child: const Icon(
-                                        Icons.design_services_rounded,
-                                        color: Color(0xFF1D4ED8),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Text(
-                                      hasPageSelection
-                                          ? 'Canvas ready for design'
-                                          : 'Start by adding a photo',
-                                      textAlign: TextAlign.center,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        color: const Color(0xFF0F172A),
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      hasPageSelection
-                                          ? 'Text, stickers, background and exports అన్నీ ఇక్కడ నుంచే handle చేయొచ్చు.'
-                                          : 'Page skip చేసినా సరే. Gallery నుంచి image add చేసిన తర్వాత canvas auto fit అవుతుంది.',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
-                                        fontSize: 13,
-                                        height: 1.45,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                        else
-                          ...layers.where((layer) => !layer.isHidden).map((layer) {
+                        ),
+                        if (layers.isNotEmpty)
+                          ...layers.where((layer) => !layer.isHidden).map((
+                            layer,
+                          ) {
                             final isSelected = layer.id == selectedLayerId;
+                            final layerSize = _workspaceLayerVisualSize(
+                              layer,
+                              pageSize,
+                            );
                             final photoSize = layer.isPhoto
                                 ? _fitPhotoLayerSize(
                                     pageSize: pageSize,
                                     photoAspectRatio: layer.photoAspectRatio,
                                   )
                                 : Size.zero;
+                            final transformLayerSize = layer.isPhoto
+                                ? photoSize
+                                : layerSize;
                             final photoCacheWidth = layer.isPhoto
                                 ? (photoSize.width * devicePixelRatio)
                                       .round()
@@ -3414,13 +3891,10 @@ class _CanvasWorkspace extends StatelessWidget {
                                     textAlign: layer.textAlign,
                                     fontFamily: layer.fontFamily,
                                     textLineHeight: layer.textLineHeight,
-                                    textLetterSpacing:
-                                        layer.textLetterSpacing,
-                                    textShadowOpacity:
-                                        layer.textShadowOpacity,
+                                    textLetterSpacing: layer.textLetterSpacing,
+                                    textShadowOpacity: layer.textShadowOpacity,
                                     textShadowBlur: layer.textShadowBlur,
-                                    textShadowOffsetY:
-                                        layer.textShadowOffsetY,
+                                    textShadowOffsetY: layer.textShadowOffsetY,
                                     isTextBold: layer.isTextBold,
                                     isTextItalic: layer.isTextItalic,
                                     isTextUnderline: layer.isTextUnderline,
@@ -3445,9 +3919,34 @@ class _CanvasWorkspace extends StatelessWidget {
                                     fontSize: layer.fontSize,
                                   )
                                 : Text(
-                                    layer.sticker ?? 'â­',
+                                    layer.sticker ?? '⭐',
                                     style: TextStyle(fontSize: layer.fontSize),
                                   );
+                            final stickerAsset =
+                                _ImageEditorScreenState._isAssetElement(
+                                  layer.sticker,
+                                );
+                            final stickerOrTextChild = layer.isSticker &&
+                                    stickerAsset
+                                ? SizedBox(
+                                    width: layerSize.width,
+                                    height: layerSize.height,
+                                    child: Image.asset(
+                                      layer.sticker!,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.medium,
+                                      errorBuilder:
+                                          (
+                                            _,
+                                            error,
+                                            stackTrace,
+                                          ) => const Icon(
+                                            Icons.broken_image_outlined,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                    ),
+                                  )
+                                : layerChild;
 
                             final decoratedChild =
                                 showSelectionDecorations && isSelected
@@ -3456,58 +3955,113 @@ class _CanvasWorkspace extends StatelessWidget {
                                       border: Border.all(
                                         color: const Color(
                                           0xFF2563EB,
-                                        ).withValues(alpha: 0.9),
-                                        width: 1.5,
+                                        ).withValues(alpha: 0.55),
+                                        width: 1.25,
+                                      ),
+                                      borderRadius: layer.isText
+                                          ? BorderRadius.circular(10)
+                                          : null,
+                                    ),
+                                    child: Padding(
+                                      padding: layer.isText
+                                          ? const EdgeInsets.fromLTRB(
+                                              12,
+                                              14,
+                                              12,
+                                              10,
+                                            )
+                                          : EdgeInsets.zero,
+                                      child: RepaintBoundary(
+                                        child: stickerOrTextChild,
                                       ),
                                     ),
-                                    child: RepaintBoundary(child: layerChild),
                                   )
-                                : RepaintBoundary(child: layerChild);
+                                : RepaintBoundary(child: stickerOrTextChild);
                             final effectiveTextChild = layer.isText
                                 ? Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
+                                      horizontal: 8,
+                                      vertical: 6,
                                     ),
                                     child: decoratedChild,
                                   )
                                 : decoratedChild;
 
                             final child = isSelected
-                                ? layer.isPhoto
-                                      ? Center(
-                                          child: SizedBox(
-                                            width: photoSize.width,
-                                            height: photoSize.height,
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onDoubleTap:
-                                                  onSelectedLayerDoubleTap,
-                                              onScaleStart:
-                                                  onSelectedLayerInteractionStart,
-                                              onScaleUpdate:
-                                                  onSelectedLayerScaleUpdate,
-                                              onScaleEnd: (_) =>
-                                                  onSelectedLayerInteractionEnd(),
-                                              child: ValueListenableBuilder<
-                                                Matrix4
-                                              >(
-                                                valueListenable:
-                                                    transformationController,
-                                                builder:
-                                                    (
-                                                      BuildContext context,
-                                                      Matrix4 matrix,
-                                                      Widget? child,
-                                                    ) {
-                                                      return Transform(
-                                                        alignment:
-                                                            Alignment.center,
-                                                        transform: matrix,
-                                                        child: child,
-                                                      );
-                                                    },
-                                                child: decoratedChild,
+                                ? (layer.isPhoto || layer.isSticker)
+                                      ? SizedBox(
+                                          width: pageSize.width,
+                                          height: pageSize.height,
+                                          child: Center(
+                                            child: ValueListenableBuilder<Matrix4>(
+                                              valueListenable:
+                                                  transformationController,
+                                              builder:
+                                                  (
+                                                    BuildContext context,
+                                                    Matrix4 matrix,
+                                                    Widget? child,
+                                                  ) {
+                                                    return Transform(
+                                                      alignment:
+                                                          Alignment.center,
+                                                      transform: matrix,
+                                                      child: child,
+                                                    );
+                                                  },
+                                              child: SizedBox(
+                                                width:
+                                                    transformLayerSize.width +
+                                                    64,
+                                                height:
+                                                    transformLayerSize.height +
+                                                    64,
+                                                child: Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: <Widget>[
+                                                    Center(
+                                                      child: SizedBox(
+                                                        width:
+                                                            transformLayerSize
+                                                                .width,
+                                                        height:
+                                                            transformLayerSize
+                                                                .height,
+                                                        child: GestureDetector(
+                                                          behavior:
+                                                              HitTestBehavior
+                                                                  .translucent,
+                                                          onDoubleTap:
+                                                              onSelectedLayerDoubleTap,
+                                                          onScaleStart:
+                                                              onSelectedLayerInteractionStart,
+                                                          onScaleUpdate:
+                                                              onSelectedLayerScaleUpdate,
+                                                          onScaleEnd: (_) =>
+                                                              onSelectedLayerInteractionEnd(),
+                                                          child: decoratedChild,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    if (showSelectionDecorations &&
+                                                        (layer.isSticker ||
+                                                            layer.isPhoto))
+                                                      Positioned(
+                                                        right: 0,
+                                                        bottom: 0,
+                                                        child: _StickerResizeRotateHandle(
+                                                          onPointerDown:
+                                                              onSelectedTransformHandlePointerDown,
+                                                          onPanStart:
+                                                              onSelectedStickerHandleStart,
+                                                          onPanUpdate:
+                                                              onSelectedStickerHandleUpdate,
+                                                          onPanEnd: (_) =>
+                                                              onSelectedStickerHandleEnd(),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -3517,48 +4071,46 @@ class _CanvasWorkspace extends StatelessWidget {
                                           width: pageSize.width,
                                           height: pageSize.height,
                                           child: Center(
-                                            child:
-                                                ValueListenableBuilder<Matrix4>(
-                                                  valueListenable:
-                                                      transformationController,
-                                                  builder:
-                                                      (
-                                                        BuildContext context,
-                                                        Matrix4 matrix,
-                                                        Widget? child,
-                                                      ) {
-                                                        return Transform(
-                                                          alignment:
-                                                              Alignment.center,
-                                                          transform: matrix,
-                                                          child: child,
-                                                        );
-                                                      },
-                                                  child: Listener(
-                                                    onPointerDown:
-                                                        onSelectedTextPointerDown,
-                                                    onPointerMove:
-                                                        onSelectedTextPointerMove,
-                                                    onPointerUp: (_) =>
-                                                        onSelectedTextPointerCancel(),
-                                                    onPointerCancel: (_) =>
-                                                        onSelectedTextPointerCancel(),
-                                                    child: GestureDetector(
-                                                      behavior:
-                                                          HitTestBehavior.opaque,
-                                                      onDoubleTap:
-                                                          onSelectedTextDoubleTap,
-                                                      onScaleStart:
-                                                          onSelectedLayerInteractionStart,
-                                                      onScaleUpdate:
-                                                          onSelectedLayerScaleUpdate,
-                                                      onScaleEnd: (_) =>
-                                                          onSelectedLayerInteractionEnd(),
-                                                      child:
-                                                          effectiveTextChild,
-                                                    ),
-                                                  ),
+                                            child: ValueListenableBuilder<Matrix4>(
+                                              valueListenable:
+                                                  transformationController,
+                                              builder:
+                                                  (
+                                                    BuildContext context,
+                                                    Matrix4 matrix,
+                                                    Widget? child,
+                                                  ) {
+                                                    return Transform(
+                                                      alignment:
+                                                          Alignment.center,
+                                                      transform: matrix,
+                                                      child: child,
+                                                    );
+                                                  },
+                                              child: Listener(
+                                                onPointerDown:
+                                                    onSelectedTextPointerDown,
+                                                onPointerMove:
+                                                    onSelectedTextPointerMove,
+                                                onPointerUp: (_) =>
+                                                    onSelectedTextPointerCancel(),
+                                                onPointerCancel: (_) =>
+                                                    onSelectedTextPointerCancel(),
+                                                child: GestureDetector(
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  onDoubleTap:
+                                                      onSelectedTextDoubleTap,
+                                                  onScaleStart:
+                                                      onSelectedLayerInteractionStart,
+                                                  onScaleUpdate:
+                                                      onSelectedLayerScaleUpdate,
+                                                  onScaleEnd: (_) =>
+                                                      onSelectedLayerInteractionEnd(),
+                                                  child: effectiveTextChild,
                                                 ),
+                                              ),
+                                            ),
                                           ),
                                         )
                                       : SizedBox(
@@ -3641,11 +4193,10 @@ class _CanvasWorkspace extends StatelessWidget {
     /*
     final background = canvasBackgroundGradientIndex >= 0 &&
             canvasBackgroundGradientIndex <
-                _ImageEditorScreenState._backgroundGradients.length
+                editorBackgroundGradients.length
         ? BoxDecoration(
             gradient: LinearGradient(
-              colors: _ImageEditorScreenState
-                  ._backgroundGradients[canvasBackgroundGradientIndex],
+              colors: editorBackgroundGradients[canvasBackgroundGradientIndex],
             ),
           )
         : BoxDecoration(color: canvasBackgroundColor);
@@ -3693,7 +4244,7 @@ class _CanvasWorkspace extends StatelessWidget {
                       fontSize: layer.fontSize,
                     )
                       : Text(
-                          layer.sticker ?? '⭐',
+                          layer.sticker ?? 'â­',
                           style: TextStyle(fontSize: layer.fontSize),
                         );
 
@@ -3758,10 +4309,7 @@ class _CanvasWorkspace extends StatelessWidget {
   }
 }
 
-Size _fitPageSize({
-  required Size workspaceSize,
-  required double aspectRatio,
-}) {
+Size _fitPageSize({required Size workspaceSize, required double aspectRatio}) {
   if (workspaceSize.width <= 0 || workspaceSize.height <= 0) {
     return Size.zero;
   }
@@ -3801,6 +4349,101 @@ Size _fitPhotoLayerSize({
     width = height * ratio;
   }
   return Size(width, height);
+}
+
+Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
+  if (layer.isPhoto) {
+    return _fitPhotoLayerSize(
+      pageSize: pageSize,
+      photoAspectRatio: layer.photoAspectRatio,
+    );
+  }
+  if (layer.isText) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: layer.text ?? 'Text',
+        style: TextStyle(
+          fontFamily: layer.fontFamily,
+          fontSize: layer.fontSize,
+          height: layer.textLineHeight,
+          letterSpacing: layer.textLetterSpacing,
+          fontWeight: layer.isTextBold ? FontWeight.w800 : FontWeight.w500,
+          fontStyle: layer.isTextItalic ? FontStyle.italic : FontStyle.normal,
+          decoration: layer.isTextUnderline
+              ? TextDecoration.underline
+              : TextDecoration.none,
+          color: layer.textColor,
+        ),
+      ),
+      textAlign: layer.textAlign,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final hasBackground = layer.textBackgroundOpacity > 0.001;
+    return hasBackground
+        ? Size(painter.size.width + 24, painter.size.height + 16)
+        : painter.size;
+  }
+  final sticker = layer.sticker;
+  if (_ImageEditorScreenState._isAssetElement(sticker)) {
+    return Size.square(layer.fontSize);
+  }
+  final painter = TextPainter(
+    text: TextSpan(
+      text: sticker ?? '*',
+      style: TextStyle(fontSize: layer.fontSize),
+    ),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  return painter.size;
+}
+
+class _StickerResizeRotateHandle extends StatelessWidget {
+  const _StickerResizeRotateHandle({
+    required this.onPointerDown,
+    required this.onPanStart,
+    required this.onPanUpdate,
+    required this.onPanEnd,
+  });
+
+  final VoidCallback onPointerDown;
+  final GestureDragStartCallback onPanStart;
+  final GestureDragUpdateCallback onPanUpdate;
+  final GestureDragEndCallback onPanEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) => onPointerDown(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: onPanStart,
+        onPanUpdate: onPanUpdate,
+        onPanEnd: onPanEnd,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(
+                color: Color(0x331E293B),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.rotate_right_rounded,
+            color: Colors.white,
+            size: 18,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SnapGuidesPainter extends CustomPainter {
@@ -3917,11 +4560,7 @@ class _CanvasTextLayerView extends StatelessWidget {
             ),
           );
 
-    final fillText = Text(
-      text,
-      textAlign: textAlign,
-      style: baseStyle,
-    );
+    final fillText = Text(text, textAlign: textAlign, style: baseStyle);
 
     final textView = textGradient == null
         ? (strokeText == null
@@ -4034,245 +4673,365 @@ class _TextStyleBarState extends State<_TextStyleBar> {
     final layer = widget.selectedLayer!;
 
     return Container(
-      height: 360,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFDCE4F0)),
+        color: const Color(0xCCFFFFFF),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xD8E7EDF7)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x120F172A),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              IconButton(
-                onPressed: widget.onEditTap,
-                icon: const Icon(Icons.edit_rounded),
-                tooltip: 'Edit text',
-              ),
-              TextButton.icon(
-                onPressed: widget.onFontsTap,
-                icon: const Icon(Icons.font_download_rounded, size: 18),
-                label: const Text('Fonts'),
-              ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: <Widget>[
-              _TextTabChip(
-                label: 'Style',
-                selected: _activeTab == _TextToolTab.style,
-                onTap: () => setState(() => _activeTab = _TextToolTab.style),
-              ),
-              _TextTabChip(
-                label: 'Background',
-                selected: _activeTab == _TextToolTab.background,
-                onTap: () =>
-                    setState(() => _activeTab = _TextToolTab.background),
-              ),
-              _TextTabChip(
-                label: 'Effects',
-                selected: _activeTab == _TextToolTab.effects,
-                onTap: () => setState(() => _activeTab = _TextToolTab.effects),
-              ),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                _TextQuickActionButton(
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
+                  onTap: widget.onEditTap,
+                ),
+                const SizedBox(width: 6),
+                _TextQuickActionButton(
+                  icon: Icons.font_download_rounded,
+                  label: 'Fonts',
+                  onTap: widget.onFontsTap,
+                ),
+                const SizedBox(width: 8),
+                _TextTabChip(
+                  label: 'Style',
+                  selected: _activeTab == _TextToolTab.style,
+                  onTap: () => setState(() => _activeTab = _TextToolTab.style),
+                ),
+                _TextTabChip(
+                  label: 'Background',
+                  selected: _activeTab == _TextToolTab.background,
+                  onTap: () =>
+                      setState(() => _activeTab = _TextToolTab.background),
+                ),
+                _TextTabChip(
+                  label: 'Effects',
+                  selected: _activeTab == _TextToolTab.effects,
+                  onTap: () =>
+                      setState(() => _activeTab = _TextToolTab.effects),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
-          if (_activeTab == _TextToolTab.style) ...<Widget>[
-            Row(
-              children: <Widget>[
-                _AlignChip(
-                  icon: Icons.format_align_left_rounded,
-                  selected: layer.textAlign == TextAlign.left,
-                  onTap: () => widget.onAlignSelected(TextAlign.left),
-                ),
-                _AlignChip(
-                  icon: Icons.format_align_center_rounded,
-                  selected: layer.textAlign == TextAlign.center,
-                  onTap: () => widget.onAlignSelected(TextAlign.center),
-                ),
-                _AlignChip(
-                  icon: Icons.format_align_right_rounded,
-                  selected: layer.textAlign == TextAlign.right,
-                  onTap: () => widget.onAlignSelected(TextAlign.right),
-                ),
-                _AlignChip(
-                  icon: Icons.format_bold_rounded,
-                  selected: layer.isTextBold,
-                  onTap: widget.onBoldToggle,
-                ),
-                _AlignChip(
-                  icon: Icons.format_italic_rounded,
-                  selected: layer.isTextItalic,
-                  onTap: widget.onItalicToggle,
-                ),
-                _AlignChip(
-                  icon: Icons.format_underline_rounded,
-                  selected: layer.isTextUnderline,
-                  onTap: widget.onUnderlineToggle,
-                ),
-              ],
+          Container(
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xB8F8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xCFE2E8F0)),
             ),
-            Row(
-              children: <Widget>[
-                const SizedBox(
-                  width: 42,
-                  child: Text(
-                    'Aa',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(trackHeight: 3),
-                    child: Slider(
-                      value: layer.fontSize.clamp(18, 96).toDouble(),
-                      min: 18,
-                      max: 96,
-                      onChangeStart: widget.onFontSizeChangeStart,
-                      onChanged: widget.onFontSizeChanged,
-                      onChangeEnd: widget.onFontSizeChangeEnd,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 42,
-                  child: Text(
-                    layer.fontSize.toStringAsFixed(0),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
-            ),
-            _LabeledSlider(
-              label: 'Line',
-              value: layer.textLineHeight.clamp(0.8, 2.2).toDouble(),
-              min: 0.8,
-              max: 2.2,
-              onChanged: widget.onLineHeightChanged,
-            ),
-            _LabeledSlider(
-              label: 'Letter',
-              value: layer.textLetterSpacing.clamp(-1, 12).toDouble(),
-              min: -1,
-              max: 12,
-              onChanged: widget.onLetterSpacingChanged,
-            ),
-            const SizedBox(height: 6),
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: <Widget>[
-                  ...List<Widget>.generate(widget.colors.length, (int index) {
-                    final color = widget.colors[index];
-                    final selected =
-                        layer.textGradientIndex == -1 && layer.textColor == color;
-                    return _ColorDot(
-                      color: color,
-                      selected: selected,
-                      onTap: () => widget.onColorSelected(color),
-                    );
-                  }),
-                  const SizedBox(width: 6),
-                  ...List<Widget>.generate(widget.gradients.length, (int index) {
-                    return _GradientDot(
-                      colors: widget.gradients[index],
-                      selected: layer.textGradientIndex == index,
-                      onTap: () => widget.onGradientSelected(index),
-                    );
-                  }),
-                ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _activeTab == _TextToolTab.style
+                    ? <Widget>[
+                        _AlignChip(
+                          icon: Icons.format_align_left_rounded,
+                          selected: layer.textAlign == TextAlign.left,
+                          onTap: () => widget.onAlignSelected(TextAlign.left),
+                        ),
+                        _AlignChip(
+                          icon: Icons.format_align_center_rounded,
+                          selected: layer.textAlign == TextAlign.center,
+                          onTap: () => widget.onAlignSelected(TextAlign.center),
+                        ),
+                        _AlignChip(
+                          icon: Icons.format_align_right_rounded,
+                          selected: layer.textAlign == TextAlign.right,
+                          onTap: () => widget.onAlignSelected(TextAlign.right),
+                        ),
+                        _AlignChip(
+                          icon: Icons.format_bold_rounded,
+                          selected: layer.isTextBold,
+                          onTap: widget.onBoldToggle,
+                        ),
+                        _AlignChip(
+                          icon: Icons.format_italic_rounded,
+                          selected: layer.isTextItalic,
+                          onTap: widget.onItalicToggle,
+                        ),
+                        _AlignChip(
+                          icon: Icons.format_underline_rounded,
+                          selected: layer.isTextUnderline,
+                          onTap: widget.onUnderlineToggle,
+                        ),
+                        const SizedBox(width: 8),
+                        _CompactLabeledSlider(
+                          label: 'Size',
+                          value: layer.fontSize.clamp(18, 96).toDouble(),
+                          min: 18,
+                          max: 96,
+                          width: 148,
+                          valueText: layer.fontSize.toStringAsFixed(0),
+                          onChangeStart: widget.onFontSizeChangeStart,
+                          onChanged: widget.onFontSizeChanged,
+                          onChangeEnd: widget.onFontSizeChangeEnd,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Line',
+                          value: layer.textLineHeight
+                              .clamp(0.8, 2.2)
+                              .toDouble(),
+                          min: 0.8,
+                          max: 2.2,
+                          width: 136,
+                          onChanged: widget.onLineHeightChanged,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Letter',
+                          value: layer.textLetterSpacing
+                              .clamp(-1, 12)
+                              .toDouble(),
+                          min: -1,
+                          max: 12,
+                          width: 144,
+                          onChanged: widget.onLetterSpacingChanged,
+                        ),
+                        const SizedBox(width: 8),
+                        ...List<Widget>.generate(widget.colors.length, (
+                          int index,
+                        ) {
+                          final color = widget.colors[index];
+                          final selected =
+                              layer.textGradientIndex == -1 &&
+                              layer.textColor == color;
+                          return _ColorDot(
+                            color: color,
+                            selected: selected,
+                            onTap: () => widget.onColorSelected(color),
+                          );
+                        }),
+                        const SizedBox(width: 6),
+                        ...List<Widget>.generate(widget.gradients.length, (
+                          int index,
+                        ) {
+                          return _GradientDot(
+                            colors: widget.gradients[index],
+                            selected: layer.textGradientIndex == index,
+                            onTap: () => widget.onGradientSelected(index),
+                          );
+                        }),
+                      ]
+                    : _activeTab == _TextToolTab.background
+                    ? <Widget>[
+                        _CompactLabeledSlider(
+                          label: 'Opacity',
+                          value: layer.textBackgroundOpacity
+                              .clamp(0, 1)
+                              .toDouble(),
+                          min: 0,
+                          max: 1,
+                          width: 150,
+                          onChanged: widget.onBackgroundOpacityChanged,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Curve',
+                          value: layer.textBackgroundRadius
+                              .clamp(0, 40)
+                              .toDouble(),
+                          min: 0,
+                          max: 40,
+                          width: 150,
+                          onChanged: widget.onBackgroundRadiusChanged,
+                        ),
+                        const SizedBox(width: 8),
+                        ...List<Widget>.generate(
+                          widget.backgroundColors.length,
+                          (int index) {
+                            final color = widget.backgroundColors[index];
+                            final selected =
+                                layer.textBackgroundColor.toARGB32() ==
+                                color.toARGB32();
+                            return _ColorDot(
+                              color: color,
+                              selected: selected,
+                              onTap: () =>
+                                  widget.onBackgroundColorSelected(color),
+                            );
+                          },
+                        ),
+                      ]
+                    : <Widget>[
+                        _CompactLabeledSlider(
+                          label: 'Stroke',
+                          value: layer.textStrokeWidth.clamp(0, 8).toDouble(),
+                          min: 0,
+                          max: 8,
+                          width: 144,
+                          onChanged: widget.onStrokeWidthChanged,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Shadow',
+                          value: layer.textShadowOpacity.clamp(0, 1).toDouble(),
+                          min: 0,
+                          max: 1,
+                          width: 146,
+                          onChanged: widget.onShadowOpacityChanged,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Blur',
+                          value: layer.textShadowBlur.clamp(0, 24).toDouble(),
+                          min: 0,
+                          max: 24,
+                          width: 136,
+                          onChanged: widget.onShadowBlurChanged,
+                        ),
+                        _CompactLabeledSlider(
+                          label: 'Offset',
+                          value: layer.textShadowOffsetY
+                              .clamp(0, 20)
+                              .toDouble(),
+                          min: 0,
+                          max: 20,
+                          width: 144,
+                          onChanged: widget.onShadowOffsetYChanged,
+                        ),
+                        const SizedBox(width: 8),
+                        ...List<Widget>.generate(widget.colors.length, (
+                          int index,
+                        ) {
+                          final color = widget.colors[index];
+                          final selected =
+                              layer.textStrokeColor.toARGB32() ==
+                              color.toARGB32();
+                          return _ColorDot(
+                            color: color,
+                            selected: selected,
+                            onTap: () => widget.onStrokeColorSelected(color),
+                          );
+                        }),
+                      ],
               ),
             ),
-          ] else if (_activeTab == _TextToolTab.background) ...<Widget>[
-            _LabeledSlider(
-              label: 'Opacity',
-              value: layer.textBackgroundOpacity.clamp(0, 1).toDouble(),
-              min: 0,
-              max: 1,
-              onChanged: widget.onBackgroundOpacityChanged,
-            ),
-            _LabeledSlider(
-              label: 'Curve',
-              value: layer.textBackgroundRadius.clamp(0, 40).toDouble(),
-              min: 0,
-              max: 40,
-              onChanged: widget.onBackgroundRadiusChanged,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: List<Widget>.generate(
-                  widget.backgroundColors.length,
-                  (int index) {
-                    final color = widget.backgroundColors[index];
-                    final selected = layer.textBackgroundColor.toARGB32() ==
-                        color.toARGB32();
-                    return _ColorDot(
-                      color: color,
-                      selected: selected,
-                      onTap: () => widget.onBackgroundColorSelected(color),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ] else ...<Widget>[
-            _LabeledSlider(
-              label: 'Stroke',
-              value: layer.textStrokeWidth.clamp(0, 8).toDouble(),
-              min: 0,
-              max: 8,
-              onChanged: widget.onStrokeWidthChanged,
-            ),
-            _LabeledSlider(
-              label: 'Shadow',
-              value: layer.textShadowOpacity.clamp(0, 1).toDouble(),
-              min: 0,
-              max: 1,
-              onChanged: widget.onShadowOpacityChanged,
-            ),
-            _LabeledSlider(
-              label: 'Blur',
-              value: layer.textShadowBlur.clamp(0, 24).toDouble(),
-              min: 0,
-              max: 24,
-              onChanged: widget.onShadowBlurChanged,
-            ),
-            _LabeledSlider(
-              label: 'Offset',
-              value: layer.textShadowOffsetY.clamp(0, 20).toDouble(),
-              min: 0,
-              max: 20,
-              onChanged: widget.onShadowOffsetYChanged,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: List<Widget>.generate(widget.colors.length, (int index) {
-                  final color = widget.colors[index];
-                  final selected =
-                      layer.textStrokeColor.toARGB32() == color.toARGB32();
-                  return _ColorDot(
-                    color: color,
-                    selected: selected,
-                    onTap: () => widget.onStrokeColorSelected(color),
-                  );
-                }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextQuickActionButton extends StatelessWidget {
+  const _TextQuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 18, color: const Color(0xFF0F172A)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactLabeledSlider extends StatelessWidget {
+  const _CompactLabeledSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.width,
+    required this.onChanged,
+    this.onChangeStart,
+    this.onChangeEnd,
+    this.valueText,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final double width;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeStart;
+  final ValueChanged<double>? onChangeEnd;
+  final String? valueText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                valueText ?? value.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 2.5,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+            ),
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              onChangeStart: onChangeStart,
+              onChanged: onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ),
         ],
       ),
     );
@@ -4306,9 +5065,22 @@ class _AlignChip extends StatelessWidget {
           width: 34,
           height: 30,
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFDBEAFE) : const Color(0xFFF8FAFD),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            color: selected ? const Color(0xFFDCEBFF) : const Color(0xFFFDFEFF),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFC4DBFF)
+                  : const Color(0xFFE7EDF5),
+            ),
+            boxShadow: selected
+                ? const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x122563EB),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Icon(icon, size: 18, color: const Color(0xFF1E293B)),
         ),
@@ -4336,100 +5108,25 @@ class _TextTabChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(99),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFDBEAFE) : const Color(0xFFF8FAFD),
+            color: selected ? const Color(0xFFEAF2FF) : const Color(0xFFFDFEFF),
             borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFD5E4FF)
+                  : const Color(0xFFE7EDF5),
+            ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: const Color(0xFF0F172A),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PhotoStyleBar extends StatelessWidget {
-  const _PhotoStyleBar({
-    required this.visible,
-    required this.selectedLayer,
-    required this.onOpacityChanged,
-    required this.onFlipHorizontalTap,
-    required this.onFlipVerticalTap,
-    required this.onRotateLeftTap,
-    required this.onRotateRightTap,
-  });
-
-  final bool visible;
-  final _CanvasLayer? selectedLayer;
-  final ValueChanged<double> onOpacityChanged;
-  final VoidCallback onFlipHorizontalTap;
-  final VoidCallback onFlipVerticalTap;
-  final VoidCallback onRotateLeftTap;
-  final VoidCallback onRotateRightTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!visible || selectedLayer == null || !selectedLayer!.isPhoto) {
-      return const SizedBox.shrink();
-    }
-    final layer = selectedLayer!;
-    return Container(
-      height: 120,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFDCE4F0)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              _AlignChip(
-                icon: Icons.rotate_left_rounded,
-                selected: false,
-                onTap: onRotateLeftTap,
-              ),
-              _AlignChip(
-                icon: Icons.rotate_right_rounded,
-                selected: false,
-                onTap: onRotateRightTap,
-              ),
-              _AlignChip(
-                icon: Icons.flip_rounded,
-                selected: layer.flipPhotoHorizontally,
-                onTap: onFlipHorizontalTap,
-              ),
-              _AlignChip(
-                icon: Icons.flip_camera_android_rounded,
-                selected: layer.flipPhotoVertically,
-                onTap: onFlipVerticalTap,
-              ),
-            ],
-          ),
-          _LabeledSlider(
-            label: 'Opacity',
-            value: layer.photoOpacity.clamp(0.1, 1).toDouble(),
-            min: 0.1,
-            max: 1,
-            onChanged: onOpacityChanged,
-          ),
-        ],
       ),
     );
   }
@@ -4515,9 +5212,7 @@ class _FontPickerScreenState extends State<_FontPickerScreen> {
     final fonts = _filteredFonts;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Fonts'),
-      ),
+      appBar: AppBar(title: const Text('Fonts')),
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -4579,8 +5274,7 @@ class _FontPickerScreenState extends State<_FontPickerScreen> {
                           const SizedBox(height: 10),
                       itemBuilder: (BuildContext context, int index) {
                         final family = fonts[index];
-                        final isSelected =
-                            family == widget.selectedFontFamily;
+                        final isSelected = family == widget.selectedFontFamily;
                         return Material(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -4702,16 +5396,20 @@ class _BackgroundPickerScreen extends StatefulWidget {
     required this.gradients,
     required this.selectedColor,
     required this.selectedGradientIndex,
+    required this.hasSelectedImage,
     required this.onColorSelected,
     required this.onGradientSelected,
+    required this.onImageSelected,
   });
 
   final List<Color> colors;
   final List<List<Color>> gradients;
   final Color selectedColor;
   final int selectedGradientIndex;
+  final bool hasSelectedImage;
   final ValueChanged<Color> onColorSelected;
   final ValueChanged<int> onGradientSelected;
+  final Future<bool> Function() onImageSelected;
 
   @override
   State<_BackgroundPickerScreen> createState() =>
@@ -4721,6 +5419,7 @@ class _BackgroundPickerScreen extends StatefulWidget {
 class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
   late Color _selectedColor = widget.selectedColor;
   late int _selectedGradientIndex = widget.selectedGradientIndex;
+  late bool _hasSelectedImage = widget.hasSelectedImage;
 
   @override
   Widget build(BuildContext context) {
@@ -4730,6 +5429,37 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: <Widget>[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.photo_library_outlined),
+              ),
+              title: const Text('Background Image'),
+              subtitle: const Text('Apply gallery image to poster paper only'),
+              trailing: TextButton(
+                onPressed: () async {
+                  final didSelect = await widget.onImageSelected();
+                  if (!mounted) {
+                    return;
+                  }
+                  if (!didSelect) {
+                    return;
+                  }
+                  setState(() {
+                    _hasSelectedImage = true;
+                    _selectedGradientIndex = -1;
+                  });
+                },
+                child: Text(_hasSelectedImage ? 'Change' : 'Import'),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Solid Colors',
               style: Theme.of(
@@ -4737,14 +5467,22 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 8,
-              children: widget.colors.map((color) {
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: widget.colors.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 6,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemBuilder: (context, index) {
+                final color = widget.colors[index];
                 final isSelected =
                     _selectedGradientIndex == -1 &&
                     _selectedColor.toARGB32() == color.toARGB32();
-                return _ColorDot(
+                return _BackgroundColorTile(
                   color: color,
                   selected: isSelected,
                   onTap: () {
@@ -4752,10 +5490,11 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
                     setState(() {
                       _selectedColor = color;
                       _selectedGradientIndex = -1;
+                      _hasSelectedImage = false;
                     });
                   },
                 );
-              }).toList(),
+              },
             ),
             const SizedBox(height: 24),
             Text(
@@ -4765,21 +5504,29 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 8,
-              children: List<Widget>.generate(widget.gradients.length, (index) {
-                return _GradientDot(
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: widget.gradients.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.35,
+              ),
+              itemBuilder: (context, index) {
+                return _BackgroundGradientTile(
                   colors: widget.gradients[index],
                   selected: _selectedGradientIndex == index,
                   onTap: () {
                     widget.onGradientSelected(index);
                     setState(() {
                       _selectedGradientIndex = index;
+                      _hasSelectedImage = false;
                     });
                   },
                 );
-              }),
+              },
             ),
           ],
         ),
@@ -4936,12 +5683,12 @@ class _LayersScreenState extends State<_LayersScreen> {
 
   Widget _buildLayerPreview(_CanvasLayer layer) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFFE2E8F0),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: layer.isPhoto
           ? Image.memory(
@@ -4954,10 +5701,16 @@ class _LayersScreenState extends State<_LayersScreen> {
           : layer.isText
           ? const Icon(Icons.text_fields_rounded, color: Color(0xFF334155))
           : Center(
-              child: Text(
-                layer.sticker ?? '*',
-                style: const TextStyle(fontSize: 24),
-              ),
+              child: _ImageEditorScreenState._isAssetElement(layer.sticker)
+                  ? Image.asset(
+                      layer.sticker!,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.low,
+                    )
+                  : Text(
+                      layer.sticker ?? '*',
+                      style: const TextStyle(fontSize: 22),
+                    ),
             ),
     );
   }
@@ -5007,37 +5760,58 @@ class _LayersScreenState extends State<_LayersScreen> {
                             : const Color(0xFFE2E8F0),
                       ),
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      leading: _buildLayerPreview(layer),
-                      title: Text(
-                        _layerTitle(layer, index),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: isSelected
-                          ? Text(
-                              layer.isHidden
-                                  ? 'Hidden'
-                                  : layer.isLocked
-                                  ? 'Locked'
-                                  : 'Selected',
-                              style: TextStyle(
-                                color: Color(0xFF2563EB),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            )
-                          : null,
-                      trailing: SizedBox(
-                        width: 148,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        widget.onSelectLayer(layer.id);
+                        setState(() {
+                          _selectedLayerId = layer.id;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: <Widget>[
-                            IconButton(
-                              onPressed: () {
+                            _buildLayerPreview(layer),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    _layerTitle(layer, index),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (isSelected)
+                                    Text(
+                                      layer.isHidden
+                                          ? 'Hidden'
+                                          : layer.isLocked
+                                          ? 'Locked'
+                                          : 'Selected',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF2563EB),
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            _LayerActionButton(
+                              icon: layer.isHidden
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded,
+                              tooltip: layer.isHidden ? 'Show' : 'Hide',
+                              onTap: () {
                                 widget.onToggleLayerVisibility(layer.id);
                                 if (layer.id == _selectedLayerId &&
                                     !layer.isHidden) {
@@ -5045,47 +5819,139 @@ class _LayersScreenState extends State<_LayersScreen> {
                                 }
                                 setState(() {});
                               },
-                              icon: Icon(
-                                layer.isHidden
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                              ),
-                              tooltip: layer.isHidden ? 'Show' : 'Hide',
                             ),
-                            IconButton(
-                              onPressed: () {
+                            _LayerActionButton(
+                              icon: layer.isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                              tooltip: layer.isLocked ? 'Unlock' : 'Lock',
+                              onTap: () {
                                 widget.onToggleLayerLock(layer.id);
                                 setState(() {});
                               },
-                              icon: Icon(
-                                layer.isLocked
-                                    ? Icons.lock_rounded
-                                    : Icons.lock_open_rounded,
-                              ),
-                              tooltip: layer.isLocked ? 'Unlock' : 'Lock',
                             ),
-                            IconButton(
-                              onPressed: () => _handleDelete(layer.id),
-                              icon: const Icon(Icons.delete_outline_rounded),
+                            _LayerActionButton(
+                              icon: Icons.delete_outline_rounded,
                               tooltip: 'Delete',
+                              onTap: () => _handleDelete(layer.id),
                             ),
                             ReorderableDragStartListener(
                               index: index,
-                              child: const Icon(Icons.drag_handle_rounded),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 1),
+                                child: Icon(
+                                  Icons.drag_handle_rounded,
+                                  size: 18,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      onTap: () {
-                        widget.onSelectLayer(layer.id);
-                        setState(() {
-                          _selectedLayerId = layer.id;
-                        });
-                      },
                     ),
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class _BackgroundColorTile extends StatelessWidget {
+  const _BackgroundColorTile({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? const Color(0xFF2563EB) : const Color(0xFFD1D5DB),
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x140F172A),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackgroundGradientTile extends StatelessWidget {
+  const _BackgroundGradientTile({
+    required this.colors,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final List<Color> colors;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? const Color(0xFF2563EB) : const Color(0xFFD1D5DB),
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x1F0F172A),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: selected
+            ? const Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -5129,6 +5995,31 @@ class _ColorDot extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LayerActionButton extends StatelessWidget {
+  const _LayerActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      padding: const EdgeInsets.all(3),
+      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+      visualDensity: VisualDensity.compact,
+      splashRadius: 16,
+      icon: Icon(icon, size: 17),
     );
   }
 }
@@ -5180,7 +6071,6 @@ class _TopBar extends StatelessWidget {
     required this.height,
     required this.onUndoTap,
     required this.onRedoTap,
-    required this.onProTap,
     required this.onDraftsTap,
     required this.onExportTap,
     required this.onDeleteTap,
@@ -5189,7 +6079,6 @@ class _TopBar extends StatelessWidget {
     required this.onSendBackTap,
     required this.canUndo,
     required this.canRedo,
-    required this.isProUser,
     required this.isExporting,
     required this.canDelete,
     required this.canDuplicate,
@@ -5200,7 +6089,6 @@ class _TopBar extends StatelessWidget {
   final double height;
   final VoidCallback onUndoTap;
   final VoidCallback onRedoTap;
-  final VoidCallback onProTap;
   final VoidCallback onDraftsTap;
   final VoidCallback onExportTap;
   final VoidCallback onDeleteTap;
@@ -5209,7 +6097,6 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onSendBackTap;
   final bool canUndo;
   final bool canRedo;
-  final bool isProUser;
   final bool isExporting;
   final bool canDelete;
   final bool canDuplicate;
@@ -5230,16 +6117,23 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFDCE4F0)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.92),
+            const Color(0xFFF9FBFF).withValues(alpha: 0.88),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xEEF0F4FA)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x060F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -5252,9 +6146,9 @@ class _TopBar extends StatelessWidget {
               icon: const Icon(Icons.arrow_back_ios_new_rounded),
               tooltip: 'Back',
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             SizedBox(
-              width: 140,
+              width: 138,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -5264,31 +6158,24 @@ class _TopBar extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       color: const Color(0xFF0F172A),
+                      letterSpacing: -0.2,
                     ),
                   ),
                   const Text(
                     'Poster workspace',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                    ),
+                    style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
                   ),
                 ],
               ),
             ),
-            _TopActionButton(
-              label: isProUser ? 'Pro' : 'Free',
-              onTap: onProTap,
-            ),
-            const SizedBox(width: 6),
             _TopActionButton(label: 'Undo', onTap: canUndo ? onUndoTap : null),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             _TopActionButton(label: 'Redo', onTap: canRedo ? onRedoTap : null),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             _TopActionButton(label: 'Drafts', onTap: onDraftsTap),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             _TopActionButton(
               label: isExporting ? 'Saving...' : 'Export',
               onTap: isExporting ? null : onExportTap,
@@ -5335,6 +6222,12 @@ class _BottomToolsBar extends StatelessWidget {
     required this.canRemoveBackground,
     required this.canRefinePhoto,
     required this.isRemovingBackground,
+    required this.selectedPhotoLayer,
+    required this.onOpacityChanged,
+    required this.onFlipHorizontalTap,
+    required this.onFlipVerticalTap,
+    required this.onRotateLeftTap,
+    required this.onRotateRightTap,
   });
 
   final double height;
@@ -5350,6 +6243,12 @@ class _BottomToolsBar extends StatelessWidget {
   final bool canRemoveBackground;
   final bool canRefinePhoto;
   final bool isRemovingBackground;
+  final _CanvasLayer? selectedPhotoLayer;
+  final ValueChanged<double> onOpacityChanged;
+  final VoidCallback onFlipHorizontalTap;
+  final VoidCallback onFlipVerticalTap;
+  final VoidCallback onRotateLeftTap;
+  final VoidCallback onRotateRightTap;
 
   static const List<({String label, IconData icon})> _tools =
       <({String label, IconData icon})>[
@@ -5365,53 +6264,412 @@ class _BottomToolsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photoLayer = selectedPhotoLayer;
+    final hasPhotoControls = photoLayer != null && photoLayer.isPhoto;
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFDCE4F0)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.94),
+            const Color(0xFFF8FBFF).withValues(alpha: 0.92),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xEEF0F4FA)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x0D0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x080F172A),
+            blurRadius: 14,
+            offset: Offset(0, 4),
           ),
         ],
       ),
-      child: SizedBox(
-        height: 78,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _tools.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 10),
-          itemBuilder: (BuildContext context, int index) {
-            final tool = _tools[index];
-            return _ToolItem(
-              label: index == 6 && isRemovingBackground
-                  ? 'Removing...'
-                  : tool.label,
-              icon: tool.icon,
-              onTap: switch (index) {
-                0 => onAddPhotoTap,
-                1 => onAddTextTap,
-                2 => onStickerTap,
-                3 => onBackgroundTap,
-                4 => onLayersTap,
-                5 => canCropPhoto ? onCropPhotoTap : null,
-                6 => canRemoveBackground ? onRemoveBackgroundTap : null,
-                7 => canRefinePhoto ? onRefinePhotoTap : null,
-                _ => () {},
+      child: Column(
+        children: <Widget>[
+          if (hasPhotoControls) ...<Widget>[
+            Row(
+              children: <Widget>[
+                _AlignChip(
+                  icon: Icons.rotate_left_rounded,
+                  selected: false,
+                  onTap: onRotateLeftTap,
+                ),
+                _AlignChip(
+                  icon: Icons.rotate_right_rounded,
+                  selected: false,
+                  onTap: onRotateRightTap,
+                ),
+                _AlignChip(
+                  icon: Icons.flip_rounded,
+                  selected: photoLayer.flipPhotoHorizontally,
+                  onTap: onFlipHorizontalTap,
+                ),
+                _AlignChip(
+                  icon: Icons.flip_camera_android_rounded,
+                  selected: photoLayer.flipPhotoVertically,
+                  onTap: onFlipVerticalTap,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _LabeledSlider(
+                    label: 'Opacity',
+                    value: photoLayer.photoOpacity.clamp(0.1, 1).toDouble(),
+                    min: 0.1,
+                    max: 1,
+                    onChanged: onOpacityChanged,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              height: 1,
+              color: const Color(0xFFE9EEF6),
+            ),
+            const SizedBox(height: 6),
+          ],
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _tools.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (BuildContext context, int index) {
+                final tool = _tools[index];
+                return _ToolItem(
+                  label: index == 6 && isRemovingBackground
+                      ? 'Removing...'
+                      : tool.label,
+                  icon: tool.icon,
+                  onTap: switch (index) {
+                    0 => onAddPhotoTap,
+                    1 => onAddTextTap,
+                    2 => onStickerTap,
+                    3 => onBackgroundTap,
+                    4 => onLayersTap,
+                    5 => canCropPhoto ? onCropPhotoTap : null,
+                    6 => canRemoveBackground ? onRemoveBackgroundTap : null,
+                    7 => canRefinePhoto ? onRefinePhotoTap : null,
+                    _ => () {},
+                  },
+                  enabled: switch (index) {
+                    5 => canCropPhoto,
+                    6 => canRemoveBackground,
+                    7 => canRefinePhoto,
+                    _ => true,
+                  },
+                );
               },
-              enabled: switch (index) {
-                5 => canCropPhoto,
-                6 => canRemoveBackground,
-                7 => canRefinePhoto,
-                _ => true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextBottomToolsBar extends StatelessWidget {
+  const _TextBottomToolsBar({
+    required this.height,
+    required this.showOptionsSelected,
+    required this.onEditTap,
+    required this.onFontsTap,
+    required this.onToggleOptionsTap,
+  });
+
+  final double height;
+  final bool showOptionsSelected;
+  final VoidCallback onEditTap;
+  final VoidCallback onFontsTap;
+  final VoidCallback onToggleOptionsTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.94),
+            const Color(0xFFF8FBFF).withValues(alpha: 0.92),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xEEF0F4FA)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          _TextModeToolItem(
+            icon: Icons.edit_rounded,
+            label: 'Edit',
+            onTap: onEditTap,
+          ),
+          const SizedBox(width: 8),
+          _TextModeToolItem(
+            icon: Icons.font_download_rounded,
+            label: 'Fonts',
+            onTap: onFontsTap,
+          ),
+          const SizedBox(width: 8),
+          _TextModeToolItem(
+            icon: Icons.tune_rounded,
+            label: 'Options',
+            selected: showOptionsSelected,
+            onTap: onToggleOptionsTap,
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xE8F8FAFC),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: const Text(
+              'Text tools',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CropSessionOverlay extends StatelessWidget {
+  const _CropSessionOverlay({
+    required this.boundaryKey,
+    required this.imageBytes,
+    required this.controller,
+    required this.topInset,
+    required this.bottomInset,
+    required this.aspectRatio,
+  });
+
+  final GlobalKey boundaryKey;
+  final Uint8List imageBytes;
+  final TransformationController controller;
+  final double topInset;
+  final double bottomInset;
+  final double? aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final frameAspectRatio = (aspectRatio != null && aspectRatio! > 0)
+        ? aspectRatio!
+        : 1.0;
+    return IgnorePointer(
+      ignoring: false,
+      child: Padding(
+        padding: EdgeInsets.only(top: topInset, bottom: bottomInset),
+        child: ColoredBox(
+          color: const Color(0xB30B1120),
+          child: Center(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final maxWidth = constraints.maxWidth * 0.9;
+                final maxHeight = constraints.maxHeight * 0.9;
+                var frameWidth = maxWidth;
+                var frameHeight = frameWidth / frameAspectRatio;
+                if (frameHeight > maxHeight) {
+                  frameHeight = maxHeight;
+                  frameWidth = frameHeight * frameAspectRatio;
+                }
+                return SizedBox(
+                  width: frameWidth,
+                  height: frameHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      RepaintBoundary(
+                        key: boundaryKey,
+                        child: ClipRect(
+                          child: InteractiveViewer(
+                            transformationController: controller,
+                            minScale: 0.5,
+                            maxScale: 6,
+                            boundaryMargin: const EdgeInsets.all(240),
+                            child: SizedBox.expand(
+                              child: Image.memory(
+                                imageBytes,
+                                fit: BoxFit.contain,
+                                gaplessPlayback: true,
+                                filterQuality: FilterQuality.high,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      IgnorePointer(
+                        child: CustomPaint(
+                          painter: const _CropOverlayPainter(),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
-            );
-          },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CropBottomToolsBar extends StatelessWidget {
+  const _CropBottomToolsBar({
+    required this.height,
+    required this.onBack,
+    required this.onReset,
+    required this.onApply,
+    required this.selectedAspectRatio,
+    required this.onAspectRatioChanged,
+  });
+
+  final double height;
+  final VoidCallback onBack;
+  final VoidCallback onReset;
+  final VoidCallback onApply;
+  final double? selectedAspectRatio;
+  final ValueChanged<double?> onAspectRatioChanged;
+
+  bool _isSelected(double? ratio) {
+    if (ratio == null && selectedAspectRatio == null) {
+      return true;
+    }
+    if (ratio == null || selectedAspectRatio == null) {
+      return false;
+    }
+    return (ratio - selectedAspectRatio!).abs() < 0.001;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF8FBFF).withValues(alpha: 0.94),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xEEF0F4FA)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          _TopActionButton(label: 'Back', onTap: onBack),
+          const SizedBox(width: 6),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: <Widget>[
+                _CropAspectChip(
+                  label: 'Free',
+                  selected: _isSelected(null),
+                  onTap: () => onAspectRatioChanged(null),
+                ),
+                _CropAspectChip(
+                  label: '1:1',
+                  selected: _isSelected(1),
+                  onTap: () => onAspectRatioChanged(1),
+                ),
+                _CropAspectChip(
+                  label: '4:5',
+                  selected: _isSelected(4 / 5),
+                  onTap: () => onAspectRatioChanged(4 / 5),
+                ),
+                _CropAspectChip(
+                  label: '16:9',
+                  selected: _isSelected(16 / 9),
+                  onTap: () => onAspectRatioChanged(16 / 9),
+                ),
+                _CropAspectChip(
+                  label: '9:16',
+                  selected: _isSelected(9 / 16),
+                  onTap: () => onAspectRatioChanged(9 / 16),
+                ),
+                _CropAspectChip(
+                  label: 'Reset',
+                  selected: false,
+                  onTap: onReset,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          _TopActionButton(label: 'Apply', onTap: onApply),
+        ],
+      ),
+    );
+  }
+}
+
+class _CropAspectChip extends StatelessWidget {
+  const _CropAspectChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(99),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFDBEAFE) : const Color(0xFFF8FAFD),
+            borderRadius: BorderRadius.circular(99),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: const Color(0xFF334155),
+            ),
+          ),
         ),
       ),
     );
@@ -5549,10 +6807,21 @@ class _StickerPickerScreenState extends State<_StickerPickerScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: Text(
-                                  sticker,
-                                  style: const TextStyle(fontSize: 30),
-                                ),
+                                child: _ImageEditorScreenState._isAssetElement(
+                                      sticker,
+                                    )
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(6),
+                                        child: Image.asset(
+                                          sticker,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.low,
+                                        ),
+                                      )
+                                    : Text(
+                                        sticker,
+                                        style: const TextStyle(fontSize: 30),
+                                      ),
                               ),
                             ),
                           );
@@ -5626,13 +6895,20 @@ class _TopActionButton extends StatelessWidget {
               onTap!.call();
             },
       style: TextButton.styleFrom(
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         foregroundColor: const Color(0xFF334155),
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: onTap == null
+            ? const Color(0xFFF4F6FA)
+            : const Color(0xFFFDFEFF),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0xFFDCE4F0)),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE3EAF3)),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
         ),
       ),
       child: Text(label),
@@ -5654,87 +6930,56 @@ class _BackgroundRefineScreen extends StatefulWidget {
       _BackgroundRefineScreenState();
 }
 
-class _PhotoCropScreen extends StatefulWidget {
-  const _PhotoCropScreen({
-    required this.imageBytes,
-    required this.cropAspectRatio,
-  });
-
-  final Uint8List imageBytes;
-  final double? cropAspectRatio;
+class _CropOverlayPainter extends CustomPainter {
+  const _CropOverlayPainter();
 
   @override
-  State<_PhotoCropScreen> createState() => _PhotoCropScreenState();
-}
+  void paint(Canvas canvas, Size size) {
+    final borderPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.96)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final handlePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
 
-class _PhotoCropScreenState extends State<_PhotoCropScreen> {
-  final TransformationController _controller = TransformationController();
-  final GlobalKey _cropBoundaryKey = GlobalKey();
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, borderPaint);
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+    const handleLength = 22.0;
+    const handleThickness = 4.0;
 
-  Future<void> _handleSave() async {
-    final boundary =
-        _cropBoundaryKey.currentContext?.findRenderObject()
-            as RenderRepaintBoundary?;
-    if (boundary == null) {
-      return;
+    void drawHandle(Offset origin, bool left, bool top) {
+      final horizontal = Rect.fromLTWH(
+        left ? origin.dx : origin.dx - handleLength,
+        origin.dy - (top ? 0 : handleThickness),
+        handleLength,
+        handleThickness,
+      );
+      final vertical = Rect.fromLTWH(
+        origin.dx - (left ? 0 : handleThickness),
+        top ? origin.dy : origin.dy - handleLength,
+        handleThickness,
+        handleLength,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(horizontal, const Radius.circular(4)),
+        handlePaint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(vertical, const Radius.circular(4)),
+        handlePaint,
+      );
     }
-    final image = await boundary.toImage(pixelRatio: 2.5);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    if (byteData == null || !mounted) {
-      return;
-    }
-    Navigator.of(context).pop(byteData.buffer.asUint8List());
+
+    drawHandle(rect.topLeft, true, true);
+    drawHandle(rect.topRight, false, true);
+    drawHandle(rect.bottomLeft, true, false);
+    drawHandle(rect.bottomRight, false, false);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final aspectRatio = widget.cropAspectRatio ?? 1;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crop Photo'),
-        actions: <Widget>[
-          TextButton(onPressed: _handleSave, child: const Text('Save')),
-        ],
-      ),
-      backgroundColor: const Color(0xFF0F172A),
-      body: SafeArea(
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: aspectRatio,
-            child: RepaintBoundary(
-              key: _cropBoundaryKey,
-              child: ClipRect(
-                child: Container(
-                  color: Colors.transparent,
-                  child: InteractiveViewer(
-                    transformationController: _controller,
-                    minScale: 0.5,
-                    maxScale: 6,
-                    boundaryMargin: const EdgeInsets.all(240),
-                    child: SizedBox.expand(
-                      child: Image.memory(
-                        widget.imageBytes,
-                        fit: BoxFit.contain,
-                        gaplessPlayback: true,
-                        filterQuality: FilterQuality.high,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
@@ -6313,6 +7558,12 @@ class _ToolItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconTone = enabled
+        ? const Color(0xFF1E3A8A)
+        : const Color(0xFF94A3B8);
+    final labelTone = enabled
+        ? const Color(0xFF334155)
+        : const Color(0xFF94A3B8);
     return InkWell(
       onTap: !enabled || onTap == null
           ? null
@@ -6322,46 +7573,40 @@ class _ToolItem extends StatelessWidget {
             },
       splashColor: const Color(0x1A2563EB),
       highlightColor: const Color(0x0F2563EB),
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        width: 92,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: enabled
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Color(0xFFFFFFFF),
-                    Color(0xFFF8FBFF),
-                  ],
-                )
-              : null,
-          color: enabled ? null : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        width: 78,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(
-              icon,
-              color: enabled
-                  ? const Color(0xFF1E3A8A)
-                  : const Color(0xFF94A3B8),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: enabled
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: <Color>[Color(0xFFFDFEFF), Color(0xFFF2F7FF)],
+                      )
+                    : null,
+                color: enabled ? null : const Color(0xFFF5F7FB),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE7EDF5)),
+              ),
+              child: Icon(icon, size: 19, color: iconTone),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             Text(
               label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 11.5,
-                color: enabled
-                    ? const Color(0xFF334155)
-                    : const Color(0xFF94A3B8),
+                fontWeight: FontWeight.w700,
+                fontSize: 10.5,
+                height: 1.05,
+                color: labelTone,
               ),
             ),
           ],
@@ -6370,3 +7615,56 @@ class _ToolItem extends StatelessWidget {
     );
   }
 }
+
+class _TextModeToolItem extends StatelessWidget {
+  const _TextModeToolItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFFDBEAFE).withValues(alpha: 0.9)
+              : Colors.white.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 18, color: const Color(0xFF0F172A)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -120,9 +120,9 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
     final resolved = _resolveConfig();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FB),
+      backgroundColor: const Color(0xFFF7F8FC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F6FB),
+        backgroundColor: const Color(0xFFF7F8FC),
         surfaceTintColor: Colors.transparent,
         title: const Text('Page Setup'),
         actions: <Widget>[
@@ -135,33 +135,15 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  Color(0xFF0F172A),
-                  Color(0xFF1D4ED8),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x143B82F6),
-                  blurRadius: 24,
-                  offset: Offset(0, 12),
-                ),
-              ],
-            ),
-            child: const Column(
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   'Choose your canvas',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF0F172A),
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.4,
@@ -171,7 +153,7 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                 Text(
                   'Start with a social preset, print size, or enter exact custom dimensions like Photoshop.',
                   style: TextStyle(
-                    color: Color(0xFFDCE7FF),
+                    color: Color(0xFF64748B),
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -267,35 +249,16 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: const Color(0xFFDCE4F0)),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x0A0F172A),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
-                ),
-              ],
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Row(
               children: <Widget>[
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F0FF),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.crop_portrait_rounded,
-                    color: Color(0xFF1D4ED8),
-                  ),
+                const Icon(
+                  Icons.crop_portrait_rounded,
+                  color: Color(0xFF1D4ED8),
+                  size: 18,
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,7 +273,7 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                       const SizedBox(height: 4),
                       Text(
                         resolved == null
-                            ? 'Skip చేస్తే empty editor open అవుతుంది'
+                            ? 'Skip cheste empty editor open avutundi'
                             : '${resolved.widthPx} x ${resolved.heightPx} px',
                         style: const TextStyle(
                           color: Color(0xFF64748B),
@@ -368,19 +331,7 @@ class _SetupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFDCE4F0)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -425,13 +376,13 @@ class _PresetCard extends StatelessWidget {
     final portrait = previewRatio < 1;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: Ink(
         width: 162,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFEAF1FF) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? const Color(0xFFF0F6FF) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? const Color(0xFF1D4ED8) : const Color(0xFFDCE4F0),
             width: selected ? 1.4 : 1,
@@ -443,11 +394,11 @@ class _PresetCard extends StatelessWidget {
             Row(
               children: <Widget>[
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0xFFDCE4F0)),
                   ),
                   child: Center(

@@ -23,10 +23,13 @@ class CloudBackgroundRemovalService {
   }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
        _storage = storage ?? FirebaseStorage.instance;
 
+  static const Duration _uploadTimeout = Duration(seconds: 25);
+  static const Duration _backendTimeout = Duration(seconds: 25);
+  static const Duration _downloadTimeout = Duration(seconds: 25);
+
   static const String _apiUrl = String.fromEnvironment(
     'MANA_POSTER_REMOVE_BG_API_URL',
-    defaultValue:
-        'https://mana-poster-rembg-lwqq2szeza-el.a.run.app/remove-bg',
+    defaultValue: 'https://mana-poster-rembg-lwqq2szeza-el.a.run.app/remove-bg',
   );
 
   final FirebaseAuth _firebaseAuth;
@@ -34,7 +37,9 @@ class CloudBackgroundRemovalService {
 
   bool get isConfigured => _apiUrl.isNotEmpty;
 
-  Future<CloudBackgroundRemovalResult?> removeBackground(Uint8List imageBytes) async {
+  Future<CloudBackgroundRemovalResult?> removeBackground(
+    Uint8List imageBytes,
+  ) async {
     if (!isConfigured) {
       return null;
     }
@@ -56,29 +61,31 @@ class CloudBackgroundRemovalService {
     final outputPath = 'users/${user.uid}/rembg_jobs/$jobId/output.png';
 
     final inputRef = _storage.ref(inputPath);
-    await inputRef.putData(
-      imageBytes,
-      SettableMetadata(
-        contentType: 'image/jpeg',
-        customMetadata: <String, String>{
-          'uid': user.uid,
-          'jobId': jobId,
-        },
-      ),
-    );
+    await inputRef
+        .putData(
+          imageBytes,
+          SettableMetadata(
+            contentType: 'image/jpeg',
+            customMetadata: <String, String>{'uid': user.uid, 'jobId': jobId},
+          ),
+        )
+        .timeout(_uploadTimeout);
 
     final response = await _callBackend(
       idToken: idToken,
       inputPath: inputPath,
       outputPath: outputPath,
-    );
+    ).timeout(_backendTimeout);
 
     final downloadUrl = response['downloadUrl']?.toString();
     Uint8List? bytes;
     if (downloadUrl != null && downloadUrl.isNotEmpty) {
-      bytes = await _downloadBytes(downloadUrl);
+      bytes = await _downloadBytes(downloadUrl).timeout(_downloadTimeout);
     }
-    bytes ??= await _storage.ref(outputPath).getData(30 * 1024 * 1024);
+    bytes ??= await _storage
+        .ref(outputPath)
+        .getData(30 * 1024 * 1024)
+        .timeout(_downloadTimeout);
 
     if (bytes == null || bytes.isEmpty) {
       throw Exception('Cloud output image empty');

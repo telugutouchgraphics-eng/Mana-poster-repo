@@ -24,11 +24,17 @@ enum BackgroundRefineMode { erase, restore }
 class OfflineBackgroundRemovalService {
   const OfflineBackgroundRemovalService();
 
+  static const Duration _cloudTimeout = Duration(seconds: 30);
+  static const Duration _mlKitTimeout = Duration(seconds: 20);
+  static const Duration _offlineTimeout = Duration(seconds: 20);
+
   Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
     final cloudService = CloudBackgroundRemovalService();
     if (cloudService.isConfigured) {
       try {
-        final cloudResult = await cloudService.removeBackground(imageBytes);
+        final cloudResult = await cloudService
+            .removeBackground(imageBytes)
+            .timeout(_cloudTimeout);
         if (cloudResult != null) {
           final polishedBytes = await compute(
             _polishCutoutInIsolate,
@@ -44,7 +50,9 @@ class OfflineBackgroundRemovalService {
       }
     }
 
-    final mlKitResult = await _removeBackgroundWithMlKit(imageBytes);
+    final mlKitResult = await _removeBackgroundWithMlKit(
+      imageBytes,
+    ).timeout(_mlKitTimeout, onTimeout: () => null);
     if (mlKitResult != null) {
       final polishedBytes = await compute(_polishCutoutInIsolate, mlKitResult);
       return BackgroundRemovalResult(
@@ -54,8 +62,14 @@ class OfflineBackgroundRemovalService {
     }
 
     // Fallback: fully offline, no cloud/API keys and no paid SDK usage.
-    final result = await compute(_removeBackgroundInIsolate, imageBytes);
-    final polishedBytes = await compute(_polishCutoutInIsolate, result.pngBytes);
+    final result = await compute(
+      _removeBackgroundInIsolate,
+      imageBytes,
+    ).timeout(_offlineTimeout);
+    final polishedBytes = await compute(
+      _polishCutoutInIsolate,
+      result.pngBytes,
+    );
     return BackgroundRemovalResult(
       pngBytes: polishedBytes,
       engineLabel: '${result.engineLabel} + Edge Polish',
@@ -92,13 +106,15 @@ class OfflineBackgroundRemovalService {
       final confidenceBias = 0.12;
 
       for (var y = 0; y < output.height; y++) {
-        final my = ((y / output.height) * mask.height)
-            .floor()
-            .clamp(0, mask.height - 1);
+        final my = ((y / output.height) * mask.height).floor().clamp(
+          0,
+          mask.height - 1,
+        );
         for (var x = 0; x < output.width; x++) {
-          final mx = ((x / output.width) * mask.width)
-              .floor()
-              .clamp(0, mask.width - 1);
+          final mx = ((x / output.width) * mask.width).floor().clamp(
+            0,
+            mask.width - 1,
+          );
           final maskIndex = (my * mask.width) + mx;
           final confidence = mask.confidences[maskIndex].clamp(0.0, 1.0);
           final fg = ((confidence - confidenceBias) / (1.0 - confidenceBias))
