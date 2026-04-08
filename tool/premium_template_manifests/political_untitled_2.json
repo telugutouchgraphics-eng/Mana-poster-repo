@@ -1,0 +1,292 @@
+{
+  "templateId": "political_untitled_2",
+  "category": "political",
+  "storageUploads": {
+    "preview": {
+      "localPath": "assets/templates/premium/political/previews/political_untitled_2.png",
+      "storagePath": "premium_templates/political/political_untitled_2/preview.png"
+    },
+    "document": {
+      "localPath": "assets/templates/premium/political/documents/political_untitled_2.json",
+      "storagePath": "premium_templates/political/political_untitled_2/document.json"
+    },
+    "layers": [
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_001.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_001.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_002.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_002.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_003.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_003.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_004.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_004.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_005.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_005.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_006.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_006.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_007.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_007.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_008.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_008.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_009.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_009.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_010.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_010.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_011.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_011.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_012.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_012.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_013.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_013.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_014.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_014.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_015.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_015.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_016.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_016.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_017.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_017.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_018.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_018.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_019.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_019.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_020.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_020.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_021.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_021.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_022.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_022.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_023.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_023.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_024.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_024.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_025.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_025.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_026.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_026.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_027.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_027.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_028.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_028.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_029.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_029.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_030.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_030.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_031.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_031.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_032.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_032.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_033.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_033.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_034.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_034.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_035.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_035.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_036.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_036.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_037.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_037.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_038.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_038.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_039.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_039.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_040.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_040.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_041.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_041.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_042.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_042.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_043.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_043.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_044.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_044.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_045.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_045.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_046.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_046.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_047.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_047.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_048.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_048.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_049.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_049.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_050.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_050.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_051.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_051.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_052.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_052.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_053.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_053.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_054.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_054.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_055.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_055.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_056.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_056.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_057.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_057.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_058.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_058.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_059.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_059.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_060.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_060.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_061.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_061.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_062.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_062.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_063.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_063.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_untitled_2/layer_064.png",
+        "storagePath": "premium_templates/political/political_untitled_2/layers/layer_064.png"
+      }
+    ]
+  },
+  "firestore": {
+    "collection": "premium_templates",
+    "documentId": "political_untitled_2",
+    "payload": {
+      "category": "political",
+      "isActive": true,
+      "sortOrder": 4,
+      "titleEn": "Premium Flex Design",
+      "titleTe": "ప్రీమియం ఫ్లెక్స్ డిజైన్",
+      "titleHi": "प्रीमियम फ्लेक्स डिज़ाइन",
+      "priceInr": 499,
+      "productId": "premium_template_political_untitled_2",
+      "widthPx": 4200,
+      "heightPx": 4500,
+      "previewStoragePath": "premium_templates/political/political_untitled_2/preview.png",
+      "templateDocumentStoragePath": "premium_templates/political/political_untitled_2/document.json",
+      "layerStoragePrefix": "premium_templates/political/political_untitled_2/layers",
+      "layerCount": 64
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "templateId": "political_whatsapp_image_2024_10_02_at_6_55_35_pm",
+  "category": "political",
+  "storageUploads": {
+    "preview": {
+      "localPath": "assets/templates/premium/political/previews/political_whatsapp_image_2024_10_02_at_6_55_35_pm.png",
+      "storagePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/preview.png"
+    },
+    "document": {
+      "localPath": "assets/templates/premium/political/documents/political_whatsapp_image_2024_10_02_at_6_55_35_pm.json",
+      "storagePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/document.json"
+    },
+    "layers": [
+      {
+        "localPath": "assets/templates/premium/political/layers/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layer_001.png",
+        "storagePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layers/layer_001.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layer_002.png",
+        "storagePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layers/layer_002.png"
+      }
+    ]
+  },
+  "firestore": {
+    "collection": "premium_templates",
+    "documentId": "political_whatsapp_image_2024_10_02_at_6_55_35_pm",
+    "payload": {
+      "category": "political",
+      "isActive": true,
+      "sortOrder": 5,
+      "titleEn": "Premium Poster Design",
+      "titleTe": "ప్రీమియం పోస్టర్ డిజైన్",
+      "titleHi": "प्रीमियम पोस्टर डिज़ाइन",
+      "priceInr": 499,
+      "productId": "premium_template_political_whatsapp_image_2024_10_02_at_6_55_35_pm",
+      "widthPx": 768,
+      "heightPx": 941,
+      "previewStoragePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/preview.png",
+      "templateDocumentStoragePath": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/document.json",
+      "layerStoragePrefix": "premium_templates/political/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layers",
+      "layerCount": 2
+    }
+  }
+}

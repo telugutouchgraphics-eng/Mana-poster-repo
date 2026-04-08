@@ -1,0 +1,32 @@
+{
+  "templateId": "political_whatsapp_image_2024_10_02_at_6_55_35_pm",
+  "title": "WhatsApp Image 2024-10-02 at 6.55.35 PM",
+  "sourceWidth": 768,
+  "sourceHeight": 941,
+  "layers": [
+    {
+      "id": "political_whatsapp_image_2024_10_02_at_6_55_35_pm_layer_001",
+      "assetPath": "assets/templates/premium/political/layers/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layer_001.png",
+      "left": 0,
+      "top": 0,
+      "width": 768,
+      "height": 941,
+      "opacity": 1.0,
+      "visible": true,
+      "name": "Background",
+      "kind": "pixel"
+    },
+    {
+      "id": "political_whatsapp_image_2024_10_02_at_6_55_35_pm_layer_002",
+      "assetPath": "assets/templates/premium/political/layers/political_whatsapp_image_2024_10_02_at_6_55_35_pm/layer_002.png",
+      "left": 387,
+      "top": 47,
+      "width": 223,
+      "height": 246,
+      "opacity": 1.0,
+      "visible": true,
+      "name": "Layer 1",
+      "kind": "pixel"
+    }
+  ]
+}

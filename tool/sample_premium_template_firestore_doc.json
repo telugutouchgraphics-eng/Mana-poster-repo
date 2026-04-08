@@ -1,0 +1,17 @@
+{
+  "category": "political",
+  "isActive": true,
+  "sortOrder": 1,
+  "titleEn": "Tholi Ekadasi Premium Design",
+  "titleTe": "థోలి ఏకాదశి ప్రీమియం డిజైన్",
+  "titleHi": "थोली एकादशी प्रीमियम डिज़ाइन",
+  "priceInr": 499,
+  "productId": "premium_template_political_tholi_yekadasi_copy",
+  "fallbackProductIds": [],
+  "widthPx": 3000,
+  "heightPx": 3000,
+  "previewStoragePath": "premium_templates/political/political_tholi_yekadasi_copy/preview.png",
+  "templateDocumentStoragePath": "premium_templates/political/political_tholi_yekadasi_copy/document.json",
+  "layerStoragePrefix": "premium_templates/political/political_tholi_yekadasi_copy/layers",
+  "layerCount": 22
+}

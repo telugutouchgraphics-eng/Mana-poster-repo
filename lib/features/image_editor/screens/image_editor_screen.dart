@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +17,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/background_presets.dart';
+import '../models/editor_template_document.dart';
 import '../models/elements_catalog.dart';
 import '../models/editor_page_config.dart';
 import '../services/background_removal_service.dart';
@@ -194,9 +196,14 @@ class _OptimizedPhotoPayload {
 }
 
 class ImageEditorScreen extends StatefulWidget {
-  const ImageEditorScreen({super.key, this.pageConfig});
+  const ImageEditorScreen({
+    super.key,
+    this.pageConfig,
+    this.templateDocumentSource,
+  });
 
   final EditorPageConfig? pageConfig;
+  final String? templateDocumentSource;
 
   @override
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
@@ -366,6 +373,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Offset _photoGestureVelocity = Offset.zero;
   int _photoGestureLastTimestampMicros = 0;
   late final AnimationController _photoGlideController;
+  late final Future<void> _backgroundRemoverInitialization;
   Offset _photoGlideTotalTravel = Offset.zero;
   Offset _photoGlideAppliedTravel = Offset.zero;
   Timer? _selectedTextLongPressTimer;
@@ -381,6 +389,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   String? _cropSessionLayerId;
   double? _cropSessionAspectRatio;
   double? _cropSessionInitialAspectRatio;
+  EditorTemplateDocument? _templateDocument;
+  bool _isTemplateHydrated = false;
+  bool _isTemplateHydrationInProgress = false;
+  bool _templateHydrationScheduled = false;
 
   _CanvasLayer? get _selectedLayer {
     final selectedId = _selectedLayerId;
@@ -426,9 +438,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             }
           });
     _pageAspectRatio = widget.pageConfig?.aspectRatio;
+    _backgroundRemoverInitialization = BackgroundRemover.instance.initializeOrt();
     _enterEditorImmersiveMode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_restoreAutosavedDraftIfAvailable());
+      if (widget.templateDocumentSource != null) {
+        unawaited(_loadInitialTemplateDocument());
+      } else {
+        unawaited(_restoreAutosavedDraftIfAvailable());
+      }
     });
   }
 
@@ -454,6 +471,155 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
+  }
+
+  Future<void> _loadInitialTemplateDocument() async {
+    final source = widget.templateDocumentSource;
+    if (source == null || source.isEmpty) {
+      return;
+    }
+    try {
+      final raw = await _loadTemplateDocumentString(source);
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
+      final document = EditorTemplateDocument.fromJson(decoded);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _templateDocument = document;
+        _pageAspectRatio = document.aspectRatio;
+        _pageAspectRatioAutoFromImage = false;
+        _isTemplateHydrated = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Template load fail ayindi. Malli try cheyyandi'),
+        ),
+      );
+    }
+  }
+
+  Future<String> _loadTemplateDocumentString(String source) async {
+    if (_looksLikeNetworkSource(source)) {
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse(source));
+        final response = await request.close();
+        return await response.transform(utf8.decoder).join();
+      } finally {
+        client.close(force: true);
+      }
+    }
+    return rootBundle.loadString(source);
+  }
+
+  Future<Uint8List> _loadTemplateLayerBytes(String source) async {
+    if (_looksLikeNetworkSource(source)) {
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse(source));
+        final response = await request.close();
+        final bytes = await consolidateHttpClientResponseBytes(response);
+        return bytes;
+      } finally {
+        client.close(force: true);
+      }
+    }
+    final assetData = await rootBundle.load(source);
+    return assetData.buffer.asUint8List();
+  }
+
+  bool _looksLikeNetworkSource(String source) {
+    final normalized = source.trim().toLowerCase();
+    return normalized.startsWith('http://') || normalized.startsWith('https://');
+  }
+
+  Future<void> _hydrateTemplateDocument({
+    required EditorTemplateDocument document,
+    required Size pageSize,
+  }) async {
+    if (_isTemplateHydrated ||
+        _isTemplateHydrationInProgress ||
+        pageSize.width <= 0 ||
+        pageSize.height <= 0) {
+      return;
+    }
+
+    _isTemplateHydrationInProgress = true;
+    try {
+      final importedLayers = <_CanvasLayer>[];
+      final pageCenter = Offset(pageSize.width / 2, pageSize.height / 2);
+
+      for (final templateLayer in document.layers) {
+        if (!templateLayer.visible ||
+            templateLayer.assetPath.isEmpty ||
+            templateLayer.width <= 0 ||
+            templateLayer.height <= 0) {
+          continue;
+        }
+
+        final bytes = await _loadTemplateLayerBytes(templateLayer.assetPath);
+        final aspectRatio = templateLayer.width / templateLayer.height;
+        final targetWidth =
+            (templateLayer.width / document.sourceWidth) * pageSize.width;
+        final baseSize = _fitPhotoLayerSize(
+          pageSize: pageSize,
+          photoAspectRatio: aspectRatio,
+        );
+        final scale = baseSize.width <= 0
+            ? 1.0
+            : (targetWidth / baseSize.width).clamp(0.01, 100.0);
+        final targetCenter = Offset(
+          ((templateLayer.left + (templateLayer.width / 2)) /
+                  document.sourceWidth) *
+              pageSize.width,
+          ((templateLayer.top + (templateLayer.height / 2)) /
+                  document.sourceHeight) *
+              pageSize.height,
+        );
+        final translation = targetCenter - pageCenter;
+        final transform = Matrix4.identity()
+          ..translateByDouble(translation.dx, translation.dy, 0, 1)
+          ..scaleByDouble(scale, scale, 1, 1);
+
+        importedLayers.add(
+          _CanvasLayer(
+            id: 'layer_${_layerSeed++}',
+            type: _CanvasLayerType.photo,
+            bytes: bytes,
+            originalPhotoBytes: bytes,
+            photoOpacity: templateLayer.opacity,
+            photoAspectRatio: aspectRatio,
+            transform: transform,
+          ),
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _layers
+          ..clear()
+          ..addAll(importedLayers);
+        _selectedLayerId = importedLayers.isEmpty ? null : importedLayers.last.id;
+        _canvasBackgroundColor = const Color(0xFFFFFFFF);
+        _canvasBackgroundGradientIndex = -1;
+        _stageBackgroundImageBytes = null;
+        _templateDocument = null;
+        _isTemplateHydrated = true;
+      });
+    } finally {
+      _isTemplateHydrationInProgress = false;
+    }
   }
 
   /*
@@ -895,6 +1061,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void dispose() {
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
+    unawaited(BackgroundRemover.instance.dispose());
     _photoGlideController.dispose();
     _selectedTextLongPressTimer?.cancel();
     _transformationController.dispose();
@@ -961,11 +1128,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _handleAddSticker(String sticker) {
-    final isAssetSticker = _isAssetElement(sticker);
+    final resolvedSticker = _resolveStickerAssetPath(sticker) ?? sticker;
+    final isAssetSticker = _isImageLikeSticker(resolvedSticker);
     final layer = _CanvasLayer(
       id: 'layer_${_layerSeed++}',
       type: _CanvasLayerType.sticker,
-      sticker: sticker,
+      sticker: resolvedSticker,
       fontSize: isAssetSticker ? 120 : 64,
       transform: Matrix4.identity(),
     );
@@ -978,11 +1146,89 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
   }
 
-  static bool _isAssetElement(String? value) {
+  static bool _isImageLikeSticker(String? value) {
+    return _resolveStickerAssetPath(value) != null ||
+        _resolveStickerFilePath(value) != null;
+  }
+
+  static String? _resolveStickerAssetPath(String? value) {
     if (value == null) {
-      return false;
+      return null;
     }
-    return value.startsWith('assets/');
+    final normalized = value.trim().replaceAll('\\', '/');
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final lower = normalized.toLowerCase();
+    final isImage =
+        lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.webp');
+    if (!isImage) {
+      return null;
+    }
+    if (normalized.startsWith('assets/')) {
+      return normalized;
+    }
+    if (normalized.startsWith('elements/')) {
+      return 'assets/$normalized';
+    }
+    return null;
+  }
+
+  static String? _resolveStickerFilePath(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final normalized = value.trim().replaceAll('\\', '/');
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final lower = normalized.toLowerCase();
+    final isImage =
+        lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.webp');
+    if (!isImage) {
+      return null;
+    }
+    final isAbsoluteWindows = RegExp(r'^[a-zA-Z]:/').hasMatch(normalized);
+    final isAbsoluteUnix = normalized.startsWith('/');
+    if (!isAbsoluteWindows && !isAbsoluteUnix) {
+      return null;
+    }
+    return normalized;
+  }
+
+  static Widget _buildStickerVisual(
+    String? sticker, {
+    required double fontSize,
+    required BoxFit fit,
+    required FilterQuality filterQuality,
+  }) {
+    final assetPath = _resolveStickerAssetPath(sticker);
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        fit: fit,
+        filterQuality: filterQuality,
+        errorBuilder: (_, error, stackTrace) =>
+            Text(sticker ?? '*', style: TextStyle(fontSize: fontSize)),
+      );
+    }
+    final filePath = _resolveStickerFilePath(sticker);
+    if (filePath != null) {
+      return Image.file(
+        File(filePath),
+        fit: fit,
+        filterQuality: filterQuality,
+        errorBuilder: (_, error, stackTrace) =>
+            Text(sticker ?? '*', style: TextStyle(fontSize: fontSize)),
+      );
+    }
+    return Text(sticker ?? '*', style: TextStyle(fontSize: fontSize));
   }
 
   void _handleTextToolTap() {
@@ -1511,7 +1757,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
     try {
       for (var attempt = 0; attempt < 2; attempt++) {
-        await Future<void>.delayed(const Duration(milliseconds: 16));
+        await _waitForRenderedFrame();
         if (!mounted) {
           return null;
         }
@@ -1535,9 +1781,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (mounted) {
         setState(() {
           _isCapturingStage = false;
-          _isTransparentExportCapture = false;
         });
       }
+    }
+  }
+
+  Future<void> _waitForRenderedFrame() async {
+    final binding = WidgetsBinding.instance;
+    await binding.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 16));
+    if (mounted) {
+      await binding.endOfFrame;
     }
   }
 
@@ -1556,7 +1810,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         setState(() {
           _isTransparentExportCapture = true;
         });
-        await Future<void>.delayed(const Duration(milliseconds: 16));
+        await _waitForRenderedFrame();
       }
       final hasPermission = await _ensureGallerySavePermission();
       if (!hasPermission) {
@@ -1641,6 +1895,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (mounted) {
         setState(() {
           _isExporting = false;
+          _isTransparentExportCapture = false;
         });
       }
     }
@@ -2288,7 +2543,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           : painter.size;
     }
     final sticker = layer.sticker;
-    if (_isAssetElement(sticker)) {
+    if (_isImageLikeSticker(sticker)) {
       return Size.square(layer.fontSize);
     }
     final painter = TextPainter(
@@ -2732,11 +2987,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     final selectedId = _selectedLayerId;
-    if (selectedId == null || !_hasSelectedPhotoLayer) {
+    if (selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Remove BG kosam photo layer select cheyyandi'),
-        ),
+        const SnackBar(content: Text('Select a photo first')),
+      );
+      return;
+    }
+    if (!_hasSelectedPhotoLayer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a photo first')),
       );
       return;
     }
@@ -2745,18 +3004,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     setState(() {
       _isRemovingBackground = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Background remove processing...'),
-        duration: const Duration(minutes: 1),
-        action: SnackBarAction(
-          label: 'Cancel',
-          onPressed: _cancelRemoveBackground,
-        ),
-      ),
-    );
-
-    await Future<void>.delayed(const Duration(milliseconds: 1300));
     final layerIndex = _layers.indexWhere((item) => item.id == selectedId);
     if (layerIndex == -1) {
       if (mounted) {
@@ -2768,80 +3015,57 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     final layer = _layers[layerIndex];
-    try {
-      final result = await _backgroundRemovalService.removeBackground(
-        layer.bytes!,
+    final sourceBytes = layer.bytes;
+    if (sourceBytes == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isRemovingBackground = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Source photo unavailable for Remove BG')),
       );
-      if (!mounted ||
-          !_isRemovingBackground ||
-          taskId != _removeBackgroundTaskId) {
+      return;
+    }
+    try {
+      await _backgroundRemoverInitialization;
+      final result = await _backgroundRemovalService.removeBackground(
+        sourceBytes,
+      );
+      if (!mounted || taskId != _removeBackgroundTaskId) {
         return;
       }
 
-      final previousBytes = layer.bytes!;
-      final isSameOutput = listEquals(previousBytes, result.pngBytes);
       _pushUndoSnapshot();
       setState(() {
-        if (!isSameOutput) {
-          _layers[layerIndex] = _layers[layerIndex].copyWith(
-            bytes: result.pngBytes,
-          );
-        }
+        _layers[layerIndex] = _layers[layerIndex].copyWith(
+          bytes: result.pngBytes,
+        );
         _isRemovingBackground = false;
       });
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isSameOutput
-                ? 'Background detect kale du, image lo change ledu'
-                : '${result.engineLabel} tho background remove ayyindi',
-          ),
-        ),
-      );
       return;
-    } catch (_) {
-      if (!mounted ||
-          !_isRemovingBackground ||
-          taskId != _removeBackgroundTaskId) {
+    } catch (error) {
+      if (!mounted || taskId != _removeBackgroundTaskId) {
         return;
       }
       setState(() {
         _isRemovingBackground = false;
       });
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Remove BG fail ayyindi, vere photo tho malli try cheyyandi',
-          ),
+        SnackBar(
+          content: Text('Remove BG failed: ${error.toString()}'),
         ),
       );
       return;
     }
   }
 
-  void _cancelRemoveBackground() {
-    if (!_isRemovingBackground) {
-      return;
-    }
-    _removeBackgroundTaskId++;
-    setState(() {
-      _isRemovingBackground = false;
-    });
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Remove BG cancel ayyindi')));
-  }
-
-  Future<void> _handleRefinePhotoTap() async {
+  Future<void> _handleMagicToolTap() async {
     final selectedId = _selectedLayerId;
     if (selectedId == null || !_hasSelectedPhotoLayer) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Refine kosam photo layer select cheyyandi'),
-        ),
+        const SnackBar(content: Text('Select a photo first')),
       );
       return;
     }
@@ -2852,15 +3076,25 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     final layer = _layers[layerIndex];
     final currentBytes = layer.bytes;
-    if (currentBytes == null) {
+    final originalBytes = layer.originalPhotoBytes;
+    Uint8List? sessionBytes;
+    if (currentBytes != null && img.decodeImage(currentBytes) != null) {
+      sessionBytes = currentBytes;
+    } else if (originalBytes != null && img.decodeImage(originalBytes) != null) {
+      sessionBytes = originalBytes;
+    }
+    if (sessionBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selected image could not be loaded')),
+      );
       return;
     }
 
     final refinedBytes = await Navigator.of(context).push<Uint8List>(
       MaterialPageRoute<Uint8List>(
-        builder: (BuildContext context) => _BackgroundRefineScreen(
-          currentBytes: currentBytes,
-          originalBytes: layer.originalPhotoBytes ?? currentBytes,
+        builder: (BuildContext context) => _MagicToolScreen(
+          currentBytes: sessionBytes!,
+          originalBytes: originalBytes ?? sessionBytes,
         ),
       ),
     );
@@ -2875,7 +3109,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Photo refine apply ayyindi')));
+    ).showSnackBar(const SnackBar(content: Text('Magic Tool apply ayyindi')));
   }
 
   Future<void> _handleCropPhotoTap() async {
@@ -3208,18 +3442,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     color: Color(0xFF334155),
                                   )
                                 : Center(
-                                    child: _isAssetElement(layer.sticker)
-                                        ? Image.asset(
-                                            layer.sticker!,
-                                            fit: BoxFit.contain,
-                                            filterQuality: FilterQuality.low,
-                                          )
-                                        : Text(
-                                            layer.sticker ?? '⭐',
-                                            style: const TextStyle(
-                                              fontSize: 22,
-                                            ),
-                                          ),
+                                    child: _ImageEditorScreenState
+                                        ._buildStickerVisual(
+                                          layer.sticker,
+                                          fontSize: 22,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.low,
+                                        ),
                                   ),
                           ),
                           title: Text(
@@ -3332,6 +3561,40 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                     ? _textStyleBarHeight
                     : 0);
             _lastCanvasSize = canvasSize;
+            final workspaceHeight = math.max(
+              canvasSize.height - reservedTopInset - reservedBottomInset,
+              0.0,
+            );
+            final workspaceSize = Size(canvasSize.width, workspaceHeight);
+            final hasPageSelection = (_pageAspectRatio ?? 0) > 0;
+            final pageSize = hasPageSelection
+                ? _fitPageSize(
+                    workspaceSize: workspaceSize,
+                    aspectRatio: _pageAspectRatio!,
+                  )
+                : workspaceSize;
+
+            if (_templateDocument != null &&
+                !_isTemplateHydrated &&
+                !_templateHydrationScheduled &&
+                !_isTemplateHydrationInProgress &&
+                pageSize.width > 0 &&
+                pageSize.height > 0) {
+              _templateHydrationScheduled = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _templateHydrationScheduled = false;
+                final document = _templateDocument;
+                if (document == null) {
+                  return;
+                }
+                unawaited(
+                  _hydrateTemplateDocument(
+                    document: document,
+                    pageSize: pageSize,
+                  ),
+                );
+              });
+            }
 
             return Stack(
               children: <Widget>[
@@ -3504,11 +3767,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           onLayersTap: _openLayersScreen,
                           onCropPhotoTap: _handleCropPhotoTap,
                           onRemoveBackgroundTap: _handleRemoveBackgroundTap,
-                          onRefinePhotoTap: _handleRefinePhotoTap,
+                          onMagicToolTap: _handleMagicToolTap,
                           canCropPhoto: _hasSelectedPhotoLayer,
                           canRemoveBackground:
                               _hasSelectedPhotoLayer && !_isRemovingBackground,
-                          canRefinePhoto:
+                          canMagicTool:
                               _hasSelectedPhotoLayer && !_isRemovingBackground,
                           isRemovingBackground: _isRemovingBackground,
                           selectedPhotoLayer: _hasSelectedPhotoLayer
@@ -3550,12 +3813,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              const Text('Removing background...'),
-                              const SizedBox(height: 8),
-                              TextButton(
-                                onPressed: _cancelRemoveBackground,
-                                child: const Text('Cancel'),
-                              ),
+                              const Text('AI is removing background...'),
                             ],
                           ),
                         ),
@@ -3578,6 +3836,19 @@ bool _isMatrixFinite(Matrix4 matrix) {
     }
   }
   return true;
+}
+
+String _photoBytesSignature(Uint8List bytes) {
+  final length = bytes.length;
+  if (length == 0) {
+    return '0_0';
+  }
+  final sample = bytes.length > 64 ? 64 : bytes.length;
+  var hash = 17;
+  for (var i = 0; i < sample; i++) {
+    hash = 37 * hash + bytes[i];
+  }
+  return '${bytes.length}_$hash';
 }
 
 double _normalizeAngle(double angle) {
@@ -3871,15 +4142,41 @@ class _CanvasWorkspace extends StatelessWidget {
                                           layer.flipPhotoVertically ? -1 : 1,
                                           1,
                                         ),
-                                        child: Image.memory(
-                                          layer.bytes!,
-                                          fit: BoxFit.contain,
-                                          gaplessPlayback: true,
-                                          filterQuality: FilterQuality.medium,
-                                          cacheWidth: isSelected
-                                              ? photoCacheWidth
-                                              : photoCacheWidth ??
-                                                    unselectedPhotoCacheWidth,
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: <Widget>[
+                                            AnimatedSwitcher(
+                                              duration: const Duration(
+                                                milliseconds: 260,
+                                              ),
+                                              switchInCurve:
+                                                  Curves.easeOutCubic,
+                                              switchOutCurve:
+                                                  Curves.easeInCubic,
+                                              transitionBuilder:
+                                                  (child, animation) =>
+                                                      FadeTransition(
+                                                        opacity: animation,
+                                                        child: child,
+                                                      ),
+                                              child: Image.memory(
+                                                layer.bytes!,
+                                                key: ValueKey<String>(
+                                                  _photoBytesSignature(
+                                                    layer.bytes!,
+                                                  ),
+                                                ),
+                                                fit: BoxFit.contain,
+                                                gaplessPlayback: true,
+                                                filterQuality:
+                                                    FilterQuality.medium,
+                                                cacheWidth: isSelected
+                                                    ? photoCacheWidth
+                                                    : photoCacheWidth ??
+                                                          unselectedPhotoCacheWidth,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
@@ -3923,7 +4220,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                     style: TextStyle(fontSize: layer.fontSize),
                                   );
                             final stickerAsset =
-                                _ImageEditorScreenState._isAssetElement(
+                                _ImageEditorScreenState._isImageLikeSticker(
                                   layer.sticker,
                                 );
                             final stickerOrTextChild = layer.isSticker &&
@@ -3931,20 +4228,13 @@ class _CanvasWorkspace extends StatelessWidget {
                                 ? SizedBox(
                                     width: layerSize.width,
                                     height: layerSize.height,
-                                    child: Image.asset(
-                                      layer.sticker!,
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.medium,
-                                      errorBuilder:
-                                          (
-                                            _,
-                                            error,
-                                            stackTrace,
-                                          ) => const Icon(
-                                            Icons.broken_image_outlined,
-                                            color: Color(0xFF94A3B8),
-                                          ),
-                                    ),
+                                    child: _ImageEditorScreenState
+                                        ._buildStickerVisual(
+                                          layer.sticker,
+                                          fontSize: layer.fontSize,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.medium,
+                                        ),
                                   )
                                 : layerChild;
 
@@ -4147,7 +4437,9 @@ class _CanvasWorkspace extends StatelessWidget {
                                 : Transform(
                                     alignment: Alignment.center,
                                     transform: layer.transform,
-                                    child: layerChild,
+                                    child: layer.isSticker
+                                        ? stickerOrTextChild
+                                        : layerChild,
                                   );
 
                             return Center(
@@ -4384,7 +4676,7 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
         : painter.size;
   }
   final sticker = layer.sticker;
-  if (_ImageEditorScreenState._isAssetElement(sticker)) {
+  if (_ImageEditorScreenState._isImageLikeSticker(sticker)) {
     return Size.square(layer.fontSize);
   }
   final painter = TextPainter(
@@ -5701,16 +5993,12 @@ class _LayersScreenState extends State<_LayersScreen> {
           : layer.isText
           ? const Icon(Icons.text_fields_rounded, color: Color(0xFF334155))
           : Center(
-              child: _ImageEditorScreenState._isAssetElement(layer.sticker)
-                  ? Image.asset(
-                      layer.sticker!,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.low,
-                    )
-                  : Text(
-                      layer.sticker ?? '*',
-                      style: const TextStyle(fontSize: 22),
-                    ),
+              child: _ImageEditorScreenState._buildStickerVisual(
+                layer.sticker,
+                fontSize: 22,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.low,
+              ),
             ),
     );
   }
@@ -6217,10 +6505,10 @@ class _BottomToolsBar extends StatelessWidget {
     required this.onLayersTap,
     required this.onCropPhotoTap,
     required this.onRemoveBackgroundTap,
-    required this.onRefinePhotoTap,
+    required this.onMagicToolTap,
     required this.canCropPhoto,
     required this.canRemoveBackground,
-    required this.canRefinePhoto,
+    required this.canMagicTool,
     required this.isRemovingBackground,
     required this.selectedPhotoLayer,
     required this.onOpacityChanged,
@@ -6238,10 +6526,10 @@ class _BottomToolsBar extends StatelessWidget {
   final VoidCallback onLayersTap;
   final VoidCallback onCropPhotoTap;
   final VoidCallback onRemoveBackgroundTap;
-  final VoidCallback onRefinePhotoTap;
+  final VoidCallback onMagicToolTap;
   final bool canCropPhoto;
   final bool canRemoveBackground;
-  final bool canRefinePhoto;
+  final bool canMagicTool;
   final bool isRemovingBackground;
   final _CanvasLayer? selectedPhotoLayer;
   final ValueChanged<double> onOpacityChanged;
@@ -6259,7 +6547,7 @@ class _BottomToolsBar extends StatelessWidget {
         (label: 'Layers', icon: Icons.layers_outlined),
         (label: 'Crop', icon: Icons.crop_rounded),
         (label: 'Remove BG', icon: Icons.auto_fix_high_outlined),
-        (label: 'Refine', icon: Icons.brush_outlined),
+        (label: 'Magic Tool', icon: Icons.auto_fix_normal_rounded),
       ];
 
   @override
@@ -6352,13 +6640,13 @@ class _BottomToolsBar extends StatelessWidget {
                     4 => onLayersTap,
                     5 => canCropPhoto ? onCropPhotoTap : null,
                     6 => canRemoveBackground ? onRemoveBackgroundTap : null,
-                    7 => canRefinePhoto ? onRefinePhotoTap : null,
+                    7 => canMagicTool ? onMagicToolTap : null,
                     _ => () {},
                   },
                   enabled: switch (index) {
                     5 => canCropPhoto,
                     6 => canRemoveBackground,
-                    7 => canRefinePhoto,
+                    7 => canMagicTool,
                     _ => true,
                   },
                 );
@@ -6807,13 +7095,14 @@ class _StickerPickerScreenState extends State<_StickerPickerScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: _ImageEditorScreenState._isAssetElement(
-                                      sticker,
-                                    )
+                                child: _ImageEditorScreenState
+                                        ._isImageLikeSticker(sticker)
                                     ? Padding(
                                         padding: const EdgeInsets.all(6),
-                                        child: Image.asset(
+                                        child: _ImageEditorScreenState
+                                            ._buildStickerVisual(
                                           sticker,
+                                          fontSize: 30,
                                           fit: BoxFit.contain,
                                           filterQuality: FilterQuality.low,
                                         ),
@@ -6916,8 +7205,8 @@ class _TopActionButton extends StatelessWidget {
   }
 }
 
-class _BackgroundRefineScreen extends StatefulWidget {
-  const _BackgroundRefineScreen({
+class _MagicToolScreen extends StatefulWidget {
+  const _MagicToolScreen({
     required this.currentBytes,
     required this.originalBytes,
   });
@@ -6926,8 +7215,7 @@ class _BackgroundRefineScreen extends StatefulWidget {
   final Uint8List originalBytes;
 
   @override
-  State<_BackgroundRefineScreen> createState() =>
-      _BackgroundRefineScreenState();
+  State<_MagicToolScreen> createState() => _MagicToolScreenState();
 }
 
 class _CropOverlayPainter extends CustomPainter {
@@ -6982,27 +7270,45 @@ class _CropOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
+class _MagicToolScreenState extends State<_MagicToolScreen> {
   final OfflineBackgroundRemovalService _service =
       const OfflineBackgroundRemovalService();
 
-  late Uint8List _workingBytes = widget.currentBytes;
+  late Uint8List _workingBytes = Uint8List.fromList(widget.currentBytes);
+  late final Uint8List _originalBytes = Uint8List.fromList(widget.originalBytes);
   final List<Uint8List> _undoHistory = <Uint8List>[];
   final List<Uint8List> _redoHistory = <Uint8List>[];
   BackgroundRefineMode _mode = BackgroundRefineMode.erase;
   double _brushRadius = 26;
+  double _brushSoftness = 0.45;
+  double _brushStrength = 0.9;
+  double _edgeSmoothStrength = 2;
   double _featherStrength = 2;
+  double _expandShrinkAmount = 1;
   bool _isApplying = false;
   bool _showOriginalPreview = false;
   Rect? _imageRect;
   Size? _imagePixelSize;
+  late Size? _workingPixelSize = _decodePixelSize(_workingBytes);
+  late final Size? _originalPixelSize = _decodePixelSize(_originalBytes);
   final List<Offset> _activeStroke = <Offset>[];
   int _strokeRevision = 0;
 
   bool get _canUndo => _undoHistory.isNotEmpty;
   bool get _canRedo => _redoHistory.isNotEmpty;
+  Uint8List get _displayBytes => _showOriginalPreview ? _originalBytes : _workingBytes;
+  Size? get _displayPixelSize =>
+      _showOriginalPreview ? _originalPixelSize : _workingPixelSize;
 
-  void _pushRefineUndo() {
+  static Size? _decodePixelSize(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null || decoded.width <= 0 || decoded.height <= 0) {
+      return null;
+    }
+    return Size(decoded.width.toDouble(), decoded.height.toDouble());
+  }
+
+  void _pushMagicUndo() {
     _undoHistory.add(_workingBytes);
     if (_undoHistory.length > 20) {
       _undoHistory.removeAt(0);
@@ -7017,6 +7323,8 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
 
     final stroke = List<Offset>.from(_activeStroke);
     final brushRadius = _brushRadius;
+    final brushSoftness = _brushSoftness;
+    final brushStrength = _brushStrength;
     setState(() {
       _activeStroke.clear();
       _strokeRevision++;
@@ -7024,19 +7332,22 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
     });
 
     try {
-      _pushRefineUndo();
+      _pushMagicUndo();
       final refinedBytes = await _service.applyBrushEdits(
         currentBytes: _workingBytes,
         originalBytes: widget.originalBytes,
         mode: _mode,
         points: stroke,
         brushRadius: brushRadius,
+        softness: brushSoftness,
+        strength: brushStrength,
       );
       if (!mounted) {
         return;
       }
       setState(() {
         _workingBytes = refinedBytes;
+        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
       });
     } finally {
       if (mounted) {
@@ -7047,24 +7358,57 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
     }
   }
 
-  void _handleRefineUndo() {
+  void _handleMagicUndo() {
     if (!_canUndo || _isApplying) {
       return;
     }
     setState(() {
       _redoHistory.add(_workingBytes);
       _workingBytes = _undoHistory.removeLast();
+      _workingPixelSize = _decodePixelSize(_workingBytes) ?? _workingPixelSize;
     });
   }
 
-  void _handleRefineRedo() {
+  void _handleMagicRedo() {
     if (!_canRedo || _isApplying) {
       return;
     }
     setState(() {
       _undoHistory.add(_workingBytes);
       _workingBytes = _redoHistory.removeLast();
+      _workingPixelSize = _decodePixelSize(_workingBytes) ?? _workingPixelSize;
     });
+  }
+
+  Future<void> _applyEdgeSmooth() async {
+    if (_isApplying) {
+      return;
+    }
+
+    setState(() {
+      _isApplying = true;
+    });
+
+    try {
+      _pushMagicUndo();
+      final refinedBytes = await _service.applyEdgeSmooth(
+        currentBytes: _workingBytes,
+        strength: _edgeSmoothStrength,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _workingBytes = refinedBytes;
+        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isApplying = false;
+        });
+      }
+    }
   }
 
   Future<void> _applyFeather() async {
@@ -7077,7 +7421,7 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
     });
 
     try {
-      _pushRefineUndo();
+      _pushMagicUndo();
       final refinedBytes = await _service.applyEdgeFeather(
         currentBytes: _workingBytes,
         strength: _featherStrength,
@@ -7087,6 +7431,7 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
       }
       setState(() {
         _workingBytes = refinedBytes;
+        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
       });
     } finally {
       if (mounted) {
@@ -7097,13 +7442,46 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
     }
   }
 
-  void _resetRefineImage() {
+  Future<void> _applyExpandShrink(bool expand) async {
     if (_isApplying) {
       return;
     }
-    _pushRefineUndo();
+
+    setState(() {
+      _isApplying = true;
+    });
+
+    try {
+      _pushMagicUndo();
+      final refinedBytes = await _service.applyMaskExpansion(
+        currentBytes: _workingBytes,
+        amount: expand ? _expandShrinkAmount : -_expandShrinkAmount,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _workingBytes = refinedBytes;
+        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isApplying = false;
+        });
+      }
+    }
+  }
+
+  void _resetMagicImage() {
+    if (_isApplying) {
+      return;
+    }
     setState(() {
       _workingBytes = widget.currentBytes;
+      _workingPixelSize = _decodePixelSize(widget.currentBytes) ?? _workingPixelSize;
+      _undoHistory.clear();
+      _redoHistory.clear();
       _activeStroke.clear();
       _strokeRevision++;
     });
@@ -7139,20 +7517,25 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0B1120),
         foregroundColor: Colors.white,
-        title: const Text('Refine Cutout'),
+        title: const Text('Magic Tool'),
+        leading: IconButton(
+          onPressed: _isApplying ? null : () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+        ),
         actions: <Widget>[
           IconButton(
-            onPressed: _canUndo && !_isApplying ? _handleRefineUndo : null,
+            onPressed: _canUndo && !_isApplying ? _handleMagicUndo : null,
             icon: const Icon(Icons.undo_rounded),
             tooltip: 'Undo',
           ),
           IconButton(
-            onPressed: _canRedo && !_isApplying ? _handleRefineRedo : null,
+            onPressed: _canRedo && !_isApplying ? _handleMagicRedo : null,
             icon: const Icon(Icons.redo_rounded),
             tooltip: 'Redo',
           ),
           IconButton(
-            onPressed: _isApplying ? null : _resetRefineImage,
+            onPressed: _isApplying ? null : _resetMagicImage,
             icon: const Icon(Icons.restart_alt_rounded),
             tooltip: 'Reset',
           ),
@@ -7160,7 +7543,7 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
             onPressed: _isApplying
                 ? null
                 : () => Navigator.of(context).pop(_workingBytes),
-            child: const Text('Save'),
+            child: const Text('Apply'),
           ),
         ],
       ),
@@ -7170,123 +7553,128 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
-                  return Center(
-                    child: Image.memory(
-                      _showOriginalPreview
-                          ? widget.originalBytes
-                          : _workingBytes,
-                      gaplessPlayback: true,
-                      frameBuilder:
-                          (
-                            BuildContext context,
-                            Widget child,
-                            int? frame,
-                            bool wasSynchronouslyLoaded,
-                          ) {
-                            if (frame == null && !wasSynchronouslyLoaded) {
-                              return const SizedBox.shrink();
-                            }
-                            final image = child as RawImage;
-                            final uiImage = image.image;
-                            if (uiImage == null) {
-                              return const SizedBox.shrink();
-                            }
-                            final rawWidth = uiImage.width.toDouble();
-                            final rawHeight = uiImage.height.toDouble();
-                            final scale = math.min(
-                              constraints.maxWidth / rawWidth,
-                              constraints.maxHeight / rawHeight,
-                            );
-                            final displayWidth = rawWidth * scale;
-                            final displayHeight = rawHeight * scale;
-                            final left =
-                                (constraints.maxWidth - displayWidth) / 2;
-                            final top =
-                                (constraints.maxHeight - displayHeight) / 2;
-                            _imageRect = Rect.fromLTWH(
-                              left,
-                              top,
-                              displayWidth,
-                              displayHeight,
-                            );
-                            _imagePixelSize = Size(rawWidth, rawHeight);
+                  final previewBytes = _displayBytes;
+                  final previewPixelSize = _displayPixelSize;
+                  if (previewPixelSize == null) {
+                    return const Center(
+                      child: Text(
+                        'Selected image preview load kaaledu',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
 
-                            return Stack(
-                              children: <Widget>[
-                                Positioned.fromRect(
-                                  rect: _imageRect!,
-                                  child: const CustomPaint(
-                                    painter: _TransparencyGridPainter(),
-                                  ),
+                  final rawWidth = previewPixelSize.width;
+                  final rawHeight = previewPixelSize.height;
+                  final scale = math.min(
+                    constraints.maxWidth / rawWidth,
+                    constraints.maxHeight / rawHeight,
+                  );
+                  final displayWidth = rawWidth * scale;
+                  final displayHeight = rawHeight * scale;
+                  final left = (constraints.maxWidth - displayWidth) / 2;
+                  final top = (constraints.maxHeight - displayHeight) / 2;
+                  _imageRect = Rect.fromLTWH(
+                    left,
+                    top,
+                    displayWidth,
+                    displayHeight,
+                  );
+                  _imagePixelSize = previewPixelSize;
+
+                  return Center(
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: Stack(
+                        children: <Widget>[
+                          Positioned.fromRect(
+                            rect: _imageRect!,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0x0DFFFFFF),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0x22334155),
                                 ),
-                                Positioned.fromRect(
-                                  rect: _imageRect!,
-                                  child: child,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.memory(
+                                  previewBytes,
+                                  fit: BoxFit.contain,
+                                  gaplessPlayback: true,
+                                  filterQuality: FilterQuality.high,
                                 ),
-                                Positioned.fill(
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.translucent,
-                                    onPanStart: _isApplying
-                                        ? null
-                                        : (details) {
-                                            final point = _toImageSpace(
-                                              details.localPosition,
-                                            );
-                                            if (point == null) {
-                                              return;
-                                            }
-                                            setState(() {
-                                              _activeStroke
-                                                ..clear()
-                                                ..add(point);
-                                              _strokeRevision++;
-                                            });
-                                          },
-                                    onPanUpdate: _isApplying
-                                        ? null
-                                        : (details) {
-                                            final point = _toImageSpace(
-                                              details.localPosition,
-                                            );
-                                            if (point == null) {
-                                              return;
-                                            }
-                                            setState(() {
-                                              _activeStroke.add(point);
-                                              _strokeRevision++;
-                                            });
-                                          },
-                                    onPanEnd: _isApplying
-                                        ? null
-                                        : (_) {
-                                            _applyActiveStroke();
-                                          },
-                                    child: CustomPaint(
-                                      painter: _BrushPreviewPainter(
-                                        imageRect: _imageRect,
-                                        imagePixelSize: _imagePixelSize,
-                                        points: _activeStroke,
-                                        strokeRevision: _strokeRevision,
-                                        brushRadius: _brushRadius,
-                                        mode: _mode,
-                                      ),
-                                    ),
-                                  ),
+                              ),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onPanStart: _isApplying
+                                  ? null
+                                  : (details) {
+                                      final point = _toImageSpace(
+                                        details.localPosition,
+                                      );
+                                      if (point == null) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        _activeStroke
+                                          ..clear()
+                                          ..add(point);
+                                        _strokeRevision++;
+                                      });
+                                    },
+                              onPanUpdate: _isApplying
+                                  ? null
+                                  : (details) {
+                                      final point = _toImageSpace(
+                                        details.localPosition,
+                                      );
+                                      if (point == null) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        _activeStroke.add(point);
+                                        _strokeRevision++;
+                                      });
+                                    },
+                              onPanEnd: _isApplying
+                                  ? null
+                                  : (_) {
+                                      _applyActiveStroke();
+                                    },
+                              onPanCancel: _isApplying
+                                  ? null
+                                  : _applyActiveStroke,
+                              child: CustomPaint(
+                                painter: _BrushPreviewPainter(
+                                  imageRect: _imageRect,
+                                  imagePixelSize: _imagePixelSize,
+                                  points: _activeStroke,
+                                  strokeRevision: _strokeRevision,
+                                  brushRadius: _brushRadius,
+                                  brushSoftness: _brushSoftness,
+                                  brushStrength: _brushStrength,
+                                  mode: _mode,
                                 ),
-                                if (_isApplying)
-                                  Positioned.fill(
-                                    child: ColoredBox(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.18,
-                                      ),
-                                      child: const Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            );
-                          },
+                              ),
+                            ),
+                          ),
+                          if (_isApplying)
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -7322,7 +7710,7 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
                             border: Border.all(color: const Color(0xFF334155)),
                           ),
                           child: Text(
-                            _showOriginalPreview ? 'Original' : 'Hold: Preview',
+                            _showOriginalPreview ? 'Before' : 'Hold: Before',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -7359,18 +7747,10 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Tip: transparent edges ni check cheyyadaniki checkerboard preview use cheyyandi.',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
                   Row(
                     children: <Widget>[
                       const Text(
-                        'Brush',
+                        'Brush Size',
                         style: TextStyle(color: Colors.white70),
                       ),
                       Expanded(
@@ -7390,6 +7770,90 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
                       Text(
                         _brushRadius.round().toString(),
                         style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      const Text(
+                        'Softness',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: _brushSoftness,
+                          min: 0,
+                          max: 1,
+                          onChanged: _isApplying
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _brushSoftness = value;
+                                  });
+                                },
+                        ),
+                      ),
+                      Text(
+                        '${(_brushSoftness * 100).round()}%',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      const Text(
+                        'Strength',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: _brushStrength,
+                          min: 0.1,
+                          max: 1,
+                          onChanged: _isApplying
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _brushStrength = value;
+                                  });
+                                },
+                        ),
+                      ),
+                      Text(
+                        '${(_brushStrength * 100).round()}%',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      const Text(
+                        'Edge Smooth',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: _edgeSmoothStrength,
+                          min: 1,
+                          max: 6,
+                          divisions: 5,
+                          onChanged: _isApplying
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _edgeSmoothStrength = value;
+                                  });
+                                },
+                        ),
+                      ),
+                      Text(
+                        _edgeSmoothStrength.round().toString(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: _isApplying ? null : _applyEdgeSmooth,
+                        child: const Text('Apply'),
                       ),
                     ],
                   ),
@@ -7425,6 +7889,83 @@ class _BackgroundRefineScreenState extends State<_BackgroundRefineScreen> {
                       ),
                     ],
                   ),
+                  Row(
+                    children: <Widget>[
+                      const Text(
+                        'Expand/Shrink',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: _expandShrinkAmount,
+                          min: 1,
+                          max: 8,
+                          divisions: 7,
+                          onChanged: _isApplying
+                              ? null
+                              : (value) {
+                                  setState(() {
+                                    _expandShrinkAmount = value;
+                                  });
+                                },
+                        ),
+                      ),
+                      Text(
+                        _expandShrinkAmount.round().toString(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isApplying
+                              ? null
+                              : () => _applyExpandShrink(false),
+                          child: const Text('Shrink'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _isApplying
+                              ? null
+                              : () => _applyExpandShrink(true),
+                          child: const Text('Expand'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isApplying
+                              ? null
+                              : () => Navigator.of(context).maybePop(),
+                          child: const Text('Back'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isApplying ? null : _resetMagicImage,
+                          child: const Text('Reset'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: _isApplying
+                              ? null
+                              : () => Navigator.of(context).pop(_workingBytes),
+                          child: const Text('Apply'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -7442,6 +7983,8 @@ class _BrushPreviewPainter extends CustomPainter {
     required this.points,
     required this.strokeRevision,
     required this.brushRadius,
+    required this.brushSoftness,
+    required this.brushStrength,
     required this.mode,
   });
 
@@ -7450,6 +7993,8 @@ class _BrushPreviewPainter extends CustomPainter {
   final List<Offset> points;
   final int strokeRevision;
   final double brushRadius;
+  final double brushSoftness;
+  final double brushStrength;
   final BackgroundRefineMode mode;
 
   @override
@@ -7464,13 +8009,14 @@ class _BrushPreviewPainter extends CustomPainter {
     final scaleY = rect.height / pixelSize.height;
     final scale = math.min(scaleX, scaleY);
     final radius = brushRadius * scale;
+    final innerRadius = radius * (1 - brushSoftness.clamp(0.0, 1.0));
     final color = mode == BackgroundRefineMode.erase
         ? const Color(0x66EF4444)
         : const Color(0x663B82F6);
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(radius * 2, 1)
+      ..strokeWidth = math.max(radius * 2 * brushStrength.clamp(0.1, 1.0), 1)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
@@ -7501,6 +8047,14 @@ class _BrushPreviewPainter extends CustomPainter {
         ..color = color.withValues(alpha: 0.25)
         ..style = PaintingStyle.fill,
     );
+    canvas.drawCircle(
+      displayLast,
+      innerRadius.clamp(0.0, radius),
+      Paint()
+        ..color = color.withValues(alpha: 0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
   }
 
   @override
@@ -7509,38 +8063,11 @@ class _BrushPreviewPainter extends CustomPainter {
         oldDelegate.imagePixelSize != imagePixelSize ||
         oldDelegate.strokeRevision != strokeRevision ||
         oldDelegate.brushRadius != brushRadius ||
+        oldDelegate.brushSoftness != brushSoftness ||
+        oldDelegate.brushStrength != brushStrength ||
         oldDelegate.mode != mode ||
         oldDelegate.points != points;
   }
-}
-
-class _TransparencyGridPainter extends CustomPainter {
-  const _TransparencyGridPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const tile = 18.0;
-    final lightPaint = Paint()..color = const Color(0xFFF8FAFC);
-    final darkPaint = Paint()..color = const Color(0xFFE2E8F0);
-
-    for (double y = 0; y < size.height; y += tile) {
-      for (double x = 0; x < size.width; x += tile) {
-        final isDark = (((x / tile).floor() + (y / tile).floor()) % 2) == 0;
-        canvas.drawRect(
-          Rect.fromLTWH(
-            x,
-            y,
-            math.min(tile, size.width - x),
-            math.min(tile, size.height - y),
-          ),
-          isDark ? darkPaint : lightPaint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ToolItem extends StatelessWidget {

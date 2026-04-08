@@ -3,9 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
+import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
+import 'package:mana_poster/features/prehome/models/premium_template_catalog.dart';
+import 'package:mana_poster/features/prehome/models/remote_premium_template.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/premium_template_access_service.dart';
+import 'package:mana_poster/features/prehome/services/premium_template_remote_service.dart';
+import 'package:mana_poster/features/prehome/services/template_entitlement_backend_service.dart';
+import 'package:mana_poster/features/prehome/services/template_purchase_gateway.dart';
+import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 
 enum _HomeTab { free, premium }
 
@@ -14,15 +23,27 @@ class _TemplateItem {
     required this.titleTe,
     required this.titleHi,
     required this.titleEn,
-    required this.imageUrl,
+    this.imageUrl,
+    this.imageAssetPath,
     this.price,
+    this.templateId,
+    this.templateDocumentSource,
+    this.productId,
+    this.fallbackProductIds = const <String>[],
+    this.pageConfig,
   });
 
   final String titleTe;
   final String titleHi;
   final String titleEn;
-  final String imageUrl;
+  final String? imageUrl;
+  final String? imageAssetPath;
   final int? price;
+  final String? templateId;
+  final String? templateDocumentSource;
+  final String? productId;
+  final List<String> fallbackProductIds;
+  final EditorPageConfig? pageConfig;
 
   String titleFor(AppLanguage language) => switch (language) {
     AppLanguage.telugu => titleTe,
@@ -54,10 +75,21 @@ class _HomeScreenState extends State<HomeScreen> {
   _HomeTab _selectedTab = _HomeTab.free;
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService();
+  final PremiumTemplateAccessService _premiumTemplateAccessService =
+      const PremiumTemplateAccessService();
+  final PremiumTemplateRemoteService _premiumTemplateRemoteService =
+      const PremiumTemplateRemoteService();
+  final TemplateEntitlementBackendService _templateEntitlementBackendService =
+      TemplateEntitlementBackendService();
+  final TemplatePurchaseGateway _templatePurchaseGateway =
+      TemplatePurchaseGateway();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _blinkOn = true;
   Timer? _blinkTimer;
+  Set<String> _unlockedPremiumTemplateIds = <String>{};
+  List<RemotePremiumTemplate> _remotePremiumTemplates =
+      const <RemotePremiumTemplate>[];
 
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
@@ -83,6 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
+  // ignore: unused_field
   static const List<_TemplateItem> _premiumTemplates = <_TemplateItem>[
     _TemplateItem(
       titleTe: 'ప్రీమియమ్ పొలిటికల్ డిజైన్',
@@ -110,6 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
+  List<_TemplateItem> get _premiumTemplateItems => premiumPoliticalTemplates
+      .map(_mapLocalPremiumTemplate)
+      .toList(growable: false);
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +156,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       setState(() => _blinkOn = !_blinkOn);
     });
+    unawaited(_loadUnlockedPremiumTemplates());
+    unawaited(_loadRemotePremiumTemplates());
+    unawaited(_syncUnlockedTemplatesFromBackend());
   }
 
   @override
@@ -176,12 +216,261 @@ class _HomeScreenState extends State<HomeScreen> {
     ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
   }
 
+  Future<void> _loadUnlockedPremiumTemplates() async {
+    final unlocked = await _premiumTemplateAccessService
+        .loadUnlockedTemplateIds();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _unlockedPremiumTemplateIds = unlocked);
+  }
+
+  Future<void> _loadRemotePremiumTemplates() async {
+    final remoteTemplates = await _premiumTemplateRemoteService
+        .fetchPoliticalTemplates();
+    if (!mounted || remoteTemplates.isEmpty) {
+      return;
+    }
+    setState(() => _remotePremiumTemplates = remoteTemplates);
+  }
+
+  Future<void> _syncUnlockedTemplatesFromBackend() async {
+    final result = await _templateEntitlementBackendService.fetchEntitlements();
+    if (!mounted || !result.isSuccess || result.unlockedTemplateIds.isEmpty) {
+      return;
+    }
+    final unlocked = await _premiumTemplateAccessService.unlockTemplates(
+      result.unlockedTemplateIds,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _unlockedPremiumTemplateIds = unlocked);
+  }
+
+  _TemplateItem _mapLocalPremiumTemplate(PremiumTemplateDefinition template) {
+    return _TemplateItem(
+      titleTe: template.titleTe,
+      titleHi: template.titleHi,
+      titleEn: template.titleEn,
+      imageAssetPath: template.previewAssetPath,
+      price: template.priceInr,
+      templateId: template.id,
+      templateDocumentSource: template.templateDocumentAssetPath,
+      productId: template.productId,
+      pageConfig: template.pageConfig,
+    );
+  }
+
+  _TemplateItem _mapRemotePremiumTemplate(RemotePremiumTemplate template) {
+    return _TemplateItem(
+      titleTe: template.titleTe,
+      titleHi: template.titleHi,
+      titleEn: template.titleEn,
+      imageUrl: template.previewUrl,
+      price: template.priceInr,
+      templateId: template.id,
+      templateDocumentSource: template.templateDocumentSource,
+      productId: template.productId,
+      fallbackProductIds: template.fallbackProductIds,
+      pageConfig: template.pageConfig,
+    );
+  }
+
+  bool _isTemplateUnlocked(_TemplateItem item) {
+    final templateId = item.templateId;
+    if (templateId == null || templateId.isEmpty) {
+      return false;
+    }
+    return _unlockedPremiumTemplateIds.contains(templateId);
+  }
+
+  Future<void> _openPremiumTemplate(_TemplateItem item) async {
+    final documentAsset = item.templateDocumentSource;
+    final pageConfig = item.pageConfig;
+    if (documentAsset == null || pageConfig == null) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ImageEditorScreen(
+          pageConfig: pageConfig,
+          templateDocumentSource: documentAsset,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handlePremiumTemplateAction(_TemplateItem item) async {
+    final templateId = item.templateId;
+    final productId = item.productId;
+    if (templateId == null || templateId.isEmpty) {
+      return;
+    }
+
+    if (_isTemplateUnlocked(item)) {
+      await _openPremiumTemplate(item);
+      return;
+    }
+    if (productId == null || productId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Template product id configure cheyyali')),
+      );
+      return;
+    }
+
+    final outcome = await _templatePurchaseGateway.purchaseTemplate(
+      productId: productId,
+      fallbackProductIds: item.fallbackProductIds,
+    );
+    if (!mounted) {
+      return;
+    }
+    switch (outcome.result) {
+      case PurchaseFlowResult.success:
+        final purchasedProductId = outcome.evidence?.productId ?? productId;
+        Set<String> unlocked;
+        final evidence = outcome.evidence;
+        if (evidence != null && _templateEntitlementBackendService.isConfigured) {
+          final verifyResult = await _templateEntitlementBackendService
+              .verifyPurchase(templateId: templateId, evidence: evidence);
+          if (!mounted) {
+            return;
+          }
+          if (verifyResult.isSuccess) {
+            unlocked = await _premiumTemplateAccessService.unlockTemplates(
+              verifyResult.unlockedTemplateIds.isEmpty
+                  ? <String>{templateId}
+                  : verifyResult.unlockedTemplateIds,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  verifyResult.message?.isNotEmpty == true
+                      ? 'Verification fail: ${verifyResult.message}'
+                      : 'Payment verify avvaledu',
+                ),
+              ),
+            );
+            return;
+          }
+        } else {
+          unlocked = await _premiumTemplateAccessService.unlockTemplateForProduct(
+            templateId: templateId,
+            productId: purchasedProductId,
+          );
+        }
+        if (!mounted) {
+          return;
+        }
+        setState(() => _unlockedPremiumTemplateIds = unlocked);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment success. Edit unlocked.')),
+        );
+        await _openPremiumTemplate(item);
+      case PurchaseFlowResult.cancelled:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment cancel chesaru')),
+        );
+      case PurchaseFlowResult.billingUnavailable:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Billing service available ledu')),
+        );
+      case PurchaseFlowResult.productNotFound:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Play Console product dorakaledu')),
+        );
+      case PurchaseFlowResult.timedOut:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment response timeout ayyindi')),
+        );
+      case PurchaseFlowResult.failed:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment fail ayyindi')),
+        );
+      case PurchaseFlowResult.nothingToRestore:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Purchase restore avvaledu')),
+        );
+    }
+  }
+
+  Future<void> _handleRestorePremiumPurchases(
+    List<_TemplateItem> premiumTemplates,
+  ) async {
+    final productToTemplateId = <String, String>{};
+    for (final item in premiumTemplates) {
+      final templateId = item.templateId;
+      final productId = item.productId;
+      if (templateId == null ||
+          templateId.isEmpty ||
+          productId == null ||
+          productId.isEmpty) {
+        continue;
+      }
+      productToTemplateId[productId] = templateId;
+      for (final fallbackProductId in item.fallbackProductIds) {
+        if (fallbackProductId.isNotEmpty) {
+          productToTemplateId[fallbackProductId] = templateId;
+        }
+      }
+    }
+
+    if (productToTemplateId.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restore cheyadaniki products levu')),
+      );
+      return;
+    }
+
+    final restoredProductIds = await _templatePurchaseGateway
+        .restoreTemplateProductIds(productToTemplateId.keys.toSet());
+    if (!mounted) {
+      return;
+    }
+    if (restoredProductIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restore purchases dorakaledu')),
+      );
+      return;
+    }
+
+    final restoredTemplateIds = restoredProductIds
+        .map((productId) => productToTemplateId[productId])
+        .whereType<String>()
+        .toSet();
+    final unlocked = await _premiumTemplateAccessService.unlockTemplates(
+      restoredTemplateIds,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _unlockedPremiumTemplateIds = unlocked);
+    unawaited(_syncUnlockedTemplatesFromBackend());
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${restoredTemplateIds.length} premium design(s) restore ayyayi',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
     final language = context.currentLanguage;
     final isPremiumTab = _selectedTab == _HomeTab.premium;
-    final templates = (isPremiumTab ? _premiumTemplates : _freeTemplates)
+    final premiumTemplates = _remotePremiumTemplates.isNotEmpty
+        ? _remotePremiumTemplates
+              .map(_mapRemotePremiumTemplate)
+              .toList(growable: false)
+        : _premiumTemplateItems;
+    final templates = (isPremiumTab ? premiumTemplates : _freeTemplates)
         .where((item) => _matchesTemplate(item, language))
         .toList(growable: false);
 
@@ -302,6 +591,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                if (isPremiumTab)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            _handleRestorePremiumPurchases(premiumTemplates),
+                        icon: const Icon(Icons.restore_rounded),
+                        label: const Text('Restore Purchases'),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 14),
                 if (templates.isEmpty)
                   const Padding(
@@ -320,11 +622,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: RepaintBoundary(
                         child: _TemplateFeedItem(
                           key: ValueKey<String>(
-                            '${item.titleEn}-${item.imageUrl}-$isPremiumTab',
+                            '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-$isPremiumTab',
                           ),
                           item: item,
                           isPremium: isPremiumTab,
+                          isUnlocked: !isPremiumTab || _isTemplateUnlocked(item),
                           language: language,
+                          onPrimaryAction: isPremiumTab
+                              ? () => _handlePremiumTemplateAction(item)
+                              : null,
                         ),
                       ),
                     ),
@@ -810,12 +1116,16 @@ class _TemplateFeedItem extends StatelessWidget {
     super.key,
     required this.item,
     required this.isPremium,
+    required this.isUnlocked,
     required this.language,
+    this.onPrimaryAction,
   });
 
   final _TemplateItem item;
   final bool isPremium;
+  final bool isUnlocked;
   final AppLanguage language;
+  final VoidCallback? onPrimaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -829,33 +1139,44 @@ class _TemplateFeedItem extends StatelessWidget {
           ClipRect(
             child: AspectRatio(
               aspectRatio: 4 / 5,
-              child: Image.network(
-                item.imageUrl,
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
-                loadingBuilder:
-                    (
-                      BuildContext context,
-                      Widget child,
-                      ImageChunkEvent? loadingProgress,
-                    ) {
-                      if (loadingProgress == null) {
-                        return child;
-                      }
-                      return const _ImageLoadingState();
-                    },
-                errorBuilder:
-                    (
-                      BuildContext context,
-                      Object error,
-                      StackTrace? stackTrace,
-                    ) {
-                      return const _ImageErrorState(
+              child: item.imageAssetPath != null
+                  ? Image.asset(
+                      item.imageAssetPath!,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (_, _, _) => const _ImageErrorState(
                         title: 'Template image unavailable',
                         subtitle: 'Please refresh or try another template.',
-                      );
-                    },
-              ),
+                      ),
+                    )
+                  : Image.network(
+                      item.imageUrl ?? '',
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      loadingBuilder:
+                          (
+                            BuildContext context,
+                            Widget child,
+                            ImageChunkEvent? loadingProgress,
+                          ) {
+                            if (loadingProgress == null) {
+                              return child;
+                            }
+                            return const _ImageLoadingState();
+                          },
+                      errorBuilder:
+                          (
+                            BuildContext context,
+                            Object error,
+                            StackTrace? stackTrace,
+                          ) {
+                            return const _ImageErrorState(
+                              title: 'Template image unavailable',
+                              subtitle:
+                                  'Please refresh or try another template.',
+                            );
+                          },
+                    ),
             ),
           ),
           const SizedBox(height: 12),
@@ -893,7 +1214,7 @@ class _TemplateFeedItem extends StatelessWidget {
                 if (item.price != null) const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () {},
+                    onPressed: onPrimaryAction,
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF0F172A),
                       foregroundColor: Colors.white,
@@ -903,7 +1224,11 @@ class _TemplateFeedItem extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(strings.buyLabel),
+                    child: Text(
+                      isUnlocked
+                          ? 'Edit'
+                          : 'Buy ₹${item.price ?? 499}',
+                    ),
                   ),
                 ),
               ],

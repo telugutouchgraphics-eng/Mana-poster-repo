@@ -1,0 +1,108 @@
+{
+  "templateId": "political_tholi_yekadasi_copy",
+  "category": "political",
+  "storageUploads": {
+    "preview": {
+      "localPath": "assets/templates/premium/political/previews/political_tholi_yekadasi_copy.png",
+      "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/preview.png"
+    },
+    "document": {
+      "localPath": "assets/templates/premium/political/documents/political_tholi_yekadasi_copy.json",
+      "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/document.json"
+    },
+    "layers": [
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_001.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_001.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_002.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_002.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_003.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_003.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_004.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_004.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_005.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_005.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_006.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_006.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_007.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_007.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_008.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_008.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_009.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_009.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_010.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_010.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_011.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_011.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_012.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_012.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_013.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_013.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_014.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_014.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_015.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_015.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_016.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_016.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_017.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_017.png"
+      },
+      {
+        "localPath": "assets/templates/premium/political/layers/political_tholi_yekadasi_copy/layer_018.png",
+        "storagePath": "premium_templates/political/political_tholi_yekadasi_copy/layers/layer_018.png"
+      }
+    ]
+  },
+  "firestore": {
+    "collection": "premium_templates",
+    "documentId": "political_tholi_yekadasi_copy",
+    "payload": {
+      "category": "political",
+      "isActive": true,
+      "sortOrder": 1,
+      "titleEn": "Tholi Ekadasi Premium Design",
+      "titleTe": "థోలి ఏకాదశి ప్రీమియం డిజైన్",
+      "titleHi": "थोली एकादशी प्रीमियम डिज़ाइन",
+      "priceInr": 499,
+      "productId": "premium_template_political_tholi_yekadasi_copy",
+      "widthPx": 3000,
+      "heightPx": 3000,
+      "previewStoragePath": "premium_templates/political/political_tholi_yekadasi_copy/preview.png",
+      "templateDocumentStoragePath": "premium_templates/political/political_tholi_yekadasi_copy/document.json",
+      "layerStoragePrefix": "premium_templates/political/political_tholi_yekadasi_copy/layers",
+      "layerCount": 18
+    }
+  }
+}

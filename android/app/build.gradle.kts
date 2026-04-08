@@ -70,3 +70,6 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+}
