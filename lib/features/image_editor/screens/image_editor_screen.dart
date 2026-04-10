@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -29,6 +30,172 @@ enum _ExportImageFormat { png, pngTransparent, jpg }
 
 enum _EraserMode { erase, restore }
 enum _EraserControl { brushSize, softness, strength }
+
+@immutable
+class _SnapGuideState {
+  const _SnapGuideState({
+    required this.showVerticalGuide,
+    required this.showHorizontalGuide,
+  });
+
+  const _SnapGuideState.none()
+    : showVerticalGuide = false,
+      showHorizontalGuide = false;
+
+  final bool showVerticalGuide;
+  final bool showHorizontalGuide;
+
+  bool get isVisible => showVerticalGuide || showHorizontalGuide;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _SnapGuideState &&
+        other.showVerticalGuide == showVerticalGuide &&
+        other.showHorizontalGuide == showHorizontalGuide;
+  }
+
+  @override
+  int get hashCode => Object.hash(showVerticalGuide, showHorizontalGuide);
+}
+
+@immutable
+class _AdjustSessionState {
+  const _AdjustSessionState({
+    required this.brightness,
+    required this.contrast,
+    required this.saturation,
+    required this.blur,
+  });
+
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double blur;
+
+  _AdjustSessionState copyWith({
+    double? brightness,
+    double? contrast,
+    double? saturation,
+    double? blur,
+  }) {
+    return _AdjustSessionState(
+      brightness: brightness ?? this.brightness,
+      contrast: contrast ?? this.contrast,
+      saturation: saturation ?? this.saturation,
+      blur: blur ?? this.blur,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _AdjustSessionState &&
+        (other.brightness - brightness).abs() < 0.0001 &&
+        (other.contrast - contrast).abs() < 0.0001 &&
+        (other.saturation - saturation).abs() < 0.0001 &&
+        (other.blur - blur).abs() < 0.0001;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    brightness.toStringAsFixed(4),
+    contrast.toStringAsFixed(4),
+    saturation.toStringAsFixed(4),
+    blur.toStringAsFixed(4),
+  );
+}
+
+@immutable
+class _SelectedPhotoRenderState {
+  const _SelectedPhotoRenderState({
+    required this.layerId,
+    required this.bytes,
+    required this.opacity,
+    required this.flipHorizontally,
+    required this.flipVertically,
+    required this.brightness,
+    required this.contrast,
+    required this.saturation,
+    required this.blur,
+  });
+
+  final String layerId;
+  final Uint8List bytes;
+  final double opacity;
+  final bool flipHorizontally;
+  final bool flipVertically;
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double blur;
+
+  String get cacheKey =>
+      '${_photoBytesSignature(bytes)}_'
+      '${brightness.toStringAsFixed(3)}_'
+      '${contrast.toStringAsFixed(3)}_'
+      '${saturation.toStringAsFixed(3)}_'
+      '${blur.toStringAsFixed(3)}_'
+      '${opacity.toStringAsFixed(3)}_'
+      '${flipHorizontally ? 1 : 0}_${flipVertically ? 1 : 0}';
+
+  @override
+  bool operator ==(Object other) {
+    return other is _SelectedPhotoRenderState &&
+        other.layerId == layerId &&
+        identical(other.bytes, bytes) &&
+        (other.opacity - opacity).abs() < 0.0001 &&
+        other.flipHorizontally == flipHorizontally &&
+        other.flipVertically == flipVertically &&
+        (other.brightness - brightness).abs() < 0.0001 &&
+        (other.contrast - contrast).abs() < 0.0001 &&
+        (other.saturation - saturation).abs() < 0.0001 &&
+        (other.blur - blur).abs() < 0.0001;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    layerId,
+    identityHashCode(bytes),
+    opacity.toStringAsFixed(4),
+    flipHorizontally,
+    flipVertically,
+    brightness.toStringAsFixed(4),
+    contrast.toStringAsFixed(4),
+    saturation.toStringAsFixed(4),
+    blur.toStringAsFixed(4),
+  );
+}
+
+@immutable
+class _EraserStrokeSegment {
+  const _EraserStrokeSegment({
+    required this.startNormalized,
+    required this.endNormalized,
+    required this.mode,
+    required this.brushSize,
+    required this.softness,
+    required this.strength,
+  });
+
+  final Offset startNormalized;
+  final Offset endNormalized;
+  final _EraserMode mode;
+  final double brushSize;
+  final double softness;
+  final double strength;
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'sx': startNormalized.dx,
+      'sy': startNormalized.dy,
+      'ex': endNormalized.dx,
+      'ey': endNormalized.dy,
+      'mode': mode.name,
+      'brushSize': brushSize,
+      'softness': softness,
+      'strength': strength,
+    };
+  }
+}
 
 class _CanvasLayer {
   const _CanvasLayer({
@@ -204,6 +371,195 @@ class _EditorSnapshot {
   final Uint8List? stageBackgroundImageBytes;
 }
 
+abstract class _EditorHistoryEntry {
+  const _EditorHistoryEntry();
+}
+
+class _SnapshotHistoryEntry extends _EditorHistoryEntry {
+  const _SnapshotHistoryEntry(this.snapshot);
+
+  final _EditorSnapshot snapshot;
+}
+
+class _LayerChangeHistoryEntry extends _EditorHistoryEntry {
+  const _LayerChangeHistoryEntry({
+    required this.layerId,
+    required this.beforeLayer,
+    required this.afterLayer,
+    required this.beforeSelectedLayerId,
+    required this.afterSelectedLayerId,
+  });
+
+  final String layerId;
+  final _CanvasLayer beforeLayer;
+  final _CanvasLayer afterLayer;
+  final String? beforeSelectedLayerId;
+  final String? afterSelectedLayerId;
+}
+
+class _LayerInsertHistoryEntry extends _EditorHistoryEntry {
+  const _LayerInsertHistoryEntry({
+    required this.layer,
+    required this.insertIndex,
+    required this.beforeSelectedLayerId,
+    required this.afterSelectedLayerId,
+  });
+
+  final _CanvasLayer layer;
+  final int insertIndex;
+  final String? beforeSelectedLayerId;
+  final String? afterSelectedLayerId;
+}
+
+class _LayerDeleteHistoryEntry extends _EditorHistoryEntry {
+  const _LayerDeleteHistoryEntry({
+    required this.layer,
+    required this.deletedIndex,
+    required this.beforeSelectedLayerId,
+    required this.afterSelectedLayerId,
+  });
+
+  final _CanvasLayer layer;
+  final int deletedIndex;
+  final String? beforeSelectedLayerId;
+  final String? afterSelectedLayerId;
+}
+
+class _LayerReorderHistoryEntry extends _EditorHistoryEntry {
+  const _LayerReorderHistoryEntry({
+    required this.layerId,
+    required this.fromIndex,
+    required this.toIndex,
+    required this.beforeSelectedLayerId,
+    required this.afterSelectedLayerId,
+  });
+
+  final String layerId;
+  final int fromIndex;
+  final int toIndex;
+  final String? beforeSelectedLayerId;
+  final String? afterSelectedLayerId;
+}
+
+class _CanvasBackgroundHistoryEntry extends _EditorHistoryEntry {
+  const _CanvasBackgroundHistoryEntry({
+    required this.beforeColor,
+    required this.beforeGradientIndex,
+    required this.beforeImageBytes,
+    required this.afterColor,
+    required this.afterGradientIndex,
+    required this.afterImageBytes,
+  });
+
+  final Color beforeColor;
+  final int beforeGradientIndex;
+  final Uint8List? beforeImageBytes;
+  final Color afterColor;
+  final int afterGradientIndex;
+  final Uint8List? afterImageBytes;
+}
+
+@immutable
+class _EditorCommitState {
+  const _EditorCommitState({
+    required this.label,
+    required this.detail,
+  });
+
+  final String label;
+  final String detail;
+}
+
+@immutable
+class _AdjustedPhotoPresentation {
+  const _AdjustedPhotoPresentation({
+    required this.provider,
+    required this.blurSigma,
+    required this.saturationMatrix,
+    required this.brightnessContrastMatrix,
+  });
+
+  final ImageProvider<Object> provider;
+  final double blurSigma;
+  final List<double>? saturationMatrix;
+  final List<double>? brightnessContrastMatrix;
+}
+
+class _PhotoLayerImageProviderCache {
+  static const int _maxEntries = 72;
+  static final LinkedHashMap<String, ImageProvider<Object>> _providers =
+      LinkedHashMap<String, ImageProvider<Object>>();
+
+  static ImageProvider<Object> resolve({
+    required Uint8List bytes,
+    required int? cacheWidth,
+  }) {
+    final key =
+        '${identityHashCode(bytes)}_${bytes.length}_${cacheWidth ?? 0}';
+    final existing = _providers.remove(key);
+    if (existing != null) {
+      _providers[key] = existing;
+      return existing;
+    }
+
+    final provider = ResizeImage.resizeIfNeeded(
+      cacheWidth,
+      null,
+      MemoryImage(bytes),
+    );
+    _providers[key] = provider;
+    while (_providers.length > _maxEntries) {
+      _providers.remove(_providers.keys.first);
+    }
+    return provider;
+  }
+}
+
+class _AdjustedPhotoPresentationCache {
+  static const int _maxEntries = 72;
+  static final LinkedHashMap<String, _AdjustedPhotoPresentation> _entries =
+      LinkedHashMap<String, _AdjustedPhotoPresentation>();
+
+  static _AdjustedPhotoPresentation resolve({
+    required Uint8List bytes,
+    required String filterKey,
+    required int? cacheWidth,
+    required double brightness,
+    required double contrast,
+    required double saturation,
+    required double blur,
+  }) {
+    final key = '${filterKey}_${cacheWidth ?? 0}';
+    final existing = _entries.remove(key);
+    if (existing != null) {
+      _entries[key] = existing;
+      return existing;
+    }
+    final presentation = _AdjustedPhotoPresentation(
+      provider: _PhotoLayerImageProviderCache.resolve(
+        bytes: bytes,
+        cacheWidth: cacheWidth,
+      ),
+      blurSigma: blur > 0.01 ? _mapAdjustBlurToSigma(blur) : 0,
+      saturationMatrix: (saturation - 1).abs() > 0.0001
+          ? _saturationMatrix(saturation)
+          : null,
+      brightnessContrastMatrix:
+          brightness.abs() > 0.0001 || (contrast - 1).abs() > 0.0001
+          ? _brightnessContrastMatrix(
+              brightness: brightness,
+              contrast: contrast,
+            )
+          : null,
+    );
+    _entries[key] = presentation;
+    while (_entries.length > _maxEntries) {
+      _entries.remove(_entries.keys.first);
+    }
+    return presentation;
+  }
+}
+
 class _OptimizedPhotoPayload {
   const _OptimizedPhotoPayload({
     required this.bytes,
@@ -360,20 +716,21 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       const OfflineBackgroundRemovalService();
 
   final List<_CanvasLayer> _layers = <_CanvasLayer>[];
-  final List<_EditorSnapshot> _undoStack = <_EditorSnapshot>[];
-  final List<_EditorSnapshot> _redoStack = <_EditorSnapshot>[];
+  final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
+  final List<_EditorHistoryEntry> _redoStack = <_EditorHistoryEntry>[];
   String? _selectedLayerId;
   Color _canvasBackgroundColor = const Color(0xFFF4F7FC);
   int _canvasBackgroundGradientIndex = -1;
   int _layerSeed = 0;
   static const int _maxHistory = 40;
-  bool _isFontSizeEditing = false;
+  _CanvasLayer? _fontSizeEditBeforeLayer;
   bool _isExporting = false;
   bool _isSharing = false;
   bool _isRemovingBackground = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
   bool _isCropMode = false;
+  bool _isCropApplying = false;
   bool _suppressCanvasTapDown = false;
   int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
@@ -384,10 +741,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   String? _eraserSessionLayerId;
   String? _eraserInitError;
   bool _showJoyHint = true;
-  bool _showVerticalSnapGuide = false;
-  bool _showHorizontalSnapGuide = false;
   bool _isLayerInteracting = false;
   int _removeBackgroundTaskId = 0;
+  String? _activeCommitJobKey;
+  Future<void> _commitJobTail = Future<void>.value();
   double? _pageAspectRatio;
   bool _pageAspectRatioAutoFromImage = false;
   Matrix4? _gestureStartMatrix;
@@ -425,19 +782,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double _eraserBrushSize = 40;
   double _eraserBrushSoftness = 0.65;
   double _eraserBrushStrength = 1;
-  img.Image? _eraserWorkingImage;
-  img.Image? _eraserInitialImage;
-  img.Image? _eraserRestoreSourceImage;
   ui.Image? _eraserPreviewImage;
   final ValueNotifier<ui.Image?> _eraserPreviewNotifier =
       ValueNotifier<ui.Image?>(null);
   final ValueNotifier<Offset?> _eraserBrushCursorNotifier =
       ValueNotifier<Offset?>(null);
+  final ValueNotifier<_SnapGuideState> _snapGuideNotifier =
+      ValueNotifier<_SnapGuideState>(const _SnapGuideState.none());
+  final ValueNotifier<_SelectedPhotoRenderState?> _selectedPhotoRenderNotifier =
+      ValueNotifier<_SelectedPhotoRenderState?>(null);
+  final ValueNotifier<_AdjustSessionState?> _adjustSessionNotifier =
+      ValueNotifier<_AdjustSessionState?>(null);
+  final ValueNotifier<_EditorCommitState?> _commitStateNotifier =
+      ValueNotifier<_EditorCommitState?>(null);
   Offset? _eraserBrushLocalPosition;
   Offset? _eraserLastImagePoint;
   Timer? _eraserPreviewRefreshTimer;
   bool _eraserPreviewRefreshing = false;
   bool _eraserPreviewRefreshQueued = false;
+  final List<_EraserStrokeSegment> _eraserStrokeSegments =
+      <_EraserStrokeSegment>[];
   bool _isRestoringDraft = false;
   bool _pendingAutosave = false;
   Uint8List? _stageBackgroundImageBytes;
@@ -449,6 +813,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isTemplateHydrated = false;
   bool _isTemplateHydrationInProgress = false;
   bool _templateHydrationScheduled = false;
+  img.Image? _eraserFullResBaseImage;
+  img.Image? _eraserFullResRestoreSourceImage;
+  img.Image? _eraserPreviewWorkingImage;
+  img.Image? _eraserPreviewInitialImage;
+  img.Image? _eraserPreviewRestoreSourceImage;
 
   _CanvasLayer? get _selectedLayer {
     final selectedId = _selectedLayerId;
@@ -465,6 +834,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool get _hasSelectedTextLayer => _selectedLayer?.isText ?? false;
   bool get _hasSelectedPhotoLayer => _selectedLayer?.isPhoto ?? false;
   bool get _isSelectedLayerLocked => _selectedLayer?.isLocked ?? false;
+  _SnapGuideState get _snapGuides => _snapGuideNotifier.value;
 
   int get _selectedLayerIndex {
     final selectedId = _selectedLayerId;
@@ -594,6 +964,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
+    _refreshSelectedPhotoRenderState();
     if (_isRestoringDraft) {
       return;
     }
@@ -606,6 +977,34 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     _scheduleAutosave();
+  }
+
+  void _refreshSelectedPhotoRenderState() {
+    final layer = _selectedLayer;
+    if (layer == null || !layer.isPhoto || layer.bytes == null) {
+      if (_selectedPhotoRenderNotifier.value != null) {
+        _selectedPhotoRenderNotifier.value = null;
+      }
+      return;
+    }
+    final liveAdjustState =
+        _isAdjustMode && _adjustSessionLayerId == layer.id
+        ? _adjustSessionNotifier.value
+        : null;
+    final nextState = _SelectedPhotoRenderState(
+      layerId: layer.id,
+      bytes: layer.bytes!,
+      opacity: layer.photoOpacity,
+      flipHorizontally: layer.flipPhotoHorizontally,
+      flipVertically: layer.flipPhotoVertically,
+      brightness: liveAdjustState?.brightness ?? layer.photoBrightness,
+      contrast: liveAdjustState?.contrast ?? layer.photoContrast,
+      saturation: liveAdjustState?.saturation ?? layer.photoSaturation,
+      blur: liveAdjustState?.blur ?? layer.photoBlur,
+    );
+    if (_selectedPhotoRenderNotifier.value != nextState) {
+      _selectedPhotoRenderNotifier.value = nextState;
+    }
   }
 
   Future<void> _enterEditorImmersiveMode() async {
@@ -886,11 +1285,203 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _pushUndoSnapshot() {
-    _undoStack.add(_takeSnapshot());
+    _undoStack.add(_SnapshotHistoryEntry(_takeSnapshot()));
     if (_undoStack.length > _maxHistory) {
       _undoStack.removeAt(0);
     }
     _redoStack.clear();
+  }
+
+  void _pushLayerHistoryEntry({
+    required _CanvasLayer beforeLayer,
+    required _CanvasLayer afterLayer,
+    String? beforeSelectedLayerId,
+    String? afterSelectedLayerId,
+  }) {
+    _undoStack.add(
+      _LayerChangeHistoryEntry(
+        layerId: beforeLayer.id,
+        beforeLayer: _cloneLayer(beforeLayer),
+        afterLayer: _cloneLayer(afterLayer),
+        beforeSelectedLayerId: beforeSelectedLayerId ?? _selectedLayerId,
+        afterSelectedLayerId: afterSelectedLayerId ?? _selectedLayerId,
+      ),
+    );
+    if (_undoStack.length > _maxHistory) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void _pushLayerInsertHistoryEntry({
+    required _CanvasLayer layer,
+    required int insertIndex,
+    required String? beforeSelectedLayerId,
+    required String? afterSelectedLayerId,
+  }) {
+    _undoStack.add(
+      _LayerInsertHistoryEntry(
+        layer: _cloneLayer(layer),
+        insertIndex: insertIndex,
+        beforeSelectedLayerId: beforeSelectedLayerId,
+        afterSelectedLayerId: afterSelectedLayerId,
+      ),
+    );
+    if (_undoStack.length > _maxHistory) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void _pushLayerDeleteHistoryEntry({
+    required _CanvasLayer layer,
+    required int deletedIndex,
+    required String? beforeSelectedLayerId,
+    required String? afterSelectedLayerId,
+  }) {
+    _undoStack.add(
+      _LayerDeleteHistoryEntry(
+        layer: _cloneLayer(layer),
+        deletedIndex: deletedIndex,
+        beforeSelectedLayerId: beforeSelectedLayerId,
+        afterSelectedLayerId: afterSelectedLayerId,
+      ),
+    );
+    if (_undoStack.length > _maxHistory) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void _pushLayerReorderHistoryEntry({
+    required String layerId,
+    required int fromIndex,
+    required int toIndex,
+    required String? beforeSelectedLayerId,
+    required String? afterSelectedLayerId,
+  }) {
+    _undoStack.add(
+      _LayerReorderHistoryEntry(
+        layerId: layerId,
+        fromIndex: fromIndex,
+        toIndex: toIndex,
+        beforeSelectedLayerId: beforeSelectedLayerId,
+        afterSelectedLayerId: afterSelectedLayerId,
+      ),
+    );
+    if (_undoStack.length > _maxHistory) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void _setCommitState(String? label, {String? detail}) {
+    _commitStateNotifier.value = label == null
+        ? null
+        : _EditorCommitState(
+            label: label,
+            detail: detail ?? 'Please wait while the layer is updated',
+          );
+  }
+
+  bool get _isCommitWorkerBusy => _activeCommitJobKey != null;
+
+  Future<T?> _runQueuedCommitJob<T>({
+    required String jobKey,
+    required String label,
+    required String detail,
+    required Future<T> Function() operation,
+    VoidCallback? onStart,
+    VoidCallback? onFinish,
+    bool showBusyMessage = true,
+  }) async {
+    if (_activeCommitJobKey != null) {
+      if (showBusyMessage && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please wait, current editor job is still running'),
+          ),
+        );
+      }
+      return null;
+    }
+
+    _activeCommitJobKey = jobKey;
+    if (mounted && onStart != null) {
+      setState(onStart);
+    } else {
+      onStart?.call();
+    }
+    _setCommitState(label, detail: detail);
+
+    Future<T> runOperation() async => operation();
+
+    final scheduled = _commitJobTail.then((_) => runOperation());
+    _commitJobTail = scheduled.then<void>((_) {}, onError: (_, stackTrace) {});
+
+    try {
+      return await scheduled;
+    } finally {
+      if (mounted && onFinish != null) {
+        setState(onFinish);
+      } else {
+        onFinish?.call();
+      }
+      if (_activeCommitJobKey == jobKey) {
+        _activeCommitJobKey = null;
+      }
+      _setCommitState(null);
+    }
+  }
+
+  void _pushCanvasBackgroundHistoryEntry({
+    required Color beforeColor,
+    required int beforeGradientIndex,
+    required Uint8List? beforeImageBytes,
+    required Color afterColor,
+    required int afterGradientIndex,
+    required Uint8List? afterImageBytes,
+  }) {
+    _undoStack.add(
+      _CanvasBackgroundHistoryEntry(
+        beforeColor: beforeColor,
+        beforeGradientIndex: beforeGradientIndex,
+        beforeImageBytes: beforeImageBytes == null
+            ? null
+            : Uint8List.fromList(beforeImageBytes),
+        afterColor: afterColor,
+        afterGradientIndex: afterGradientIndex,
+        afterImageBytes: afterImageBytes == null
+            ? null
+            : Uint8List.fromList(afterImageBytes),
+      ),
+    );
+    if (_undoStack.length > _maxHistory) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void _replaceLayerWithHistory({
+    required int index,
+    required _CanvasLayer afterLayer,
+    String? afterSelectedLayerId,
+  }) {
+    final beforeLayer = _layers[index];
+    _pushLayerHistoryEntry(
+      beforeLayer: beforeLayer,
+      afterLayer: afterLayer,
+      afterSelectedLayerId: afterSelectedLayerId,
+    );
+    setState(() {
+      _layers[index] = afterLayer;
+      if (afterSelectedLayerId != null) {
+        _selectedLayerId = afterSelectedLayerId;
+      }
+      if (_selectedLayerId == afterLayer.id) {
+        _transformationController.value = Matrix4.copy(afterLayer.transform);
+      }
+    });
   }
 
   bool _isSameMatrix(Matrix4 a, Matrix4 b) {
@@ -929,11 +1520,49 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
+    _closeTransientSessionsForHistory();
     final previous = _undoStack.removeLast();
-    _redoStack.add(_takeSnapshot());
-    setState(() {
-      _restoreSnapshot(previous);
-    });
+    if (previous is _SnapshotHistoryEntry) {
+      _redoStack.add(_SnapshotHistoryEntry(_takeSnapshot()));
+      setState(() {
+        _restoreSnapshot(previous.snapshot);
+      });
+      return;
+    }
+    if (previous is _LayerChangeHistoryEntry) {
+      _redoStack.add(previous);
+      setState(() {
+        _applyLayerHistoryEntry(previous, useAfter: false);
+      });
+      return;
+    }
+    if (previous is _LayerInsertHistoryEntry) {
+      _redoStack.add(previous);
+      setState(() {
+        _applyLayerInsertHistoryEntry(previous, useAfter: false);
+      });
+      return;
+    }
+    if (previous is _LayerDeleteHistoryEntry) {
+      _redoStack.add(previous);
+      setState(() {
+        _applyLayerDeleteHistoryEntry(previous, useAfter: false);
+      });
+      return;
+    }
+    if (previous is _LayerReorderHistoryEntry) {
+      _redoStack.add(previous);
+      setState(() {
+        _applyLayerReorderHistoryEntry(previous, useAfter: false);
+      });
+      return;
+    }
+    if (previous is _CanvasBackgroundHistoryEntry) {
+      _redoStack.add(previous);
+      setState(() {
+        _applyCanvasBackgroundHistoryEntry(previous, useAfter: false);
+      });
+    }
   }
 
   void _handleRedo() {
@@ -941,11 +1570,166 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
+    _closeTransientSessionsForHistory();
     final next = _redoStack.removeLast();
-    _undoStack.add(_takeSnapshot());
-    setState(() {
-      _restoreSnapshot(next);
-    });
+    if (next is _SnapshotHistoryEntry) {
+      _undoStack.add(_SnapshotHistoryEntry(_takeSnapshot()));
+      setState(() {
+        _restoreSnapshot(next.snapshot);
+      });
+      return;
+    }
+    if (next is _LayerChangeHistoryEntry) {
+      _undoStack.add(next);
+      setState(() {
+        _applyLayerHistoryEntry(next, useAfter: true);
+      });
+      return;
+    }
+    if (next is _LayerInsertHistoryEntry) {
+      _undoStack.add(next);
+      setState(() {
+        _applyLayerInsertHistoryEntry(next, useAfter: true);
+      });
+      return;
+    }
+    if (next is _LayerDeleteHistoryEntry) {
+      _undoStack.add(next);
+      setState(() {
+        _applyLayerDeleteHistoryEntry(next, useAfter: true);
+      });
+      return;
+    }
+    if (next is _LayerReorderHistoryEntry) {
+      _undoStack.add(next);
+      setState(() {
+        _applyLayerReorderHistoryEntry(next, useAfter: true);
+      });
+      return;
+    }
+    if (next is _CanvasBackgroundHistoryEntry) {
+      _undoStack.add(next);
+      setState(() {
+        _applyCanvasBackgroundHistoryEntry(next, useAfter: true);
+      });
+    }
+  }
+
+  void _applyLayerHistoryEntry(
+    _LayerChangeHistoryEntry entry, {
+    required bool useAfter,
+  }) {
+    final targetLayer = useAfter ? entry.afterLayer : entry.beforeLayer;
+    final targetSelectedLayerId = useAfter
+        ? entry.afterSelectedLayerId
+        : entry.beforeSelectedLayerId;
+    final index = _layers.indexWhere((item) => item.id == entry.layerId);
+    if (index == -1) {
+      return;
+    }
+    _layers[index] = _cloneLayer(targetLayer);
+    _selectedLayerId = targetSelectedLayerId;
+    _syncControllerFromSelection();
+  }
+
+  void _applyLayerInsertHistoryEntry(
+    _LayerInsertHistoryEntry entry, {
+    required bool useAfter,
+  }) {
+    if (useAfter) {
+      final existingIndex = _layers.indexWhere((item) => item.id == entry.layer.id);
+      if (existingIndex == -1) {
+        final insertIndex = entry.insertIndex.clamp(0, _layers.length);
+        _layers.insert(insertIndex, _cloneLayer(entry.layer));
+      } else {
+        final layer = _layers.removeAt(existingIndex);
+        final insertIndex = entry.insertIndex.clamp(0, _layers.length);
+        _layers.insert(insertIndex, layer);
+      }
+      _selectedLayerId = entry.afterSelectedLayerId;
+    } else {
+      _layers.removeWhere((item) => item.id == entry.layer.id);
+      _selectedLayerId = entry.beforeSelectedLayerId;
+    }
+    _syncControllerFromSelection();
+  }
+
+  void _applyLayerDeleteHistoryEntry(
+    _LayerDeleteHistoryEntry entry, {
+    required bool useAfter,
+  }) {
+    if (useAfter) {
+      _layers.removeWhere((item) => item.id == entry.layer.id);
+      _selectedLayerId = entry.afterSelectedLayerId;
+    } else {
+      final existingIndex = _layers.indexWhere((item) => item.id == entry.layer.id);
+      if (existingIndex == -1) {
+        final insertIndex = entry.deletedIndex.clamp(0, _layers.length);
+        _layers.insert(insertIndex, _cloneLayer(entry.layer));
+      }
+      _selectedLayerId = entry.beforeSelectedLayerId;
+    }
+    _syncControllerFromSelection();
+  }
+
+  void _applyLayerReorderHistoryEntry(
+    _LayerReorderHistoryEntry entry, {
+    required bool useAfter,
+  }) {
+    final currentIndex = _layers.indexWhere((item) => item.id == entry.layerId);
+    if (currentIndex == -1) {
+      return;
+    }
+    final targetIndex = useAfter ? entry.toIndex : entry.fromIndex;
+    final boundedTargetIndex = targetIndex.clamp(0, _layers.length - 1);
+    if (currentIndex != boundedTargetIndex) {
+      final layer = _layers.removeAt(currentIndex);
+      final insertIndex = boundedTargetIndex.clamp(0, _layers.length);
+      _layers.insert(insertIndex, layer);
+    }
+    _selectedLayerId = useAfter
+        ? entry.afterSelectedLayerId
+        : entry.beforeSelectedLayerId;
+    _syncControllerFromSelection();
+  }
+
+  void _applyCanvasBackgroundHistoryEntry(
+    _CanvasBackgroundHistoryEntry entry, {
+    required bool useAfter,
+  }) {
+    _canvasBackgroundColor = useAfter ? entry.afterColor : entry.beforeColor;
+    _canvasBackgroundGradientIndex = useAfter
+        ? entry.afterGradientIndex
+        : entry.beforeGradientIndex;
+    final bytes = useAfter ? entry.afterImageBytes : entry.beforeImageBytes;
+    _stageBackgroundImageBytes = bytes == null ? null : Uint8List.fromList(bytes);
+  }
+
+  void _closeTransientSessionsForHistory() {
+    if (_isCropMode) {
+      _isCropMode = false;
+      _isCropApplying = false;
+      _cropSessionLayerId = null;
+      _cropSessionImageBytes = null;
+      _cropSessionAspectRatio = null;
+      _cropSessionInitialAspectRatio = null;
+      _cropTransformationController.value = Matrix4.identity();
+    }
+    if (_isAdjustMode) {
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+      _adjustSessionNotifier.value = null;
+    }
+    if (_isEraserMode || _isEraserInitializing || _isEraserApplying) {
+      _isEraserMode = false;
+      _isEraserInitializing = false;
+      _isEraserApplying = false;
+      _eraserSessionLayerId = null;
+      _activeEraserControl = null;
+      _eraserInitError = null;
+      _disposeEraserSessionResources();
+    }
+    _setCommitState(null);
   }
 
   List<double> _matrixToList(Matrix4 matrix) =>
@@ -1232,6 +2016,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _disposeEraserSessionResources();
     _eraserPreviewNotifier.dispose();
     _eraserBrushCursorNotifier.dispose();
+    _snapGuideNotifier.dispose();
+    _selectedPhotoRenderNotifier.dispose();
+    _adjustSessionNotifier.dispose();
+    _commitStateNotifier.dispose();
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
     unawaited(BackgroundRemover.instance.dispose());
@@ -1290,7 +2078,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       transform: Matrix4.identity(),
     );
 
-    _pushUndoSnapshot();
+    _pushLayerInsertHistoryEntry(
+      layer: layer,
+      insertIndex: _layers.length,
+      beforeSelectedLayerId: _selectedLayerId,
+      afterSelectedLayerId: layer.id,
+    );
     _transformationController.value = Matrix4.identity();
     setState(() {
       _layers.add(layer);
@@ -1311,7 +2104,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       transform: Matrix4.identity(),
     );
 
-    _pushUndoSnapshot();
+    _pushLayerInsertHistoryEntry(
+      layer: layer,
+      insertIndex: _layers.length,
+      beforeSelectedLayerId: _selectedLayerId,
+      afterSelectedLayerId: layer.id,
+    );
     _transformationController.value = Matrix4.identity();
     setState(() {
       _layers.add(layer);
@@ -1422,10 +2220,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(text: value);
-    });
+    final beforeLayer = _layers[index];
+    if (beforeLayer.text == value) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(text: value);
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextColor(Color color) {
@@ -1443,13 +2243,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(
-        textColor: color,
-        textGradientIndex: -1,
-      );
-    });
+    final afterLayer = layer.copyWith(
+      textColor: color,
+      textGradientIndex: -1,
+    );
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextAlignment(TextAlign align) {
@@ -1465,10 +2263,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(textAlign: align);
-    });
+    final afterLayer = _layers[index].copyWith(textAlign: align);
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextGradient(int gradientIndex) {
@@ -1484,12 +2280,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(
-        textGradientIndex: gradientIndex,
-      );
-    });
+    final afterLayer = _layers[index].copyWith(
+      textGradientIndex: gradientIndex,
+    );
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextFontSize(double fontSize) {
@@ -1501,10 +2295,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (index == -1 || !_layers[index].isText) {
       return;
     }
-
-    if (!_isFontSizeEditing) {
-      _pushUndoSnapshot();
-    }
     setState(() {
       _layers[index] = _layers[index].copyWith(
         fontSize: fontSize.clamp(18, 96).toDouble(),
@@ -1513,12 +2303,25 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _handleTextFontSizeEditStart(double _) {
-    _isFontSizeEditing = true;
-    _pushUndoSnapshot();
+    final selectedLayer = _selectedLayer;
+    _fontSizeEditBeforeLayer = selectedLayer == null
+        ? null
+        : _cloneLayer(selectedLayer);
   }
 
   void _handleTextFontSizeEditEnd(double _) {
-    _isFontSizeEditing = false;
+    final beforeLayer = _fontSizeEditBeforeLayer;
+    final selectedLayer = _selectedLayer;
+    if (beforeLayer != null &&
+        selectedLayer != null &&
+        beforeLayer.id == selectedLayer.id &&
+        (beforeLayer.fontSize - selectedLayer.fontSize).abs() > 0.0001) {
+      _pushLayerHistoryEntry(
+        beforeLayer: beforeLayer,
+        afterLayer: _cloneLayer(selectedLayer),
+      );
+    }
+    _fontSizeEditBeforeLayer = null;
   }
 
   /*
@@ -1868,9 +2671,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   */
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
-    final bottomToolsHeight =
-        _bottomBarHeight +
-        (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
+    final bottomToolsHeight = _isCropMode
+        ? _cropBarHeight
+        : _isEraserMode
+        ? _eraserBarHeight
+        : _isAdjustMode
+        ? _adjustBarHeight
+        : _bottomBarHeight +
+              (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
     final topInset = _topBarHeight + _floatingBarGap;
     final bottomInset =
         _floatingBarGap +
@@ -1969,108 +2777,110 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _performExport({required _ExportImageFormat format}) async {
-    if (_isExporting) {
+    if (_isExporting || _isCommitWorkerBusy) {
       return;
     }
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-
-    setState(() {
-      _isExporting = true;
-    });
-
     try {
-      if (format == _ExportImageFormat.pngTransparent) {
-        setState(() {
-          _isTransparentExportCapture = true;
-        });
-        await _waitForRenderedFrame();
-      }
-      final hasPermission = await _ensureGallerySavePermission();
-      if (!hasPermission) {
-        if (!mounted) {
-          return;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Gallery permission ivvandi, taruvata malli export cheyyandi',
-            ),
-          ),
-        );
-        return;
-      }
-      final image = await _captureStageImage(
-        pixelRatio: _exportPixelRatio(devicePixelRatio),
-      );
-      if (image == null) {
-        throw Exception('Export boundary not ready');
-      }
-      final shouldHaveTransparentBackground =
-          format == _ExportImageFormat.pngTransparent;
-      final exportedBytes = await _encodeExportImageBytes(
-        image,
-        format: shouldHaveTransparentBackground
-            ? _ExportImageFormat.png
-            : format,
-      );
-      final fileName =
-          'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}';
-      final result = await ImageGallerySaverPlus.saveImage(
-        exportedBytes,
-        quality: 100,
-        name: fileName,
-      );
-      var isSuccess = _isGallerySaveSuccess(result);
-      dynamic finalResult = result;
-      if (!isSuccess) {
-        final tempDirectory = await getTemporaryDirectory();
-        final tempPath =
-            '${tempDirectory.path}${Platform.pathSeparator}$fileName';
-        final tempFile = File(tempPath);
-        await tempFile.writeAsBytes(exportedBytes, flush: true);
-        final fallbackResult = await ImageGallerySaverPlus.saveFile(
-          tempFile.path,
-          name: fileName,
-        );
-        if (_isGallerySaveSuccess(fallbackResult)) {
-          isSuccess = true;
-          finalResult = fallbackResult;
-        }
-      }
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _exportResultMessage(finalResult, isSuccess: isSuccess),
-          ),
-          action: isSuccess
-              ? SnackBarAction(
-                  label: _isSharing ? 'Sharing...' : 'Share',
-                  onPressed: _isSharing
-                      ? () {}
-                      : () => _shareLatestPoster(exportedBytes, format: format),
-                )
-              : null,
-        ),
-      );
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
+      final exportedBytes = await _runQueuedCommitJob<Uint8List>(
+        jobKey: 'export_${DateTime.now().microsecondsSinceEpoch}',
+        label: 'Exporting poster',
+        detail: 'Rendering and saving the final output',
+        onStart: () {
+          _isExporting = true;
+        },
+        onFinish: () {
           _isExporting = false;
           _isTransparentExportCapture = false;
-        });
+        },
+        operation: () async {
+          if (format == _ExportImageFormat.pngTransparent) {
+            if (mounted) {
+              setState(() {
+                _isTransparentExportCapture = true;
+              });
+            } else {
+              _isTransparentExportCapture = true;
+            }
+            await _waitForRenderedFrame();
+          }
+          final hasPermission = await _ensureGallerySavePermission();
+          if (!hasPermission) {
+            throw Exception(
+              'Gallery permission ivvandi, taruvata malli export cheyyandi',
+            );
+          }
+          final image = await _captureStageImage(
+            pixelRatio: _exportPixelRatio(devicePixelRatio),
+          );
+          if (image == null) {
+            throw Exception('Export boundary not ready');
+          }
+          final shouldHaveTransparentBackground =
+              format == _ExportImageFormat.pngTransparent;
+          final exportedBytes = await _encodeExportImageBytes(
+            image,
+            format: shouldHaveTransparentBackground
+                ? _ExportImageFormat.png
+                : format,
+          );
+          final fileName =
+              'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}';
+          final result = await ImageGallerySaverPlus.saveImage(
+            exportedBytes,
+            quality: 100,
+            name: fileName,
+          );
+          var isSuccess = _isGallerySaveSuccess(result);
+          dynamic finalResult = result;
+          if (!isSuccess) {
+            final tempDirectory = await getTemporaryDirectory();
+            final tempPath =
+                '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+            final tempFile = File(tempPath);
+            await tempFile.writeAsBytes(exportedBytes, flush: true);
+            final fallbackResult = await ImageGallerySaverPlus.saveFile(
+              tempFile.path,
+              name: fileName,
+            );
+            if (_isGallerySaveSuccess(fallbackResult)) {
+              isSuccess = true;
+              finalResult = fallbackResult;
+            }
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  _exportResultMessage(finalResult, isSuccess: isSuccess),
+                ),
+                action: isSuccess
+                    ? SnackBarAction(
+                        label: _isSharing ? 'Sharing...' : 'Share',
+                        onPressed: _isSharing
+                            ? () {}
+                            : () =>
+                                  _shareLatestPoster(exportedBytes, format: format),
+                      )
+                    : null,
+              ),
+            );
+          }
+          return exportedBytes;
+        },
+      );
+      if (exportedBytes == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export is already in progress')),
+        );
       }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
     }
   }
 
@@ -2198,10 +3008,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(fontFamily: fontFamily);
-    });
+    final afterLayer = _layers[index].copyWith(fontFamily: fontFamily);
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextBackgroundColor(Color color) {
@@ -2214,10 +3022,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(textBackgroundColor: color);
-    });
+    final beforeLayer = _layers[index];
+    if (beforeLayer.textBackgroundColor.toARGB32() == color.toARGB32()) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(textBackgroundColor: color);
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextBackgroundOpacity(double opacity) {
@@ -2339,11 +3149,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isText) return;
-    setState(() {
-      _layers[index] = _layers[index].copyWith(
-        isTextBold: !_layers[index].isTextBold,
-      );
-    });
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      isTextBold: !beforeLayer.isTextBold,
+    );
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _toggleSelectedTextItalic() {
@@ -2351,11 +3161,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isText) return;
-    setState(() {
-      _layers[index] = _layers[index].copyWith(
-        isTextItalic: !_layers[index].isTextItalic,
-      );
-    });
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      isTextItalic: !beforeLayer.isTextItalic,
+    );
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _toggleSelectedTextUnderline() {
@@ -2363,11 +3173,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isText) return;
-    setState(() {
-      _layers[index] = _layers[index].copyWith(
-        isTextUnderline: !_layers[index].isTextUnderline,
-      );
-    });
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      isTextUnderline: !beforeLayer.isTextUnderline,
+    );
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextStrokeColor(Color color) {
@@ -2375,9 +3185,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isText) return;
-    setState(() {
-      _layers[index] = _layers[index].copyWith(textStrokeColor: color);
-    });
+    final beforeLayer = _layers[index];
+    if (beforeLayer.textStrokeColor.toARGB32() == color.toARGB32()) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(textStrokeColor: color);
+    _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
   void _setSelectedTextStrokeWidth(double value) {
@@ -2397,10 +3210,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isPhoto) return;
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      photoOpacity: value.clamp(0.1, 1).toDouble(),
+    );
+    if ((beforeLayer.photoOpacity - afterLayer.photoOpacity).abs() <= 0.0001) {
+      return;
+    }
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        photoOpacity: value.clamp(0.1, 1).toDouble(),
-      );
+      _layers[index] = afterLayer;
     });
   }
 
@@ -2409,10 +3228,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isPhoto) return;
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      flipPhotoHorizontally: !beforeLayer.flipPhotoHorizontally,
+    );
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        flipPhotoHorizontally: !_layers[index].flipPhotoHorizontally,
-      );
+      _layers[index] = afterLayer;
     });
   }
 
@@ -2421,10 +3243,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isPhoto) return;
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(
+      flipPhotoVertically: !beforeLayer.flipPhotoVertically,
+    );
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        flipPhotoVertically: !_layers[index].flipPhotoVertically,
-      );
+      _layers[index] = afterLayer;
     });
   }
 
@@ -2433,10 +3258,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selectedId == null) return;
     final index = _layers.indexWhere((item) => item.id == selectedId);
     if (index == -1 || !_layers[index].isPhoto) return;
-    final updated = Matrix4.copy(_layers[index].transform)..rotateZ(radians);
+    final beforeLayer = _layers[index];
+    final updated = Matrix4.copy(beforeLayer.transform)..rotateZ(radians);
+    final afterLayer = beforeLayer.copyWith(transform: updated);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     _transformationController.value = Matrix4.copy(updated);
     setState(() {
-      _layers[index] = _layers[index].copyWith(transform: updated);
+      _layers[index] = afterLayer;
     });
   }
 
@@ -2461,6 +3289,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _adjustInitialBlur = layer.photoBlur;
       _showTextControls = false;
     });
+    _adjustSessionNotifier.value = _AdjustSessionState(
+      brightness: layer.photoBrightness,
+      contrast: layer.photoContrast,
+      saturation: layer.photoSaturation,
+      blur: layer.photoBlur,
+    );
   }
 
   void _discardAdjustSession() {
@@ -2479,6 +3313,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _adjustInitialSaturation = 1;
       _adjustInitialBlur = 0;
     });
+    _adjustSessionNotifier.value = null;
   }
 
   void _resetAdjustSession() {
@@ -2491,6 +3326,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _adjustSessionSaturation = _adjustInitialSaturation;
       _adjustSessionBlur = _adjustInitialBlur;
     });
+    _adjustSessionNotifier.value = _AdjustSessionState(
+      brightness: _adjustInitialBrightness,
+      contrast: _adjustInitialContrast,
+      saturation: _adjustInitialSaturation,
+      blur: _adjustInitialBlur,
+    );
+  }
+
+  void _updateAdjustSessionState(_AdjustSessionState nextState) {
+    if (!_isAdjustMode || _adjustSessionLayerId == null) {
+      return;
+    }
+    _adjustSessionBrightness = nextState.brightness;
+    _adjustSessionContrast = nextState.contrast;
+    _adjustSessionSaturation = nextState.saturation;
+    _adjustSessionBlur = nextState.blur;
+    if (_adjustSessionNotifier.value != nextState) {
+      _adjustSessionNotifier.value = nextState;
+    }
+    _refreshSelectedPhotoRenderState();
   }
 
   void _applyAdjustSession() {
@@ -2504,27 +3359,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _discardAdjustSession();
       return;
     }
+    final beforeLayer = _layers[index];
     final hasChanges =
-        (_layers[index].photoBrightness - _adjustSessionBrightness).abs() >
+        (beforeLayer.photoBrightness - _adjustSessionBrightness).abs() >
             0.0001 ||
-        (_layers[index].photoContrast - _adjustSessionContrast).abs() >
+        (beforeLayer.photoContrast - _adjustSessionContrast).abs() >
             0.0001 ||
-        (_layers[index].photoSaturation - _adjustSessionSaturation).abs() >
+        (beforeLayer.photoSaturation - _adjustSessionSaturation).abs() >
             0.0001 ||
-        (_layers[index].photoBlur - _adjustSessionBlur).abs() > 0.0001;
+        (beforeLayer.photoBlur - _adjustSessionBlur).abs() > 0.0001;
+    final afterLayer = beforeLayer.copyWith(
+      photoBrightness: _adjustSessionBrightness,
+      photoContrast: _adjustSessionContrast,
+      photoSaturation: _adjustSessionSaturation,
+      photoBlur: _adjustSessionBlur,
+    );
     if (hasChanges) {
-      _pushUndoSnapshot();
+      _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     }
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        photoBrightness: _adjustSessionBrightness,
-        photoContrast: _adjustSessionContrast,
-        photoSaturation: _adjustSessionSaturation,
-        photoBlur: _adjustSessionBlur,
-      );
+      _layers[index] = afterLayer;
       _isAdjustMode = false;
       _adjustSessionLayerId = null;
     });
+    _adjustSessionNotifier.value = null;
   }
 
   Future<void> _openEraserPanel() async {
@@ -2581,24 +3439,36 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    final workingImage = _cloneEditableImage(baseImage);
-    final initialImage = _cloneEditableImage(baseImage);
+    _eraserFullResBaseImage = _cloneEditableImage(baseImage);
     img.Image restoreImage = sourceImage != null
         ? _cloneEditableImage(sourceImage)
         : _cloneEditableImage(baseImage);
-    if (restoreImage.width != workingImage.width ||
-        restoreImage.height != workingImage.height) {
+    if (restoreImage.width != _eraserFullResBaseImage!.width ||
+        restoreImage.height != _eraserFullResBaseImage!.height) {
       restoreImage = img.copyResize(
         restoreImage,
-        width: workingImage.width,
-        height: workingImage.height,
+        width: _eraserFullResBaseImage!.width,
+        height: _eraserFullResBaseImage!.height,
         interpolation: img.Interpolation.linear,
       ).convert(numChannels: 4);
     }
+    _eraserFullResRestoreSourceImage = restoreImage;
 
-    _eraserWorkingImage = workingImage;
-    _eraserInitialImage = initialImage;
-    _eraserRestoreSourceImage = restoreImage;
+    final previewBase = _createEraserPreviewImage(baseImage);
+    var previewRestore = _createEraserPreviewImage(restoreImage);
+    if (previewRestore.width != previewBase.width ||
+        previewRestore.height != previewBase.height) {
+      previewRestore = img.copyResize(
+        previewRestore,
+        width: previewBase.width,
+        height: previewBase.height,
+        interpolation: img.Interpolation.linear,
+      ).convert(numChannels: 4);
+    }
+    _eraserPreviewWorkingImage = _cloneEditableImage(previewBase);
+    _eraserPreviewInitialImage = _cloneEditableImage(previewBase);
+    _eraserPreviewRestoreSourceImage = _cloneEditableImage(previewRestore);
+    _eraserStrokeSegments.clear();
     await _refreshEraserPreviewNow();
     if (!mounted) {
       return;
@@ -2621,6 +3491,23 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   img.Image _cloneEditableImage(img.Image source) {
     return img.Image.from(source).convert(numChannels: 4);
+  }
+
+  img.Image _createEraserPreviewImage(img.Image source) {
+    const previewMaxDimension = 1024;
+    final longest = math.max(source.width, source.height);
+    if (longest <= previewMaxDimension) {
+      return _cloneEditableImage(source);
+    }
+    final scale = previewMaxDimension / longest;
+    final width = math.max(320, (source.width * scale).round());
+    final height = math.max(320, (source.height * scale).round());
+    return img.copyResize(
+      source,
+      width: width,
+      height: height,
+      interpolation: img.Interpolation.average,
+    ).convert(numChannels: 4);
   }
 
   void _discardEraserSession() {
@@ -2654,9 +3541,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       notifierOldPreview?.dispose();
     }
     oldPreview?.dispose();
-    _eraserWorkingImage = null;
-    _eraserInitialImage = null;
-    _eraserRestoreSourceImage = null;
+    _eraserFullResBaseImage = null;
+    _eraserFullResRestoreSourceImage = null;
+    _eraserPreviewWorkingImage = null;
+    _eraserPreviewInitialImage = null;
+    _eraserPreviewRestoreSourceImage = null;
+    _eraserStrokeSegments.clear();
     _eraserBrushLocalPosition = null;
     _eraserBrushCursorNotifier.value = null;
     _eraserLastImagePoint = null;
@@ -2665,11 +3555,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _resetEraserSession() {
-    final initialImage = _eraserInitialImage;
+    final initialImage = _eraserPreviewInitialImage;
     if (initialImage == null || !_isEraserMode || _isEraserApplying) {
       return;
     }
-    _eraserWorkingImage = _cloneEditableImage(initialImage);
+    _eraserPreviewWorkingImage = _cloneEditableImage(initialImage);
+    _eraserStrokeSegments.clear();
     _eraserLastImagePoint = null;
     _eraserBrushLocalPosition = null;
     _scheduleEraserPreviewRefresh();
@@ -2677,7 +3568,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _applyEraserSession() async {
-    if (!_isEraserMode || _isEraserApplying) {
+    if (!_isEraserMode || _isEraserApplying || _isCommitWorkerBusy) {
       return;
     }
     final selectedId = _selectedLayerId;
@@ -2690,35 +3581,77 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _discardEraserSession();
       return;
     }
-    final workingImage = _eraserWorkingImage;
-    if (workingImage == null) {
+    final fullResBase = _eraserFullResBaseImage;
+    final fullResRestore = _eraserFullResRestoreSourceImage;
+    if (fullResBase == null ||
+        fullResRestore == null ||
+        _eraserStrokeSegments.isEmpty) {
       _discardEraserSession();
       return;
     }
+    try {
+      final pngBytes = await _runQueuedCommitJob<Uint8List>(
+        jobKey: 'eraser_$selectedId',
+        label: 'Applying eraser',
+        detail: 'Rebuilding transparent PNG for the selected layer',
+        onStart: () {
+          _isEraserApplying = true;
+        },
+        onFinish: () {
+          _isEraserApplying = false;
+        },
+        operation: () async {
+          final pageSize = _currentStageLogicalRect().size;
+          return compute(
+            _applyEraserSegmentsToPng,
+            <String, dynamic>{
+              'currentBytes': _layers[index].bytes,
+              'restoreBytes':
+                  _layers[index].originalPhotoBytes ?? _layers[index].bytes,
+              'segments': _eraserStrokeSegments
+                  .map((item) => item.toMap())
+                  .toList(),
+              'pageWidth': pageSize.width,
+              'pageHeight': pageSize.height,
+              'photoAspectRatio': _layers[index].photoAspectRatio,
+            },
+          );
+        },
+      );
+      if (pngBytes == null || !mounted) {
+        return;
+      }
+      final currentBytes = _layers[index].bytes;
+      if (currentBytes != null && listEquals(currentBytes, pngBytes)) {
+        _discardEraserSession();
+        return;
+      }
 
-    setState(() {
-      _isEraserApplying = true;
-    });
-    final pngBytes = Uint8List.fromList(img.encodePng(workingImage));
-    final currentBytes = _layers[index].bytes;
-    if (currentBytes != null && listEquals(currentBytes, pngBytes)) {
-      _discardEraserSession();
-      return;
+      final beforeLayer = _layers[index];
+      final afterLayer = beforeLayer.copyWith(bytes: pngBytes);
+      _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+      setState(() {
+        _layers[index] = afterLayer;
+        _isEraserMode = false;
+        _isEraserInitializing = false;
+        _eraserSessionLayerId = null;
+        _activeEraserControl = null;
+        _eraserInitError = null;
+        _eraserBrushLocalPosition = null;
+        _eraserLastImagePoint = null;
+      });
+      _disposeEraserSessionResources();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isEraserApplying = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Eraser apply failed: $error')),
+      );
     }
-
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[index] = _layers[index].copyWith(bytes: pngBytes);
-      _isEraserMode = false;
-      _isEraserInitializing = false;
-      _isEraserApplying = false;
-      _eraserSessionLayerId = null;
-      _activeEraserControl = null;
-      _eraserInitError = null;
-      _eraserBrushLocalPosition = null;
-      _eraserLastImagePoint = null;
-    });
-    _disposeEraserSessionResources();
   }
 
   void _scheduleEraserPreviewRefresh() {
@@ -2735,7 +3668,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _refreshEraserPreviewNow() async {
-    final workingImage = _eraserWorkingImage;
+    final workingImage = _eraserPreviewWorkingImage;
     if (workingImage == null) {
       return;
     }
@@ -2835,8 +3768,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     Size pageSize,
   ) {
     final imagePixelSize = Size(
-      _eraserWorkingImage?.width.toDouble() ?? 0,
-      _eraserWorkingImage?.height.toDouble() ?? 0,
+      _eraserPreviewWorkingImage?.width.toDouble() ?? 0,
+      _eraserPreviewWorkingImage?.height.toDouble() ?? 0,
     );
     final mappedPoint = _mapCanvasPointToSelectedImage(
       localPosition: details.localPosition,
@@ -2864,8 +3797,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     Size pageSize,
   ) {
     final imagePixelSize = Size(
-      _eraserWorkingImage?.width.toDouble() ?? 0,
-      _eraserWorkingImage?.height.toDouble() ?? 0,
+      _eraserPreviewWorkingImage?.width.toDouble() ?? 0,
+      _eraserPreviewWorkingImage?.height.toDouble() ?? 0,
     );
     final mappedPoint = _mapCanvasPointToSelectedImage(
       localPosition: details.localPosition,
@@ -2906,8 +3839,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     Size pageSize,
     Size imagePixelSize,
   ) {
-    final workingImage = _eraserWorkingImage;
-    final restoreImage = _eraserRestoreSourceImage;
+    final workingImage = _eraserPreviewWorkingImage;
+    final restoreImage = _eraserPreviewRestoreSourceImage;
     if (workingImage == null || restoreImage == null) {
       return;
     }
@@ -2916,6 +3849,22 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (selected == null || !selected.isPhoto) {
       return;
     }
+    _eraserStrokeSegments.add(
+      _EraserStrokeSegment(
+        startNormalized: Offset(
+          (start.dx / math.max(imagePixelSize.width - 1, 1)).clamp(0.0, 1.0),
+          (start.dy / math.max(imagePixelSize.height - 1, 1)).clamp(0.0, 1.0),
+        ),
+        endNormalized: Offset(
+          (end.dx / math.max(imagePixelSize.width - 1, 1)).clamp(0.0, 1.0),
+          (end.dy / math.max(imagePixelSize.height - 1, 1)).clamp(0.0, 1.0),
+        ),
+        mode: _eraserMode,
+        brushSize: _eraserBrushSize,
+        softness: _eraserBrushSoftness,
+        strength: _eraserBrushStrength,
+      ),
+    );
     final photoSize = _fitPhotoLayerSize(
       pageSize: pageSize,
       photoAspectRatio: selected.photoAspectRatio,
@@ -2943,6 +3892,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         centerX: point.dx,
         centerY: point.dy,
         radius: radius,
+        mode: _eraserMode,
+        softness: _eraserBrushSoftness,
+        strength: _eraserBrushStrength,
       );
     }
     _scheduleEraserPreviewRefresh();
@@ -2954,6 +3906,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     required double centerX,
     required double centerY,
     required double radius,
+    required _EraserMode mode,
+    required double softness,
+    required double strength,
   }) {
     final left = math.max(0, (centerX - radius).floor());
     final right = math.min(workingImage.width - 1, (centerX + radius).ceil());
@@ -2962,7 +3917,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final softnessPower = ui.lerpDouble(
       2.6,
       0.7,
-      _eraserBrushSoftness.clamp(0.0, 1.0),
+      softness.clamp(0.0, 1.0),
     )!;
 
     for (var y = top; y <= bottom; y++) {
@@ -2978,13 +3933,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           normalized.clamp(0.0, 1.0),
           softnessPower,
         ).toDouble();
-        final amount = (falloff * _eraserBrushStrength).clamp(0.0, 1.0);
+        final amount = (falloff * strength).clamp(0.0, 1.0);
         if (amount <= 0.0001) {
           continue;
         }
 
         final currentPixel = workingImage.getPixel(x, y);
-        if (_eraserMode == _EraserMode.erase) {
+        if (mode == _EraserMode.erase) {
           final nextAlpha =
               (currentPixel.a.toDouble() * (1 - amount)).round().clamp(0, 255);
           workingImage.setPixelRgba(
@@ -3012,7 +3967,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   int _blendInt(int from, int to, double weight) {
-    return (from + ((to - from) * weight)).round().clamp(0, 255);
+    return _blendIntValue(from, to, weight);
   }
 
   Future<void> _openFontPickerScreen() async {
@@ -3044,7 +3999,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    _pushCanvasBackgroundHistoryEntry(
+      beforeColor: _canvasBackgroundColor,
+      beforeGradientIndex: _canvasBackgroundGradientIndex,
+      beforeImageBytes: _stageBackgroundImageBytes,
+      afterColor: color,
+      afterGradientIndex: -1,
+      afterImageBytes: null,
+    );
     setState(() {
       _canvasBackgroundColor = color;
       _canvasBackgroundGradientIndex = -1;
@@ -3058,7 +4020,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    _pushCanvasBackgroundHistoryEntry(
+      beforeColor: _canvasBackgroundColor,
+      beforeGradientIndex: _canvasBackgroundGradientIndex,
+      beforeImageBytes: _stageBackgroundImageBytes,
+      afterColor: _canvasBackgroundColor,
+      afterGradientIndex: gradientIndex,
+      afterImageBytes: null,
+    );
     setState(() {
       _canvasBackgroundGradientIndex = gradientIndex;
       _stageBackgroundImageBytes = null;
@@ -3073,7 +4042,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
     final bytes = await selected.readAsBytes();
     final optimized = _optimizeEditorPhotoPayload(bytes);
-    _pushUndoSnapshot();
+    _pushCanvasBackgroundHistoryEntry(
+      beforeColor: _canvasBackgroundColor,
+      beforeGradientIndex: _canvasBackgroundGradientIndex,
+      beforeImageBytes: _stageBackgroundImageBytes,
+      afterColor: _canvasBackgroundColor,
+      afterGradientIndex: -1,
+      afterImageBytes: optimized.bytes,
+    );
     setState(() {
       _stageBackgroundImageBytes = optimized.bytes;
       _canvasBackgroundGradientIndex = -1;
@@ -3324,11 +4300,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_selectedLayerId == null &&
         !_isAdjustMode &&
         !_isEraserMode &&
-        !_showVerticalSnapGuide &&
-        !_showHorizontalSnapGuide) {
+        !_snapGuides.isVisible) {
       return;
     }
     _transformationController.value = Matrix4.identity();
+    _snapGuideNotifier.value = const _SnapGuideState.none();
     setState(() {
       _selectedLayerId = null;
       _showTextControls = false;
@@ -3339,8 +4315,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _isEraserApplying = false;
       _eraserSessionLayerId = null;
       _eraserInitError = null;
-      _showVerticalSnapGuide = false;
-      _showHorizontalSnapGuide = false;
     });
     _disposeEraserSessionResources();
   }
@@ -3393,12 +4367,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final shouldSnapX = currentX.abs() <= _snapThreshold;
     final shouldSnapY = currentY.abs() <= _snapThreshold;
 
-    if (_showVerticalSnapGuide != shouldSnapX ||
-        _showHorizontalSnapGuide != shouldSnapY) {
-      setState(() {
-        _showVerticalSnapGuide = shouldSnapX;
-        _showHorizontalSnapGuide = shouldSnapY;
-      });
+    final nextState = _SnapGuideState(
+      showVerticalGuide: shouldSnapX,
+      showHorizontalGuide: shouldSnapY,
+    );
+    if (_snapGuideNotifier.value != nextState) {
+      _snapGuideNotifier.value = nextState;
     }
   }
 
@@ -3417,14 +4391,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    final beforeLayer = _layers[index];
+    final afterLayer = beforeLayer.copyWith(transform: Matrix4.copy(updated));
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    _isLayerInteracting = false;
+    _snapGuideNotifier.value = const _SnapGuideState.none();
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        transform: Matrix4.copy(updated),
-      );
-      _isLayerInteracting = false;
-      _showVerticalSnapGuide = false;
-      _showHorizontalSnapGuide = false;
+      _layers[index] = afterLayer;
     });
   }
 
@@ -3445,9 +4418,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_isLayerInteracting) {
       return;
     }
-    setState(() {
-      _isLayerInteracting = true;
-    });
+    _isLayerInteracting = true;
   }
 
   Offset _selectedTransformCenterGlobal() {
@@ -3482,9 +4453,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_isLayerInteracting) {
       return;
     }
-    setState(() {
-      _isLayerInteracting = true;
-    });
+    _isLayerInteracting = true;
   }
 
   void _handleSelectedStickerHandleUpdate(DragUpdateDetails details) {
@@ -3756,7 +4725,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _handleRemoveBackgroundTap() async {
-    if (_isRemovingBackground) {
+    if (_isRemovingBackground || _isCommitWorkerBusy) {
       return;
     }
     final selectedId = _selectedLayerId;
@@ -3774,57 +4743,55 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     final taskId = ++_removeBackgroundTaskId;
-    setState(() {
-      _isRemovingBackground = true;
-    });
-    final layerIndex = _layers.indexWhere((item) => item.id == selectedId);
-    if (layerIndex == -1) {
-      if (mounted) {
-        setState(() {
-          _isRemovingBackground = false;
-        });
-      }
+    final initialLayerIndex = _layers.indexWhere((item) => item.id == selectedId);
+    if (initialLayerIndex == -1) {
       return;
     }
 
-    final layer = _layers[layerIndex];
+    final layer = _layers[initialLayerIndex];
     final sourceBytes = layer.bytes;
     if (sourceBytes == null) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _isRemovingBackground = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Source photo unavailable for Remove BG')),
       );
       return;
     }
+
     try {
-      await _backgroundRemoverInitialization;
-      final result = await _backgroundRemovalService.removeBackground(
-        sourceBytes,
+      final result = await _runQueuedCommitJob<BackgroundRemovalResult>(
+        jobKey: 'remove_bg_$taskId',
+        label: 'Removing background',
+        detail: 'AI is processing the selected photo layer',
+        onStart: () {
+          _isRemovingBackground = true;
+        },
+        onFinish: () {
+          _isRemovingBackground = false;
+        },
+        operation: () async {
+          await _backgroundRemoverInitialization;
+          return _backgroundRemovalService.removeBackground(sourceBytes);
+        },
       );
-      if (!mounted || taskId != _removeBackgroundTaskId) {
+      if (result == null || !mounted || taskId != _removeBackgroundTaskId) {
         return;
       }
 
-      _pushUndoSnapshot();
+      final layerIndex = _layers.indexWhere((item) => item.id == selectedId);
+      if (layerIndex == -1) {
+        return;
+      }
+      final beforeLayer = _layers[layerIndex];
+      final afterLayer = beforeLayer.copyWith(bytes: result.pngBytes);
+      _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
       setState(() {
-        _layers[layerIndex] = _layers[layerIndex].copyWith(
-          bytes: result.pngBytes,
-        );
-        _isRemovingBackground = false;
+        _layers[layerIndex] = afterLayer;
       });
       return;
     } catch (error) {
       if (!mounted || taskId != _removeBackgroundTaskId) {
         return;
       }
-      setState(() {
-        _isRemovingBackground = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Remove BG failed: ${error.toString()}'),
@@ -3863,7 +4830,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _discardCropSession() {
-    if (!_isCropMode) {
+    if (!_isCropMode || _isCropApplying) {
       return;
     }
     setState(() {
@@ -3877,7 +4844,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _resetCropSession() {
-    if (!_isCropMode) {
+    if (!_isCropMode || _isCropApplying) {
       return;
     }
     setState(() {
@@ -3887,7 +4854,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _setCropAspectRatio(double? ratio) {
-    if (!_isCropMode) {
+    if (!_isCropMode || _isCropApplying) {
       return;
     }
     setState(() {
@@ -3898,48 +4865,80 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Future<void> _applyCropSession() async {
     final layerId = _cropSessionLayerId;
     final sessionBytes = _cropSessionImageBytes;
-    if (!_isCropMode || layerId == null || sessionBytes == null) {
+    if (_isCropApplying ||
+        _isCommitWorkerBusy ||
+        !_isCropMode ||
+        layerId == null ||
+        sessionBytes == null) {
       return;
     }
-    final boundary =
-        _cropBoundaryKey.currentContext?.findRenderObject()
-            as RenderRepaintBoundary?;
-    if (boundary == null) {
-      return;
-    }
-    final image = await boundary.toImage(pixelRatio: 2.5);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    image.dispose();
-    if (byteData == null || !mounted) {
-      return;
-    }
-
-    final croppedBytes = byteData.buffer.asUint8List();
-    final newAspectRatio = await compute(
-      _extractImageAspectRatio,
-      croppedBytes,
-    );
-    if (!mounted) {
-      return;
-    }
-    final layerIndex = _layers.indexWhere((item) => item.id == layerId);
-    if (layerIndex == -1) {
-      _discardCropSession();
-      return;
-    }
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[layerIndex] = _layers[layerIndex].copyWith(
-        bytes: croppedBytes,
-        photoAspectRatio: newAspectRatio,
+    ui.Image? image;
+    try {
+      final cropPayload = await _runQueuedCommitJob<Map<String, dynamic>>(
+        jobKey: 'crop_$layerId',
+        label: 'Applying crop',
+        detail: 'Finalizing cropped layer preview',
+        onStart: () {
+          _isCropApplying = true;
+        },
+        onFinish: () {
+          _isCropApplying = false;
+        },
+        operation: () async {
+          final boundary =
+              _cropBoundaryKey.currentContext?.findRenderObject()
+                  as RenderRepaintBoundary?;
+          if (boundary == null) {
+            throw Exception('Crop preview unavailable');
+          }
+          image = await boundary.toImage(pixelRatio: 2.5);
+          final byteData = await image!.toByteData(format: ui.ImageByteFormat.png);
+          if (byteData == null || !mounted) {
+            throw Exception('Crop encode failed');
+          }
+          return compute(
+            _prepareCropCommitPayload,
+            Uint8List.fromList(byteData.buffer.asUint8List()),
+          );
+        },
       );
-      _isCropMode = false;
-      _cropSessionLayerId = null;
-      _cropSessionImageBytes = null;
-      _cropSessionAspectRatio = null;
-      _cropSessionInitialAspectRatio = null;
-      _cropTransformationController.value = Matrix4.identity();
-    });
+      if (cropPayload == null || !mounted) {
+        return;
+      }
+      final croppedBytes = cropPayload['bytes'] as Uint8List;
+      final layerIndex = _layers.indexWhere((item) => item.id == layerId);
+      if (layerIndex == -1) {
+        _discardCropSession();
+        return;
+      }
+      final beforeLayer = _layers[layerIndex];
+      final afterLayer = beforeLayer.copyWith(
+        bytes: croppedBytes,
+        photoAspectRatio: (cropPayload['aspectRatio'] as num?)?.toDouble(),
+      );
+      _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+      setState(() {
+        _layers[layerIndex] = afterLayer;
+        _isCropMode = false;
+        _cropSessionLayerId = null;
+        _cropSessionImageBytes = null;
+        _cropSessionAspectRatio = null;
+        _cropSessionInitialAspectRatio = null;
+        _cropTransformationController.value = Matrix4.identity();
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isCropApplying = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Crop apply failed: $error')),
+      );
+    } finally {
+      image?.dispose();
+    }
   }
 
   void _handleDuplicateSelectedLayer() {
@@ -3956,7 +4955,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       transform: duplicatedTransform,
     );
 
-    _pushUndoSnapshot();
+    _pushLayerInsertHistoryEntry(
+      layer: duplicated,
+      insertIndex: _layers.length,
+      beforeSelectedLayerId: _selectedLayerId,
+      afterSelectedLayerId: duplicated.id,
+    );
     setState(() {
       _layers.add(duplicated);
       _selectedLayerId = duplicated.id;
@@ -3974,7 +4978,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    _pushLayerReorderHistoryEntry(
+      layerId: selectedId,
+      fromIndex: index,
+      toIndex: _layers.length - 1,
+      beforeSelectedLayerId: selectedId,
+      afterSelectedLayerId: selectedId,
+    );
     setState(() {
       final layer = _layers.removeAt(index);
       _layers.add(layer);
@@ -3993,7 +5003,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    _pushLayerReorderHistoryEntry(
+      layerId: selectedId,
+      fromIndex: index,
+      toIndex: 0,
+      beforeSelectedLayerId: selectedId,
+      afterSelectedLayerId: selectedId,
+    );
     setState(() {
       final layer = _layers.removeAt(index);
       _layers.insert(0, layer);
@@ -4007,8 +5023,23 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (index == -1) {
       return;
     }
-
-    _pushUndoSnapshot();
+    final layer = _layers[index];
+    String? nextSelectedLayerId = _selectedLayerId;
+    if (_selectedLayerId == layerId) {
+      if (_layers.length == 1) {
+        nextSelectedLayerId = null;
+      } else {
+        nextSelectedLayerId = index == _layers.length - 1
+            ? _layers[_layers.length - 2].id
+            : _layers.last.id;
+      }
+    }
+    _pushLayerDeleteHistoryEntry(
+      layer: layer,
+      deletedIndex: index,
+      beforeSelectedLayerId: _selectedLayerId,
+      afterSelectedLayerId: nextSelectedLayerId,
+    );
     setState(() {
       _layers.removeAt(index);
       if (_layers.isEmpty) {
@@ -4074,7 +5105,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    _pushUndoSnapshot();
+    final layerId = _layers[oldIndex].id;
+    _pushLayerReorderHistoryEntry(
+      layerId: layerId,
+      fromIndex: oldIndex,
+      toIndex: adjustedNewIndex,
+      beforeSelectedLayerId: _selectedLayerId,
+      afterSelectedLayerId: _selectedLayerId,
+    );
     setState(() {
       final item = _layers.removeAt(oldIndex);
       _layers.insert(adjustedNewIndex, item);
@@ -4151,12 +5189,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: layer.isPhoto
-                                ? Image.memory(
-                                    layer.bytes!,
+                                ? Image(
+                                    image: _PhotoLayerImageProviderCache.resolve(
+                                      bytes: layer.bytes!,
+                                      cacheWidth: 96,
+                                    ),
                                     fit: BoxFit.cover,
                                     gaplessPlayback: true,
                                     filterQuality: FilterQuality.low,
-                                    cacheWidth: 96,
                                   )
                                 : layer.isText
                                 ? const Icon(
@@ -4447,16 +5487,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           !_isExporting &&
                           !_isCapturingStage,
                       showPageFramePreview: !_isExporting && !_isCapturingStage,
-                      showVerticalSnapGuide:
+                      snapGuideListenable: _snapGuideNotifier,
+                      snapGuidesEnabled:
                           !_isCropMode &&
                           !_isEraserMode &&
-                          !_isCapturingStage &&
-                          _showVerticalSnapGuide,
-                      showHorizontalSnapGuide:
-                          !_isCropMode &&
-                          !_isEraserMode &&
-                          !_isCapturingStage &&
-                          _showHorizontalSnapGuide,
+                          !_isCapturingStage,
+                      selectedPhotoRenderListenable: _selectedPhotoRenderNotifier,
                       eraserSessionLayerId: _eraserSessionLayerId,
                       eraserPreviewImageListenable: _eraserPreviewNotifier,
                     ),
@@ -4480,93 +5516,97 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   left: 12,
                   right: 12,
                   top: _floatingBarGap,
-                  child: _TopBar(
-                    height: _topBarHeight,
-                    onUndoTap: _handleUndo,
-                    onRedoTap: _handleRedo,
-                    onDraftsTap: _openDraftsScreen,
-                    onExportTap: _handleExportTap,
-                    onDeleteTap: _handleDeleteSelectedLayer,
-                    onDuplicateTap: _handleDuplicateSelectedLayer,
-                    onBringFrontTap: _moveSelectedLayerToFront,
-                    onSendBackTap: _moveSelectedLayerToBack,
-                    canUndo: _canUndo,
-                    canRedo: _canRedo,
-                    isExporting: _isExporting,
-                    canDelete: _selectedLayerId != null,
-                    canDuplicate: _selectedLayerId != null,
-                    canBringFront:
-                        _selectedLayerIndex != -1 &&
-                        _selectedLayerIndex < _layers.length - 1,
-                    canSendBack: _selectedLayerIndex > 0,
+                  child: RepaintBoundary(
+                    child: _TopBar(
+                      height: _topBarHeight,
+                      onUndoTap: _handleUndo,
+                      onRedoTap: _handleRedo,
+                      onDraftsTap: _openDraftsScreen,
+                      onExportTap: _handleExportTap,
+                      onDeleteTap: _handleDeleteSelectedLayer,
+                      onDuplicateTap: _handleDuplicateSelectedLayer,
+                      onBringFrontTap: _moveSelectedLayerToFront,
+                      onSendBackTap: _moveSelectedLayerToBack,
+                      canUndo: _canUndo,
+                      canRedo: _canRedo,
+                      isExporting: _isExporting,
+                      canDelete: _selectedLayerId != null,
+                      canDuplicate: _selectedLayerId != null,
+                      canBringFront:
+                          _selectedLayerIndex != -1 &&
+                          _selectedLayerIndex < _layers.length - 1,
+                      canSendBack: _selectedLayerIndex > 0,
+                    ),
                   ),
                 ),
                 Positioned(
                   left: 12,
                   right: 12,
                   bottom: bottomToolsHeight,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    offset:
-                        !_isCropMode &&
-                            !_isEraserMode &&
-                            _hasSelectedTextLayer &&
-                            _showTextControls
-                        ? Offset.zero
-                        : const Offset(0, 0.06),
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
-                      opacity:
+                  child: RepaintBoundary(
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      offset:
                           !_isCropMode &&
                               !_isEraserMode &&
                               _hasSelectedTextLayer &&
                               _showTextControls
-                          ? 1
-                          : 0,
-                      child: IgnorePointer(
-                        ignoring:
-                            _isCropMode ||
-                            _isEraserMode ||
-                            !_hasSelectedTextLayer ||
-                            !_showTextControls,
-                        child: _TextStyleBar(
-                          visible:
-                              !_isCropMode &&
-                              !_isEraserMode &&
-                              _hasSelectedTextLayer &&
-                              _showTextControls,
-                          selectedLayer: _selectedLayer,
-                          colors: _textColors,
-                          backgroundColors: editorBackgroundColors,
-                          gradients: _textGradients,
-                          onEditTap: _openTextEditSheet,
-                          onFontsTap: _openFontPickerScreen,
-                          onColorSelected: _setSelectedTextColor,
-                          onBackgroundColorSelected:
-                              _setSelectedTextBackgroundColor,
-                          onAlignSelected: _setSelectedTextAlignment,
-                          onGradientSelected: _setSelectedTextGradient,
-                          onFontSizeChanged: _setSelectedTextFontSize,
-                          onFontSizeChangeStart: _handleTextFontSizeEditStart,
-                          onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
-                          onBackgroundOpacityChanged:
-                              _setSelectedTextBackgroundOpacity,
-                          onBackgroundRadiusChanged:
-                              _setSelectedTextBackgroundRadius,
-                          onLineHeightChanged: _setSelectedTextLineHeight,
-                          onLetterSpacingChanged:
-                              _setSelectedTextLetterSpacing,
-                          onShadowOpacityChanged:
-                              _setSelectedTextShadowOpacity,
-                          onShadowBlurChanged: _setSelectedTextShadowBlur,
-                          onShadowOffsetYChanged:
-                              _setSelectedTextShadowOffsetY,
-                          onBoldToggle: _toggleSelectedTextBold,
-                          onItalicToggle: _toggleSelectedTextItalic,
-                          onUnderlineToggle: _toggleSelectedTextUnderline,
-                          onStrokeColorSelected: _setSelectedTextStrokeColor,
-                          onStrokeWidthChanged: _setSelectedTextStrokeWidth,
+                          ? Offset.zero
+                          : const Offset(0, 0.06),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity:
+                            !_isCropMode &&
+                                !_isEraserMode &&
+                                _hasSelectedTextLayer &&
+                                _showTextControls
+                            ? 1
+                            : 0,
+                        child: IgnorePointer(
+                          ignoring:
+                              _isCropMode ||
+                              _isEraserMode ||
+                              !_hasSelectedTextLayer ||
+                              !_showTextControls,
+                          child: _TextStyleBar(
+                            visible:
+                                !_isCropMode &&
+                                !_isEraserMode &&
+                                _hasSelectedTextLayer &&
+                                _showTextControls,
+                            selectedLayer: _selectedLayer,
+                            colors: _textColors,
+                            backgroundColors: editorBackgroundColors,
+                            gradients: _textGradients,
+                            onEditTap: _openTextEditSheet,
+                            onFontsTap: _openFontPickerScreen,
+                            onColorSelected: _setSelectedTextColor,
+                            onBackgroundColorSelected:
+                                _setSelectedTextBackgroundColor,
+                            onAlignSelected: _setSelectedTextAlignment,
+                            onGradientSelected: _setSelectedTextGradient,
+                            onFontSizeChanged: _setSelectedTextFontSize,
+                            onFontSizeChangeStart: _handleTextFontSizeEditStart,
+                            onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
+                            onBackgroundOpacityChanged:
+                                _setSelectedTextBackgroundOpacity,
+                            onBackgroundRadiusChanged:
+                                _setSelectedTextBackgroundRadius,
+                            onLineHeightChanged: _setSelectedTextLineHeight,
+                            onLetterSpacingChanged:
+                                _setSelectedTextLetterSpacing,
+                            onShadowOpacityChanged:
+                                _setSelectedTextShadowOpacity,
+                            onShadowBlurChanged: _setSelectedTextShadowBlur,
+                            onShadowOffsetYChanged:
+                                _setSelectedTextShadowOffsetY,
+                            onBoldToggle: _toggleSelectedTextBold,
+                            onItalicToggle: _toggleSelectedTextItalic,
+                            onUnderlineToggle: _toggleSelectedTextUnderline,
+                            onStrokeColorSelected: _setSelectedTextStrokeColor,
+                            onStrokeWidthChanged: _setSelectedTextStrokeWidth,
+                          ),
                         ),
                       ),
                     ),
@@ -4625,26 +5665,27 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   left: 12,
                   right: 12,
                   bottom: _floatingBarGap,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    reverseDuration: const Duration(milliseconds: 180),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                          final slide = Tween<Offset>(
-                            begin: const Offset(0, 0.08),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: slide,
-                              child: child,
-                            ),
-                          );
-                        },
-                    child: _isCropMode
+                  child: RepaintBoundary(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      reverseDuration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                            final slide = Tween<Offset>(
+                              begin: const Offset(0, 0.08),
+                              end: Offset.zero,
+                            ).animate(animation);
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: slide,
+                                child: child,
+                              ),
+                            );
+                          },
+                      child: _isCropMode
                         ? KeyedSubtree(
                             key: const ValueKey<String>('crop-tools'),
                             child: _CropBottomToolsBar(
@@ -4652,6 +5693,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               onBack: _discardCropSession,
                               onReset: _resetCropSession,
                               onApply: _applyCropSession,
+                              isApplying: _isCropApplying,
                               selectedAspectRatio: _cropSessionAspectRatio,
                               onAspectRatioChanged: _setCropAspectRatio,
                             ),
@@ -4703,30 +5745,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                             key: const ValueKey<String>('adjust-tools'),
                             child: _AdjustBottomToolsBar(
                               height: bottomToolsHeight,
-                              brightness: _adjustSessionBrightness,
-                              contrast: _adjustSessionContrast,
-                              saturation: _adjustSessionSaturation,
-                              blur: _adjustSessionBlur,
-                              onBrightnessChanged: (value) {
-                                setState(() {
-                                  _adjustSessionBrightness = value;
-                                });
-                              },
-                              onContrastChanged: (value) {
-                                setState(() {
-                                  _adjustSessionContrast = value;
-                                });
-                              },
-                              onSaturationChanged: (value) {
-                                setState(() {
-                                  _adjustSessionSaturation = value;
-                                });
-                              },
-                              onBlurChanged: (value) {
-                                setState(() {
-                                  _adjustSessionBlur = value;
-                                });
-                              },
+                              sessionListenable: _adjustSessionNotifier,
+                              onSessionChanged: _updateAdjustSessionState,
                               onBack: _discardAdjustSession,
                               onReset: _resetAdjustSession,
                               onApply: _applyAdjustSession,
@@ -4836,41 +5856,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   _rotateSelectedPhoto(math.pi / 2),
                             ),
                           ),
+                        ),
                   ),
                 ),
-                if (_isRemovingBackground)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              const Text('AI is removing background...'),
-                            ],
-                          ),
+                Positioned.fill(
+                  child: ValueListenableBuilder<_EditorCommitState?>(
+                    valueListenable: _commitStateNotifier,
+                    builder: (
+                      BuildContext context,
+                      _EditorCommitState? commitState,
+                      Widget? child,
+                    ) {
+                      if (commitState == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return AbsorbPointer(
+                        absorbing: true,
+                        child: _EditorCommitOverlay(
+                          label: commitState.label,
+                          detail: commitState.detail,
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
+                ),
               ],
             );
           },
@@ -4911,39 +5920,41 @@ Widget _buildAdjustedPhoto({
   required double saturation,
   required double blur,
 }) {
-  Widget child = Image.memory(
-    bytes,
+  final presentation = _AdjustedPhotoPresentationCache.resolve(
+    bytes: bytes,
+    filterKey: cacheKey,
+    cacheWidth: cacheWidth,
+    brightness: brightness,
+    contrast: contrast,
+    saturation: saturation,
+    blur: blur,
+  );
+  Widget child = Image(
+    image: presentation.provider,
     key: ValueKey<String>(cacheKey),
     fit: BoxFit.contain,
     gaplessPlayback: true,
     filterQuality: FilterQuality.medium,
-    cacheWidth: cacheWidth,
   );
 
-  if (blur > 0.01) {
-    final gaussianSigma = _mapAdjustBlurToSigma(blur);
+  if (presentation.blurSigma > 0.01) {
     child = ImageFiltered(
       imageFilter: ui.ImageFilter.blur(
-        sigmaX: gaussianSigma,
-        sigmaY: gaussianSigma,
+        sigmaX: presentation.blurSigma,
+        sigmaY: presentation.blurSigma,
       ),
       child: child,
     );
   }
-  if ((saturation - 1).abs() > 0.0001) {
+  if (presentation.saturationMatrix != null) {
     child = ColorFiltered(
-      colorFilter: ColorFilter.matrix(_saturationMatrix(saturation)),
+      colorFilter: ColorFilter.matrix(presentation.saturationMatrix!),
       child: child,
     );
   }
-  if (brightness.abs() > 0.0001 || (contrast - 1).abs() > 0.0001) {
+  if (presentation.brightnessContrastMatrix != null) {
     child = ColorFiltered(
-      colorFilter: ColorFilter.matrix(
-        _brightnessContrastMatrix(
-          brightness: brightness,
-          contrast: contrast,
-        ),
-      ),
+      colorFilter: ColorFilter.matrix(presentation.brightnessContrastMatrix!),
       child: child,
     );
   }
@@ -5086,6 +6097,205 @@ double? _extractImageAspectRatio(Uint8List bytes) {
   return decoded.width / decoded.height;
 }
 
+Map<String, dynamic> _prepareCropCommitPayload(Uint8List pngBytes) {
+  final detachedBytes = Uint8List.fromList(pngBytes);
+  return <String, dynamic>{
+    'bytes': detachedBytes,
+    'aspectRatio': _extractImageAspectRatio(detachedBytes),
+  };
+}
+
+Uint8List _applyEraserSegmentsToPng(Map<String, dynamic> payload) {
+  final currentBytes = payload['currentBytes'] as Uint8List?;
+  final restoreBytes = payload['restoreBytes'] as Uint8List?;
+  final segments = (payload['segments'] as List<dynamic>? ?? const <dynamic>[]);
+  final pageWidth = (payload['pageWidth'] as num?)?.toDouble() ?? 0;
+  final pageHeight = (payload['pageHeight'] as num?)?.toDouble() ?? 0;
+  final photoAspectRatio = (payload['photoAspectRatio'] as num?)?.toDouble();
+
+  final currentDecoded = currentBytes == null ? null : img.decodeImage(currentBytes);
+  final restoreDecoded = restoreBytes == null ? null : img.decodeImage(restoreBytes);
+  if (currentDecoded == null) {
+    return currentBytes ?? Uint8List(0);
+  }
+
+  final workingImage = img.Image.from(currentDecoded).convert(numChannels: 4);
+  img.Image restoreImage = restoreDecoded != null
+      ? img.Image.from(restoreDecoded).convert(numChannels: 4)
+      : img.Image.from(currentDecoded).convert(numChannels: 4);
+  if (restoreImage.width != workingImage.width ||
+      restoreImage.height != workingImage.height) {
+    restoreImage = img.copyResize(
+      restoreImage,
+      width: workingImage.width,
+      height: workingImage.height,
+      interpolation: img.Interpolation.linear,
+    ).convert(numChannels: 4);
+  }
+
+  final pageSize = Size(pageWidth, pageHeight);
+  final photoSize = _fitPhotoLayerSize(
+    pageSize: pageSize,
+    photoAspectRatio: photoAspectRatio,
+  );
+  final imagePixelSize = Size(
+    workingImage.width.toDouble(),
+    workingImage.height.toDouble(),
+  );
+
+  for (final segment in segments) {
+    if (segment is! Map) {
+      continue;
+    }
+    final start = Offset(
+      (((segment['sx'] as num?)?.toDouble() ?? 0) * (imagePixelSize.width - 1))
+          .clamp(0.0, imagePixelSize.width - 1),
+      (((segment['sy'] as num?)?.toDouble() ?? 0) * (imagePixelSize.height - 1))
+          .clamp(0.0, imagePixelSize.height - 1),
+    );
+    final end = Offset(
+      (((segment['ex'] as num?)?.toDouble() ?? 0) * (imagePixelSize.width - 1))
+          .clamp(0.0, imagePixelSize.width - 1),
+      (((segment['ey'] as num?)?.toDouble() ?? 0) * (imagePixelSize.height - 1))
+          .clamp(0.0, imagePixelSize.height - 1),
+    );
+    final brushSize = (segment['brushSize'] as num?)?.toDouble() ?? 40;
+    final softness = (segment['softness'] as num?)?.toDouble() ?? 0.65;
+    final strength = (segment['strength'] as num?)?.toDouble() ?? 1.0;
+    final modeName = segment['mode']?.toString() ?? _EraserMode.erase.name;
+    final mode = modeName == _EraserMode.restore.name
+        ? _EraserMode.restore
+        : _EraserMode.erase;
+
+    _applyEraserSegmentToImage(
+      workingImage: workingImage,
+      restoreImage: restoreImage,
+      start: start,
+      end: end,
+      pageSize: pageSize,
+      photoSize: photoSize,
+      imagePixelSize: imagePixelSize,
+      mode: mode,
+      brushSize: brushSize,
+      softness: softness,
+      strength: strength,
+    );
+  }
+
+  return Uint8List.fromList(img.encodePng(workingImage));
+}
+
+void _applyEraserSegmentToImage({
+  required img.Image workingImage,
+  required img.Image restoreImage,
+  required Offset start,
+  required Offset end,
+  required Size pageSize,
+  required Size photoSize,
+  required Size imagePixelSize,
+  required _EraserMode mode,
+  required double brushSize,
+  required double softness,
+  required double strength,
+}) {
+  final safePhotoSize = photoSize.width <= 0 || photoSize.height <= 0
+      ? _fitPhotoLayerSize(
+          pageSize: pageSize,
+          photoAspectRatio: pageSize.height == 0 ? null : pageSize.width / pageSize.height,
+        )
+      : photoSize;
+  final scaleX = imagePixelSize.width / math.max(safePhotoSize.width, 1);
+  final scaleY = imagePixelSize.height / math.max(safePhotoSize.height, 1);
+  final radius = math.max(
+    1.0,
+    (brushSize * 0.5) * ((scaleX + scaleY) / 2),
+  );
+  final distance = (end - start).distance;
+  final steps = math.max(1, (distance / math.max(1.0, radius * 0.32)).ceil());
+
+  for (var index = 0; index <= steps; index++) {
+    final t = steps == 0 ? 0.0 : index / steps;
+    final point = Offset(
+      ui.lerpDouble(start.dx, end.dx, t) ?? start.dx,
+      ui.lerpDouble(start.dy, end.dy, t) ?? start.dy,
+    );
+    _applyEraserStampToImage(
+      workingImage: workingImage,
+      restoreImage: restoreImage,
+      centerX: point.dx,
+      centerY: point.dy,
+      radius: radius,
+      mode: mode,
+      softness: softness,
+      strength: strength,
+    );
+  }
+}
+
+void _applyEraserStampToImage({
+  required img.Image workingImage,
+  required img.Image restoreImage,
+  required double centerX,
+  required double centerY,
+  required double radius,
+  required _EraserMode mode,
+  required double softness,
+  required double strength,
+}) {
+  final left = math.max(0, (centerX - radius).floor());
+  final right = math.min(workingImage.width - 1, (centerX + radius).ceil());
+  final top = math.max(0, (centerY - radius).floor());
+  final bottom = math.min(workingImage.height - 1, (centerY + radius).ceil());
+  final softnessPower = ui.lerpDouble(2.6, 0.7, softness.clamp(0.0, 1.0))!;
+
+  for (var y = top; y <= bottom; y++) {
+    for (var x = left; x <= right; x++) {
+      final dx = (x + 0.5) - centerX;
+      final dy = (y + 0.5) - centerY;
+      final distance = math.sqrt((dx * dx) + (dy * dy));
+      if (distance > radius) {
+        continue;
+      }
+      final normalized = 1 - (distance / radius);
+      final falloff = math.pow(normalized.clamp(0.0, 1.0), softnessPower)
+          .toDouble();
+      final amount = (falloff * strength).clamp(0.0, 1.0);
+      if (amount <= 0.0001) {
+        continue;
+      }
+
+      final currentPixel = workingImage.getPixel(x, y);
+      if (mode == _EraserMode.erase) {
+        final nextAlpha =
+            (currentPixel.a.toDouble() * (1 - amount)).round().clamp(0, 255);
+        workingImage.setPixelRgba(
+          x,
+          y,
+          currentPixel.r.toInt(),
+          currentPixel.g.toInt(),
+          currentPixel.b.toInt(),
+          nextAlpha,
+        );
+        continue;
+      }
+
+      final sourcePixel = restoreImage.getPixel(x, y);
+      workingImage.setPixelRgba(
+        x,
+        y,
+        _blendIntValue(currentPixel.r.toInt(), sourcePixel.r.toInt(), amount),
+        _blendIntValue(currentPixel.g.toInt(), sourcePixel.g.toInt(), amount),
+        _blendIntValue(currentPixel.b.toInt(), sourcePixel.b.toInt(), amount),
+        _blendIntValue(currentPixel.a.toInt(), sourcePixel.a.toInt(), amount),
+      );
+    }
+  }
+}
+
+int _blendIntValue(int from, int to, double weight) {
+  return (from + ((to - from) * weight)).round().clamp(0, 255);
+}
+
 class _CanvasWorkspace extends StatelessWidget {
   const _CanvasWorkspace({
     required this.layers,
@@ -5121,8 +6331,9 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.photoBlurForLayer,
     required this.showSelectionDecorations,
     required this.showPageFramePreview,
-    required this.showVerticalSnapGuide,
-    required this.showHorizontalSnapGuide,
+    required this.snapGuideListenable,
+    required this.snapGuidesEnabled,
+    required this.selectedPhotoRenderListenable,
     required this.eraserSessionLayerId,
     required this.eraserPreviewImageListenable,
   });
@@ -5161,8 +6372,9 @@ class _CanvasWorkspace extends StatelessWidget {
   final double Function(_CanvasLayer layer) photoBlurForLayer;
   final bool showSelectionDecorations;
   final bool showPageFramePreview;
-  final bool showVerticalSnapGuide;
-  final bool showHorizontalSnapGuide;
+  final ValueListenable<_SnapGuideState> snapGuideListenable;
+  final bool snapGuidesEnabled;
+  final ValueListenable<_SelectedPhotoRenderState?> selectedPhotoRenderListenable;
   final String? eraserSessionLayerId;
   final ValueListenable<ui.Image?> eraserPreviewImageListenable;
 
@@ -5215,44 +6427,46 @@ class _CanvasWorkspace extends StatelessWidget {
                     child: Stack(
                       children: <Widget>[
                         Center(
-                          child: Container(
-                            width: pageSize.width,
-                            height: pageSize.height,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              gradient:
-                                  stageBackgroundImageBytes == null &&
-                                      canvasBackgroundGradientIndex >= 0 &&
-                                      canvasBackgroundGradientIndex <
-                                          editorBackgroundGradients.length &&
+                          child: RepaintBoundary(
+                            child: Container(
+                              width: pageSize.width,
+                              height: pageSize.height,
+                              clipBehavior: Clip.antiAlias,
+                              decoration: BoxDecoration(
+                                gradient:
+                                    stageBackgroundImageBytes == null &&
+                                        canvasBackgroundGradientIndex >= 0 &&
+                                        canvasBackgroundGradientIndex <
+                                            editorBackgroundGradients.length &&
+                                        showCanvasBackground
+                                    ? LinearGradient(
+                                        colors: editorBackgroundGradients[canvasBackgroundGradientIndex],
+                                      )
+                                    : null,
+                                color: showCanvasBackground
+                                    ? canvasBackgroundColor
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(2),
+                                border: showPageFrame && showCanvasBackground
+                                    ? Border.all(
+                                        color: const Color(0x331E293B),
+                                        width: 1,
+                                      )
+                                    : null,
+                              ),
+                              child:
+                                  stageBackgroundImageBytes != null &&
                                       showCanvasBackground
-                                  ? LinearGradient(
-                                      colors: editorBackgroundGradients[canvasBackgroundGradientIndex],
-                                    )
-                                  : null,
-                              color: showCanvasBackground
-                                  ? canvasBackgroundColor
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(2),
-                              border: showPageFrame && showCanvasBackground
-                                  ? Border.all(
-                                      color: const Color(0x331E293B),
-                                      width: 1,
+                                  ? SizedBox.expand(
+                                      child: Image.memory(
+                                        stageBackgroundImageBytes!,
+                                        fit: BoxFit.cover,
+                                        gaplessPlayback: true,
+                                        filterQuality: FilterQuality.medium,
+                                      ),
                                     )
                                   : null,
                             ),
-                            child:
-                                stageBackgroundImageBytes != null &&
-                                    showCanvasBackground
-                                ? SizedBox.expand(
-                                    child: Image.memory(
-                                      stageBackgroundImageBytes!,
-                                      fit: BoxFit.cover,
-                                      gaplessPlayback: true,
-                                      filterQuality: FilterQuality.medium,
-                                    ),
-                                  )
-                                : null,
                           ),
                         ),
                         if (layers.isNotEmpty)
@@ -5298,37 +6512,90 @@ class _CanvasWorkspace extends StatelessWidget {
                                 ? SizedBox(
                                     width: photoSize.width,
                                     height: photoSize.height,
-                                    child: Opacity(
-                                      opacity: layer.photoOpacity.clamp(0.1, 1),
-                                      child: Transform(
-                                        alignment: Alignment.center,
-                                        transform: Matrix4.diagonal3Values(
-                                          layer.flipPhotoHorizontally ? -1 : 1,
-                                          layer.flipPhotoVertically ? -1 : 1,
-                                          1,
-                                        ),
-                                        child: Stack(
-                                          fit: StackFit.expand,
-                                          children: <Widget>[
-                                            if (isEraserSessionPhoto)
-                                              ValueListenableBuilder<ui.Image?>(
-                                                valueListenable:
-                                                    eraserPreviewImageListenable,
-                                                builder: (
-                                                  BuildContext context,
-                                                  ui.Image? eraserImage,
-                                                  Widget? child,
-                                                ) {
-                                                  if (eraserImage == null) {
-                                                    return _buildAdjustedPhoto(
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: <Widget>[
+                                        if (isEraserSessionPhoto)
+                                          Opacity(
+                                            opacity:
+                                                layer.photoOpacity.clamp(0.1, 1),
+                                            child: Transform(
+                                              alignment: Alignment.center,
+                                              transform:
+                                                  Matrix4.diagonal3Values(
+                                                    layer.flipPhotoHorizontally
+                                                        ? -1
+                                                        : 1,
+                                                    layer.flipPhotoVertically
+                                                        ? -1
+                                                        : 1,
+                                                    1,
+                                                  ),
+                                              child:
+                                                  ValueListenableBuilder<ui.Image?>(
+                                                    valueListenable:
+                                                        eraserPreviewImageListenable,
+                                                    builder: (
+                                                      BuildContext context,
+                                                      ui.Image? eraserImage,
+                                                      Widget? child,
+                                                    ) {
+                                                      if (eraserImage == null) {
+                                                        return _buildAdjustedPhoto(
+                                                          bytes: layer.bytes!,
+                                                          cacheKey:
+                                                              '${_photoBytesSignature(layer.bytes!)}_'
+                                                              '${effectiveBrightness.toStringAsFixed(3)}_'
+                                                              '${effectiveContrast.toStringAsFixed(3)}_'
+                                                              '${effectiveSaturation.toStringAsFixed(3)}_'
+                                                              '${effectiveBlur.toStringAsFixed(3)}',
+                                                          cacheWidth:
+                                                              photoCacheWidth,
+                                                          brightness:
+                                                              effectiveBrightness,
+                                                          contrast:
+                                                              effectiveContrast,
+                                                          saturation:
+                                                              effectiveSaturation,
+                                                          blur: effectiveBlur,
+                                                        );
+                                                      }
+                                                      return RawImage(
+                                                        image: eraserImage,
+                                                        fit: BoxFit.contain,
+                                                        filterQuality:
+                                                            FilterQuality.medium,
+                                                      );
+                                                    },
+                                                  ),
+                                            ),
+                                          )
+                                        else if (isSelected)
+                                          ValueListenableBuilder<
+                                            _SelectedPhotoRenderState?
+                                          >(
+                                            valueListenable:
+                                                selectedPhotoRenderListenable,
+                                            builder: (
+                                              BuildContext context,
+                                              _SelectedPhotoRenderState?
+                                              renderState,
+                                              Widget? child,
+                                            ) {
+                                              final resolvedState =
+                                                  renderState != null &&
+                                                      renderState.layerId ==
+                                                          layer.id
+                                                  ? renderState
+                                                  : _SelectedPhotoRenderState(
+                                                      layerId: layer.id,
                                                       bytes: layer.bytes!,
-                                                      cacheKey:
-                                                          '${_photoBytesSignature(layer.bytes!)}_'
-                                                          '${effectiveBrightness.toStringAsFixed(3)}_'
-                                                          '${effectiveContrast.toStringAsFixed(3)}_'
-                                                          '${effectiveSaturation.toStringAsFixed(3)}_'
-                                                          '${effectiveBlur.toStringAsFixed(3)}',
-                                                      cacheWidth: photoCacheWidth,
+                                                      opacity: layer.photoOpacity
+                                                          .clamp(0.1, 1),
+                                                      flipHorizontally: layer
+                                                          .flipPhotoHorizontally,
+                                                      flipVertically: layer
+                                                          .flipPhotoVertically,
                                                       brightness:
                                                           effectiveBrightness,
                                                       contrast:
@@ -5337,17 +6604,59 @@ class _CanvasWorkspace extends StatelessWidget {
                                                           effectiveSaturation,
                                                       blur: effectiveBlur,
                                                     );
-                                                  }
-                                                  return RawImage(
-                                                    image: eraserImage,
-                                                    fit: BoxFit.contain,
-                                                    filterQuality:
-                                                        FilterQuality.medium,
-                                                  );
-                                                },
-                                              )
-                                            else
-                                              AnimatedSwitcher(
+                                              return Opacity(
+                                                opacity: resolvedState.opacity
+                                                    .clamp(0.1, 1),
+                                                child: Transform(
+                                                  alignment: Alignment.center,
+                                                  transform:
+                                                      Matrix4.diagonal3Values(
+                                                        resolvedState
+                                                                .flipHorizontally
+                                                            ? -1
+                                                            : 1,
+                                                        resolvedState
+                                                                .flipVertically
+                                                            ? -1
+                                                            : 1,
+                                                        1,
+                                                      ),
+                                                  child: _buildAdjustedPhoto(
+                                                    bytes: resolvedState.bytes,
+                                                    cacheKey:
+                                                        resolvedState.cacheKey,
+                                                    cacheWidth: photoCacheWidth,
+                                                    brightness:
+                                                        resolvedState
+                                                            .brightness,
+                                                    contrast:
+                                                        resolvedState.contrast,
+                                                    saturation:
+                                                        resolvedState
+                                                            .saturation,
+                                                    blur: resolvedState.blur,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        else
+                                          Opacity(
+                                            opacity:
+                                                layer.photoOpacity.clamp(0.1, 1),
+                                            child: Transform(
+                                              alignment: Alignment.center,
+                                              transform:
+                                                  Matrix4.diagonal3Values(
+                                                    layer.flipPhotoHorizontally
+                                                        ? -1
+                                                        : 1,
+                                                    layer.flipPhotoVertically
+                                                        ? -1
+                                                        : 1,
+                                                    1,
+                                                  ),
+                                              child: AnimatedSwitcher(
                                                 duration: const Duration(
                                                   milliseconds: 260,
                                                 ),
@@ -5381,9 +6690,9 @@ class _CanvasWorkspace extends StatelessWidget {
                                                   blur: effectiveBlur,
                                                 ),
                                               ),
-                                          ],
-                                        ),
-                                      ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   )
                                 : layer.isText
@@ -5673,18 +6982,33 @@ class _CanvasWorkspace extends StatelessWidget {
                       top: topInset,
                       bottom: bottomInset,
                     ),
-                    child: CustomPaint(
-                      painter: _SnapGuidesPainter(
-                        showVerticalGuide: showVerticalSnapGuide,
-                        showHorizontalGuide: showHorizontalSnapGuide,
-                      ),
+                    child: ValueListenableBuilder<_SnapGuideState>(
+                      valueListenable: snapGuideListenable,
+                      builder: (
+                        BuildContext context,
+                        _SnapGuideState snapGuides,
+                        Widget? child,
+                      ) {
+                        return RepaintBoundary(
+                          child: CustomPaint(
+                            painter: _SnapGuidesPainter(
+                              showVerticalGuide:
+                                  snapGuidesEnabled &&
+                                  snapGuides.showVerticalGuide,
+                              showHorizontalGuide:
+                                  snapGuidesEnabled &&
+                                  snapGuides.showHorizontalGuide,
+                            ),
+                          ),
+                        );
+                              },
+                            ),
+                            ),
+                          ),
                     ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ),
     );
     /*
@@ -8435,6 +9759,71 @@ class _EraserBrushOverlayPainter extends CustomPainter {
   }
 }
 
+class _EditorCommitOverlay extends StatelessWidget {
+  const _EditorCommitOverlay({
+    required this.label,
+    required this.detail,
+  });
+
+  final String label;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0x220F172A),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 260),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xE5E2E8F0)),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(
+                color: Color(0x120F172A),
+                blurRadius: 22,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const SizedBox(
+                width: 26,
+                height: 26,
+                child: CircularProgressIndicator(strokeWidth: 2.8),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EraserBottomToolsBar extends StatelessWidget {
   const _EraserBottomToolsBar({
     required this.height,
@@ -8771,28 +10160,16 @@ class _EraserSliderChip extends StatelessWidget {
 class _AdjustBottomToolsBar extends StatelessWidget {
   const _AdjustBottomToolsBar({
     required this.height,
-    required this.brightness,
-    required this.contrast,
-    required this.saturation,
-    required this.blur,
-    required this.onBrightnessChanged,
-    required this.onContrastChanged,
-    required this.onSaturationChanged,
-    required this.onBlurChanged,
+    required this.sessionListenable,
+    required this.onSessionChanged,
     required this.onBack,
     required this.onReset,
     required this.onApply,
   });
 
   final double height;
-  final double brightness;
-  final double contrast;
-  final double saturation;
-  final double blur;
-  final ValueChanged<double> onBrightnessChanged;
-  final ValueChanged<double> onContrastChanged;
-  final ValueChanged<double> onSaturationChanged;
-  final ValueChanged<double> onBlurChanged;
+  final ValueListenable<_AdjustSessionState?> sessionListenable;
+  final ValueChanged<_AdjustSessionState> onSessionChanged;
   final VoidCallback onBack;
   final VoidCallback onReset;
   final VoidCallback onApply;
@@ -8839,43 +10216,67 @@ class _AdjustBottomToolsBar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: <Widget>[
-                  _AdjustSlider(
-                    label: 'Brightness',
-                    value: brightness,
-                    min: -0.35,
-                    max: 0.35,
-                    display: brightness.toStringAsFixed(2),
-                    onChanged: onBrightnessChanged,
+            child: ValueListenableBuilder<_AdjustSessionState?>(
+              valueListenable: sessionListenable,
+              builder: (
+                BuildContext context,
+                _AdjustSessionState? session,
+                Widget? child,
+              ) {
+                final resolved =
+                    session ??
+                    const _AdjustSessionState(
+                      brightness: 0,
+                      contrast: 1,
+                      saturation: 1,
+                      blur: 0,
+                    );
+                return SingleChildScrollView(
+                  child: Column(
+                    children: <Widget>[
+                      _AdjustSlider(
+                        label: 'Brightness',
+                        value: resolved.brightness,
+                        min: -0.35,
+                        max: 0.35,
+                        display: resolved.brightness.toStringAsFixed(2),
+                        onChanged: (value) => onSessionChanged(
+                          resolved.copyWith(brightness: value),
+                        ),
+                      ),
+                      _AdjustSlider(
+                        label: 'Contrast',
+                        value: resolved.contrast,
+                        min: 0.6,
+                        max: 1.6,
+                        display: resolved.contrast.toStringAsFixed(2),
+                        onChanged: (value) => onSessionChanged(
+                          resolved.copyWith(contrast: value),
+                        ),
+                      ),
+                      _AdjustSlider(
+                        label: 'Saturation',
+                        value: resolved.saturation,
+                        min: 0,
+                        max: 2,
+                        display: resolved.saturation.toStringAsFixed(2),
+                        onChanged: (value) => onSessionChanged(
+                          resolved.copyWith(saturation: value),
+                        ),
+                      ),
+                      _AdjustSlider(
+                        label: 'Blur',
+                        value: resolved.blur,
+                        min: 0,
+                        max: 10,
+                        display: resolved.blur.toStringAsFixed(1),
+                        onChanged: (value) =>
+                            onSessionChanged(resolved.copyWith(blur: value)),
+                      ),
+                    ],
                   ),
-                  _AdjustSlider(
-                    label: 'Contrast',
-                    value: contrast,
-                    min: 0.6,
-                    max: 1.6,
-                    display: contrast.toStringAsFixed(2),
-                    onChanged: onContrastChanged,
-                  ),
-                  _AdjustSlider(
-                    label: 'Saturation',
-                    value: saturation,
-                    min: 0,
-                    max: 2,
-                    display: saturation.toStringAsFixed(2),
-                    onChanged: onSaturationChanged,
-                  ),
-                  _AdjustSlider(
-                    label: 'Blur',
-                    value: blur,
-                    min: 0,
-                    max: 10,
-                    display: blur.toStringAsFixed(1),
-                    onChanged: onBlurChanged,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 10),
@@ -9053,6 +10454,7 @@ class _CropBottomToolsBar extends StatelessWidget {
     required this.onBack,
     required this.onReset,
     required this.onApply,
+    required this.isApplying,
     required this.selectedAspectRatio,
     required this.onAspectRatioChanged,
   });
@@ -9061,6 +10463,7 @@ class _CropBottomToolsBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onReset;
   final VoidCallback onApply;
+  final bool isApplying;
   final double? selectedAspectRatio;
   final ValueChanged<double?> onAspectRatioChanged;
 
@@ -9076,6 +10479,7 @@ class _CropBottomToolsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disabled = isApplying;
     return Container(
       height: height,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -9099,9 +10503,9 @@ class _CropBottomToolsBar extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+        child: Row(
         children: <Widget>[
-          _TopActionButton(label: 'Back', onTap: onBack),
+          _TopActionButton(label: 'Back', onTap: disabled ? null : onBack),
           const SizedBox(width: 6),
           Expanded(
             child: ListView(
@@ -9110,38 +10514,41 @@ class _CropBottomToolsBar extends StatelessWidget {
                 _CropAspectChip(
                   label: 'Free',
                   selected: _isSelected(null),
-                  onTap: () => onAspectRatioChanged(null),
+                  onTap: disabled ? null : () => onAspectRatioChanged(null),
                 ),
                 _CropAspectChip(
                   label: '1:1',
                   selected: _isSelected(1),
-                  onTap: () => onAspectRatioChanged(1),
+                  onTap: disabled ? null : () => onAspectRatioChanged(1),
                 ),
                 _CropAspectChip(
                   label: '4:5',
                   selected: _isSelected(4 / 5),
-                  onTap: () => onAspectRatioChanged(4 / 5),
+                  onTap: disabled ? null : () => onAspectRatioChanged(4 / 5),
                 ),
                 _CropAspectChip(
                   label: '16:9',
                   selected: _isSelected(16 / 9),
-                  onTap: () => onAspectRatioChanged(16 / 9),
+                  onTap: disabled ? null : () => onAspectRatioChanged(16 / 9),
                 ),
                 _CropAspectChip(
                   label: '9:16',
                   selected: _isSelected(9 / 16),
-                  onTap: () => onAspectRatioChanged(9 / 16),
+                  onTap: disabled ? null : () => onAspectRatioChanged(9 / 16),
                 ),
                 _CropAspectChip(
                   label: 'Reset',
                   selected: false,
-                  onTap: onReset,
+                  onTap: disabled ? null : onReset,
                 ),
               ],
             ),
           ),
           const SizedBox(width: 6),
-          _TopActionButton(label: 'Apply', onTap: onApply),
+          _TopActionButton(
+            label: isApplying ? 'Applying...' : 'Apply',
+            onTap: disabled ? null : onApply,
+          ),
         ],
       ),
     );
@@ -9157,7 +10564,7 @@ class _CropAspectChip extends StatelessWidget {
 
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
