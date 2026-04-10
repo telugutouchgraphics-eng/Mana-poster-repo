@@ -524,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 14),
                 RepaintBoundary(
-                  child: _HomeHeroBanner(title: strings.bannerTitle),
+                  child: const _HomeHeroBanner(),
                 ),
                 const SizedBox(height: 16),
                 Padding(
@@ -805,19 +805,13 @@ class _HomeHeader extends StatelessWidget {
 class _BannerSlideData {
   const _BannerSlideData({
     required this.imageUrl,
-    required this.badge,
-    required this.subtitle,
   });
 
   final String imageUrl;
-  final String badge;
-  final String subtitle;
 }
 
 class _HomeHeroBanner extends StatefulWidget {
-  const _HomeHeroBanner({required this.title});
-
-  final String title;
+  const _HomeHeroBanner();
 
   @override
   State<_HomeHeroBanner> createState() => _HomeHeroBannerState();
@@ -828,20 +822,14 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
     _BannerSlideData(
       imageUrl:
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1400',
-      badge: 'Premium Editor',
-      subtitle: 'Fast canvas setup, clean editing tools, lightweight workflow.',
     ),
     _BannerSlideData(
       imageUrl:
           'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400',
-      badge: 'Festival Ready',
-      subtitle: 'Create posters that look polished, sharp, and mobile-first.',
     ),
     _BannerSlideData(
       imageUrl:
           'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1400',
-      badge: 'Social Media',
-      subtitle: 'Fresh banner flow ready to plug into future admin uploads.',
     ),
   ];
 
@@ -878,9 +866,6 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
       builder: (BuildContext context, BoxConstraints constraints) {
         final compact = constraints.maxWidth < 360;
         final bannerHeight = compact ? 106.0 : 112.0;
-        final titleSize = compact ? 18.0 : 20.0;
-        final bodySize = compact ? 11.0 : 12.0;
-        final horizontalInset = compact ? 14.0 : 16.0;
 
         return SizedBox(
           height: bannerHeight,
@@ -898,9 +883,7 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                     if (_currentPage == index) {
                       return;
                     }
-                    setState(() {
-                      _currentPage = index;
-                    });
+                    _currentPage = index;
                   },
                   itemBuilder: (BuildContext context, int index) {
                     final slide = _slides[index];
@@ -941,111 +924,16 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                               colors: <Color>[
-                                Color(0xD90F172A),
-                                Color(0x8A1E293B),
-                                Color(0x2B1E293B),
+                                Color(0x260F172A),
+                                Color(0x1A1E293B),
+                                Color(0x0A1E293B),
                               ],
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            horizontalInset,
-                            12,
-                            horizontalInset,
-                            14,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.14),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.16),
-                                  ),
-                                ),
-                                child: Text(
-                                  slide.badge,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                widget.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: titleSize,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.08,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: compact ? 220 : 260,
-                                child: Text(
-                                  slide.subtitle,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: const Color(0xFFE2E8F0),
-                                    fontSize: bodySize,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],
                     );
                   },
-                ),
-                Positioned(
-                  right: 14,
-                  bottom: 10,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: List<Widget>.generate(_slides.length, (
-                          int index,
-                        ) {
-                          final selected = index == _currentPage;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: selected ? 15 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.48),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),

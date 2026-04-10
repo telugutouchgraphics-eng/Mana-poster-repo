@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -27,6 +27,9 @@ enum _CanvasLayerType { photo, text, sticker }
 
 enum _ExportImageFormat { png, pngTransparent, jpg }
 
+enum _EraserMode { erase, restore }
+enum _EraserControl { brushSize, softness, strength }
+
 class _CanvasLayer {
   const _CanvasLayer({
     required this.id,
@@ -41,6 +44,10 @@ class _CanvasLayer {
     this.fontSize = 40,
     this.fontFamily = 'Anek Telugu Condensed Regular',
     this.photoOpacity = 1,
+    this.photoBrightness = 0,
+    this.photoContrast = 1,
+    this.photoSaturation = 1,
+    this.photoBlur = 0,
     this.flipPhotoHorizontally = false,
     this.flipPhotoVertically = false,
     this.isLocked = false,
@@ -74,6 +81,10 @@ class _CanvasLayer {
   final double fontSize;
   final String fontFamily;
   final double photoOpacity;
+  final double photoBrightness;
+  final double photoContrast;
+  final double photoSaturation;
+  final double photoBlur;
   final bool flipPhotoHorizontally;
   final bool flipPhotoVertically;
   final bool isLocked;
@@ -111,6 +122,10 @@ class _CanvasLayer {
     double? fontSize,
     String? fontFamily,
     double? photoOpacity,
+    double? photoBrightness,
+    double? photoContrast,
+    double? photoSaturation,
+    double? photoBlur,
     bool? flipPhotoHorizontally,
     bool? flipPhotoVertically,
     bool? isLocked,
@@ -144,6 +159,10 @@ class _CanvasLayer {
       fontSize: fontSize ?? this.fontSize,
       fontFamily: fontFamily ?? this.fontFamily,
       photoOpacity: photoOpacity ?? this.photoOpacity,
+      photoBrightness: photoBrightness ?? this.photoBrightness,
+      photoContrast: photoContrast ?? this.photoContrast,
+      photoSaturation: photoSaturation ?? this.photoSaturation,
+      photoBlur: photoBlur ?? this.photoBlur,
       flipPhotoHorizontally:
           flipPhotoHorizontally ?? this.flipPhotoHorizontally,
       flipPhotoVertically: flipPhotoVertically ?? this.flipPhotoVertically,
@@ -211,11 +230,13 @@ class ImageEditorScreen extends StatefulWidget {
 
 class _ImageEditorScreenState extends State<ImageEditorScreen>
     with SingleTickerProviderStateMixin {
-  static const double _topBarHeight = 64;
-  static const double _bottomBarHeight = 86;
+  static const double _topBarHeight = 58;
+  static const double _bottomBarHeight = 82;
   static const double _cropBarHeight = 96;
+  static const double _adjustBarHeight = 214;
+  static const double _eraserBarHeight = 98;
   static const double _floatingBarGap = 10;
-  static const double _photoControlsExtraHeight = 64;
+  static const double _photoControlsExtraHeight = 92;
   static const double _textStyleBarHeight = 148;
   static const List<Color> _textColors = <Color>[
     Color(0xFF0F172A),
@@ -356,6 +377,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _suppressCanvasTapDown = false;
   int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
+  bool _isAdjustMode = false;
+  bool _isEraserMode = false;
+  bool _isEraserInitializing = false;
+  bool _isEraserApplying = false;
+  String? _eraserSessionLayerId;
+  String? _eraserInitError;
+  bool _showJoyHint = true;
   bool _showVerticalSnapGuide = false;
   bool _showHorizontalSnapGuide = false;
   bool _isLayerInteracting = false;
@@ -382,6 +410,34 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   static const double _rotationSnapThresholdRadians = math.pi / 24;
   Size _lastCanvasSize = Size.zero;
   Timer? _autosaveTimer;
+  String? _adjustSessionLayerId;
+  String _activeMainToolLabel = 'Add Photo';
+  double _adjustSessionBrightness = 0;
+  double _adjustSessionContrast = 1;
+  double _adjustSessionSaturation = 1;
+  double _adjustSessionBlur = 0;
+  double _adjustInitialBrightness = 0;
+  double _adjustInitialContrast = 1;
+  double _adjustInitialSaturation = 1;
+  double _adjustInitialBlur = 0;
+  _EraserMode _eraserMode = _EraserMode.erase;
+  _EraserControl? _activeEraserControl;
+  double _eraserBrushSize = 40;
+  double _eraserBrushSoftness = 0.65;
+  double _eraserBrushStrength = 1;
+  img.Image? _eraserWorkingImage;
+  img.Image? _eraserInitialImage;
+  img.Image? _eraserRestoreSourceImage;
+  ui.Image? _eraserPreviewImage;
+  final ValueNotifier<ui.Image?> _eraserPreviewNotifier =
+      ValueNotifier<ui.Image?>(null);
+  final ValueNotifier<Offset?> _eraserBrushCursorNotifier =
+      ValueNotifier<Offset?>(null);
+  Offset? _eraserBrushLocalPosition;
+  Offset? _eraserLastImagePoint;
+  Timer? _eraserPreviewRefreshTimer;
+  bool _eraserPreviewRefreshing = false;
+  bool _eraserPreviewRefreshQueued = false;
   bool _isRestoringDraft = false;
   bool _pendingAutosave = false;
   Uint8List? _stageBackgroundImageBytes;
@@ -421,6 +477,92 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool get _canUndo => _undoStack.isNotEmpty;
   bool get _canRedo => _redoStack.isNotEmpty;
 
+  double _effectivePhotoBrightness(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionBrightness
+      : layer.photoBrightness;
+
+  double _effectivePhotoContrast(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionContrast
+      : layer.photoContrast;
+
+  double _effectivePhotoSaturation(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionSaturation
+      : layer.photoSaturation;
+
+  double _effectivePhotoBlur(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionBlur
+      : layer.photoBlur;
+
+  String? get _activeModeLabel {
+    if (_isCropMode) {
+      return 'Crop mode';
+    }
+    if (_isEraserMode) {
+      return 'Eraser mode';
+    }
+    if (_isAdjustMode) {
+      return 'Adjust mode';
+    }
+    if (_hasSelectedTextLayer) {
+      return _showTextControls ? 'Text styling' : 'Text selected';
+    }
+    if (_hasSelectedPhotoLayer) {
+      return 'Photo selected';
+    }
+    if (_selectedLayerId != null) {
+      return 'Object selected';
+    }
+    return null;
+  }
+
+  Color get _activeModeAccent {
+    if (_isCropMode) {
+      return const Color(0xFF2563EB);
+    }
+    if (_isEraserMode) {
+      return const Color(0xFFEF4444);
+    }
+    if (_isAdjustMode) {
+      return const Color(0xFF7C3AED);
+    }
+    if (_hasSelectedTextLayer) {
+      return const Color(0xFFDB2777);
+    }
+    if (_hasSelectedPhotoLayer) {
+      return const Color(0xFF0EA5E9);
+    }
+    if (_selectedLayerId != null) {
+      return const Color(0xFF14B8A6);
+    }
+    return const Color(0xFF2563EB);
+  }
+
+  void _dismissJoyHint() {
+    if (!_showJoyHint) {
+      return;
+    }
+    setState(() {
+      _showJoyHint = false;
+    });
+  }
+
+  Future<void> _runMainToolAction(
+    String label,
+    FutureOr<void> Function() action,
+  ) async {
+    if (mounted && _activeMainToolLabel != label) {
+      setState(() {
+        _activeMainToolLabel = label;
+      });
+    }
+    _dismissJoyHint();
+    await action();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -455,7 +597,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_isRestoringDraft) {
       return;
     }
-    if (_isLayerInteracting || _isCapturingStage) {
+    if (_isLayerInteracting ||
+        _isCapturingStage ||
+        _isEraserMode ||
+        _isAdjustMode ||
+        _isCropMode) {
       _pendingAutosave = true;
       return;
     }
@@ -565,7 +711,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           continue;
         }
 
-        final bytes = await _loadTemplateLayerBytes(templateLayer.assetPath);
+        Uint8List bytes;
+        try {
+          bytes = await _loadTemplateLayerBytes(templateLayer.assetPath);
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Template layer load failed for ${templateLayer.assetPath}: $error',
+          );
+          debugPrintStack(stackTrace: stackTrace);
+          continue;
+        }
         final aspectRatio = templateLayer.width / templateLayer.height;
         final targetWidth =
             (templateLayer.width / document.sourceWidth) * pageSize.width;
@@ -617,6 +772,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _templateDocument = null;
         _isTemplateHydrated = true;
       });
+      if (importedLayers.isEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Template layers load kaaledu. Malli try cheyyandi'),
+          ),
+        );
+      }
     } finally {
       _isTemplateHydrationInProgress = false;
     }
@@ -643,7 +805,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Subscription backend sync fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ try à°šà±‡à°¯à°‚à°¡à°¿',
+            'Subscription backend sync fail అయ్యింది. కొద్దిసేపటి తర్వాత మళ్లీ try చేయండి',
           ),
         ),
       );
@@ -662,7 +824,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Purchase verification data à°¦à±Šà°°à°•à°²à±‡à°¦à±. Restore/Retry à°šà±‡à°¯à°‚à°¡à°¿',
+            'Purchase verification data దొరకలేదు. Restore/Retry చేయండి',
           ),
         ),
       );
@@ -687,7 +849,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Purchase complete à°…à°¯à°¿à°¨à°¾ entitlement active à°•à°¾à°²à±‡à°¦à±. Support à°¨à°¿ à°¸à°‚à°ªà±à°°à°¦à°¿à°‚à°šà°‚à°¡à°¿',
+            'Purchase complete అయినా entitlement active కాలేదు. Support ని సంప్రదించండి',
           ),
         ),
       );
@@ -699,7 +861,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         content: Text(
           result.message?.isNotEmpty == true
               ? 'Verification fail: ${result.message}'
-              : 'Subscription verification fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
+              : 'Subscription verification fail అయ్యింది',
         ),
       ),
     );
@@ -814,6 +976,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       'fontSize': layer.fontSize,
       'fontFamily': layer.fontFamily,
       'photoOpacity': layer.photoOpacity,
+      'photoBrightness': layer.photoBrightness,
+      'photoContrast': layer.photoContrast,
+      'photoSaturation': layer.photoSaturation,
+      'photoBlur': layer.photoBlur,
       'flipPhotoHorizontally': layer.flipPhotoHorizontally,
       'flipPhotoVertically': layer.flipPhotoVertically,
       'isLocked': layer.isLocked,
@@ -872,6 +1038,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         fontFamily:
             raw['fontFamily'] as String? ?? 'Anek Telugu Condensed Regular',
         photoOpacity: (raw['photoOpacity'] as num?)?.toDouble() ?? 1,
+        photoBrightness: (raw['photoBrightness'] as num?)?.toDouble() ?? 0,
+        photoContrast: (raw['photoContrast'] as num?)?.toDouble() ?? 1,
+        photoSaturation: (raw['photoSaturation'] as num?)?.toDouble() ?? 1,
+        photoBlur: (raw['photoBlur'] as num?)?.toDouble() ?? 0,
         flipPhotoHorizontally: (raw['flipPhotoHorizontally'] as bool?) ?? false,
         flipPhotoVertically: (raw['flipPhotoVertically'] as bool?) ?? false,
         isLocked: (raw['isLocked'] as bool?) ?? false,
@@ -1059,6 +1229,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   @override
   void dispose() {
+    _disposeEraserSessionResources();
+    _eraserPreviewNotifier.dispose();
+    _eraserBrushCursorNotifier.dispose();
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
     unawaited(BackgroundRemover.instance.dispose());
@@ -1561,18 +1734,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Canvas à°–à°¾à°³à±€à°—à°¾ à°‰à°‚à°¦à°¿'),
+          title: const Text('Canvas ఖాళీగా ఉంది'),
           content: const Text(
-            'Design layers à°à°µà°¿ à°²à±‡à°µà±. à°…à°¯à°¿à°¨à°¾ à°•à±‚à°¡à°¾ background à°®à°¾à°¤à±à°°à°®à±‡ export à°šà±‡à°¯à°¾à°²à°¾?',
+            'Design layers ఏవి లేవు. అయినా కూడా background మాత్రమే export చేయాలా?',
           ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('à°µà°¦à±à°¦à±'),
+              child: const Text('వద్దు'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('à°…à°µà±à°¨à±, export à°šà±‡à°¯à°¿'),
+              child: const Text('అవును, export చేయి'),
             ),
           ],
         );
@@ -1625,23 +1798,23 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           return false;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pro à°µà°¿à°œà°¯à°µà°‚à°¤à°‚à°—à°¾ activate à°…à°¯à±à°¯à°¿à°‚à°¦à°¿')),
+          const SnackBar(content: Text('Pro విజయవంతంగా activate అయ్యింది')),
         );
         return forExport;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (result) {
-            PurchaseFlowResult.cancelled => 'Payment cancel à°šà±‡à°¶à°¾à°°à±',
-            PurchaseFlowResult.failed => 'Payment fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
+            PurchaseFlowResult.cancelled => 'Payment cancel చేశారు',
+            PurchaseFlowResult.failed => 'Payment fail అయ్యింది',
             PurchaseFlowResult.billingUnavailable =>
-              'Billing service à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+              'Billing service అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
             PurchaseFlowResult.productNotFound =>
-              'Subscription à°ªà±à°²à°¾à°¨à± storeà°²à±‹ à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±. supportâ€Œà°¨à°¿ à°¸à°‚à°ªà±à°°à°¦à°¿à°‚à°šà°‚à°¡à°¿',
+              'Subscription ప్లాన్ storeలో కనిపించలేదు. support‌ని సంప్రదించండి',
             PurchaseFlowResult.timedOut =>
-              'Payment response à°†à°²à°¸à±à°¯à°‚ à°…à°¯à±à°¯à°¿à°‚à°¦à°¿. purchase history à°šà±†à°•à± à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+              'Payment response ఆలస్యం అయ్యింది. purchase history చెక్ చేసి మళ్లీ ప్రయత్నించండి',
             PurchaseFlowResult.nothingToRestore =>
-              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ purchase à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
+              'Restore చేయడానికి purchase కనిపించలేదు',
             PurchaseFlowResult.success => '',
           }),
         ),
@@ -1665,7 +1838,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           return false;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Purchase restore à°…à°¯à±à°¯à°¿à°‚à°¦à°¿')),
+          const SnackBar(content: Text('Purchase restore అయ్యింది')),
         );
         return forExport;
       }
@@ -1673,17 +1846,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         SnackBar(
           content: Text(switch (restoreResult) {
             PurchaseFlowResult.billingUnavailable =>
-              'Billing service à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+              'Billing service అందుబాటులో లేదు. తర్వాత మళ్లీ ప్రయత్నించండి',
             PurchaseFlowResult.failed =>
-              'Restore fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
-            PurchaseFlowResult.cancelled => 'Restore process cancel à°…à°¯à°¿à°‚à°¦à°¿',
+              'Restore fail అయ్యింది, మళ్లీ ప్రయత్నించండి',
+            PurchaseFlowResult.cancelled => 'Restore process cancel అయింది',
             PurchaseFlowResult.productNotFound =>
-              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ product details à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
+              'Restore చేయడానికి product details కనిపించలేదు',
             PurchaseFlowResult.timedOut =>
-              'Restore response à°†à°²à°¸à±à°¯à°‚ à°…à°¯à°¿à°‚à°¦à°¿. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+              'Restore response ఆలస్యం అయింది. కొద్దిసేపటి తర్వాత ప్రయత్నించండి',
             PurchaseFlowResult.nothingToRestore =>
-              'Restore à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ active plan à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±',
-            PurchaseFlowResult.success => 'Purchase restore à°…à°¯à±à°¯à°¿à°‚à°¦à°¿',
+              'Restore చేయడానికి active plan కనిపించలేదు',
+            PurchaseFlowResult.success => 'Purchase restore అయ్యింది',
           }),
         ),
       );
@@ -1888,7 +2061,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Export fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿'),
+          content: Text('Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
         ),
       );
     } finally {
@@ -1941,7 +2114,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   String _exportResultMessage(dynamic saveResult, {required bool isSuccess}) {
     if (isSuccess) {
-      return 'Poster gallery à°²à±‹ save à°…à°¯à±à°¯à°¿à°‚à°¦à°¿';
+      return 'Poster gallery లో save అయ్యింది';
     }
     final errorText = saveResult is Map
         ? (saveResult['errorMessage']?.toString() ??
@@ -1950,9 +2123,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               '')
         : '';
     if (errorText.toLowerCase().contains('permission')) {
-      return 'Gallery permission à°‡à°µà±à°µà°‚à°¡à°¿, à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ export à°šà±‡à°¯à°‚à°¡à°¿';
+      return 'Gallery permission ఇవ్వండి, తర్వాత మళ్లీ export చేయండి';
     }
-    return 'Export fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿';
+    return 'Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి';
   }
 
   double _exportPixelRatio(double devicePixelRatio) {
@@ -1983,14 +2156,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       await file.writeAsBytes(imageBytes, flush: true);
       await Share.shareXFiles(<XFile>[
         XFile(file.path),
-      ], text: 'Mana Poster à°¤à±‹ create à°šà±‡à°¸à°¿à°¨ à°¨à°¾ poster');
+      ], text: 'Mana Poster తో create చేసిన నా poster');
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Share fail à°…à°¯à±à°¯à°¿à°‚à°¦à°¿, à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿'),
+          content: Text('Share fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
         ),
       );
     } finally {
@@ -2267,6 +2440,581 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
   }
 
+  void _openAdjustPanel() {
+    final layer = _selectedLayer;
+    if (layer == null || !layer.isPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a photo first')),
+      );
+      return;
+    }
+    setState(() {
+      _isAdjustMode = true;
+      _adjustSessionLayerId = layer.id;
+      _adjustSessionBrightness = layer.photoBrightness;
+      _adjustSessionContrast = layer.photoContrast;
+      _adjustSessionSaturation = layer.photoSaturation;
+      _adjustSessionBlur = layer.photoBlur;
+      _adjustInitialBrightness = layer.photoBrightness;
+      _adjustInitialContrast = layer.photoContrast;
+      _adjustInitialSaturation = layer.photoSaturation;
+      _adjustInitialBlur = layer.photoBlur;
+      _showTextControls = false;
+    });
+  }
+
+  void _discardAdjustSession() {
+    if (!_isAdjustMode) {
+      return;
+    }
+    setState(() {
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+      _adjustSessionBrightness = 0;
+      _adjustSessionContrast = 1;
+      _adjustSessionSaturation = 1;
+      _adjustSessionBlur = 0;
+      _adjustInitialBrightness = 0;
+      _adjustInitialContrast = 1;
+      _adjustInitialSaturation = 1;
+      _adjustInitialBlur = 0;
+    });
+  }
+
+  void _resetAdjustSession() {
+    if (!_isAdjustMode) {
+      return;
+    }
+    setState(() {
+      _adjustSessionBrightness = _adjustInitialBrightness;
+      _adjustSessionContrast = _adjustInitialContrast;
+      _adjustSessionSaturation = _adjustInitialSaturation;
+      _adjustSessionBlur = _adjustInitialBlur;
+    });
+  }
+
+  void _applyAdjustSession() {
+    final selectedId = _selectedLayerId;
+    if (!_isAdjustMode || selectedId == null || _adjustSessionLayerId != selectedId) {
+      _discardAdjustSession();
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isPhoto) {
+      _discardAdjustSession();
+      return;
+    }
+    final hasChanges =
+        (_layers[index].photoBrightness - _adjustSessionBrightness).abs() >
+            0.0001 ||
+        (_layers[index].photoContrast - _adjustSessionContrast).abs() >
+            0.0001 ||
+        (_layers[index].photoSaturation - _adjustSessionSaturation).abs() >
+            0.0001 ||
+        (_layers[index].photoBlur - _adjustSessionBlur).abs() > 0.0001;
+    if (hasChanges) {
+      _pushUndoSnapshot();
+    }
+    setState(() {
+      _layers[index] = _layers[index].copyWith(
+        photoBrightness: _adjustSessionBrightness,
+        photoContrast: _adjustSessionContrast,
+        photoSaturation: _adjustSessionSaturation,
+        photoBlur: _adjustSessionBlur,
+      );
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+    });
+  }
+
+  Future<void> _openEraserPanel() async {
+    final layer = _selectedLayer;
+    if (layer == null || !layer.isPhoto || layer.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a photo first')),
+      );
+      return;
+    }
+    final canDecodeCurrent = _decodeEditableImage(layer.bytes) != null;
+    final canDecodeOriginal =
+        _decodeEditableImage(layer.originalPhotoBytes ?? layer.bytes) != null;
+    if (!canDecodeCurrent && !canDecodeOriginal) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selected image could not be loaded')),
+      );
+      return;
+    }
+
+    _disposeEraserSessionResources();
+    setState(() {
+      _isEraserMode = true;
+      _isEraserInitializing = true;
+      _isEraserApplying = false;
+      _eraserSessionLayerId = layer.id;
+      _eraserInitError = null;
+      _eraserMode = _EraserMode.erase;
+      _activeEraserControl = null;
+      _eraserBrushSize = 40;
+      _eraserBrushSoftness = 0.65;
+      _eraserBrushStrength = 1;
+      _showTextControls = false;
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+    });
+    await _initializeEraserSessionForLayer(layer);
+  }
+
+  Future<void> _initializeEraserSessionForLayer(_CanvasLayer layer) async {
+    final currentImage = _decodeEditableImage(layer.bytes);
+    final sourceImage = _decodeEditableImage(
+      layer.originalPhotoBytes ?? layer.bytes,
+    );
+    final baseImage = currentImage ?? sourceImage;
+    if (baseImage == null) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isEraserInitializing = false;
+        _eraserInitError = 'Selected image could not be loaded';
+      });
+      return;
+    }
+
+    final workingImage = _cloneEditableImage(baseImage);
+    final initialImage = _cloneEditableImage(baseImage);
+    img.Image restoreImage = sourceImage != null
+        ? _cloneEditableImage(sourceImage)
+        : _cloneEditableImage(baseImage);
+    if (restoreImage.width != workingImage.width ||
+        restoreImage.height != workingImage.height) {
+      restoreImage = img.copyResize(
+        restoreImage,
+        width: workingImage.width,
+        height: workingImage.height,
+        interpolation: img.Interpolation.linear,
+      ).convert(numChannels: 4);
+    }
+
+    _eraserWorkingImage = workingImage;
+    _eraserInitialImage = initialImage;
+    _eraserRestoreSourceImage = restoreImage;
+    await _refreshEraserPreviewNow();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isEraserInitializing = false;
+    });
+  }
+
+  img.Image? _decodeEditableImage(Uint8List? bytes) {
+    if (bytes == null) {
+      return null;
+    }
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      return null;
+    }
+    return decoded.convert(numChannels: 4);
+  }
+
+  img.Image _cloneEditableImage(img.Image source) {
+    return img.Image.from(source).convert(numChannels: 4);
+  }
+
+  void _discardEraserSession() {
+    if (!_isEraserMode &&
+        !_isEraserInitializing &&
+        !_isEraserApplying &&
+        _eraserSessionLayerId == null) {
+      return;
+    }
+    _disposeEraserSessionResources();
+    setState(() {
+      _isEraserMode = false;
+      _isEraserInitializing = false;
+      _isEraserApplying = false;
+      _eraserSessionLayerId = null;
+      _activeEraserControl = null;
+      _eraserInitError = null;
+      _eraserBrushLocalPosition = null;
+      _eraserLastImagePoint = null;
+    });
+  }
+
+  void _disposeEraserSessionResources() {
+    _eraserPreviewRefreshTimer?.cancel();
+    _eraserPreviewRefreshTimer = null;
+    final oldPreview = _eraserPreviewImage;
+    _eraserPreviewImage = null;
+    final notifierOldPreview = _eraserPreviewNotifier.value;
+    _eraserPreviewNotifier.value = null;
+    if (!identical(notifierOldPreview, oldPreview)) {
+      notifierOldPreview?.dispose();
+    }
+    oldPreview?.dispose();
+    _eraserWorkingImage = null;
+    _eraserInitialImage = null;
+    _eraserRestoreSourceImage = null;
+    _eraserBrushLocalPosition = null;
+    _eraserBrushCursorNotifier.value = null;
+    _eraserLastImagePoint = null;
+    _eraserPreviewRefreshing = false;
+    _eraserPreviewRefreshQueued = false;
+  }
+
+  void _resetEraserSession() {
+    final initialImage = _eraserInitialImage;
+    if (initialImage == null || !_isEraserMode || _isEraserApplying) {
+      return;
+    }
+    _eraserWorkingImage = _cloneEditableImage(initialImage);
+    _eraserLastImagePoint = null;
+    _eraserBrushLocalPosition = null;
+    _scheduleEraserPreviewRefresh();
+    setState(() {});
+  }
+
+  Future<void> _applyEraserSession() async {
+    if (!_isEraserMode || _isEraserApplying) {
+      return;
+    }
+    final selectedId = _selectedLayerId;
+    if (selectedId == null || _eraserSessionLayerId != selectedId) {
+      _discardEraserSession();
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isPhoto) {
+      _discardEraserSession();
+      return;
+    }
+    final workingImage = _eraserWorkingImage;
+    if (workingImage == null) {
+      _discardEraserSession();
+      return;
+    }
+
+    setState(() {
+      _isEraserApplying = true;
+    });
+    final pngBytes = Uint8List.fromList(img.encodePng(workingImage));
+    final currentBytes = _layers[index].bytes;
+    if (currentBytes != null && listEquals(currentBytes, pngBytes)) {
+      _discardEraserSession();
+      return;
+    }
+
+    _pushUndoSnapshot();
+    setState(() {
+      _layers[index] = _layers[index].copyWith(bytes: pngBytes);
+      _isEraserMode = false;
+      _isEraserInitializing = false;
+      _isEraserApplying = false;
+      _eraserSessionLayerId = null;
+      _activeEraserControl = null;
+      _eraserInitError = null;
+      _eraserBrushLocalPosition = null;
+      _eraserLastImagePoint = null;
+    });
+    _disposeEraserSessionResources();
+  }
+
+  void _scheduleEraserPreviewRefresh() {
+    if (_eraserPreviewRefreshTimer != null) {
+      return;
+    }
+    _eraserPreviewRefreshTimer = Timer(
+      const Duration(milliseconds: 16),
+      () {
+        _eraserPreviewRefreshTimer = null;
+        unawaited(_refreshEraserPreviewNow());
+      },
+    );
+  }
+
+  Future<void> _refreshEraserPreviewNow() async {
+    final workingImage = _eraserWorkingImage;
+    if (workingImage == null) {
+      return;
+    }
+    if (_eraserPreviewRefreshing) {
+      _eraserPreviewRefreshQueued = true;
+      return;
+    }
+    _eraserPreviewRefreshing = true;
+    try {
+      final preview = await _uiImageFromPackageImage(workingImage);
+      if (!mounted || !_isEraserMode) {
+        preview.dispose();
+        return;
+      }
+      final oldPreview = _eraserPreviewImage;
+      _eraserPreviewImage = preview;
+      final notifierOldPreview = _eraserPreviewNotifier.value;
+      _eraserPreviewNotifier.value = preview;
+      if (!identical(notifierOldPreview, oldPreview)) {
+        notifierOldPreview?.dispose();
+      }
+      oldPreview?.dispose();
+    } finally {
+      _eraserPreviewRefreshing = false;
+      if (_eraserPreviewRefreshQueued) {
+        _eraserPreviewRefreshQueued = false;
+        unawaited(_refreshEraserPreviewNow());
+      }
+    }
+  }
+
+  Future<ui.Image> _uiImageFromPackageImage(img.Image image) async {
+    final bytes = image.getBytes(order: img.ChannelOrder.rgba);
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
+      bytes.buffer.asUint8List(),
+      image.width,
+      image.height,
+      ui.PixelFormat.rgba8888,
+      (ui.Image decoded) => completer.complete(decoded),
+      rowBytes: image.width * 4,
+    );
+    return completer.future;
+  }
+
+  Offset? _mapCanvasPointToSelectedImage({
+    required Offset localPosition,
+    required Rect pageRect,
+    required Size pageSize,
+    required Size imagePixelSize,
+  }) {
+    final selected = _selectedLayer;
+    if (selected == null ||
+        !selected.isPhoto ||
+        imagePixelSize.width <= 1 ||
+        imagePixelSize.height <= 1) {
+      return null;
+    }
+    final photoSize = _fitPhotoLayerSize(
+      pageSize: pageSize,
+      photoAspectRatio: selected.photoAspectRatio,
+    );
+    if (photoSize.width <= 0 || photoSize.height <= 0) {
+      return null;
+    }
+    final localToPageCenter = localPosition - pageRect.center;
+    final inverse = Matrix4.inverted(_transformationController.value);
+    var point = MatrixUtils.transformPoint(inverse, localToPageCenter);
+
+    if (selected.flipPhotoHorizontally) {
+      point = Offset(-point.dx, point.dy);
+    }
+    if (selected.flipPhotoVertically) {
+      point = Offset(point.dx, -point.dy);
+    }
+
+    final halfW = photoSize.width / 2;
+    final halfH = photoSize.height / 2;
+    if (point.dx < -halfW ||
+        point.dx > halfW ||
+        point.dy < -halfH ||
+        point.dy > halfH) {
+      return null;
+    }
+
+    final normalizedX = ((point.dx + halfW) / photoSize.width).clamp(0.0, 1.0);
+    final normalizedY = ((point.dy + halfH) / photoSize.height).clamp(0.0, 1.0);
+    return Offset(
+      normalizedX * (imagePixelSize.width - 1),
+      normalizedY * (imagePixelSize.height - 1),
+    );
+  }
+
+  void _handleEraserPanStart(
+    DragStartDetails details,
+    Rect pageRect,
+    Size pageSize,
+  ) {
+    final imagePixelSize = Size(
+      _eraserWorkingImage?.width.toDouble() ?? 0,
+      _eraserWorkingImage?.height.toDouble() ?? 0,
+    );
+    final mappedPoint = _mapCanvasPointToSelectedImage(
+      localPosition: details.localPosition,
+      pageRect: pageRect,
+      pageSize: pageSize,
+      imagePixelSize: imagePixelSize,
+    );
+    if (mappedPoint == null) {
+      return;
+    }
+    _eraserLastImagePoint = mappedPoint;
+    _applyEraserStrokeSegment(
+      mappedPoint,
+      mappedPoint,
+      pageSize,
+      imagePixelSize,
+    );
+    _eraserBrushLocalPosition = details.localPosition;
+    _eraserBrushCursorNotifier.value = details.localPosition;
+  }
+
+  void _handleEraserPanUpdate(
+    DragUpdateDetails details,
+    Rect pageRect,
+    Size pageSize,
+  ) {
+    final imagePixelSize = Size(
+      _eraserWorkingImage?.width.toDouble() ?? 0,
+      _eraserWorkingImage?.height.toDouble() ?? 0,
+    );
+    final mappedPoint = _mapCanvasPointToSelectedImage(
+      localPosition: details.localPosition,
+      pageRect: pageRect,
+      pageSize: pageSize,
+      imagePixelSize: imagePixelSize,
+    );
+    if (mappedPoint == null) {
+      return;
+    }
+    final previousPoint = _eraserLastImagePoint ?? mappedPoint;
+    _eraserLastImagePoint = mappedPoint;
+    _applyEraserStrokeSegment(
+      previousPoint,
+      mappedPoint,
+      pageSize,
+      imagePixelSize,
+    );
+    final last = _eraserBrushLocalPosition;
+    if (last == null || (last - details.localPosition).distanceSquared > 16) {
+      _eraserBrushLocalPosition = details.localPosition;
+      _eraserBrushCursorNotifier.value = details.localPosition;
+    } else {
+      _eraserBrushLocalPosition = details.localPosition;
+      _eraserBrushCursorNotifier.value = details.localPosition;
+    }
+  }
+
+  void _handleEraserPanEnd() {
+    _eraserLastImagePoint = null;
+    _eraserBrushLocalPosition = null;
+    _eraserBrushCursorNotifier.value = null;
+  }
+
+  void _applyEraserStrokeSegment(
+    Offset start,
+    Offset end,
+    Size pageSize,
+    Size imagePixelSize,
+  ) {
+    final workingImage = _eraserWorkingImage;
+    final restoreImage = _eraserRestoreSourceImage;
+    if (workingImage == null || restoreImage == null) {
+      return;
+    }
+
+    final selected = _selectedLayer;
+    if (selected == null || !selected.isPhoto) {
+      return;
+    }
+    final photoSize = _fitPhotoLayerSize(
+      pageSize: pageSize,
+      photoAspectRatio: selected.photoAspectRatio,
+    );
+    final scaleX = imagePixelSize.width / math.max(photoSize.width, 1);
+    final scaleY = imagePixelSize.height / math.max(photoSize.height, 1);
+    final radius = math.max(
+      1.0,
+      (_eraserBrushSize * 0.5) * ((scaleX + scaleY) / 2),
+    );
+    final distance = (end - start).distance;
+    final steps = math.max(
+      1,
+      (distance / math.max(1.0, radius * 0.32)).ceil(),
+    );
+    for (var index = 0; index <= steps; index++) {
+      final t = steps == 0 ? 0.0 : index / steps;
+      final point = Offset(
+        ui.lerpDouble(start.dx, end.dx, t) ?? start.dx,
+        ui.lerpDouble(start.dy, end.dy, t) ?? start.dy,
+      );
+      _applyEraserStamp(
+        workingImage: workingImage,
+        restoreImage: restoreImage,
+        centerX: point.dx,
+        centerY: point.dy,
+        radius: radius,
+      );
+    }
+    _scheduleEraserPreviewRefresh();
+  }
+
+  void _applyEraserStamp({
+    required img.Image workingImage,
+    required img.Image restoreImage,
+    required double centerX,
+    required double centerY,
+    required double radius,
+  }) {
+    final left = math.max(0, (centerX - radius).floor());
+    final right = math.min(workingImage.width - 1, (centerX + radius).ceil());
+    final top = math.max(0, (centerY - radius).floor());
+    final bottom = math.min(workingImage.height - 1, (centerY + radius).ceil());
+    final softnessPower = ui.lerpDouble(
+      2.6,
+      0.7,
+      _eraserBrushSoftness.clamp(0.0, 1.0),
+    )!;
+
+    for (var y = top; y <= bottom; y++) {
+      for (var x = left; x <= right; x++) {
+        final dx = (x + 0.5) - centerX;
+        final dy = (y + 0.5) - centerY;
+        final distance = math.sqrt((dx * dx) + (dy * dy));
+        if (distance > radius) {
+          continue;
+        }
+        final normalized = 1 - (distance / radius);
+        final falloff = math.pow(
+          normalized.clamp(0.0, 1.0),
+          softnessPower,
+        ).toDouble();
+        final amount = (falloff * _eraserBrushStrength).clamp(0.0, 1.0);
+        if (amount <= 0.0001) {
+          continue;
+        }
+
+        final currentPixel = workingImage.getPixel(x, y);
+        if (_eraserMode == _EraserMode.erase) {
+          final nextAlpha =
+              (currentPixel.a.toDouble() * (1 - amount)).round().clamp(0, 255);
+          workingImage.setPixelRgba(
+            x,
+            y,
+            currentPixel.r.toInt(),
+            currentPixel.g.toInt(),
+            currentPixel.b.toInt(),
+            nextAlpha,
+          );
+          continue;
+        }
+
+        final sourcePixel = restoreImage.getPixel(x, y);
+        workingImage.setPixelRgba(
+          x,
+          y,
+          _blendInt(currentPixel.r.toInt(), sourcePixel.r.toInt(), amount),
+          _blendInt(currentPixel.g.toInt(), sourcePixel.g.toInt(), amount),
+          _blendInt(currentPixel.b.toInt(), sourcePixel.b.toInt(), amount),
+          _blendInt(currentPixel.a.toInt(), sourcePixel.a.toInt(), amount),
+        );
+      }
+    }
+  }
+
+  int _blendInt(int from, int to, double weight) {
+    return (from + ((to - from) * weight)).round().clamp(0, 255);
+  }
+
   Future<void> _openFontPickerScreen() async {
     final layer = _selectedLayer;
     if (layer == null || !layer.isText) {
@@ -2393,7 +3141,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _handleLayerSelected(String id) {
-    if (_isCropMode) {
+    if (_isCropMode || _isEraserMode) {
       return;
     }
     if (_selectedLayerId == id) {
@@ -2422,7 +3170,21 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     setState(() {
       _selectedLayerId = id;
       _showTextControls = false;
+      if (_adjustSessionLayerId != id) {
+        _isAdjustMode = false;
+        _adjustSessionLayerId = null;
+      }
+      if (_eraserSessionLayerId != id) {
+        _isEraserMode = false;
+        _isEraserInitializing = false;
+        _isEraserApplying = false;
+        _eraserSessionLayerId = null;
+        _eraserInitError = null;
+      }
     });
+    if (_eraserSessionLayerId != id) {
+      _disposeEraserSessionResources();
+    }
   }
 
   void _handleCanvasTapDown(
@@ -2430,6 +3192,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     Rect pageRect,
     Size pageSize,
   ) {
+    _dismissJoyHint();
     if (_isCropMode) {
       return;
     }
@@ -2559,6 +3322,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void _clearSelection() {
     _cancelSelectedTextLongPress();
     if (_selectedLayerId == null &&
+        !_isAdjustMode &&
+        !_isEraserMode &&
         !_showVerticalSnapGuide &&
         !_showHorizontalSnapGuide) {
       return;
@@ -2567,9 +3332,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     setState(() {
       _selectedLayerId = null;
       _showTextControls = false;
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+      _isEraserMode = false;
+      _isEraserInitializing = false;
+      _isEraserApplying = false;
+      _eraserSessionLayerId = null;
+      _eraserInitError = null;
       _showVerticalSnapGuide = false;
       _showHorizontalSnapGuide = false;
     });
+    _disposeEraserSessionResources();
   }
 
   void _handleSelectedTextDoubleTap() {
@@ -3061,57 +3834,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
   }
 
-  Future<void> _handleMagicToolTap() async {
-    final selectedId = _selectedLayerId;
-    if (selectedId == null || !_hasSelectedPhotoLayer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a photo first')),
-      );
-      return;
-    }
-
-    final layerIndex = _layers.indexWhere((item) => item.id == selectedId);
-    if (layerIndex == -1) {
-      return;
-    }
-    final layer = _layers[layerIndex];
-    final currentBytes = layer.bytes;
-    final originalBytes = layer.originalPhotoBytes;
-    Uint8List? sessionBytes;
-    if (currentBytes != null && img.decodeImage(currentBytes) != null) {
-      sessionBytes = currentBytes;
-    } else if (originalBytes != null && img.decodeImage(originalBytes) != null) {
-      sessionBytes = originalBytes;
-    }
-    if (sessionBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selected image could not be loaded')),
-      );
-      return;
-    }
-
-    final refinedBytes = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute<Uint8List>(
-        builder: (BuildContext context) => _MagicToolScreen(
-          currentBytes: sessionBytes!,
-          originalBytes: originalBytes ?? sessionBytes,
-        ),
-      ),
-    );
-
-    if (!mounted || refinedBytes == null) {
-      return;
-    }
-
-    _pushUndoSnapshot();
-    setState(() {
-      _layers[layerIndex] = _layers[layerIndex].copyWith(bytes: refinedBytes);
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Magic Tool apply ayyindi')));
-  }
-
   Future<void> _handleCropPhotoTap() async {
     final selectedId = _selectedLayerId;
     if (selectedId == null || !_hasSelectedPhotoLayer || _isCropMode) {
@@ -3540,7 +4262,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: const Color(0xFFF5F7FF),
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -3551,15 +4273,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             );
             final bottomToolsHeight = _isCropMode
                 ? _cropBarHeight
+                : _isEraserMode
+                ? _eraserBarHeight
+                : _isAdjustMode
+                ? _adjustBarHeight
                 : _bottomBarHeight +
                       (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
             final reservedTopInset = _topBarHeight + _floatingBarGap;
             final reservedBottomInset =
                 _floatingBarGap +
                 bottomToolsHeight +
-                (!_isCropMode && _hasSelectedTextLayer && _showTextControls
+                (!_isCropMode &&
+                        !_isEraserMode &&
+                        _hasSelectedTextLayer &&
+                        _showTextControls
                     ? _textStyleBarHeight
                     : 0);
+            final activeModeLabel = _activeModeLabel;
+            final showQuickHint =
+                _showJoyHint &&
+                !_isCropMode &&
+                !_isEraserMode &&
+                !_isAdjustMode &&
+                !_isRemovingBackground &&
+                _selectedLayerId == null;
             _lastCanvasSize = canvasSize;
             final workspaceHeight = math.max(
               canvasSize.height - reservedTopInset - reservedBottomInset,
@@ -3598,6 +4335,61 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
             return Stack(
               children: <Widget>[
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: <Color>[
+                            Color(0xFFF8FBFF),
+                            Color(0xFFF3F8FF),
+                            Color(0xFFFFF8FB),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -90,
+                  left: -50,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 220,
+                      height: 220,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: <Color>[
+                            const Color(0xFF93C5FD).withValues(alpha: 0.25),
+                            const Color(0xFF93C5FD).withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: -70,
+                  bottom: 110,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: 200,
+                      height: 200,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: <Color>[
+                            const Color(0xFFF9A8D4).withValues(alpha: 0.22),
+                            const Color(0xFFF9A8D4).withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Positioned.fill(
                   child: RepaintBoundary(
                     key: _stageRepaintKey,
@@ -3634,26 +4426,39 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       onSelectedTextPointerDown: _startSelectedTextLongPress,
                       onSelectedTextPointerMove: _updateSelectedTextLongPress,
                       onSelectedTextPointerCancel: _cancelSelectedTextLongPress,
-                      onCanvasTapDown: _isCropMode
+                      onCanvasTapDown: (_isCropMode || _isEraserMode)
                           ? (
                               Offset _,
                               Rect pageRectIgnored,
                               Size pageSizeIgnored,
                             ) {}
                           : _handleCanvasTapDown,
-                      onCanvasTap: _isCropMode ? () {} : _clearSelection,
+                      onCanvasTap: (_isCropMode || _isEraserMode)
+                          ? () {}
+                          : _clearSelection,
                       showCanvasBackground: !_isTransparentExportCapture,
+                      photoBrightnessForLayer: _effectivePhotoBrightness,
+                      photoContrastForLayer: _effectivePhotoContrast,
+                      photoSaturationForLayer: _effectivePhotoSaturation,
+                      photoBlurForLayer: _effectivePhotoBlur,
                       showSelectionDecorations:
-                          !_isCropMode && !_isExporting && !_isCapturingStage,
+                          !_isCropMode &&
+                          !_isEraserMode &&
+                          !_isExporting &&
+                          !_isCapturingStage,
                       showPageFramePreview: !_isExporting && !_isCapturingStage,
                       showVerticalSnapGuide:
                           !_isCropMode &&
+                          !_isEraserMode &&
                           !_isCapturingStage &&
                           _showVerticalSnapGuide,
                       showHorizontalSnapGuide:
                           !_isCropMode &&
+                          !_isEraserMode &&
                           !_isCapturingStage &&
                           _showHorizontalSnapGuide,
+                      eraserSessionLayerId: _eraserSessionLayerId,
+                      eraserPreviewImageListenable: _eraserPreviewNotifier,
                     ),
                   ),
                 ),
@@ -3700,92 +4505,338 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   left: 12,
                   right: 12,
                   bottom: bottomToolsHeight,
-                  child: _TextStyleBar(
-                    visible:
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    offset:
                         !_isCropMode &&
-                        _hasSelectedTextLayer &&
-                        _showTextControls,
-                    selectedLayer: _selectedLayer,
-                    colors: _textColors,
-                    backgroundColors: editorBackgroundColors,
-                    gradients: _textGradients,
-                    onEditTap: _openTextEditSheet,
-                    onFontsTap: _openFontPickerScreen,
-                    onColorSelected: _setSelectedTextColor,
-                    onBackgroundColorSelected: _setSelectedTextBackgroundColor,
-                    onAlignSelected: _setSelectedTextAlignment,
-                    onGradientSelected: _setSelectedTextGradient,
-                    onFontSizeChanged: _setSelectedTextFontSize,
-                    onFontSizeChangeStart: _handleTextFontSizeEditStart,
-                    onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
-                    onBackgroundOpacityChanged:
-                        _setSelectedTextBackgroundOpacity,
-                    onBackgroundRadiusChanged: _setSelectedTextBackgroundRadius,
-                    onLineHeightChanged: _setSelectedTextLineHeight,
-                    onLetterSpacingChanged: _setSelectedTextLetterSpacing,
-                    onShadowOpacityChanged: _setSelectedTextShadowOpacity,
-                    onShadowBlurChanged: _setSelectedTextShadowBlur,
-                    onShadowOffsetYChanged: _setSelectedTextShadowOffsetY,
-                    onBoldToggle: _toggleSelectedTextBold,
-                    onItalicToggle: _toggleSelectedTextItalic,
-                    onUnderlineToggle: _toggleSelectedTextUnderline,
-                    onStrokeColorSelected: _setSelectedTextStrokeColor,
-                    onStrokeWidthChanged: _setSelectedTextStrokeWidth,
+                            !_isEraserMode &&
+                            _hasSelectedTextLayer &&
+                            _showTextControls
+                        ? Offset.zero
+                        : const Offset(0, 0.06),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 150),
+                      opacity:
+                          !_isCropMode &&
+                              !_isEraserMode &&
+                              _hasSelectedTextLayer &&
+                              _showTextControls
+                          ? 1
+                          : 0,
+                      child: IgnorePointer(
+                        ignoring:
+                            _isCropMode ||
+                            _isEraserMode ||
+                            !_hasSelectedTextLayer ||
+                            !_showTextControls,
+                        child: _TextStyleBar(
+                          visible:
+                              !_isCropMode &&
+                              !_isEraserMode &&
+                              _hasSelectedTextLayer &&
+                              _showTextControls,
+                          selectedLayer: _selectedLayer,
+                          colors: _textColors,
+                          backgroundColors: editorBackgroundColors,
+                          gradients: _textGradients,
+                          onEditTap: _openTextEditSheet,
+                          onFontsTap: _openFontPickerScreen,
+                          onColorSelected: _setSelectedTextColor,
+                          onBackgroundColorSelected:
+                              _setSelectedTextBackgroundColor,
+                          onAlignSelected: _setSelectedTextAlignment,
+                          onGradientSelected: _setSelectedTextGradient,
+                          onFontSizeChanged: _setSelectedTextFontSize,
+                          onFontSizeChangeStart: _handleTextFontSizeEditStart,
+                          onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
+                          onBackgroundOpacityChanged:
+                              _setSelectedTextBackgroundOpacity,
+                          onBackgroundRadiusChanged:
+                              _setSelectedTextBackgroundRadius,
+                          onLineHeightChanged: _setSelectedTextLineHeight,
+                          onLetterSpacingChanged:
+                              _setSelectedTextLetterSpacing,
+                          onShadowOpacityChanged:
+                              _setSelectedTextShadowOpacity,
+                          onShadowBlurChanged: _setSelectedTextShadowBlur,
+                          onShadowOffsetYChanged:
+                              _setSelectedTextShadowOffsetY,
+                          onBoldToggle: _toggleSelectedTextBold,
+                          onItalicToggle: _toggleSelectedTextItalic,
+                          onUnderlineToggle: _toggleSelectedTextUnderline,
+                          onStrokeColorSelected: _setSelectedTextStrokeColor,
+                          onStrokeWidthChanged: _setSelectedTextStrokeWidth,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+                if (_isEraserMode)
+                  Positioned.fill(
+                    child: _EraserCanvasGestureOverlay(
+                      canvasSize: Size(constraints.maxWidth, constraints.maxHeight),
+                      topInset: reservedTopInset,
+                      bottomInset: reservedBottomInset,
+                      pageAspectRatio: _pageAspectRatio,
+                      brushSize: _eraserBrushSize,
+                      brushCenterListenable: _eraserBrushCursorNotifier,
+                      mode: _eraserMode,
+                      isInitializing: _isEraserInitializing,
+                      errorMessage: _eraserInitError,
+                      onPanStart: _handleEraserPanStart,
+                      onPanUpdate: _handleEraserPanUpdate,
+                      onPanEnd: _handleEraserPanEnd,
+                    ),
+                  ),
+                if (activeModeLabel != null)
+                  Positioned(
+                    left: 18,
+                    bottom:
+                        bottomToolsHeight +
+                        ((!_isCropMode &&
+                                !_isEraserMode &&
+                                _hasSelectedTextLayer &&
+                                _showTextControls)
+                            ? _textStyleBarHeight + 10
+                            : 10),
+                    child: _EditorModeBadge(
+                      label: activeModeLabel,
+                      accent: _activeModeAccent,
+                    ),
+                  ),
+                if (showQuickHint)
+                  Positioned(
+                    left: 14,
+                    right: 14,
+                    bottom:
+                        bottomToolsHeight +
+                        ((!_isCropMode &&
+                                !_isEraserMode &&
+                                _hasSelectedTextLayer &&
+                                _showTextControls)
+                            ? _textStyleBarHeight + 12
+                            : 12),
+                    child: _EditorQuickHint(
+                      onDismiss: _dismissJoyHint,
+                    ),
+                  ),
                 Positioned(
                   left: 12,
                   right: 12,
                   bottom: _floatingBarGap,
-                  child: _isCropMode
-                      ? _CropBottomToolsBar(
-                          height: bottomToolsHeight,
-                          onBack: _discardCropSession,
-                          onReset: _resetCropSession,
-                          onApply: _applyCropSession,
-                          selectedAspectRatio: _cropSessionAspectRatio,
-                          onAspectRatioChanged: _setCropAspectRatio,
-                        )
-                      : _hasSelectedTextLayer
-                      ? _TextBottomToolsBar(
-                          height: bottomToolsHeight,
-                          showOptionsSelected: _showTextControls,
-                          onEditTap: _openTextEditSheet,
-                          onFontsTap: _openFontPickerScreen,
-                          onToggleOptionsTap: () {
-                            setState(() {
-                              _showTextControls = !_showTextControls;
-                            });
-                          },
-                        )
-                      : _BottomToolsBar(
-                          height: bottomToolsHeight,
-                          onAddPhotoTap: _handleAddPhoto,
-                          onAddTextTap: _handleTextToolTap,
-                          onStickerTap: _openStickerPanel,
-                          onBackgroundTap: _openBackgroundPanel,
-                          onLayersTap: _openLayersScreen,
-                          onCropPhotoTap: _handleCropPhotoTap,
-                          onRemoveBackgroundTap: _handleRemoveBackgroundTap,
-                          onMagicToolTap: _handleMagicToolTap,
-                          canCropPhoto: _hasSelectedPhotoLayer,
-                          canRemoveBackground:
-                              _hasSelectedPhotoLayer && !_isRemovingBackground,
-                          canMagicTool:
-                              _hasSelectedPhotoLayer && !_isRemovingBackground,
-                          isRemovingBackground: _isRemovingBackground,
-                          selectedPhotoLayer: _hasSelectedPhotoLayer
-                              ? _selectedLayer
-                              : null,
-                          onOpacityChanged: _setSelectedPhotoOpacity,
-                          onFlipHorizontalTap:
-                              _toggleSelectedPhotoFlipHorizontal,
-                          onFlipVerticalTap: _toggleSelectedPhotoFlipVertical,
-                          onRotateLeftTap: () =>
-                              _rotateSelectedPhoto(-math.pi / 2),
-                          onRotateRightTap: () =>
-                              _rotateSelectedPhoto(math.pi / 2),
-                        ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    reverseDuration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          final slide = Tween<Offset>(
+                            begin: const Offset(0, 0.08),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: slide,
+                              child: child,
+                            ),
+                          );
+                        },
+                    child: _isCropMode
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('crop-tools'),
+                            child: _CropBottomToolsBar(
+                              height: bottomToolsHeight,
+                              onBack: _discardCropSession,
+                              onReset: _resetCropSession,
+                              onApply: _applyCropSession,
+                              selectedAspectRatio: _cropSessionAspectRatio,
+                              onAspectRatioChanged: _setCropAspectRatio,
+                            ),
+                          )
+                        : _isEraserMode
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('eraser-tools'),
+                            child: _EraserBottomToolsBar(
+                              height: bottomToolsHeight,
+                              mode: _eraserMode,
+                              brushSize: _eraserBrushSize,
+                              softness: _eraserBrushSoftness,
+                              strength: _eraserBrushStrength,
+                              activeControl: _activeEraserControl,
+                              isApplying: _isEraserApplying,
+                              isInitializing: _isEraserInitializing,
+                              onModeChanged: (_EraserMode mode) {
+                                setState(() {
+                                  _eraserMode = mode;
+                                });
+                              },
+                              onBrushSizeChanged: (value) {
+                                setState(() {
+                                  _eraserBrushSize = value;
+                                });
+                              },
+                              onSoftnessChanged: (value) {
+                                setState(() {
+                                  _eraserBrushSoftness = value;
+                                });
+                              },
+                              onStrengthChanged: (value) {
+                                setState(() {
+                                  _eraserBrushStrength = value;
+                                });
+                              },
+                              onActiveControlChanged: (control) {
+                                setState(() {
+                                  _activeEraserControl = control;
+                                });
+                              },
+                              onBack: _discardEraserSession,
+                              onReset: _resetEraserSession,
+                              onApply: _applyEraserSession,
+                            ),
+                          )
+                        : _isAdjustMode
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('adjust-tools'),
+                            child: _AdjustBottomToolsBar(
+                              height: bottomToolsHeight,
+                              brightness: _adjustSessionBrightness,
+                              contrast: _adjustSessionContrast,
+                              saturation: _adjustSessionSaturation,
+                              blur: _adjustSessionBlur,
+                              onBrightnessChanged: (value) {
+                                setState(() {
+                                  _adjustSessionBrightness = value;
+                                });
+                              },
+                              onContrastChanged: (value) {
+                                setState(() {
+                                  _adjustSessionContrast = value;
+                                });
+                              },
+                              onSaturationChanged: (value) {
+                                setState(() {
+                                  _adjustSessionSaturation = value;
+                                });
+                              },
+                              onBlurChanged: (value) {
+                                setState(() {
+                                  _adjustSessionBlur = value;
+                                });
+                              },
+                              onBack: _discardAdjustSession,
+                              onReset: _resetAdjustSession,
+                              onApply: _applyAdjustSession,
+                            ),
+                          )
+                        : _hasSelectedTextLayer
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('text-tools'),
+                            child: _TextBottomToolsBar(
+                              height: bottomToolsHeight,
+                              showOptionsSelected: _showTextControls,
+                              onEditTap: _openTextEditSheet,
+                              onFontsTap: _openFontPickerScreen,
+                              onToggleOptionsTap: () {
+                                setState(() {
+                                  _showTextControls = !_showTextControls;
+                                });
+                              },
+                            ),
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey<String>('main-tools'),
+                            child: _BottomToolsBar(
+                              height: bottomToolsHeight,
+                              onAddPhotoTap: () {
+                                unawaited(
+                                  _runMainToolAction('Add Photo', () async {
+                                    await _handleAddPhoto();
+                                  }),
+                                );
+                              },
+                              onAddTextTap: () {
+                                unawaited(
+                                  _runMainToolAction('Text', () {
+                                    _handleTextToolTap();
+                                  }),
+                                );
+                              },
+                              onStickerTap: () {
+                                unawaited(
+                                  _runMainToolAction('Stickers', () async {
+                                    await _openStickerPanel();
+                                  }),
+                                );
+                              },
+                              onBackgroundTap: () {
+                                unawaited(
+                                  _runMainToolAction('Background', () async {
+                                    await _openBackgroundPanel();
+                                  }),
+                                );
+                              },
+                              onLayersTap: () {
+                                unawaited(
+                                  _runMainToolAction('Layers', () async {
+                                    await _openLayersScreen();
+                                  }),
+                                );
+                              },
+                              onAdjustTap: () {
+                                unawaited(
+                                  _runMainToolAction('Adjust', () {
+                                    _openAdjustPanel();
+                                  }),
+                                );
+                              },
+                              onCropPhotoTap: () {
+                                unawaited(
+                                  _runMainToolAction('Crop', () async {
+                                    await _handleCropPhotoTap();
+                                  }),
+                                );
+                              },
+                              onEraserTap: () {
+                                unawaited(
+                                  _runMainToolAction('Eraser', () async {
+                                    await _openEraserPanel();
+                                  }),
+                                );
+                              },
+                              onRemoveBackgroundTap: () {
+                                unawaited(
+                                  _runMainToolAction('Remove BG', () async {
+                                    await _handleRemoveBackgroundTap();
+                                  }),
+                                );
+                              },
+                              activeToolLabel: _activeMainToolLabel,
+                              canAdjustPhoto: _hasSelectedPhotoLayer,
+                              canCropPhoto: _hasSelectedPhotoLayer,
+                              canEraserPhoto: true,
+                              canRemoveBackground:
+                                  _hasSelectedPhotoLayer &&
+                                  !_isRemovingBackground,
+                              isRemovingBackground: _isRemovingBackground,
+                              selectedPhotoLayer: _hasSelectedPhotoLayer
+                                  ? _selectedLayer
+                                  : null,
+                              onOpacityChanged: _setSelectedPhotoOpacity,
+                              onFlipHorizontalTap:
+                                  _toggleSelectedPhotoFlipHorizontal,
+                              onFlipVerticalTap:
+                                  _toggleSelectedPhotoFlipVertical,
+                              onRotateLeftTap: () =>
+                                  _rotateSelectedPhoto(-math.pi / 2),
+                              onRotateRightTap: () =>
+                                  _rotateSelectedPhoto(math.pi / 2),
+                            ),
+                          ),
+                  ),
                 ),
                 if (_isRemovingBackground)
                   Positioned.fill(
@@ -3849,6 +4900,92 @@ String _photoBytesSignature(Uint8List bytes) {
     hash = 37 * hash + bytes[i];
   }
   return '${bytes.length}_$hash';
+}
+
+Widget _buildAdjustedPhoto({
+  required Uint8List bytes,
+  required String cacheKey,
+  required int? cacheWidth,
+  required double brightness,
+  required double contrast,
+  required double saturation,
+  required double blur,
+}) {
+  Widget child = Image.memory(
+    bytes,
+    key: ValueKey<String>(cacheKey),
+    fit: BoxFit.contain,
+    gaplessPlayback: true,
+    filterQuality: FilterQuality.medium,
+    cacheWidth: cacheWidth,
+  );
+
+  if (blur > 0.01) {
+    final gaussianSigma = _mapAdjustBlurToSigma(blur);
+    child = ImageFiltered(
+      imageFilter: ui.ImageFilter.blur(
+        sigmaX: gaussianSigma,
+        sigmaY: gaussianSigma,
+      ),
+      child: child,
+    );
+  }
+  if ((saturation - 1).abs() > 0.0001) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(_saturationMatrix(saturation)),
+      child: child,
+    );
+  }
+  if (brightness.abs() > 0.0001 || (contrast - 1).abs() > 0.0001) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(
+        _brightnessContrastMatrix(
+          brightness: brightness,
+          contrast: contrast,
+        ),
+      ),
+      child: child,
+    );
+  }
+  return child;
+}
+
+double _mapAdjustBlurToSigma(double blur) {
+  final normalized = (blur / 10).clamp(0.0, 1.0);
+  final eased = math.pow(normalized, 1.65).toDouble();
+  return (eased * 24).clamp(0.0, 24.0);
+}
+
+List<double> _brightnessContrastMatrix({
+  required double brightness,
+  required double contrast,
+}) {
+  final clampedContrast = contrast.clamp(0.4, 2.2);
+  final clampedBrightness = brightness.clamp(-1.0, 1.0);
+  final bias = (clampedBrightness * 255) + ((1 - clampedContrast) * 128);
+  return <double>[
+    clampedContrast, 0, 0, 0, bias,
+    0, clampedContrast, 0, 0, bias,
+    0, 0, clampedContrast, 0, bias,
+    0, 0, 0, 1, 0,
+  ];
+}
+
+List<double> _saturationMatrix(double saturation) {
+  final s = saturation.clamp(0.0, 2.5);
+  const rw = 0.3086;
+  const gw = 0.6094;
+  const bw = 0.0820;
+  final inv = 1 - s;
+  final r = inv * rw;
+  final g = inv * gw;
+  final b = inv * bw;
+  return <double>[
+    r + s, g, b, 0, 0,
+    r, g + s, b, 0, 0,
+    r, g, b + s, 0, 0,
+    0, 0, 0, 1, 0,
+  ];
 }
 
 double _normalizeAngle(double angle) {
@@ -3978,10 +5115,16 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onCanvasTapDown,
     required this.onCanvasTap,
     required this.showCanvasBackground,
+    required this.photoBrightnessForLayer,
+    required this.photoContrastForLayer,
+    required this.photoSaturationForLayer,
+    required this.photoBlurForLayer,
     required this.showSelectionDecorations,
     required this.showPageFramePreview,
     required this.showVerticalSnapGuide,
     required this.showHorizontalSnapGuide,
+    required this.eraserSessionLayerId,
+    required this.eraserPreviewImageListenable,
   });
 
   final List<_CanvasLayer> layers;
@@ -4012,10 +5155,16 @@ class _CanvasWorkspace extends StatelessWidget {
   onCanvasTapDown;
   final VoidCallback onCanvasTap;
   final bool showCanvasBackground;
+  final double Function(_CanvasLayer layer) photoBrightnessForLayer;
+  final double Function(_CanvasLayer layer) photoContrastForLayer;
+  final double Function(_CanvasLayer layer) photoSaturationForLayer;
+  final double Function(_CanvasLayer layer) photoBlurForLayer;
   final bool showSelectionDecorations;
   final bool showPageFramePreview;
   final bool showVerticalSnapGuide;
   final bool showHorizontalSnapGuide;
+  final String? eraserSessionLayerId;
+  final ValueListenable<ui.Image?> eraserPreviewImageListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -4129,6 +5278,22 @@ class _CanvasWorkspace extends StatelessWidget {
                                       .round()
                                       .clamp(512, 2048)
                                 : null;
+                            final effectiveBrightness = layer.isPhoto
+                                ? photoBrightnessForLayer(layer)
+                                : 0.0;
+                            final effectiveContrast = layer.isPhoto
+                                ? photoContrastForLayer(layer)
+                                : 1.0;
+                            final effectiveSaturation = layer.isPhoto
+                                ? photoSaturationForLayer(layer)
+                                : 1.0;
+                            final effectiveBlur = layer.isPhoto
+                                ? photoBlurForLayer(layer)
+                                : 0.0;
+                            final isEraserSessionPhoto =
+                                layer.isPhoto &&
+                                isSelected &&
+                                eraserSessionLayerId == layer.id;
                             final layerChild = layer.isPhoto
                                 ? SizedBox(
                                     width: photoSize.width,
@@ -4145,37 +5310,77 @@ class _CanvasWorkspace extends StatelessWidget {
                                         child: Stack(
                                           fit: StackFit.expand,
                                           children: <Widget>[
-                                            AnimatedSwitcher(
-                                              duration: const Duration(
-                                                milliseconds: 260,
-                                              ),
-                                              switchInCurve:
-                                                  Curves.easeOutCubic,
-                                              switchOutCurve:
-                                                  Curves.easeInCubic,
-                                              transitionBuilder:
-                                                  (child, animation) =>
-                                                      FadeTransition(
-                                                        opacity: animation,
-                                                        child: child,
-                                                      ),
-                                              child: Image.memory(
-                                                layer.bytes!,
-                                                key: ValueKey<String>(
-                                                  _photoBytesSignature(
-                                                    layer.bytes!,
-                                                  ),
+                                            if (isEraserSessionPhoto)
+                                              ValueListenableBuilder<ui.Image?>(
+                                                valueListenable:
+                                                    eraserPreviewImageListenable,
+                                                builder: (
+                                                  BuildContext context,
+                                                  ui.Image? eraserImage,
+                                                  Widget? child,
+                                                ) {
+                                                  if (eraserImage == null) {
+                                                    return _buildAdjustedPhoto(
+                                                      bytes: layer.bytes!,
+                                                      cacheKey:
+                                                          '${_photoBytesSignature(layer.bytes!)}_'
+                                                          '${effectiveBrightness.toStringAsFixed(3)}_'
+                                                          '${effectiveContrast.toStringAsFixed(3)}_'
+                                                          '${effectiveSaturation.toStringAsFixed(3)}_'
+                                                          '${effectiveBlur.toStringAsFixed(3)}',
+                                                      cacheWidth: photoCacheWidth,
+                                                      brightness:
+                                                          effectiveBrightness,
+                                                      contrast:
+                                                          effectiveContrast,
+                                                      saturation:
+                                                          effectiveSaturation,
+                                                      blur: effectiveBlur,
+                                                    );
+                                                  }
+                                                  return RawImage(
+                                                    image: eraserImage,
+                                                    fit: BoxFit.contain,
+                                                    filterQuality:
+                                                        FilterQuality.medium,
+                                                  );
+                                                },
+                                              )
+                                            else
+                                              AnimatedSwitcher(
+                                                duration: const Duration(
+                                                  milliseconds: 260,
                                                 ),
-                                                fit: BoxFit.contain,
-                                                gaplessPlayback: true,
-                                                filterQuality:
-                                                    FilterQuality.medium,
-                                                cacheWidth: isSelected
-                                                    ? photoCacheWidth
-                                                    : photoCacheWidth ??
-                                                          unselectedPhotoCacheWidth,
+                                                switchInCurve:
+                                                    Curves.easeOutCubic,
+                                                switchOutCurve:
+                                                    Curves.easeInCubic,
+                                                transitionBuilder:
+                                                    (child, animation) =>
+                                                        FadeTransition(
+                                                          opacity: animation,
+                                                          child: child,
+                                                        ),
+                                                child: _buildAdjustedPhoto(
+                                                  bytes: layer.bytes!,
+                                                  cacheKey:
+                                                      '${_photoBytesSignature(layer.bytes!)}_'
+                                                      '${effectiveBrightness.toStringAsFixed(3)}_'
+                                                      '${effectiveContrast.toStringAsFixed(3)}_'
+                                                      '${effectiveSaturation.toStringAsFixed(3)}_'
+                                                      '${effectiveBlur.toStringAsFixed(3)}',
+                                                  cacheWidth: isSelected
+                                                      ? photoCacheWidth
+                                                      : photoCacheWidth ??
+                                                            unselectedPhotoCacheWidth,
+                                                  brightness:
+                                                      effectiveBrightness,
+                                                  contrast: effectiveContrast,
+                                                  saturation:
+                                                      effectiveSaturation,
+                                                  blur: effectiveBlur,
+                                                ),
                                               ),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -4216,7 +5421,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                     fontSize: layer.fontSize,
                                   )
                                 : Text(
-                                    layer.sticker ?? '⭐',
+                                    layer.sticker ?? '?',
                                     style: TextStyle(fontSize: layer.fontSize),
                                   );
                             final stickerAsset =
@@ -4536,7 +5741,7 @@ class _CanvasWorkspace extends StatelessWidget {
                       fontSize: layer.fontSize,
                     )
                       : Text(
-                          layer.sticker ?? 'â­',
+                          layer.sticker ?? '⭐',
                           style: TextStyle(fontSize: layer.fontSize),
                         );
 
@@ -4956,6 +6161,7 @@ class _TextStyleBar extends StatefulWidget {
 
 class _TextStyleBarState extends State<_TextStyleBar> {
   _TextToolTab _activeTab = _TextToolTab.style;
+  String? _activeSliderId;
 
   @override
   Widget build(BuildContext context) {
@@ -5000,19 +6206,26 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 _TextTabChip(
                   label: 'Style',
                   selected: _activeTab == _TextToolTab.style,
-                  onTap: () => setState(() => _activeTab = _TextToolTab.style),
+                  onTap: () => setState(() {
+                    _activeTab = _TextToolTab.style;
+                    _activeSliderId = null;
+                  }),
                 ),
                 _TextTabChip(
                   label: 'Background',
                   selected: _activeTab == _TextToolTab.background,
-                  onTap: () =>
-                      setState(() => _activeTab = _TextToolTab.background),
+                  onTap: () => setState(() {
+                    _activeTab = _TextToolTab.background;
+                    _activeSliderId = null;
+                  }),
                 ),
                 _TextTabChip(
                   label: 'Effects',
                   selected: _activeTab == _TextToolTab.effects,
-                  onTap: () =>
-                      setState(() => _activeTab = _TextToolTab.effects),
+                  onTap: () => setState(() {
+                    _activeTab = _TextToolTab.effects;
+                    _activeSliderId = null;
+                  }),
                 ),
               ],
             ),
@@ -5063,17 +6276,23 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         const SizedBox(width: 8),
                         _CompactLabeledSlider(
+                          sliderId: 'text-size',
                           label: 'Size',
                           value: layer.fontSize.clamp(18, 96).toDouble(),
                           min: 18,
                           max: 96,
                           width: 148,
                           valueText: layer.fontSize.toStringAsFixed(0),
+                          isActive: _activeSliderId == 'text-size',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'text-size';
+                          }),
                           onChangeStart: widget.onFontSizeChangeStart,
                           onChanged: widget.onFontSizeChanged,
                           onChangeEnd: widget.onFontSizeChangeEnd,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'line-height',
                           label: 'Line',
                           value: layer.textLineHeight
                               .clamp(0.8, 2.2)
@@ -5081,9 +6300,14 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                           min: 0.8,
                           max: 2.2,
                           width: 136,
+                          isActive: _activeSliderId == 'line-height',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'line-height';
+                          }),
                           onChanged: widget.onLineHeightChanged,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'letter-spacing',
                           label: 'Letter',
                           value: layer.textLetterSpacing
                               .clamp(-1, 12)
@@ -5091,6 +6315,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                           min: -1,
                           max: 12,
                           width: 144,
+                          isActive: _activeSliderId == 'letter-spacing',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'letter-spacing';
+                          }),
                           onChanged: widget.onLetterSpacingChanged,
                         ),
                         const SizedBox(width: 8),
@@ -5121,6 +6349,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                     : _activeTab == _TextToolTab.background
                     ? <Widget>[
                         _CompactLabeledSlider(
+                          sliderId: 'bg-opacity',
                           label: 'Opacity',
                           value: layer.textBackgroundOpacity
                               .clamp(0, 1)
@@ -5128,9 +6357,14 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                           min: 0,
                           max: 1,
                           width: 150,
+                          isActive: _activeSliderId == 'bg-opacity',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'bg-opacity';
+                          }),
                           onChanged: widget.onBackgroundOpacityChanged,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'bg-curve',
                           label: 'Curve',
                           value: layer.textBackgroundRadius
                               .clamp(0, 40)
@@ -5138,6 +6372,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                           min: 0,
                           max: 40,
                           width: 150,
+                          isActive: _activeSliderId == 'bg-curve',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'bg-curve';
+                          }),
                           onChanged: widget.onBackgroundRadiusChanged,
                         ),
                         const SizedBox(width: 8),
@@ -5159,30 +6397,46 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                       ]
                     : <Widget>[
                         _CompactLabeledSlider(
+                          sliderId: 'stroke-width',
                           label: 'Stroke',
                           value: layer.textStrokeWidth.clamp(0, 8).toDouble(),
                           min: 0,
                           max: 8,
                           width: 144,
+                          isActive: _activeSliderId == 'stroke-width',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'stroke-width';
+                          }),
                           onChanged: widget.onStrokeWidthChanged,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'shadow-opacity',
                           label: 'Shadow',
                           value: layer.textShadowOpacity.clamp(0, 1).toDouble(),
                           min: 0,
                           max: 1,
                           width: 146,
+                          isActive: _activeSliderId == 'shadow-opacity',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'shadow-opacity';
+                          }),
                           onChanged: widget.onShadowOpacityChanged,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'shadow-blur',
                           label: 'Blur',
                           value: layer.textShadowBlur.clamp(0, 24).toDouble(),
                           min: 0,
                           max: 24,
                           width: 136,
+                          isActive: _activeSliderId == 'shadow-blur',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'shadow-blur';
+                          }),
                           onChanged: widget.onShadowBlurChanged,
                         ),
                         _CompactLabeledSlider(
+                          sliderId: 'shadow-offset',
                           label: 'Offset',
                           value: layer.textShadowOffsetY
                               .clamp(0, 20)
@@ -5190,6 +6444,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                           min: 0,
                           max: 20,
                           width: 144,
+                          isActive: _activeSliderId == 'shadow-offset',
+                          onActivate: () => setState(() {
+                            _activeSliderId = 'shadow-offset';
+                          }),
                           onChanged: widget.onShadowOffsetYChanged,
                         ),
                         const SizedBox(width: 8),
@@ -5229,7 +6487,7 @@ class _TextQuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return _PressableSurface(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
@@ -5256,22 +6514,28 @@ class _TextQuickActionButton extends StatelessWidget {
 
 class _CompactLabeledSlider extends StatelessWidget {
   const _CompactLabeledSlider({
+    required this.sliderId,
     required this.label,
     required this.value,
     required this.min,
     required this.max,
     required this.width,
+    required this.isActive,
+    required this.onActivate,
     required this.onChanged,
     this.onChangeStart,
     this.onChangeEnd,
     this.valueText,
   });
 
+  final String sliderId;
   final String label;
   final double value;
   final double min;
   final double max;
   final double width;
+  final bool isActive;
+  final VoidCallback onActivate;
   final ValueChanged<double> onChanged;
   final ValueChanged<double>? onChangeStart;
   final ValueChanged<double>? onChangeEnd;
@@ -5279,14 +6543,21 @@ class _CompactLabeledSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final body = Container(
+      key: ValueKey<String>('compact-slider-$sliderId'),
       width: width,
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: isActive
+            ? const Color(0xFFEFF6FF)
+            : Colors.white.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isActive
+              ? const Color(0xFF2563EB)
+              : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -5296,10 +6567,12 @@ class _CompactLabeledSlider extends StatelessWidget {
             children: <Widget>[
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF0F172A),
+                  color: isActive
+                      ? const Color(0xFF1D4ED8)
+                      : const Color(0xFF0F172A),
                 ),
               ),
               const Spacer(),
@@ -5311,21 +6584,45 @@ class _CompactLabeledSlider extends StatelessWidget {
           ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 2.5,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              trackHeight: 5,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 17),
+              activeTrackColor: isActive
+                  ? const Color(0xFF2563EB)
+                  : const Color(0xFF94A3B8),
+              inactiveTrackColor: const Color(0xFFDCE4EF),
+              thumbColor: isActive
+                  ? const Color(0xFF1D4ED8)
+                  : const Color(0xFF64748B),
             ),
             child: Slider(
               value: value,
               min: min,
               max: max,
-              onChangeStart: onChangeStart,
-              onChanged: onChanged,
-              onChangeEnd: onChangeEnd,
+              onChangeStart: isActive
+                  ? (val) {
+                      onActivate();
+                      onChangeStart?.call(val);
+                    }
+                  : null,
+              onChanged: isActive ? onChanged : null,
+              onChangeEnd: isActive
+                  ? (val) {
+                      onChangeEnd?.call(val);
+                    }
+                  : null,
             ),
           ),
         ],
       ),
+    );
+    if (isActive) {
+      return body;
+    }
+    return _PressableSurface(
+      onTap: onActivate,
+      borderRadius: BorderRadius.circular(12),
+      child: body,
     );
   }
 }
@@ -5345,15 +6642,10 @@ class _AlignChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 4),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        splashColor: const Color(0x1A2563EB),
-        highlightColor: const Color(0x0F2563EB),
+      child: _PressableSurface(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(10),
-        child: Ink(
+        child: Container(
           width: 34,
           height: 30,
           decoration: BoxDecoration(
@@ -5396,10 +6688,10 @@ class _TextTabChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: InkWell(
+      child: _PressableSurface(
         onTap: onTap,
         borderRadius: BorderRadius.circular(99),
-        child: Ink(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFEAF2FF) : const Color(0xFFFDFEFF),
@@ -6017,21 +7309,25 @@ class _LayersScreenState extends State<_LayersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final displayLayers = widget.layers.reversed.toList(growable: false);
     return Scaffold(
       appBar: AppBar(title: const Text('Layers')),
       body: SafeArea(
         child: widget.layers.isEmpty
             ? const Center(child: Text('No layers available'))
             : ReorderableListView.builder(
-                itemCount: widget.layers.length,
+                itemCount: displayLayers.length,
                 buildDefaultDragHandles: false,
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 onReorder: (oldIndex, newIndex) {
-                  widget.onReorderLayers(oldIndex, newIndex);
+                  final total = widget.layers.length;
+                  final mappedOldIndex = (total - 1) - oldIndex;
+                  final mappedNewIndex = total - newIndex;
+                  widget.onReorderLayers(mappedOldIndex, mappedNewIndex);
                   setState(() {});
                 },
                 itemBuilder: (BuildContext context, int index) {
-                  final layer = widget.layers[index];
+                  final layer = displayLayers[index];
                   final isSelected = layer.id == _selectedLayerId;
 
                   return Container(
@@ -6405,22 +7701,23 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: <Color>[
-            Colors.white.withValues(alpha: 0.92),
-            const Color(0xFFF9FBFF).withValues(alpha: 0.88),
+            const Color(0xFFFFFFFF).withValues(alpha: 0.88),
+            const Color(0xFFF5F9FF).withValues(alpha: 0.84),
+            const Color(0xFFFFF6FB).withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xEEF0F4FA)),
+        border: Border.all(color: const Color(0xDCE3ECF8)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x060F172A),
-            blurRadius: 16,
+            blurRadius: 12,
             offset: Offset(0, 4),
           ),
         ],
@@ -6429,14 +7726,14 @@ class _TopBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: <Widget>[
-            IconButton(
-              onPressed: _withHaptic(() => Navigator.of(context).maybePop()),
-              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            _EditorIconButton(
+              icon: Icons.arrow_back_ios_new_rounded,
               tooltip: 'Back',
+              onTap: _withHaptic(() => Navigator.of(context).maybePop()),
             ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 4),
             SizedBox(
-              width: 138,
+              width: 136,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -6447,13 +7744,28 @@ class _TopBar extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: const Color(0xFF0F172A),
+                      color: const Color(0xFF1E1B4B),
                       letterSpacing: -0.2,
                     ),
                   ),
-                  const Text(
-                    'Poster workspace',
-                    style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B)),
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFF),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      'Poster workspace',
+                      style: TextStyle(
+                        fontSize: 9.8,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -6468,25 +7780,157 @@ class _TopBar extends StatelessWidget {
               label: isExporting ? 'Saving...' : 'Export',
               onTap: isExporting ? null : onExportTap,
             ),
-            IconButton(
-              onPressed: _withHaptic(canSendBack ? onSendBackTap : null),
-              icon: const Icon(Icons.flip_to_back_rounded),
+            const SizedBox(width: 2),
+            _EditorIconButton(
+              icon: Icons.flip_to_back_rounded,
               tooltip: 'Send back',
+              onTap: _withHaptic(canSendBack ? onSendBackTap : null),
             ),
-            IconButton(
-              onPressed: _withHaptic(canBringFront ? onBringFrontTap : null),
-              icon: const Icon(Icons.flip_to_front_rounded),
+            _EditorIconButton(
+              icon: Icons.flip_to_front_rounded,
               tooltip: 'Bring front',
+              onTap: _withHaptic(canBringFront ? onBringFrontTap : null),
             ),
-            IconButton(
-              onPressed: _withHaptic(canDuplicate ? onDuplicateTap : null),
-              icon: const Icon(Icons.control_point_duplicate_rounded),
+            _EditorIconButton(
+              icon: Icons.control_point_duplicate_rounded,
               tooltip: 'Duplicate selected',
+              onTap: _withHaptic(canDuplicate ? onDuplicateTap : null),
             ),
-            IconButton(
-              onPressed: _withHaptic(canDelete ? onDeleteTap : null),
-              icon: const Icon(Icons.delete_outline_rounded),
+            _EditorIconButton(
+              icon: Icons.delete_outline_rounded,
               tooltip: 'Delete selected',
+              onTap: _withHaptic(canDelete ? onDeleteTap : null),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorModeBadge extends StatelessWidget {
+  const _EditorModeBadge({required this.label, required this.accent});
+
+  final String label;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: Container(
+        key: ValueKey<String>(label),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.84),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: accent.withValues(alpha: 0.18)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x060F172A),
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: accent,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorQuickHint extends StatelessWidget {
+  const _EditorQuickHint({required this.onDismiss});
+
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 220),
+      offset: Offset.zero,
+      curve: Curves.easeOutCubic,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xE4DCE8F8)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x070F172A),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: <Color>[Color(0xFF60A5FA), Color(0xFFF472B6)],
+                ),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Icon(
+                Icons.tips_and_updates_rounded,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Tip: Select a layer to unlock tool actions. Tap empty canvas to deselect.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF475569),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            _PressableSurface(
+              onTap: onDismiss,
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 15,
+                  color: Color(0xFF64748B),
+                ),
+              ),
             ),
           ],
         ),
@@ -6503,12 +7947,15 @@ class _BottomToolsBar extends StatelessWidget {
     required this.onStickerTap,
     required this.onBackgroundTap,
     required this.onLayersTap,
+    required this.onAdjustTap,
     required this.onCropPhotoTap,
+    required this.onEraserTap,
     required this.onRemoveBackgroundTap,
-    required this.onMagicToolTap,
+    required this.activeToolLabel,
+    required this.canAdjustPhoto,
     required this.canCropPhoto,
+    required this.canEraserPhoto,
     required this.canRemoveBackground,
-    required this.canMagicTool,
     required this.isRemovingBackground,
     required this.selectedPhotoLayer,
     required this.onOpacityChanged,
@@ -6524,12 +7971,15 @@ class _BottomToolsBar extends StatelessWidget {
   final VoidCallback onStickerTap;
   final VoidCallback onBackgroundTap;
   final VoidCallback onLayersTap;
+  final VoidCallback onAdjustTap;
   final VoidCallback onCropPhotoTap;
+  final VoidCallback onEraserTap;
   final VoidCallback onRemoveBackgroundTap;
-  final VoidCallback onMagicToolTap;
+  final String activeToolLabel;
+  final bool canAdjustPhoto;
   final bool canCropPhoto;
+  final bool canEraserPhoto;
   final bool canRemoveBackground;
-  final bool canMagicTool;
   final bool isRemovingBackground;
   final _CanvasLayer? selectedPhotoLayer;
   final ValueChanged<double> onOpacityChanged;
@@ -6545,9 +7995,10 @@ class _BottomToolsBar extends StatelessWidget {
         (label: 'Stickers', icon: Icons.emoji_emotions_outlined),
         (label: 'Background', icon: Icons.wallpaper_outlined),
         (label: 'Layers', icon: Icons.layers_outlined),
+        (label: 'Adjust', icon: Icons.tune_rounded),
         (label: 'Crop', icon: Icons.crop_rounded),
+        (label: 'Eraser', icon: Icons.brush_outlined),
         (label: 'Remove BG', icon: Icons.auto_fix_high_outlined),
-        (label: 'Magic Tool', icon: Icons.auto_fix_normal_rounded),
       ];
 
   @override
@@ -6556,104 +8007,181 @@ class _BottomToolsBar extends StatelessWidget {
     final hasPhotoControls = photoLayer != null && photoLayer.isPhoto;
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Colors.white.withValues(alpha: 0.94),
-            const Color(0xFFF8FBFF).withValues(alpha: 0.92),
+            Colors.white.withValues(alpha: 0.9),
+            const Color(0xFFF5FAFF).withValues(alpha: 0.88),
+            const Color(0xFFFFF7FB).withValues(alpha: 0.84),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xEEF0F4FA)),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xE2DFE8F7)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x080F172A),
             blurRadius: 14,
-            offset: Offset(0, 4),
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      child: Column(
-        children: <Widget>[
-          if (hasPhotoControls) ...<Widget>[
-            Row(
-              children: <Widget>[
-                _AlignChip(
-                  icon: Icons.rotate_left_rounded,
-                  selected: false,
-                  onTap: onRotateLeftTap,
-                ),
-                _AlignChip(
-                  icon: Icons.rotate_right_rounded,
-                  selected: false,
-                  onTap: onRotateRightTap,
-                ),
-                _AlignChip(
-                  icon: Icons.flip_rounded,
-                  selected: photoLayer.flipPhotoHorizontally,
-                  onTap: onFlipHorizontalTap,
-                ),
-                _AlignChip(
-                  icon: Icons.flip_camera_android_rounded,
-                  selected: photoLayer.flipPhotoVertically,
-                  onTap: onFlipVerticalTap,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _LabeledSlider(
-                    label: 'Opacity',
-                    value: photoLayer.photoOpacity.clamp(0.1, 1).toDouble(),
-                    min: 0.1,
-                    max: 1,
-                    onChanged: onOpacityChanged,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              margin: const EdgeInsets.only(top: 6),
-              height: 1,
-              color: const Color(0xFFE9EEF6),
-            ),
-            const SizedBox(height: 6),
-          ],
-          Expanded(
-            child: ListView.separated(
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final compactTools = constraints.maxHeight < 155;
+          final needsScrollableLayout =
+              hasPhotoControls && constraints.maxHeight < 168;
+
+          Widget buildToolsList({required double stripHeight}) {
+            final list = ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               scrollDirection: Axis.horizontal,
               itemCount: _tools.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (BuildContext context, int index) {
                 final tool = _tools[index];
-                return _ToolItem(
-                  label: index == 6 && isRemovingBackground
-                      ? 'Removing...'
-                      : tool.label,
-                  icon: tool.icon,
+                  return _ToolItem(
+                    label: index == 8 && isRemovingBackground
+                        ? 'Removing...'
+                        : tool.label,
+                    icon: tool.icon,
+                    active: tool.label == activeToolLabel,
+                    compact: compactTools,
                   onTap: switch (index) {
                     0 => onAddPhotoTap,
                     1 => onAddTextTap,
                     2 => onStickerTap,
                     3 => onBackgroundTap,
                     4 => onLayersTap,
-                    5 => canCropPhoto ? onCropPhotoTap : null,
-                    6 => canRemoveBackground ? onRemoveBackgroundTap : null,
-                    7 => canMagicTool ? onMagicToolTap : null,
+                    5 => canAdjustPhoto ? onAdjustTap : null,
+                    6 => canCropPhoto ? onCropPhotoTap : null,
+                    7 => canEraserPhoto ? onEraserTap : null,
+                    8 => canRemoveBackground ? onRemoveBackgroundTap : null,
                     _ => () {},
                   },
                   enabled: switch (index) {
-                    5 => canCropPhoto,
-                    6 => canRemoveBackground,
-                    7 => canMagicTool,
+                    5 => canAdjustPhoto,
+                    6 => canCropPhoto,
+                    7 => canEraserPhoto,
+                    8 => canRemoveBackground,
                     _ => true,
                   },
                 );
               },
-            ),
-          ),
-        ],
+            );
+            if (!stripHeight.isFinite) {
+              return list;
+            }
+            return SizedBox(height: stripHeight, child: list);
+          }
+
+          Widget buildPhotoQuickActions() {
+            final selectedPhoto = photoLayer!;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Text(
+                      'Photo quick actions',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'Selected photo',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1D4ED8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: <Widget>[
+                    _AlignChip(
+                      icon: Icons.rotate_left_rounded,
+                      selected: false,
+                      onTap: onRotateLeftTap,
+                    ),
+                    _AlignChip(
+                      icon: Icons.rotate_right_rounded,
+                      selected: false,
+                      onTap: onRotateRightTap,
+                    ),
+                    _AlignChip(
+                      icon: Icons.flip_rounded,
+                      selected: selectedPhoto.flipPhotoHorizontally,
+                      onTap: onFlipHorizontalTap,
+                    ),
+                    _AlignChip(
+                      icon: Icons.flip_camera_android_rounded,
+                      selected: selectedPhoto.flipPhotoVertically,
+                      onTap: onFlipVerticalTap,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _LabeledSlider(
+                        label: 'Opacity',
+                        value: selectedPhoto.photoOpacity
+                            .clamp(0.1, 1)
+                            .toDouble(),
+                        min: 0.1,
+                        max: 1,
+                        onChanged: onOpacityChanged,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  height: 1,
+                  color: const Color(0xFFE9EEF6),
+                ),
+                const SizedBox(height: 6),
+              ],
+            );
+          }
+
+          if (needsScrollableLayout) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (hasPhotoControls) buildPhotoQuickActions(),
+                  buildToolsList(stripHeight: compactTools ? 58 : 64),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: <Widget>[
+              if (hasPhotoControls) buildPhotoQuickActions(),
+              Expanded(
+                child: buildToolsList(stripHeight: double.infinity),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -6678,23 +8206,24 @@ class _TextBottomToolsBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Colors.white.withValues(alpha: 0.94),
-            const Color(0xFFF8FBFF).withValues(alpha: 0.92),
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF3F8FF).withValues(alpha: 0.93),
+            const Color(0xFFFFF5FB).withValues(alpha: 0.9),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xEEF0F4FA)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xEAEFF4FA)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x080F172A),
-            blurRadius: 14,
-            offset: Offset(0, 4),
+            blurRadius: 16,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -6737,6 +8266,702 @@ class _TextBottomToolsBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EraserCanvasGestureOverlay extends StatelessWidget {
+  const _EraserCanvasGestureOverlay({
+    required this.canvasSize,
+    required this.topInset,
+    required this.bottomInset,
+    required this.pageAspectRatio,
+    required this.brushSize,
+    required this.brushCenterListenable,
+    required this.mode,
+    required this.isInitializing,
+    required this.errorMessage,
+    required this.onPanStart,
+    required this.onPanUpdate,
+    required this.onPanEnd,
+  });
+
+  final Size canvasSize;
+  final double topInset;
+  final double bottomInset;
+  final double? pageAspectRatio;
+  final double brushSize;
+  final ValueListenable<Offset?> brushCenterListenable;
+  final _EraserMode mode;
+  final bool isInitializing;
+  final String? errorMessage;
+  final void Function(
+    DragStartDetails details,
+    Rect pageRect,
+    Size pageSize,
+  )
+  onPanStart;
+  final void Function(
+    DragUpdateDetails details,
+    Rect pageRect,
+    Size pageSize,
+  )
+  onPanUpdate;
+  final VoidCallback onPanEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final workspaceHeight = math.max(
+      0.0,
+      canvasSize.height - topInset - bottomInset,
+    );
+    final workspaceSize = Size(canvasSize.width, workspaceHeight);
+    final pageSize = pageAspectRatio != null
+        ? _fitPageSize(
+            workspaceSize: workspaceSize,
+            aspectRatio: pageAspectRatio!,
+          )
+        : workspaceSize;
+    final pageRect = Rect.fromCenter(
+      center: Offset(canvasSize.width / 2, topInset + (workspaceHeight / 2)),
+      width: pageSize.width,
+      height: pageSize.height,
+    );
+
+    return IgnorePointer(
+      ignoring: false,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (details) => onPanStart(details, pageRect, pageSize),
+        onPanUpdate: (details) => onPanUpdate(details, pageRect, pageSize),
+        onPanEnd: (_) => onPanEnd(),
+        onPanCancel: onPanEnd,
+        child: Stack(
+          children: <Widget>[
+            if (isInitializing)
+              const Center(
+                child: IgnorePointer(
+                  child: CircularProgressIndicator(strokeWidth: 2.8),
+                ),
+              ),
+            if (errorMessage != null)
+              Positioned(
+                left: 20,
+                right: 20,
+                top: topInset + 14,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xD91E293B),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Positioned.fill(
+              child: ValueListenableBuilder<Offset?>(
+                valueListenable: brushCenterListenable,
+                builder: (BuildContext context, Offset? brushCenter, Widget? child) {
+                  return CustomPaint(
+                    painter: _EraserBrushOverlayPainter(
+                      imageRect: pageRect,
+                      brushCenter: brushCenter,
+                      brushSize: brushSize,
+                      mode: mode,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EraserBrushOverlayPainter extends CustomPainter {
+  const _EraserBrushOverlayPainter({
+    required this.imageRect,
+    required this.brushCenter,
+    required this.brushSize,
+    required this.mode,
+  });
+
+  final Rect imageRect;
+  final Offset? brushCenter;
+  final double brushSize;
+  final _EraserMode mode;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = brushCenter;
+    if (center == null || !imageRect.inflate(brushSize * 0.5).contains(center)) {
+      return;
+    }
+    final ringColor = mode == _EraserMode.erase
+        ? const Color(0xFFEF4444)
+        : const Color(0xFF22C55E);
+    final fill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = ringColor.withValues(alpha: 0.14);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.9
+      ..color = ringColor.withValues(alpha: 0.94);
+    canvas.drawCircle(center, brushSize / 2, fill);
+    canvas.drawCircle(center, brushSize / 2, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EraserBrushOverlayPainter oldDelegate) {
+    return oldDelegate.imageRect != imageRect ||
+        oldDelegate.brushCenter != brushCenter ||
+        oldDelegate.brushSize != brushSize ||
+        oldDelegate.mode != mode;
+  }
+}
+
+class _EraserBottomToolsBar extends StatelessWidget {
+  const _EraserBottomToolsBar({
+    required this.height,
+    required this.mode,
+    required this.brushSize,
+    required this.softness,
+    required this.strength,
+    required this.activeControl,
+    required this.isApplying,
+    required this.isInitializing,
+    required this.onModeChanged,
+    required this.onBrushSizeChanged,
+    required this.onSoftnessChanged,
+    required this.onStrengthChanged,
+    required this.onActiveControlChanged,
+    required this.onBack,
+    required this.onReset,
+    required this.onApply,
+  });
+
+  final double height;
+  final _EraserMode mode;
+  final double brushSize;
+  final double softness;
+  final double strength;
+  final _EraserControl? activeControl;
+  final bool isApplying;
+  final bool isInitializing;
+  final ValueChanged<_EraserMode> onModeChanged;
+  final ValueChanged<double> onBrushSizeChanged;
+  final ValueChanged<double> onSoftnessChanged;
+  final ValueChanged<double> onStrengthChanged;
+  final ValueChanged<_EraserControl> onActiveControlChanged;
+  final VoidCallback onBack;
+  final VoidCallback onReset;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = isApplying || isInitializing;
+    return Container(
+      height: height,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF2F7FF).withValues(alpha: 0.94),
+            const Color(0xFFFDF2F8).withValues(alpha: 0.9),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xEAEFF4FA)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        height: height - 16,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+            _TopActionButton(
+              label: 'Back',
+              onTap: disabled ? null : onBack,
+            ),
+            const SizedBox(width: 8),
+            _EraserModeToggle(
+              mode: mode,
+              enabled: !disabled,
+              onModeChanged: onModeChanged,
+            ),
+            const SizedBox(width: 10),
+            _EraserSliderChip(
+              label: 'Brush',
+              value: brushSize,
+              min: 8,
+              max: 120,
+              display: brushSize.round().toString(),
+              isActive: activeControl == _EraserControl.brushSize,
+              enabled: !disabled,
+              onActivate: () =>
+                  onActiveControlChanged(_EraserControl.brushSize),
+              onChanged: onBrushSizeChanged,
+            ),
+            const SizedBox(width: 8),
+            _EraserSliderChip(
+              label: 'Soft',
+              value: softness,
+              min: 0,
+              max: 1,
+              display: softness.toStringAsFixed(2),
+              isActive: activeControl == _EraserControl.softness,
+              enabled: !disabled,
+              onActivate: () =>
+                  onActiveControlChanged(_EraserControl.softness),
+              onChanged: onSoftnessChanged,
+            ),
+            const SizedBox(width: 8),
+            _EraserSliderChip(
+              label: 'Strength',
+              value: strength,
+              min: 0.1,
+              max: 1,
+              display: strength.toStringAsFixed(2),
+              isActive: activeControl == _EraserControl.strength,
+              enabled: !disabled,
+              onActivate: () =>
+                  onActiveControlChanged(_EraserControl.strength),
+              onChanged: onStrengthChanged,
+            ),
+            const SizedBox(width: 10),
+            _TopActionButton(
+              label: 'Reset',
+              onTap: disabled ? null : onReset,
+            ),
+            const SizedBox(width: 6),
+            _TopActionButton(
+              label: isApplying ? 'Applying...' : 'Apply',
+              onTap: disabled ? null : onApply,
+            ),
+            const SizedBox(width: 2),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EraserModeToggle extends StatelessWidget {
+  const _EraserModeToggle({
+    required this.mode,
+    required this.enabled,
+    required this.onModeChanged,
+  });
+
+  final _EraserMode mode;
+  final bool enabled;
+  final ValueChanged<_EraserMode> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFD),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          _EraserModeChip(
+            label: 'Erase',
+            selected: mode == _EraserMode.erase,
+            enabled: enabled,
+            color: const Color(0xFFEF4444),
+            onTap: () => onModeChanged(_EraserMode.erase),
+          ),
+          const SizedBox(width: 4),
+          _EraserModeChip(
+            label: 'Restore',
+            selected: mode == _EraserMode.restore,
+            enabled: enabled,
+            color: const Color(0xFF16A34A),
+            onTap: () => onModeChanged(_EraserMode.restore),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EraserModeChip extends StatelessWidget {
+  const _EraserModeChip({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PressableSurface(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(999),
+      enabled: enabled,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 68),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: selected ? color : const Color(0xFF475569),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EraserSliderChip extends StatelessWidget {
+  const _EraserSliderChip({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.display,
+    required this.isActive,
+    required this.enabled,
+    required this.onActivate,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final String display;
+  final bool isActive;
+  final bool enabled;
+  final VoidCallback onActivate;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isActive
+        ? const Color(0xFF2563EB)
+        : const Color(0xFFE2E8F0);
+    final fillColor = isActive
+        ? const Color(0xFFEFF6FF)
+        : const Color(0xFFF8FAFD);
+    final sliderBody = Container(
+      width: 196,
+      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 54,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isActive
+                    ? const Color(0xFF1D4ED8)
+                    : const Color(0xFF334155),
+              ),
+            ),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 5,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                activeTrackColor: isActive
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFF94A3B8),
+                inactiveTrackColor: const Color(0xFFDDE5EF),
+                thumbColor: isActive
+                    ? const Color(0xFF1D4ED8)
+                    : const Color(0xFF64748B),
+              ),
+              child: Slider(
+                value: value.clamp(min, max),
+                min: min,
+                max: max,
+                onChanged: (enabled && isActive) ? onChanged : null,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 36,
+            child: Text(
+              display,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: isActive
+                    ? const Color(0xFF1E3A8A)
+                    : const Color(0xFF475569),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return SizedBox(
+      height: 60,
+      child: isActive
+          ? sliderBody
+          : _PressableSurface(
+              onTap: enabled ? onActivate : null,
+              borderRadius: BorderRadius.circular(14),
+              enabled: enabled,
+              child: sliderBody,
+            ),
+    );
+  }
+}
+
+class _AdjustBottomToolsBar extends StatelessWidget {
+  const _AdjustBottomToolsBar({
+    required this.height,
+    required this.brightness,
+    required this.contrast,
+    required this.saturation,
+    required this.blur,
+    required this.onBrightnessChanged,
+    required this.onContrastChanged,
+    required this.onSaturationChanged,
+    required this.onBlurChanged,
+    required this.onBack,
+    required this.onReset,
+    required this.onApply,
+  });
+
+  final double height;
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double blur;
+  final ValueChanged<double> onBrightnessChanged;
+  final ValueChanged<double> onContrastChanged;
+  final ValueChanged<double> onSaturationChanged;
+  final ValueChanged<double> onBlurChanged;
+  final VoidCallback onBack;
+  final VoidCallback onReset;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF8FBFF).withValues(alpha: 0.93),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xEAEFF4FA)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: <Widget>[
+          const Row(
+            children: <Widget>[
+              Icon(Icons.tune_rounded, size: 18, color: Color(0xFF0F172A)),
+              SizedBox(width: 8),
+              Text(
+                'Adjust',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: <Widget>[
+                  _AdjustSlider(
+                    label: 'Brightness',
+                    value: brightness,
+                    min: -0.35,
+                    max: 0.35,
+                    display: brightness.toStringAsFixed(2),
+                    onChanged: onBrightnessChanged,
+                  ),
+                  _AdjustSlider(
+                    label: 'Contrast',
+                    value: contrast,
+                    min: 0.6,
+                    max: 1.6,
+                    display: contrast.toStringAsFixed(2),
+                    onChanged: onContrastChanged,
+                  ),
+                  _AdjustSlider(
+                    label: 'Saturation',
+                    value: saturation,
+                    min: 0,
+                    max: 2,
+                    display: saturation.toStringAsFixed(2),
+                    onChanged: onSaturationChanged,
+                  ),
+                  _AdjustSlider(
+                    label: 'Blur',
+                    value: blur,
+                    min: 0,
+                    max: 10,
+                    display: blur.toStringAsFixed(1),
+                    onChanged: onBlurChanged,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onBack,
+                  child: const Text('Back'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onReset,
+                  child: const Text('Reset'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: onApply,
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdjustSlider extends StatelessWidget {
+  const _AdjustSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.display,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final String display;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 82,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 42,
+          child: Text(
+            display,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF475569),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -6860,16 +9085,17 @@ class _CropBottomToolsBar extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: <Color>[
             Colors.white.withValues(alpha: 0.95),
-            const Color(0xFFF8FBFF).withValues(alpha: 0.94),
+            const Color(0xFFF2F7FF).withValues(alpha: 0.94),
+            const Color(0xFFFDF2F8).withValues(alpha: 0.9),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xEEF0F4FA)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xEAEFF4FA)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x080F172A),
-            blurRadius: 14,
-            offset: Offset(0, 4),
+            blurRadius: 16,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -6937,13 +9163,10 @@ class _CropAspectChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
+      child: _PressableSurface(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(99),
-        child: Ink(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFDBEAFE) : const Color(0xFFF8FAFD),
@@ -7140,15 +9363,10 @@ class _StickerCategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        splashColor: const Color(0x1A2563EB),
-        highlightColor: const Color(0x0F2563EB),
+      child: _PressableSurface(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(99),
-        child: Ink(
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFDBEAFE) : const Color(0xFFF8FAFD),
@@ -7168,6 +9386,112 @@ class _StickerCategoryChip extends StatelessWidget {
   }
 }
 
+class _PressableSurface extends StatefulWidget {
+  const _PressableSurface({
+    required this.child,
+    required this.onTap,
+    required this.borderRadius,
+    this.enabled = true,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final BorderRadius borderRadius;
+  final bool enabled;
+
+  @override
+  State<_PressableSurface> createState() => _PressableSurfaceState();
+}
+
+class _PressableSurfaceState extends State<_PressableSurface> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final canTap = widget.enabled && widget.onTap != null;
+    return AnimatedScale(
+      scale: canTap && _pressed ? 0.965 : 1,
+      duration: const Duration(milliseconds: 110),
+      curve: Curves.easeOutCubic,
+      child: InkWell(
+        onTap: !canTap
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                widget.onTap!.call();
+              },
+        onHighlightChanged: (value) {
+          if (_pressed != value && mounted) {
+            setState(() {
+              _pressed = value;
+            });
+          }
+        },
+        splashColor: const Color(0x122563EB),
+        highlightColor: const Color(0x0A2563EB),
+        borderRadius: widget.borderRadius,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 110),
+          opacity: canTap ? (_pressed ? 0.93 : 1) : 0.72,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorIconButton extends StatelessWidget {
+  const _EditorIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: _PressableSurface(
+        onTap: onTap,
+        enabled: onTap != null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 34,
+          height: 34,
+          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          decoration: BoxDecoration(
+            color: onTap == null
+                ? const Color(0xFFF4F6FA)
+                : Colors.white.withValues(alpha: 0.76),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xD8D9E6F8)),
+            boxShadow: onTap == null
+                ? null
+                : const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x050F172A),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: onTap == null
+                ? const Color(0xFF94A3B8)
+                : const Color(0xFF334155),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TopActionButton extends StatelessWidget {
   const _TopActionButton({required this.label, required this.onTap});
 
@@ -7176,46 +9500,43 @@ class _TopActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onTap == null
-          ? null
-          : () {
-              HapticFeedback.selectionClick();
-              onTap!.call();
-            },
-      style: TextButton.styleFrom(
-        minimumSize: const Size(0, 36),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        foregroundColor: const Color(0xFF334155),
-        backgroundColor: onTap == null
-            ? const Color(0xFFF4F6FA)
-            : const Color(0xFFFDFEFF),
-        shape: RoundedRectangleBorder(
+    return _PressableSurface(
+      onTap: onTap,
+      enabled: onTap != null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 34),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: onTap == null
+              ? const Color(0xFFF4F6FA)
+              : Colors.white.withValues(alpha: 0.78),
           borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Color(0xFFE3EAF3)),
+          border: Border.all(color: const Color(0xD7D9E6F8)),
+          boxShadow: onTap == null
+              ? null
+              : const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x050F172A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
         ),
-        textStyle: const TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.1,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.1,
+            color: onTap == null
+                ? const Color(0xFF94A3B8)
+                : const Color(0xFF334155),
+          ),
         ),
       ),
-      child: Text(label),
     );
   }
-}
-
-class _MagicToolScreen extends StatefulWidget {
-  const _MagicToolScreen({
-    required this.currentBytes,
-    required this.originalBytes,
-  });
-
-  final Uint8List currentBytes;
-  final Uint8List originalBytes;
-
-  @override
-  State<_MagicToolScreen> createState() => _MagicToolScreenState();
 }
 
 class _CropOverlayPainter extends CustomPainter {
@@ -7270,868 +9591,99 @@ class _CropOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _MagicToolScreenState extends State<_MagicToolScreen> {
-  final OfflineBackgroundRemovalService _service =
-      const OfflineBackgroundRemovalService();
-
-  late Uint8List _workingBytes = Uint8List.fromList(widget.currentBytes);
-  late final Uint8List _originalBytes = Uint8List.fromList(widget.originalBytes);
-  final List<Uint8List> _undoHistory = <Uint8List>[];
-  final List<Uint8List> _redoHistory = <Uint8List>[];
-  BackgroundRefineMode _mode = BackgroundRefineMode.erase;
-  double _brushRadius = 26;
-  double _brushSoftness = 0.45;
-  double _brushStrength = 0.9;
-  double _edgeSmoothStrength = 2;
-  double _featherStrength = 2;
-  double _expandShrinkAmount = 1;
-  bool _isApplying = false;
-  bool _showOriginalPreview = false;
-  Rect? _imageRect;
-  Size? _imagePixelSize;
-  late Size? _workingPixelSize = _decodePixelSize(_workingBytes);
-  late final Size? _originalPixelSize = _decodePixelSize(_originalBytes);
-  final List<Offset> _activeStroke = <Offset>[];
-  int _strokeRevision = 0;
-
-  bool get _canUndo => _undoHistory.isNotEmpty;
-  bool get _canRedo => _redoHistory.isNotEmpty;
-  Uint8List get _displayBytes => _showOriginalPreview ? _originalBytes : _workingBytes;
-  Size? get _displayPixelSize =>
-      _showOriginalPreview ? _originalPixelSize : _workingPixelSize;
-
-  static Size? _decodePixelSize(Uint8List bytes) {
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null || decoded.width <= 0 || decoded.height <= 0) {
-      return null;
-    }
-    return Size(decoded.width.toDouble(), decoded.height.toDouble());
-  }
-
-  void _pushMagicUndo() {
-    _undoHistory.add(_workingBytes);
-    if (_undoHistory.length > 20) {
-      _undoHistory.removeAt(0);
-    }
-    _redoHistory.clear();
-  }
-
-  Future<void> _applyActiveStroke() async {
-    if (_activeStroke.isEmpty || _isApplying || _imagePixelSize == null) {
-      return;
-    }
-
-    final stroke = List<Offset>.from(_activeStroke);
-    final brushRadius = _brushRadius;
-    final brushSoftness = _brushSoftness;
-    final brushStrength = _brushStrength;
-    setState(() {
-      _activeStroke.clear();
-      _strokeRevision++;
-      _isApplying = true;
-    });
-
-    try {
-      _pushMagicUndo();
-      final refinedBytes = await _service.applyBrushEdits(
-        currentBytes: _workingBytes,
-        originalBytes: widget.originalBytes,
-        mode: _mode,
-        points: stroke,
-        brushRadius: brushRadius,
-        softness: brushSoftness,
-        strength: brushStrength,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _workingBytes = refinedBytes;
-        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isApplying = false;
-        });
-      }
-    }
-  }
-
-  void _handleMagicUndo() {
-    if (!_canUndo || _isApplying) {
-      return;
-    }
-    setState(() {
-      _redoHistory.add(_workingBytes);
-      _workingBytes = _undoHistory.removeLast();
-      _workingPixelSize = _decodePixelSize(_workingBytes) ?? _workingPixelSize;
-    });
-  }
-
-  void _handleMagicRedo() {
-    if (!_canRedo || _isApplying) {
-      return;
-    }
-    setState(() {
-      _undoHistory.add(_workingBytes);
-      _workingBytes = _redoHistory.removeLast();
-      _workingPixelSize = _decodePixelSize(_workingBytes) ?? _workingPixelSize;
-    });
-  }
-
-  Future<void> _applyEdgeSmooth() async {
-    if (_isApplying) {
-      return;
-    }
-
-    setState(() {
-      _isApplying = true;
-    });
-
-    try {
-      _pushMagicUndo();
-      final refinedBytes = await _service.applyEdgeSmooth(
-        currentBytes: _workingBytes,
-        strength: _edgeSmoothStrength,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _workingBytes = refinedBytes;
-        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isApplying = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _applyFeather() async {
-    if (_isApplying) {
-      return;
-    }
-
-    setState(() {
-      _isApplying = true;
-    });
-
-    try {
-      _pushMagicUndo();
-      final refinedBytes = await _service.applyEdgeFeather(
-        currentBytes: _workingBytes,
-        strength: _featherStrength,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _workingBytes = refinedBytes;
-        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isApplying = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _applyExpandShrink(bool expand) async {
-    if (_isApplying) {
-      return;
-    }
-
-    setState(() {
-      _isApplying = true;
-    });
-
-    try {
-      _pushMagicUndo();
-      final refinedBytes = await _service.applyMaskExpansion(
-        currentBytes: _workingBytes,
-        amount: expand ? _expandShrinkAmount : -_expandShrinkAmount,
-      );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _workingBytes = refinedBytes;
-        _workingPixelSize = _decodePixelSize(refinedBytes) ?? _workingPixelSize;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isApplying = false;
-        });
-      }
-    }
-  }
-
-  void _resetMagicImage() {
-    if (_isApplying) {
-      return;
-    }
-    setState(() {
-      _workingBytes = widget.currentBytes;
-      _workingPixelSize = _decodePixelSize(widget.currentBytes) ?? _workingPixelSize;
-      _undoHistory.clear();
-      _redoHistory.clear();
-      _activeStroke.clear();
-      _strokeRevision++;
-    });
-  }
-
-  Offset? _toImageSpace(Offset globalPosition) {
-    final rect = _imageRect;
-    final imagePixelSize = _imagePixelSize;
-    if (rect == null ||
-        imagePixelSize == null ||
-        !rect.contains(globalPosition)) {
-      return null;
-    }
-
-    final normalizedX = ((globalPosition.dx - rect.left) / rect.width).clamp(
-      0.0,
-      1.0,
-    );
-    final normalizedY = ((globalPosition.dy - rect.top) / rect.height).clamp(
-      0.0,
-      1.0,
-    );
-    return Offset(
-      normalizedX * imagePixelSize.width,
-      normalizedY * imagePixelSize.height,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0B1120),
-        foregroundColor: Colors.white,
-        title: const Text('Magic Tool'),
-        leading: IconButton(
-          onPressed: _isApplying ? null : () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          tooltip: 'Back',
-        ),
-        actions: <Widget>[
-          IconButton(
-            onPressed: _canUndo && !_isApplying ? _handleMagicUndo : null,
-            icon: const Icon(Icons.undo_rounded),
-            tooltip: 'Undo',
-          ),
-          IconButton(
-            onPressed: _canRedo && !_isApplying ? _handleMagicRedo : null,
-            icon: const Icon(Icons.redo_rounded),
-            tooltip: 'Redo',
-          ),
-          IconButton(
-            onPressed: _isApplying ? null : _resetMagicImage,
-            icon: const Icon(Icons.restart_alt_rounded),
-            tooltip: 'Reset',
-          ),
-          TextButton(
-            onPressed: _isApplying
-                ? null
-                : () => Navigator.of(context).pop(_workingBytes),
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final previewBytes = _displayBytes;
-                  final previewPixelSize = _displayPixelSize;
-                  if (previewPixelSize == null) {
-                    return const Center(
-                      child: Text(
-                        'Selected image preview load kaaledu',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    );
-                  }
-
-                  final rawWidth = previewPixelSize.width;
-                  final rawHeight = previewPixelSize.height;
-                  final scale = math.min(
-                    constraints.maxWidth / rawWidth,
-                    constraints.maxHeight / rawHeight,
-                  );
-                  final displayWidth = rawWidth * scale;
-                  final displayHeight = rawHeight * scale;
-                  final left = (constraints.maxWidth - displayWidth) / 2;
-                  final top = (constraints.maxHeight - displayHeight) / 2;
-                  _imageRect = Rect.fromLTWH(
-                    left,
-                    top,
-                    displayWidth,
-                    displayHeight,
-                  );
-                  _imagePixelSize = previewPixelSize;
-
-                  return Center(
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                      child: Stack(
-                        children: <Widget>[
-                          Positioned.fromRect(
-                            rect: _imageRect!,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: const Color(0x0DFFFFFF),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0x22334155),
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.memory(
-                                  previewBytes,
-                                  fit: BoxFit.contain,
-                                  gaplessPlayback: true,
-                                  filterQuality: FilterQuality.high,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onPanStart: _isApplying
-                                  ? null
-                                  : (details) {
-                                      final point = _toImageSpace(
-                                        details.localPosition,
-                                      );
-                                      if (point == null) {
-                                        return;
-                                      }
-                                      setState(() {
-                                        _activeStroke
-                                          ..clear()
-                                          ..add(point);
-                                        _strokeRevision++;
-                                      });
-                                    },
-                              onPanUpdate: _isApplying
-                                  ? null
-                                  : (details) {
-                                      final point = _toImageSpace(
-                                        details.localPosition,
-                                      );
-                                      if (point == null) {
-                                        return;
-                                      }
-                                      setState(() {
-                                        _activeStroke.add(point);
-                                        _strokeRevision++;
-                                      });
-                                    },
-                              onPanEnd: _isApplying
-                                  ? null
-                                  : (_) {
-                                      _applyActiveStroke();
-                                    },
-                              onPanCancel: _isApplying
-                                  ? null
-                                  : _applyActiveStroke,
-                              child: CustomPaint(
-                                painter: _BrushPreviewPainter(
-                                  imageRect: _imageRect,
-                                  imagePixelSize: _imagePixelSize,
-                                  points: _activeStroke,
-                                  strokeRevision: _strokeRevision,
-                                  brushRadius: _brushRadius,
-                                  brushSoftness: _brushSoftness,
-                                  brushStrength: _brushStrength,
-                                  mode: _mode,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_isApplying)
-                            Positioned.fill(
-                              child: ColoredBox(
-                                color: Colors.black.withValues(alpha: 0.18),
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
-              color: const Color(0xFF111827),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      GestureDetector(
-                        onLongPressStart: (_) {
-                          setState(() {
-                            _showOriginalPreview = true;
-                          });
-                        },
-                        onLongPressEnd: (_) {
-                          setState(() {
-                            _showOriginalPreview = false;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF334155)),
-                          ),
-                          child: Text(
-                            _showOriginalPreview ? 'Before' : 'Hold: Before',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: SegmentedButton<BackgroundRefineMode>(
-                          segments: const <ButtonSegment<BackgroundRefineMode>>[
-                            ButtonSegment<BackgroundRefineMode>(
-                              value: BackgroundRefineMode.erase,
-                              label: Text('Erase'),
-                              icon: Icon(Icons.remove_circle_outline_rounded),
-                            ),
-                            ButtonSegment<BackgroundRefineMode>(
-                              value: BackgroundRefineMode.restore,
-                              label: Text('Restore'),
-                              icon: Icon(Icons.restore_rounded),
-                            ),
-                          ],
-                          selected: <BackgroundRefineMode>{_mode},
-                          onSelectionChanged: _isApplying
-                              ? null
-                              : (values) {
-                                  setState(() {
-                                    _mode = values.first;
-                                  });
-                                },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Brush Size',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _brushRadius,
-                          min: 8,
-                          max: 72,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _brushRadius = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        _brushRadius.round().toString(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Softness',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _brushSoftness,
-                          min: 0,
-                          max: 1,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _brushSoftness = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        '${(_brushSoftness * 100).round()}%',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Strength',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _brushStrength,
-                          min: 0.1,
-                          max: 1,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _brushStrength = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        '${(_brushStrength * 100).round()}%',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Edge Smooth',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _edgeSmoothStrength,
-                          min: 1,
-                          max: 6,
-                          divisions: 5,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _edgeSmoothStrength = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        _edgeSmoothStrength.round().toString(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _isApplying ? null : _applyEdgeSmooth,
-                        child: const Text('Apply'),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Feather',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _featherStrength,
-                          min: 1,
-                          max: 6,
-                          divisions: 5,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _featherStrength = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        _featherStrength.round().toString(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _isApplying ? null : _applyFeather,
-                        child: const Text('Apply'),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      const Text(
-                        'Expand/Shrink',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: _expandShrinkAmount,
-                          min: 1,
-                          max: 8,
-                          divisions: 7,
-                          onChanged: _isApplying
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _expandShrinkAmount = value;
-                                  });
-                                },
-                        ),
-                      ),
-                      Text(
-                        _expandShrinkAmount.round().toString(),
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _isApplying
-                              ? null
-                              : () => _applyExpandShrink(false),
-                          child: const Text('Shrink'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _isApplying
-                              ? null
-                              : () => _applyExpandShrink(true),
-                          child: const Text('Expand'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _isApplying
-                              ? null
-                              : () => Navigator.of(context).maybePop(),
-                          child: const Text('Back'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _isApplying ? null : _resetMagicImage,
-                          child: const Text('Reset'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _isApplying
-                              ? null
-                              : () => Navigator.of(context).pop(_workingBytes),
-                          child: const Text('Apply'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BrushPreviewPainter extends CustomPainter {
-  const _BrushPreviewPainter({
-    required this.imageRect,
-    required this.imagePixelSize,
-    required this.points,
-    required this.strokeRevision,
-    required this.brushRadius,
-    required this.brushSoftness,
-    required this.brushStrength,
-    required this.mode,
-  });
-
-  final Rect? imageRect;
-  final Size? imagePixelSize;
-  final List<Offset> points;
-  final int strokeRevision;
-  final double brushRadius;
-  final double brushSoftness;
-  final double brushStrength;
-  final BackgroundRefineMode mode;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = imageRect;
-    final pixelSize = imagePixelSize;
-    if (rect == null || pixelSize == null || points.isEmpty) {
-      return;
-    }
-
-    final scaleX = rect.width / pixelSize.width;
-    final scaleY = rect.height / pixelSize.height;
-    final scale = math.min(scaleX, scaleY);
-    final radius = brushRadius * scale;
-    final innerRadius = radius * (1 - brushSoftness.clamp(0.0, 1.0));
-    final color = mode == BackgroundRefineMode.erase
-        ? const Color(0x66EF4444)
-        : const Color(0x663B82F6);
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(radius * 2 * brushStrength.clamp(0.1, 1.0), 1)
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final path = Path();
-    for (var i = 0; i < points.length; i++) {
-      final point = points[i];
-      final displayPoint = Offset(
-        rect.left + ((point.dx / pixelSize.width) * rect.width),
-        rect.top + ((point.dy / pixelSize.height) * rect.height),
-      );
-      if (i == 0) {
-        path.moveTo(displayPoint.dx, displayPoint.dy);
-      } else {
-        path.lineTo(displayPoint.dx, displayPoint.dy);
-      }
-    }
-    canvas.drawPath(path, paint);
-
-    final last = points.last;
-    final displayLast = Offset(
-      rect.left + ((last.dx / pixelSize.width) * rect.width),
-      rect.top + ((last.dy / pixelSize.height) * rect.height),
-    );
-    canvas.drawCircle(
-      displayLast,
-      radius,
-      Paint()
-        ..color = color.withValues(alpha: 0.25)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      displayLast,
-      innerRadius.clamp(0.0, radius),
-      Paint()
-        ..color = color.withValues(alpha: 0.18)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _BrushPreviewPainter oldDelegate) {
-    return oldDelegate.imageRect != imageRect ||
-        oldDelegate.imagePixelSize != imagePixelSize ||
-        oldDelegate.strokeRevision != strokeRevision ||
-        oldDelegate.brushRadius != brushRadius ||
-        oldDelegate.brushSoftness != brushSoftness ||
-        oldDelegate.brushStrength != brushStrength ||
-        oldDelegate.mode != mode ||
-        oldDelegate.points != points;
-  }
-}
-
 class _ToolItem extends StatelessWidget {
   const _ToolItem({
     required this.label,
     required this.icon,
     required this.onTap,
+    this.active = false,
     this.enabled = true,
+    this.compact = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onTap;
+  final bool active;
   final bool enabled;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final iconTone = enabled
-        ? const Color(0xFF1E3A8A)
+        ? active
+              ? const Color(0xFF4F46E5)
+              : const Color(0xFF1D4ED8)
         : const Color(0xFF94A3B8);
     final labelTone = enabled
-        ? const Color(0xFF334155)
+        ? active
+              ? const Color(0xFF312E81)
+              : const Color(0xFF334155)
         : const Color(0xFF94A3B8);
-    return InkWell(
-      onTap: !enabled || onTap == null
-          ? null
-          : () {
-              HapticFeedback.selectionClick();
-              onTap!.call();
-            },
-      splashColor: const Color(0x1A2563EB),
-      highlightColor: const Color(0x0F2563EB),
+    final itemWidth = compact ? 68.0 : 78.0;
+    final iconSize = compact ? 17.0 : 19.0;
+    final iconBubble = compact ? 34.0 : 38.0;
+    final labelSize = compact ? 10.0 : 10.5;
+    return _PressableSurface(
+      onTap: onTap,
+      enabled: enabled,
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
-        width: 78,
+        width: itemWidth,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Container(
-              width: 38,
-              height: 38,
+              width: iconBubble,
+              height: iconBubble,
               decoration: BoxDecoration(
                 gradient: enabled
-                    ? const LinearGradient(
+                    ? LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: <Color>[Color(0xFFFDFEFF), Color(0xFFF2F7FF)],
+                        colors: active
+                            ? <Color>[
+                                const Color(0xFFEDE9FE),
+                                const Color(0xFFDBEAFE),
+                                const Color(0xFFFCE7F3),
+                              ]
+                            : <Color>[
+                          Color(0xFFFFFFFF),
+                          Color(0xFFEFF6FF),
+                          Color(0xFFFDF2F8),
+                              ],
                       )
                     : null,
                 color: enabled ? null : const Color(0xFFF5F7FB),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE7EDF5)),
+                border: Border.all(
+                  color: active
+                      ? const Color(0xFFC4B5FD)
+                      : const Color(0xFFDCE7F6),
+                ),
+                boxShadow: enabled
+                    ? <BoxShadow>[
+                        BoxShadow(
+                          color: active
+                              ? const Color(0x224F46E5)
+                              : const Color(0x102563EB),
+                          blurRadius: active ? 11 : 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
-              child: Icon(icon, size: 19, color: iconTone),
+              child: Icon(icon, size: iconSize, color: iconTone),
             ),
-            const SizedBox(height: 7),
+            SizedBox(height: compact ? 5 : 7),
             Text(
               label,
-              maxLines: 2,
+              maxLines: compact ? 1 : 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                fontSize: 10.5,
+                fontSize: labelSize,
                 height: 1.05,
                 color: labelTone,
               ),
@@ -8158,13 +9710,10 @@ class _TextModeToolItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+    return _PressableSurface(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(14),
-      child: Ink(
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: selected
@@ -8194,4 +9743,5 @@ class _TextModeToolItem extends StatelessWidget {
     );
   }
 }
+
 

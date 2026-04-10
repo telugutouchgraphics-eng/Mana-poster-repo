@@ -120,196 +120,336 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
     final resolved = _resolveConfig();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: const Color(0xFFF7F8FF),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FC),
+        backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        title: const Text('Page Setup'),
+        elevation: 0,
+        title: const Text(
+          'Page Setup',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         actions: <Widget>[
-          TextButton(
-            onPressed: _skipToEditor,
-            child: const Text('Skip'),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: TextButton(
+              onPressed: _skipToEditor,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4F46E5),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                backgroundColor: Colors.white.withValues(alpha: 0.72),
+              ),
+              child: const Text('Skip'),
+            ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      body: Stack(
         children: <Widget>[
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Choose your canvas',
-                  style: TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
-                  ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[
+                    Color(0xFFF7F8FF),
+                    Color(0xFFF8FBFF),
+                    Color(0xFFFFF7FB),
+                  ],
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Start with a social preset, print size, or enter exact custom dimensions like Photoshop.',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: 18),
-          _SetupSection(
-            title: 'Quick Presets',
-            subtitle: 'Social media and print-ready sizes',
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: List<Widget>.generate(_presets.length, (index) {
-                final preset = _presets[index];
-                final selected = _selectedPresetIndex == index;
-                return _PresetCard(
-                  preset: preset,
-                  selected: selected,
-                  onTap: () => _applyPreset(index),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _SetupSection(
-            title: 'Custom Setup',
-            subtitle: 'Manual size input in pixels or inches',
-            child: Column(
-              children: <Widget>[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: SegmentedButton<_UnitMode>(
-                    segments: const <ButtonSegment<_UnitMode>>[
-                      ButtonSegment<_UnitMode>(
-                        value: _UnitMode.pixels,
-                        label: Text('Pixels'),
-                      ),
-                      ButtonSegment<_UnitMode>(
-                        value: _UnitMode.inches,
-                        label: Text('Inches'),
-                      ),
+          Positioned(
+            top: -90,
+            left: -40,
+            child: IgnorePointer(
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      const Color(0xFF93C5FD).withValues(alpha: 0.22),
+                      const Color(0xFF93C5FD).withValues(alpha: 0),
                     ],
-                    selected: <_UnitMode>{_unitMode},
-                    style: const ButtonStyle(
-                      side: WidgetStatePropertyAll<BorderSide>(
-                        BorderSide(color: Color(0xFFD8E2F0)),
-                      ),
-                    ),
-                    onSelectionChanged: (value) {
-                      setState(() => _unitMode = value.first);
-                    },
                   ),
                 ),
-                const SizedBox(height: 14),
-                Row(
+              ),
+            ),
+          ),
+          Positioned(
+            right: -70,
+            top: 80,
+            child: IgnorePointer(
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: <Color>[
+                      const Color(0xFFF9A8D4).withValues(alpha: 0.18),
+                      const Color(0xFFF9A8D4).withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      Colors.white.withValues(alpha: 0.95),
+                      const Color(0xFFF2F7FF).withValues(alpha: 0.93),
+                      const Color(0xFFFFF4FA).withValues(alpha: 0.9),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xE5DDE8F7)),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x090F172A),
+                      blurRadius: 18,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Expanded(
-                      child: _StyledInput(
-                        controller: _widthController,
-                        label: 'Width ($unitLabel)',
-                        onChanged: (_) {
-                          if (_selectedPresetIndex != null) {
-                            setState(() => _selectedPresetIndex = null);
-                          }
-                        },
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDE9FE),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: const Text(
+                        'Creative canvas setup',
+                        style: TextStyle(
+                          color: Color(0xFF5B21B6),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StyledInput(
-                        controller: _heightController,
-                        label: 'Height ($unitLabel)',
-                        onChanged: (_) {
-                          if (_selectedPresetIndex != null) {
-                            setState(() => _selectedPresetIndex = null);
-                          }
-                        },
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Choose your canvas',
+                      style: TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Start fast with joyful social presets or enter exact dimensions for print and custom designs.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13.5,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
-                if (_unitMode == _UnitMode.inches) ...<Widget>[
-                  const SizedBox(height: 12),
-                  _StyledInput(
-                    controller: _dpiController,
-                    label: 'DPI',
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Row(
-              children: <Widget>[
-                const Icon(
-                  Icons.crop_portrait_rounded,
-                  color: Color(0xFF1D4ED8),
-                  size: 18,
+              ),
+              const SizedBox(height: 18),
+              _SetupSection(
+                title: 'Quick Presets',
+                subtitle: 'Social media and print-ready sizes',
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: List<Widget>.generate(_presets.length, (index) {
+                    final preset = _presets[index];
+                    final selected = _selectedPresetIndex == index;
+                    return _PresetCard(
+                      preset: preset,
+                      selected: selected,
+                      onTap: () => _applyPreset(index),
+                    );
+                  }),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        resolved == null ? 'No canvas selected' : resolved.name,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0F172A),
+              ),
+              const SizedBox(height: 16),
+              _SetupSection(
+                title: 'Custom Setup',
+                subtitle: 'Manual size input in pixels or inches',
+                child: Column(
+                  children: <Widget>[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SegmentedButton<_UnitMode>(
+                        segments: const <ButtonSegment<_UnitMode>>[
+                          ButtonSegment<_UnitMode>(
+                            value: _UnitMode.pixels,
+                            label: Text('Pixels'),
+                          ),
+                          ButtonSegment<_UnitMode>(
+                            value: _UnitMode.inches,
+                            label: Text('Inches'),
+                          ),
+                        ],
+                        selected: <_UnitMode>{_unitMode},
+                        style: const ButtonStyle(
+                          side: WidgetStatePropertyAll<BorderSide>(
+                            BorderSide(color: Color(0xFFD8E2F0)),
+                          ),
                         ),
+                        onSelectionChanged: (value) {
+                          setState(() => _unitMode = value.first);
+                        },
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        resolved == null
-                            ? 'Skip cheste empty editor open avutundi'
-                            : '${resolved.widthPx} x ${resolved.heightPx} px',
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 13,
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _StyledInput(
+                            controller: _widthController,
+                            label: 'Width ($unitLabel)',
+                            onChanged: (_) {
+                              if (_selectedPresetIndex != null) {
+                                setState(() => _selectedPresetIndex = null);
+                              }
+                            },
+                          ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StyledInput(
+                            controller: _heightController,
+                            label: 'Height ($unitLabel)',
+                            onChanged: (_) {
+                              if (_selectedPresetIndex != null) {
+                                setState(() => _selectedPresetIndex = null);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_unitMode == _UnitMode.inches) ...<Widget>[
+                      const SizedBox(height: 12),
+                      _StyledInput(
+                        controller: _dpiController,
+                        label: 'DPI',
+                        keyboardType: TextInputType.number,
                       ),
                     ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: <Color>[
+                      Colors.white.withValues(alpha: 0.95),
+                      const Color(0xFFF4F8FF).withValues(alpha: 0.92),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xE3DFE7F5)),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: <Color>[
+                            Color(0xFF60A5FA),
+                            Color(0xFF8B5CF6),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.crop_portrait_rounded,
+                        color: Colors.white,
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            resolved == null ? 'No canvas selected' : resolved.name,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            resolved == null
+                                ? 'Skip cheste empty editor open avutundi'
+                                : '${resolved.widthPx} x ${resolved.heightPx} px',
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _openEditor,
+                icon: const Icon(Icons.auto_awesome_rounded),
+                label: const Text('Create Canvas'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F46E5),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 17),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _openEditor,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Create Canvas'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0F172A),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: _skipToEditor,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: const BorderSide(color: Color(0xFFD8E2F0)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _skipToEditor,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.72),
+                  foregroundColor: const Color(0xFF334155),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: const BorderSide(color: Color(0xFFD8E2F0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: const Text('Skip & Open Editor'),
               ),
-            ),
-            child: const Text('Skip & Open Editor'),
+            ],
           ),
         ],
       ),
@@ -331,7 +471,26 @@ class _SetupSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Colors.white.withValues(alpha: 0.95),
+            const Color(0xFFF6FAFF).withValues(alpha: 0.92),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xE3DFE8F6)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x070F172A),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -381,12 +540,33 @@ class _PresetCard extends StatelessWidget {
         width: 162,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F6FF) : Colors.white,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: selected
+                ? <Color>[
+                    const Color(0xFFEFF6FF),
+                    const Color(0xFFF5F3FF),
+                  ]
+                : <Color>[
+                    Colors.white,
+                    const Color(0xFFF8FBFF),
+                  ],
+          ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? const Color(0xFF1D4ED8) : const Color(0xFFDCE4F0),
+            color: selected ? const Color(0xFF6366F1) : const Color(0xFFDCE4F0),
             width: selected ? 1.4 : 1,
           ),
+          boxShadow: selected
+              ? const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x123B82F6),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +587,7 @@ class _PresetCard extends StatelessWidget {
                       height: portrait ? 24 : 16,
                       decoration: BoxDecoration(
                         color: selected
-                            ? const Color(0xFF1D4ED8)
+                            ? const Color(0xFF6366F1)
                             : const Color(0xFFCBD5E1),
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -419,7 +599,7 @@ class _PresetCard extends StatelessWidget {
                   const Icon(
                     Icons.check_circle_rounded,
                     size: 20,
-                    color: Color(0xFF1D4ED8),
+                    color: Color(0xFF6366F1),
                   ),
               ],
             ),
@@ -470,7 +650,7 @@ class _StyledInput extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: Colors.white.withValues(alpha: 0.84),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFD8E2F0)),
