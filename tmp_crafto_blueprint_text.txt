@@ -1,0 +1,709 @@
+
+
+===== PAGE 1 =====
+Mana Poster కోసం Crafto-లాంటి యాప్ బ ్లూ ప్రింట్
+కార్యసారాంశం
+Crafto  యొక్క core  promise  అంటే “తక్కవ సమయంలో,  share-ready  quote/poster  image  తయార చేసి
+WhatsApp/సోషల్లో షేర్ చేయడం”—ఇందలో user  పేర/ఫోటోతో personalization  ప్రధాన ఫీచర్గా కనిపిస ్తు ంది.  
+Crafto లో content pillars గా Good Morning, Festival Wishes, Motivational, Devotional, అలాగే “Create Your
+Own” వంటి flows అధికారిక సైట్లోనే స్పష్టంగా ఉన్నాయి. 
+Mana Poster ని “Crafto-like”గా recreate చేయడానికి అత్యంత ప్రభావవంతమైన product strategy: server-driven
+templates + profile-based personalization + ultra-fast editor/export + strong subscription gating.
+Crafto యొక్క own policies/Store listingలన చూ్తు OTP ఆధారిత login, subscription ఆధారిత premium, data
+deletion request, అలాగే privacy & moderation governance వంటివి ఇప్పటికే matureగా ఉన్నాయి—Mana Poster
+లో ఇవే “minimum bar”గా పెట ్ట కోవాలి. 
+ఈ బూ ్లూ పి్రంట్లో: - Mana Poster product scope (screens, UX details, user flows), - server-side information
+architecture + entities/data models, - REST API endpoints (auth, templates, media, billing, admin), -
+Flutter-first rendering/export algorithms, - performance + scalability + security, - monetization (free vs
+premium gating), - admin/creator/manager roles, - testing/CI/CD, - roadmap & effort estimates — అన్నా
+“rebuild from scratch”కి straight-fit అ్యలా ఇచ్చాన.
+Crafto నుండి కనించే ఉత్పత్తి నమనా
+Crafto యొక్క official description ప్రకారం ఇది “మీ photo తో daily status designs/quotes explore చేసి freeగా
+share” చేయడానికి ఉద్దేశించిన app.  Android Play listing ప్రకారం downloads “10Cr+” scale లో ఉన్నాయి (high-
+volume content app behavior).  Official site “Trusted by 100M+ Users” అని కూడా చెబతంది. 
+CraftoApp site ప్రకారం template/library scale లా పెదద్దేదిగా pitch చేస ్తు ంది (ఉదా: 2.8+ లక్షల templates), మరియ
+multi-language footprint ని కూడా highlight చేస ్తు ంది.  (గమనిక: ఒక పేజీలో “7 languages globally” అని, మరో
+పేజీలో languages list మరింత విస్తుృతంగా ఉంది; కాబటి్ట Mana Poster లో languages & content catalog ని “server-
+driven”గా ఉంచి, app update లేకండా expand చేయడం practical.) 
+UI outputs/samples లో “quote card + user name + user photo placeholder + share CTA” pattern స్పష్టంగా
+కనిపిస ్తు ంది—ఇది “profile once → many shares” అనే retention loopన డిజైన్ చేస ్తు ంది. 
+Auth, payments, governance signals
+Crafto Terms of Service లో OTP-based login (mobile number) explicitly ఉంది.  Subscriptions/premium
+access కూడా ToS + pricing policyలో central. 
+Crafto ToS లో payments “third-party gateways such as Razorpay, PhonePe , Paytm ” దాద్వారా
+process అవుతాయని చెబతంది.   UPI AutoPay recurring mandates గరించి కూడా pricing policyలో ఉంది
+(NPCI compliance, retries, cancellation behaviour). 
+1
+2
+3
+4
+5 2
+6
+6
+7
+8
+9
+10 11 12
+8
+13
+1
+
+===== PAGE 2 =====
+Privacy-wise: - Play Store “Photos and videos, Audio, App activity” collect అవొచచ్చా; “encrypted in transit”;
+“data deletion request” supported అని చూపిస ్తు ంది. 
+-  Apple  App  Privacy  labels  లో identifiers  (Device  ID)  analytics/personalisation/functionalityకి;  అలాగే
+photos/videos వంటి user content & diagnostics (crash/performance) mention అయా్యయి. 
+- Crafto privacy policyలో mobile number (OTP), optional email, user-submitted content, device logs, IP/
+general  location,  crash/diagnostics  వంటి collection  పే్కంది;  storage/securityలో encrypted  databases,
+secure APIs, role-based access, audit logging వంటివి ప్ర ్తు వించింది. 
+Content  governance  ToSలో AI/ML  filters  +  human  moderators  +  ticketing  system,  అలాగే statutory
+takedown timelines mention ఉన్నాయి.   Copyright policyలో takedown/counter-notice flows, repeat-
+infringer , safe harbor framing ఉంది. 
+Mana Poster implication: product + infra + policies ని day-1 నంచే “scale-ready & compliant”గా డిజైన్
+చేయాలి.
+Mana Poster ప్రి డక్ట్ బ ్లూ ప్రింట్
+App purpose & target users
+Mana Poster purpose: రోజూ share చేయగల quotes/greetings/festival posts ని 10–20 సెకన్లూలో create చేసి
+WhatsApp/సోషల్లో పంపడం, personalization (name/photo/logo) తో. Crafto official positioning కూడా ఇలానే
+“personalized  daily  messages/quotes—Good  Morning,  festivals,  motivational,  devotional”  మీద
+ఆధారపడింది. 
+Target users (Crafto usage pattern ఆధారంగా): - Family/elder users: daily good morning/good night posts.
+- Youth/community sharers: motivational/devotional/festival wishes. 
+- Regional language users: Telugu/Hindi/Tamil… multi-language content అవసరం. 
+Mana Poster differentiation (recommended):
+- Telugu-first + Bharat multilingual engine (language packs, transliteration, font fallback). 
+- “Creator economy” layer: user-created templates/quotes (controlled moderation). 
+Information architecture
+Recommended navigation (mobile-first): - Bottom tabs:  Home,  Explore,  Create,  Library,  Account -
+Global top area: Search + Language switch + “Today” quick filters - Deep linkable routes (template ID,
+category ID, share intent) — Flutter routing layer recommended. 
+Content IA: - Category → Subcategory → Template list → Template details → Editor → Export → Share -
+Library: Downloads (local), Favorites, Drafts/Projects
+Full screen list with UI/UX details
+్క స్క్రీన్లన “MVP core” + “Growth” + “Admin web”గా విడగొ ్ట న.
+14
+15
+16
+8
+17
+18
+19
+18
+20
+20
+21
+22
+2
+
+===== PAGE 3 =====
+MVP core screens
+Splash / Boot - SplashScreen: app init, remote config fetch, cached catalog warmup, auth state. -
+MaintenanceScreen: server flag ON అయితే “maintenance + retry”.
+Remote configuration దాద్వారా UI flags gate చేయొచచ్చా (feature toggle, paywall variants). 
+Onboarding -  LanguageSelect:  Telugu  default;  user  can  add  secondary  languages;  download
+language pack. - ProfileSetup: Name, profile photo, optional tagline; preview sample card.
+Crafto UI samples కూడా “Create your profile and save quotes” అనే onboarding hook చూపిస ్తు న్నాయి. 
+Auth -  LoginPhone: phone input, country code, OTP request. -  OtpVerify: auto-read (Android),
+manual verify. - ConsentScreen: analytics/notifications.
+Crafto ToS OTP-based login explicitly. 
+Home - Above-the-fold: - “Today’s Picks” (carousel, 8–12 items) - Quick chips: Good Morning / Festival /
+Motivational / Devotional / Jokes / Shayari - Below: - “Trending” grid (2-column card) - “New” feed - “For
+You” (language + category affinities)
+Categories themselves Crafto about-us లో list అయా్యయి. 
+Explore -  ExploreSearch:  query  +  filters  (language,  category,  premium/free,  aspect  ratio)  -
+CategoryHub: category grid + subcategories.
+Template  list -  TemplateGridScreen:  -  infinite  scroll  (page  size  30)  -  skeleton  loading  -  cache
+thumbnails - “premium badge” overlay - long-press: quick preview.
+Template details - TemplateDetailScreen: - full preview (fit) - “Use Template” CTA - “Save/Favorite” -
+“Share sample” (watermarked if closed) - “Similar templates” row.
+Editor -  EditorCanvasScreen (key competitive screen): - Canvas area (fixed aspect ratio: 1:1, 9:16,
+16:9, 4:5) - Bottom tool strip (icon + label): - Photo (replace/crop) - Text (edit quote) - Name/Tagline
+toggle - Fonts - Colors - Background - Stickers/Elements - Align/Spacing - Layers - Top bar: - Back
+(autosave draft) - Undo/Redo - Export - Behavior: - “Auto-fit text” (shrink-to-fit within bounding box) -
+Snap guides (center/edge) - Safe area overlay (WhatsApp status safe margins) - Fast edit: tap on layer to
+edit, double-tap text to open text editor bottom sheet.
+Crafto app samplesలో “personalized quote card” & share CTA visible. 
+Export -  ExportScreen: - formats: PNG (default), JPEG (smaller), PDF (optional premium) - quality
+slider (low/med/high) - watermark toggle (free: default ON) - “Save to device” + “Share” buttons.
+Flutterలో widget→image capture చేయడానికి RepaintBoundary/toImage pipeline official docsలో ఉంది. 
+Share - ShareSheet native share dialog integration; file share support. 
+23
+24
+8
+20
+25
+26
+27
+3
+
+===== PAGE 4 =====
+Library -  Downloads:  local  saved  exports  -  Favorites:  liked  templates  -  Drafts:  autosaved
+projects
+Account - AccountHome: plan status, profile edit, support, settings. - SubscriptionPaywall: plan
+cards, benefits, restore purchases. - Settings: language packs, notifications, privacy, delete account.
+-  Support: FAQ + contact. Crafto support pages “Contact Us” flow mention చే ్తు యి.   -  Legal:
+Terms/Privacy/Copyright.
+Growth screens (phase 2)
+DailyStreak: calendar + streak badge
+ScheduledPosts: reminder notifications (Good morning time)
+CreatorStudio (UGC): create template, publish for review
+CommunityFeed: share + like internal feed (optional)
+Referral: invite & earn premium days (if allowed by store policy)
+Admin web app (role-based)
+AdminDashboard: KPIs (DAU, exports, conversion)
+TemplateManager: create/edit templates, upload assets, A/B tests
+ContentLibrary: quotes database per language
+ModerationQueue: reported content, takedowns
+UserManagement: user flags, bans
+BillingConsole: entitlements, refunds workflow (store-managed), invoice requests
+LocalizationManager: translations + font packs
+Key user flows
+Browse → Edit → Share (primary loop)
+Home/Explore నంచి template select 
+Template detail → “Use Template” 
+Editor: quote text + name/photo apply 
+Export → share.
+Crafto core narrative ఇ: browse designs + personalize + share. 
+Create your own (blank canvas)
+Create tab → choose aspect ratio 
+Pick background (solid/gradient/image) 
+Add text + elements + photo 
+Save draft → export.
+“Create Your Own” Crafto websiteలో official feature. 
+Profile-first onboarding (retention)
+Language select 
+Profile setup (name/photo) 
+Show “Your first post is ready” sample → share.
+28
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+1. 
+2. 
+3. 
+4. 
+29
+1. 
+2. 
+3. 
+4. 
+2
+1. 
+2. 
+3. 
+4
+
+===== PAGE 5 =====
+Play Store screenshot కూడా profile creation highlight చేస ్తు ంది. 
+Publish flow (UGC optional)
+Creator submits template JSON + preview 
+Auto checks (profanity/NSFW) + human review 
+Approve → goes live per category/language.
+Crafto ToS/Copyright policiesలో moderation + takedown process reference ఉంది; Mana Poster లో కూడా
+similar governance అవసరం. 
+Free vs premium gating & monetization
+Crafto pricing pages monthly/quarterly/annual plans mention చేస ్తు న్నాయి; iOS renewals & UPI AutoPay
+behaviour వివరింయి (no-refund posture). 
+Mana Poster gating proposal (conversion-first, user-friendly): - Free: - limited daily exports (e.g., 5/day) -
+premium templates blurred/locked - watermark ON by default - limited fonts/stickers packs - Premium: -
+unlimited exports - watermark OFF - premium categories + “pro” templates - HD export + PDF export -
+cloud sync drafts - priority support
+In-app subscriptions best practice: store-backed purchases + server-side verification/entitlements to
+prevent spoofing (Flutter IAP resources recommend backend verification). 
+Crafto vs Mana Poster feature comparison
+Feature area Crafto (observed from primary sources)Mana Poster (proposed)
+Core content
+Good Morning, festival wishes,
+motivational, devotional; daily quotes
+with photo
+Same pillars + Telugu-first content
+focus
+PersonalizationName + photo personalization
+emphasized
+Name + photo + optional logo/
+tagline, profile presets
+“Create your
+own” Officially listed Advanced editor (layers, snaps, safe
+areas)
+Login OTP-based login (mobile number)OTP login + optional guest mode
+(later upgrade)
+Multi-languageMultiple languages listed Language packs + transliteration +
+per-language typography
+Sharing WhatsApp/social share emphasisShare + scheduled share reminders
++ export presets
+Monetization Premium subscriptions; store
+subscriptions + UPI AutoPay described
+Store subscriptions + server
+entitlements; paywall A/B via
+remote config
+Governance AI+human moderation; copyright
+takedown flow
+Same + creator submissions +
+stronger moderation tooling
+24
+1. 
+2. 
+3. 
+21
+30
+31
+5
+
+===== PAGE 6 =====
+Feature area Crafto (observed from primary sources)Mana Poster (proposed)
+Privacy Store privacy labels, data deletion
+request
+“Data-minimised” by design; explicit
+consent + deletion automation
+Scale cues High downloads/corpus size pitchedCDN-first template delivery +
+aggressive caching
+Sources for Crafto column: 
+డేటా మోడల్ల్స్, ER డయా గ్రా ం, Backend APIs
+Core entities & fields
+కింద entities “server-driven templates” + “client-side render” approachకి fit అవుతాయి.
+User - id (UUID) - phone_e164 (string, encrypted at rest) - email (nullable) - display_name -
+primary_language - created_at, last_seen_at - status (active/suspended/deleted)
+UserProfile -  user_id (FK)  -  name_text -  tagline_text (nullable)  -
+profile_photo_asset_id (FK  Asset)  -  logo_asset_id (nullable)  -  preferences (json:
+default_aspect, watermark_pref)
+Category -  id,  slug,  title,  icon -  type (good_morning/festival/motivational/devotional/
+jokes/…) - order, is_active
+Template - id - category_id - title - language (e.g., te, hi, en) - aspect_ratio (1:1, 9:16,
+16:9,  4:5)  -  is_premium -  thumbnail_asset_id -  preview_asset_id (optional)  -
+template_json (the  layer  schema)  -  version,  status (draft/approved/rejected/archived)  -
+created_by_user_id (nullable for internal)
+Asset -  id -  type (image/font/sticker)  -  mime -  storage_path -  width,  height, 
+size_bytes - hash_sha256 - cdn_url (generated) - created_at
+Quote - id - language - category_id - text - attribution (nullable) - tags[]
+Project (Draft) -  id -  user_id -  template_id (nullable) -  state_json (user edits/overrides) -
+updated_at - is_synced
+Export -  id -  user_id -  project_id -  format (png/jpeg/pdf)  -  pixel_ratio -
+result_asset_id - watermarked (bool) - created_at
+SubscriptionEntitlement - user_id - plan (monthly/quarterly/annual) - store (play/appstore) -
+status (active/grace/expired) - expires_at - last_verified_at
+PurchaseReceipt -  id -  user_id -  store -  product_id -  purchase_token_or_txn_id -
+raw_payload (json) - created_at
+Role / Permission - role (admin/manager/creator/moderator) - permissions[] (strings)
+32
+6
+
+===== PAGE 7 =====
+ModerationCase - id - reported_by_user_id - target_type (template/export) - target_id -
+reason - status - resolution_notes - created_at
+ER diagram (Mermaid)
+erDiagram
+  USER ||--|| USER_PROFILE : has
+  USER ||--o{ PROJECT : owns
+  PROJECT ||--o{ EXPORT : generates
+  CATEGORY ||--o{ TEMPLATE : contains
+  TEMPLATE ||--o{ PROJECT : base_for
+  TEMPLATE }o--|| ASSET : thumbnail
+  TEMPLATE }o--|| ASSET : preview
+  USER_PROFILE }o--|| ASSET : profile_photo
+  USER_PROFILE }o--|| ASSET : logo
+  EXPORT }o--|| ASSET : result_file
+  USER ||--o{ PURCHASE_RECEIPT : makes
+  USER ||--|| SUBSCRIPTION_ENTITLEMENT : has
+  USER ||--o{ MODERATION_CASE : reports
+  TEMPLATE ||--o{ MODERATION_CASE : flagged
+Backend service decomposition
+Recommended: “thin, fast, cacheable catalog APIs” + “secure auth/billing verification” + “CDN for assets”.
+Auth Service
+OTP send/verify
+session tokens (JWT)
+Catalog Service
+categories, templates, quotes
+search & filters
+Media Service
+upload (signed URLs), CDN URLs
+Billing Service
+store receipt verification, entitlements
+webhook ingestion
+Admin Service
+template review, moderation, audits
+API spec table (REST)
+Area Endpoint Method Auth Purpose
+Auth /v1/auth/otp/send POST No phone → OTP send
+Auth /v1/auth/otp/verify POST No OTP verify → JWT
+User /v1/users/me GET Yes current user profile
+User /v1/users/me PATCH Yes update display name/
+lang
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+7
+
+===== PAGE 8 =====
+Area Endpoint Method Auth Purpose
+Profile /v1/profile GET Yes name/photo/logo
+settings
+Profile /v1/profile PUT Yes save profile settings
+Catalog /v1/categories GET Optional list categories
+Catalog /v1/templates GET Optional list templates (filters)
+Catalog /v1/templates/{id} GET Optional template detail + JSON
+Catalog /v1/quotes GET Optional quotes search/browse
+Projects /v1/projects POST Yes create draft
+Projects /v1/projects/{id} GET Yes load draft
+Projects /v1/projects/{id} PUT Yes save draft state
+Export /v1/exports POST Yes register export
+metadata
+Export /v1/exports/{id} GET Yes export status
+Upload /v1/uploads/presign POST Yes get signed URL for
+asset upload
+Upload /v1/uploads/complete POST Yes finalize asset +
+metadata
+Billing /v1/billing/products GET Optional plan list + prices
+Billing /v1/billing/verify POST Yes verify purchase token/
+receipt
+Billing /v1/billing/
+entitlements GET Yes current entitlement
+(premium?)
+Admin /v1/admin/templates POST Admin/Creatorcreate template
+Admin /v1/admin/templates/
+{id}/review POST Admin/
+Moderator approve/reject
+Admin /v1/admin/moderation/
+cases GET Moderator queue list
+Admin /v1/admin/moderation/
+cases/{id} PATCH Moderator resolve case
+Billing verification notes (store side): - Google Play subscriptions lifecycle & server integration docs
+emphasize backend coordination via Play Developer APIs. 
+- Apple auto-renewable subscriptions definition & testing flows official docsలో ఉన్నాయి. 
+- Flutter official in_app_purchase plugin is store-agnostic API for both App Store & Play Store. 
+33
+34
+35
+8
+
+===== PAGE 9 =====
+Rendering, export algorithms, performance, security, roles
+Template schema & layout engine
+Server-driven template JSON (recommended): - canvas: { width, height, safeMargins } -
+layers[]: each layer has: -  type: backgroundImage / text / imagePlaceholder / sticker / shape -
+rect: { x, y, w, h } in normalized coords (0..1) - style: fontFamilyRef, fontSize, color , shadow,
+align - bindings: e.g., "text": "quote.text", "image": "profile.photo"
+Runtime binding: - Load template JSON - Pull user profile - Resolve bindings → build render tree
+Text fit algorithm (core UX) - Input: bounding box, max lines, target font, text - Binary search font size
+(high→low)  until  TextPainter fits  -  For  scripts  like  తెలగ/హిందీ,  ensure  proper  font  fallback
+(download font assets per language).
+Export pipeline (Flutter-accurate)
+Flutter official API suggests: - Wrap the “poster canvas widget” with  RepaintBoundary (separate
+display list; can improve repaint performance). 
+- Capture via  RenderRepaintBoundary.toImage(pixelRatio: …) once paint phase completed.
+- Convert ui.Image → bytes via toByteData(format: ImageByteFormat.png); PNG is lossless
+and suited for text edges. 
+Practical guardrails (performance): - toImage() returns raw RGBA in memory (large canvases can
+spike RAM); pixelRatio should be capped based on device tier . 
+- UI jank avoidance: heavy work should not block frames; Flutter performance guidance targets 60fps
+(≈16ms/frame). 
+- Cache expensive assets (fonts/backgrounds) and prefetch thumbnails.
+Compression & file size strategy
+Default export PNG for crisp text; allow JPEG for “photo-heavy” posters when user wants smaller
+file.
+Optional “server-side optimize” endpoint:
+User uploads PNG
+Server generates WEBP/JPEG variants for sharing targets
+Store in object storage + CDN
+If you do client-side manipulation, Dart  image library supports load/manipulate/save for multiple
+formats. 
+Scalability considerations
+Template delivery: thumbnails/previews served via CDN; template JSON cacheable (ETag; 1–7
+days TTL).
+Search: precomputed indexes; language-aware tokenization.
+Peak traffic (festivals): pre-warm CDN + rate limit OTP/billing endpoints.
+Offline-first: cache last N templates per category; allow editing exports offline.
+36
+37
+38
+39
+40
+• 
+• 
+• 
+• 
+• 
+41
+• 
+• 
+• 
+• 
+9
+
+===== PAGE 10 =====
+Security & privacy checklist
+Baseline  controls  (aligned  with  OWASP  mobile  risks):  -  Secure  auth/session  storage,  least-privilege,
+secure comms, input validation, secure local storage, supply-chain hygiene. 
+- Storage access rules: if using Firebase Storage, Security Rules integrate with Firebase Auth and can
+restrict path-based access + size/type limits. 
+- Data minimisation: store only what’s needed; implement delete-account workflow (Play Store signals
+user can request deletion; Mana Poster should match). 
+- Consent + transparency: align with Apple privacy label expectations (device ID, diagnostics, photos/
+videos). 
+Admin, creator, manager roles & permissions
+Role design (recommended): -  Admin: everything, including billing configs, bans, system settings. -
+Manager: catalog ops (categories, featuring, language packs), analytics dashboards, promo banners. -
+Creator: create templates/quotes, upload assets; cannot approve self-published content. - Moderator:
+handle reports, takedowns, suspensions; sees moderation queue + audit logs.
+This structure maps well to Crafto governance emphasis (moderation + takedown). 
+Flutter implementation blueprint, dependencies, testing,
+roadmap
+Recommended Flutter project structure
+A clean, scalable structure (feature-first + core/shared):
+lib/
+  main.dart
+  app.dart
+  core/
+    config/            // env, remote config, feature flags
+    routing/           // go_router
+    theme/             // typography, colors
+    constants/
+    network/           // Dio client, interceptors
+    storage/           // secure storage, local db
+    analytics/         // events
+    utils/
+  features/
+    auth/
+      data/ domain/ presentation/
+    catalog/
+      data/ domain/ presentation/
+    editor/
+      data/ domain/ presentation/
+      rendering/        // canvas, template engine
+    library/
+      data/ domain/ presentation/
+42
+43
+44
+15
+21
+10
+
+===== PAGE 11 =====
+    billing/
+      data/ domain/ presentation/
+    admin_tools/        // optional internal builds
+  shared/
+    widgets/
+    models/
+    localization/
+assets/
+  fonts/
+  icons/
+  placeholders/
+Routing: go_router deep links & nested routes use casesకి fit. 
+State management: flutter_riverpod async + caching ergonomics. 
+Pubspec dependency set (recommended)
+Core:  -  flutter_riverpod,  riverpod_annotation,  riverpod_generator -  go_router -
+dio (network) - freezed, json_serializable, build_runner - shared_preferences (light
+prefs) + flutter_secure_storage (tokens) - drift or isar (offline cache) (choose one)
+Media/editor:  -  image (optional  processing)   -  photo_manager /  image_picker -
+share_plus (share)  - path_provider (file save) - printing + pdf (PDF export) 
+Billing: - in_app_purchase (stores) 
+Analytics/ops: -  firebase_analytics (optional)   -  firebase_crashlytics (optional)   -
+firebase_remote_config (feature flags/paywall variants)  - sentry_flutter (optional) 
+Phone auth (if using Firebase): - firebase_auth phone auth supports OTP . 
+Testing strategy
+Unit tests:
+template binding + text-fit algorithm
+entitlement gating rules
+API client parsing
+Widget tests:
+Editor tools UI
+Paywall states
+Golden tests:
+template rendering correctness across devices (fonts/layout)
+Integration tests:
+browse→edit→export→share loop
+purchase verify→unlock premium loop
+Crash reporting tools like Crashlytics are designed for actionable crash grouping and stability tracking.
+45
+46
+41
+27 47
+48
+49 50
+51 52
+53
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+• 
+54
+11
+
+===== PAGE 12 =====
+Implementation roadmap with effort estimates
+Assumption: 1 Flutter engineer + 1 backend engineer + 1 designer + part-time content ops. (Scale team
+up/down accordingly.)
+gantt
+  title Mana Poster implementation timeline
+  dateFormat  YYYY-MM-DD
+  axisFormat  %b %d
+  section Foundation
+  Project reset + architecture scaffolding     :a1, 2026-04-01, 7d
+  Auth (OTP) + profile setup                  :a2, after a1, 10d
+  Catalog v1 (categories/templates API)       :a3, after a1, 14d
+  section Editor and export
+  Template schema + renderer v1               :b1, after a3, 14d
+  Editor tools (text/photo/layers)            :b2, after b1, 21d
+  Export pipeline (PNG/JPEG) + share          :b3, after b2, 10d
+  section Monetization and ops
+  Subscriptions + entitlement verification    :c1, after b3, 14d
+  Analytics + crash reporting + remote config :c2, after a2, 7d
+  section Admin and growth
+  Admin console v1 (templates/moderation)     :d1, after c1, 21d
+  Localization packs + content ops tooling    :d2, after d1, 14d
+  section Hardening and release
+  Performance pass + caching + load tests     :e1, after d2, 10d
+  QA, store compliance, launch               :e2, after e1, 10d
+Milestone checklist (actionable): - Foundation: app boots under 2s, offline cache works, OTP login stable.
+- Catalog: categories + template feed with pagination; thumbnails CDN-cached. 
+- Editor: 1:1 + 9:16 aspect ratios, profile binding, undo/redo.
+- Export: RepaintBoundary capture + PNG bytes, share works on Android/iOS. 
+- Billing: store purchase verified server-side; premium gated correctly. 
+- Governance: moderation queue + takedown flows (policy-aligned). 
+- Launch: privacy disclosures ready; delete-account flow; crash-free KPI tracked. 
+Crafto – Apps on Google Play
+https://play.google.com/store/apps/details?hl=en_IN&id=com.crafto.android
+Crafto - Quotes with your Photo
+https://crafto.app/
+Terms of Service - Crafto
+https://crafto.app/tos
+55
+56
+57
+58
+59
+60
+1 4 5 14 29 44
+2 18 32
+3 8 9 10 11 21 55
+12
+
+===== PAGE 13 =====
+Download Crafto App - Get Daily Quotes, Wishes & Messages
+https://www.craftoapp.com/download-app/
+play-lh.googleusercontent.com
+https://play-lh.googleusercontent.com/-ktciNtPx5y7J7awvKo-
+TrhZyUVUdJLI3W9XqFj_8KuU5TGMuR6PeTYglsWMJzDOEQs%3Dw526-h296
+Flutter | Sentry for Flutter
+https://docs.sentry.io/platforms/dart/guides/flutter/?utm_source=chatgpt.com
+Pricing, Cancellations and Refunds - Crafto
+https://crafto.app/pricing-and-refunds
+Crafto App App - App Store
+https://apps.apple.com/in/app/crafto-app/id6444877212
+Privacy Policy - Crafto
+https://crafto.app/privacy-policy
+Copyright Policy - Crafto
+https://crafto.app/copyright-policy
+About Crafto - Content Creation Platform & App Development
+https://www.craftoapp.com/about-us/
+go_router | Flutter package
+https://pub.dev/packages/go_router?utm_source=chatgpt.com
+Get started with Remote Config on Flutter - Firebase
+https://firebase.google.com/docs/remote-config/flutter/get-started?utm_source=chatgpt.com
+play-lh.googleusercontent.com
+https://play-lh.googleusercontent.com/xcsBSHF2PhbwXzHmxJ4N7uFI05nsPAOYk-_XU6fT2TtB4Valje6-
+IVBhN0MfSGa1MVg%3Dw526-h296
+RepaintBoundary class - widgets library - Dart API
+https://api.flutter .dev/flutter/widgets/RepaintBoundary-class.html?utm_source=chatgpt.com
+share_plus | Flutter package
+https://pub.dev/packages/share_plus?utm_source=chatgpt.com
+Contact Crafto Support - Get Help & Customer Service
+https://www.craftoapp.com/contact-us/
+In-app purchases overview
+https://docs.flutter .dev/resources/in-app-purchases-overview?utm_source=chatgpt.com
+Google Play's billing system - Android Developers
+https://developer .android.com/google/play/billing?utm_source=chatgpt.com
+Auto-renewable Subscriptions - App Store
+https://developer .apple.com/app-store/subscriptions/?utm_source=chatgpt.com
+in_app_purchase | Flutter package
+https://pub.dev/packages/in_app_purchase?utm_source=chatgpt.com
+toImage method - RenderRepaintBoundary class
+https://api.flutter .dev/flutter/rendering/RenderRepaintBoundary/toImage.html?utm_source=chatgpt.com
+toByteData method - Image class - dart:ui library
+https://api.flutter .dev/flutter/dart-ui/Image/toByteData.html?utm_source=chatgpt.com
+6 56
+7 24
+12 52
+13 30
+15 19
+16 60
+17 59
+20
+22 45
+23 51
+25
+26 36 57
+27
+28
+31
+33
+34
+35 48
+37 39
+38
+13
+
+===== PAGE 14 =====
+Flutter performance profiling
+https://docs.flutter .dev/perf/ui-performance?utm_source=chatgpt.com
+image | Dart package
+https://pub.dev/packages/image?utm_source=chatgpt.com
+OWASP Mobile Top 10
+https://owasp.org/www-project-mobile-top-10/?utm_source=chatgpt.com
+Understand Firebase Security Rules for Cloud Storage - Google
+https://firebase.google.com/docs/storage/security?utm_source=chatgpt.com
+flutter_riverpod | Flutter package
+https://pub.dev/packages/flutter_riverpod?utm_source=chatgpt.com
+printing | Flutter package
+https://pub.dev/packages/printing?utm_source=chatgpt.com
+firebase_analytics | Flutter package
+https://pub.dev/packages/firebase_analytics?utm_source=chatgpt.com
+Get started with Crashlytics for Flutter - Firebase
+https://firebase.google.com/docs/crashlytics/flutter/get-started?utm_source=chatgpt.com
+Phone Authentication | Firebase Documentation
+https://firebase.google.com/docs/auth/flutter/phone-auth?utm_source=chatgpt.com
+Firebase Crashlytics - Google
+https://firebase.google.com/docs/crashlytics?utm_source=chatgpt.com
+Adding in-app purchases to your Flutter app
+https://codelabs.developers.google.com/codelabs/flutter-in-app-purchases?utm_source=chatgpt.com
+40
+41
+42
+43
+46
+47
+49
+50
+53
+54
+58
+14

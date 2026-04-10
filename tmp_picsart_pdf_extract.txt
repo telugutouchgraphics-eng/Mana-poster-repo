@@ -1,0 +1,478 @@
+===== PAGE 1 =====
+Blueprint and Technical Architecture of the
+PicsArt Mobile Editor Screen
+Executive summary
+This report reverse-engineers a screen-level blueprint of the PicsArt mobile editor (the canvas-based
+editing screen after selecting an image) and maps it to a plausible implementation architecture (client
++ backend) and algorithmic stack. Anything not explicitly supported by public sources is marked as an
+assumption.
+PicsArt’s editor experience is best understood as a layered composition canvas (base photo + added
+objects such as stickers, text, and additional photos) controlled from a bottom tool rail and contextual
+sub-panels. Official PicsArt materials describing the mobile workflow repeatedly reference: a bottom
+toolbar containing tools such as Cutout and Add Photo, a top-right Apply/Save action while using a
+tool, and a top-bar download/export action when finished. 
+The modern PicsArt editor includes an expanding set of “AI” features (e.g., Background Remover, AI
+Replace, AI Expand/outpainting, AI Enhance/upscale, and AI-generated backgrounds), and PicsArt’s
+public developer documentation shows that many of these map cleanly to server APIs such as  /
+removebg,  /upscale,  /styletransfer, and GenAI “painting” endpoints for  inpaint/outpaint/
+expand. 
+From a technology perspective, publicly visible hiring requirements for computer-vision roles at PicsArt
+strongly indicate a C++ core with GPU compute/rendering support (e.g., OpenGL/Metal/Vulkan) and the
+ability to run mobile deep-learning frameworks (e.g., TensorFlow Lite / PyTorch Mobile–class tooling),
+which aligns with what an interactive, GPU-accelerated editor needs. 
+Where on-device vs server inference likely splits: (a)  low-latency interactive operations (transforms,
+filters, blending, brushes, many retouch steps) are usually best done on-device with GPU acceleration;
+(b)  compute-heavy or  credit-metered generative  features  (AI  replace/background  generation/
+outpainting, high-quality remove-background at scale, advanced upscaling) are likely executed server-
+side—supported by PicsArt’s public credit/limit mechanics and the documented cloud endpoints for
+these functions. 
+Scope, evidence base, and explicit assumptions
+What is grounded in official/public sources
+The  following  elements  are  directly  supported  by  publicly  accessible  documentation  and  official
+materials:
+Mobile editor workflow and control placements (bottom toolbar containing Cutout/Add
+Photo; tool flow with Apply/Save at top-right; final export via top-bar download). 
+Existence and user-facing framing of major tools: Background Remover, Remove Object, AI
+Replace, AI Expand, AI Image Generator, AI Writer, Sticker Maker, Text Editor, Collage. 
+1
+2
+3
+4
+• 
+1
+• 
+5
+1
+
+===== PAGE 3 =====
+The PicsArt blog tutorial for mobile editing explicitly references: a bottom toolbar where you scroll to
+find Cutout, later scroll to find Add Photo, and tool completion via an Apply/arrow action at the top-
+right; exporting via a download icon in the top area. 
+Detailed component hierarchy
+Below is a blueprint-style hierarchy (parent → child), with “visible and interactive” emphasis.
+EditorScreen (root container)
+A. TopAppBar
+- Back/Close (exit editor; may prompt to discard changes)
+-  Undo / Redo (global; enabled/disabled depending on history)  (tool flow strongly implies incremental
+commit points via Apply/Save)
+- Export/Download (save to device / share; often a download arrow) 
+- Context action: Apply / Save while inside a tool (commits the tool result to the edit state) 
+B. CanvasViewport
+- CanvasSurface (the rendered composition; supports pinch zoom and pan)
+- ActiveSelectionOverlay (only when an object-layer is selected)
+- Bounding box
+- Corner handles (scale/rotate)
+- Rotation affordance / gesture
+- “Stack/duplicate” affordance is explicitly referenced in mobile tutorial content (a stack icon to copy the
+selected sticker). 
+- Safe-area guides / grids(assumption; common in design-first editors; also aligns with PicsArt’s broader
+design tooling positioning)
+C. BottomToolRail (horizontal scroll or multi-row tray)
+Representative primary entries (confirmed broadly by official/tutorial language; exact order varies):
+- Tools (opens a tray of functional transforms: crop/selection/remove/etc.) (assumption as a named entry;
+common in PicsArt UX literature)
+- Effects (fx) (filters/effects) 
+- Retouch (skin/face adjustments) 
+- Text (text editor , fonts) 
+- Stickers / Sticker Maker
+- Add Photo (imports an additional raster layer) 
+- Cutout (mask-making / sticker extraction) 
+- Remove BG (background removal and downstream AI Background generation) 
+D. ContextualToolPanel (modal, per-tool)
+- Parameter controls (sliders, toggles, segmented controls)
+-  Brush controls (size, hardness/feather , opacity, edge refine) for mask-based tools (Cutout, Remove
+Object, AI Replace) 
+- Asset pickers (sticker library, font chooser , photo picker)
+- Prompt UI (text field + suggested prompts) for generative features like AI Background and AI Replace
+-  Progress  view  /  spinner for  network  inference  completion  (supported  indirectly  by  “wait  for
+backgrounds to be generated” language)
+1
+16
+1
+16
+16
+17
+18
+18
+17
+19
+1
+16
+20
+21
+22
+6
+3
+
+===== PAGE 5 =====
+Tool /
+feature
+(editor
+screen)
+Purpose
+Typical
+inputs →
+outputs
+UI controls
+(visible)
+Likely
+algorithms / CV
+techniques
+Likely execution
+split
+Cutout
+(sticker
+extraction)
+Create a
+precise
+mask; export
+sticker with
+transparency
+RGB →
+binary/
+alpha mask
+→ sticker
+PNG
+Auto-select
+(person/face/
+etc.), Outline
+draw, Erase/
+Restore, edge
+refinement,
+Save/Next
+Interactive
+segmentation +
+user-guided mask
+editing; post-
+processing with
+morphological
+ops, feather ,
+matting
+Mostly on-
+device for
+interactive
+responsiveness;
+may call server
+for “auto”
+selections
+(unknown). Tool
+flow confirmed
+in mobile
+tutorial. 
+Add Photo
+(layer
+import)
+Add
+additional
+raster
+layer(s) on
+top of
+canvas
+Layer
+bitmap(s) →
+transformed
+layer(s)
+Placement,
+scale/rotate;
+duplicate
+(“stack icon”),
+opacity,
+shadow
+2D affine
+transforms; alpha
+blending;
+optional drop
+shadow via
+blurred offset
+On-device
+Stickers /
+Sticker
+Maker
+Place
+existing or
+user-created
+sticker
+assets
+Sticker
+bitmap/
+vector →
+composited
+layer
+Search,
+category
+filters; scale/
+rotate; blend/
+opacity
+Alpha
+compositing;
+optionally vector-
+to-raster; caching
+On-device;
+asset fetch
+from CDN
+Text editor
+Add
+typographic
+layers
+Text + font +
+style →
+glyph layout
+→ raster/
+vector layer
+Font picker ,
+size, colour ,
+stroke,
+spacing;
+possibly warp
+Text shaping
+(platform text
+engines); Bézier/
+path warp;
+rasterisation to
+texture for GPU
+On-device
+Effects (fx) /
+Filters
+Stylise
+image or
+layer
+Image →
+filtered
+image
+Category
+picker;
+intensity
+slider;
+sometimes
+masks
+LUTs/colour
+transforms;
+convolution
+filters; tone
+curves; “AI
+effects” may be
+model-based 
+Mix: classic
+effects on-
+device; AI
+effects possibly
+server via 
+effects/ai. 
+16
+28 28
+5
+
+===== PAGE 8 =====
+Probable client architecture, state model, performance, and file
+pipeline
+Client-side technology and rendering stack
+Evidence-driven anchor: A PicsArt computer-vision engineering role explicitly calls out  C++, classical
+CV,  OpenCV and  dlib, GPU rendering/compute (OpenGL, Metal, Vulkan), and “mobile deep learning
+frameworks (tflite, mnn, pytorch-mobile, etc.)”. 
+This strongly supports a model where the mobile app includes:
+A cross-platform C++ image-processing core (shared between iOS/Android) 
+A GPU-backed compositor (textures per layer; shader-based effects) 
+Optional on-device ML inference for low-latency tasks (face landmarks, segmentation previews)
+On iOS, Apple’s Metal Performance Shaders framework is explicitly positioned for high-performance
+image filters and neural networks. 
+On  Android,  modern  GPU  acceleration  options  include  OpenGL  ES  and  Vulkan  (RenderScript  is
+deprecated and migration guidance recommends Vulkan/OpenGL/AGSL/RenderEffect paths). 
+For on-device inference, Android documentation highlights latency/availability/privacy benefits of “on-
+device inferencing” under NNAPI-class APIs (noting ecosystem evolution). 
+Composition, layers, and the internal scene graph
+Observed UX: “Add Photo” creates a movable, transformable element on top of a background; stickers
+and text behave similarly; duplication (stack icon) implies object-level operations. 
+A plausible internal model is a scene graph:
+Document
+Canvas (size, background) 
+Layer[] (ordered back-to-front) 
+BitmapLayer (base photo, added photos, stickers) 
+TextLayer
+AdjustmentLayer (non-destructive effects applied to an underlying layer or the whole
+canvas) (assumption)
+Mask (per-layer alpha mask; created by Cutout/Remove BG) 
+Global settings (colour space, export format, metadata) (assumption)
+Undo/redo and “Apply” semantics
+PicsArt’s  mobile  tutorials  show  explicit  Apply and  Save steps  within  tools,  which  suggests  a
+transactional commit model: enter tool → adjust parameters live → apply commits a single history
+step. 
+A robust implementation typically uses a command pattern:
+Each committed change becomes a Command with: 
+do(state) and undo(state)
+minimal parameter payload (e.g., “crop rect”, “filter LUT id + intensity”, “mask strokes”) 
+A bounded history stack; heavy ops may snapshot intermediate bitmaps.
+3
+• 
+• 
+• 
+42
+43
+44
+1
+• 
+• 
+• 
+◦ 
+◦ 
+◦ 
+◦ 
+• 
+1
+• 
+• 
+• 
+• 
+8
+
+===== PAGE 9 =====
+Where PicsArt’s ecosystem provides Replay files (mentioned in enterprise/SDK security docs), the same
+command history can be serialised to a compact “replay” representation (operations not pixels). The
+Editor SDK security page explicitly notes “Project/Replay File Encryption”. 
+Assumption: the  consumer  mobile  app  uses  a  conceptually  similar  replay/log  for  at  least  some
+workflows (especially template-based or shareable edits), even if the exact format differs.
+File formats and export pipeline
+Confirmed behaviours and constraints include:
+Transparent exports after background removal are expected as PNG (explicitly referenced in
+PicsArt’s background remover FAQ). 
+Upscaling offers up to 4× and documents a maximum output cap (“cannot exceed 4096px after
+upscaling”). 
+The mobile apps support substantial editing toolchains and are distributed at large binary size
+(iOS listing shows ~291.8 MB), consistent with embedded assets and/or native components. 
+A typical export pipeline (probable):
+Resolve document state (layers + adjustments) 
+Render at export resolution (often higher than preview) 
+Flatten to a single RGBA frame (or video timeline in video mode) 
+Encode (JPEG/PNG; video codec pipeline for video editor) 
+Write to device gallery / share sheet; optionally upload to PicsArt community.
+Performance-oriented editor SDK release notes explicitly discuss optimisations such as handling large
+template images by doing adjustments differently at load/export time and generating previews faster
+than final print-ready output. 
+Inference: a multi-resolution preview-vs-final strategy is part of PicsArt’s broader editor engineering
+practice, and is likely also used in the mobile app for responsiveness.
+Mermaid diagram: data/state flow (editor screen)
+flowchart TD
+  A[User selects photo] --> B[Decode + downscale preview]
+  B --> C[Initial Document State<br/>Canvas + Base Layer]
+  C --> D{User action}
+  D -->|Transform / Filter / Text / Sticker| E[On-device interactive 
+preview<br/>GPU compositor]
+  E --> F[Apply commits Command]
+  F --> G[Undo/Redo History Stack]
+  G --> D
+  D -->|AI tool (Replace / Expand / AI BG / Upscale)| H[Prepare payload<br/
+>image + mask + params]
+  H --> I[Upload to backend inference]
+  I --> J[Receive result<br/>image URL or binary]
+  J --> K[Integrate as new layer<br/>or replace pixels]
+  K --> F
+45
+• 
+46
+• 
+47
+• 
+17
+1. 
+2. 
+3. 
+4. 
+5. 
+48
+9
+
+===== PAGE 11 =====
+Client vs server responsibility matrix
+Responsibility Prefer client-side
+when…
+Prefer server-side
+when… PicsArt evidence signals
+Real-time canvas
+rendering
+Needs 60fps
+interaction; large
+touch/gesture loop
+N/A (render must feel
+local)
+GPU-centric CV hiring
+suggests heavy client GPU
+use 
+Mask painting /
+selection
+refinement
+User is brushing/
+erasing interactively
+Server only for final
+high-quality refine
+Cutout flow shows
+interactive outline + erase/
+restore 
+Face landmarking /
+live face effects
+Requires low
+latency, uses device
+sensors
+When using
+heavyweight
+“enhance” models
+TrueDepth data stays on-
+device ; Face Enhance
+exists as an API capability 
+Background
+removal
+Fast preview can be
+local
+Consistent high-
+quality across
+devices; batch;
+monetised
+/removebg endpoint and
+“700M+ backgrounds
+removed” marketing 
+Generative replace/
+background/
+expand
+N/A (too heavy +
+metered)
+GPU-heavy diffusion;
+credits/limits
+Prompt-driven generation
+flows and GenAI endpoints 
+Upscaling Small quick scale
+could be local
+High-quality SR;
+batch; cap/limits
+Upscale limits + API
+presence 
+Export/encoding Needs Photos save/
+share
+Server only for cloud
+publishing pipeline
+Mobile UI shows
+download/export 
+Mermaid diagram: component architecture (probable)
+flowchart LR
+  subgraph MobileApp["Mobile App (iOS/Android)"]
+    UI["Editor UI<br/>(Top bar + Tool rail + Panels)"]
+    Canvas["GPU Canvas / Compositor"]
+    Doc["Document Model<br/>(Layers + Masks + Commands)"]
+    History["Undo/Redo Manager"]
+    Assets["Asset Cache<br/>(stickers/fonts/templates)"]
+    MLLocal["On-device ML (selective)<br/>(face/seg preview)"]
+  end
+  subgraph Backend["PicsArt Backend"]
+    Auth["Auth / Session"]
+    ImgAPI["Programmable Image APIs<br/>(removebg/upscale/effects/style)"]
+    GenAI["GenAI Services<br/>(inpaint/outpaint/expand/bg)"]
+    CDN["CDN / Object Storage"]
+    Meter["Credits / Limits / Billing"]
+  end
+3
+16
+9
+28
+25
+51
+52
+18
+11
+
