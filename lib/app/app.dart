@@ -34,12 +34,6 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   }
 
   @override
-  void dispose() {
-    _languageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AppLanguageScope(
       controller: _languageController,

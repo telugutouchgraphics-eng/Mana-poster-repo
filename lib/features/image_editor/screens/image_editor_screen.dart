@@ -16,6 +16,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/app/localization/app_language.dart';
 
 import '../models/background_presets.dart';
 import '../models/editor_template_document.dart';
@@ -2070,11 +2072,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
   }
 
-  void _handleAddText() {
+  Future<void> _handleAddText() async {
+    String defaultFontFamily = 'Anek Telugu Condensed Regular';
+    String defaultText = 'Text';
+    final AppLanguage currentLanguage = context.currentLanguage;
+    try {
+      final posterProfile = await PosterProfileService.load();
+      if (_textFontFamilies.contains(posterProfile.nameFontFamily)) {
+        defaultFontFamily = posterProfile.nameFontFamily;
+      }
+      final resolvedName = posterProfile.resolvedName(
+        language: currentLanguage,
+      );
+      if (resolvedName.trim().isNotEmpty) {
+        defaultText = resolvedName.trim();
+      }
+    } catch (_) {
+      // Ignore profile load failures and fallback to editor default.
+    }
+
     final layer = _CanvasLayer(
       id: 'layer_${_layerSeed++}',
       type: _CanvasLayerType.text,
-      text: 'Text',
+      text: defaultText,
+      fontFamily: defaultFontFamily,
       transform: Matrix4.identity(),
     );
 
@@ -2207,7 +2228,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _openTextEditSheet();
       return;
     }
-    _handleAddText();
+    unawaited(_handleAddText());
   }
 
   void _updateSelectedText(String value) {

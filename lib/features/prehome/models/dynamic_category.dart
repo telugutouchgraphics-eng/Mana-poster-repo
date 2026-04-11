@@ -34,7 +34,7 @@ class DynamicLocalizedTitle {
     return switch (language) {
       AppLanguage.telugu => telugu,
       AppLanguage.hindi => hindi,
-      AppLanguage.english => english,
+      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => english,
     };
   }
 }
@@ -100,3 +100,6 @@ class DynamicCalendarEvent {
   final bool enabled;
   final int sortOrder;
 }
+
+
+

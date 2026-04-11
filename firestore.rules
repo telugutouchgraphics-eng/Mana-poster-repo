@@ -15,6 +15,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Free feed can read only manager-approved creator posters.
+    match /creatorPosters/{posterId} {
+      allow read: if resource.data.status == "approved";
+      allow create, update, delete: if false;
+    }
+
     // Block all other direct access by default.
     match /{document=**} {
       allow read, write: if false;

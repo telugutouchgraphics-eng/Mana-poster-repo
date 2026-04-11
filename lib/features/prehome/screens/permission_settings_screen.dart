@@ -368,7 +368,7 @@ class _PermissionCopy {
   String get settingsTitle => switch (language) {
     AppLanguage.telugu => 'Permissions',
     AppLanguage.hindi => 'Permissions',
-    AppLanguage.english => 'Permissions',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Permissions',
   };
 
   String get settingsSubtitle => switch (language) {
@@ -376,26 +376,26 @@ class _PermissionCopy {
       'Gallery మరియు notifications access ని మీరు ఎప్పుడైనా ఇక్కడ నుంచే చూసుకుని update చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'Gallery और notifications access को आप यहां कभी भी देख और update कर सकते हैं.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'You can review and update gallery and notification access anytime from here.',
   };
 
   String get photosDescription => switch (language) {
     AppLanguage.telugu => 'ఫోటోలు ఎంచుకోవడం మరియు పోస్టర్లు సేవ్ చేయడం కోసం',
     AppLanguage.hindi => 'फोटो चुनने और पोस्टर सेव करने के लिए',
-    AppLanguage.english => 'For selecting photos and saving posters',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'For selecting photos and saving posters',
   };
 
   String get notificationsDescription => switch (language) {
     AppLanguage.telugu => 'కొత్త టెంప్లేట్స్ మరియు ముఖ్యమైన అప్‌డేట్స్ కోసం',
     AppLanguage.hindi => 'नए टेम्पलेट्स और महत्वपूर्ण अपडेट्स के लिए',
-    AppLanguage.english => 'For new templates and important updates',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'For new templates and important updates',
   };
 
   String get openSettingsLabel => switch (language) {
     AppLanguage.telugu => 'App Settings ఓపెన్ చేయండి',
     AppLanguage.hindi => 'App Settings खोलें',
-    AppLanguage.english => 'Open App Settings',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Open App Settings',
   };
 
   String get settingsHint => switch (language) {
@@ -403,7 +403,7 @@ class _PermissionCopy {
       'Permissions block అయినా కూడా app continue అవుతుంది. అవసరమైనప్పుడు settings నుండి enable చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'Permissions block होने पर भी app जारी रहेगा. ज़रूरत पड़ने पर settings से enable कर सकते हैं.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'The app can continue even if permissions are off. You can enable them later from settings.',
   };
 
@@ -412,7 +412,7 @@ class _PermissionCopy {
       'ఈ access ను మళ్లీ ఇవ్వాలంటే settings నుండి allow చేయాలి.',
     AppLanguage.hindi =>
       'इस access को फिर से देने के लिए settings से allow करना होगा.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'To enable this again, please allow it from system settings.',
   };
 
@@ -421,20 +421,20 @@ class _PermissionCopy {
       'ఇప్పుడు అవసరం లేకపోతే తర్వాత కూడా enable చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'अगर अभी ज़रूरत नहीं है तो बाद में भी enable कर सकते हैं.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'If you do not need it now, you can enable it later too.',
   };
 
   String get settingsOpened => switch (language) {
     AppLanguage.telugu => 'App settings ఓపెన్ అయ్యాయి.',
     AppLanguage.hindi => 'App settings खुल गई हैं.',
-    AppLanguage.english => 'App settings opened.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'App settings opened.',
   };
 
   String get settingsOpenFailed => switch (language) {
     AppLanguage.telugu => 'Settings ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
     AppLanguage.hindi => 'Settings नहीं खुलीं. फिर से कोशिश करें.',
-    AppLanguage.english => 'Could not open settings. Please try again.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Could not open settings. Please try again.',
   };
 
   String permissionGranted(AppPermissionType type) => switch (language) {
@@ -446,7 +446,7 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access अनुमति मिल गई.'
           : 'Notifications की अनुमति मिल गई.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access granted.'
           : 'Notifications permission granted.',
@@ -461,7 +461,7 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access अभी नहीं मिला. बाद में settings से enable कर सकते हैं.'
           : 'Notifications अभी off हैं. बाद में enable कर सकते हैं.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access is still off. You can enable it later from settings.'
           : 'Notifications are still off. You can enable them later from settings.',
@@ -476,7 +476,7 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access settings से allow करना होगा.'
           : 'Notifications को settings से allow करना होगा.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access needs to be enabled from settings.'
           : 'Notifications need to be enabled from settings.',
@@ -487,20 +487,20 @@ class _PermissionCopy {
       return switch (language) {
         AppLanguage.telugu => 'Allowed',
         AppLanguage.hindi => 'Allowed',
-        AppLanguage.english => 'Allowed',
+        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Allowed',
       };
     }
     if (state.needsSettings) {
       return switch (language) {
         AppLanguage.telugu => 'Settings అవసరం',
         AppLanguage.hindi => 'Settings ज़रूरी',
-        AppLanguage.english => 'Needs Settings',
+        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Needs Settings',
       };
     }
     return switch (language) {
       AppLanguage.telugu => 'Allow చేయలేదు',
       AppLanguage.hindi => 'Allow नहीं',
-      AppLanguage.english => 'Not Allowed',
+      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Not Allowed',
     };
   }
 
@@ -519,23 +519,26 @@ class _PermissionCopy {
       return switch (language) {
         AppLanguage.telugu => 'మళ్లీ చూడండి',
         AppLanguage.hindi => 'फिर देखें',
-        AppLanguage.english => 'Check Again',
+        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Check Again',
       };
     }
     if (state.isGranted) {
       return switch (language) {
         AppLanguage.telugu => 'మళ్లీ చెక్ చేయండి',
         AppLanguage.hindi => 'फिर जांचें',
-        AppLanguage.english => 'Check Again',
+        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Check Again',
       };
     }
     return switch (language) {
       AppLanguage.telugu => 'Allow చేయండి',
       AppLanguage.hindi => 'Allow करें',
-      AppLanguage.english => 'Allow',
+      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Allow',
     };
   }
 }
 
 _PermissionCopy _copy(BuildContext context) =>
     _PermissionCopy(context.currentLanguage);
+
+
+

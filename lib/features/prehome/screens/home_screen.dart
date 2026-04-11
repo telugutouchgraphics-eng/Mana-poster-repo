@@ -6,9 +6,11 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
+import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/premium_template_catalog.dart';
 import 'package:mana_poster/features/prehome/models/remote_premium_template.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
+import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/premium_template_access_service.dart';
 import 'package:mana_poster/features/prehome/services/premium_template_remote_service.dart';
@@ -50,7 +52,7 @@ class _TemplateItem {
   String titleFor(AppLanguage language) => switch (language) {
     AppLanguage.telugu => titleTe,
     AppLanguage.hindi => titleHi,
-    AppLanguage.english => titleEn,
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => titleEn,
   };
 }
 
@@ -104,6 +106,8 @@ class _HomeScreenState extends State<HomeScreen> {
       const DynamicCategoryService();
   final PremiumTemplateAccessService _premiumTemplateAccessService =
       const PremiumTemplateAccessService();
+  final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
+      const ApprovedCreatorTemplateService();
   final PremiumTemplateRemoteService _premiumTemplateRemoteService =
       const PremiumTemplateRemoteService();
   final TemplateEntitlementBackendService _templateEntitlementBackendService =
@@ -118,7 +122,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _unlockedPremiumTemplateIds = <String>{};
   List<RemotePremiumTemplate> _remotePremiumTemplates =
       const <RemotePremiumTemplate>[];
+  List<ApprovedCreatorTemplate> _approvedCreatorTemplates =
+      const <ApprovedCreatorTemplate>[];
 
+  // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
       titleTe: 'శుభోదయం పోస్టర్',
@@ -212,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _blinkOn = !_blinkOn);
     });
     unawaited(_loadUnlockedPremiumTemplates());
+    unawaited(_loadApprovedCreatorTemplates());
     unawaited(_loadRemotePremiumTemplates());
     unawaited(_syncUnlockedTemplatesFromBackend());
   }
@@ -429,6 +437,15 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _unlockedPremiumTemplateIds = unlocked);
   }
 
+  Future<void> _loadApprovedCreatorTemplates() async {
+    final approvedTemplates = await _approvedCreatorTemplateService
+        .fetchApprovedTemplates();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _approvedCreatorTemplates = approvedTemplates);
+  }
+
   Future<void> _loadRemotePremiumTemplates() async {
     final remoteTemplates = await _premiumTemplateRemoteService
         .fetchPoliticalTemplates();
@@ -497,6 +514,27 @@ class _HomeScreenState extends State<HomeScreen> {
           template.id,
           template.previewUrl,
           template.templateDocumentSource,
+        ],
+      ),
+    );
+  }
+
+  _TemplateItem _mapApprovedCreatorTemplate(ApprovedCreatorTemplate template) {
+    final fallbackLabel = template.categoryLabel.trim().isNotEmpty
+        ? '${template.categoryLabel.trim()} Poster'
+        : 'Creator Poster';
+    final title = template.title.trim().isNotEmpty ? template.title.trim() : fallbackLabel;
+    return _TemplateItem(
+      titleTe: title,
+      titleHi: title,
+      titleEn: title,
+      imageUrl: template.imageUrl,
+      categoryTags: _inferTemplateCategoryTags(
+        seedTags: const <String>['free', 'creator', 'approved'],
+        sources: <String?>[
+          template.categoryId,
+          template.categoryLabel,
+          template.title,
         ],
       ),
     );
@@ -706,12 +744,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final strings = context.strings;
     final isPremiumTab = _selectedTab == _HomeTab.premium;
+    final freeTemplates = _approvedCreatorTemplates
+        .map(_mapApprovedCreatorTemplate)
+        .toList(growable: false);
     final premiumTemplates = _remotePremiumTemplates.isNotEmpty
         ? _remotePremiumTemplates
               .map(_mapRemotePremiumTemplate)
               .toList(growable: false)
         : _premiumTemplateItems;
-    final templates = (isPremiumTab ? premiumTemplates : _freeTemplates)
+    final templates = (isPremiumTab ? premiumTemplates : freeTemplates)
         .where((item) => _matchesTemplate(item, language, selectedCategory))
         .toList(growable: false);
 
@@ -1552,3 +1593,6 @@ class _ImageErrorState extends StatelessWidget {
     );
   }
 }
+
+
+

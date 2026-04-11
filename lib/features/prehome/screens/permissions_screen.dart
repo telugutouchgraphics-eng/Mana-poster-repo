@@ -245,7 +245,7 @@ class _PermissionFlowCopy {
     AppLanguage.telugu =>
       'Permissions allow అయ్యాయి. ఇప్పుడు app continue అవుతుంది.',
     AppLanguage.hindi => 'Permissions allow हो गईं. अब app जारी रहेगा.',
-    AppLanguage.english => 'Permissions granted. The app will continue now.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Permissions granted. The app will continue now.',
   };
 
   String get deniedMessage => switch (language) {
@@ -253,21 +253,21 @@ class _PermissionFlowCopy {
       'ఇప్పుడే permissions ఇవ్వకపోయినా పరవాలేదు. తర్వాత settings లో enable చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'अभी permissions नहीं दीं तो भी ठीक है. बाद में settings से enable कर सकते हैं.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'That is okay. You can enable permissions later from settings.',
   };
 
   String get settingsRequiredMessage => switch (language) {
     AppLanguage.telugu => 'కొన్ని permissions settings నుండి allow చేయాలి.',
     AppLanguage.hindi => 'कुछ permissions को settings से allow करना होगा.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'Some permissions now need to be enabled from settings.',
   };
 
   String get settingsBottomSheetTitle => switch (language) {
     AppLanguage.telugu => 'Settings నుండి allow చేయండి',
     AppLanguage.hindi => 'Settings से allow करें',
-    AppLanguage.english => 'Allow from Settings',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Allow from Settings',
   };
 
   String get settingsBottomSheetSubtitle => switch (language) {
@@ -275,31 +275,34 @@ class _PermissionFlowCopy {
       'మీరు permission ను block చేసినట్లుంది. Gallery లేదా notifications access కావాలంటే app settings లో enable చేయండి.',
     AppLanguage.hindi =>
       'लगता है permission block हो गई है. Gallery या notifications के लिए app settings में enable करें.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       'It looks like a permission was blocked. Enable it from app settings whenever you need gallery or notifications.',
   };
 
   String get openSettingsLabel => switch (language) {
     AppLanguage.telugu => 'App Settings ఓపెన్ చేయండి',
     AppLanguage.hindi => 'App Settings खोलें',
-    AppLanguage.english => 'Open App Settings',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Open App Settings',
   };
 
   String get settingsOpenedMessage => switch (language) {
     AppLanguage.telugu => 'App settings ఓపెన్ అయ్యాయి.',
     AppLanguage.hindi => 'App settings खुल गई हैं.',
-    AppLanguage.english => 'App settings opened.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'App settings opened.',
   };
 
   String get settingsOpenFailedMessage => switch (language) {
     AppLanguage.telugu => 'Settings ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
     AppLanguage.hindi => 'Settings नहीं खुलीं. फिर से कोशिश करें.',
-    AppLanguage.english => 'Could not open settings. Please try again.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Could not open settings. Please try again.',
   };
 
   String get notNowLabel => switch (language) {
     AppLanguage.telugu => 'ఇప్పుడు వద్దు',
     AppLanguage.hindi => 'अभी नहीं',
-    AppLanguage.english => 'Not Now',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Not Now',
   };
 }
+
+
+

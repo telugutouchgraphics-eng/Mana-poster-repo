@@ -40,6 +40,7 @@ dependencies:
   device_info_plus: ^12.4.0
   shared_preferences: ^2.5.5
   image_picker: ^1.2.1
+  image_cropper: ^9.1.0
   image: ^4.5.4
   image_background_remover: ^2.0.0
   image_gallery_saver_plus: ^4.0.1

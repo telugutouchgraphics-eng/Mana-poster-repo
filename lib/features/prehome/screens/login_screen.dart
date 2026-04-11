@@ -346,7 +346,7 @@ class _AuthUiCopy {
   String get passwordRequired => switch (language) {
     AppLanguage.telugu => 'Password అవసరం',
     AppLanguage.hindi => 'Password ज़रूरी है',
-    AppLanguage.english => 'Password is required',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Password is required',
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
@@ -358,7 +358,7 @@ class _AuthUiCopy {
       isLogin
           ? 'अपने account details से login करके poster flow जारी रखें.'
           : 'नया account बनाकर अपनी poster journey शुरू करें.',
-    AppLanguage.english =>
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
       isLogin
           ? 'Login with your account details and continue your poster flow.'
           : 'Create a new account and start your poster journey.',
@@ -367,6 +367,9 @@ class _AuthUiCopy {
   String resetSuccess(String email) => switch (language) {
     AppLanguage.telugu => '$email కి password reset email పంపించాం.',
     AppLanguage.hindi => '$email पर password reset email भेज दिया गया है.',
-    AppLanguage.english => 'Password reset email sent to $email.',
+    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Password reset email sent to $email.',
   };
 }
+
+
+

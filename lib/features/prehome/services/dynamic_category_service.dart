@@ -192,6 +192,9 @@ class DynamicCategoryService {
           _ => '✨ रविवार स्पेशल',
         };
       case AppLanguage.english:
+      case AppLanguage.tamil:
+      case AppLanguage.kannada:
+      case AppLanguage.malayalam:
         return switch (weekday) {
           DateTime.monday => '✨ Monday Special',
           DateTime.tuesday => '✨ Tuesday Special',
@@ -204,3 +207,6 @@ class DynamicCategoryService {
     }
   }
 }
+
+
+
