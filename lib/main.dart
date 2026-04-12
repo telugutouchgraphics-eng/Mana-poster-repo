@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/app.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/firebase_options.dart';
 
 const bool _profileFrames = bool.fromEnvironment(
@@ -22,6 +23,7 @@ Future<void> main() async {
   final options = DefaultFirebaseOptions.currentPlatformOrNull;
   if (options != null) {
     await Firebase.initializeApp(options: options);
+    await NotificationService.instance.initialize();
   }
 
   final snapshot = await AppFlowService.loadSnapshot();
