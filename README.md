@@ -1,20 +1,15 @@
-# mana_poster
+# Mana Poster App
 
-A new Flutter project.
+Flutter mobile app for Mana Poster user experience, poster personalization, approved poster feed, dynamic categories, banner sync, and sharing/download flows.
 
-## Getting Started
+## Project Areas
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- app home feed and category experience
+- approved creator poster rendering
+- user profile personalization
+- dynamic festival and event categories
+- banner sync from portal
+- poster export, share, and download flows
 
 ## Subscription Backend (Local Mock)
 
@@ -46,3 +41,4 @@ Firebase + app release steps:
 Real device release verification:
 - `REAL_DEVICE_QA_CHECKLIST.md`
 - `QA_STATUS_MATRIX.md`
+- `PORTAL_APP_WORKFLOW_QA_REPORT.md`

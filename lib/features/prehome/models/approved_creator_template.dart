@@ -26,7 +26,7 @@ class CreatorPosterPersonalization {
         showBottomStrip: true,
         stripHeight: 16,
         showWhatsapp: true,
-        sampleName: 'Sample Name',
+        sampleName: 'User Name',
         photoRenderMode: 'cutout',
         edgeStyle: 'soft_fade',
         showSafeAreas: true,
