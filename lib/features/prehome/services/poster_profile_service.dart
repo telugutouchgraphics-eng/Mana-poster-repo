@@ -1,3 +1,8 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -12,6 +17,9 @@ class PosterProfileData {
     required this.nameFontFamily,
     required this.displayNameMode,
     required this.photoPath,
+    required this.photoUrl,
+    this.originalPhotoPath = '',
+    this.originalPhotoUrl = '',
   });
 
   final String nameTelugu;
@@ -20,6 +28,9 @@ class PosterProfileData {
   final String nameFontFamily;
   final PosterDisplayNameMode displayNameMode;
   final String photoPath;
+  final String photoUrl;
+  final String originalPhotoPath;
+  final String originalPhotoUrl;
 
   String get displayName {
     final te = nameTelugu.trim();
@@ -41,6 +52,9 @@ class PosterProfileData {
     String? nameFontFamily,
     PosterDisplayNameMode? displayNameMode,
     String? photoPath,
+    String? photoUrl,
+    String? originalPhotoPath,
+    String? originalPhotoUrl,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
     final nextTelugu = nameTelugu ?? (resolvedDisplayName.isNotEmpty ? resolvedDisplayName : this.nameTelugu);
@@ -52,6 +66,9 @@ class PosterProfileData {
       nameFontFamily: nameFontFamily ?? this.nameFontFamily,
       displayNameMode: displayNameMode ?? this.displayNameMode,
       photoPath: photoPath ?? this.photoPath,
+      photoUrl: photoUrl ?? this.photoUrl,
+      originalPhotoPath: originalPhotoPath ?? this.originalPhotoPath,
+      originalPhotoUrl: originalPhotoUrl ?? this.originalPhotoUrl,
     );
   }
 
@@ -79,6 +96,9 @@ class PosterProfileService {
   static const String _whatsappKey = 'poster_profile_whatsapp';
   static const String _nameFontKey = 'poster_profile_name_font';
   static const String _photoPathKey = 'poster_profile_photo_path';
+  static const String _photoUrlKey = 'poster_profile_photo_url';
+  static const String _originalPhotoPathKey = 'poster_profile_original_photo_path';
+  static const String _originalPhotoUrlKey = 'poster_profile_original_photo_url';
 
   static const List<PosterNameFontOption> nameFontOptions =
       <PosterNameFontOption>[
@@ -115,7 +135,7 @@ class PosterProfileService {
         PosterNameFontOption(label: 'Tejafont', family: 'Tejafont'),
       ];
 
-  static const String _defaultName = 'Mana Poster User';
+  static const String _defaultName = 'User';
   static const String _defaultFontFamily = 'Anek Telugu Condensed Bold';
   static const PosterDisplayNameMode _defaultDisplayNameMode =
       PosterDisplayNameMode.auto;
@@ -127,23 +147,119 @@ class PosterProfileService {
     final legacyTeluguName = (prefs.getString(_nameTeluguKey) ?? '').trim();
     final legacyEnglishName = (prefs.getString(_nameEnglishKey) ?? '').trim();
     final legacyName = (prefs.getString(_nameKey) ?? '').trim();
+    final firebaseDisplayName =
+        FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
     final resolvedLegacyName = legacyName.isNotEmpty
         ? legacyName
         : (legacyTeluguName.isNotEmpty
               ? legacyTeluguName
-              : (legacyEnglishName.isNotEmpty ? legacyEnglishName : _defaultName));
+              : (legacyEnglishName.isNotEmpty
+                    ? legacyEnglishName
+                    : (firebaseDisplayName.isNotEmpty
+                          ? firebaseDisplayName
+                          : _defaultName)));
 
-    return PosterProfileData(
+    final localProfile = PosterProfileData(
       nameTelugu: resolvedLegacyName,
       nameEnglish: '',
       whatsappNumber: (prefs.getString(_whatsappKey) ?? '').trim(),
       nameFontFamily: _sanitizeFont(prefs.getString(_nameFontKey)),
       displayNameMode: _defaultDisplayNameMode,
       photoPath: (prefs.getString(_photoPathKey) ?? '').trim(),
+      photoUrl: (prefs.getString(_photoUrlKey) ?? '').trim(),
+      originalPhotoPath: (prefs.getString(_originalPhotoPathKey) ?? '').trim(),
+      originalPhotoUrl: (prefs.getString(_originalPhotoUrlKey) ?? '').trim(),
     );
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return localProfile;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('posterProfile')
+          .doc('main')
+          .get();
+      if (!snapshot.exists) {
+        return localProfile;
+      }
+      final remote = _fromRemoteMap(snapshot.data() ?? <String, dynamic>{});
+      final merged = remote.copyWith(
+        photoPath: localProfile.photoPath.trim().isNotEmpty
+            ? localProfile.photoPath
+            : remote.photoPath,
+        originalPhotoPath: localProfile.originalPhotoPath.trim().isNotEmpty
+            ? localProfile.originalPhotoPath
+            : remote.originalPhotoPath,
+      );
+      await _saveLocal(merged);
+      return merged;
+    } catch (_) {
+      return localProfile;
+    }
   }
 
   static Future<void> save(PosterProfileData data) async {
+    await _saveLocal(data);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('posterProfile')
+        .doc('main')
+        .set(<String, dynamic>{
+          'displayName': data.displayName.trim().isEmpty
+              ? _defaultName
+              : data.displayName.trim(),
+          'whatsappNumber': data.whatsappNumber.trim(),
+          'nameFontFamily': _sanitizeFont(data.nameFontFamily),
+          'photoUrl': data.photoUrl.trim(),
+          'originalPhotoUrl': data.originalPhotoUrl.trim(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+  }
+
+  static Future<String> uploadProfilePhoto({
+    required File file,
+    required String extension,
+    bool isOriginal = false,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return '';
+    }
+    final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
+    final ref = FirebaseStorage.instance.ref(
+      'users/${user.uid}/poster_profile/${isOriginal ? 'original_photo' : 'photo'}.$cleanExtension',
+    );
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: _contentTypeForExtension(cleanExtension)),
+    );
+    return ref.getDownloadURL();
+  }
+
+  static Future<void> deleteProfilePhoto({
+    required String photoUrl,
+  }) async {
+    final trimmedUrl = photoUrl.trim();
+    if (trimmedUrl.isEmpty) {
+      return;
+    }
+    try {
+      await FirebaseStorage.instance.refFromURL(trimmedUrl).delete();
+    } catch (_) {
+      // Ignore remote cleanup failures; profile state should still clear.
+    }
+  }
+
+  static Future<void> _saveLocal(PosterProfileData data) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanName = data.displayName.trim().isEmpty
         ? _defaultName
@@ -159,6 +275,34 @@ class PosterProfileService {
     } else {
       await prefs.setString(_photoPathKey, data.photoPath.trim());
     }
+    if (data.photoUrl.trim().isEmpty) {
+      await prefs.remove(_photoUrlKey);
+    } else {
+      await prefs.setString(_photoUrlKey, data.photoUrl.trim());
+    }
+  }
+
+  static PosterProfileData _fromRemoteMap(Map<String, dynamic> data) {
+    final remoteName = (data['displayName'] as String? ?? '').trim();
+    return PosterProfileData(
+      nameTelugu: remoteName.isEmpty ? _defaultName : remoteName,
+      nameEnglish: '',
+      whatsappNumber: (data['whatsappNumber'] as String? ?? '').trim(),
+      nameFontFamily: _sanitizeFont(data['nameFontFamily'] as String?),
+      displayNameMode: _defaultDisplayNameMode,
+      photoPath: '',
+      photoUrl: (data['photoUrl'] as String? ?? '').trim(),
+      originalPhotoPath: '',
+      originalPhotoUrl: (data['originalPhotoUrl'] as String? ?? '').trim(),
+    );
+  }
+
+  static String _contentTypeForExtension(String extension) {
+    return switch (extension.toLowerCase()) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
   }
 
   static String _sanitizeFont(String? rawFont) {

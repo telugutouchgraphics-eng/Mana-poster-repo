@@ -35,17 +35,23 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AppLanguageScope(
-      controller: _languageController,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        showPerformanceOverlay: _showPerformanceOverlay,
-        checkerboardRasterCacheImages: _showRasterCheckerboard,
-        title: 'Mana Poster',
-        theme: AppTheme.light(),
-        initialRoute: AppRoutes.splash,
-        routes: AppRoutes.map,
-      ),
+    return AnimatedBuilder(
+      animation: _languageController,
+      builder: (context, _) {
+        return AppLanguageScope(
+          language: _languageController.language,
+          controller: _languageController,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            showPerformanceOverlay: _showPerformanceOverlay,
+            checkerboardRasterCacheImages: _showRasterCheckerboard,
+            title: 'Mana Poster',
+            theme: AppTheme.light(),
+            initialRoute: AppRoutes.splash,
+            routes: AppRoutes.map,
+          ),
+        );
+      },
     );
   }
 }

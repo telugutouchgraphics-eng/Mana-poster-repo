@@ -1,13 +1,16 @@
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.dart';
 
 class DynamicCategoryService {
   const DynamicCategoryService({
     DynamicEventRepository repository = const LocalDynamicEventRepository(),
+    this.daysBeforeEvent = 2,
   }) : _repository = repository;
 
   final DynamicEventRepository _repository;
+  final int daysBeforeEvent;
 
   List<DynamicCategory> categoriesForDate(
     DateTime now, {
@@ -19,11 +22,7 @@ class DynamicCategoryService {
     final seenSlugs = <String>{};
     final output = <DynamicCategory>[];
 
-    _addUnique(
-      output,
-      seenSlugs,
-      _weekdayCategory(today.weekday, language),
-    );
+    _addUnique(output, seenSlugs, _weekdayCategory(today.weekday, language));
 
     final activeEvents = _repository
         .loadEvents()
@@ -49,8 +48,24 @@ class DynamicCategoryService {
       case DynamicCalendarType.gregorian:
         return _isGregorianEventActive(event, today);
       case DynamicCalendarType.lunarPlaceholder:
-        return false;
+        return _isResolvedLunarEventActive(event, today);
     }
+  }
+
+  bool _isResolvedLunarEventActive(DynamicCalendarEvent event, DateTime today) {
+    final resolved = kResolvedLunarEventDates[today.year]?[event.slug];
+    if (resolved == null) {
+      return false;
+    }
+
+    final eventStart = DateTime(today.year, resolved.month, resolved.day);
+    final visibleStart = eventStart.subtract(Duration(days: daysBeforeEvent));
+    final eventEnd = switch ((resolved.endMonth, resolved.endDay)) {
+      (final int endMonth, final int endDay) => DateTime(today.year, endMonth, endDay),
+      _ => eventStart.add(Duration(days: resolved.durationDays - 1)),
+    };
+
+    return !today.isBefore(visibleStart) && !today.isAfter(eventEnd);
   }
 
   bool _isGregorianEventActive(DynamicCalendarEvent event, DateTime today) {
@@ -61,23 +76,19 @@ class DynamicCategoryService {
     }
 
     final eventStart = DateTime(today.year, startMonth, startDay);
+    final visibleStart = eventStart.subtract(Duration(days: daysBeforeEvent));
     final eventEnd = switch ((event.endMonth, event.endDay)) {
-      (final int endMonth, final int endDay) => DateTime(
-        today.year,
-        endMonth,
-        endDay,
-      ),
+      (final int endMonth, final int endDay) => DateTime(today.year, endMonth, endDay),
       _ => eventStart.add(Duration(days: event.durationDays - 1)),
     };
 
     if (eventEnd.isBefore(eventStart)) {
-      return !today.isBefore(eventStart) ||
+      return !today.isBefore(visibleStart) ||
           !today.isAfter(DateTime(today.year, 12, 31)) ||
-          !today.isBefore(DateTime(today.year, 1, 1)) &&
-              !today.isAfter(eventEnd);
+          !today.isBefore(DateTime(today.year, 1, 1)) && !today.isAfter(eventEnd);
     }
 
-    return !today.isBefore(eventStart) && !today.isAfter(eventEnd);
+    return !today.isBefore(visibleStart) && !today.isAfter(eventEnd);
   }
 
   int _compareEvents(DynamicCalendarEvent a, DynamicCalendarEvent b) {
@@ -132,81 +143,59 @@ class DynamicCategoryService {
       type: DynamicCategoryType.weekdaySpecial,
       scope: DynamicEventScope.global,
       priority: 10,
-      sortOrder: 10_000,
+      sortOrder: 10000,
       tags: <String>['weekday_special', 'today_special', slug],
     );
   }
 
-  DynamicCategory _toCategory(
-    DynamicCalendarEvent event,
-    AppLanguage language,
-  ) {
+  DynamicCategory _toCategory(DynamicCalendarEvent event, AppLanguage language) {
     return DynamicCategory(
       id: event.id,
       slug: event.slug,
-      label: '${_typePrefix(event.type)} ${event.title.resolve(language)}',
+      label: event.title.resolve(language),
       type: event.type,
       scope: event.scope,
       priority: event.priority,
       sortOrder: event.sortOrder,
-      tags: <String>[
-        event.slug,
-        event.type.name,
-        event.scope.name,
-        ...event.tags,
-      ],
+      tags: <String>[event.slug, event.type.name, event.scope.name, ...event.tags],
     );
-  }
-
-  String _typePrefix(DynamicCategoryType type) {
-    return switch (type) {
-      DynamicCategoryType.festival => '🎉',
-      DynamicCategoryType.jayanthi => '🌼',
-      DynamicCategoryType.vardhanthi => '🕯️',
-      DynamicCategoryType.importantDay => '📌',
-      DynamicCategoryType.weekdaySpecial => '✨',
-      DynamicCategoryType.regionalSpecial => '📍',
-    };
   }
 
   String _weekdayLabel(int weekday, AppLanguage language) {
     switch (language) {
       case AppLanguage.telugu:
         return switch (weekday) {
-          DateTime.monday => '✨ సోమవారం స్పెషల్',
-          DateTime.tuesday => '✨ మంగళవారం స్పెషల్',
-          DateTime.wednesday => '✨ బుధవారం స్పెషల్',
-          DateTime.thursday => '✨ గురువారం స్పెషల్',
-          DateTime.friday => '✨ శుక్రవారం స్పెషల్',
-          DateTime.saturday => '✨ శనివారం స్పెషల్',
-          _ => '✨ ఆదివారం స్పెషల్',
+          DateTime.monday => 'సోమవారం స్పెషల్',
+          DateTime.tuesday => 'మంగళవారం స్పెషల్',
+          DateTime.wednesday => 'బుధవారం స్పెషల్',
+          DateTime.thursday => 'గురువారం స్పెషల్',
+          DateTime.friday => 'శుక్రవారం స్పెషల్',
+          DateTime.saturday => 'శనివారం స్పెషల్',
+          _ => 'ఆదివారం స్పెషల్',
         };
       case AppLanguage.hindi:
         return switch (weekday) {
-          DateTime.monday => '✨ सोमवार स्पेशल',
-          DateTime.tuesday => '✨ मंगलवार स्पेशल',
-          DateTime.wednesday => '✨ बुधवार स्पेशल',
-          DateTime.thursday => '✨ गुरुवार स्पेशल',
-          DateTime.friday => '✨ शुक्रवार स्पेशल',
-          DateTime.saturday => '✨ शनिवार स्पेशल',
-          _ => '✨ रविवार स्पेशल',
+          DateTime.monday => 'सोमवार स्पेशल',
+          DateTime.tuesday => 'मंगलवार स्पेशल',
+          DateTime.wednesday => 'बुधवार स्पेशल',
+          DateTime.thursday => 'गुरुवार स्पेशल',
+          DateTime.friday => 'शुक्रवार स्पेशल',
+          DateTime.saturday => 'शनिवार स्पेशल',
+          _ => 'रविवार स्पेशल',
         };
       case AppLanguage.english:
       case AppLanguage.tamil:
       case AppLanguage.kannada:
       case AppLanguage.malayalam:
         return switch (weekday) {
-          DateTime.monday => '✨ Monday Special',
-          DateTime.tuesday => '✨ Tuesday Special',
-          DateTime.wednesday => '✨ Wednesday Special',
-          DateTime.thursday => '✨ Thursday Special',
-          DateTime.friday => '✨ Friday Special',
-          DateTime.saturday => '✨ Saturday Special',
-          _ => '✨ Sunday Special',
+          DateTime.monday => 'Monday Special',
+          DateTime.tuesday => 'Tuesday Special',
+          DateTime.wednesday => 'Wednesday Special',
+          DateTime.thursday => 'Thursday Special',
+          DateTime.friday => 'Friday Special',
+          DateTime.saturday => 'Saturday Special',
+          _ => 'Sunday Special',
         };
     }
   }
 }
-
-
-

@@ -35,3 +35,14 @@ Live backend endpoints deployed:
 
 End-to-end setup and deploy steps:
 - `REMBG_BACKEND_SETUP.md`
+
+## Deployment
+
+Firebase + app release steps:
+- `APP_DEPLOYMENT_GUIDE.md`
+
+## QA
+
+Real device release verification:
+- `REAL_DEVICE_QA_CHECKLIST.md`
+- `QA_STATUS_MATRIX.md`

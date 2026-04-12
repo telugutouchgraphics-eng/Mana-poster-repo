@@ -1,22 +1,32 @@
+// ignore_for_file: unused_element_parameter
+
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
-import 'package:mana_poster/features/prehome/models/premium_template_catalog.dart';
-import 'package:mana_poster/features/prehome/models/remote_premium_template.dart';
+import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
+import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/premium_template_access_service.dart';
-import 'package:mana_poster/features/prehome/services/premium_template_remote_service.dart';
 import 'package:mana_poster/features/prehome/services/template_entitlement_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/template_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 
 enum _HomeTab { free, premium }
 
@@ -34,6 +44,7 @@ class _TemplateItem {
     this.fallbackProductIds = const <String>[],
     this.pageConfig,
     this.categoryTags = const <String>[],
+    this.personalizationConfig,
   });
 
   final String titleTe;
@@ -48,6 +59,7 @@ class _TemplateItem {
   final List<String> fallbackProductIds;
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
+  final CreatorPosterPersonalization? personalizationConfig;
 
   String titleFor(AppLanguage language) => switch (language) {
     AppLanguage.telugu => titleTe,
@@ -62,14 +74,12 @@ class _CategoryChipData {
     required this.label,
     this.matchTags = const <String>[],
     this.isDynamic = false,
-    this.isBlinking = false,
   });
 
   final String slug;
   final String label;
   final List<String> matchTags;
   final bool isDynamic;
-  final bool isBlinking;
 }
 
 class HomeScreen extends StatefulWidget {
@@ -104,12 +114,11 @@ class _HomeScreenState extends State<HomeScreen> {
   _HomeTab _selectedTab = _HomeTab.free;
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService();
-  final PremiumTemplateAccessService _premiumTemplateAccessService =
-      const PremiumTemplateAccessService();
+  final AppHomeBannerService _appHomeBannerService = const AppHomeBannerService();
   final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
       const ApprovedCreatorTemplateService();
-  final PremiumTemplateRemoteService _premiumTemplateRemoteService =
-      const PremiumTemplateRemoteService();
+  final PremiumTemplateAccessService _premiumTemplateAccessService =
+      const PremiumTemplateAccessService();
   final TemplateEntitlementBackendService _templateEntitlementBackendService =
       TemplateEntitlementBackendService();
   final TemplatePurchaseGateway _templatePurchaseGateway =
@@ -117,13 +126,19 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategorySlug = _allCategorySlug;
-  bool _blinkOn = true;
-  Timer? _blinkTimer;
   Set<String> _unlockedPremiumTemplateIds = <String>{};
-  List<RemotePremiumTemplate> _remotePremiumTemplates =
-      const <RemotePremiumTemplate>[];
-  List<ApprovedCreatorTemplate> _approvedCreatorTemplates =
-      const <ApprovedCreatorTemplate>[];
+  PosterProfileData _viewerPosterProfile = const PosterProfileData(
+    nameTelugu: 'User',
+    nameEnglish: '',
+    whatsappNumber: '',
+    nameFontFamily: 'Anek Telugu Condensed Bold',
+    displayNameMode: PosterDisplayNameMode.auto,
+    photoPath: '',
+    photoUrl: '',
+  );
+  bool _homeRefreshing = false;
+  List<_TemplateItem> _remoteApprovedTemplates = const <_TemplateItem>[];
+  List<AppHomeBanner> _homeBanners = const <AppHomeBanner>[];
 
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
@@ -205,28 +220,18 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
-  List<_TemplateItem> get _premiumTemplateItems => premiumPoliticalTemplates
-      .map(_mapLocalPremiumTemplate)
-      .toList(growable: false);
-
   @override
   void initState() {
     super.initState();
-    _blinkTimer = Timer.periodic(const Duration(milliseconds: 650), (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() => _blinkOn = !_blinkOn);
-    });
-    unawaited(_loadUnlockedPremiumTemplates());
     unawaited(_loadApprovedCreatorTemplates());
-    unawaited(_loadRemotePremiumTemplates());
+    unawaited(_loadHomeBanners());
+    unawaited(_loadUnlockedPremiumTemplates());
     unawaited(_syncUnlockedTemplatesFromBackend());
+    unawaited(_loadViewerPosterProfile());
   }
 
   @override
   void dispose() {
-    _blinkTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -279,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen> {
             label: item.label,
             matchTags: item.tags,
             isDynamic: true,
-            isBlinking: item.isBlinking,
           ),
         )
         .toList();
@@ -365,15 +369,87 @@ class _HomeScreenState extends State<HomeScreen> {
         .replaceAll(RegExp(r'^_|_$'), '');
   }
 
+  Set<String> _expandCategoryAliases(String normalizedTag) {
+    const aliasMap = <String, List<String>>{
+      'all': <String>['all'],
+      'good_morning': <String>['good_morning', 'morning'],
+      'good_night': <String>['good_night', 'night'],
+      'motivational': <String>['motivational', 'quotes', 'good_thoughts'],
+      'love_quotes': <String>['love_quotes', 'love', 'quotes'],
+      'today_special': <String>['today_special', 'important_day'],
+      'birthdays': <String>['birthdays', 'birthday', 'celebration'],
+      'life_advice': <String>['life_advice', 'good_thoughts'],
+      'gita_wisdom': <String>['gita_wisdom', 'devotional'],
+      'news': <String>['news', 'important_day'],
+      'devotional': <String>['devotional', 'festival'],
+      'mahabharata': <String>['mahabharata', 'devotional'],
+      'anniversary': <String>['anniversary', 'celebration'],
+      'good_thoughts': <String>['good_thoughts', 'motivational'],
+      'bible': <String>['bible', 'devotional'],
+      'islam': <String>['islam', 'devotional'],
+      'new': <String>['new', 'today_special'],
+      'weekday_special': <String>['weekday_special', 'today_special'],
+      'important_day': <String>['important_day', 'today_special'],
+      'regional_special': <String>['regional_special', 'today_special'],
+      'festival': <String>['festival', 'devotional', 'today_special'],
+      'jayanthi': <String>['jayanthi', 'important_day', 'regional_special'],
+      'vardhanthi': <String>['vardhanthi', 'important_day', 'regional_special'],
+    };
+
+    final output = <String>{normalizedTag};
+    final aliases = aliasMap[normalizedTag];
+    if (aliases != null) {
+      output.addAll(aliases.map(_normalizeTag));
+    }
+    return output;
+  }
+
+  void _addNormalizedSourceTags(Set<String> tags, String source) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final normalized = _normalizeTag(trimmed);
+    if (normalized.isNotEmpty) {
+      tags.addAll(_expandCategoryAliases(normalized));
+    }
+
+    final words = trimmed
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList(growable: false);
+
+    for (final word in words) {
+      tags.addAll(_expandCategoryAliases(_normalizeTag(word)));
+    }
+
+    if (words.length >= 2) {
+      for (var i = 0; i < words.length - 1; i++) {
+        tags.addAll(
+          _expandCategoryAliases(_normalizeTag('${words[i]} ${words[i + 1]}')),
+        );
+      }
+    }
+  }
+
   List<String> _inferTemplateCategoryTags({
     required List<String> seedTags,
     required List<String?> sources,
   }) {
     final tags = <String>{...seedTags.map(_normalizeTag)};
-    final normalized = sources
+    final cleanSources = sources
         .whereType<String>()
-        .map((value) => value.toLowerCase())
-        .join(' ');
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    for (final source in cleanSources) {
+      _addNormalizedSourceTags(tags, source);
+    }
+    final normalized = cleanSources.map((value) => value.toLowerCase()).join(' ');
 
     void add(String tag) => tags.add(_normalizeTag(tag));
 
@@ -437,22 +513,96 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _unlockedPremiumTemplateIds = unlocked);
   }
 
+  Future<void> _loadHomeBanners() async {
+    final cached = await _appHomeBannerService.fetchBannersFromCache();
+    if (mounted && cached.isNotEmpty) {
+      setState(() => _homeBanners = cached);
+    }
+
+    final remote = await _appHomeBannerService.fetchBanners();
+    if (!mounted || remote.isEmpty && _homeBanners.isNotEmpty) {
+      return;
+    }
+    setState(() => _homeBanners = remote);
+  }
+
   Future<void> _loadApprovedCreatorTemplates() async {
-    final approvedTemplates = await _approvedCreatorTemplateService
-        .fetchApprovedTemplates();
+    final cached = await _approvedCreatorTemplateService
+        .fetchApprovedTemplatesFromCache(maxItems: 80);
+    if (mounted && cached.isNotEmpty) {
+      setState(
+        () => _remoteApprovedTemplates = cached
+            .map(_mapApprovedCreatorTemplate)
+            .toList(growable: false),
+      );
+    }
+
+    final remote = await _approvedCreatorTemplateService.fetchApprovedTemplates(
+      maxItems: 80,
+    );
     if (!mounted) {
       return;
     }
-    setState(() => _approvedCreatorTemplates = approvedTemplates);
+    setState(
+      () => _remoteApprovedTemplates = remote
+          .map(_mapApprovedCreatorTemplate)
+          .toList(growable: false),
+    );
   }
 
-  Future<void> _loadRemotePremiumTemplates() async {
-    final remoteTemplates = await _premiumTemplateRemoteService
-        .fetchPoliticalTemplates();
-    if (!mounted || remoteTemplates.isEmpty) {
+  _TemplateItem _mapApprovedCreatorTemplate(ApprovedCreatorTemplate template) {
+    final creatorId = template.creatorPublicId.trim();
+    final displayTitle = creatorId.isNotEmpty ? creatorId : template.title;
+    final categoryTags = _inferTemplateCategoryTags(
+      seedTags: <String>[
+        'today_special',
+        if (template.categoryId.trim().isNotEmpty) template.categoryId.trim(),
+      ],
+      sources: <String?>[
+        template.categoryLabel,
+        template.categoryId,
+        template.title,
+      ],
+    );
+
+    return _TemplateItem(
+      titleTe: displayTitle,
+      titleHi: displayTitle,
+      titleEn: displayTitle,
+      imageUrl: template.imageUrl,
+      categoryTags: categoryTags,
+      personalizationConfig: template.personalizationConfig,
+    );
+  }
+
+
+  Future<void> _loadViewerPosterProfile() async {
+    final profile = await PosterProfileService.load();
+    if (!mounted) {
       return;
     }
-    setState(() => _remotePremiumTemplates = remoteTemplates);
+    setState(() => _viewerPosterProfile = profile);
+  }
+
+  Future<void> _refreshHomeFeed() async {
+    if (_homeRefreshing) {
+      return;
+    }
+    setState(() => _homeRefreshing = true);
+    _searchFocusNode.unfocus();
+    try {
+      await Future.wait<void>(<Future<void>>[
+        _loadHomeBanners(),
+        _loadApprovedCreatorTemplates(),
+        _loadUnlockedPremiumTemplates(),
+        _syncUnlockedTemplatesFromBackend(),
+        _loadViewerPosterProfile(),
+      ]);
+    } finally {
+      if (mounted) {
+        setState(() => _homeRefreshing = false);
+      }
+    }
   }
 
   Future<void> _syncUnlockedTemplatesFromBackend() async {
@@ -467,77 +617,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _unlockedPremiumTemplateIds = unlocked);
-  }
-
-  _TemplateItem _mapLocalPremiumTemplate(PremiumTemplateDefinition template) {
-    return _TemplateItem(
-      titleTe: template.titleTe,
-      titleHi: template.titleHi,
-      titleEn: template.titleEn,
-      imageAssetPath: template.previewAssetPath,
-      price: template.priceInr,
-      templateId: template.id,
-      templateDocumentSource: template.templateDocumentAssetPath,
-      productId: template.productId,
-      pageConfig: template.pageConfig,
-      categoryTags: _inferTemplateCategoryTags(
-        seedTags: const <String>['premium'],
-        sources: <String?>[
-          template.titleEn,
-          template.titleHi,
-          template.titleTe,
-          template.id,
-          template.templateDocumentAssetPath,
-        ],
-      ),
-    );
-  }
-
-  _TemplateItem _mapRemotePremiumTemplate(RemotePremiumTemplate template) {
-    return _TemplateItem(
-      titleTe: template.titleTe,
-      titleHi: template.titleHi,
-      titleEn: template.titleEn,
-      imageUrl: template.previewUrl,
-      price: template.priceInr,
-      templateId: template.id,
-      templateDocumentSource: template.templateDocumentSource,
-      productId: template.productId,
-      fallbackProductIds: template.fallbackProductIds,
-      pageConfig: template.pageConfig,
-      categoryTags: _inferTemplateCategoryTags(
-        seedTags: const <String>['premium', 'remote'],
-        sources: <String?>[
-          template.titleEn,
-          template.titleHi,
-          template.titleTe,
-          template.id,
-          template.previewUrl,
-          template.templateDocumentSource,
-        ],
-      ),
-    );
-  }
-
-  _TemplateItem _mapApprovedCreatorTemplate(ApprovedCreatorTemplate template) {
-    final fallbackLabel = template.categoryLabel.trim().isNotEmpty
-        ? '${template.categoryLabel.trim()} Poster'
-        : 'Creator Poster';
-    final title = template.title.trim().isNotEmpty ? template.title.trim() : fallbackLabel;
-    return _TemplateItem(
-      titleTe: title,
-      titleHi: title,
-      titleEn: title,
-      imageUrl: template.imageUrl,
-      categoryTags: _inferTemplateCategoryTags(
-        seedTags: const <String>['free', 'creator', 'approved'],
-        sources: <String?>[
-          template.categoryId,
-          template.categoryLabel,
-          template.title,
-        ],
-      ),
-    );
   }
 
   bool _isTemplateUnlocked(_TemplateItem item) {
@@ -744,14 +823,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final strings = context.strings;
     final isPremiumTab = _selectedTab == _HomeTab.premium;
-    final freeTemplates = _approvedCreatorTemplates
-        .map(_mapApprovedCreatorTemplate)
-        .toList(growable: false);
-    final premiumTemplates = _remotePremiumTemplates.isNotEmpty
-        ? _remotePremiumTemplates
-              .map(_mapRemotePremiumTemplate)
-              .toList(growable: false)
-        : _premiumTemplateItems;
+    final List<_TemplateItem> freeTemplates = _remoteApprovedTemplates;
+    final List<_TemplateItem> premiumTemplates = const <_TemplateItem>[];
     final templates = (isPremiumTab ? premiumTemplates : freeTemplates)
         .where((item) => _matchesTemplate(item, language, selectedCategory))
         .toList(growable: false);
@@ -770,148 +843,190 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Expanded(
-            child: ListView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
-              children: <Widget>[
-                RepaintBoundary(
-                  child: SizedBox(
-                    height: 42,
-                    child: ListView.separated(
+            child: RefreshIndicator(
+              onRefresh: _refreshHomeFeed,
+              color: const Color(0xFF0F172A),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                cacheExtent: 1400,
+                slivers: <Widget>[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: RepaintBoundary(
+                        child: SizedBox(
+                          height: 42,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: categories.length,
+                            separatorBuilder: (_, _) => const SizedBox(width: 7),
+                            itemBuilder: (_, index) => _CategoryChip(
+                              data: categories[index],
+                              isSelected:
+                                  categories[index].slug == activeCategorySlug,
+                              onTap: () {
+                                final nextSlug = categories[index].slug;
+                                if (nextSlug == activeCategorySlug) {
+                                  return;
+                                }
+                                setState(() => _selectedCategorySlug = nextSlug);
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                  SliverToBoxAdapter(
+                    child: RepaintBoundary(
+                      child: _HomeHeroBanner(banners: _homeBanners),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: categories.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 7),
-                      itemBuilder: (_, index) => _CategoryChip(
-                        data: categories[index],
-                        blinkOn: _blinkOn,
-                        isSelected: categories[index].slug == activeCategorySlug,
-                        onTap: () {
-                          final nextSlug = categories[index].slug;
-                          if (nextSlug == activeCategorySlug) {
-                            return;
-                          }
-                          setState(() => _selectedCategorySlug = nextSlug);
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFD9E2F1)),
+                        ),
+                        child: SegmentedButton<_HomeTab>(
+                          showSelectedIcon: false,
+                          segments: <ButtonSegment<_HomeTab>>[
+                            ButtonSegment<_HomeTab>(
+                              value: _HomeTab.free,
+                              label: Text(strings.freeTab),
+                            ),
+                            ButtonSegment<_HomeTab>(
+                              value: _HomeTab.premium,
+                              label: Text(strings.premiumTab),
+                            ),
+                          ],
+                          selected: <_HomeTab>{_selectedTab},
+                          style: ButtonStyle(
+                            animationDuration: const Duration(milliseconds: 180),
+                            backgroundColor:
+                                WidgetStateProperty.resolveWith<Color?>(
+                                  (states) => states.contains(WidgetState.selected)
+                                      ? const Color(0xFF6D28D9)
+                                      : const Color(0x00000000),
+                                ),
+                            foregroundColor:
+                                WidgetStateProperty.resolveWith<Color?>(
+                                  (states) => states.contains(WidgetState.selected)
+                                      ? Colors.white
+                                      : const Color(0xFF475569),
+                                ),
+                            side: const WidgetStatePropertyAll<BorderSide>(
+                              BorderSide(color: Colors.transparent),
+                            ),
+                            shape: WidgetStatePropertyAll<OutlinedBorder>(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            textStyle: const WidgetStatePropertyAll<TextStyle>(
+                              TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            padding: const WidgetStatePropertyAll<EdgeInsets>(
+                              EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                          onSelectionChanged: (value) {
+                            final nextTab = value.first;
+                            if (nextTab == _selectedTab) {
+                              return;
+                            }
+                            setState(() => _selectedTab = nextTab);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (isPremiumTab)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () =>
+                                _handleRestorePremiumPurchases(premiumTemplates),
+                            icon: const Icon(Icons.restore_rounded),
+                            label: const Text('Restore Purchases'),
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                  if (_homeRefreshing)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                    ),
+                  if (_homeRefreshing)
+                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  if (templates.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _HomeFeedState(
+                          icon: isPremiumTab
+                              ? Icons.workspace_premium_outlined
+                              : Icons.collections_outlined,
+                          title: isPremiumTab
+                              ? 'Premium posters coming soon'
+                              : 'Approved posters not available',
+                          subtitle: isPremiumTab
+                              ? 'Premium tab ki new posters add ayyaka ikkada kanipisthayi.'
+                              : 'Current category ki approved creator posters levu. Pull down refresh chesi malli check cheyyandi.',
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList.builder(
+                        itemCount: templates.length,
+                        itemBuilder: (context, index) {
+                          final item = templates[index];
+                          return RepaintBoundary(
+                            child: _TemplateFeedItem(
+                              key: ValueKey<String>(
+                                '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-$isPremiumTab',
+                              ),
+                              item: item,
+                              isPremium: isPremiumTab,
+                              isUnlocked:
+                                  !isPremiumTab || _isTemplateUnlocked(item),
+                              language: language,
+                              viewerPosterProfile: _viewerPosterProfile,
+                              onPrimaryAction: isPremiumTab
+                                  ? () => _handlePremiumTemplateAction(item)
+                                  : null,
+                            ),
+                          );
                         },
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                RepaintBoundary(
-                  child: const _HomeHeroBanner(),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFD9E2F1)),
-                    ),
-                    child: SegmentedButton<_HomeTab>(
-                      showSelectedIcon: false,
-                      segments: <ButtonSegment<_HomeTab>>[
-                        ButtonSegment<_HomeTab>(
-                          value: _HomeTab.free,
-                          label: Text(strings.freeTab),
-                        ),
-                        ButtonSegment<_HomeTab>(
-                          value: _HomeTab.premium,
-                          label: Text(strings.premiumTab),
-                        ),
-                      ],
-                      selected: <_HomeTab>{_selectedTab},
-                      style: ButtonStyle(
-                        animationDuration: const Duration(milliseconds: 180),
-                        backgroundColor:
-                            WidgetStateProperty.resolveWith<Color?>(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? const Color(0xFF0F172A)
-                                  : const Color(0x00000000),
-                            ),
-                        foregroundColor:
-                            WidgetStateProperty.resolveWith<Color?>(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? Colors.white
-                                  : const Color(0xFF475569),
-                            ),
-                        side: const WidgetStatePropertyAll<BorderSide>(
-                          BorderSide(color: Colors.transparent),
-                        ),
-                        shape: WidgetStatePropertyAll<OutlinedBorder>(
-                          RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        textStyle: const WidgetStatePropertyAll<TextStyle>(
-                          TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        padding: const WidgetStatePropertyAll<EdgeInsets>(
-                          EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                      onSelectionChanged: (value) {
-                        final nextTab = value.first;
-                        if (nextTab == _selectedTab) {
-                          return;
-                        }
-                        setState(() => _selectedTab = nextTab);
-                      },
-                    ),
-                  ),
-                ),
-                if (isPremiumTab)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            _handleRestorePremiumPurchases(premiumTemplates),
-                        icon: const Icon(Icons.restore_rounded),
-                        label: const Text('Restore Purchases'),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 14),
-                if (templates.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: _HomeFeedState(
-                      icon: Icons.search_off_rounded,
-                      title: 'No templates found',
-                      subtitle:
-                          'Try another keyword or switch between Free and Premium.',
-                    ),
-                  )
-                else
-                  ...templates.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: RepaintBoundary(
-                        child: _TemplateFeedItem(
-                          key: ValueKey<String>(
-                            '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-$isPremiumTab',
-                          ),
-                          item: item,
-                          isPremium: isPremiumTab,
-                          isUnlocked: !isPremiumTab || _isTemplateUnlocked(item),
-                          language: language,
-                          onPrimaryAction: isPremiumTab
-                              ? () => _handlePremiumTemplateAction(item)
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                ],
+              ),
             ),
           ),
         ],
@@ -1087,14 +1202,16 @@ class _BannerSlideData {
 }
 
 class _HomeHeroBanner extends StatefulWidget {
-  const _HomeHeroBanner();
+  const _HomeHeroBanner({required this.banners});
+
+  final List<AppHomeBanner> banners;
 
   @override
   State<_HomeHeroBanner> createState() => _HomeHeroBannerState();
 }
 
 class _HomeHeroBannerState extends State<_HomeHeroBanner> {
-  static const List<_BannerSlideData> _slides = <_BannerSlideData>[
+  static const List<_BannerSlideData> _fallbackSlides = <_BannerSlideData>[
     _BannerSlideData(
       imageUrl:
           'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1400',
@@ -1108,6 +1225,15 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
           'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1400',
     ),
   ];
+
+  List<_BannerSlideData> get _slides {
+    if (widget.banners.isEmpty) {
+      return _fallbackSlides;
+    }
+    return widget.banners
+        .map((banner) => _BannerSlideData(imageUrl: banner.imageUrl))
+        .toList(growable: false);
+  }
 
   late final PageController _pageController = PageController();
   Timer? _autoSwipeTimer;
@@ -1223,73 +1349,73 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({
     required this.data,
-    required this.blinkOn,
     required this.isSelected,
     required this.onTap,
   });
 
   final _CategoryChipData data;
-  final bool blinkOn;
   final bool isSelected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final data = this.data;
+    final isSelected = this.isSelected;
     final isAll = data.slug == _HomeScreenState._allCategorySlug;
-    final chipTint = isSelected
-        ? const Color(0xFF0F172A)
-        : isAll
-        ? const Color(0xFF0F172A)
+    const selectedChipColor = Color(0xFF6D28D9);
+    const selectedChipBorder = Color(0xFF5B21B6);
+    const allChipColor = Color(0xFF25D366);
+    const allChipBorder = Color(0xFF1FAE54);
+    final chipTint = isAll
+        ? allChipColor
+        : isSelected
+        ? selectedChipColor
         : data.isDynamic
         ? const Color(0xFFFFF4DB)
         : Colors.white;
-    final borderColor = isSelected
-        ? const Color(0xFF0F172A)
-        : isAll
-        ? const Color(0xFF0F172A)
+    final borderColor = isAll
+        ? allChipBorder
+        : isSelected
+        ? selectedChipBorder
         : data.isDynamic
         ? const Color(0xFFF2C66D)
         : const Color(0xFFDCE6F3);
-    final textColor = isSelected || isAll
+    final textColor = isAll || isSelected
         ? Colors.white
         : data.isDynamic
         ? const Color(0xFF8A5A00)
         : const Color(0xFF334155);
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 250),
-      opacity: data.isBlinking ? (blinkOn ? 1.0 : 0.45) : 1.0,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: chipTint,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: borderColor),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: isSelected || isAll
-                      ? const Color(0x140F172A)
-                      : const Color(0x0A0F172A),
-                  blurRadius: isSelected || isAll ? 10 : 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Text(
-              data.label,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isSelected || isAll
-                    ? FontWeight.w700
-                    : FontWeight.w600,
-                color: textColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: chipTint,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: borderColor),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: isSelected || isAll
+                    ? const Color(0x140F172A)
+                    : const Color(0x0A0F172A),
+                blurRadius: isSelected || isAll ? 10 : 8,
+                offset: const Offset(0, 3),
               ),
+            ],
+          ),
+          child: Text(
+            data.label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: isSelected || isAll
+                  ? FontWeight.w700
+                  : FontWeight.w600,
+              color: textColor,
             ),
           ),
         ),
@@ -1299,12 +1425,13 @@ class _CategoryChip extends StatelessWidget {
 }
 
 class _TemplateFeedItem extends StatelessWidget {
-  const _TemplateFeedItem({
+  _TemplateFeedItem({
     super.key,
     required this.item,
     required this.isPremium,
     required this.isUnlocked,
     required this.language,
+    required this.viewerPosterProfile,
     this.onPrimaryAction,
   });
 
@@ -1312,67 +1439,159 @@ class _TemplateFeedItem extends StatelessWidget {
   final bool isPremium;
   final bool isUnlocked;
   final AppLanguage language;
+  final PosterProfileData viewerPosterProfile;
   final VoidCallback? onPrimaryAction;
+  final GlobalKey _posterRepaintKey = GlobalKey();
+
+  Future<Uint8List?> _capturePosterBytes() async {
+    final boundary =
+        _posterRepaintKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (boundary == null) {
+      return null;
+    }
+    final image = await boundary.toImage(pixelRatio: 3);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data?.buffer.asUint8List();
+  }
+
+  Future<bool> _ensureGallerySavePermission() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return true;
+    }
+    final storageStatus = await Permission.storage.status;
+    final photosStatus = await Permission.photos.status;
+    if (storageStatus.isGranted ||
+        photosStatus.isGranted ||
+        photosStatus.isLimited) {
+      return true;
+    }
+    final requested = await <Permission>[
+      Permission.storage,
+      Permission.photos,
+    ].request();
+    return requested.values.any(
+      (status) => status.isGranted || status.isLimited,
+    );
+  }
+
+  bool _isGallerySaveSuccess(dynamic saveResult) {
+    if (saveResult is bool) {
+      return saveResult;
+    }
+    if (saveResult is! Map) {
+      return false;
+    }
+    final status = saveResult['isSuccess'] ?? saveResult['success'];
+    if (status is bool) {
+      return status;
+    }
+    if (status is num) {
+      return status > 0;
+    }
+    final normalized = status?.toString().trim().toLowerCase();
+    return normalized == 'true' || normalized == '1';
+  }
+
+  void _showSnack(ScaffoldMessengerState messenger, String message) {
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _onDownloadTap(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final hasPermission = await _ensureGallerySavePermission();
+      if (!hasPermission) {
+        _showSnack(messenger, 'Gallery permission ivvandi');
+        return;
+      }
+      final bytes = await _capturePosterBytes();
+      if (bytes == null) {
+        _showSnack(messenger, 'Poster ready kaaledu, malli try cheyyandi');
+        return;
+      }
+      final fileName = 'mana_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+      final result = await ImageGallerySaverPlus.saveImage(
+        bytes,
+        quality: 100,
+        name: fileName,
+      );
+      if (_isGallerySaveSuccess(result)) {
+        _showSnack(messenger, 'Poster gallery lo save ayyindi');
+        return;
+      }
+      final tempDirectory = await getTemporaryDirectory();
+      final tempPath =
+          '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+      final tempFile = File(tempPath);
+      await tempFile.writeAsBytes(bytes, flush: true);
+      final fallback = await ImageGallerySaverPlus.saveFile(
+        tempFile.path,
+        name: fileName,
+      );
+      if (_isGallerySaveSuccess(fallback)) {
+        _showSnack(messenger, 'Poster gallery lo save ayyindi');
+      } else {
+        _showSnack(messenger, 'Download fail ayyindi, malli try cheyyandi');
+      }
+    } catch (_) {
+      _showSnack(messenger, 'Download fail ayyindi, malli try cheyyandi');
+    }
+  }
+
+  Future<void> _onShareTap(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await _capturePosterBytes();
+      if (bytes == null) {
+        _showSnack(messenger, 'Poster ready kaaledu, malli try cheyyandi');
+        return;
+      }
+      final directory = await getTemporaryDirectory();
+      final filePath =
+          '${directory.path}${Platform.pathSeparator}mana_poster_share.png';
+      final file = File(filePath);
+      await file.writeAsBytes(bytes, flush: true);
+      await Share.shareXFiles(<XFile>[XFile(file.path)], text: 'Mana Poster');
+    } catch (_) {
+      _showSnack(messenger, 'Share fail ayyindi, malli try cheyyandi');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
+    final personalizationConfig = item.personalizationConfig;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          ClipRect(
-            child: AspectRatio(
-              aspectRatio: 4 / 5,
-              child: item.imageAssetPath != null
-                  ? Image.asset(
-                      item.imageAssetPath!,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
-                      errorBuilder: (_, _, _) => const _ImageErrorState(
-                        title: 'Template image unavailable',
-                        subtitle: 'Please refresh or try another template.',
-                      ),
-                    )
-                  : Image.network(
-                      item.imageUrl ?? '',
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
-                      loadingBuilder:
-                          (
-                            BuildContext context,
-                            Widget child,
-                            ImageChunkEvent? loadingProgress,
-                          ) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
-                            return const _ImageLoadingState();
-                          },
-                      errorBuilder:
-                          (
-                            BuildContext context,
-                            Object error,
-                            StackTrace? stackTrace,
-                          ) {
-                            return const _ImageErrorState(
-                              title: 'Template image unavailable',
-                              subtitle:
-                                  'Please refresh or try another template.',
-                            );
-                          },
-                    ),
-            ),
+          RepaintBoundary(
+            key: _posterRepaintKey,
+            child: !isPremium && personalizationConfig != null
+                ? _CreatorPosterPreview(
+                    imageAssetPath: item.imageAssetPath,
+                    imageUrl: item.imageUrl,
+                    personalizationConfig: personalizationConfig,
+                    viewerPosterProfile: viewerPosterProfile,
+                    language: language,
+                  )
+                : _TemplatePosterImage(
+                    imageAssetPath: item.imageAssetPath,
+                    imageUrl: item.imageUrl,
+                  ),
           ),
           const SizedBox(height: 12),
           Text(
             item.titleFor(language),
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 15.5,
-              color: Color(0xFF0F172A),
+            style: TextStyle(
+              fontWeight: isPremium ? FontWeight.w800 : FontWeight.w600,
+              fontSize: isPremium ? 15.5 : 13,
+              color: isPremium
+                  ? const Color(0xFF0F172A)
+                  : const Color(0xFF94A3B8),
             ),
           ),
           const SizedBox(height: 12),
@@ -1425,14 +1644,26 @@ class _TemplateFeedItem extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.whatshot_rounded),
-                    label: Text(strings.shareWhatsApp),
+                    onPressed: () => unawaited(_onShareTap(context)),
+                    icon: Image.asset(
+                      'assets/branding/whatsapp_icon.png',
+                      width: 30,
+                      height: 30,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.whatshot_rounded,
+                        size: 22,
+                      ),
+                    ),
+                    label: const Text('Share'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF334155),
                       side: const BorderSide(color: Color(0xFFD8E2F0)),
                       minimumSize: const Size.fromHeight(48),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -1442,7 +1673,7 @@ class _TemplateFeedItem extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () {},
+                    onPressed: () => unawaited(_onDownloadTap(context)),
                     icon: const Icon(Icons.download_rounded),
                     label: Text(strings.downloadLabel),
                     style: FilledButton.styleFrom(
@@ -1463,6 +1694,400 @@ class _TemplateFeedItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TemplatePosterImage extends StatelessWidget {
+  const _TemplatePosterImage({
+    required this.imageAssetPath,
+    required this.imageUrl,
+    this.onFirstFrameReady,
+  });
+
+  final String? imageAssetPath;
+  final String? imageUrl;
+  final VoidCallback? onFirstFrameReady;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final pixelRatio = MediaQuery.devicePixelRatioOf(context).clamp(
+          1.0,
+          3.0,
+        );
+        final cacheWidth = (width * pixelRatio).round().clamp(360, 1440);
+
+        final imageWidget = imageAssetPath != null
+            ? Image.asset(
+                imageAssetPath!,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                alignment: Alignment.topCenter,
+                filterQuality: FilterQuality.low,
+                cacheWidth: cacheWidth,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) {
+                    if (onFirstFrameReady != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        onFirstFrameReady!.call();
+                      });
+                    }
+                    return child;
+                  }
+                  return const _ImageLoadingState();
+                },
+                errorBuilder: (_, _, _) => const _ImageErrorState(
+                  title: 'Template image unavailable',
+                  subtitle: 'Please refresh or try another template.',
+                ),
+              )
+            : Image.network(
+                imageUrl ?? '',
+                width: double.infinity,
+                fit: BoxFit.contain,
+                alignment: Alignment.topCenter,
+                filterQuality: FilterQuality.low,
+                cacheWidth: cacheWidth,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) {
+                    if (onFirstFrameReady != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        onFirstFrameReady!.call();
+                      });
+                    }
+                    return child;
+                  }
+                  return const _ImageLoadingState();
+                },
+                errorBuilder: (
+                  BuildContext context,
+                  Object error,
+                  StackTrace? stackTrace,
+                ) {
+                  return const _ImageErrorState(
+                    title: 'Template image unavailable',
+                    subtitle: 'Please refresh or try another template.',
+                  );
+                },
+              );
+
+        return Align(alignment: Alignment.topCenter, child: imageWidget);
+      },
+    );
+  }
+}
+
+class _CreatorPosterPreview extends StatefulWidget {
+  const _CreatorPosterPreview({
+    required this.imageAssetPath,
+    required this.imageUrl,
+    required this.personalizationConfig,
+    required this.viewerPosterProfile,
+    required this.language,
+  });
+
+  final String? imageAssetPath;
+  final String? imageUrl;
+  final CreatorPosterPersonalization personalizationConfig;
+  final PosterProfileData viewerPosterProfile;
+  final AppLanguage language;
+
+  @override
+  State<_CreatorPosterPreview> createState() => _CreatorPosterPreviewState();
+}
+
+class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
+  bool _basePosterReady = false;
+
+  @override
+  void didUpdateWidget(covariant _CreatorPosterPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.imageAssetPath != widget.imageAssetPath) {
+      _basePosterReady = false;
+    }
+  }
+
+  void _handleBasePosterReady() {
+    if (_basePosterReady || !mounted) {
+      return;
+    }
+    setState(() => _basePosterReady = true);
+  }
+
+  bool _containsTelugu(String value) {
+    return RegExp(r'[\u0C00-\u0C7F]').hasMatch(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localPath = widget.viewerPosterProfile.photoPath.trim();
+    final hasLocalPhoto = localPath.isNotEmpty && File(localPath).existsSync();
+    final hasRemotePhoto = widget.viewerPosterProfile.photoUrl.trim().isNotEmpty;
+    final ImageProvider<Object>? cutoutImage = hasLocalPhoto
+        ? FileImage(File(localPath))
+        : (hasRemotePhoto
+              ? NetworkImage(widget.viewerPosterProfile.photoUrl.trim())
+              : null);
+    final originalLocalPath = widget.viewerPosterProfile.originalPhotoPath.trim();
+    final hasOriginalLocalPhoto =
+        originalLocalPath.isNotEmpty && File(originalLocalPath).existsSync();
+    final hasOriginalRemotePhoto =
+        widget.viewerPosterProfile.originalPhotoUrl.trim().isNotEmpty;
+    final ImageProvider<Object>? originalImage = hasOriginalLocalPhoto
+        ? FileImage(File(originalLocalPath))
+        : (hasOriginalRemotePhoto
+              ? NetworkImage(widget.viewerPosterProfile.originalPhotoUrl.trim())
+              : null);
+    final ImageProvider<Object>? profileImage =
+        widget.personalizationConfig.photoRenderMode == 'original'
+        ? (originalImage ?? cutoutImage)
+        : (cutoutImage ?? originalImage);
+    final resolvedName = widget.viewerPosterProfile.resolvedName(
+      language: widget.language,
+    );
+    final displayNameFontFamily = _containsTelugu(resolvedName)
+        ? 'Prabhava'
+        : widget.viewerPosterProfile.nameFontFamily;
+    final showWhatsapp =
+        widget.personalizationConfig.showWhatsapp &&
+        widget.viewerPosterProfile.whatsappNumber.trim().isNotEmpty;
+    final stripPadding = (widget.personalizationConfig.stripHeight * 0.45).clamp(
+      6.0,
+      14.0,
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              _TemplatePosterImage(
+                imageAssetPath: widget.imageAssetPath,
+                imageUrl: widget.imageUrl,
+                onFirstFrameReady: _handleBasePosterReady,
+              ),
+              if (_basePosterReady && profileImage != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      final size =
+                          constraints.maxWidth *
+                          (widget.personalizationConfig.photoScale / 100);
+                      final left =
+                          (constraints.maxWidth *
+                                  (widget.personalizationConfig.photoX / 100)) -
+                              (size / 2);
+                      final top =
+                          (constraints.maxHeight *
+                                  (widget.personalizationConfig.photoY / 100)) -
+                              (size / 2);
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: <Widget>[
+                          Positioned(
+                            left: left,
+                            top: top,
+                            width: size,
+                            height: size,
+                            child: _PhotoShapeFrame(
+                              shape: widget.personalizationConfig.photoShape,
+                              image: profileImage,
+                              edgeStyle: widget.personalizationConfig.edgeStyle,
+                              photoRenderMode:
+                                  widget.personalizationConfig.photoRenderMode,
+                            ),
+                          ),
+                          if (!widget.personalizationConfig.showBottomStrip)
+                            Positioned(
+                              left:
+                                  constraints.maxWidth *
+                                      (widget.personalizationConfig.nameX / 100),
+                              top:
+                                  constraints.maxHeight *
+                                      (widget.personalizationConfig.nameY / 100),
+                              child: Transform.translate(
+                                offset: const Offset(-80, -16),
+                                child: SizedBox(
+                                  width: 160,
+                                  child: Text(
+                                    resolvedName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                      fontFamily: displayNameFontFamily,
+                                      shadows: const <Shadow>[
+                                        Shadow(
+                                          color: Color(0xCC000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+          if (_basePosterReady && widget.personalizationConfig.showBottomStrip)
+            Container(
+              width: double.infinity,
+              color: Colors.white,
+              padding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: stripPadding,
+              ),
+              child: Text(
+                resolvedName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFF0F172A),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  fontFamily: displayNameFontFamily,
+                ),
+              ),
+            ),
+          if (_basePosterReady && showWhatsapp)
+            Container(
+              width: double.infinity,
+              color: const Color(0xFF25D366),
+              padding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: stripPadding - 1,
+              ),
+              child: Text(
+                widget.viewerPosterProfile.whatsappNumber.trim(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoShapeFrame extends StatelessWidget {
+  const _PhotoShapeFrame({
+    required this.shape,
+    required this.image,
+    required this.edgeStyle,
+    required this.photoRenderMode,
+  });
+
+  final String shape;
+  final ImageProvider<Object> image;
+  final String edgeStyle;
+  final String photoRenderMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageAlignment = photoRenderMode == 'cutout'
+        ? const Alignment(0, -0.78)
+        : Alignment.center;
+    final imageScale = photoRenderMode == 'cutout' ? 0.95 : 1.0;
+
+    final shapedImage = DecoratedBox(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: image,
+          fit: BoxFit.contain,
+          alignment: imageAlignment,
+          scale: imageScale,
+        ),
+      ),
+    );
+    final imageWidget = edgeStyle == 'soft_fade'
+        ? ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Colors.white,
+                  Colors.white,
+                  Color(0xE6FFFFFF),
+                  Colors.transparent,
+                ],
+                stops: <double>[0.0, 0.66, 0.82, 1.0],
+              ).createShader(bounds);
+            },
+            blendMode: BlendMode.dstIn,
+            child: shapedImage,
+          )
+        : shapedImage;
+
+    switch (shape) {
+      case 'circle':
+        return ClipOval(child: imageWidget);
+      case 'rounded':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: imageWidget,
+        );
+      case 'pill':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(40),
+          child: imageWidget,
+        );
+      case 'hexagon':
+        return ClipPath(
+          clipper: const _HexagonClipper(),
+          child: imageWidget,
+        );
+      case 'square':
+      default:
+        return imageWidget;
+    }
+  }
+}
+
+class _HexagonClipper extends CustomClipper<Path> {
+  const _HexagonClipper();
+
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(size.width * 0.25, size.height * 0.06)
+      ..lineTo(size.width * 0.75, size.height * 0.06)
+      ..lineTo(size.width, size.height * 0.5)
+      ..lineTo(size.width * 0.75, size.height * 0.94)
+      ..lineTo(size.width * 0.25, size.height * 0.94)
+      ..lineTo(0, size.height * 0.5)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
 class _HomeFeedState extends StatelessWidget {

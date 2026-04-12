@@ -15,9 +15,20 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // User-owned poster profile sync for app-side profile persistence.
+    match /users/{userId}/posterProfile/{profileId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Free feed can read only manager-approved creator posters.
     match /creatorPosters/{posterId} {
       allow read: if resource.data.status == "approved";
+      allow create, update, delete: if false;
+    }
+
+    // Public app banners for home/category promotional surfaces.
+    match /appBanners/{bannerId} {
+      allow read: if resource.data.active == true;
       allow create, update, delete: if false;
     }
 

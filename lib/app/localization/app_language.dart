@@ -19,24 +19,35 @@ class AppLanguageController extends ChangeNotifier {
   }
 }
 
-class AppLanguageScope extends InheritedNotifier<AppLanguageController> {
+class AppLanguageScope extends InheritedWidget {
   const AppLanguageScope({
     super.key,
+    required this.language,
     required AppLanguageController controller,
     required super.child,
-  }) : super(notifier: controller);
+  }) : _controller = controller;
 
-  static AppLanguageController of(BuildContext context) {
-    final scope = context
-        .dependOnInheritedWidgetOfExactType<AppLanguageScope>();
+  final AppLanguage language;
+  final AppLanguageController _controller;
+
+  static AppLanguageScope of(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<AppLanguageScope>();
+    final scope = element?.widget as AppLanguageScope?;
     assert(scope != null, 'AppLanguageScope not found in widget tree.');
-    return scope!.notifier!;
+    return scope!;
+  }
+
+  AppLanguageController get controller => _controller;
+
+  @override
+  bool updateShouldNotify(covariant AppLanguageScope oldWidget) {
+    return oldWidget.language != language || oldWidget._controller != _controller;
   }
 }
 
 extension AppLanguageContextX on BuildContext {
-  AppLanguageController get languageController => AppLanguageScope.of(this);
-  AppLanguage get currentLanguage => languageController.language;
+  AppLanguageController get languageController => AppLanguageScope.of(this).controller;
+  AppLanguage get currentLanguage => AppLanguageScope.of(this).language;
   AppStrings get strings => AppStrings(currentLanguage);
 }
 

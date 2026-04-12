@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -22,6 +25,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   static final FirebaseAuthService _authService = FirebaseAuthService();
+  static const OfflineBackgroundRemovalService _backgroundRemovalService =
+      OfflineBackgroundRemovalService();
 
   PosterProfileData _posterProfile = const PosterProfileData(
     nameTelugu: 'Mana Poster User',
@@ -30,15 +35,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     nameFontFamily: 'Anek Telugu Condensed Bold',
     displayNameMode: PosterDisplayNameMode.auto,
     photoPath: '',
+    photoUrl: '',
   );
   bool _loadingProfile = true;
   bool _photoBusy = false;
   final ImagePicker _imagePicker = ImagePicker();
+  late final Future<void> _backgroundRemoverInitialization;
 
   @override
   void initState() {
     super.initState();
+    _backgroundRemoverInitialization = BackgroundRemover.instance.initializeOrt();
     _loadPosterProfile();
+  }
+
+  @override
+  void dispose() {
+    unawaited(BackgroundRemover.instance.dispose());
+    super.dispose();
   }
 
   Future<void> _loadPosterProfile() async {
@@ -53,189 +67,131 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openPosterProfileEditor() async {
-    final TextEditingController nameController = TextEditingController(
-      text: _posterProfile.displayName,
-    );
-    final TextEditingController whatsappController = TextEditingController(
-      text: _posterProfile.whatsappNumber,
-    );
-    String selectedFont = _posterProfile.nameFontFamily;
-    PosterDisplayNameMode selectedDisplayMode = _posterProfile.displayNameMode;
+    String nameValue = _posterProfile.displayName;
+    String whatsappValue = _posterProfile.whatsappNumber;
 
-    final PosterProfileData? result = await showModalBottomSheet<PosterProfileData>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFFF8FAFC),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text(
-                      'Poster Profile Details',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'ఇక్కడ set చేసిన name/font poster lo auto apply అవుతుంది.',
-                      style: TextStyle(color: Color(0xFF475569), fontSize: 12),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: nameController,
-                      onChanged: (_) => setSheetState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Display Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: whatsappController,
-                      keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
-                        labelText: 'WhatsApp Number',
-                        hintText: '10-digit number',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Name Font',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedFont,
-                          isExpanded: true,
-                          items: PosterProfileService.nameFontOptions
-                              .map(
-                                (option) => DropdownMenuItem<String>(
-                                  value: option.family,
-                                  child: Text(
-                                    option.label,
-                                    style: TextStyle(fontFamily: option.family),
-                                  ),
-                                ),
-                              )
-                              .toList(growable: false),
-                          onChanged: (String? value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setSheetState(() => selectedFont = value);
-                          },
+    final PosterProfileData? result =
+        await showModalBottomSheet<PosterProfileData>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFFF8FAFC),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (BuildContext context) {
+            return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setSheetState) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text(
+                          'Poster Profile Details',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Display Name Language',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<PosterDisplayNameMode>(
-                          value: selectedDisplayMode,
-                          isExpanded: true,
-                          items: const <DropdownMenuItem<PosterDisplayNameMode>>[
-                            DropdownMenuItem(
-                              value: PosterDisplayNameMode.auto,
-                              child: Text('Auto'),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Name and WhatsApp number changes poster lo automatic ga apply avuthayi.',
+                          style: TextStyle(
+                            color: Color(0xFF475569),
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          initialValue: nameValue,
+                          onChanged: (value) {
+                            setSheetState(() => nameValue = value);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Display Name',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          initialValue: whatsappValue,
+                          keyboardType: TextInputType.phone,
+                          onChanged: (value) {
+                            setSheetState(() => whatsappValue = value);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'WhatsApp Number',
+                            hintText: '10-digit number',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Text(
+                            'Preview: ${nameValue.trim().isEmpty ? PosterProfileService.defaultName : nameValue.trim()}',
+                            style: TextStyle(
+                              fontFamily: _posterProfile.nameFontFamily,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
                             ),
-                            DropdownMenuItem(
-                              value: PosterDisplayNameMode.telugu,
-                              child: Text('తెలుగు'),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Cancel'),
+                              ),
                             ),
-                            DropdownMenuItem(
-                              value: PosterDisplayNameMode.english,
-                              child: Text('English'),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () {
+                                  final sanitizedWhatsapp = whatsappValue
+                                      .replaceAll(RegExp(r'\D'), '');
+                                  final data = PosterProfileData(
+                                    nameTelugu: nameValue.trim(),
+                                    nameEnglish: '',
+                                    whatsappNumber: sanitizedWhatsapp,
+                                    nameFontFamily: _posterProfile.nameFontFamily,
+                                    displayNameMode: PosterDisplayNameMode.auto,
+                                    photoPath: _posterProfile.photoPath,
+                                    photoUrl: _posterProfile.photoUrl,
+                                  );
+                                  Navigator.of(context).pop(data);
+                                },
+                                child: const Text('Save'),
+                              ),
                             ),
                           ],
-                          onChanged: (PosterDisplayNameMode? value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setSheetState(() => selectedDisplayMode = value);
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Text(
-                        'Preview: ${nameController.text.trim().isEmpty ? PosterProfileService.defaultName : nameController.text.trim()}',
-                        style: TextStyle(
-                          fontFamily: selectedFont,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () {
-                              final sanitizedWhatsapp = whatsappController.text
-                                  .replaceAll(RegExp(r'\D'), '');
-                              final data = PosterProfileData(
-                                nameTelugu: nameController.text.trim(),
-                                nameEnglish: '',
-                                whatsappNumber: sanitizedWhatsapp,
-                                nameFontFamily: selectedFont,
-                                displayNameMode: selectedDisplayMode,
-                                photoPath: _posterProfile.photoPath,
-                              );
-                              Navigator.of(context).pop(data);
-                            },
-                            child: const Text('Save'),
-                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             );
           },
         );
-      },
-    );
-
-    nameController.dispose();
-    whatsappController.dispose();
 
     if (result == null) {
       return;
@@ -245,9 +201,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     setState(() => _posterProfile = result);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Poster profile saved')),
-    );
   }
 
   Future<void> _pickAndSaveProfilePhoto() async {
@@ -288,30 +241,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (cropped == null) {
         return;
       }
+      await _backgroundRemoverInitialization;
+      final originalBytes = await File(cropped.path).readAsBytes();
+      final removedResult = await _backgroundRemovalService.removeBackground(
+        originalBytes,
+      );
       final Directory dir = await getApplicationDocumentsDirectory();
-      final String ext = cropped.path.toLowerCase().endsWith('.png')
-          ? 'png'
-          : cropped.path.toLowerCase().endsWith('.webp')
-          ? 'webp'
-          : 'jpg';
-      final String targetPath = '${dir.path}${Platform.pathSeparator}poster_profile_photo.$ext';
-      await File(cropped.path).copy(targetPath);
+      final String originalTargetPath =
+          '${dir.path}${Platform.pathSeparator}poster_profile_original_photo.png';
+      final File originalLocalFile = File(originalTargetPath);
+      await originalLocalFile.writeAsBytes(originalBytes, flush: true);
+      final String targetPath =
+          '${dir.path}${Platform.pathSeparator}poster_profile_photo.png';
+      final File localFile = File(targetPath);
+      await localFile.writeAsBytes(removedResult.pngBytes, flush: true);
+      final originalRemoteUrl = await PosterProfileService.uploadProfilePhoto(
+        file: originalLocalFile,
+        extension: 'png',
+        isOriginal: true,
+      );
+      final remoteUrl = await PosterProfileService.uploadProfilePhoto(
+        file: localFile,
+        extension: 'png',
+      );
 
-      final updated = _posterProfile.copyWith(photoPath: targetPath);
+      final updated = _posterProfile.copyWith(
+        photoPath: targetPath,
+        photoUrl: remoteUrl.isEmpty ? _posterProfile.photoUrl : remoteUrl,
+        originalPhotoPath: originalTargetPath,
+        originalPhotoUrl: originalRemoteUrl.isEmpty
+            ? _posterProfile.originalPhotoUrl
+            : originalRemoteUrl,
+      );
       await PosterProfileService.save(updated);
       if (!mounted) {
         return;
       }
       setState(() => _posterProfile = updated);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile photo updated')),
+        const SnackBar(content: Text('Profile photo updated with BG removed')),
       );
     } catch (_) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Photo pick failed. Try again.')),
+        const SnackBar(
+          content: Text('Photo background remove failed. Try another photo.'),
+        ),
       );
     } finally {
       if (mounted) {
@@ -333,7 +310,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           await file.delete();
         }
       }
-      final updated = _posterProfile.copyWith(photoPath: '');
+      final originalPath = _posterProfile.originalPhotoPath.trim();
+      if (originalPath.isNotEmpty) {
+        final file = File(originalPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      await PosterProfileService.deleteProfilePhoto(
+        photoUrl: _posterProfile.photoUrl,
+      );
+      await PosterProfileService.deleteProfilePhoto(
+        photoUrl: _posterProfile.originalPhotoUrl,
+      );
+      final updated = _posterProfile.copyWith(
+        photoPath: '',
+        photoUrl: '',
+        originalPhotoPath: '',
+        originalPhotoUrl: '',
+      );
       await PosterProfileService.save(updated);
       if (!mounted) {
         return;
@@ -575,10 +570,12 @@ class _PosterProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
-    final fontOption = PosterProfileService.nameFontOptions.firstWhere(
-      (option) => option.family == profile.nameFontFamily,
-      orElse: () => PosterProfileService.nameFontOptions.first,
-    );
+    final localPath = profile.photoPath.trim();
+    final hasLocalPhoto = localPath.isNotEmpty && File(localPath).existsSync();
+    final hasRemotePhoto = profile.photoUrl.trim().isNotEmpty;
+    final ImageProvider<Object>? photoProvider = hasLocalPhoto
+        ? FileImage(File(localPath))
+        : (hasRemotePhoto ? NetworkImage(profile.photoUrl.trim()) : null);
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -619,15 +616,15 @@ class _PosterProfileCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(14),
-                    image: profile.photoPath.trim().isEmpty
+                    image: photoProvider == null
                         ? null
                         : DecorationImage(
-                            image: FileImage(File(profile.photoPath)),
+                            image: photoProvider,
                             fit: BoxFit.cover,
                           ),
                   ),
                   alignment: Alignment.center,
-                  child: profile.photoPath.trim().isEmpty
+                  child: photoProvider == null
                       ? const Icon(Icons.person_rounded, color: Color(0xFF64748B))
                       : null,
                 ),
@@ -645,7 +642,7 @@ class _PosterProfileCard extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton(
                           onPressed:
-                              photoBusy || profile.photoPath.trim().isEmpty ? null : onRemovePhotoTap,
+                              photoBusy || photoProvider == null ? null : onRemovePhotoTap,
                           child: const Text('Remove'),
                         ),
                       ),
@@ -673,15 +670,6 @@ class _PosterProfileCard extends StatelessWidget {
                 color: Color(0xFF64748B),
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Font: ${fontOption.label}',
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -814,3 +802,4 @@ class _ProfileItemData {
   final bool isDestructive;
   final VoidCallback? onTap;
 }
+
