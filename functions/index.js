@@ -14,12 +14,48 @@ const supportedProductIds = new Set([
 ]);
 
 const dynamicEventCatalog = [
-  {id: "ambedkar-jayanthi", title: "Dr. B.R. Ambedkar Jayanthi", month: 4, day: 14},
-  {id: "independence-day", title: "Independence Day", month: 8, day: 15},
-  {id: "teachers-day", title: "Teachers Day", month: 9, day: 5},
-  {id: "gandhi-jayanthi", title: "Gandhi Jayanthi", month: 10, day: 2},
-  {id: "children-day", title: "Children Day", month: 11, day: 14},
-  {id: "republic-day", title: "Republic Day", month: 1, day: 26},
+  {
+    id: "ambedkar-jayanthi",
+    title: "Dr. B.R. Ambedkar Jayanthi",
+    month: 4,
+    day: 14,
+    keywords: ["ambedkar", "jayanthi"],
+  },
+  {
+    id: "independence-day",
+    title: "Independence Day",
+    month: 8,
+    day: 15,
+    keywords: ["independence", "national"],
+  },
+  {
+    id: "teachers-day",
+    title: "Teachers Day",
+    month: 9,
+    day: 5,
+    keywords: ["teachers", "teacher"],
+  },
+  {
+    id: "gandhi-jayanthi",
+    title: "Gandhi Jayanthi",
+    month: 10,
+    day: 2,
+    keywords: ["gandhi", "jayanthi"],
+  },
+  {
+    id: "children-day",
+    title: "Children Day",
+    month: 11,
+    day: 14,
+    keywords: ["children", "childrens day"],
+  },
+  {
+    id: "republic-day",
+    title: "Republic Day",
+    month: 1,
+    day: 26,
+    keywords: ["republic", "national"],
+  },
 ];
 
 function setCors(res) {
@@ -69,6 +105,7 @@ async function sendTopicReminder({
     },
     data: {
       click_action: "FLUTTER_NOTIFICATION_CLICK",
+      route: "home",
     },
   };
 
@@ -94,8 +131,59 @@ async function sendWelcomeToToken(token) {
     data: {
       type: "welcome",
       click_action: "FLUTTER_NOTIFICATION_CLICK",
+      route: "home",
     },
   });
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function getRelatedPosterImageByKeywords(keywords) {
+  const keyList = (keywords || [])
+      .map((item) => normalizeText(item))
+      .filter((item) => item.length > 0);
+  if (keyList.length === 0) {
+    return null;
+  }
+
+  try {
+    const snap = await db
+        .collection("creatorPosters")
+        .where("status", "==", "approved")
+        .orderBy("createdAt", "desc")
+        .limit(180)
+        .get();
+
+    for (const doc of snap.docs) {
+      const data = doc.data() || {};
+      const categoryId = normalizeText(data.categoryId);
+      const categoryLabel = normalizeText(data.categoryLabel);
+      const title = normalizeText(data.title);
+      const imageUrl = String(data.imageUrl || "").trim();
+      if (!imageUrl) {
+        continue;
+      }
+      const haystack = `${categoryId} ${categoryLabel} ${title}`;
+      const matched = keyList.some((keyword) => haystack.includes(keyword));
+      if (matched) {
+        return imageUrl;
+      }
+    }
+    return null;
+  } catch (error) {
+    logger.warn("getRelatedPosterImageByKeywords failed", error);
+    return null;
+  }
+}
+
+async function pickImageForReminder(keywords) {
+  const related = await getRelatedPosterImageByKeywords(keywords);
+  if (related) {
+    return related;
+  }
+  return getPrimaryBannerImage();
 }
 
 function daysUntilEvent(month, day, now = new Date()) {
@@ -298,7 +386,11 @@ exports.dailyGoodMorningReminder = onSchedule(
       timeZone: "Asia/Kolkata",
     },
     async () => {
-      const imageUrl = await getPrimaryBannerImage();
+      const imageUrl = await pickImageForReminder([
+        "good morning",
+        "morning",
+        "suprabhatam",
+      ]);
       await sendTopicReminder({
         title: "Good Morning",
         body: "Good morning poster ready ga undi, share cheyyandi.",
@@ -314,7 +406,10 @@ exports.dailyGoodAfternoonReminder = onSchedule(
       timeZone: "Asia/Kolkata",
     },
     async () => {
-      const imageUrl = await getPrimaryBannerImage();
+      const imageUrl = await pickImageForReminder([
+        "good afternoon",
+        "afternoon",
+      ]);
       await sendTopicReminder({
         title: "Good Afternoon",
         body: "Good afternoon poster ready ga undi, share cheyyandi.",
@@ -330,7 +425,10 @@ exports.dailyGoodNightReminder = onSchedule(
       timeZone: "Asia/Kolkata",
     },
     async () => {
-      const imageUrl = await getPrimaryBannerImage();
+      const imageUrl = await pickImageForReminder([
+        "good night",
+        "night",
+      ]);
       await sendTopicReminder({
         title: "Good Night",
         body: "Good night poster ready ga undi, share cheyyandi.",
@@ -342,21 +440,19 @@ exports.dailyGoodNightReminder = onSchedule(
 exports.dailyDynamicEventReminder = onSchedule(
     {
       region: "asia-south1",
-      schedule: "0 8 * * *",
+      schedule: "30 7 * * *",
       timeZone: "Asia/Kolkata",
     },
     async () => {
       const now = new Date();
       const matchingEvents = dynamicEventCatalog.filter((event) => {
         const delta = daysUntilEvent(event.month, event.day, now);
-        return delta >= 0 && delta <= 2;
+        return delta === 1 || delta === 0;
       });
 
       if (matchingEvents.length === 0) {
         return;
       }
-
-      const imageUrl = await getPrimaryBannerImage();
 
       for (const event of matchingEvents) {
         const key = `${now.getFullYear()}-${event.id}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -367,9 +463,15 @@ exports.dailyDynamicEventReminder = onSchedule(
           continue;
         }
 
+        const imageUrl = await pickImageForReminder(event.keywords || [event.title]);
+
+        const eventTimingLabel = daysUntilEvent(event.month, event.day, now) === 1 ?
+          "repu" :
+          "ee roju";
+
         await sendTopicReminder({
           title: `${event.title} reminder`,
-          body: `${event.title} poster share cheyyadaniki ready ga undandi.`,
+          body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
           imageUrl,
         });
 

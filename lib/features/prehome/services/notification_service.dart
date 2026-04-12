@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mana_poster/app/navigation/app_navigator.dart';
 
 class NotificationService {
   NotificationService._();
@@ -47,6 +48,11 @@ class NotificationService {
     await messaging.subscribeToTopic('all_users');
 
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    final RemoteMessage? initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
+    }
 
     messaging.onTokenRefresh.listen((String token) {
       unawaited(_syncToken(token));
@@ -67,7 +73,15 @@ class NotificationService {
       android: androidSettings,
       iOS: DarwinInitializationSettings(),
     );
-    await _localNotifications.initialize(settings);
+    await _localNotifications.initialize(
+      settings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final String payload = response.payload ?? '';
+        if (payload.trim().toLowerCase() == 'home') {
+          _openHomeWithRetry();
+        }
+      },
+    );
 
     await _localNotifications
         .resolvePlatformSpecificImplementation<
@@ -174,6 +188,28 @@ class NotificationService {
     );
 
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-    await _localNotifications.show(id, title, body, details);
+    final String payload =
+        (message.data['route'] ?? '').toString().trim().toLowerCase() == 'home'
+            ? 'home'
+            : '';
+    await _localNotifications.show(id, title, body, details, payload: payload);
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final String route =
+        (message.data['route'] ?? '').toString().trim().toLowerCase();
+    if (route == 'home') {
+      _openHomeWithRetry();
+    }
+  }
+
+  void _openHomeWithRetry([int attempt = 0]) {
+    AppNavigator.openHome();
+    if (AppNavigator.navigatorKey.currentState != null || attempt >= 6) {
+      return;
+    }
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      _openHomeWithRetry(attempt + 1);
+    });
   }
 }

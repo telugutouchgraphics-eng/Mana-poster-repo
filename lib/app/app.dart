@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/theme/app_theme.dart';
 
@@ -42,6 +43,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
           language: _languageController.language,
           controller: _languageController,
           child: MaterialApp(
+            navigatorKey: AppNavigator.navigatorKey,
             debugShowCheckedModeBanner: false,
             showPerformanceOverlay: _showPerformanceOverlay,
             checkerboardRasterCacheImages: _showRasterCheckerboard,
