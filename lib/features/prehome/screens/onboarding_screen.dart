@@ -14,7 +14,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with AppLanguageStateMixin {
   final PageController _pageController = PageController();
   int _index = 0;
 

@@ -10,7 +10,8 @@ class LanguageSettingsScreen extends StatefulWidget {
   State<LanguageSettingsScreen> createState() => _LanguageSettingsScreenState();
 }
 
-class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
+class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
+    with AppLanguageStateMixin {
   late AppLanguage _selected;
 
   @override
@@ -28,12 +29,16 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF3F6FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
         title: Text(
           strings.languageSettingsTitle,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
         ),
       ),
       body: SafeArea(

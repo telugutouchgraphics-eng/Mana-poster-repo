@@ -106,6 +106,7 @@ async function sendTopicReminder({
     data: {
       click_action: "FLUTTER_NOTIFICATION_CLICK",
       route: "home",
+      imageUrl: imageUrl || "",
     },
   };
 
@@ -132,6 +133,7 @@ async function sendWelcomeToToken(token) {
       type: "welcome",
       click_action: "FLUTTER_NOTIFICATION_CLICK",
       route: "home",
+      imageUrl: imageUrl || "",
     },
   });
 }

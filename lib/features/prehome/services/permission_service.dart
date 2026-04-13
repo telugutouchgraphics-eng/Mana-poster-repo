@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 enum AppPermissionType { photos, notifications }
@@ -37,16 +34,27 @@ class PermissionSnapshot {
 }
 
 class PermissionService {
-  PermissionService({DeviceInfoPlugin? deviceInfo})
-    : _deviceInfo = deviceInfo ?? DeviceInfoPlugin();
+  PermissionService();
 
-  final DeviceInfoPlugin _deviceInfo;
+  PermissionSnapshot defaultSnapshot() {
+    return const PermissionSnapshot(
+      photos: AppPermissionState(
+        type: AppPermissionType.photos,
+        status: PermissionStatus.denied,
+      ),
+      notifications: AppPermissionState(
+        type: AppPermissionType.notifications,
+        status: PermissionStatus.denied,
+      ),
+    );
+  }
 
   Future<PermissionSnapshot> getSnapshot() async {
     final Permission photosPermission = await _resolvePhotosPermission();
-    final PermissionStatus photosStatus = await photosPermission.status;
-    final PermissionStatus notificationsStatus =
-        await Permission.notification.status;
+    final PermissionStatus photosStatus = await _safeStatus(photosPermission);
+    final PermissionStatus notificationsStatus = await _safeStatus(
+      Permission.notification,
+    );
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -62,27 +70,26 @@ class PermissionService {
 
   Future<PermissionSnapshot> requestEssentialPermissions() async {
     final Permission photosPermission = await _resolvePhotosPermission();
-
-    final Map<Permission, PermissionStatus> result = await <Permission>[
-      photosPermission,
+    final PermissionStatus photosStatus = await _safeRequest(photosPermission);
+    final PermissionStatus notificationsStatus = await _safeRequest(
       Permission.notification,
-    ].request();
+    );
 
     return PermissionSnapshot(
       photos: AppPermissionState(
         type: AppPermissionType.photos,
-        status: result[photosPermission] ?? PermissionStatus.denied,
+        status: photosStatus,
       ),
       notifications: AppPermissionState(
         type: AppPermissionType.notifications,
-        status: result[Permission.notification] ?? PermissionStatus.denied,
+        status: notificationsStatus,
       ),
     );
   }
 
   Future<PermissionStatus> requestSingle(AppPermissionType type) async {
     final Permission permission = await _permissionFor(type);
-    return permission.request();
+    return _safeRequest(permission);
   }
 
   Future<bool> openSettings() => openAppSettings();
@@ -97,14 +104,22 @@ class PermissionService {
   }
 
   Future<Permission> _resolvePhotosPermission() async {
-    if (!Platform.isAndroid) {
-      return Permission.photos;
-    }
+    return Permission.photos;
+  }
 
-    final AndroidDeviceInfo info = await _deviceInfo.androidInfo;
-    if (info.version.sdkInt >= 33) {
-      return Permission.photos;
+  Future<PermissionStatus> _safeStatus(Permission permission) async {
+    try {
+      return await permission.status;
+    } catch (_) {
+      return PermissionStatus.denied;
     }
-    return Permission.storage;
+  }
+
+  Future<PermissionStatus> _safeRequest(Permission permission) async {
+    try {
+      return await permission.request();
+    } catch (_) {
+      return PermissionStatus.denied;
+    }
   }
 }

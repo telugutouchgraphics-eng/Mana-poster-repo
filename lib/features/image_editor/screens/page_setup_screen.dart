@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 
@@ -12,7 +13,8 @@ class PageSetupScreen extends StatefulWidget {
   State<PageSetupScreen> createState() => _PageSetupScreenState();
 }
 
-class _PageSetupScreenState extends State<PageSetupScreen> {
+class _PageSetupScreenState extends State<PageSetupScreen>
+    with AppLanguageStateMixin {
   static const List<EditorPageConfig> _presets = <EditorPageConfig>[
     EditorPageConfig(name: 'Instagram Post', widthPx: 1080, heightPx: 1080),
     EditorPageConfig(name: 'Instagram Story', widthPx: 1080, heightPx: 1920),
@@ -27,7 +29,9 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
 
   final TextEditingController _widthController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
-  final TextEditingController _dpiController = TextEditingController(text: '300');
+  final TextEditingController _dpiController = TextEditingController(
+    text: '300',
+  );
 
   int? _selectedPresetIndex;
   _UnitMode _unitMode = _UnitMode.pixels;
@@ -57,6 +61,7 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
   }
 
   EditorPageConfig? _resolveConfig() {
+    final strings = context.strings;
     if (_selectedPresetIndex != null) {
       return _presets[_selectedPresetIndex!];
     }
@@ -70,7 +75,10 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
       final width = _parseInt(_widthController.text, 1080).clamp(320, 10000);
       final height = _parseInt(_heightController.text, 1080).clamp(320, 10000);
       return EditorPageConfig(
-        name: 'Custom ${width}x$height px',
+        name: strings.localized(
+          telugu: 'Custom ${width}x$height px',
+          english: 'Custom ${width}x$height px',
+        ),
         widthPx: width,
         heightPx: height,
       );
@@ -82,18 +90,27 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
     final widthPx = (widthIn * dpi).round().clamp(320, 10000);
     final heightPx = (heightIn * dpi).round().clamp(320, 10000);
     return EditorPageConfig(
-      name: 'Custom ${widthIn}x$heightIn in @${dpi.round()}dpi',
+      name: strings.localized(
+        telugu: 'Custom ${widthIn}x$heightIn in @${dpi.round()}dpi',
+        english: 'Custom ${widthIn}x$heightIn in @${dpi.round()}dpi',
+      ),
       widthPx: widthPx,
       heightPx: heightPx,
     );
   }
 
   void _openEditor() {
+    final strings = context.strings;
     final config = _resolveConfig();
     if (config == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preset select cheyyandi lekapothe custom size ivvandi'),
+        SnackBar(
+          content: Text(
+            strings.localized(
+              telugu: 'Preset select cheyyandi lekapothe custom size ivvandi',
+              english: 'Select a preset or enter a custom size',
+            ),
+          ),
         ),
       );
       return;
@@ -106,11 +123,9 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
   }
 
   void _skipToEditor() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const ImageEditorScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const ImageEditorScreen()));
   }
 
   @override
@@ -118,31 +133,39 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
     final theme = Theme.of(context);
     final unitLabel = _unitMode == _UnitMode.pixels ? 'px' : 'in';
     final resolved = _resolveConfig();
+    final strings = context.strings;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FF),
+      backgroundColor: const Color(0xFF09111F),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF09111F),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Page Setup',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        title: Text(
+          strings.localized(telugu: 'Page Setup', english: 'Page Setup'),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Color(0xFFF8FAFC),
+          ),
         ),
+        iconTheme: const IconThemeData(color: Color(0xFFF8FAFC)),
         actions: <Widget>[
           Padding(
             padding: const EdgeInsets.only(right: 10),
             child: TextButton(
               onPressed: _skipToEditor,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF4F46E5),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                foregroundColor: const Color(0xFFE2E8F0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
                 ),
-                backgroundColor: Colors.white.withValues(alpha: 0.72),
+                backgroundColor: const Color(0xFF141C2B),
               ),
-              child: const Text('Skip'),
+              child: Text(strings.localized(telugu: 'Skip', english: 'Skip')),
             ),
           ),
         ],
@@ -156,9 +179,9 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: <Color>[
-                    Color(0xFFF7F8FF),
-                    Color(0xFFF8FBFF),
-                    Color(0xFFFFF7FB),
+                    Color(0xFF09111F),
+                    Color(0xFF0F172A),
+                    Color(0xFF111827),
                   ],
                 ),
               ),
@@ -175,8 +198,8 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: <Color>[
-                      const Color(0xFF93C5FD).withValues(alpha: 0.22),
-                      const Color(0xFF93C5FD).withValues(alpha: 0),
+                      const Color(0xFF2563EB).withValues(alpha: 0.16),
+                      const Color(0xFF2563EB).withValues(alpha: 0),
                     ],
                   ),
                 ),
@@ -194,8 +217,8 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: <Color>[
-                      const Color(0xFFF9A8D4).withValues(alpha: 0.18),
-                      const Color(0xFFF9A8D4).withValues(alpha: 0),
+                      const Color(0xFF8B5CF6).withValues(alpha: 0.14),
+                      const Color(0xFF8B5CF6).withValues(alpha: 0),
                     ],
                   ),
                 ),
@@ -203,7 +226,7 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
             ),
           ),
           ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 168),
             children: <Widget>[
               Container(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -212,17 +235,17 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: <Color>[
-                      Colors.white.withValues(alpha: 0.95),
-                      const Color(0xFFF2F7FF).withValues(alpha: 0.93),
-                      const Color(0xFFFFF4FA).withValues(alpha: 0.9),
+                      const Color(0xFF111827),
+                      const Color(0xFF172033),
+                      const Color(0xFF1E293B),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xE5DDE8F7)),
+                  border: Border.all(color: const Color(0xFF253048)),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x090F172A),
-                      blurRadius: 18,
+                      color: Color(0x33000000),
+                      blurRadius: 22,
                       offset: Offset(0, 6),
                     ),
                   ],
@@ -236,33 +259,44 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEDE9FE),
+                        color: const Color(0xFF23163A),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
-                        'Creative canvas setup',
-                        style: TextStyle(
-                          color: Color(0xFF5B21B6),
+                      child: Text(
+                        strings.localized(
+                          telugu: 'Creative canvas setup',
+                          english: 'Creative canvas setup',
+                        ),
+                        style: const TextStyle(
+                          color: Color(0xFFC4B5FD),
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                     const SizedBox(height: 14),
-                    const Text(
-                      'Choose your canvas',
-                      style: TextStyle(
-                        color: Color(0xFF0F172A),
+                    Text(
+                      strings.localized(
+                        telugu: 'Choose your canvas',
+                        english: 'Choose your canvas',
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFFF8FAFC),
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.6,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Start fast with joyful social presets or enter exact dimensions for print and custom designs.',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
+                    Text(
+                      strings.localized(
+                        telugu:
+                            'Social presets tho fast ga start avvandi leda print and custom designs kosam exact dimensions ivvandi.',
+                        english:
+                            'Start fast with social presets or enter exact dimensions for print and custom designs.',
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
                         fontSize: 13.5,
                         height: 1.45,
                       ),
@@ -272,8 +306,14 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
               ),
               const SizedBox(height: 18),
               _SetupSection(
-                title: 'Quick Presets',
-                subtitle: 'Social media and print-ready sizes',
+                title: strings.localized(
+                  telugu: 'Quick Presets',
+                  english: 'Quick Presets',
+                ),
+                subtitle: strings.localized(
+                  telugu: 'Social media and print-ready sizes',
+                  english: 'Social media and print-ready sizes',
+                ),
                 child: Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -290,8 +330,14 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
               ),
               const SizedBox(height: 16),
               _SetupSection(
-                title: 'Custom Setup',
-                subtitle: 'Manual size input in pixels or inches',
+                title: strings.localized(
+                  telugu: 'Custom Setup',
+                  english: 'Custom Setup',
+                ),
+                subtitle: strings.localized(
+                  telugu: 'Manual size input in pixels or inches',
+                  english: 'Manual size input in pixels or inches',
+                ),
                 child: Column(
                   children: <Widget>[
                     Align(
@@ -310,7 +356,13 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                         selected: <_UnitMode>{_unitMode},
                         style: const ButtonStyle(
                           side: WidgetStatePropertyAll<BorderSide>(
-                            BorderSide(color: Color(0xFFD8E2F0)),
+                            BorderSide(color: Color(0xFF334155)),
+                          ),
+                          backgroundColor: WidgetStatePropertyAll<Color>(
+                            Color(0xFF0F172A),
+                          ),
+                          foregroundColor: WidgetStatePropertyAll<Color>(
+                            Color(0xFFF8FAFC),
                           ),
                         ),
                         onSelectionChanged: (value) {
@@ -324,7 +376,10 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                         Expanded(
                           child: _StyledInput(
                             controller: _widthController,
-                            label: 'Width ($unitLabel)',
+                            label: strings.localized(
+                              telugu: 'Width ($unitLabel)',
+                              english: 'Width ($unitLabel)',
+                            ),
                             onChanged: (_) {
                               if (_selectedPresetIndex != null) {
                                 setState(() => _selectedPresetIndex = null);
@@ -336,7 +391,10 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                         Expanded(
                           child: _StyledInput(
                             controller: _heightController,
-                            label: 'Height ($unitLabel)',
+                            label: strings.localized(
+                              telugu: 'Height ($unitLabel)',
+                              english: 'Height ($unitLabel)',
+                            ),
                             onChanged: (_) {
                               if (_selectedPresetIndex != null) {
                                 setState(() => _selectedPresetIndex = null);
@@ -358,98 +416,131 @@ class _PageSetupScreenState extends State<PageSetupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Container(
+            ],
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: SafeArea(
+              top: false,
+              child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Colors.white.withValues(alpha: 0.95),
-                      const Color(0xFFF4F8FF).withValues(alpha: 0.92),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xE3DFE7F5)),
+                  color: const Color(0xF0111826),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFF263246)),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x4A000000),
+                      blurRadius: 28,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: <Color>[
-                            Color(0xFF60A5FA),
-                            Color(0xFF8B5CF6),
-                          ],
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: <Color>[
+                                Color(0xFF2563EB),
+                                Color(0xFF7C3AED),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.crop_portrait_rounded,
+                            color: Colors.white,
+                            size: 21,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                resolved == null
+                                    ? strings.localized(
+                                        telugu: 'Canvas ఎంపిక కాలేదు',
+                                        english: 'No canvas selected',
+                                      )
+                                    : resolved.name,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFFF8FAFC),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                resolved == null
+                                    ? strings.localized(
+                                        telugu:
+                                            'Preset select cheyyandi leda direct editor open cheyyandi',
+                                        english:
+                                            'Select a preset or open the editor directly',
+                                      )
+                                    : '${resolved.widthPx} x ${resolved.heightPx} px',
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: _openEditor,
+                      icon: const Icon(Icons.auto_awesome_rounded),
+                      label: Text(
+                        strings.localized(
+                          telugu: 'Create Canvas',
+                          english: 'Create Canvas',
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.crop_portrait_rounded,
-                        color: Colors.white,
-                        size: 21,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(54),
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            resolved == null ? 'No canvas selected' : resolved.name,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            resolved == null
-                                ? 'Skip cheste empty editor open avutundi'
-                                : '${resolved.widthPx} x ${resolved.heightPx} px',
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 10),
+                    OutlinedButton(
+                      onPressed: _skipToEditor,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        backgroundColor: const Color(0xFF141C2B),
+                        foregroundColor: const Color(0xFFE2E8F0),
+                        side: const BorderSide(color: Color(0xFF334155)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(
+                        strings.localized(
+                          telugu: 'Skip & Open Editor',
+                          english: 'Skip & Open Editor',
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: _openEditor,
-                icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text('Create Canvas'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F46E5),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 17),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _skipToEditor,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.72),
-                  foregroundColor: const Color(0xFF334155),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: const BorderSide(color: Color(0xFFD8E2F0)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                child: const Text('Skip & Open Editor'),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -476,16 +567,13 @@ class _SetupSection extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.95),
-            const Color(0xFFF6FAFF).withValues(alpha: 0.92),
-          ],
+          colors: <Color>[const Color(0xFF111827), const Color(0xFF172033)],
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xE3DFE8F6)),
+        border: Border.all(color: const Color(0xFF253048)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x070F172A),
+            color: Color(0x24000000),
             blurRadius: 14,
             offset: Offset(0, 5),
           ),
@@ -499,16 +587,13 @@ class _SetupSection extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: Color(0xFFF8FAFC),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
           ),
           const SizedBox(height: 16),
           child,
@@ -544,24 +629,18 @@ class _PresetCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: selected
-                ? <Color>[
-                    const Color(0xFFEFF6FF),
-                    const Color(0xFFF5F3FF),
-                  ]
-                : <Color>[
-                    Colors.white,
-                    const Color(0xFFF8FBFF),
-                  ],
+                ? <Color>[const Color(0xFF172554), const Color(0xFF312E81)]
+                : <Color>[const Color(0xFF111827), const Color(0xFF162133)],
           ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? const Color(0xFF6366F1) : const Color(0xFFDCE4F0),
+            color: selected ? const Color(0xFF60A5FA) : const Color(0xFF334155),
             width: selected ? 1.4 : 1,
           ),
           boxShadow: selected
               ? const <BoxShadow>[
                   BoxShadow(
-                    color: Color(0x123B82F6),
+                    color: Color(0x222563EB),
                     blurRadius: 12,
                     offset: Offset(0, 4),
                   ),
@@ -577,9 +656,9 @@ class _PresetCard extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFDCE4F0)),
+                    border: Border.all(color: const Color(0xFF334155)),
                   ),
                   child: Center(
                     child: Container(
@@ -587,8 +666,8 @@ class _PresetCard extends StatelessWidget {
                       height: portrait ? 24 : 16,
                       decoration: BoxDecoration(
                         color: selected
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFFCBD5E1),
+                            ? const Color(0xFF60A5FA)
+                            : const Color(0xFF64748B),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -599,7 +678,7 @@ class _PresetCard extends StatelessWidget {
                   const Icon(
                     Icons.check_circle_rounded,
                     size: 20,
-                    color: Color(0xFF6366F1),
+                    color: Color(0xFF60A5FA),
                   ),
               ],
             ),
@@ -610,16 +689,13 @@ class _PresetCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color: Color(0xFFF8FAFC),
               ),
             ),
             const SizedBox(height: 6),
             Text(
               '${preset.widthPx} x ${preset.heightPx}',
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
             ),
           ],
         ),
@@ -650,20 +726,22 @@ class _StyledInput extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.84),
+        fillColor: const Color(0xFF0F172A),
+        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFD8E2F0)),
+          borderSide: const BorderSide(color: Color(0xFF334155)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFFD8E2F0)),
+          borderSide: const BorderSide(color: Color(0xFF334155)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF1D4ED8)),
+          borderSide: const BorderSide(color: Color(0xFF60A5FA)),
         ),
       ),
+      style: const TextStyle(color: Color(0xFFF8FAFC)),
     );
   }
 }

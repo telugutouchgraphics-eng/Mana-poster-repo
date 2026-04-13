@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
@@ -25,13 +27,17 @@ import '../models/elements_catalog.dart';
 import '../models/editor_page_config.dart';
 import '../services/background_removal_service.dart';
 import '../services/editor_draft_storage_service.dart';
+import '../services/eraser_controller.dart';
+import '../services/eraser_processor.dart';
+import '../widgets/eraser_overlay.dart';
 
 enum _CanvasLayerType { photo, text, sticker }
 
 enum _ExportImageFormat { png, pngTransparent, jpg }
 
 enum _EraserMode { erase, restore }
-enum _EraserControl { brushSize, softness, strength }
+
+enum _EraserControl { brushSize, hardness, strength }
 
 @immutable
 class _SnapGuideState {
@@ -165,38 +171,6 @@ class _SelectedPhotoRenderState {
     saturation.toStringAsFixed(4),
     blur.toStringAsFixed(4),
   );
-}
-
-@immutable
-class _EraserStrokeSegment {
-  const _EraserStrokeSegment({
-    required this.startNormalized,
-    required this.endNormalized,
-    required this.mode,
-    required this.brushSize,
-    required this.softness,
-    required this.strength,
-  });
-
-  final Offset startNormalized;
-  final Offset endNormalized;
-  final _EraserMode mode;
-  final double brushSize;
-  final double softness;
-  final double strength;
-
-  Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'sx': startNormalized.dx,
-      'sy': startNormalized.dy,
-      'ex': endNormalized.dx,
-      'ey': endNormalized.dy,
-      'mode': mode.name,
-      'brushSize': brushSize,
-      'softness': softness,
-      'strength': strength,
-    };
-  }
 }
 
 class _CanvasLayer {
@@ -463,10 +437,7 @@ class _CanvasBackgroundHistoryEntry extends _EditorHistoryEntry {
 
 @immutable
 class _EditorCommitState {
-  const _EditorCommitState({
-    required this.label,
-    required this.detail,
-  });
+  const _EditorCommitState({required this.label, required this.detail});
 
   final String label;
   final String detail;
@@ -496,8 +467,7 @@ class _PhotoLayerImageProviderCache {
     required Uint8List bytes,
     required int? cacheWidth,
   }) {
-    final key =
-        '${identityHashCode(bytes)}_${bytes.length}_${cacheWidth ?? 0}';
+    final key = '${identityHashCode(bytes)}_${bytes.length}_${cacheWidth ?? 0}';
     final existing = _providers.remove(key);
     if (existing != null) {
       _providers[key] = existing;
@@ -587,15 +557,15 @@ class ImageEditorScreen extends StatefulWidget {
 }
 
 class _ImageEditorScreenState extends State<ImageEditorScreen>
-    with SingleTickerProviderStateMixin {
-  static const double _topBarHeight = 58;
-  static const double _bottomBarHeight = 82;
-  static const double _cropBarHeight = 96;
-  static const double _adjustBarHeight = 214;
-  static const double _eraserBarHeight = 98;
-  static const double _floatingBarGap = 10;
-  static const double _photoControlsExtraHeight = 92;
-  static const double _textStyleBarHeight = 148;
+    with SingleTickerProviderStateMixin, AppLanguageStateMixin {
+  static const double _topBarHeight = 68;
+  static const double _bottomBarHeight = 92;
+  static const double _cropBarHeight = 90;
+  static const double _adjustBarHeight = 196;
+  static const double _eraserBarHeight = 92;
+  static const double _photoControlsExtraHeight = 84;
+  static const double _textStyleBarHeight = 140;
+  static const double _canvasChromeInset = 18;
   static const List<Color> _textColors = <Color>[
     Color(0xFF0F172A),
     Color(0xFF2563EB),
@@ -716,6 +686,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       const EditorDraftStorageService();
   final OfflineBackgroundRemovalService _backgroundRemovalService =
       const OfflineBackgroundRemovalService();
+  late final EraserController _eraserController;
 
   final List<_CanvasLayer> _layers = <_CanvasLayer>[];
   final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
@@ -782,13 +753,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _EraserMode _eraserMode = _EraserMode.erase;
   _EraserControl? _activeEraserControl;
   double _eraserBrushSize = 40;
-  double _eraserBrushSoftness = 0.65;
+  double _eraserBrushHardness = 0.35;
   double _eraserBrushStrength = 1;
-  ui.Image? _eraserPreviewImage;
-  final ValueNotifier<ui.Image?> _eraserPreviewNotifier =
-      ValueNotifier<ui.Image?>(null);
   final ValueNotifier<Offset?> _eraserBrushCursorNotifier =
       ValueNotifier<Offset?>(null);
+  final ValueNotifier<ui.Image?> _eraserPreviewImageNotifier =
+      ValueNotifier<ui.Image?>(null);
+  final ValueNotifier<ui.Image?> _eraserRestorePreviewImageNotifier =
+      ValueNotifier<ui.Image?>(null);
+  final ValueNotifier<EraserStrokeChunk?> _eraserActiveStrokeNotifier =
+      ValueNotifier<EraserStrokeChunk?>(null);
   final ValueNotifier<_SnapGuideState> _snapGuideNotifier =
       ValueNotifier<_SnapGuideState>(const _SnapGuideState.none());
   final ValueNotifier<_SelectedPhotoRenderState?> _selectedPhotoRenderNotifier =
@@ -797,13 +771,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ValueNotifier<_AdjustSessionState?>(null);
   final ValueNotifier<_EditorCommitState?> _commitStateNotifier =
       ValueNotifier<_EditorCommitState?>(null);
-  Offset? _eraserBrushLocalPosition;
-  Offset? _eraserLastImagePoint;
-  Timer? _eraserPreviewRefreshTimer;
-  bool _eraserPreviewRefreshing = false;
-  bool _eraserPreviewRefreshQueued = false;
-  final List<_EraserStrokeSegment> _eraserStrokeSegments =
-      <_EraserStrokeSegment>[];
   bool _isRestoringDraft = false;
   bool _pendingAutosave = false;
   Uint8List? _stageBackgroundImageBytes;
@@ -815,11 +782,19 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isTemplateHydrated = false;
   bool _isTemplateHydrationInProgress = false;
   bool _templateHydrationScheduled = false;
-  img.Image? _eraserFullResBaseImage;
-  img.Image? _eraserFullResRestoreSourceImage;
-  img.Image? _eraserPreviewWorkingImage;
-  img.Image? _eraserPreviewInitialImage;
-  img.Image? _eraserPreviewRestoreSourceImage;
+  Uint8List? _eraserSessionStartBytes;
+  Uint8List? _eraserSessionRestoreBytes;
+  Size _eraserSessionImagePixelSize = Size.zero;
+  Uint8List? _eraserPreviewSessionStartBytes;
+  Uint8List? _eraserPreviewBaseBytes;
+  Uint8List? _eraserPreviewRestoreBytes;
+  Size _eraserPreviewImagePixelSize = Size.zero;
+  bool _isEraserBakeInProgress = false;
+  bool _eraserBakeQueued = false;
+  bool _isEraserPreviewRendering = false;
+  bool _eraserPreviewRenderQueued = false;
+  int _eraserPreviewRevision = 0;
+  Timer? _eraserPreviewThrottleTimer;
 
   _CanvasLayer? get _selectedLayer {
     final selectedId = _selectedLayerId;
@@ -891,6 +866,167 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     return null;
   }
 
+  String _localizedEditorLabel(BuildContext context, String label) {
+    final strings = context.strings;
+    switch (label) {
+      case 'Add Photo':
+        return strings.localized(telugu: 'ఫోటో', english: 'Add Photo');
+      case 'Text':
+        return strings.localized(telugu: 'టెక్స్ట్', english: 'Text');
+      case 'Stickers':
+        return strings.localized(telugu: 'స్టికర్స్', english: 'Stickers');
+      case 'Background':
+        return strings.localized(
+          telugu: 'బ్యాక్‌గ్రౌండ్',
+          english: 'Background',
+        );
+      case 'Layers':
+        return strings.localized(telugu: 'లేయర్స్', english: 'Layers');
+      case 'Adjust':
+        return strings.localized(telugu: 'అడ్జస్ట్', english: 'Adjust');
+      case 'Crop':
+        return strings.localized(telugu: 'క్రాప్', english: 'Crop');
+      case 'Eraser':
+        return strings.localized(telugu: 'ఈరేసర్', english: 'Eraser');
+      case 'Remove BG':
+        return strings.localized(telugu: 'బీజీ తొలగింపు', english: 'Remove BG');
+      case 'Removing...':
+        return strings.localized(
+          telugu: 'తొలగిస్తోంది...',
+          english: 'Removing...',
+        );
+      case 'Edit':
+        return strings.localized(telugu: 'ఎడిట్', english: 'Edit');
+      case 'Fonts':
+        return strings.localized(telugu: 'ఫాంట్స్', english: 'Fonts');
+      case 'Options':
+        return strings.localized(telugu: 'ఆప్షన్స్', english: 'Options');
+      case 'Back':
+        return strings.localized(telugu: 'వెనక్కి', english: 'Back');
+      case 'Undo':
+        return strings.localized(telugu: 'అన్డు', english: 'Undo');
+      case 'Redo':
+        return strings.localized(telugu: 'రీడో', english: 'Redo');
+      case 'Drafts':
+        return strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts');
+      case 'Export':
+        return strings.localized(telugu: 'ఎగుమతి', english: 'Export');
+      case 'Saving...':
+        return strings.localized(
+          telugu: 'సేవ్ అవుతోంది...',
+          english: 'Saving...',
+        );
+      case 'Send back':
+        return strings.localized(telugu: 'వెనక్కి పంపు', english: 'Send back');
+      case 'Bring front':
+        return strings.localized(
+          telugu: 'ముందుకు తీసుకురా',
+          english: 'Bring front',
+        );
+      case 'Duplicate selected':
+        return strings.localized(
+          telugu: 'డూప్లికేట్',
+          english: 'Duplicate selected',
+        );
+      case 'Delete selected':
+        return strings.localized(telugu: 'డిలీట్', english: 'Delete selected');
+      case 'Brush':
+        return strings.localized(telugu: 'బ్రష్', english: 'Brush');
+      case 'Soft':
+        return strings.localized(telugu: 'సాఫ్ట్', english: 'Soft');
+      case 'Strength':
+        return strings.localized(telugu: 'స్ట్రెంగ్త్', english: 'Strength');
+      case 'Reset':
+        return strings.localized(telugu: 'రిసెట్', english: 'Reset');
+      case 'Apply':
+        return strings.localized(telugu: 'అప్లై', english: 'Apply');
+      case 'Applying...':
+        return strings.localized(
+          telugu: 'అప్లై అవుతోంది...',
+          english: 'Applying...',
+        );
+      case 'Erase':
+        return strings.localized(telugu: 'తొలగించు', english: 'Erase');
+      case 'Restore':
+        return strings.localized(telugu: 'తిరిగి తెచ్చు', english: 'Restore');
+      case 'Brightness':
+        return strings.localized(telugu: 'బ్రైట్‌నెస్', english: 'Brightness');
+      case 'Contrast':
+        return strings.localized(telugu: 'కాంట్రాస్ట్', english: 'Contrast');
+      case 'Saturation':
+        return strings.localized(telugu: 'సాచురేషన్', english: 'Saturation');
+      case 'Blur':
+        return strings.localized(telugu: 'బ్లర్', english: 'Blur');
+      case 'Free':
+        return strings.localized(telugu: 'ఫ్రీ', english: 'Free');
+      case 'Elements':
+        return strings.localized(telugu: 'ఎలిమెంట్స్', english: 'Elements');
+      case 'Search elements':
+        return strings.localized(
+          telugu: 'ఎలిమెంట్స్ వెతకండి',
+          english: 'Search elements',
+        );
+      case 'Photo quick actions':
+        return strings.localized(
+          telugu: 'ఫోటో త్వరిత చర్యలు',
+          english: 'Photo quick actions',
+        );
+      case 'Selected photo':
+        return strings.localized(
+          telugu: 'ఎంచుకున్న ఫోటో',
+          english: 'Selected photo',
+        );
+      case 'Opacity':
+        return strings.localized(telugu: 'అపాసిటీ', english: 'Opacity');
+      case 'Text tools':
+        return strings.localized(
+          telugu: 'టెక్స్ట్ టూల్స్',
+          english: 'Text tools',
+        );
+      case 'Image Editor':
+        return strings.localized(
+          telugu: 'ఇమేజ్ ఎడిటర్',
+          english: 'Image Editor',
+        );
+      case 'Poster workspace':
+        return strings.localized(
+          telugu: 'పోస్టర్ వర్క్‌స్పేస్',
+          english: 'Poster workspace',
+        );
+      case 'Crop mode':
+        return strings.localized(telugu: 'క్రాప్ మోడ్', english: 'Crop mode');
+      case 'Eraser mode':
+        return strings.localized(telugu: 'ఈరేసర్ మోడ్', english: 'Eraser mode');
+      case 'Adjust mode':
+        return strings.localized(
+          telugu: 'అడ్జస్ట్ మోడ్',
+          english: 'Adjust mode',
+        );
+      case 'Text styling':
+        return strings.localized(
+          telugu: 'టెక్స్ట్ స్టైలింగ్',
+          english: 'Text styling',
+        );
+      case 'Text selected':
+        return strings.localized(
+          telugu: 'టెక్స్ట్ ఎంపికైంది',
+          english: 'Text selected',
+        );
+      case 'Photo selected':
+        return strings.localized(
+          telugu: 'ఫోటో ఎంపికైంది',
+          english: 'Photo selected',
+        );
+      case 'Object selected':
+        return strings.localized(
+          telugu: 'ఆబ్జెక్ట్ ఎంపికైంది',
+          english: 'Object selected',
+        );
+      default:
+        return label;
+    }
+  }
+
   Color get _activeModeAccent {
     if (_isCropMode) {
       return const Color(0xFF2563EB);
@@ -938,6 +1074,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   void initState() {
     super.initState();
+    _eraserController = EraserController(checkpointEveryStrokes: 1);
     _photoGlideController =
         AnimationController(
             vsync: this,
@@ -952,7 +1089,23 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             }
           });
     _pageAspectRatio = widget.pageConfig?.aspectRatio;
-    _backgroundRemoverInitialization = BackgroundRemover.instance.initializeOrt();
+    _backgroundRemoverInitialization = BackgroundRemover.instance
+        .initializeOrt();
+    unawaited(
+      _eraserController.loadPreferences().then((_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _eraserBrushSize = _eraserController.settings.size;
+          _eraserBrushHardness = _eraserController.settings.hardness;
+          _eraserBrushStrength = _eraserController.settings.strength;
+          _eraserMode = _eraserController.mode == EraserBlendMode.restore
+              ? _EraserMode.restore
+              : _EraserMode.erase;
+        });
+      }),
+    );
     _enterEditorImmersiveMode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.templateDocumentSource != null) {
@@ -989,8 +1142,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       }
       return;
     }
-    final liveAdjustState =
-        _isAdjustMode && _adjustSessionLayerId == layer.id
+    final liveAdjustState = _isAdjustMode && _adjustSessionLayerId == layer.id
         ? _adjustSessionNotifier.value
         : null;
     final nextState = _SelectedPhotoRenderState(
@@ -1046,8 +1198,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Template load fail ayindi. Malli try cheyyandi'),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'టెంప్లేట్ లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి',
+              english: 'Template failed to load. Please try again.',
+            ),
+          ),
         ),
       );
     }
@@ -1085,7 +1242,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   bool _looksLikeNetworkSource(String source) {
     final normalized = source.trim().toLowerCase();
-    return normalized.startsWith('http://') || normalized.startsWith('https://');
+    return normalized.startsWith('http://') ||
+        normalized.startsWith('https://');
   }
 
   Future<void> _hydrateTemplateDocument({
@@ -1166,7 +1324,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _layers
           ..clear()
           ..addAll(importedLayers);
-        _selectedLayerId = importedLayers.isEmpty ? null : importedLayers.last.id;
+        _selectedLayerId = importedLayers.isEmpty
+            ? null
+            : importedLayers.last.id;
         _canvasBackgroundColor = const Color(0xFFFFFFFF);
         _canvasBackgroundGradientIndex = -1;
         _stageBackgroundImageBytes = null;
@@ -1175,8 +1335,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       });
       if (importedLayers.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Template layers load kaaledu. Malli try cheyyandi'),
+          SnackBar(
+            content: Text(
+              context.strings.localized(
+                telugu: 'టెంప్లేట్ లేయర్లు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి',
+                english: 'Template layers failed to load. Please try again.',
+              ),
+            ),
           ),
         );
       }
@@ -1400,8 +1565,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_activeCommitJobKey != null) {
       if (showBusyMessage && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please wait, current editor job is still running'),
+          SnackBar(
+            content: Text(
+              context.strings.localized(
+                telugu: 'ప్రస్తుత ఎడిటర్ పని పూర్తయ్యే వరకు వేచి ఉండండి',
+                english: 'Please wait, current editor job is still running',
+              ),
+            ),
           ),
         );
       }
@@ -1639,7 +1809,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     required bool useAfter,
   }) {
     if (useAfter) {
-      final existingIndex = _layers.indexWhere((item) => item.id == entry.layer.id);
+      final existingIndex = _layers.indexWhere(
+        (item) => item.id == entry.layer.id,
+      );
       if (existingIndex == -1) {
         final insertIndex = entry.insertIndex.clamp(0, _layers.length);
         _layers.insert(insertIndex, _cloneLayer(entry.layer));
@@ -1664,7 +1836,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _layers.removeWhere((item) => item.id == entry.layer.id);
       _selectedLayerId = entry.afterSelectedLayerId;
     } else {
-      final existingIndex = _layers.indexWhere((item) => item.id == entry.layer.id);
+      final existingIndex = _layers.indexWhere(
+        (item) => item.id == entry.layer.id,
+      );
       if (existingIndex == -1) {
         final insertIndex = entry.deletedIndex.clamp(0, _layers.length);
         _layers.insert(insertIndex, _cloneLayer(entry.layer));
@@ -1704,7 +1878,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         ? entry.afterGradientIndex
         : entry.beforeGradientIndex;
     final bytes = useAfter ? entry.afterImageBytes : entry.beforeImageBytes;
-    _stageBackgroundImageBytes = bytes == null ? null : Uint8List.fromList(bytes);
+    _stageBackgroundImageBytes = bytes == null
+        ? null
+        : Uint8List.fromList(bytes);
   }
 
   void _closeTransientSessionsForHistory() {
@@ -1957,19 +2133,32 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       final shouldRestore = await showDialog<bool>(
         context: context,
         builder: (BuildContext context) {
+          final strings = context.strings;
           return AlertDialog(
-            title: const Text('Recover Draft'),
-            content: const Text(
-              'Last autosaved project dorikindi. Danni restore cheyala?',
+            title: Text(
+              strings.localized(
+                telugu: 'Recover Draft',
+                english: 'Recover Draft',
+              ),
+            ),
+            content: Text(
+              strings.localized(
+                telugu:
+                    'Last autosaved project dorikindi. Danni restore cheyala?',
+                english:
+                    'A last autosaved project was found. Do you want to restore it?',
+              ),
             ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('No'),
+                child: Text(strings.localized(telugu: 'No', english: 'No')),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Restore'),
+                child: Text(
+                  strings.localized(telugu: 'Restore', english: 'Restore'),
+                ),
               ),
             ],
           );
@@ -1988,13 +2177,27 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       await file.writeAsString(jsonEncode(_serializeEditorDraft()));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Draft saved in app storage')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'Draft saved in app storage',
+              english: 'Draft saved in app storage',
+            ),
+          ),
+        ),
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Draft save fail ayyindi')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'Draft save fail ayyindi',
+              english: 'Draft save failed',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -2016,8 +2219,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   void dispose() {
     _disposeEraserSessionResources();
-    _eraserPreviewNotifier.dispose();
+    _eraserController.dispose();
     _eraserBrushCursorNotifier.dispose();
+    _eraserPreviewImageNotifier.value?.dispose();
+    _eraserPreviewImageNotifier.dispose();
+    _eraserRestorePreviewImageNotifier.value?.dispose();
+    _eraserRestorePreviewImageNotifier.dispose();
+    _eraserActiveStrokeNotifier.dispose();
     _snapGuideNotifier.dispose();
     _selectedPhotoRenderNotifier.dispose();
     _adjustSessionNotifier.dispose();
@@ -2264,10 +2472,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
 
-    final afterLayer = layer.copyWith(
-      textColor: color,
-      textGradientIndex: -1,
-    );
+    final afterLayer = layer.copyWith(textColor: color, textGradientIndex: -1);
     _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
@@ -2511,6 +2716,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (BuildContext context) {
+        final strings = context.strings;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -2519,9 +2725,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               children: <Widget>[
                 ListTile(
                   leading: const Icon(Icons.image_rounded),
-                  title: const Text('PNG'),
-                  subtitle: const Text(
-                    'Transparent background, best for Remove BG',
+                  title: Text(strings.localized(telugu: 'PNG', english: 'PNG')),
+                  subtitle: Text(
+                    strings.localized(
+                      telugu: 'పారదర్శక బ్యాక్‌గ్రౌండ్, Remove BG కోసం ఉత్తమం',
+                      english: 'Transparent background, best for Remove BG',
+                    ),
                   ),
                   onTap: () => Navigator.of(
                     context,
@@ -2529,15 +2738,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.crop_square_rounded),
-                  title: const Text('PNG with Background'),
-                  subtitle: const Text('Includes poster/stage background'),
+                  title: Text(
+                    strings.localized(
+                      telugu: 'బ్యాక్‌గ్రౌండ్‌తో PNG',
+                      english: 'PNG with Background',
+                    ),
+                  ),
+                  subtitle: Text(
+                    strings.localized(
+                      telugu: 'పోస్టర్ లేదా స్టేజ్ బ్యాక్‌గ్రౌండ్ కూడా ఉంటుంది',
+                      english: 'Includes poster/stage background',
+                    ),
+                  ),
                   onTap: () =>
                       Navigator.of(context).pop(_ExportImageFormat.png),
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_rounded),
-                  title: const Text('JPG'),
-                  subtitle: const Text('Smaller file size'),
+                  title: Text(strings.localized(telugu: 'JPG', english: 'JPG')),
+                  subtitle: Text(
+                    strings.localized(
+                      telugu: 'చిన్న ఫైల్ సైజ్',
+                      english: 'Smaller file size',
+                    ),
+                  ),
                   onTap: () =>
                       Navigator.of(context).pop(_ExportImageFormat.jpg),
                 ),
@@ -2554,6 +2778,48 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return true;
     }
 
+    final strings = context.strings;
+    final freshDecision = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            strings.localized(
+              telugu: 'క్యాన్వాస్ ఖాళీగా ఉంది',
+              english: 'Canvas is empty',
+            ),
+          ),
+          content: Text(
+            strings.localized(
+              telugu:
+                  'డిజైన్ లేయర్లు లేవు. అయినా కూడా బ్యాక్‌గ్రౌండ్ మాత్రమే ఎగుమతి చేయాలా?',
+              english:
+                  'There are no design layers. Do you still want to export only the background?',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                strings.localized(telugu: 'వద్దు', english: 'Cancel'),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                strings.localized(
+                  telugu: 'అవును, ఎగుమతి చేయి',
+                  english: 'Yes, export',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    return freshDecision ?? false;
+
+    // ignore: dead_code
     final decision = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -2692,19 +2958,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   */
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
-    final bottomToolsHeight = _isCropMode
-        ? _cropBarHeight
-        : _isEraserMode
-        ? _eraserBarHeight
-        : _isAdjustMode
-        ? _adjustBarHeight
-        : _bottomBarHeight +
-              (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
-    final topInset = _topBarHeight + _floatingBarGap;
-    final bottomInset =
-        _floatingBarGap +
-        bottomToolsHeight +
-        (_hasSelectedTextLayer && _showTextControls ? _textStyleBarHeight : 0);
+    const topInset = _canvasChromeInset;
+    const bottomInset = _canvasChromeInset;
     final workspaceHeight = math.max(
       0.0,
       canvasSize.height - topInset - bottomInset,
@@ -2801,12 +3056,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_isExporting || _isCommitWorkerBusy) {
       return;
     }
+    final exportPermissionMessage = context.strings.localized(
+      telugu: 'గ్యాలరీ అనుమతి ఇవ్వండి, తర్వాత మళ్లీ ఎగుమతి చేయండి',
+      english: 'Allow gallery permission and try exporting again',
+    );
+    final exportBoundaryMessage = context.strings.localized(
+      telugu: 'ఎగుమతి ప్రాంతం సిద్ధంగా లేదు',
+      english: 'Export boundary not ready',
+    );
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     try {
       final exportedBytes = await _runQueuedCommitJob<Uint8List>(
         jobKey: 'export_${DateTime.now().microsecondsSinceEpoch}',
-        label: 'Exporting poster',
-        detail: 'Rendering and saving the final output',
+        label: context.strings.localized(
+          telugu: 'పోస్టర్ ఎగుమతి అవుతోంది',
+          english: 'Exporting poster',
+        ),
+        detail: context.strings.localized(
+          telugu: 'ఫైనల్ అవుట్‌పుట్‌ను రెండర్ చేసి సేవ్ చేస్తోంది',
+          english: 'Rendering and saving the final output',
+        ),
         onStart: () {
           _isExporting = true;
         },
@@ -2827,15 +3096,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           }
           final hasPermission = await _ensureGallerySavePermission();
           if (!hasPermission) {
-            throw Exception(
-              'Gallery permission ivvandi, taruvata malli export cheyyandi',
-            );
+            throw Exception(exportPermissionMessage);
           }
           final image = await _captureStageImage(
             pixelRatio: _exportPixelRatio(devicePixelRatio),
           );
           if (image == null) {
-            throw Exception('Export boundary not ready');
+            throw Exception(exportBoundaryMessage);
           }
           final shouldHaveTransparentBackground =
               format == _ExportImageFormat.pngTransparent;
@@ -2877,11 +3144,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ),
                 action: isSuccess
                     ? SnackBarAction(
-                        label: _isSharing ? 'Sharing...' : 'Share',
+                        label: context.strings.localized(
+                          telugu: _isSharing ? 'షేర్ అవుతోంది...' : 'షేర్',
+                          english: _isSharing ? 'Sharing...' : 'Share',
+                        ),
                         onPressed: _isSharing
                             ? () {}
-                            : () =>
-                                  _shareLatestPoster(exportedBytes, format: format),
+                            : () => _shareLatestPoster(
+                                exportedBytes,
+                                format: format,
+                              ),
                       )
                     : null,
               ),
@@ -2892,7 +3164,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       );
       if (exportedBytes == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export is already in progress')),
+          SnackBar(
+            content: Text(
+              context.strings.localized(
+                telugu: 'ఎగుమతి ఇప్పటికే జరుగుతోంది',
+                english: 'Export is already in progress',
+              ),
+            ),
+          ),
         );
       }
     } catch (error) {
@@ -2900,7 +3179,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     }
   }
@@ -2909,17 +3190,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (!Platform.isAndroid && !Platform.isIOS) {
       return true;
     }
-    final storageStatus = await Permission.storage.status;
     final photosStatus = await Permission.photos.status;
-    if (storageStatus.isGranted ||
-        photosStatus.isGranted ||
-        photosStatus.isLimited) {
+    if (photosStatus.isGranted || photosStatus.isLimited) {
       return true;
     }
-    final requested = await <Permission>[
-      Permission.storage,
-      Permission.photos,
-    ].request();
+    final requested = await <Permission>[Permission.photos].request();
     return requested.values.any(
       (status) => status.isGranted || status.isLimited,
     );
@@ -2993,8 +3268,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Share fail అయ్యింది, మళ్లీ ప్రయత్నించండి'),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'షేర్ కాలేదు, మళ్లీ ప్రయత్నించండి',
+              english: 'Share failed, please try again',
+            ),
+          ),
         ),
       );
     } finally {
@@ -3293,7 +3573,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final layer = _selectedLayer;
     if (layer == null || !layer.isPhoto) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a photo first')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -3371,7 +3658,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   void _applyAdjustSession() {
     final selectedId = _selectedLayerId;
-    if (!_isAdjustMode || selectedId == null || _adjustSessionLayerId != selectedId) {
+    if (!_isAdjustMode ||
+        selectedId == null ||
+        _adjustSessionLayerId != selectedId) {
       _discardAdjustSession();
       return;
     }
@@ -3384,8 +3673,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final hasChanges =
         (beforeLayer.photoBrightness - _adjustSessionBrightness).abs() >
             0.0001 ||
-        (beforeLayer.photoContrast - _adjustSessionContrast).abs() >
-            0.0001 ||
+        (beforeLayer.photoContrast - _adjustSessionContrast).abs() > 0.0001 ||
         (beforeLayer.photoSaturation - _adjustSessionSaturation).abs() >
             0.0001 ||
         (beforeLayer.photoBlur - _adjustSessionBlur).abs() > 0.0001;
@@ -3410,32 +3698,47 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final layer = _selectedLayer;
     if (layer == null || !layer.isPhoto || layer.bytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a photo first')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
       );
       return;
     }
-    final canDecodeCurrent = _decodeEditableImage(layer.bytes) != null;
-    final canDecodeOriginal =
-        _decodeEditableImage(layer.originalPhotoBytes ?? layer.bytes) != null;
-    if (!canDecodeCurrent && !canDecodeOriginal) {
+    final restoreBytes = layer.originalPhotoBytes ?? layer.bytes;
+    if (restoreBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selected image could not be loaded')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ఎంచుకున్న చిత్రం లోడ్ కాలేదు',
+              english: 'Selected image could not be loaded',
+            ),
+          ),
+        ),
       );
       return;
     }
 
     _disposeEraserSessionResources();
+    await _eraserController.loadPreferences();
     setState(() {
       _isEraserMode = true;
       _isEraserInitializing = true;
       _isEraserApplying = false;
       _eraserSessionLayerId = layer.id;
       _eraserInitError = null;
-      _eraserMode = _EraserMode.erase;
+      _eraserMode = _eraserController.mode == EraserBlendMode.restore
+          ? _EraserMode.restore
+          : _EraserMode.erase;
       _activeEraserControl = null;
-      _eraserBrushSize = 40;
-      _eraserBrushSoftness = 0.65;
-      _eraserBrushStrength = 1;
+      _eraserBrushSize = _eraserController.settings.size;
+      _eraserBrushHardness = _eraserController.settings.hardness;
+      _eraserBrushStrength = _eraserController.settings.strength;
       _showTextControls = false;
       _isAdjustMode = false;
       _adjustSessionLayerId = null;
@@ -3444,91 +3747,49 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _initializeEraserSessionForLayer(_CanvasLayer layer) async {
-    final currentImage = _decodeEditableImage(layer.bytes);
-    final sourceImage = _decodeEditableImage(
-      layer.originalPhotoBytes ?? layer.bytes,
-    );
-    final baseImage = currentImage ?? sourceImage;
-    if (baseImage == null) {
+    final currentBytes = layer.bytes;
+    final restoreBytes = layer.originalPhotoBytes ?? layer.bytes;
+    final decoded = currentBytes == null ? null : img.decodeImage(currentBytes);
+    if (currentBytes == null || restoreBytes == null || decoded == null) {
       if (!mounted) {
         return;
       }
       setState(() {
         _isEraserInitializing = false;
-        _eraserInitError = 'Selected image could not be loaded';
+        _eraserInitError = context.strings.localized(
+          telugu: 'ఎంచుకున్న చిత్రం లోడ్ కాలేదు',
+          english: 'Selected image could not be loaded',
+        );
       });
       return;
     }
-
-    _eraserFullResBaseImage = _cloneEditableImage(baseImage);
-    img.Image restoreImage = sourceImage != null
-        ? _cloneEditableImage(sourceImage)
-        : _cloneEditableImage(baseImage);
-    if (restoreImage.width != _eraserFullResBaseImage!.width ||
-        restoreImage.height != _eraserFullResBaseImage!.height) {
-      restoreImage = img.copyResize(
-        restoreImage,
-        width: _eraserFullResBaseImage!.width,
-        height: _eraserFullResBaseImage!.height,
-        interpolation: img.Interpolation.linear,
-      ).convert(numChannels: 4);
-    }
-    _eraserFullResRestoreSourceImage = restoreImage;
-
-    final previewBase = _createEraserPreviewImage(baseImage);
-    var previewRestore = _createEraserPreviewImage(restoreImage);
-    if (previewRestore.width != previewBase.width ||
-        previewRestore.height != previewBase.height) {
-      previewRestore = img.copyResize(
-        previewRestore,
-        width: previewBase.width,
-        height: previewBase.height,
-        interpolation: img.Interpolation.linear,
-      ).convert(numChannels: 4);
-    }
-    _eraserPreviewWorkingImage = _cloneEditableImage(previewBase);
-    _eraserPreviewInitialImage = _cloneEditableImage(previewBase);
-    _eraserPreviewRestoreSourceImage = _cloneEditableImage(previewRestore);
-    _eraserStrokeSegments.clear();
-    await _refreshEraserPreviewNow();
+    _eraserController.startSession(currentBytes);
+    _eraserSessionStartBytes = Uint8List.fromList(currentBytes);
+    _eraserSessionRestoreBytes = Uint8List.fromList(restoreBytes);
+    _eraserSessionImagePixelSize = Size(
+      decoded.width.toDouble(),
+      decoded.height.toDouble(),
+    );
+    final previewCurrentBytes = _createEraserPreviewBytes(currentBytes);
+    final previewRestoreBytes = _createEraserPreviewBytes(restoreBytes);
+    final previewDecoded = img.decodeImage(previewCurrentBytes);
+    _eraserPreviewSessionStartBytes = Uint8List.fromList(previewCurrentBytes);
+    _eraserPreviewBaseBytes = Uint8List.fromList(previewCurrentBytes);
+    _eraserPreviewRestoreBytes = Uint8List.fromList(previewRestoreBytes);
+    _eraserPreviewImagePixelSize = previewDecoded == null
+        ? _eraserSessionImagePixelSize
+        : Size(
+            previewDecoded.width.toDouble(),
+            previewDecoded.height.toDouble(),
+          );
+    await _updateEraserPreviewImage(previewCurrentBytes);
+    await _updateEraserRestorePreviewImage(previewRestoreBytes);
     if (!mounted) {
       return;
     }
     setState(() {
       _isEraserInitializing = false;
     });
-  }
-
-  img.Image? _decodeEditableImage(Uint8List? bytes) {
-    if (bytes == null) {
-      return null;
-    }
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
-      return null;
-    }
-    return decoded.convert(numChannels: 4);
-  }
-
-  img.Image _cloneEditableImage(img.Image source) {
-    return img.Image.from(source).convert(numChannels: 4);
-  }
-
-  img.Image _createEraserPreviewImage(img.Image source) {
-    const previewMaxDimension = 1024;
-    final longest = math.max(source.width, source.height);
-    if (longest <= previewMaxDimension) {
-      return _cloneEditableImage(source);
-    }
-    final scale = previewMaxDimension / longest;
-    final width = math.max(320, (source.width * scale).round());
-    final height = math.max(320, (source.height * scale).round());
-    return img.copyResize(
-      source,
-      width: width,
-      height: height,
-      interpolation: img.Interpolation.average,
-    ).convert(numChannels: 4);
   }
 
   void _discardEraserSession() {
@@ -3546,46 +3807,79 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _eraserSessionLayerId = null;
       _activeEraserControl = null;
       _eraserInitError = null;
-      _eraserBrushLocalPosition = null;
-      _eraserLastImagePoint = null;
     });
   }
 
   void _disposeEraserSessionResources() {
-    _eraserPreviewRefreshTimer?.cancel();
-    _eraserPreviewRefreshTimer = null;
-    final oldPreview = _eraserPreviewImage;
-    _eraserPreviewImage = null;
-    final notifierOldPreview = _eraserPreviewNotifier.value;
-    _eraserPreviewNotifier.value = null;
-    if (!identical(notifierOldPreview, oldPreview)) {
-      notifierOldPreview?.dispose();
-    }
-    oldPreview?.dispose();
-    _eraserFullResBaseImage = null;
-    _eraserFullResRestoreSourceImage = null;
-    _eraserPreviewWorkingImage = null;
-    _eraserPreviewInitialImage = null;
-    _eraserPreviewRestoreSourceImage = null;
-    _eraserStrokeSegments.clear();
-    _eraserBrushLocalPosition = null;
+    _eraserPreviewRevision += 1;
+    _isEraserPreviewRendering = false;
+    _eraserPreviewRenderQueued = false;
+    _eraserController.resetSession();
+    _eraserSessionStartBytes = null;
+    _eraserSessionRestoreBytes = null;
+    _eraserSessionImagePixelSize = Size.zero;
+    _eraserPreviewSessionStartBytes = null;
+    _eraserPreviewBaseBytes = null;
+    _eraserPreviewRestoreBytes = null;
+    _eraserPreviewImagePixelSize = Size.zero;
     _eraserBrushCursorNotifier.value = null;
-    _eraserLastImagePoint = null;
-    _eraserPreviewRefreshing = false;
-    _eraserPreviewRefreshQueued = false;
+    _eraserActiveStrokeNotifier.value = null;
+    final oldPreview = _eraserPreviewImageNotifier.value;
+    _eraserPreviewImageNotifier.value = null;
+    oldPreview?.dispose();
+    final oldRestorePreview = _eraserRestorePreviewImageNotifier.value;
+    _eraserRestorePreviewImageNotifier.value = null;
+    oldRestorePreview?.dispose();
+    _isEraserBakeInProgress = false;
+    _eraserBakeQueued = false;
+    _eraserPreviewThrottleTimer?.cancel();
+    _eraserPreviewThrottleTimer = null;
   }
 
   void _resetEraserSession() {
-    final initialImage = _eraserPreviewInitialImage;
-    if (initialImage == null || !_isEraserMode || _isEraserApplying) {
+    if (!_isEraserMode || _isEraserApplying) {
       return;
     }
-    _eraserPreviewWorkingImage = _cloneEditableImage(initialImage);
-    _eraserStrokeSegments.clear();
-    _eraserLastImagePoint = null;
-    _eraserBrushLocalPosition = null;
-    _scheduleEraserPreviewRefresh();
+    _eraserController.resetSession();
+    final sessionStartBytes = _eraserSessionStartBytes;
+    if (sessionStartBytes != null) {
+      _eraserController.updateBaseBytes(sessionStartBytes);
+    }
+    _eraserPreviewThrottleTimer?.cancel();
+    _eraserPreviewThrottleTimer = null;
+    _eraserPreviewRevision += 1;
+    final previewBaseBytes = _eraserPreviewSessionStartBytes;
+    if (previewBaseBytes == null || previewBaseBytes.isEmpty) {
+      final oldPreview = _eraserPreviewImageNotifier.value;
+      _eraserPreviewImageNotifier.value = null;
+      oldPreview?.dispose();
+    } else {
+      _eraserPreviewBaseBytes = Uint8List.fromList(previewBaseBytes);
+      unawaited(_updateEraserPreviewImage(previewBaseBytes));
+    }
     setState(() {});
+  }
+
+  Uint8List _createEraserPreviewBytes(Uint8List bytes) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      return bytes;
+    }
+    const previewMaxDimension = 640;
+    final longest = math.max(decoded.width, decoded.height);
+    if (longest <= previewMaxDimension) {
+      return bytes;
+    }
+    final scale = previewMaxDimension / longest;
+    final width = math.max(256, (decoded.width * scale).round());
+    final height = math.max(256, (decoded.height * scale).round());
+    final resized = img.copyResize(
+      decoded,
+      width: width,
+      height: height,
+      interpolation: img.Interpolation.linear,
+    );
+    return Uint8List.fromList(img.encodePng(resized));
   }
 
   Future<void> _applyEraserSession() async {
@@ -3602,19 +3896,36 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _discardEraserSession();
       return;
     }
-    final fullResBase = _eraserFullResBaseImage;
-    final fullResRestore = _eraserFullResRestoreSourceImage;
-    if (fullResBase == null ||
-        fullResRestore == null ||
-        _eraserStrokeSegments.isEmpty) {
+    await _waitForEraserBakeIdle();
+    await _bakeEraserChunksIfNeeded(keepLastChunks: 0);
+    await _waitForEraserBakeIdle();
+    final restoreBytes = _eraserSessionRestoreBytes;
+    final sessionStartBytes = _eraserSessionStartBytes;
+    final baseBytes = _eraserController.baseBytes;
+    final pendingChunks = _eraserController.pendingChunks;
+    if (restoreBytes == null || baseBytes.isEmpty) {
       _discardEraserSession();
       return;
     }
     try {
-      final pngBytes = await _runQueuedCommitJob<Uint8List>(
+      final hasBaseChanges =
+          sessionStartBytes == null || !listEquals(sessionStartBytes, baseBytes);
+      if (pendingChunks.isEmpty && !hasBaseChanges) {
+        _discardEraserSession();
+        return;
+      }
+      final pngBytes = pendingChunks.isEmpty
+          ? baseBytes
+          : await _runQueuedCommitJob<Uint8List>(
         jobKey: 'eraser_$selectedId',
-        label: 'Applying eraser',
-        detail: 'Rebuilding transparent PNG for the selected layer',
+        label: context.strings.localized(
+          telugu: 'ఈరేసర్ అప్లై అవుతోంది',
+          english: 'Applying eraser',
+        ),
+        detail: context.strings.localized(
+          telugu: 'ఎంచుకున్న లేయర్ కోసం పారదర్శక PNG మళ్లీ తయారవుతోంది',
+          english: 'Rebuilding transparent PNG for the selected layer',
+        ),
         onStart: () {
           _isEraserApplying = true;
         },
@@ -3622,28 +3933,19 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           _isEraserApplying = false;
         },
         operation: () async {
-          final pageSize = _currentStageLogicalRect().size;
-          return compute(
-            _applyEraserSegmentsToPng,
-            <String, dynamic>{
-              'currentBytes': _layers[index].bytes,
-              'restoreBytes':
-                  _layers[index].originalPhotoBytes ?? _layers[index].bytes,
-              'segments': _eraserStrokeSegments
-                  .map((item) => item.toMap())
-                  .toList(),
-              'pageWidth': pageSize.width,
-              'pageHeight': pageSize.height,
-              'photoAspectRatio': _layers[index].photoAspectRatio,
-            },
-          );
+          return compute(applyEraserChunksToPng, <String, dynamic>{
+            'currentBytes': baseBytes,
+            'restoreBytes': restoreBytes,
+            'chunks': pendingChunks
+                .map((item) => item.toMap())
+                .toList(growable: false),
+          });
         },
       );
       if (pngBytes == null || !mounted) {
         return;
       }
-      final currentBytes = _layers[index].bytes;
-      if (currentBytes != null && listEquals(currentBytes, pngBytes)) {
+      if (listEquals(baseBytes, pngBytes) && !hasBaseChanges) {
         _discardEraserSession();
         return;
       }
@@ -3658,8 +3960,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _eraserSessionLayerId = null;
         _activeEraserControl = null;
         _eraserInitError = null;
-        _eraserBrushLocalPosition = null;
-        _eraserLastImagePoint = null;
       });
       _disposeEraserSessionResources();
     } catch (error) {
@@ -3670,69 +3970,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _isEraserApplying = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eraser apply failed: $error')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ఈరేసర్ అప్లై కాలేదు: $error',
+              english: 'Eraser apply failed: $error',
+            ),
+          ),
+        ),
       );
     }
-  }
-
-  void _scheduleEraserPreviewRefresh() {
-    if (_eraserPreviewRefreshTimer != null) {
-      return;
-    }
-    _eraserPreviewRefreshTimer = Timer(
-      const Duration(milliseconds: 16),
-      () {
-        _eraserPreviewRefreshTimer = null;
-        unawaited(_refreshEraserPreviewNow());
-      },
-    );
-  }
-
-  Future<void> _refreshEraserPreviewNow() async {
-    final workingImage = _eraserPreviewWorkingImage;
-    if (workingImage == null) {
-      return;
-    }
-    if (_eraserPreviewRefreshing) {
-      _eraserPreviewRefreshQueued = true;
-      return;
-    }
-    _eraserPreviewRefreshing = true;
-    try {
-      final preview = await _uiImageFromPackageImage(workingImage);
-      if (!mounted || !_isEraserMode) {
-        preview.dispose();
-        return;
-      }
-      final oldPreview = _eraserPreviewImage;
-      _eraserPreviewImage = preview;
-      final notifierOldPreview = _eraserPreviewNotifier.value;
-      _eraserPreviewNotifier.value = preview;
-      if (!identical(notifierOldPreview, oldPreview)) {
-        notifierOldPreview?.dispose();
-      }
-      oldPreview?.dispose();
-    } finally {
-      _eraserPreviewRefreshing = false;
-      if (_eraserPreviewRefreshQueued) {
-        _eraserPreviewRefreshQueued = false;
-        unawaited(_refreshEraserPreviewNow());
-      }
-    }
-  }
-
-  Future<ui.Image> _uiImageFromPackageImage(img.Image image) async {
-    final bytes = image.getBytes(order: img.ChannelOrder.rgba);
-    final completer = Completer<ui.Image>();
-    ui.decodeImageFromPixels(
-      bytes.buffer.asUint8List(),
-      image.width,
-      image.height,
-      ui.PixelFormat.rgba8888,
-      (ui.Image decoded) => completer.complete(decoded),
-      rowBytes: image.width * 4,
-    );
-    return completer.future;
   }
 
   Offset? _mapCanvasPointToSelectedImage({
@@ -3783,212 +4030,342 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     );
   }
 
-  void _handleEraserPanStart(
-    DragStartDetails details,
-    Rect pageRect,
-    Size pageSize,
-  ) {
-    final imagePixelSize = Size(
-      _eraserPreviewWorkingImage?.width.toDouble() ?? 0,
-      _eraserPreviewWorkingImage?.height.toDouble() ?? 0,
+  double _currentEraserZoomScale() {
+    final matrix = _transformationController.value;
+    final scale = math.sqrt(
+      (matrix.storage[0] * matrix.storage[0]) +
+          (matrix.storage[1] * matrix.storage[1]),
     );
+    return scale.clamp(0.2, 8.0);
+  }
+
+  EraserStrokePoint? _buildEraserStrokePoint({
+    required Offset localPosition,
+    required Rect pageRect,
+    required Size pageSize,
+  }) {
+    final imagePixelSize = _eraserSessionImagePixelSize;
     final mappedPoint = _mapCanvasPointToSelectedImage(
-      localPosition: details.localPosition,
+      localPosition: localPosition,
       pageRect: pageRect,
       pageSize: pageSize,
       imagePixelSize: imagePixelSize,
     );
     if (mappedPoint == null) {
-      return;
+      return null;
     }
-    _eraserLastImagePoint = mappedPoint;
-    _applyEraserStrokeSegment(
-      mappedPoint,
-      mappedPoint,
-      pageSize,
-      imagePixelSize,
-    );
-    _eraserBrushLocalPosition = details.localPosition;
-    _eraserBrushCursorNotifier.value = details.localPosition;
-  }
-
-  void _handleEraserPanUpdate(
-    DragUpdateDetails details,
-    Rect pageRect,
-    Size pageSize,
-  ) {
-    final imagePixelSize = Size(
-      _eraserPreviewWorkingImage?.width.toDouble() ?? 0,
-      _eraserPreviewWorkingImage?.height.toDouble() ?? 0,
-    );
-    final mappedPoint = _mapCanvasPointToSelectedImage(
-      localPosition: details.localPosition,
-      pageRect: pageRect,
-      pageSize: pageSize,
-      imagePixelSize: imagePixelSize,
-    );
-    if (mappedPoint == null) {
-      return;
-    }
-    final previousPoint = _eraserLastImagePoint ?? mappedPoint;
-    _eraserLastImagePoint = mappedPoint;
-    _applyEraserStrokeSegment(
-      previousPoint,
-      mappedPoint,
-      pageSize,
-      imagePixelSize,
-    );
-    final last = _eraserBrushLocalPosition;
-    if (last == null || (last - details.localPosition).distanceSquared > 16) {
-      _eraserBrushLocalPosition = details.localPosition;
-      _eraserBrushCursorNotifier.value = details.localPosition;
-    } else {
-      _eraserBrushLocalPosition = details.localPosition;
-      _eraserBrushCursorNotifier.value = details.localPosition;
-    }
-  }
-
-  void _handleEraserPanEnd() {
-    _eraserLastImagePoint = null;
-    _eraserBrushLocalPosition = null;
-    _eraserBrushCursorNotifier.value = null;
-  }
-
-  void _applyEraserStrokeSegment(
-    Offset start,
-    Offset end,
-    Size pageSize,
-    Size imagePixelSize,
-  ) {
-    final workingImage = _eraserPreviewWorkingImage;
-    final restoreImage = _eraserPreviewRestoreSourceImage;
-    if (workingImage == null || restoreImage == null) {
-      return;
-    }
-
     final selected = _selectedLayer;
     if (selected == null || !selected.isPhoto) {
-      return;
+      return null;
     }
-    _eraserStrokeSegments.add(
-      _EraserStrokeSegment(
-        startNormalized: Offset(
-          (start.dx / math.max(imagePixelSize.width - 1, 1)).clamp(0.0, 1.0),
-          (start.dy / math.max(imagePixelSize.height - 1, 1)).clamp(0.0, 1.0),
-        ),
-        endNormalized: Offset(
-          (end.dx / math.max(imagePixelSize.width - 1, 1)).clamp(0.0, 1.0),
-          (end.dy / math.max(imagePixelSize.height - 1, 1)).clamp(0.0, 1.0),
-        ),
-        mode: _eraserMode,
-        brushSize: _eraserBrushSize,
-        softness: _eraserBrushSoftness,
-        strength: _eraserBrushStrength,
-      ),
-    );
     final photoSize = _fitPhotoLayerSize(
       pageSize: pageSize,
       photoAspectRatio: selected.photoAspectRatio,
     );
     final scaleX = imagePixelSize.width / math.max(photoSize.width, 1);
     final scaleY = imagePixelSize.height / math.max(photoSize.height, 1);
+    final zoomScale = _currentEraserZoomScale();
     final radius = math.max(
-      1.0,
-      (_eraserBrushSize * 0.5) * ((scaleX + scaleY) / 2),
+      0.75,
+      ((_eraserBrushSize * 0.5) * ((scaleX + scaleY) / 2)) / zoomScale,
     );
-    final distance = (end - start).distance;
-    final steps = math.max(
-      1,
-      (distance / math.max(1.0, radius * 0.32)).ceil(),
+    return EraserStrokePoint(
+      normalized: Offset(
+        (mappedPoint.dx / math.max(imagePixelSize.width - 1, 1)).clamp(
+          0.0,
+          1.0,
+        ),
+        (mappedPoint.dy / math.max(imagePixelSize.height - 1, 1)).clamp(
+          0.0,
+          1.0,
+        ),
+      ),
+      radiusInImagePixels: radius,
+      hardness: _eraserBrushHardness,
+      strength: _eraserBrushStrength,
+      pressure: 1,
     );
-    for (var index = 0; index <= steps; index++) {
-      final t = steps == 0 ? 0.0 : index / steps;
-      final point = Offset(
-        ui.lerpDouble(start.dx, end.dx, t) ?? start.dx,
-        ui.lerpDouble(start.dy, end.dy, t) ?? start.dy,
-      );
-      _applyEraserStamp(
-        workingImage: workingImage,
-        restoreImage: restoreImage,
-        centerX: point.dx,
-        centerY: point.dy,
-        radius: radius,
-        mode: _eraserMode,
-        softness: _eraserBrushSoftness,
-        strength: _eraserBrushStrength,
-      );
-    }
-    _scheduleEraserPreviewRefresh();
   }
 
-  void _applyEraserStamp({
-    required img.Image workingImage,
-    required img.Image restoreImage,
-    required double centerX,
-    required double centerY,
-    required double radius,
-    required _EraserMode mode,
-    required double softness,
-    required double strength,
-  }) {
-    final left = math.max(0, (centerX - radius).floor());
-    final right = math.min(workingImage.width - 1, (centerX + radius).ceil());
-    final top = math.max(0, (centerY - radius).floor());
-    final bottom = math.min(workingImage.height - 1, (centerY + radius).ceil());
-    final softnessPower = ui.lerpDouble(
-      2.6,
-      0.7,
-      softness.clamp(0.0, 1.0),
-    )!;
+  void _handleEraserPanUpdate(
+    Offset localPosition,
+    Rect pageRect,
+    Size pageSize,
+  ) {
+    final point = _buildEraserStrokePoint(
+      localPosition: localPosition,
+      pageRect: pageRect,
+      pageSize: pageSize,
+    );
+    if (point == null) {
+      return;
+    }
+    _eraserController.appendInterpolatedStroke(point);
+    _eraserBrushCursorNotifier.value = localPosition;
+    _eraserActiveStrokeNotifier.value = _eraserController.activeStrokeChunk;
+    _scheduleEraserPreviewRender(activeOnly: true);
+  }
 
-    for (var y = top; y <= bottom; y++) {
-      for (var x = left; x <= right; x++) {
-        final dx = (x + 0.5) - centerX;
-        final dy = (y + 0.5) - centerY;
-        final distance = math.sqrt((dx * dx) + (dy * dy));
-        if (distance > radius) {
-          continue;
-        }
-        final normalized = 1 - (distance / radius);
-        final falloff = math.pow(
-          normalized.clamp(0.0, 1.0),
-          softnessPower,
-        ).toDouble();
-        final amount = (falloff * strength).clamp(0.0, 1.0);
-        if (amount <= 0.0001) {
-          continue;
-        }
+  void _handleEraserPanStart(
+    Offset localPosition,
+    Rect pageRect,
+    Size pageSize,
+  ) {
+    final point = _buildEraserStrokePoint(
+      localPosition: localPosition,
+      pageRect: pageRect,
+      pageSize: pageSize,
+    );
+    if (point == null) {
+      return;
+    }
+    _eraserController.beginStroke(point);
+    _eraserBrushCursorNotifier.value = localPosition;
+    _eraserActiveStrokeNotifier.value = _eraserController.activeStrokeChunk;
+    _scheduleEraserPreviewRender(activeOnly: true);
+  }
 
-        final currentPixel = workingImage.getPixel(x, y);
-        if (mode == _EraserMode.erase) {
-          final nextAlpha =
-              (currentPixel.a.toDouble() * (1 - amount)).round().clamp(0, 255);
-          workingImage.setPixelRgba(
-            x,
-            y,
-            currentPixel.r.toInt(),
-            currentPixel.g.toInt(),
-            currentPixel.b.toInt(),
-            nextAlpha,
-          );
-          continue;
-        }
+  void _handleEraserPanEnd() {
+    _eraserPreviewThrottleTimer?.cancel();
+    _eraserPreviewThrottleTimer = null;
+    _eraserPreviewRevision += 1;
+    final committed = _eraserController.endStroke();
+    _eraserBrushCursorNotifier.value = null;
+    _eraserActiveStrokeNotifier.value = null;
+    if (committed) {
+      unawaited(_commitLatestEraserChunkToPreview());
+      unawaited(_bakeEraserChunksIfNeeded());
+    } else {
+      _eraserController.cancelActiveStroke();
+      _eraserActiveStrokeNotifier.value = null;
+    }
+    setState(() {});
+  }
 
-        final sourcePixel = restoreImage.getPixel(x, y);
-        workingImage.setPixelRgba(
-          x,
-          y,
-          _blendInt(currentPixel.r.toInt(), sourcePixel.r.toInt(), amount),
-          _blendInt(currentPixel.g.toInt(), sourcePixel.g.toInt(), amount),
-          _blendInt(currentPixel.b.toInt(), sourcePixel.b.toInt(), amount),
-          _blendInt(currentPixel.a.toInt(), sourcePixel.a.toInt(), amount),
+  void _handleEraserScaleStart(ScaleStartDetails details) {
+    _handleSelectedLayerInteractionStart(details);
+  }
+
+  void _handleEraserScaleUpdate(ScaleUpdateDetails details) {
+    _handleSelectedLayerScaleUpdate(details);
+  }
+
+  void _handleEraserScaleEnd() {
+    _handleSelectedLayerInteractionEnd();
+    _eraserBrushCursorNotifier.value = null;
+  }
+
+  Future<void> _bakeEraserChunksIfNeeded({int keepLastChunks = 1}) async {
+    if (_isEraserBakeInProgress || _isEraserApplying || !_isEraserMode) {
+      _eraserBakeQueued = true;
+      return;
+    }
+    final restoreBytes = _eraserSessionRestoreBytes;
+    if (restoreBytes == null) {
+      return;
+    }
+    _isEraserBakeInProgress = true;
+    try {
+      while (mounted && _isEraserMode) {
+        final chunksToBake = _eraserController.takeChunksForBake(
+          keepLastChunks: keepLastChunks,
         );
+        if (chunksToBake.isEmpty) {
+          break;
+        }
+        final bakedBytes =
+            await compute(applyEraserChunksToPng, <String, dynamic>{
+              'currentBytes': _eraserController.baseBytes,
+              'restoreBytes': restoreBytes,
+              'chunks': chunksToBake
+                  .map((chunk) => chunk.toMap())
+                  .toList(growable: false),
+            });
+        if (!mounted || !_isEraserMode) {
+          break;
+        }
+        _eraserController.updateBaseBytes(bakedBytes);
+      }
+    } finally {
+      _isEraserBakeInProgress = false;
+      if (_eraserBakeQueued) {
+        _eraserBakeQueued = false;
+        if (mounted && _isEraserMode) {
+          unawaited(_bakeEraserChunksIfNeeded());
+        }
       }
     }
   }
 
-  int _blendInt(int from, int to, double weight) {
-    return _blendIntValue(from, to, weight);
+  void _scheduleEraserPreviewRender({bool activeOnly = false}) {
+    if (!_isEraserMode || _isEraserApplying) {
+      return;
+    }
+    if (_isEraserPreviewRendering ||
+        (_eraserPreviewThrottleTimer?.isActive ?? false)) {
+      _eraserPreviewRenderQueued = true;
+      return;
+    }
+    _eraserPreviewThrottleTimer = Timer(
+      const Duration(milliseconds: 16),
+      () {
+        final revision = ++_eraserPreviewRevision;
+        _isEraserPreviewRendering = true;
+        unawaited(_renderEraserPreview(revision, activeOnly: activeOnly));
+      },
+    );
+  }
+
+  Future<void> _renderEraserPreview(
+    int revision, {
+    required bool activeOnly,
+  }) async {
+    final restoreBytes = _eraserPreviewRestoreBytes;
+    final baseBytes = _eraserPreviewBaseBytes;
+    final activeChunk = _eraserController.activeStrokeChunk;
+    final chunks = activeOnly
+        ? <EraserStrokeChunk>[...?activeChunk == null ? null : <EraserStrokeChunk>[activeChunk]]
+        : _eraserController.chunksForPreview();
+    if (!_isEraserMode ||
+        _isEraserApplying ||
+        restoreBytes == null ||
+        baseBytes == null ||
+        baseBytes.isEmpty ||
+        chunks.isEmpty) {
+      return;
+    }
+    final radiusScale =
+        _eraserPreviewImagePixelSize.width > 0 &&
+            _eraserSessionImagePixelSize.width > 0
+        ? (_eraserPreviewImagePixelSize.width /
+                  _eraserSessionImagePixelSize.width)
+              .clamp(0.01, 1.0)
+        : 1.0;
+    final previewBytes =
+        await compute(applyEraserChunksToPng, <String, dynamic>{
+          'currentBytes': baseBytes,
+          'restoreBytes': restoreBytes,
+          'chunks': chunks.map((item) => item.toMap()).toList(growable: false),
+          'radiusScale': radiusScale,
+        });
+    if (!mounted || !_isEraserMode || _isEraserApplying) {
+      _isEraserPreviewRendering = false;
+      return;
+    }
+    if (revision == _eraserPreviewRevision) {
+      await _updateEraserPreviewImage(previewBytes);
+    }
+    _isEraserPreviewRendering = false;
+    if (_eraserPreviewRenderQueued && mounted && _isEraserMode) {
+      _eraserPreviewRenderQueued = false;
+      _scheduleEraserPreviewRender(
+        activeOnly: _eraserController.hasActiveStroke,
+      );
+    }
+  }
+
+  Future<void> _waitForEraserBakeIdle() async {
+    var spins = 0;
+    while (_isEraserBakeInProgress && spins < 120) {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      spins += 1;
+    }
+  }
+
+  Future<void> _commitLatestEraserChunkToPreview() async {
+    final chunk = _eraserController.takeLastCommittedChunk();
+    final restoreBytes = _eraserPreviewRestoreBytes;
+    final baseBytes = _eraserPreviewBaseBytes;
+    if (chunk == null ||
+        restoreBytes == null ||
+        baseBytes == null ||
+        baseBytes.isEmpty) {
+      return;
+    }
+    final radiusScale =
+        _eraserPreviewImagePixelSize.width > 0 &&
+            _eraserSessionImagePixelSize.width > 0
+        ? (_eraserPreviewImagePixelSize.width /
+                  _eraserSessionImagePixelSize.width)
+              .clamp(0.01, 1.0)
+        : 1.0;
+    final previewBytes =
+        await compute(applyEraserChunksToPng, <String, dynamic>{
+          'currentBytes': baseBytes,
+          'restoreBytes': restoreBytes,
+          'chunks': <Map<String, dynamic>>[chunk.toMap()],
+          'radiusScale': radiusScale,
+        });
+    if (!mounted || !_isEraserMode || _isEraserApplying) {
+      return;
+    }
+    _eraserPreviewBaseBytes = Uint8List.fromList(previewBytes);
+    await _updateEraserPreviewImage(previewBytes);
+  }
+
+  Future<void> _rebuildEraserPreviewFromCurrentState() async {
+    _eraserPreviewThrottleTimer?.cancel();
+    _eraserPreviewThrottleTimer = null;
+    _eraserPreviewRevision += 1;
+    final restoreBytes = _eraserPreviewRestoreBytes;
+    final currentBaseBytes = _eraserController.baseBytes;
+    if (restoreBytes == null || currentBaseBytes.isEmpty) {
+      return;
+    }
+    final previewBaseBytes = _createEraserPreviewBytes(currentBaseBytes);
+    final chunks = _eraserController.pendingChunks;
+    if (chunks.isEmpty) {
+      _eraserPreviewBaseBytes = Uint8List.fromList(previewBaseBytes);
+      await _updateEraserPreviewImage(previewBaseBytes);
+      return;
+    }
+    final radiusScale =
+        _eraserPreviewImagePixelSize.width > 0 &&
+            _eraserSessionImagePixelSize.width > 0
+        ? (_eraserPreviewImagePixelSize.width /
+                  _eraserSessionImagePixelSize.width)
+              .clamp(0.01, 1.0)
+        : 1.0;
+    final previewBytes =
+        await compute(applyEraserChunksToPng, <String, dynamic>{
+          'currentBytes': previewBaseBytes,
+          'restoreBytes': restoreBytes,
+          'chunks': chunks.map((item) => item.toMap()).toList(growable: false),
+          'radiusScale': radiusScale,
+        });
+    if (!mounted || !_isEraserMode) {
+      return;
+    }
+    _eraserPreviewBaseBytes = Uint8List.fromList(previewBytes);
+    await _updateEraserPreviewImage(previewBytes);
+  }
+
+  Future<void> _updateEraserPreviewImage(Uint8List bytes) async {
+    final decoded = await _uiImageFromEncodedBytes(bytes);
+    if (!mounted || !_isEraserMode) {
+      decoded.dispose();
+      return;
+    }
+    final oldPreview = _eraserPreviewImageNotifier.value;
+    _eraserPreviewImageNotifier.value = decoded;
+    oldPreview?.dispose();
+  }
+
+  Future<void> _updateEraserRestorePreviewImage(Uint8List bytes) async {
+    final decoded = await _uiImageFromEncodedBytes(bytes);
+    if (!mounted || !_isEraserMode) {
+      decoded.dispose();
+      return;
+    }
+    final oldPreview = _eraserRestorePreviewImageNotifier.value;
+    _eraserRestorePreviewImageNotifier.value = decoded;
+    oldPreview?.dispose();
+  }
+
+  Future<ui.Image> _uiImageFromEncodedBytes(Uint8List bytes) {
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromList(bytes, completer.complete);
+    return completer.future;
   }
 
   Future<void> _openFontPickerScreen() async {
@@ -4752,19 +5129,35 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final selectedId = _selectedLayerId;
     if (selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a photo first')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
       );
       return;
     }
     if (!_hasSelectedPhotoLayer) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a photo first')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
       );
       return;
     }
 
     final taskId = ++_removeBackgroundTaskId;
-    final initialLayerIndex = _layers.indexWhere((item) => item.id == selectedId);
+    final initialLayerIndex = _layers.indexWhere(
+      (item) => item.id == selectedId,
+    );
     if (initialLayerIndex == -1) {
       return;
     }
@@ -4773,7 +5166,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final sourceBytes = layer.bytes;
     if (sourceBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Source photo unavailable for Remove BG')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'Remove BG కోసం సోర్స్ ఫోటో అందుబాటులో లేదు',
+              english: 'Source photo unavailable for Remove BG',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -4781,8 +5181,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     try {
       final result = await _runQueuedCommitJob<BackgroundRemovalResult>(
         jobKey: 'remove_bg_$taskId',
-        label: 'Removing background',
-        detail: 'AI is processing the selected photo layer',
+        label: context.strings.localized(
+          telugu: 'బ్యాక్‌గ్రౌండ్ తొలగిస్తోంది',
+          english: 'Removing background',
+        ),
+        detail: context.strings.localized(
+          telugu: 'ఎంచుకున్న ఫోటో లేయర్‌ను AI ప్రాసెస్ చేస్తోంది',
+          english: 'AI is processing the selected photo layer',
+        ),
         onStart: () {
           _isRemovingBackground = true;
         },
@@ -4815,7 +5221,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Remove BG failed: ${error.toString()}'),
+          content: Text(
+            context.strings.localized(
+              telugu: 'Remove BG కాలేదు: ${error.toString()}',
+              english: 'Remove BG failed: ${error.toString()}',
+            ),
+          ),
         ),
       );
       return;
@@ -4826,8 +5237,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final selectedId = _selectedLayerId;
     if (selectedId == null || !_hasSelectedPhotoLayer || _isCropMode) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Crop kosam photo layer select cheyyandi'),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'క్రాప్ కోసం ఒక ఫోటో లేయర్ ఎంచుకోండి',
+              english: 'Select a photo layer for crop',
+            ),
+          ),
         ),
       );
       return;
@@ -4893,12 +5309,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         sessionBytes == null) {
       return;
     }
+    final cropPreviewUnavailableMessage = context.strings.localized(
+      telugu: 'క్రాప్ ప్రీవ్యూ అందుబాటులో లేదు',
+      english: 'Crop preview unavailable',
+    );
+    final cropEncodeFailedMessage = context.strings.localized(
+      telugu: 'క్రాప్ ఎన్‌కోడ్ కాలేదు',
+      english: 'Crop encode failed',
+    );
     ui.Image? image;
     try {
       final cropPayload = await _runQueuedCommitJob<Map<String, dynamic>>(
         jobKey: 'crop_$layerId',
-        label: 'Applying crop',
-        detail: 'Finalizing cropped layer preview',
+        label: context.strings.localized(
+          telugu: 'క్రాప్ అప్లై అవుతోంది',
+          english: 'Applying crop',
+        ),
+        detail: context.strings.localized(
+          telugu: 'క్రాప్ చేసిన లేయర్‌ను ఫైనల్ చేస్తోంది',
+          english: 'Finalizing cropped layer preview',
+        ),
         onStart: () {
           _isCropApplying = true;
         },
@@ -4910,12 +5340,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               _cropBoundaryKey.currentContext?.findRenderObject()
                   as RenderRepaintBoundary?;
           if (boundary == null) {
-            throw Exception('Crop preview unavailable');
+            throw Exception(cropPreviewUnavailableMessage);
           }
           image = await boundary.toImage(pixelRatio: 2.5);
-          final byteData = await image!.toByteData(format: ui.ImageByteFormat.png);
+          final byteData = await image!.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
           if (byteData == null || !mounted) {
-            throw Exception('Crop encode failed');
+            throw Exception(cropEncodeFailedMessage);
           }
           return compute(
             _prepareCropCommitPayload,
@@ -4955,7 +5387,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _isCropApplying = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Crop apply failed: $error')),
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'క్రాప్ అప్లై కాలేదు: $error',
+              english: 'Crop apply failed: $error',
+            ),
+          ),
+        ),
       );
     } finally {
       image?.dispose();
@@ -5154,6 +5593,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (BuildContext context) {
+        final strings = context.strings;
         final double height = math
             .min(MediaQuery.of(context).size.height * 0.65, 460)
             .toDouble();
@@ -5168,7 +5608,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                     child: Row(
                       children: <Widget>[
                         Text(
-                          'Layers',
+                          strings.localized(
+                            telugu: 'లేయర్స్',
+                            english: 'Layers',
+                          ),
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
@@ -5176,7 +5619,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         IconButton(
                           onPressed: () => Navigator.of(context).maybePop(),
                           icon: const Icon(Icons.close_rounded),
-                          tooltip: 'Close',
+                          tooltip: strings.localized(
+                            telugu: 'మూసివేయి',
+                            english: 'Close',
+                          ),
                         ),
                       ],
                     ),
@@ -5211,10 +5657,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                             ),
                             child: layer.isPhoto
                                 ? Image(
-                                    image: _PhotoLayerImageProviderCache.resolve(
-                                      bytes: layer.bytes!,
-                                      cacheWidth: 96,
-                                    ),
+                                    image:
+                                        _PhotoLayerImageProviderCache.resolve(
+                                          bytes: layer.bytes!,
+                                          cacheWidth: 96,
+                                        ),
                                     fit: BoxFit.cover,
                                     gaplessPlayback: true,
                                     filterQuality: FilterQuality.low,
@@ -5225,8 +5672,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     color: Color(0xFF334155),
                                   )
                                 : Center(
-                                    child: _ImageEditorScreenState
-                                        ._buildStickerVisual(
+                                    child:
+                                        _ImageEditorScreenState._buildStickerVisual(
                                           layer.sticker,
                                           fontSize: 22,
                                           fit: BoxFit.contain,
@@ -5236,16 +5683,28 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           ),
                           title: Text(
                             layer.isPhoto
-                                ? 'Photo ${index + 1}'
+                                ? strings.localized(
+                                    telugu: 'Photo ${index + 1}',
+                                    english: 'Photo ${index + 1}',
+                                  )
                                 : layer.isText
-                                ? 'Text ${index + 1}'
-                                : 'Sticker ${index + 1}',
+                                ? strings.localized(
+                                    telugu: 'Text ${index + 1}',
+                                    english: 'Text ${index + 1}',
+                                  )
+                                : strings.localized(
+                                    telugu: 'Sticker ${index + 1}',
+                                    english: 'Sticker ${index + 1}',
+                                  ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: isSelected
-                              ? const Text(
-                                  'Selected',
+                              ? Text(
+                                  strings.localized(
+                                    telugu: 'ఎంపికైంది',
+                                    english: 'Selected',
+                                  ),
                                   style: TextStyle(
                                     color: Color(0xFF2563EB),
                                     fontWeight: FontWeight.w600,
@@ -5269,7 +5728,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   icon: const Icon(
                                     Icons.delete_outline_rounded,
                                   ),
-                                  tooltip: 'Delete',
+                                  tooltip: strings.localized(
+                                    telugu: 'డిలీట్',
+                                    english: 'Delete',
+                                  ),
                                 ),
                                 ReorderableDragStartListener(
                                   index: index,
@@ -5323,7 +5785,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FF),
+      backgroundColor: const Color(0xFF060B16),
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -5340,16 +5802,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ? _adjustBarHeight
                 : _bottomBarHeight +
                       (_hasSelectedPhotoLayer ? _photoControlsExtraHeight : 0);
-            final reservedTopInset = _topBarHeight + _floatingBarGap;
-            final reservedBottomInset =
-                _floatingBarGap +
-                bottomToolsHeight +
-                (!_isCropMode &&
-                        !_isEraserMode &&
-                        _hasSelectedTextLayer &&
-                        _showTextControls
-                    ? _textStyleBarHeight
-                    : 0);
+            const reservedTopInset = _canvasChromeInset;
+            const reservedBottomInset = _canvasChromeInset;
             final activeModeLabel = _activeModeLabel;
             final showQuickHint =
                 _showJoyHint &&
@@ -5404,9 +5858,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: <Color>[
-                            Color(0xFFF8FBFF),
-                            Color(0xFFF3F8FF),
-                            Color(0xFFFFF8FB),
+                            Color(0xFF060B16),
+                            Color(0xFF0B1220),
+                            Color(0xFF111827),
                           ],
                         ),
                       ),
@@ -5424,8 +5878,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: <Color>[
-                            const Color(0xFF93C5FD).withValues(alpha: 0.25),
-                            const Color(0xFF93C5FD).withValues(alpha: 0),
+                            const Color(0xFF2563EB).withValues(alpha: 0.15),
+                            const Color(0xFF2563EB).withValues(alpha: 0),
                           ],
                         ),
                       ),
@@ -5443,8 +5897,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
                           colors: <Color>[
-                            const Color(0xFFF9A8D4).withValues(alpha: 0.22),
-                            const Color(0xFFF9A8D4).withValues(alpha: 0),
+                            const Color(0xFF7C3AED).withValues(alpha: 0.14),
+                            const Color(0xFF7C3AED).withValues(alpha: 0),
                           ],
                         ),
                       ),
@@ -5510,12 +5964,19 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       showPageFramePreview: !_isExporting && !_isCapturingStage,
                       snapGuideListenable: _snapGuideNotifier,
                       snapGuidesEnabled:
-                          !_isCropMode &&
-                          !_isEraserMode &&
-                          !_isCapturingStage,
-                      selectedPhotoRenderListenable: _selectedPhotoRenderNotifier,
+                          !_isCropMode && !_isEraserMode && !_isCapturingStage,
+                      selectedPhotoRenderListenable:
+                          _selectedPhotoRenderNotifier,
                       eraserSessionLayerId: _eraserSessionLayerId,
-                      eraserPreviewImageListenable: _eraserPreviewNotifier,
+                      eraserPreviewImageListenable: _eraserPreviewImageNotifier,
+                      eraserRestorePreviewImageListenable:
+                          _eraserRestorePreviewImageNotifier,
+                      eraserActiveStrokeListenable:
+                          _eraserActiveStrokeNotifier,
+                      eraserPreviewBaseBytes:
+                          _eraserController.baseBytes.isEmpty
+                          ? null
+                          : _eraserController.baseBytes,
                     ),
                   ),
                 ),
@@ -5534,9 +5995,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                     ),
                   ),
                 Positioned(
-                  left: 12,
-                  right: 12,
-                  top: _floatingBarGap,
+                  left: 0,
+                  right: 0,
+                  top: 0,
                   child: RepaintBoundary(
                     child: _TopBar(
                       height: _topBarHeight,
@@ -5561,9 +6022,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   ),
                 ),
                 Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: bottomToolsHeight,
+                  left: 0,
+                  right: 0,
+                  bottom: bottomToolsHeight + 10,
                   child: RepaintBoundary(
                     child: AnimatedSlide(
                       duration: const Duration(milliseconds: 180),
@@ -5635,19 +6096,27 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ),
                 if (_isEraserMode)
                   Positioned.fill(
-                    child: _EraserCanvasGestureOverlay(
-                      canvasSize: Size(constraints.maxWidth, constraints.maxHeight),
+                    child: EraserOverlay(
+                      canvasSize: Size(
+                        constraints.maxWidth,
+                        constraints.maxHeight,
+                      ),
                       topInset: reservedTopInset,
                       bottomInset: reservedBottomInset,
                       pageAspectRatio: _pageAspectRatio,
                       brushSize: _eraserBrushSize,
                       brushCenterListenable: _eraserBrushCursorNotifier,
-                      mode: _eraserMode,
+                      mode: _eraserMode == _EraserMode.restore
+                          ? EraserBlendMode.restore
+                          : EraserBlendMode.erase,
                       isInitializing: _isEraserInitializing,
                       errorMessage: _eraserInitError,
-                      onPanStart: _handleEraserPanStart,
-                      onPanUpdate: _handleEraserPanUpdate,
-                      onPanEnd: _handleEraserPanEnd,
+                      onSingleFingerStart: _handleEraserPanStart,
+                      onSingleFingerUpdate: _handleEraserPanUpdate,
+                      onSingleFingerEnd: _handleEraserPanEnd,
+                      onScaleStart: _handleEraserScaleStart,
+                      onScaleUpdate: _handleEraserScaleUpdate,
+                      onScaleEnd: _handleEraserScaleEnd,
                     ),
                   ),
                 if (activeModeLabel != null)
@@ -5662,7 +6131,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                             ? _textStyleBarHeight + 10
                             : 10),
                     child: _EditorModeBadge(
-                      label: activeModeLabel,
+                      label: _localizedEditorLabel(context, activeModeLabel),
                       accent: _activeModeAccent,
                     ),
                   ),
@@ -5678,14 +6147,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 _showTextControls)
                             ? _textStyleBarHeight + 12
                             : 12),
-                    child: _EditorQuickHint(
-                      onDismiss: _dismissJoyHint,
-                    ),
+                    child: _EditorQuickHint(onDismiss: _dismissJoyHint),
                   ),
                 Positioned(
-                  left: 12,
-                  right: 12,
-                  bottom: _floatingBarGap,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   child: RepaintBoundary(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 220),
@@ -5707,198 +6174,227 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                             );
                           },
                       child: _isCropMode
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('crop-tools'),
-                            child: _CropBottomToolsBar(
-                              height: bottomToolsHeight,
-                              onBack: _discardCropSession,
-                              onReset: _resetCropSession,
-                              onApply: _applyCropSession,
-                              isApplying: _isCropApplying,
-                              selectedAspectRatio: _cropSessionAspectRatio,
-                              onAspectRatioChanged: _setCropAspectRatio,
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('crop-tools'),
+                              child: _CropBottomToolsBar(
+                                height: bottomToolsHeight,
+                                onBack: _discardCropSession,
+                                onReset: _resetCropSession,
+                                onApply: _applyCropSession,
+                                isApplying: _isCropApplying,
+                                selectedAspectRatio: _cropSessionAspectRatio,
+                                onAspectRatioChanged: _setCropAspectRatio,
+                              ),
+                            )
+                          : _isEraserMode
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('eraser-tools'),
+                              child: _EraserBottomToolsBar(
+                                height: bottomToolsHeight,
+                                mode: _eraserMode,
+                                brushSize: _eraserBrushSize,
+                                hardness: _eraserBrushHardness,
+                                strength: _eraserBrushStrength,
+                                activeControl: _activeEraserControl,
+                                isApplying: _isEraserApplying,
+                                isInitializing: _isEraserInitializing,
+                                canUndo: _eraserController.canUndo,
+                                canRedo: _eraserController.canRedo,
+                                onModeChanged: (_EraserMode mode) {
+                                  setState(() {
+                                    _eraserMode = mode;
+                                    _eraserController.setMode(
+                                      mode == _EraserMode.restore
+                                          ? EraserBlendMode.restore
+                                          : EraserBlendMode.erase,
+                                    );
+                                  });
+                                },
+                                onBrushSizeChanged: (value) {
+                                  setState(() {
+                                    _eraserBrushSize = value;
+                                    _eraserController.updateSettings(
+                                      size: value,
+                                    );
+                                  });
+                                },
+                                onHardnessChanged: (value) {
+                                  setState(() {
+                                    _eraserBrushHardness = value;
+                                    _eraserController.updateSettings(
+                                      hardness: value,
+                                    );
+                                  });
+                                },
+                                onStrengthChanged: (value) {
+                                  setState(() {
+                                    _eraserBrushStrength = value;
+                                    _eraserController.updateSettings(
+                                      strength: value,
+                                    );
+                                  });
+                                },
+                                onActiveControlChanged: (control) {
+                                  setState(() {
+                                    _activeEraserControl = control;
+                                  });
+                                },
+                                onUndo: () {
+                                  setState(() {
+                                    _eraserController.undo();
+                                  });
+                                  unawaited(_rebuildEraserPreviewFromCurrentState());
+                                },
+                                onRedo: () {
+                                  setState(() {
+                                    _eraserController.redo();
+                                  });
+                                  unawaited(_rebuildEraserPreviewFromCurrentState());
+                                },
+                                onBack: _discardEraserSession,
+                                onReset: _resetEraserSession,
+                                onApply: _applyEraserSession,
+                              ),
+                            )
+                          : _isAdjustMode
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('adjust-tools'),
+                              child: _AdjustBottomToolsBar(
+                                height: bottomToolsHeight,
+                                sessionListenable: _adjustSessionNotifier,
+                                onSessionChanged: _updateAdjustSessionState,
+                                onBack: _discardAdjustSession,
+                                onReset: _resetAdjustSession,
+                                onApply: _applyAdjustSession,
+                              ),
+                            )
+                          : _hasSelectedTextLayer
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('text-tools'),
+                              child: _TextBottomToolsBar(
+                                height: bottomToolsHeight,
+                                showOptionsSelected: _showTextControls,
+                                onEditTap: _openTextEditSheet,
+                                onFontsTap: _openFontPickerScreen,
+                                onToggleOptionsTap: () {
+                                  setState(() {
+                                    _showTextControls = !_showTextControls;
+                                  });
+                                },
+                              ),
+                            )
+                          : KeyedSubtree(
+                              key: const ValueKey<String>('main-tools'),
+                              child: _BottomToolsBar(
+                                height: bottomToolsHeight,
+                                onAddPhotoTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Add Photo', () async {
+                                      await _handleAddPhoto();
+                                    }),
+                                  );
+                                },
+                                onAddTextTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Text', () {
+                                      _handleTextToolTap();
+                                    }),
+                                  );
+                                },
+                                onStickerTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Stickers', () async {
+                                      await _openStickerPanel();
+                                    }),
+                                  );
+                                },
+                                onBackgroundTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Background', () async {
+                                      await _openBackgroundPanel();
+                                    }),
+                                  );
+                                },
+                                onLayersTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Layers', () async {
+                                      await _openLayersScreen();
+                                    }),
+                                  );
+                                },
+                                onAdjustTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Adjust', () {
+                                      _openAdjustPanel();
+                                    }),
+                                  );
+                                },
+                                onCropPhotoTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Crop', () async {
+                                      await _handleCropPhotoTap();
+                                    }),
+                                  );
+                                },
+                                onEraserTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Eraser', () async {
+                                      await _openEraserPanel();
+                                    }),
+                                  );
+                                },
+                                onRemoveBackgroundTap: () {
+                                  unawaited(
+                                    _runMainToolAction('Remove BG', () async {
+                                      await _handleRemoveBackgroundTap();
+                                    }),
+                                  );
+                                },
+                                activeToolLabel: _activeMainToolLabel,
+                                canAdjustPhoto: _hasSelectedPhotoLayer,
+                                canCropPhoto: _hasSelectedPhotoLayer,
+                                canEraserPhoto: true,
+                                canRemoveBackground:
+                                    _hasSelectedPhotoLayer &&
+                                    !_isRemovingBackground,
+                                isRemovingBackground: _isRemovingBackground,
+                                selectedPhotoLayer: _hasSelectedPhotoLayer
+                                    ? _selectedLayer
+                                    : null,
+                                onOpacityChanged: _setSelectedPhotoOpacity,
+                                onFlipHorizontalTap:
+                                    _toggleSelectedPhotoFlipHorizontal,
+                                onFlipVerticalTap:
+                                    _toggleSelectedPhotoFlipVertical,
+                                onRotateLeftTap: () =>
+                                    _rotateSelectedPhoto(-math.pi / 2),
+                                onRotateRightTap: () =>
+                                    _rotateSelectedPhoto(math.pi / 2),
+                              ),
                             ),
-                          )
-                        : _isEraserMode
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('eraser-tools'),
-                            child: _EraserBottomToolsBar(
-                              height: bottomToolsHeight,
-                              mode: _eraserMode,
-                              brushSize: _eraserBrushSize,
-                              softness: _eraserBrushSoftness,
-                              strength: _eraserBrushStrength,
-                              activeControl: _activeEraserControl,
-                              isApplying: _isEraserApplying,
-                              isInitializing: _isEraserInitializing,
-                              onModeChanged: (_EraserMode mode) {
-                                setState(() {
-                                  _eraserMode = mode;
-                                });
-                              },
-                              onBrushSizeChanged: (value) {
-                                setState(() {
-                                  _eraserBrushSize = value;
-                                });
-                              },
-                              onSoftnessChanged: (value) {
-                                setState(() {
-                                  _eraserBrushSoftness = value;
-                                });
-                              },
-                              onStrengthChanged: (value) {
-                                setState(() {
-                                  _eraserBrushStrength = value;
-                                });
-                              },
-                              onActiveControlChanged: (control) {
-                                setState(() {
-                                  _activeEraserControl = control;
-                                });
-                              },
-                              onBack: _discardEraserSession,
-                              onReset: _resetEraserSession,
-                              onApply: _applyEraserSession,
-                            ),
-                          )
-                        : _isAdjustMode
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('adjust-tools'),
-                            child: _AdjustBottomToolsBar(
-                              height: bottomToolsHeight,
-                              sessionListenable: _adjustSessionNotifier,
-                              onSessionChanged: _updateAdjustSessionState,
-                              onBack: _discardAdjustSession,
-                              onReset: _resetAdjustSession,
-                              onApply: _applyAdjustSession,
-                            ),
-                          )
-                        : _hasSelectedTextLayer
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('text-tools'),
-                            child: _TextBottomToolsBar(
-                              height: bottomToolsHeight,
-                              showOptionsSelected: _showTextControls,
-                              onEditTap: _openTextEditSheet,
-                              onFontsTap: _openFontPickerScreen,
-                              onToggleOptionsTap: () {
-                                setState(() {
-                                  _showTextControls = !_showTextControls;
-                                });
-                              },
-                            ),
-                          )
-                        : KeyedSubtree(
-                            key: const ValueKey<String>('main-tools'),
-                            child: _BottomToolsBar(
-                              height: bottomToolsHeight,
-                              onAddPhotoTap: () {
-                                unawaited(
-                                  _runMainToolAction('Add Photo', () async {
-                                    await _handleAddPhoto();
-                                  }),
-                                );
-                              },
-                              onAddTextTap: () {
-                                unawaited(
-                                  _runMainToolAction('Text', () {
-                                    _handleTextToolTap();
-                                  }),
-                                );
-                              },
-                              onStickerTap: () {
-                                unawaited(
-                                  _runMainToolAction('Stickers', () async {
-                                    await _openStickerPanel();
-                                  }),
-                                );
-                              },
-                              onBackgroundTap: () {
-                                unawaited(
-                                  _runMainToolAction('Background', () async {
-                                    await _openBackgroundPanel();
-                                  }),
-                                );
-                              },
-                              onLayersTap: () {
-                                unawaited(
-                                  _runMainToolAction('Layers', () async {
-                                    await _openLayersScreen();
-                                  }),
-                                );
-                              },
-                              onAdjustTap: () {
-                                unawaited(
-                                  _runMainToolAction('Adjust', () {
-                                    _openAdjustPanel();
-                                  }),
-                                );
-                              },
-                              onCropPhotoTap: () {
-                                unawaited(
-                                  _runMainToolAction('Crop', () async {
-                                    await _handleCropPhotoTap();
-                                  }),
-                                );
-                              },
-                              onEraserTap: () {
-                                unawaited(
-                                  _runMainToolAction('Eraser', () async {
-                                    await _openEraserPanel();
-                                  }),
-                                );
-                              },
-                              onRemoveBackgroundTap: () {
-                                unawaited(
-                                  _runMainToolAction('Remove BG', () async {
-                                    await _handleRemoveBackgroundTap();
-                                  }),
-                                );
-                              },
-                              activeToolLabel: _activeMainToolLabel,
-                              canAdjustPhoto: _hasSelectedPhotoLayer,
-                              canCropPhoto: _hasSelectedPhotoLayer,
-                              canEraserPhoto: true,
-                              canRemoveBackground:
-                                  _hasSelectedPhotoLayer &&
-                                  !_isRemovingBackground,
-                              isRemovingBackground: _isRemovingBackground,
-                              selectedPhotoLayer: _hasSelectedPhotoLayer
-                                  ? _selectedLayer
-                                  : null,
-                              onOpacityChanged: _setSelectedPhotoOpacity,
-                              onFlipHorizontalTap:
-                                  _toggleSelectedPhotoFlipHorizontal,
-                              onFlipVerticalTap:
-                                  _toggleSelectedPhotoFlipVertical,
-                              onRotateLeftTap: () =>
-                                  _rotateSelectedPhoto(-math.pi / 2),
-                              onRotateRightTap: () =>
-                                  _rotateSelectedPhoto(math.pi / 2),
-                            ),
-                          ),
-                        ),
+                    ),
                   ),
                 ),
                 Positioned.fill(
                   child: ValueListenableBuilder<_EditorCommitState?>(
                     valueListenable: _commitStateNotifier,
-                    builder: (
-                      BuildContext context,
-                      _EditorCommitState? commitState,
-                      Widget? child,
-                    ) {
-                      if (commitState == null) {
-                        return const SizedBox.shrink();
-                      }
-                      return AbsorbPointer(
-                        absorbing: true,
-                        child: _EditorCommitOverlay(
-                          label: commitState.label,
-                          detail: commitState.detail,
-                        ),
-                      );
-                    },
+                    builder:
+                        (
+                          BuildContext context,
+                          _EditorCommitState? commitState,
+                          Widget? child,
+                        ) {
+                          if (commitState == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return AbsorbPointer(
+                            absorbing: true,
+                            child: _EditorCommitOverlay(
+                              label: commitState.label,
+                              detail: commitState.detail,
+                            ),
+                          );
+                        },
                   ),
                 ),
               ],
@@ -5982,6 +6478,260 @@ Widget _buildAdjustedPhoto({
   return child;
 }
 
+// ignore: unused_element
+Widget _buildAdjustedRawPhoto({
+  required ui.Image image,
+  required double brightness,
+  required double contrast,
+  required double saturation,
+  required double blur,
+}) {
+  Widget child = RawImage(
+    image: image,
+    fit: BoxFit.contain,
+    filterQuality: FilterQuality.medium,
+  );
+
+  final blurSigma = _mapAdjustBlurToSigma(blur);
+  if (blurSigma > 0.01) {
+    child = ImageFiltered(
+      imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+      child: child,
+    );
+  }
+  final saturationMatrix = saturation == 1
+      ? null
+      : _saturationMatrix(saturation);
+  if (saturationMatrix != null) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(saturationMatrix),
+      child: child,
+    );
+  }
+  final brightnessContrastMatrix =
+      brightness.abs() < 0.0001 && (contrast - 1).abs() < 0.0001
+      ? null
+      : _brightnessContrastMatrix(brightness: brightness, contrast: contrast);
+  if (brightnessContrastMatrix != null) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(brightnessContrastMatrix),
+      child: child,
+    );
+  }
+  return child;
+}
+
+Widget _buildAdjustedEraserLivePhoto({
+  required ui.Image baseImage,
+  required ui.Image? restoreImage,
+  required EraserStrokeChunk? activeStroke,
+  required double brightness,
+  required double contrast,
+  required double saturation,
+  required double blur,
+}) {
+  Widget child = CustomPaint(
+    painter: _EraserLivePreviewPainter(
+      baseImage: baseImage,
+      restoreImage: restoreImage,
+      activeStroke: activeStroke,
+    ),
+    size: Size.infinite,
+  );
+
+  final blurSigma = _mapAdjustBlurToSigma(blur);
+  if (blurSigma > 0.01) {
+    child = ImageFiltered(
+      imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+      child: child,
+    );
+  }
+  final saturationMatrix = saturation == 1 ? null : _saturationMatrix(saturation);
+  if (saturationMatrix != null) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(saturationMatrix),
+      child: child,
+    );
+  }
+  final brightnessContrastMatrix =
+      brightness.abs() < 0.0001 && (contrast - 1).abs() < 0.0001
+      ? null
+      : _brightnessContrastMatrix(brightness: brightness, contrast: contrast);
+  if (brightnessContrastMatrix != null) {
+    child = ColorFiltered(
+      colorFilter: ColorFilter.matrix(brightnessContrastMatrix),
+      child: child,
+    );
+  }
+  return child;
+}
+
+class _EraserLivePhotoPreview extends StatelessWidget {
+  const _EraserLivePhotoPreview({
+    required this.previewImageListenable,
+    required this.restoreImageListenable,
+    required this.activeStrokeListenable,
+    required this.fallbackBytes,
+    required this.cacheWidth,
+    required this.brightness,
+    required this.contrast,
+    required this.saturation,
+    required this.blur,
+  });
+
+  final ValueListenable<ui.Image?> previewImageListenable;
+  final ValueListenable<ui.Image?> restoreImageListenable;
+  final ValueListenable<EraserStrokeChunk?> activeStrokeListenable;
+  final Uint8List fallbackBytes;
+  final int? cacheWidth;
+  final double brightness;
+  final double contrast;
+  final double saturation;
+  final double blur;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ui.Image?>(
+      valueListenable: previewImageListenable,
+      builder: (BuildContext context, ui.Image? previewImage, Widget? child) {
+        if (previewImage == null) {
+          return _buildAdjustedPhoto(
+            bytes: fallbackBytes,
+            cacheKey:
+                '${_photoBytesSignature(fallbackBytes)}_'
+                '${brightness.toStringAsFixed(3)}_'
+                '${contrast.toStringAsFixed(3)}_'
+                '${saturation.toStringAsFixed(3)}_'
+                '${blur.toStringAsFixed(3)}',
+            cacheWidth: cacheWidth,
+            brightness: brightness,
+            contrast: contrast,
+            saturation: saturation,
+            blur: blur,
+          );
+        }
+        return ValueListenableBuilder<ui.Image?>(
+          valueListenable: restoreImageListenable,
+          builder:
+              (BuildContext context, ui.Image? restoreImage, Widget? child) {
+                return ValueListenableBuilder<EraserStrokeChunk?>(
+                  valueListenable: activeStrokeListenable,
+                  builder:
+                      (
+                        BuildContext context,
+                        EraserStrokeChunk? activeStroke,
+                        Widget? child,
+                      ) {
+                        return _buildAdjustedEraserLivePhoto(
+                          baseImage: previewImage,
+                          restoreImage: restoreImage,
+                          activeStroke: activeStroke,
+                          brightness: brightness,
+                          contrast: contrast,
+                          saturation: saturation,
+                          blur: blur,
+                        );
+                      },
+                );
+              },
+        );
+      },
+    );
+  }
+}
+
+class _EraserLivePreviewPainter extends CustomPainter {
+  const _EraserLivePreviewPainter({
+    required this.baseImage,
+    required this.restoreImage,
+    required this.activeStroke,
+  });
+
+  final ui.Image baseImage;
+  final ui.Image? restoreImage;
+  final EraserStrokeChunk? activeStroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fitted = applyBoxFit(
+      BoxFit.contain,
+      Size(baseImage.width.toDouble(), baseImage.height.toDouble()),
+      size,
+    );
+    final destRect = Alignment.center.inscribe(fitted.destination, Offset.zero & size);
+    final srcRect = Offset.zero &
+        Size(baseImage.width.toDouble(), baseImage.height.toDouble());
+
+    final stroke = activeStroke;
+    if (stroke == null || stroke.points.isEmpty) {
+      canvas.drawImageRect(baseImage, srcRect, destRect, Paint());
+      return;
+    }
+
+    if (stroke.mode == EraserBlendMode.erase) {
+      canvas.saveLayer(destRect, Paint());
+      canvas.drawImageRect(baseImage, srcRect, destRect, Paint());
+      for (final point in stroke.points) {
+        final center = Offset(
+          destRect.left + (point.normalized.dx * destRect.width),
+          destRect.top + (point.normalized.dy * destRect.height),
+        );
+        final radius = point.radiusInImagePixels *
+            (destRect.width / math.max(baseImage.width.toDouble(), 1));
+        final blurSigma = (radius * (1 - point.hardness.clamp(0.0, 1.0)) * 0.45)
+            .clamp(0.0, 18.0);
+        final clearPaint = Paint()
+          ..blendMode = BlendMode.clear
+          ..color = Colors.black.withValues(alpha: point.strength.clamp(0.0, 1.0));
+        if (blurSigma > 0.01) {
+          clearPaint.maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma);
+        }
+        canvas.drawCircle(center, radius, clearPaint);
+      }
+      canvas.restore();
+      return;
+    }
+
+    canvas.drawImageRect(baseImage, srcRect, destRect, Paint());
+    if (restoreImage == null) {
+      return;
+    }
+    final restore = restoreImage!;
+    canvas.saveLayer(destRect, Paint());
+    canvas.drawImageRect(
+      restore,
+      Offset.zero & Size(restore.width.toDouble(), restore.height.toDouble()),
+      destRect,
+      Paint(),
+    );
+    for (final point in stroke.points) {
+      final center = Offset(
+        destRect.left + (point.normalized.dx * destRect.width),
+        destRect.top + (point.normalized.dy * destRect.height),
+      );
+      final radius = point.radiusInImagePixels *
+          (destRect.width / math.max(baseImage.width.toDouble(), 1));
+      final blurSigma = (radius * (1 - point.hardness.clamp(0.0, 1.0)) * 0.45)
+          .clamp(0.0, 18.0);
+      final maskPaint = Paint()
+        ..blendMode = BlendMode.dstIn
+        ..color = Colors.white.withValues(alpha: point.strength.clamp(0.0, 1.0));
+      if (blurSigma > 0.01) {
+        maskPaint.maskFilter = MaskFilter.blur(BlurStyle.normal, blurSigma);
+      }
+      canvas.drawCircle(center, radius, maskPaint);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _EraserLivePreviewPainter oldDelegate) {
+    return oldDelegate.baseImage != baseImage ||
+        oldDelegate.restoreImage != restoreImage ||
+        oldDelegate.activeStroke != activeStroke;
+  }
+}
+
 double _mapAdjustBlurToSigma(double blur) {
   final normalized = (blur / 10).clamp(0.0, 1.0);
   final eased = math.pow(normalized, 1.65).toDouble();
@@ -5996,10 +6746,26 @@ List<double> _brightnessContrastMatrix({
   final clampedBrightness = brightness.clamp(-1.0, 1.0);
   final bias = (clampedBrightness * 255) + ((1 - clampedContrast) * 128);
   return <double>[
-    clampedContrast, 0, 0, 0, bias,
-    0, clampedContrast, 0, 0, bias,
-    0, 0, clampedContrast, 0, bias,
-    0, 0, 0, 1, 0,
+    clampedContrast,
+    0,
+    0,
+    0,
+    bias,
+    0,
+    clampedContrast,
+    0,
+    0,
+    bias,
+    0,
+    0,
+    clampedContrast,
+    0,
+    bias,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 
@@ -6013,10 +6779,26 @@ List<double> _saturationMatrix(double saturation) {
   final g = inv * gw;
   final b = inv * bw;
   return <double>[
-    r + s, g, b, 0, 0,
-    r, g + s, b, 0, 0,
-    r, g, b + s, 0, 0,
-    0, 0, 0, 1, 0,
+    r + s,
+    g,
+    b,
+    0,
+    0,
+    r,
+    g + s,
+    b,
+    0,
+    0,
+    r,
+    g,
+    b + s,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 
@@ -6126,197 +6908,6 @@ Map<String, dynamic> _prepareCropCommitPayload(Uint8List pngBytes) {
   };
 }
 
-Uint8List _applyEraserSegmentsToPng(Map<String, dynamic> payload) {
-  final currentBytes = payload['currentBytes'] as Uint8List?;
-  final restoreBytes = payload['restoreBytes'] as Uint8List?;
-  final segments = (payload['segments'] as List<dynamic>? ?? const <dynamic>[]);
-  final pageWidth = (payload['pageWidth'] as num?)?.toDouble() ?? 0;
-  final pageHeight = (payload['pageHeight'] as num?)?.toDouble() ?? 0;
-  final photoAspectRatio = (payload['photoAspectRatio'] as num?)?.toDouble();
-
-  final currentDecoded = currentBytes == null ? null : img.decodeImage(currentBytes);
-  final restoreDecoded = restoreBytes == null ? null : img.decodeImage(restoreBytes);
-  if (currentDecoded == null) {
-    return currentBytes ?? Uint8List(0);
-  }
-
-  final workingImage = img.Image.from(currentDecoded).convert(numChannels: 4);
-  img.Image restoreImage = restoreDecoded != null
-      ? img.Image.from(restoreDecoded).convert(numChannels: 4)
-      : img.Image.from(currentDecoded).convert(numChannels: 4);
-  if (restoreImage.width != workingImage.width ||
-      restoreImage.height != workingImage.height) {
-    restoreImage = img.copyResize(
-      restoreImage,
-      width: workingImage.width,
-      height: workingImage.height,
-      interpolation: img.Interpolation.linear,
-    ).convert(numChannels: 4);
-  }
-
-  final pageSize = Size(pageWidth, pageHeight);
-  final photoSize = _fitPhotoLayerSize(
-    pageSize: pageSize,
-    photoAspectRatio: photoAspectRatio,
-  );
-  final imagePixelSize = Size(
-    workingImage.width.toDouble(),
-    workingImage.height.toDouble(),
-  );
-
-  for (final segment in segments) {
-    if (segment is! Map) {
-      continue;
-    }
-    final start = Offset(
-      (((segment['sx'] as num?)?.toDouble() ?? 0) * (imagePixelSize.width - 1))
-          .clamp(0.0, imagePixelSize.width - 1),
-      (((segment['sy'] as num?)?.toDouble() ?? 0) * (imagePixelSize.height - 1))
-          .clamp(0.0, imagePixelSize.height - 1),
-    );
-    final end = Offset(
-      (((segment['ex'] as num?)?.toDouble() ?? 0) * (imagePixelSize.width - 1))
-          .clamp(0.0, imagePixelSize.width - 1),
-      (((segment['ey'] as num?)?.toDouble() ?? 0) * (imagePixelSize.height - 1))
-          .clamp(0.0, imagePixelSize.height - 1),
-    );
-    final brushSize = (segment['brushSize'] as num?)?.toDouble() ?? 40;
-    final softness = (segment['softness'] as num?)?.toDouble() ?? 0.65;
-    final strength = (segment['strength'] as num?)?.toDouble() ?? 1.0;
-    final modeName = segment['mode']?.toString() ?? _EraserMode.erase.name;
-    final mode = modeName == _EraserMode.restore.name
-        ? _EraserMode.restore
-        : _EraserMode.erase;
-
-    _applyEraserSegmentToImage(
-      workingImage: workingImage,
-      restoreImage: restoreImage,
-      start: start,
-      end: end,
-      pageSize: pageSize,
-      photoSize: photoSize,
-      imagePixelSize: imagePixelSize,
-      mode: mode,
-      brushSize: brushSize,
-      softness: softness,
-      strength: strength,
-    );
-  }
-
-  return Uint8List.fromList(img.encodePng(workingImage));
-}
-
-void _applyEraserSegmentToImage({
-  required img.Image workingImage,
-  required img.Image restoreImage,
-  required Offset start,
-  required Offset end,
-  required Size pageSize,
-  required Size photoSize,
-  required Size imagePixelSize,
-  required _EraserMode mode,
-  required double brushSize,
-  required double softness,
-  required double strength,
-}) {
-  final safePhotoSize = photoSize.width <= 0 || photoSize.height <= 0
-      ? _fitPhotoLayerSize(
-          pageSize: pageSize,
-          photoAspectRatio: pageSize.height == 0 ? null : pageSize.width / pageSize.height,
-        )
-      : photoSize;
-  final scaleX = imagePixelSize.width / math.max(safePhotoSize.width, 1);
-  final scaleY = imagePixelSize.height / math.max(safePhotoSize.height, 1);
-  final radius = math.max(
-    1.0,
-    (brushSize * 0.5) * ((scaleX + scaleY) / 2),
-  );
-  final distance = (end - start).distance;
-  final steps = math.max(1, (distance / math.max(1.0, radius * 0.32)).ceil());
-
-  for (var index = 0; index <= steps; index++) {
-    final t = steps == 0 ? 0.0 : index / steps;
-    final point = Offset(
-      ui.lerpDouble(start.dx, end.dx, t) ?? start.dx,
-      ui.lerpDouble(start.dy, end.dy, t) ?? start.dy,
-    );
-    _applyEraserStampToImage(
-      workingImage: workingImage,
-      restoreImage: restoreImage,
-      centerX: point.dx,
-      centerY: point.dy,
-      radius: radius,
-      mode: mode,
-      softness: softness,
-      strength: strength,
-    );
-  }
-}
-
-void _applyEraserStampToImage({
-  required img.Image workingImage,
-  required img.Image restoreImage,
-  required double centerX,
-  required double centerY,
-  required double radius,
-  required _EraserMode mode,
-  required double softness,
-  required double strength,
-}) {
-  final left = math.max(0, (centerX - radius).floor());
-  final right = math.min(workingImage.width - 1, (centerX + radius).ceil());
-  final top = math.max(0, (centerY - radius).floor());
-  final bottom = math.min(workingImage.height - 1, (centerY + radius).ceil());
-  final softnessPower = ui.lerpDouble(2.6, 0.7, softness.clamp(0.0, 1.0))!;
-
-  for (var y = top; y <= bottom; y++) {
-    for (var x = left; x <= right; x++) {
-      final dx = (x + 0.5) - centerX;
-      final dy = (y + 0.5) - centerY;
-      final distance = math.sqrt((dx * dx) + (dy * dy));
-      if (distance > radius) {
-        continue;
-      }
-      final normalized = 1 - (distance / radius);
-      final falloff = math.pow(normalized.clamp(0.0, 1.0), softnessPower)
-          .toDouble();
-      final amount = (falloff * strength).clamp(0.0, 1.0);
-      if (amount <= 0.0001) {
-        continue;
-      }
-
-      final currentPixel = workingImage.getPixel(x, y);
-      if (mode == _EraserMode.erase) {
-        final nextAlpha =
-            (currentPixel.a.toDouble() * (1 - amount)).round().clamp(0, 255);
-        workingImage.setPixelRgba(
-          x,
-          y,
-          currentPixel.r.toInt(),
-          currentPixel.g.toInt(),
-          currentPixel.b.toInt(),
-          nextAlpha,
-        );
-        continue;
-      }
-
-      final sourcePixel = restoreImage.getPixel(x, y);
-      workingImage.setPixelRgba(
-        x,
-        y,
-        _blendIntValue(currentPixel.r.toInt(), sourcePixel.r.toInt(), amount),
-        _blendIntValue(currentPixel.g.toInt(), sourcePixel.g.toInt(), amount),
-        _blendIntValue(currentPixel.b.toInt(), sourcePixel.b.toInt(), amount),
-        _blendIntValue(currentPixel.a.toInt(), sourcePixel.a.toInt(), amount),
-      );
-    }
-  }
-}
-
-int _blendIntValue(int from, int to, double weight) {
-  return (from + ((to - from) * weight)).round().clamp(0, 255);
-}
-
 class _CanvasWorkspace extends StatelessWidget {
   const _CanvasWorkspace({
     required this.layers,
@@ -6357,6 +6948,9 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.selectedPhotoRenderListenable,
     required this.eraserSessionLayerId,
     required this.eraserPreviewImageListenable,
+    required this.eraserRestorePreviewImageListenable,
+    required this.eraserActiveStrokeListenable,
+    required this.eraserPreviewBaseBytes,
   });
 
   final List<_CanvasLayer> layers;
@@ -6395,9 +6989,13 @@ class _CanvasWorkspace extends StatelessWidget {
   final bool showPageFramePreview;
   final ValueListenable<_SnapGuideState> snapGuideListenable;
   final bool snapGuidesEnabled;
-  final ValueListenable<_SelectedPhotoRenderState?> selectedPhotoRenderListenable;
+  final ValueListenable<_SelectedPhotoRenderState?>
+  selectedPhotoRenderListenable;
   final String? eraserSessionLayerId;
   final ValueListenable<ui.Image?> eraserPreviewImageListenable;
+  final ValueListenable<ui.Image?> eraserRestorePreviewImageListenable;
+  final ValueListenable<EraserStrokeChunk?> eraserActiveStrokeListenable;
+  final Uint8List? eraserPreviewBaseBytes;
 
   @override
   Widget build(BuildContext context) {
@@ -6461,7 +7059,8 @@ class _CanvasWorkspace extends StatelessWidget {
                                             editorBackgroundGradients.length &&
                                         showCanvasBackground
                                     ? LinearGradient(
-                                        colors: editorBackgroundGradients[canvasBackgroundGradientIndex],
+                                        colors:
+                                            editorBackgroundGradients[canvasBackgroundGradientIndex],
                                       )
                                     : null,
                                 color: showCanvasBackground
@@ -6538,8 +7137,10 @@ class _CanvasWorkspace extends StatelessWidget {
                                       children: <Widget>[
                                         if (isEraserSessionPhoto)
                                           Opacity(
-                                            opacity:
-                                                layer.photoOpacity.clamp(0.1, 1),
+                                            opacity: layer.photoOpacity.clamp(
+                                              0.1,
+                                              1,
+                                            ),
                                             child: Transform(
                                               alignment: Alignment.center,
                                               transform:
@@ -6552,43 +7153,23 @@ class _CanvasWorkspace extends StatelessWidget {
                                                         : 1,
                                                     1,
                                                   ),
-                                              child:
-                                                  ValueListenableBuilder<ui.Image?>(
-                                                    valueListenable:
-                                                        eraserPreviewImageListenable,
-                                                    builder: (
-                                                      BuildContext context,
-                                                      ui.Image? eraserImage,
-                                                      Widget? child,
-                                                    ) {
-                                                      if (eraserImage == null) {
-                                                        return _buildAdjustedPhoto(
-                                                          bytes: layer.bytes!,
-                                                          cacheKey:
-                                                              '${_photoBytesSignature(layer.bytes!)}_'
-                                                              '${effectiveBrightness.toStringAsFixed(3)}_'
-                                                              '${effectiveContrast.toStringAsFixed(3)}_'
-                                                              '${effectiveSaturation.toStringAsFixed(3)}_'
-                                                              '${effectiveBlur.toStringAsFixed(3)}',
-                                                          cacheWidth:
-                                                              photoCacheWidth,
-                                                          brightness:
-                                                              effectiveBrightness,
-                                                          contrast:
-                                                              effectiveContrast,
-                                                          saturation:
-                                                              effectiveSaturation,
-                                                          blur: effectiveBlur,
-                                                        );
-                                                      }
-                                                      return RawImage(
-                                                        image: eraserImage,
-                                                        fit: BoxFit.contain,
-                                                        filterQuality:
-                                                            FilterQuality.medium,
-                                                      );
-                                                    },
-                                                  ),
+                                              child: _EraserLivePhotoPreview(
+                                                previewImageListenable:
+                                                    eraserPreviewImageListenable,
+                                                restoreImageListenable:
+                                                    eraserRestorePreviewImageListenable,
+                                                activeStrokeListenable:
+                                                    eraserActiveStrokeListenable,
+                                                fallbackBytes:
+                                                    eraserPreviewBaseBytes ??
+                                                    layer.bytes!,
+                                                cacheWidth: photoCacheWidth,
+                                                brightness: effectiveBrightness,
+                                                contrast: effectiveContrast,
+                                                saturation:
+                                                    effectiveSaturation,
+                                                blur: effectiveBlur,
+                                              ),
                                             ),
                                           )
                                         else if (isSelected)
@@ -6597,41 +7178,44 @@ class _CanvasWorkspace extends StatelessWidget {
                                           >(
                                             valueListenable:
                                                 selectedPhotoRenderListenable,
-                                            builder: (
-                                              BuildContext context,
-                                              _SelectedPhotoRenderState?
-                                              renderState,
-                                              Widget? child,
-                                            ) {
-                                              final resolvedState =
-                                                  renderState != null &&
-                                                      renderState.layerId ==
-                                                          layer.id
-                                                  ? renderState
-                                                  : _SelectedPhotoRenderState(
-                                                      layerId: layer.id,
-                                                      bytes: layer.bytes!,
-                                                      opacity: layer.photoOpacity
-                                                          .clamp(0.1, 1),
-                                                      flipHorizontally: layer
-                                                          .flipPhotoHorizontally,
-                                                      flipVertically: layer
-                                                          .flipPhotoVertically,
-                                                      brightness:
-                                                          effectiveBrightness,
-                                                      contrast:
-                                                          effectiveContrast,
-                                                      saturation:
-                                                          effectiveSaturation,
-                                                      blur: effectiveBlur,
-                                                    );
-                                              return Opacity(
-                                                opacity: resolvedState.opacity
-                                                    .clamp(0.1, 1),
-                                                child: Transform(
-                                                  alignment: Alignment.center,
-                                                  transform:
-                                                      Matrix4.diagonal3Values(
+                                            builder:
+                                                (
+                                                  BuildContext context,
+                                                  _SelectedPhotoRenderState?
+                                                  renderState,
+                                                  Widget? child,
+                                                ) {
+                                                  final resolvedState =
+                                                      renderState != null &&
+                                                          renderState.layerId ==
+                                                              layer.id
+                                                      ? renderState
+                                                      : _SelectedPhotoRenderState(
+                                                          layerId: layer.id,
+                                                          bytes: layer.bytes!,
+                                                          opacity: layer
+                                                              .photoOpacity
+                                                              .clamp(0.1, 1),
+                                                          flipHorizontally: layer
+                                                              .flipPhotoHorizontally,
+                                                          flipVertically: layer
+                                                              .flipPhotoVertically,
+                                                          brightness:
+                                                              effectiveBrightness,
+                                                          contrast:
+                                                              effectiveContrast,
+                                                          saturation:
+                                                              effectiveSaturation,
+                                                          blur: effectiveBlur,
+                                                        );
+                                                  return Opacity(
+                                                    opacity: resolvedState
+                                                        .opacity
+                                                        .clamp(0.1, 1),
+                                                    child: Transform(
+                                                      alignment:
+                                                          Alignment.center,
+                                                      transform: Matrix4.diagonal3Values(
                                                         resolvedState
                                                                 .flipHorizontally
                                                             ? -1
@@ -6642,29 +7226,37 @@ class _CanvasWorkspace extends StatelessWidget {
                                                             : 1,
                                                         1,
                                                       ),
-                                                  child: _buildAdjustedPhoto(
-                                                    bytes: resolvedState.bytes,
-                                                    cacheKey:
-                                                        resolvedState.cacheKey,
-                                                    cacheWidth: photoCacheWidth,
-                                                    brightness:
-                                                        resolvedState
-                                                            .brightness,
-                                                    contrast:
-                                                        resolvedState.contrast,
-                                                    saturation:
-                                                        resolvedState
-                                                            .saturation,
-                                                    blur: resolvedState.blur,
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                                      child:
+                                                          _buildAdjustedPhoto(
+                                                            bytes: resolvedState
+                                                                .bytes,
+                                                            cacheKey:
+                                                                resolvedState
+                                                                    .cacheKey,
+                                                            cacheWidth:
+                                                                photoCacheWidth,
+                                                            brightness:
+                                                                resolvedState
+                                                                    .brightness,
+                                                            contrast:
+                                                                resolvedState
+                                                                    .contrast,
+                                                            saturation:
+                                                                resolvedState
+                                                                    .saturation,
+                                                            blur: resolvedState
+                                                                .blur,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
                                           )
                                         else
                                           Opacity(
-                                            opacity:
-                                                layer.photoOpacity.clamp(0.1, 1),
+                                            opacity: layer.photoOpacity.clamp(
+                                              0.1,
+                                              1,
+                                            ),
                                             child: Transform(
                                               alignment: Alignment.center,
                                               transform:
@@ -6758,13 +7350,13 @@ class _CanvasWorkspace extends StatelessWidget {
                                 _ImageEditorScreenState._isImageLikeSticker(
                                   layer.sticker,
                                 );
-                            final stickerOrTextChild = layer.isSticker &&
-                                    stickerAsset
+                            final stickerOrTextChild =
+                                layer.isSticker && stickerAsset
                                 ? SizedBox(
                                     width: layerSize.width,
                                     height: layerSize.height,
-                                    child: _ImageEditorScreenState
-                                        ._buildStickerVisual(
+                                    child:
+                                        _ImageEditorScreenState._buildStickerVisual(
                                           layer.sticker,
                                           fontSize: layer.fontSize,
                                           fit: BoxFit.contain,
@@ -7005,31 +7597,32 @@ class _CanvasWorkspace extends StatelessWidget {
                     ),
                     child: ValueListenableBuilder<_SnapGuideState>(
                       valueListenable: snapGuideListenable,
-                      builder: (
-                        BuildContext context,
-                        _SnapGuideState snapGuides,
-                        Widget? child,
-                      ) {
-                        return RepaintBoundary(
-                          child: CustomPaint(
-                            painter: _SnapGuidesPainter(
-                              showVerticalGuide:
-                                  snapGuidesEnabled &&
-                                  snapGuides.showVerticalGuide,
-                              showHorizontalGuide:
-                                  snapGuidesEnabled &&
-                                  snapGuides.showHorizontalGuide,
-                            ),
-                          ),
-                        );
-                              },
-                            ),
-                            ),
-                          ),
+                      builder:
+                          (
+                            BuildContext context,
+                            _SnapGuideState snapGuides,
+                            Widget? child,
+                          ) {
+                            return RepaintBoundary(
+                              child: CustomPaint(
+                                painter: _SnapGuidesPainter(
+                                  showVerticalGuide:
+                                      snapGuidesEnabled &&
+                                      snapGuides.showVerticalGuide,
+                                  showHorizontalGuide:
+                                      snapGuidesEnabled &&
+                                      snapGuides.showHorizontalGuide,
+                                ),
+                              ),
+                            );
+                          },
                     ),
-              ],
-            ),
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
       ),
     );
     /*
@@ -7513,18 +8106,19 @@ class _TextStyleBarState extends State<_TextStyleBar> {
     if (!widget.visible || widget.selectedLayer == null) {
       return const SizedBox.shrink();
     }
+    final strings = context.strings;
     final layer = widget.selectedLayer!;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCCFFFFFF),
+        color: const Color(0xE60F172A),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xD8E7EDF7)),
+        border: Border.all(color: const Color(0xFF334155)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 12,
+            color: Color(0x33000000),
+            blurRadius: 14,
             offset: Offset(0, 4),
           ),
         ],
@@ -7538,18 +8132,18 @@ class _TextStyleBarState extends State<_TextStyleBar> {
               children: <Widget>[
                 _TextQuickActionButton(
                   icon: Icons.edit_rounded,
-                  label: 'Edit',
+                  label: strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
                   onTap: widget.onEditTap,
                 ),
                 const SizedBox(width: 6),
                 _TextQuickActionButton(
                   icon: Icons.font_download_rounded,
-                  label: 'Fonts',
+                  label: strings.localized(telugu: 'ఫాంట్స్', english: 'Fonts'),
                   onTap: widget.onFontsTap,
                 ),
                 const SizedBox(width: 8),
                 _TextTabChip(
-                  label: 'Style',
+                  label: strings.localized(telugu: 'స్టైల్', english: 'Style'),
                   selected: _activeTab == _TextToolTab.style,
                   onTap: () => setState(() {
                     _activeTab = _TextToolTab.style;
@@ -7557,7 +8151,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                   }),
                 ),
                 _TextTabChip(
-                  label: 'Background',
+                  label: strings.localized(
+                    telugu: 'బ్యాక్‌గ్రౌండ్',
+                    english: 'Background',
+                  ),
                   selected: _activeTab == _TextToolTab.background,
                   onTap: () => setState(() {
                     _activeTab = _TextToolTab.background;
@@ -7565,7 +8162,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                   }),
                 ),
                 _TextTabChip(
-                  label: 'Effects',
+                  label: strings.localized(
+                    telugu: 'ఎఫెక్ట్స్',
+                    english: 'Effects',
+                  ),
                   selected: _activeTab == _TextToolTab.effects,
                   onTap: () => setState(() {
                     _activeTab = _TextToolTab.effects;
@@ -7580,9 +8180,9 @@ class _TextStyleBarState extends State<_TextStyleBar> {
             height: 72,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xB8F8FAFC),
+              color: const Color(0xFF0B1220),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xCFE2E8F0)),
+              border: Border.all(color: const Color(0xFF334155)),
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -7622,7 +8222,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         const SizedBox(width: 8),
                         _CompactLabeledSlider(
                           sliderId: 'text-size',
-                          label: 'Size',
+                          label: strings.localized(
+                            telugu: 'సైజ్',
+                            english: 'Size',
+                          ),
                           value: layer.fontSize.clamp(18, 96).toDouble(),
                           min: 18,
                           max: 96,
@@ -7638,7 +8241,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'line-height',
-                          label: 'Line',
+                          label: strings.localized(
+                            telugu: 'లైన్',
+                            english: 'Line',
+                          ),
                           value: layer.textLineHeight
                               .clamp(0.8, 2.2)
                               .toDouble(),
@@ -7653,7 +8259,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'letter-spacing',
-                          label: 'Letter',
+                          label: strings.localized(
+                            telugu: 'లెటర్',
+                            english: 'Letter',
+                          ),
                           value: layer.textLetterSpacing
                               .clamp(-1, 12)
                               .toDouble(),
@@ -7695,7 +8304,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                     ? <Widget>[
                         _CompactLabeledSlider(
                           sliderId: 'bg-opacity',
-                          label: 'Opacity',
+                          label: strings.localized(
+                            telugu: 'అపాసిటీ',
+                            english: 'Opacity',
+                          ),
                           value: layer.textBackgroundOpacity
                               .clamp(0, 1)
                               .toDouble(),
@@ -7710,7 +8322,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'bg-curve',
-                          label: 'Curve',
+                          label: strings.localized(
+                            telugu: 'కర్వ్',
+                            english: 'Curve',
+                          ),
                           value: layer.textBackgroundRadius
                               .clamp(0, 40)
                               .toDouble(),
@@ -7743,7 +8358,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                     : <Widget>[
                         _CompactLabeledSlider(
                           sliderId: 'stroke-width',
-                          label: 'Stroke',
+                          label: strings.localized(
+                            telugu: 'స్ట్రోక్',
+                            english: 'Stroke',
+                          ),
                           value: layer.textStrokeWidth.clamp(0, 8).toDouble(),
                           min: 0,
                           max: 8,
@@ -7756,7 +8374,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'shadow-opacity',
-                          label: 'Shadow',
+                          label: strings.localized(
+                            telugu: 'షాడో',
+                            english: 'Shadow',
+                          ),
                           value: layer.textShadowOpacity.clamp(0, 1).toDouble(),
                           min: 0,
                           max: 1,
@@ -7769,7 +8390,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'shadow-blur',
-                          label: 'Blur',
+                          label: strings.localized(
+                            telugu: 'బ్లర్',
+                            english: 'Blur',
+                          ),
                           value: layer.textShadowBlur.clamp(0, 24).toDouble(),
                           min: 0,
                           max: 24,
@@ -7782,7 +8406,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                         ),
                         _CompactLabeledSlider(
                           sliderId: 'shadow-offset',
-                          label: 'Offset',
+                          label: strings.localized(
+                            telugu: 'ఆఫ్‌సెట్',
+                            english: 'Offset',
+                          ),
                           value: layer.textShadowOffsetY
                               .clamp(0, 20)
                               .toDouble(),
@@ -7840,14 +8467,14 @@ class _TextQuickActionButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 18, color: const Color(0xFF0F172A)),
+            Icon(icon, size: 18, color: const Color(0xFFE2E8F0)),
             const SizedBox(width: 6),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color: Color(0xFFF8FAFC),
               ),
             ),
           ],
@@ -7894,14 +8521,10 @@ class _CompactLabeledSlider extends StatelessWidget {
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isActive
-            ? const Color(0xFFEFF6FF)
-            : Colors.white.withValues(alpha: 0.82),
+        color: isActive ? const Color(0xFF172554) : const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive
-              ? const Color(0xFF2563EB)
-              : const Color(0xFFE2E8F0),
+          color: isActive ? const Color(0xFF60A5FA) : const Color(0xFF334155),
         ),
       ),
       child: Column(
@@ -7916,14 +8539,14 @@ class _CompactLabeledSlider extends StatelessWidget {
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: isActive
-                      ? const Color(0xFF1D4ED8)
-                      : const Color(0xFF0F172A),
+                      ? const Color(0xFF93C5FD)
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               const Spacer(),
               Text(
                 valueText ?? value.toStringAsFixed(1),
-                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -7933,12 +8556,12 @@ class _CompactLabeledSlider extends StatelessWidget {
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 17),
               activeTrackColor: isActive
-                  ? const Color(0xFF2563EB)
-                  : const Color(0xFF94A3B8),
-              inactiveTrackColor: const Color(0xFFDCE4EF),
-              thumbColor: isActive
-                  ? const Color(0xFF1D4ED8)
+                  ? const Color(0xFF60A5FA)
                   : const Color(0xFF64748B),
+              inactiveTrackColor: const Color(0xFF334155),
+              thumbColor: isActive
+                  ? const Color(0xFF93C5FD)
+                  : const Color(0xFF94A3B8),
             ),
             child: Slider(
               value: value,
@@ -7994,24 +8617,24 @@ class _AlignChip extends StatelessWidget {
           width: 34,
           height: 30,
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFDCEBFF) : const Color(0xFFFDFEFF),
+            color: selected ? const Color(0xFF172554) : const Color(0xFF0F172A),
             borderRadius: BorderRadius.circular(9),
             border: Border.all(
               color: selected
-                  ? const Color(0xFFC4DBFF)
-                  : const Color(0xFFE7EDF5),
+                  ? const Color(0xFF60A5FA)
+                  : const Color(0xFF334155),
             ),
             boxShadow: selected
                 ? const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x122563EB),
+                      color: Color(0x222563EB),
                       blurRadius: 8,
                       offset: Offset(0, 2),
                     ),
                   ]
                 : null,
           ),
-          child: Icon(icon, size: 18, color: const Color(0xFF1E293B)),
+          child: Icon(icon, size: 18, color: const Color(0xFFE2E8F0)),
         ),
       ),
     );
@@ -8039,12 +8662,12 @@ class _TextTabChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFEAF2FF) : const Color(0xFFFDFEFF),
+            color: selected ? const Color(0xFF172554) : const Color(0xFF0F172A),
             borderRadius: BorderRadius.circular(99),
             border: Border.all(
               color: selected
-                  ? const Color(0xFFD5E4FF)
-                  : const Color(0xFFE7EDF5),
+                  ? const Color(0xFF60A5FA)
+                  : const Color(0xFF334155),
             ),
           ),
           child: Text(
@@ -8052,7 +8675,7 @@ class _TextTabChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: const Color(0xFF0F172A),
+              color: const Color(0xFFF8FAFC),
             ),
           ),
         ),
@@ -8068,9 +8691,11 @@ class _LabeledSlider extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.localizedLabel,
   });
 
   final String label;
+  final String? localizedLabel;
   final double value;
   final double min;
   final double max;
@@ -8083,13 +8708,22 @@ class _LabeledSlider extends StatelessWidget {
         SizedBox(
           width: 72,
           child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            localizedLabel ?? label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFFE2E8F0),
+            ),
           ),
         ),
         Expanded(
           child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(trackHeight: 3),
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              activeTrackColor: const Color(0xFF60A5FA),
+              inactiveTrackColor: const Color(0xFF334155),
+              thumbColor: const Color(0xFF93C5FD),
+            ),
             child: Slider(
               value: value,
               min: min,
@@ -8139,9 +8773,12 @@ class _FontPickerScreenState extends State<_FontPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final fonts = _filteredFonts;
+    final strings = context.strings;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(title: const Text('Fonts')),
+      appBar: AppBar(
+        title: Text(strings.localized(telugu: 'Fonts', english: 'Fonts')),
+      ),
       body: SafeArea(
         child: Column(
           children: <Widget>[
@@ -8155,7 +8792,10 @@ class _FontPickerScreenState extends State<_FontPickerScreen> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: 'Search fonts',
+                  hintText: strings.localized(
+                    telugu: 'Search fonts',
+                    english: 'Search fonts',
+                  ),
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _query.isEmpty
                       ? null
@@ -8187,10 +8827,13 @@ class _FontPickerScreenState extends State<_FontPickerScreen> {
             ),
             Expanded(
               child: fonts.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'Fonts dorakaledu',
-                        style: TextStyle(
+                        strings.localized(
+                          telugu: 'Fonts dorakaledu',
+                          english: 'Fonts not found',
+                        ),
+                        style: const TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 16,
                         ),
@@ -8293,11 +8936,17 @@ class _TextEditScreenState extends State<_TextEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Text'),
+        title: Text(
+          strings.localized(telugu: 'Edit Text', english: 'Edit Text'),
+        ),
         actions: <Widget>[
-          TextButton(onPressed: _handleSave, child: const Text('Save')),
+          TextButton(
+            onPressed: _handleSave,
+            child: Text(strings.localized(telugu: 'Save', english: 'Save')),
+          ),
         ],
       ),
       body: SafeArea(
@@ -8308,10 +8957,13 @@ class _TextEditScreenState extends State<_TextEditScreen> {
           minLines: null,
           maxLines: null,
           textAlignVertical: TextAlignVertical.top,
-          decoration: const InputDecoration(
-            hintText: 'Type your text',
+          decoration: InputDecoration(
+            hintText: strings.localized(
+              telugu: 'Type your text',
+              english: 'Type your text',
+            ),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.all(20),
+            contentPadding: const EdgeInsets.all(20),
           ),
         ),
       ),
@@ -8352,8 +9004,13 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Scaffold(
-      appBar: AppBar(title: const Text('Background')),
+      appBar: AppBar(
+        title: Text(
+          strings.localized(telugu: 'Background', english: 'Background'),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -8369,8 +9026,18 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
                 ),
                 child: const Icon(Icons.photo_library_outlined),
               ),
-              title: const Text('Background Image'),
-              subtitle: const Text('Apply gallery image to poster paper only'),
+              title: Text(
+                strings.localized(
+                  telugu: 'Background Image',
+                  english: 'Background Image',
+                ),
+              ),
+              subtitle: Text(
+                strings.localized(
+                  telugu: 'Apply gallery image to poster paper only',
+                  english: 'Apply gallery image to poster paper only',
+                ),
+              ),
               trailing: TextButton(
                 onPressed: () async {
                   final didSelect = await widget.onImageSelected();
@@ -8385,12 +9052,19 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
                     _selectedGradientIndex = -1;
                   });
                 },
-                child: Text(_hasSelectedImage ? 'Change' : 'Import'),
+                child: Text(
+                  _hasSelectedImage
+                      ? strings.localized(telugu: 'Change', english: 'Change')
+                      : strings.localized(telugu: 'Import', english: 'Import'),
+                ),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Solid Colors',
+              strings.localized(
+                telugu: 'Solid Colors',
+                english: 'Solid Colors',
+              ),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -8427,7 +9101,7 @@ class _BackgroundPickerScreenState extends State<_BackgroundPickerScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Gradients',
+              strings.localized(telugu: 'Gradients', english: 'Gradients'),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -8516,16 +9190,22 @@ class _DraftsScreenState extends State<_DraftsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Drafts'),
+        title: Text(strings.localized(telugu: 'Drafts', english: 'Drafts')),
         actions: <Widget>[
           TextButton(
             onPressed: () async {
               await widget.onSaveCurrentDraft();
               await _loadDrafts();
             },
-            child: const Text('Save Current'),
+            child: Text(
+              strings.localized(
+                telugu: 'Save Current',
+                english: 'Save Current',
+              ),
+            ),
           ),
         ],
       ),
@@ -8533,7 +9213,14 @@ class _DraftsScreenState extends State<_DraftsScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _draftFiles.isEmpty
-            ? const Center(child: Text('No saved drafts'))
+            ? Center(
+                child: Text(
+                  strings.localized(
+                    telugu: 'No saved drafts',
+                    english: 'No saved drafts',
+                  ),
+                ),
+              )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 itemCount: _draftFiles.length,
@@ -8602,12 +9289,21 @@ class _LayersScreenState extends State<_LayersScreen> {
 
   String _layerTitle(_CanvasLayer layer, int index) {
     if (layer.isPhoto) {
-      return 'Photo ${index + 1}';
+      return context.strings.localized(
+        telugu: 'Photo ${index + 1}',
+        english: 'Photo ${index + 1}',
+      );
     }
     if (layer.isText) {
-      return 'Text ${index + 1}';
+      return context.strings.localized(
+        telugu: 'Text ${index + 1}',
+        english: 'Text ${index + 1}',
+      );
     }
-    return 'Sticker ${index + 1}';
+    return context.strings.localized(
+      telugu: 'Sticker ${index + 1}',
+      english: 'Sticker ${index + 1}',
+    );
   }
 
   Widget _buildLayerPreview(_CanvasLayer layer) {
@@ -8655,11 +9351,21 @@ class _LayersScreenState extends State<_LayersScreen> {
   @override
   Widget build(BuildContext context) {
     final displayLayers = widget.layers.reversed.toList(growable: false);
+    final strings = context.strings;
     return Scaffold(
-      appBar: AppBar(title: const Text('Layers')),
+      appBar: AppBar(
+        title: Text(strings.localized(telugu: 'Layers', english: 'Layers')),
+      ),
       body: SafeArea(
         child: widget.layers.isEmpty
-            ? const Center(child: Text('No layers available'))
+            ? Center(
+                child: Text(
+                  strings.localized(
+                    telugu: 'No layers available',
+                    english: 'No layers available',
+                  ),
+                ),
+              )
             : ReorderableListView.builder(
                 itemCount: displayLayers.length,
                 buildDefaultDragHandles: false,
@@ -8719,10 +9425,19 @@ class _LayersScreenState extends State<_LayersScreen> {
                                   if (isSelected)
                                     Text(
                                       layer.isHidden
-                                          ? 'Hidden'
+                                          ? strings.localized(
+                                              telugu: 'దాచబడింది',
+                                              english: 'Hidden',
+                                            )
                                           : layer.isLocked
-                                          ? 'Locked'
-                                          : 'Selected',
+                                          ? strings.localized(
+                                              telugu: 'లాక్ అయింది',
+                                              english: 'Locked',
+                                            )
+                                          : strings.localized(
+                                              telugu: 'ఎంపికైంది',
+                                              english: 'Selected',
+                                            ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
@@ -8739,7 +9454,15 @@ class _LayersScreenState extends State<_LayersScreen> {
                               icon: layer.isHidden
                                   ? Icons.visibility_off_rounded
                                   : Icons.visibility_rounded,
-                              tooltip: layer.isHidden ? 'Show' : 'Hide',
+                              tooltip: layer.isHidden
+                                  ? strings.localized(
+                                      telugu: 'చూపించు',
+                                      english: 'Show',
+                                    )
+                                  : strings.localized(
+                                      telugu: 'దాచు',
+                                      english: 'Hide',
+                                    ),
                               onTap: () {
                                 widget.onToggleLayerVisibility(layer.id);
                                 if (layer.id == _selectedLayerId &&
@@ -8753,7 +9476,15 @@ class _LayersScreenState extends State<_LayersScreen> {
                               icon: layer.isLocked
                                   ? Icons.lock_rounded
                                   : Icons.lock_open_rounded,
-                              tooltip: layer.isLocked ? 'Unlock' : 'Lock',
+                              tooltip: layer.isLocked
+                                  ? strings.localized(
+                                      telugu: 'అన్‌లాక్',
+                                      english: 'Unlock',
+                                    )
+                                  : strings.localized(
+                                      telugu: 'లాక్',
+                                      english: 'Lock',
+                                    ),
                               onTap: () {
                                 widget.onToggleLayerLock(layer.id);
                                 setState(() {});
@@ -8761,7 +9492,10 @@ class _LayersScreenState extends State<_LayersScreen> {
                             ),
                             _LayerActionButton(
                               icon: Icons.delete_outline_rounded,
-                              tooltip: 'Delete',
+                              tooltip: strings.localized(
+                                telugu: 'డిలీట్',
+                                english: 'Delete',
+                              ),
                               onTap: () => _handleDelete(layer.id),
                             ),
                             ReorderableDragStartListener(
@@ -9044,26 +9778,17 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            const Color(0xFFFFFFFF).withValues(alpha: 0.88),
-            const Color(0xFFF5F9FF).withValues(alpha: 0.84),
-            const Color(0xFFFFF6FB).withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xDCE3ECF8)),
-        boxShadow: const <BoxShadow>[
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: const BoxDecoration(
+        color: Color(0xF2101826),
+        boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: Color(0x1F000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -9073,77 +9798,99 @@ class _TopBar extends StatelessWidget {
           children: <Widget>[
             _EditorIconButton(
               icon: Icons.arrow_back_ios_new_rounded,
-              tooltip: 'Back',
+              tooltip: strings.localized(telugu: '???????', english: 'Back'),
               onTap: _withHaptic(() => Navigator.of(context).maybePop()),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             SizedBox(
-              width: 136,
+              width: 164,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Text(
-                    'Image Editor',
+                    strings.localized(
+                      telugu: '????? ??????',
+                      english: 'Image Editor',
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
-                      color: const Color(0xFF1E1B4B),
+                      color: const Color(0xFFF8FAFC),
                       letterSpacing: -0.2,
+                      fontSize: 20,
+                      height: 1.04,
                     ),
                   ),
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFF),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'Poster workspace',
-                      style: TextStyle(
-                        fontSize: 9.8,
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w700,
-                      ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Poster workspace',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.1,
+                      color: Color(0xFFB8C4D6),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            _TopActionButton(label: 'Undo', onTap: canUndo ? onUndoTap : null),
-            const SizedBox(width: 4),
-            _TopActionButton(label: 'Redo', onTap: canRedo ? onRedoTap : null),
-            const SizedBox(width: 4),
-            _TopActionButton(label: 'Drafts', onTap: onDraftsTap),
-            const SizedBox(width: 4),
             _TopActionButton(
-              label: isExporting ? 'Saving...' : 'Export',
+              label: strings.localized(telugu: '????', english: 'Undo'),
+              onTap: canUndo ? onUndoTap : null,
+            ),
+            const SizedBox(width: 8),
+            _TopActionButton(
+              label: strings.localized(telugu: '????', english: 'Redo'),
+              onTap: canRedo ? onRedoTap : null,
+            ),
+            const SizedBox(width: 8),
+            _TopActionButton(
+              label: strings.localized(telugu: '??????????', english: 'Drafts'),
+              onTap: onDraftsTap,
+            ),
+            const SizedBox(width: 8),
+            _TopActionButton(
+              label: strings.localized(
+                telugu: isExporting ? '???? ????????...' : '??????',
+                english: isExporting ? 'Saving...' : 'Export',
+              ),
               onTap: isExporting ? null : onExportTap,
             ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 6),
             _EditorIconButton(
               icon: Icons.flip_to_back_rounded,
-              tooltip: 'Send back',
+              tooltip: strings.localized(
+                telugu: '??????? ????',
+                english: 'Send back',
+              ),
               onTap: _withHaptic(canSendBack ? onSendBackTap : null),
             ),
             _EditorIconButton(
               icon: Icons.flip_to_front_rounded,
-              tooltip: 'Bring front',
+              tooltip: strings.localized(
+                telugu: '??????? ????????',
+                english: 'Bring front',
+              ),
               onTap: _withHaptic(canBringFront ? onBringFrontTap : null),
             ),
             _EditorIconButton(
               icon: Icons.control_point_duplicate_rounded,
-              tooltip: 'Duplicate selected',
+              tooltip: strings.localized(
+                telugu: '??????????',
+                english: 'Duplicate selected',
+              ),
               onTap: _withHaptic(canDuplicate ? onDuplicateTap : null),
             ),
             _EditorIconButton(
               icon: Icons.delete_outline_rounded,
-              tooltip: 'Delete selected',
+              tooltip: strings.localized(
+                telugu: '??????',
+                english: 'Delete selected',
+              ),
               onTap: _withHaptic(canDelete ? onDeleteTap : null),
             ),
           ],
@@ -9184,10 +9931,7 @@ class _EditorModeBadge extends StatelessWidget {
             Container(
               width: 7,
               height: 7,
-              decoration: BoxDecoration(
-                color: accent,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
             ),
             const SizedBox(width: 8),
             Text(
@@ -9212,6 +9956,7 @@ class _EditorQuickHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return AnimatedSlide(
       duration: const Duration(milliseconds: 220),
       offset: Offset.zero,
@@ -9248,9 +9993,14 @@ class _EditorQuickHint extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Tip: Select a layer to unlock tool actions. Tap empty canvas to deselect.',
+                strings.localized(
+                  telugu:
+                      'సూచన: ఒక లేయర్ ఎంచుకుంటే టూల్స్ యాక్టివ్ అవుతాయి. ఖాళీ క్యాన్వాస్‌పై టాప్ చేస్తే ఎంపిక తొలగుతుంది.',
+                  english:
+                      'Tip: Select a layer to unlock tool actions. Tap empty canvas to deselect.',
+                ),
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
@@ -9346,30 +10096,54 @@ class _BottomToolsBar extends StatelessWidget {
         (label: 'Remove BG', icon: Icons.auto_fix_high_outlined),
       ];
 
+  String _localizedToolLabel(AppStrings strings, String label) {
+    switch (label) {
+      case 'Add Photo':
+        return strings.localized(telugu: 'ఫోటో', english: 'Add Photo');
+      case 'Text':
+        return strings.localized(telugu: 'టెక్స్ట్', english: 'Text');
+      case 'Stickers':
+        return strings.localized(telugu: 'స్టికర్స్', english: 'Stickers');
+      case 'Background':
+        return strings.localized(
+          telugu: 'బ్యాక్‌గ్రౌండ్',
+          english: 'Background',
+        );
+      case 'Layers':
+        return strings.localized(telugu: 'లేయర్స్', english: 'Layers');
+      case 'Adjust':
+        return strings.localized(telugu: 'అడ్జస్ట్', english: 'Adjust');
+      case 'Crop':
+        return strings.localized(telugu: 'క్రాప్', english: 'Crop');
+      case 'Eraser':
+        return strings.localized(telugu: 'ఈరేసర్', english: 'Eraser');
+      case 'Remove BG':
+        return strings.localized(telugu: 'బీజీ తొలగింపు', english: 'Remove BG');
+      case 'Removing...':
+        return strings.localized(
+          telugu: 'తొలగిస్తోంది...',
+          english: 'Removing...',
+        );
+      default:
+        return label;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     final photoLayer = selectedPhotoLayer;
     final hasPhotoControls = photoLayer != null && photoLayer.isPhoto;
     return Container(
       height: height,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.white.withValues(alpha: 0.9),
-            const Color(0xFFF5FAFF).withValues(alpha: 0.88),
-            const Color(0xFFFFF7FB).withValues(alpha: 0.84),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xE2DFE8F7)),
+        color: const Color(0xF2101826),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 14,
-            offset: Offset(0, 5),
+            color: Color(0x1F000000),
+            blurRadius: 10,
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -9387,13 +10161,16 @@ class _BottomToolsBar extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (BuildContext context, int index) {
                 final tool = _tools[index];
-                  return _ToolItem(
-                    label: index == 8 && isRemovingBackground
+                return _ToolItem(
+                  label: _localizedToolLabel(
+                    strings,
+                    index == 8 && isRemovingBackground
                         ? 'Removing...'
                         : tool.label,
-                    icon: tool.icon,
-                    active: tool.label == activeToolLabel,
-                    compact: compactTools,
+                  ),
+                  icon: tool.icon,
+                  active: tool.label == activeToolLabel,
+                  compact: compactTools,
                   onTap: switch (index) {
                     0 => onAddPhotoTap,
                     1 => onAddTextTap,
@@ -9429,12 +10206,15 @@ class _BottomToolsBar extends StatelessWidget {
               children: <Widget>[
                 Row(
                   children: <Widget>[
-                    const Text(
-                      'Photo quick actions',
+                    Text(
+                      strings.localized(
+                        telugu: 'ఫోటో త్వరిత చర్యలు',
+                        english: 'Photo quick actions',
+                      ),
                       style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF475569),
+                        color: Color(0xFFCBD5E1),
                       ),
                     ),
                     const Spacer(),
@@ -9444,15 +10224,18 @@ class _BottomToolsBar extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: const Color(0xFF172554),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
-                        'Selected photo',
+                      child: Text(
+                        strings.localized(
+                          telugu: 'ఎంచుకున్న ఫోటో',
+                          english: 'Selected photo',
+                        ),
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1D4ED8),
+                          color: Color(0xFF93C5FD),
                         ),
                       ),
                     ),
@@ -9485,6 +10268,10 @@ class _BottomToolsBar extends StatelessWidget {
                     Expanded(
                       child: _LabeledSlider(
                         label: 'Opacity',
+                        localizedLabel: strings.localized(
+                          telugu: 'అపాసిటీ',
+                          english: 'Opacity',
+                        ),
                         value: selectedPhoto.photoOpacity
                             .clamp(0.1, 1)
                             .toDouble(),
@@ -9498,7 +10285,7 @@ class _BottomToolsBar extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(top: 8),
                   height: 1,
-                  color: const Color(0xFFE9EEF6),
+                  color: const Color(0xFF334155),
                 ),
                 const SizedBox(height: 6),
               ],
@@ -9521,9 +10308,7 @@ class _BottomToolsBar extends StatelessWidget {
           return Column(
             children: <Widget>[
               if (hasPhotoControls) buildPhotoQuickActions(),
-              Expanded(
-                child: buildToolsList(stripHeight: double.infinity),
-              ),
+              Expanded(child: buildToolsList(stripHeight: double.infinity)),
             ],
           );
         },
@@ -9549,6 +10334,7 @@ class _TextBottomToolsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Container(
       height: height,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
@@ -9557,16 +10343,16 @@ class _TextBottomToolsBar extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Colors.white.withValues(alpha: 0.95),
-            const Color(0xFFF3F8FF).withValues(alpha: 0.93),
-            const Color(0xFFFFF5FB).withValues(alpha: 0.9),
+            const Color(0xEE0F172A),
+            const Color(0xEE111827),
+            const Color(0xEE1E293B),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xEAEFF4FA)),
+        border: Border.all(color: const Color(0xFF334155)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x080F172A),
+            color: Color(0x33000000),
             blurRadius: 16,
             offset: Offset(0, 5),
           ),
@@ -9576,19 +10362,19 @@ class _TextBottomToolsBar extends StatelessWidget {
         children: <Widget>[
           _TextModeToolItem(
             icon: Icons.edit_rounded,
-            label: 'Edit',
+            label: strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
             onTap: onEditTap,
           ),
           const SizedBox(width: 8),
           _TextModeToolItem(
             icon: Icons.font_download_rounded,
-            label: 'Fonts',
+            label: strings.localized(telugu: 'ఫాంట్స్', english: 'Fonts'),
             onTap: onFontsTap,
           ),
           const SizedBox(width: 8),
           _TextModeToolItem(
             icon: Icons.tune_rounded,
-            label: 'Options',
+            label: strings.localized(telugu: 'ఆప్షన్స్', english: 'Options'),
             selected: showOptionsSelected,
             onTap: onToggleOptionsTap,
           ),
@@ -9596,16 +10382,19 @@ class _TextBottomToolsBar extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xE8F8FAFC),
+              color: const Color(0xFF0F172A),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: const Color(0xFF334155)),
             ),
-            child: const Text(
-              'Text tools',
+            child: Text(
+              strings.localized(
+                telugu: 'టెక్స్ట్ టూల్స్',
+                english: 'Text tools',
+              ),
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF475569),
+                color: Color(0xFFCBD5E1),
               ),
             ),
           ),
@@ -9615,176 +10404,8 @@ class _TextBottomToolsBar extends StatelessWidget {
   }
 }
 
-class _EraserCanvasGestureOverlay extends StatelessWidget {
-  const _EraserCanvasGestureOverlay({
-    required this.canvasSize,
-    required this.topInset,
-    required this.bottomInset,
-    required this.pageAspectRatio,
-    required this.brushSize,
-    required this.brushCenterListenable,
-    required this.mode,
-    required this.isInitializing,
-    required this.errorMessage,
-    required this.onPanStart,
-    required this.onPanUpdate,
-    required this.onPanEnd,
-  });
-
-  final Size canvasSize;
-  final double topInset;
-  final double bottomInset;
-  final double? pageAspectRatio;
-  final double brushSize;
-  final ValueListenable<Offset?> brushCenterListenable;
-  final _EraserMode mode;
-  final bool isInitializing;
-  final String? errorMessage;
-  final void Function(
-    DragStartDetails details,
-    Rect pageRect,
-    Size pageSize,
-  )
-  onPanStart;
-  final void Function(
-    DragUpdateDetails details,
-    Rect pageRect,
-    Size pageSize,
-  )
-  onPanUpdate;
-  final VoidCallback onPanEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final workspaceHeight = math.max(
-      0.0,
-      canvasSize.height - topInset - bottomInset,
-    );
-    final workspaceSize = Size(canvasSize.width, workspaceHeight);
-    final pageSize = pageAspectRatio != null
-        ? _fitPageSize(
-            workspaceSize: workspaceSize,
-            aspectRatio: pageAspectRatio!,
-          )
-        : workspaceSize;
-    final pageRect = Rect.fromCenter(
-      center: Offset(canvasSize.width / 2, topInset + (workspaceHeight / 2)),
-      width: pageSize.width,
-      height: pageSize.height,
-    );
-
-    return IgnorePointer(
-      ignoring: false,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (details) => onPanStart(details, pageRect, pageSize),
-        onPanUpdate: (details) => onPanUpdate(details, pageRect, pageSize),
-        onPanEnd: (_) => onPanEnd(),
-        onPanCancel: onPanEnd,
-        child: Stack(
-          children: <Widget>[
-            if (isInitializing)
-              const Center(
-                child: IgnorePointer(
-                  child: CircularProgressIndicator(strokeWidth: 2.8),
-                ),
-              ),
-            if (errorMessage != null)
-              Positioned(
-                left: 20,
-                right: 20,
-                top: topInset + 14,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xD91E293B),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            Positioned.fill(
-              child: ValueListenableBuilder<Offset?>(
-                valueListenable: brushCenterListenable,
-                builder: (BuildContext context, Offset? brushCenter, Widget? child) {
-                  return CustomPaint(
-                    painter: _EraserBrushOverlayPainter(
-                      imageRect: pageRect,
-                      brushCenter: brushCenter,
-                      brushSize: brushSize,
-                      mode: mode,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EraserBrushOverlayPainter extends CustomPainter {
-  const _EraserBrushOverlayPainter({
-    required this.imageRect,
-    required this.brushCenter,
-    required this.brushSize,
-    required this.mode,
-  });
-
-  final Rect imageRect;
-  final Offset? brushCenter;
-  final double brushSize;
-  final _EraserMode mode;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = brushCenter;
-    if (center == null || !imageRect.inflate(brushSize * 0.5).contains(center)) {
-      return;
-    }
-    final ringColor = mode == _EraserMode.erase
-        ? const Color(0xFFEF4444)
-        : const Color(0xFF22C55E);
-    final fill = Paint()
-      ..style = PaintingStyle.fill
-      ..color = ringColor.withValues(alpha: 0.14);
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.9
-      ..color = ringColor.withValues(alpha: 0.94);
-    canvas.drawCircle(center, brushSize / 2, fill);
-    canvas.drawCircle(center, brushSize / 2, stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant _EraserBrushOverlayPainter oldDelegate) {
-    return oldDelegate.imageRect != imageRect ||
-        oldDelegate.brushCenter != brushCenter ||
-        oldDelegate.brushSize != brushSize ||
-        oldDelegate.mode != mode;
-  }
-}
-
 class _EditorCommitOverlay extends StatelessWidget {
-  const _EditorCommitOverlay({
-    required this.label,
-    required this.detail,
-  });
+  const _EditorCommitOverlay({required this.label, required this.detail});
 
   final String label;
   final String detail;
@@ -9850,16 +10471,20 @@ class _EraserBottomToolsBar extends StatelessWidget {
     required this.height,
     required this.mode,
     required this.brushSize,
-    required this.softness,
+    required this.hardness,
     required this.strength,
     required this.activeControl,
     required this.isApplying,
     required this.isInitializing,
+    required this.canUndo,
+    required this.canRedo,
     required this.onModeChanged,
     required this.onBrushSizeChanged,
-    required this.onSoftnessChanged,
+    required this.onHardnessChanged,
     required this.onStrengthChanged,
     required this.onActiveControlChanged,
+    required this.onUndo,
+    required this.onRedo,
     required this.onBack,
     required this.onReset,
     required this.onApply,
@@ -9868,22 +10493,27 @@ class _EraserBottomToolsBar extends StatelessWidget {
   final double height;
   final _EraserMode mode;
   final double brushSize;
-  final double softness;
+  final double hardness;
   final double strength;
   final _EraserControl? activeControl;
   final bool isApplying;
   final bool isInitializing;
+  final bool canUndo;
+  final bool canRedo;
   final ValueChanged<_EraserMode> onModeChanged;
   final ValueChanged<double> onBrushSizeChanged;
-  final ValueChanged<double> onSoftnessChanged;
+  final ValueChanged<double> onHardnessChanged;
   final ValueChanged<double> onStrengthChanged;
   final ValueChanged<_EraserControl> onActiveControlChanged;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
   final VoidCallback onBack;
   final VoidCallback onReset;
   final VoidCallback onApply;
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     final disabled = isApplying || isInitializing;
     return Container(
       height: height,
@@ -9916,66 +10546,85 @@ class _EraserBottomToolsBar extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-            _TopActionButton(
-              label: 'Back',
-              onTap: disabled ? null : onBack,
-            ),
-            const SizedBox(width: 8),
-            _EraserModeToggle(
-              mode: mode,
-              enabled: !disabled,
-              onModeChanged: onModeChanged,
-            ),
-            const SizedBox(width: 10),
-            _EraserSliderChip(
-              label: 'Brush',
-              value: brushSize,
-              min: 8,
-              max: 120,
-              display: brushSize.round().toString(),
-              isActive: activeControl == _EraserControl.brushSize,
-              enabled: !disabled,
-              onActivate: () =>
-                  onActiveControlChanged(_EraserControl.brushSize),
-              onChanged: onBrushSizeChanged,
-            ),
-            const SizedBox(width: 8),
-            _EraserSliderChip(
-              label: 'Soft',
-              value: softness,
-              min: 0,
-              max: 1,
-              display: softness.toStringAsFixed(2),
-              isActive: activeControl == _EraserControl.softness,
-              enabled: !disabled,
-              onActivate: () =>
-                  onActiveControlChanged(_EraserControl.softness),
-              onChanged: onSoftnessChanged,
-            ),
-            const SizedBox(width: 8),
-            _EraserSliderChip(
-              label: 'Strength',
-              value: strength,
-              min: 0.1,
-              max: 1,
-              display: strength.toStringAsFixed(2),
-              isActive: activeControl == _EraserControl.strength,
-              enabled: !disabled,
-              onActivate: () =>
-                  onActiveControlChanged(_EraserControl.strength),
-              onChanged: onStrengthChanged,
-            ),
-            const SizedBox(width: 10),
-            _TopActionButton(
-              label: 'Reset',
-              onTap: disabled ? null : onReset,
-            ),
-            const SizedBox(width: 6),
-            _TopActionButton(
-              label: isApplying ? 'Applying...' : 'Apply',
-              onTap: disabled ? null : onApply,
-            ),
-            const SizedBox(width: 2),
+              _TopActionButton(
+                label: strings.localized(telugu: 'వెనక్కి', english: 'Back'),
+                onTap: disabled ? null : onBack,
+              ),
+              const SizedBox(width: 8),
+              _EraserModeToggle(
+                mode: mode,
+                enabled: !disabled,
+                onModeChanged: onModeChanged,
+              ),
+              const SizedBox(width: 10),
+              _TopActionButton(
+                label: strings.localized(telugu: 'Undo', english: 'Undo'),
+                onTap: (!disabled && canUndo) ? onUndo : null,
+              ),
+              const SizedBox(width: 6),
+              _TopActionButton(
+                label: strings.localized(telugu: 'Redo', english: 'Redo'),
+                onTap: (!disabled && canRedo) ? onRedo : null,
+              ),
+              const SizedBox(width: 10),
+              _EraserSliderChip(
+                label: strings.localized(telugu: 'బ్రష్', english: 'Brush'),
+                value: brushSize,
+                min: 8,
+                max: 120,
+                display: brushSize.round().toString(),
+                isActive: activeControl == _EraserControl.brushSize,
+                enabled: !disabled,
+                onActivate: () =>
+                    onActiveControlChanged(_EraserControl.brushSize),
+                onChanged: onBrushSizeChanged,
+              ),
+              const SizedBox(width: 8),
+              _EraserSliderChip(
+                label: strings.localized(
+                  telugu: 'హార్డ్‌నెస్',
+                  english: 'Hard',
+                ),
+                value: hardness,
+                min: 0,
+                max: 1,
+                display: hardness.toStringAsFixed(2),
+                isActive: activeControl == _EraserControl.hardness,
+                enabled: !disabled,
+                onActivate: () =>
+                    onActiveControlChanged(_EraserControl.hardness),
+                onChanged: onHardnessChanged,
+              ),
+              const SizedBox(width: 8),
+              _EraserSliderChip(
+                label: strings.localized(
+                  telugu: 'స్ట్రెంగ్త్',
+                  english: 'Strength',
+                ),
+                value: strength,
+                min: 0.1,
+                max: 1,
+                display: strength.toStringAsFixed(2),
+                isActive: activeControl == _EraserControl.strength,
+                enabled: !disabled,
+                onActivate: () =>
+                    onActiveControlChanged(_EraserControl.strength),
+                onChanged: onStrengthChanged,
+              ),
+              const SizedBox(width: 10),
+              _TopActionButton(
+                label: strings.localized(telugu: 'రిసెట్', english: 'Reset'),
+                onTap: disabled ? null : onReset,
+              ),
+              const SizedBox(width: 6),
+              _TopActionButton(
+                label: strings.localized(
+                  telugu: isApplying ? 'అప్లై అవుతోంది...' : 'అప్లై',
+                  english: isApplying ? 'Applying...' : 'Apply',
+                ),
+                onTap: disabled ? null : onApply,
+              ),
+              const SizedBox(width: 2),
             ],
           ),
         ),
@@ -9997,6 +10646,7 @@ class _EraserModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Container(
       height: 40,
       padding: const EdgeInsets.all(3),
@@ -10009,7 +10659,7 @@ class _EraserModeToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           _EraserModeChip(
-            label: 'Erase',
+            label: strings.localized(telugu: 'తొలగించు', english: 'Erase'),
             selected: mode == _EraserMode.erase,
             enabled: enabled,
             color: const Color(0xFFEF4444),
@@ -10017,7 +10667,10 @@ class _EraserModeToggle extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           _EraserModeChip(
-            label: 'Restore',
+            label: strings.localized(
+              telugu: 'తిరిగి తెచ్చు',
+              english: 'Restore',
+            ),
             selected: mode == _EraserMode.restore,
             enabled: enabled,
             color: const Color(0xFF16A34A),
@@ -10197,6 +10850,7 @@ class _AdjustBottomToolsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Container(
       height: height,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -10221,12 +10875,12 @@ class _AdjustBottomToolsBar extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          const Row(
+          Row(
             children: <Widget>[
               Icon(Icons.tune_rounded, size: 18, color: Color(0xFF0F172A)),
               SizedBox(width: 8),
               Text(
-                'Adjust',
+                strings.localized(telugu: 'అడ్జస్ట్', english: 'Adjust'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -10239,65 +10893,79 @@ class _AdjustBottomToolsBar extends StatelessWidget {
           Expanded(
             child: ValueListenableBuilder<_AdjustSessionState?>(
               valueListenable: sessionListenable,
-              builder: (
-                BuildContext context,
-                _AdjustSessionState? session,
-                Widget? child,
-              ) {
-                final resolved =
-                    session ??
-                    const _AdjustSessionState(
-                      brightness: 0,
-                      contrast: 1,
-                      saturation: 1,
-                      blur: 0,
+              builder:
+                  (
+                    BuildContext context,
+                    _AdjustSessionState? session,
+                    Widget? child,
+                  ) {
+                    final resolved =
+                        session ??
+                        const _AdjustSessionState(
+                          brightness: 0,
+                          contrast: 1,
+                          saturation: 1,
+                          blur: 0,
+                        );
+                    return SingleChildScrollView(
+                      child: Column(
+                        children: <Widget>[
+                          _AdjustSlider(
+                            label: strings.localized(
+                              telugu: 'బ్రైట్‌నెస్',
+                              english: 'Brightness',
+                            ),
+                            value: resolved.brightness,
+                            min: -0.35,
+                            max: 0.35,
+                            display: resolved.brightness.toStringAsFixed(2),
+                            onChanged: (value) => onSessionChanged(
+                              resolved.copyWith(brightness: value),
+                            ),
+                          ),
+                          _AdjustSlider(
+                            label: strings.localized(
+                              telugu: 'కాంట్రాస్ట్',
+                              english: 'Contrast',
+                            ),
+                            value: resolved.contrast,
+                            min: 0.6,
+                            max: 1.6,
+                            display: resolved.contrast.toStringAsFixed(2),
+                            onChanged: (value) => onSessionChanged(
+                              resolved.copyWith(contrast: value),
+                            ),
+                          ),
+                          _AdjustSlider(
+                            label: strings.localized(
+                              telugu: 'సాచురేషన్',
+                              english: 'Saturation',
+                            ),
+                            value: resolved.saturation,
+                            min: 0,
+                            max: 2,
+                            display: resolved.saturation.toStringAsFixed(2),
+                            onChanged: (value) => onSessionChanged(
+                              resolved.copyWith(saturation: value),
+                            ),
+                          ),
+                          _AdjustSlider(
+                            label: strings.localized(
+                              telugu: 'బ్లర్',
+                              english: 'Blur',
+                            ),
+                            value: resolved.blur,
+                            min: 0,
+                            max: 10,
+                            display: resolved.blur.toStringAsFixed(1),
+                            onChanged: (value) => onSessionChanged(
+                              resolved.copyWith(blur: value),
+                            ),
+                          ),
+                        ],
+                      ),
                     );
-                return SingleChildScrollView(
-                  child: Column(
-                    children: <Widget>[
-                      _AdjustSlider(
-                        label: 'Brightness',
-                        value: resolved.brightness,
-                        min: -0.35,
-                        max: 0.35,
-                        display: resolved.brightness.toStringAsFixed(2),
-                        onChanged: (value) => onSessionChanged(
-                          resolved.copyWith(brightness: value),
-                        ),
-                      ),
-                      _AdjustSlider(
-                        label: 'Contrast',
-                        value: resolved.contrast,
-                        min: 0.6,
-                        max: 1.6,
-                        display: resolved.contrast.toStringAsFixed(2),
-                        onChanged: (value) => onSessionChanged(
-                          resolved.copyWith(contrast: value),
-                        ),
-                      ),
-                      _AdjustSlider(
-                        label: 'Saturation',
-                        value: resolved.saturation,
-                        min: 0,
-                        max: 2,
-                        display: resolved.saturation.toStringAsFixed(2),
-                        onChanged: (value) => onSessionChanged(
-                          resolved.copyWith(saturation: value),
-                        ),
-                      ),
-                      _AdjustSlider(
-                        label: 'Blur',
-                        value: resolved.blur,
-                        min: 0,
-                        max: 10,
-                        display: resolved.blur.toStringAsFixed(1),
-                        onChanged: (value) =>
-                            onSessionChanged(resolved.copyWith(blur: value)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                  },
             ),
           ),
           const SizedBox(height: 10),
@@ -10306,21 +10974,27 @@ class _AdjustBottomToolsBar extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: onBack,
-                  child: const Text('Back'),
+                  child: Text(
+                    strings.localized(telugu: 'వెనక్కి', english: 'Back'),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
                   onPressed: onReset,
-                  child: const Text('Reset'),
+                  child: Text(
+                    strings.localized(telugu: 'రిసెట్', english: 'Reset'),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton(
                   onPressed: onApply,
-                  child: const Text('Apply'),
+                  child: Text(
+                    strings.localized(telugu: 'అప్లై', english: 'Apply'),
+                  ),
                 ),
               ),
             ],
@@ -10500,6 +11174,7 @@ class _CropBottomToolsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     final disabled = isApplying;
     return Container(
       height: height,
@@ -10524,16 +11199,19 @@ class _CropBottomToolsBar extends StatelessWidget {
           ),
         ],
       ),
-        child: Row(
+      child: Row(
         children: <Widget>[
-          _TopActionButton(label: 'Back', onTap: disabled ? null : onBack),
+          _TopActionButton(
+            label: strings.localized(telugu: 'వెనక్కి', english: 'Back'),
+            onTap: disabled ? null : onBack,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: <Widget>[
                 _CropAspectChip(
-                  label: 'Free',
+                  label: strings.localized(telugu: 'ఫ్రీ', english: 'Free'),
                   selected: _isSelected(null),
                   onTap: disabled ? null : () => onAspectRatioChanged(null),
                 ),
@@ -10558,7 +11236,7 @@ class _CropBottomToolsBar extends StatelessWidget {
                   onTap: disabled ? null : () => onAspectRatioChanged(9 / 16),
                 ),
                 _CropAspectChip(
-                  label: 'Reset',
+                  label: strings.localized(telugu: 'రిసెట్', english: 'Reset'),
                   selected: false,
                   onTap: disabled ? null : onReset,
                 ),
@@ -10567,7 +11245,10 @@ class _CropBottomToolsBar extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           _TopActionButton(
-            label: isApplying ? 'Applying...' : 'Apply',
+            label: strings.localized(
+              telugu: isApplying ? 'అప్లై అవుతోంది...' : 'అప్లై',
+              english: isApplying ? 'Applying...' : 'Apply',
+            ),
             onTap: disabled ? null : onApply,
           ),
         ],
@@ -10662,9 +11343,14 @@ class _StickerPickerScreenState extends State<_StickerPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     final items = _filteredItems;
     return Scaffold(
-      appBar: AppBar(title: const Text('Elements')),
+      appBar: AppBar(
+        title: Text(
+          strings.localized(telugu: 'ఎలిమెంట్స్', english: 'Elements'),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
@@ -10678,7 +11364,10 @@ class _StickerPickerScreenState extends State<_StickerPickerScreen> {
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: 'Search elements',
+                  hintText: strings.localized(
+                    telugu: 'ఎలిమెంట్స్ వెతకండి',
+                    english: 'Search elements',
+                  ),
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _query.isEmpty
                       ? null
@@ -10746,17 +11435,19 @@ class _StickerPickerScreenState extends State<_StickerPickerScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: _ImageEditorScreenState
-                                        ._isImageLikeSticker(sticker)
+                                child:
+                                    _ImageEditorScreenState._isImageLikeSticker(
+                                      sticker,
+                                    )
                                     ? Padding(
                                         padding: const EdgeInsets.all(6),
-                                        child: _ImageEditorScreenState
-                                            ._buildStickerVisual(
-                                          sticker,
-                                          fontSize: 30,
-                                          fit: BoxFit.contain,
-                                          filterQuality: FilterQuality.low,
-                                        ),
+                                        child:
+                                            _ImageEditorScreenState._buildStickerVisual(
+                                              sticker,
+                                              fontSize: 30,
+                                              fit: BoxFit.contain,
+                                              filterQuality: FilterQuality.low,
+                                            ),
                                       )
                                     : Text(
                                         sticker,
@@ -10886,33 +11577,32 @@ class _EditorIconButton extends StatelessWidget {
       child: _PressableSurface(
         onTap: onTap,
         enabled: onTap != null,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          width: 34,
-          height: 34,
-          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             color: onTap == null
-                ? const Color(0xFFF4F6FA)
-                : Colors.white.withValues(alpha: 0.76),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xD8D9E6F8)),
+                ? const Color(0xFF172033)
+                : const Color(0xFF1B2638),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: onTap == null
                 ? null
                 : const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x050F172A),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: Color(0x18000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 1),
                     ),
                   ],
           ),
           child: Icon(
             icon,
-            size: 18,
+            size: 20,
             color: onTap == null
                 ? const Color(0xFF94A3B8)
-                : const Color(0xFF334155),
+                : const Color(0xFFE2E8F0),
           ),
         ),
       ),
@@ -10931,35 +11621,34 @@ class _TopActionButton extends StatelessWidget {
     return _PressableSurface(
       onTap: onTap,
       enabled: onTap != null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 34),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(minHeight: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: onTap == null
-              ? const Color(0xFFF4F6FA)
-              : Colors.white.withValues(alpha: 0.78),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xD7D9E6F8)),
+              ? const Color(0xFF172033)
+              : const Color(0xFF1B2638),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: onTap == null
               ? null
               : const <BoxShadow>[
                   BoxShadow(
-                    color: Color(0x050F172A),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
+                    color: Color(0x18000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 1),
                   ),
                 ],
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
             letterSpacing: -0.1,
             color: onTap == null
                 ? const Color(0xFF94A3B8)
-                : const Color(0xFF334155),
+                : const Color(0xFFF8FAFC),
           ),
         ),
       ),
@@ -11048,10 +11737,10 @@ class _ToolItem extends StatelessWidget {
               ? const Color(0xFF312E81)
               : const Color(0xFF334155)
         : const Color(0xFF94A3B8);
-    final itemWidth = compact ? 68.0 : 78.0;
-    final iconSize = compact ? 17.0 : 19.0;
-    final iconBubble = compact ? 34.0 : 38.0;
-    final labelSize = compact ? 10.0 : 10.5;
+    final itemWidth = compact ? 74.0 : 86.0;
+    final iconSize = compact ? 18.0 : 20.0;
+    final iconBubble = compact ? 38.0 : 42.0;
+    final labelSize = compact ? 10.5 : 11.0;
     return _PressableSurface(
       onTap: onTap,
       enabled: enabled,
@@ -11065,38 +11754,20 @@ class _ToolItem extends StatelessWidget {
               width: iconBubble,
               height: iconBubble,
               decoration: BoxDecoration(
-                gradient: enabled
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: active
-                            ? <Color>[
-                                const Color(0xFFEDE9FE),
-                                const Color(0xFFDBEAFE),
-                                const Color(0xFFFCE7F3),
-                              ]
-                            : <Color>[
-                          Color(0xFFFFFFFF),
-                          Color(0xFFEFF6FF),
-                          Color(0xFFFDF2F8),
-                              ],
-                      )
-                    : null,
-                color: enabled ? null : const Color(0xFFF5F7FB),
+                color: enabled
+                    ? active
+                          ? const Color(0xFFE0E7FF)
+                          : const Color(0xFFF8FAFC)
+                    : const Color(0xFFF1F5F9),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: active
-                      ? const Color(0xFFC4B5FD)
-                      : const Color(0xFFDCE7F6),
-                ),
                 boxShadow: enabled
                     ? <BoxShadow>[
                         BoxShadow(
                           color: active
-                              ? const Color(0x224F46E5)
-                              : const Color(0x102563EB),
-                          blurRadius: active ? 11 : 8,
-                          offset: const Offset(0, 2),
+                              ? const Color(0x183B82F6)
+                              : const Color(0x0E0F172A),
+                          blurRadius: active ? 8 : 5,
+                          offset: const Offset(0, 1),
                         ),
                       ]
                     : null,
@@ -11171,5 +11842,3 @@ class _TextModeToolItem extends StatelessWidget {
     );
   }
 }
-
-

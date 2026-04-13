@@ -15,7 +15,8 @@ class PermissionsScreen extends StatefulWidget {
   State<PermissionsScreen> createState() => _PermissionsScreenState();
 }
 
-class _PermissionsScreenState extends State<PermissionsScreen> {
+class _PermissionsScreenState extends State<PermissionsScreen>
+    with AppLanguageStateMixin {
   final PermissionService _service = PermissionService();
   bool _loading = false;
 

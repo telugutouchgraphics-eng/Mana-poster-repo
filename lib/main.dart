@@ -2,6 +2,8 @@ import 'dart:developer' as developer;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/app.dart';
@@ -20,9 +22,24 @@ Future<void> main() async {
     _attachFrameProfiler();
   }
 
-  final options = DefaultFirebaseOptions.currentPlatformOrNull;
-  if (options != null) {
-    await Firebase.initializeApp(options: options);
+  try {
+    final options = DefaultFirebaseOptions.currentPlatformOrNull;
+    if (options != null) {
+      await Firebase.initializeApp(options: options);
+    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      await Firebase.initializeApp();
+    }
+  } catch (error, stackTrace) {
+    developer.log(
+      'Firebase init failed, continuing without Firebase bootstrap.',
+      name: 'bootstrap.firebase',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  if (Firebase.apps.isNotEmpty && !kIsWeb) {
     await NotificationService.instance.initialize();
   }
 

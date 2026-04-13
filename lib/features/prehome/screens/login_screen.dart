@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
-import 'package:mana_poster/features/prehome/services/auth_service.dart';
+import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/widgets/flow_screen_header.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
@@ -17,7 +18,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _service = FirebaseAuthService();
@@ -138,6 +139,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _openLegalDocument(LegalDocumentType type) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalDocumentScreen(documentType: type),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -224,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             validator: (v) {
-                              final value = (v ?? '');
+                              final value = v ?? '';
                               if (value.trim().isEmpty) {
                                 return authCopy.passwordRequired;
                               }
@@ -294,6 +303,77 @@ class _LoginScreenState extends State<LoginScreen> {
                             label: Text(strings.googleContinue),
                           ),
                           const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Column(
+                              children: <Widget>[
+                                Text(
+                                  authCopy.legalIntro,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 12.5,
+                                    height: 1.45,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 2,
+                                  children: <Widget>[
+                                    TextButton(
+                                      onPressed: () => _openLegalDocument(
+                                        LegalDocumentType.privacyPolicy,
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        minimumSize: Size.zero,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(authCopy.privacyLabel),
+                                    ),
+                                    Text(
+                                      authCopy.andLabel,
+                                      style: const TextStyle(
+                                        color: Color(0xFF64748B),
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _openLegalDocument(
+                                        LegalDocumentType.termsAndConditions,
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        minimumSize: Size.zero,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(authCopy.termsLabel),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
@@ -346,7 +426,10 @@ class _AuthUiCopy {
   String get passwordRequired => switch (language) {
     AppLanguage.telugu => 'Password అవసరం',
     AppLanguage.hindi => 'Password ज़रूरी है',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Password is required',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'Password is required',
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
@@ -358,7 +441,10 @@ class _AuthUiCopy {
       isLogin
           ? 'अपने account details से login करके poster flow जारी रखें.'
           : 'नया account बनाकर अपनी poster journey शुरू करें.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       isLogin
           ? 'Login with your account details and continue your poster flow.'
           : 'Create a new account and start your poster journey.',
@@ -367,9 +453,51 @@ class _AuthUiCopy {
   String resetSuccess(String email) => switch (language) {
     AppLanguage.telugu => '$email కి password reset email పంపించాం.',
     AppLanguage.hindi => '$email पर password reset email भेज दिया गया है.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Password reset email sent to $email.',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'Password reset email sent to $email.',
+  };
+
+  String get legalIntro => switch (language) {
+    AppLanguage.telugu =>
+      'కొనసాగించడం ద్వారా మా ప్రైవసీ పాలసీ మరియు నిబంధనలు అంగీకరిస్తున్నారు.',
+    AppLanguage.hindi =>
+      'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम स्वीकार करते हैं।',
+    AppLanguage.english =>
+      'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
+    AppLanguage.tamil =>
+      'தொடர்வதன் மூலம் எங்கள் Privacy Policy மற்றும் Terms-ஐ ஏற்கிறீர்கள்.',
+    AppLanguage.kannada =>
+      'ಮುಂದುವರಿದರೆ ನಮ್ಮ Privacy Policy ಮತ್ತು Terms ಅನ್ನು ಒಪ್ಪುತ್ತೀರಿ.',
+    AppLanguage.malayalam =>
+      'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ Privacy Policy, Terms എന്നിവ അംഗീകരിക്കുന്നു.',
+  };
+
+  String get privacyLabel => switch (language) {
+    AppLanguage.telugu => 'ప్రైవసీ పాలసీ',
+    AppLanguage.hindi => 'प्राइवेसी पॉलिसी',
+    AppLanguage.english => 'Privacy Policy',
+    AppLanguage.tamil => 'Privacy Policy',
+    AppLanguage.kannada => 'Privacy Policy',
+    AppLanguage.malayalam => 'Privacy Policy',
+  };
+
+  String get andLabel => switch (language) {
+    AppLanguage.telugu => 'మరియు',
+    AppLanguage.hindi => 'और',
+    AppLanguage.english => 'and',
+    AppLanguage.tamil => 'மற்றும்',
+    AppLanguage.kannada => 'ಮತ್ತು',
+    AppLanguage.malayalam => 'മറ്റും',
+  };
+
+  String get termsLabel => switch (language) {
+    AppLanguage.telugu => 'నిబంధనలు షరతులు',
+    AppLanguage.hindi => 'नियम और शर्तें',
+    AppLanguage.english => 'Terms & Conditions',
+    AppLanguage.tamil => 'Terms & Conditions',
+    AppLanguage.kannada => 'Terms & Conditions',
+    AppLanguage.malayalam => 'Terms & Conditions',
   };
 }
-
-
-

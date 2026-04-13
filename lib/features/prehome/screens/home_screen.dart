@@ -5,7 +5,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
@@ -23,6 +25,7 @@ import 'package:mana_poster/features/prehome/services/poster_profile_service.dar
 import 'package:mana_poster/features/prehome/services/premium_template_access_service.dart';
 import 'package:mana_poster/features/prehome/services/template_entitlement_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/template_purchase_gateway.dart';
+import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -64,7 +67,10 @@ class _TemplateItem {
   String titleFor(AppLanguage language) => switch (language) {
     AppLanguage.telugu => titleTe,
     AppLanguage.hindi => titleHi,
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => titleEn,
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => titleEn,
   };
 }
 
@@ -89,7 +95,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with AppLanguageStateMixin {
   static const String _allCategorySlug = 'all';
   static const List<String> _staticCategorySlugs = <String>[
     'all',
@@ -114,7 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
   _HomeTab _selectedTab = _HomeTab.free;
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService();
-  final AppHomeBannerService _appHomeBannerService = const AppHomeBannerService();
+  final AppHomeBannerService _appHomeBannerService =
+      const AppHomeBannerService();
   final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
       const ApprovedCreatorTemplateService();
   final PremiumTemplateAccessService _premiumTemplateAccessService =
@@ -290,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<_CategoryChipData> _buildStaticCategories() {
-    final labels = context.strings.homeCategories();
+    final labels = context.strings.localizedHomeCategories();
     return List<_CategoryChipData>.generate(labels.length, (int index) {
       final slug = index < _staticCategorySlugs.length
           ? _staticCategorySlugs[index]
@@ -449,7 +456,9 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final source in cleanSources) {
       _addNormalizedSourceTags(tags, source);
     }
-    final normalized = cleanSources.map((value) => value.toLowerCase()).join(' ');
+    final normalized = cleanSources
+        .map((value) => value.toLowerCase())
+        .join(' ');
 
     void add(String tag) => tags.add(_normalizeTag(tag));
 
@@ -492,7 +501,40 @@ class _HomeScreenState extends State<HomeScreen> {
     return tags.toList(growable: false);
   }
 
+  void _showWebEditorUnavailableMessage() {
+    if (!mounted) {
+      return;
+    }
+    final strings = context.strings;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.localized(
+              telugu:
+                  'వెబ్‌లో editor అందుబాటులో లేదు. పోస్టర్ create చేయాలంటే mobile app ఉపయోగించండి.',
+              english:
+                  'Editor is not available on web. Use the mobile app to create posters.',
+              hindi:
+                  'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
+              tamil:
+                  'வெபில் editor கிடைக்காது. Poster create செய்ய mobile app பயன்படுத்துங்கள்.',
+              kannada:
+                  'ವೆಬ್‌ನಲ್ಲಿ editor ಲಭ್ಯವಿಲ್ಲ. Poster create ಮಾಡಲು mobile app ಬಳಸಿ.',
+              malayalam:
+                  'വെബിൽ editor ലഭ്യമല്ല. Poster create ചെയ്യാൻ mobile app ഉപയോഗിക്കുക.',
+            ),
+          ),
+        ),
+      );
+  }
+
   void _onCreateTap() {
+    if (kIsWeb) {
+      _showWebEditorUnavailableMessage();
+      return;
+    }
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const PageSetupScreen()));
@@ -517,6 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final cached = await _appHomeBannerService.fetchBannersFromCache();
     if (mounted && cached.isNotEmpty) {
       setState(() => _homeBanners = cached);
+      _warmBannerImages(cached);
     }
 
     final remote = await _appHomeBannerService.fetchBanners();
@@ -524,17 +567,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _homeBanners = remote);
+    _warmBannerImages(remote);
   }
 
   Future<void> _loadApprovedCreatorTemplates() async {
     final cached = await _approvedCreatorTemplateService
         .fetchApprovedTemplatesFromCache(maxItems: 80);
     if (mounted && cached.isNotEmpty) {
-      setState(
-        () => _remoteApprovedTemplates = cached
-            .map(_mapApprovedCreatorTemplate)
-            .toList(growable: false),
-      );
+      final mapped = cached
+          .map(_mapApprovedCreatorTemplate)
+          .toList(growable: false);
+      setState(() => _remoteApprovedTemplates = mapped);
+      _warmTemplateImages(mapped);
     }
 
     final remote = await _approvedCreatorTemplateService.fetchApprovedTemplates(
@@ -543,11 +587,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) {
       return;
     }
-    setState(
-      () => _remoteApprovedTemplates = remote
-          .map(_mapApprovedCreatorTemplate)
-          .toList(growable: false),
-    );
+    final mapped = remote
+        .map(_mapApprovedCreatorTemplate)
+        .toList(growable: false);
+    setState(() => _remoteApprovedTemplates = mapped);
+    _warmTemplateImages(mapped);
   }
 
   _TemplateItem _mapApprovedCreatorTemplate(ApprovedCreatorTemplate template) {
@@ -575,13 +619,63 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   Future<void> _loadViewerPosterProfile() async {
-    final profile = await PosterProfileService.load();
+    final profile = await PosterProfileService.loadLocal();
     if (!mounted) {
       return;
     }
     setState(() => _viewerPosterProfile = profile);
+    _warmPosterProfileImage(profile);
+    unawaited(_refreshViewerPosterProfileRemote(profile));
+  }
+
+  Future<void> _refreshViewerPosterProfileRemote(
+    PosterProfileData local,
+  ) async {
+    final profile = await PosterProfileService.refreshFromRemote(
+      localProfile: local,
+    );
+    if (!mounted || profile == null || profile == _viewerPosterProfile) {
+      return;
+    }
+    setState(() => _viewerPosterProfile = profile);
+    _warmPosterProfileImage(profile);
+  }
+
+  void _warmPosterProfileImage(PosterProfileData profile) {
+    final imageProvider = PosterProfileService.resolveImageProvider(profile);
+    if (imageProvider == null || !mounted) {
+      return;
+    }
+    unawaited(precacheImage(imageProvider, context));
+  }
+
+  void _warmTemplateImages(List<_TemplateItem> items) {
+    if (!mounted) {
+      return;
+    }
+    final seen = <String>{};
+    for (final item in items.take(8)) {
+      final imageUrl = item.imageUrl?.trim() ?? '';
+      if (imageUrl.isEmpty || !seen.add(imageUrl)) {
+        continue;
+      }
+      unawaited(precacheImage(CachedNetworkImageProvider(imageUrl), context));
+    }
+  }
+
+  void _warmBannerImages(List<AppHomeBanner> banners) {
+    if (!mounted) {
+      return;
+    }
+    final seen = <String>{};
+    for (final banner in banners.take(4)) {
+      final imageUrl = banner.imageUrl.trim();
+      if (imageUrl.isEmpty || !seen.add(imageUrl)) {
+        continue;
+      }
+      unawaited(precacheImage(CachedNetworkImageProvider(imageUrl), context));
+    }
   }
 
   Future<void> _refreshHomeFeed() async {
@@ -628,6 +722,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openPremiumTemplate(_TemplateItem item) async {
+    if (kIsWeb) {
+      _showWebEditorUnavailableMessage();
+      return;
+    }
     final documentAsset = item.templateDocumentSource;
     final pageConfig = item.pageConfig;
     if (documentAsset == null || pageConfig == null) {
@@ -644,6 +742,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _handlePremiumTemplateAction(_TemplateItem item) async {
+    if (kIsWeb) {
+      _showWebEditorUnavailableMessage();
+      return;
+    }
     final templateId = item.templateId;
     final productId = item.productId;
     if (templateId == null || templateId.isEmpty) {
@@ -673,7 +775,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final purchasedProductId = outcome.evidence?.productId ?? productId;
         Set<String> unlocked;
         final evidence = outcome.evidence;
-        if (evidence != null && _templateEntitlementBackendService.isConfigured) {
+        if (evidence != null &&
+            _templateEntitlementBackendService.isConfigured) {
           final verifyResult = await _templateEntitlementBackendService
               .verifyPurchase(templateId: templateId, evidence: evidence);
           if (!mounted) {
@@ -698,10 +801,11 @@ class _HomeScreenState extends State<HomeScreen> {
             return;
           }
         } else {
-          unlocked = await _premiumTemplateAccessService.unlockTemplateForProduct(
-            templateId: templateId,
-            productId: purchasedProductId,
-          );
+          unlocked = await _premiumTemplateAccessService
+              .unlockTemplateForProduct(
+                templateId: templateId,
+                productId: purchasedProductId,
+              );
         }
         if (!mounted) {
           return;
@@ -712,9 +816,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         await _openPremiumTemplate(item);
       case PurchaseFlowResult.cancelled:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment cancel chesaru')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment cancel chesaru')));
       case PurchaseFlowResult.billingUnavailable:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Billing service available ledu')),
@@ -728,9 +832,9 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(content: Text('Payment response timeout ayyindi')),
         );
       case PurchaseFlowResult.failed:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment fail ayyindi')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment fail ayyindi')));
       case PurchaseFlowResult.nothingToRestore:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Purchase restore avvaledu')),
@@ -808,9 +912,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final staticCategories = _buildStaticCategories();
     final dynamicCategories = _buildDynamicCategories(DateTime.now(), language);
     final categories = _mergeCategories(staticCategories, dynamicCategories);
-    final activeCategorySlug = categories.any(
-      (chip) => chip.slug == _selectedCategorySlug,
-    )
+    final activeCategorySlug =
+        categories.any((chip) => chip.slug == _selectedCategorySlug)
         ? _selectedCategorySlug
         : _allCategorySlug;
     final selectedCategory = categories.firstWhere(
@@ -837,6 +940,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _HomeHeader(
               onCreateTap: _onCreateTap,
               onProfileTap: _openProfile,
+              viewerPosterProfile: _viewerPosterProfile,
               searchController: _searchController,
               searchFocusNode: _searchFocusNode,
               onSearchChanged: (_) => setState(() {}),
@@ -865,7 +969,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             scrollDirection: Axis.horizontal,
                             physics: const BouncingScrollPhysics(),
                             itemCount: categories.length,
-                            separatorBuilder: (_, _) => const SizedBox(width: 7),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 7),
                             itemBuilder: (_, index) => _CategoryChip(
                               data: categories[index],
                               isSelected:
@@ -875,7 +980,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if (nextSlug == activeCategorySlug) {
                                   return;
                                 }
-                                setState(() => _selectedCategorySlug = nextSlug);
+                                setState(
+                                  () => _selectedCategorySlug = nextSlug,
+                                );
                               },
                             ),
                           ),
@@ -883,76 +990,72 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                  SliverToBoxAdapter(
-                    child: RepaintBoundary(
-                      child: _HomeHeroBanner(banners: _homeBanners),
+                  if (_homeBanners.isNotEmpty) ...<Widget>[
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    SliverToBoxAdapter(
+                      child: RepaintBoundary(
+                        child: _HomeHeroBanner(banners: _homeBanners),
+                      ),
                     ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ],
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: const Color(0xFFD9E2F1)),
-                        ),
-                        child: SegmentedButton<_HomeTab>(
-                          showSelectedIcon: false,
-                          segments: <ButtonSegment<_HomeTab>>[
-                            ButtonSegment<_HomeTab>(
-                              value: _HomeTab.free,
-                              label: Text(strings.freeTab),
-                            ),
-                            ButtonSegment<_HomeTab>(
-                              value: _HomeTab.premium,
-                              label: Text(strings.premiumTab),
-                            ),
-                          ],
-                          selected: <_HomeTab>{_selectedTab},
-                          style: ButtonStyle(
-                            animationDuration: const Duration(milliseconds: 180),
-                            backgroundColor:
-                                WidgetStateProperty.resolveWith<Color?>(
-                                  (states) => states.contains(WidgetState.selected)
-                                      ? const Color(0xFF6D28D9)
-                                      : const Color(0x00000000),
-                                ),
-                            foregroundColor:
-                                WidgetStateProperty.resolveWith<Color?>(
-                                  (states) => states.contains(WidgetState.selected)
-                                      ? Colors.white
-                                      : const Color(0xFF475569),
-                                ),
-                            side: const WidgetStatePropertyAll<BorderSide>(
-                              BorderSide(color: Colors.transparent),
-                            ),
-                            shape: WidgetStatePropertyAll<OutlinedBorder>(
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                      child: SegmentedButton<_HomeTab>(
+                        showSelectedIcon: false,
+                        segments: <ButtonSegment<_HomeTab>>[
+                          ButtonSegment<_HomeTab>(
+                            value: _HomeTab.free,
+                            label: Text(strings.freeTab),
+                          ),
+                          ButtonSegment<_HomeTab>(
+                            value: _HomeTab.premium,
+                            label: Text(strings.premiumTab),
+                          ),
+                        ],
+                        selected: <_HomeTab>{_selectedTab},
+                        style: ButtonStyle(
+                          animationDuration: const Duration(milliseconds: 180),
+                          backgroundColor:
+                              WidgetStateProperty.resolveWith<Color?>(
+                                (states) =>
+                                    states.contains(WidgetState.selected)
+                                    ? const Color(0xFF6D28D9)
+                                    : Colors.white,
                               ),
-                            ),
-                            textStyle: const WidgetStatePropertyAll<TextStyle>(
-                              TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
+                          foregroundColor:
+                              WidgetStateProperty.resolveWith<Color?>(
+                                (states) =>
+                                    states.contains(WidgetState.selected)
+                                    ? Colors.white
+                                    : const Color(0xFF475569),
                               ),
-                            ),
-                            padding: const WidgetStatePropertyAll<EdgeInsets>(
-                              EdgeInsets.symmetric(vertical: 12),
+                          side: const WidgetStatePropertyAll<BorderSide>(
+                            BorderSide(color: Color(0xFFD9E2F1)),
+                          ),
+                          shape: WidgetStatePropertyAll<OutlinedBorder>(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onSelectionChanged: (value) {
-                            final nextTab = value.first;
-                            if (nextTab == _selectedTab) {
-                              return;
-                            }
-                            setState(() => _selectedTab = nextTab);
-                          },
+                          textStyle: const WidgetStatePropertyAll<TextStyle>(
+                            TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          padding: const WidgetStatePropertyAll<EdgeInsets>(
+                            EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
+                        onSelectionChanged: (value) {
+                          final nextTab = value.first;
+                          if (nextTab == _selectedTab) {
+                            return;
+                          }
+                          setState(() => _selectedTab = nextTab);
+                        },
                       ),
                     ),
                   ),
@@ -963,10 +1066,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: TextButton.icon(
-                            onPressed: () =>
-                                _handleRestorePremiumPurchases(premiumTemplates),
+                            onPressed: () => _handleRestorePremiumPurchases(
+                              premiumTemplates,
+                            ),
                             icon: const Icon(Icons.restore_rounded),
-                            label: const Text('Restore Purchases'),
+                            label: Text(
+                              strings.localized(
+                                telugu: 'Restore Purchases',
+                                english: 'Restore Purchases',
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -990,11 +1099,30 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? Icons.workspace_premium_outlined
                               : Icons.collections_outlined,
                           title: isPremiumTab
-                              ? 'Premium posters coming soon'
-                              : 'Approved posters not available',
+                              ? strings.localized(
+                                  telugu:
+                                      'ప్రస్తుతం premium పోస్టర్లు అందుబాటులో లేవు',
+                                  english:
+                                      'Premium posters are not available now',
+                                )
+                              : strings.localized(
+                                  telugu: 'ఈ విభాగంలో పోస్టర్లు ఇప్పుడిలేవు',
+                                  english:
+                                      'No posters are available in this section',
+                                ),
                           subtitle: isPremiumTab
-                              ? 'Premium tab ki new posters add ayyaka ikkada kanipisthayi.'
-                              : 'Current category ki approved creator posters levu. Pull down refresh chesi malli check cheyyandi.',
+                              ? strings.localized(
+                                  telugu:
+                                      'కొత్త premium posters add అయిన వెంటనే ఇక్కడ కనిపిస్తాయి. తర్వాత మళ్లీ check చేయండి.',
+                                  english:
+                                      'Check again later after premium posters are added.',
+                                )
+                              : strings.localized(
+                                  telugu:
+                                      'ఈ category కి ఇప్పుడే పోస్టర్లు లేవు. Pull down చేసి refresh చేసి మళ్లీ check చేయండి.',
+                                  english:
+                                      'There are no posters for this category right now. Pull down to refresh and check again.',
+                                ),
                         ),
                       ),
                     )
@@ -1008,7 +1136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return RepaintBoundary(
                             child: _TemplateFeedItem(
                               key: ValueKey<String>(
-                                '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-$isPremiumTab',
+                                '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-$isPremiumTab-${language.name}-${_viewerPosterProfile.identityMode.name}-${_viewerPosterProfile.activeName}-${_viewerPosterProfile.activeWhatsappNumber}-${_viewerPosterProfile.photoPath}-${_viewerPosterProfile.photoUrl}-${_viewerPosterProfile.businessLogoPath}-${_viewerPosterProfile.businessLogoUrl}',
                               ),
                               item: item,
                               isPremium: isPremiumTab,
@@ -1039,6 +1167,7 @@ class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.onCreateTap,
     required this.onProfileTap,
+    required this.viewerPosterProfile,
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchChanged,
@@ -1046,6 +1175,7 @@ class _HomeHeader extends StatelessWidget {
 
   final VoidCallback onCreateTap;
   final VoidCallback onProfileTap;
+  final PosterProfileData viewerPosterProfile;
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
@@ -1099,16 +1229,16 @@ class _HomeHeader extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.14),
                   ),
                 ),
-                child: IconButton(
-                  onPressed: onProfileTap,
-                  icon: const Icon(Icons.person_outline_rounded),
-                  color: Colors.white,
-                  iconSize: 20,
-                  constraints: const BoxConstraints.tightFor(
+                child: InkWell(
+                  onTap: onProfileTap,
+                  customBorder: const CircleBorder(),
+                  child: SizedBox(
                     width: 44,
                     height: 44,
+                    child: _HeaderProfileAvatar(
+                      viewerPosterProfile: viewerPosterProfile,
+                    ),
                   ),
-                  padding: EdgeInsets.zero,
                 ),
               ),
             ],
@@ -1194,9 +1324,7 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class _BannerSlideData {
-  const _BannerSlideData({
-    required this.imageUrl,
-  });
+  const _BannerSlideData({required this.imageUrl});
 
   final String imageUrl;
 }
@@ -1211,25 +1339,7 @@ class _HomeHeroBanner extends StatefulWidget {
 }
 
 class _HomeHeroBannerState extends State<_HomeHeroBanner> {
-  static const List<_BannerSlideData> _fallbackSlides = <_BannerSlideData>[
-    _BannerSlideData(
-      imageUrl:
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1400',
-    ),
-    _BannerSlideData(
-      imageUrl:
-          'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400',
-    ),
-    _BannerSlideData(
-      imageUrl:
-          'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1400',
-    ),
-  ];
-
   List<_BannerSlideData> get _slides {
-    if (widget.banners.isEmpty) {
-      return _fallbackSlides;
-    }
     return widget.banners
         .map((banner) => _BannerSlideData(imageUrl: banner.imageUrl))
         .toList(growable: false);
@@ -1264,6 +1374,9 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
 
   @override
   Widget build(BuildContext context) {
+    if (_slides.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final compact = constraints.maxWidth < 360;
@@ -1313,10 +1426,17 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                                 Object error,
                                 StackTrace? stackTrace,
                               ) {
-                                return const _ImageErrorState(
+                                final strings = context.strings;
+                                return _ImageErrorState(
                                   compact: true,
-                                  title: 'Banner unavailable',
-                                  subtitle: 'Please try again shortly.',
+                                  title: strings.localized(
+                                    telugu: 'Banner unavailable',
+                                    english: 'Banner unavailable',
+                                  ),
+                                  subtitle: strings.localized(
+                                    telugu: 'Please try again shortly.',
+                                    english: 'Please try again shortly.',
+                                  ),
                                 );
                               },
                         ),
@@ -1342,6 +1462,33 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
           ),
         );
       },
+    );
+  }
+}
+
+class _HeaderProfileAvatar extends StatelessWidget {
+  const _HeaderProfileAvatar({required this.viewerPosterProfile});
+
+  final PosterProfileData viewerPosterProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(3),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2.2),
+        ),
+        child: ClipOval(
+          child: PosterIdentityVisual(
+            profile: viewerPosterProfile,
+            fallbackBackground: Colors.white.withValues(alpha: 0.08),
+            fallbackIcon: Icons.person_outline_rounded,
+            fallbackIconColor: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1442,12 +1589,21 @@ class _TemplateFeedItem extends StatelessWidget {
   final PosterProfileData viewerPosterProfile;
   final VoidCallback? onPrimaryAction;
   final GlobalKey _posterRepaintKey = GlobalKey();
+  final ValueNotifier<bool> _showPosterPhotoNotifier = ValueNotifier<bool>(
+    true,
+  );
 
   Future<Uint8List?> _capturePosterBytes() async {
-    final boundary =
+    RenderRepaintBoundary? boundary =
         _posterRepaintKey.currentContext?.findRenderObject()
             as RenderRepaintBoundary?;
     if (boundary == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      boundary =
+          _posterRepaintKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+    }
+    if (boundary == null || boundary.debugNeedsPaint) {
       return null;
     }
     final image = await boundary.toImage(pixelRatio: 3);
@@ -1459,17 +1615,11 @@ class _TemplateFeedItem extends StatelessWidget {
     if (!Platform.isAndroid && !Platform.isIOS) {
       return true;
     }
-    final storageStatus = await Permission.storage.status;
     final photosStatus = await Permission.photos.status;
-    if (storageStatus.isGranted ||
-        photosStatus.isGranted ||
-        photosStatus.isLimited) {
+    if (photosStatus.isGranted || photosStatus.isLimited) {
       return true;
     }
-    final requested = await <Permission>[
-      Permission.storage,
-      Permission.photos,
-    ].request();
+    final requested = await <Permission>[Permission.photos].request();
     return requested.values.any(
       (status) => status.isGranted || status.isLimited,
     );
@@ -1510,7 +1660,8 @@ class _TemplateFeedItem extends StatelessWidget {
         _showSnack(messenger, 'Poster ready kaaledu, malli try cheyyandi');
         return;
       }
-      final fileName = 'mana_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+      final fileName =
+          'mana_poster_${DateTime.now().millisecondsSinceEpoch}.png';
       final result = await ImageGallerySaverPlus.saveImage(
         bytes,
         quality: 100,
@@ -1562,28 +1713,43 @@ class _TemplateFeedItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = context.strings;
     final personalizationConfig = item.personalizationConfig;
+    final canTogglePhoto = !isPremium && personalizationConfig != null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          RepaintBoundary(
-            key: _posterRepaintKey,
-            child: !isPremium && personalizationConfig != null
-                ? _CreatorPosterPreview(
-                    imageAssetPath: item.imageAssetPath,
-                    imageUrl: item.imageUrl,
-                    personalizationConfig: personalizationConfig,
-                    viewerPosterProfile: viewerPosterProfile,
-                    language: language,
-                  )
-                : _TemplatePosterImage(
-                    imageAssetPath: item.imageAssetPath,
-                    imageUrl: item.imageUrl,
+          ValueListenableBuilder<bool>(
+            valueListenable: _showPosterPhotoNotifier,
+            builder: (context, isPhotoVisible, _) {
+              return RepaintBoundary(
+                key: _posterRepaintKey,
+                child: KeyedSubtree(
+                  key: ValueKey<String>(
+                    '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}',
                   ),
+                  child: !isPremium && personalizationConfig != null
+                      ? _CreatorPosterPreview(
+                          key: ValueKey<String>(
+                            '${item.titleEn}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}',
+                          ),
+                          imageAssetPath: item.imageAssetPath,
+                          imageUrl: item.imageUrl,
+                          personalizationConfig: personalizationConfig,
+                          viewerPosterProfile: viewerPosterProfile,
+                          language: language,
+                          showProfilePhoto: isPhotoVisible,
+                        )
+                      : _TemplatePosterImage(
+                          imageAssetPath: item.imageAssetPath,
+                          imageUrl: item.imageUrl,
+                        ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
             item.titleFor(language),
             style: TextStyle(
@@ -1594,7 +1760,75 @@ class _TemplateFeedItem extends StatelessWidget {
                   : const Color(0xFF94A3B8),
             ),
           ),
-          const SizedBox(height: 12),
+          if (canTogglePhoto) ...<Widget>[
+            const SizedBox(height: 4),
+            ValueListenableBuilder<bool>(
+              valueListenable: _showPosterPhotoNotifier,
+              builder: (context, isPhotoVisible, _) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () {
+                        _showPosterPhotoNotifier.value = !isPhotoVisible;
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 1,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              isPhotoVisible
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                              size: 14,
+                              color: isPhotoVisible
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              strings.localized(
+                                telugu: 'Photo',
+                                english: 'Photo',
+                              ),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isPhotoVisible
+                                    ? const Color(0xFF166534)
+                                    : const Color(0xFF475569),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Transform.scale(
+                              scale: 0.68,
+                              child: Switch.adaptive(
+                                value: isPhotoVisible,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                activeTrackColor: const Color(0xFF25D366),
+                                activeThumbColor: Colors.white,
+                                onChanged: (bool value) {
+                                  _showPosterPhotoNotifier.value = value;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          const SizedBox(height: 8),
           if (isPremium)
             Row(
               children: <Widget>[
@@ -1631,9 +1865,7 @@ class _TemplateFeedItem extends StatelessWidget {
                       elevation: 0,
                     ),
                     child: Text(
-                      isUnlocked
-                          ? 'Edit'
-                          : 'Buy ₹${item.price ?? 499}',
+                      isUnlocked ? 'Edit' : 'Buy ₹${item.price ?? 499}',
                     ),
                   ),
                 ),
@@ -1650,12 +1882,12 @@ class _TemplateFeedItem extends StatelessWidget {
                       width: 30,
                       height: 30,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.whatshot_rounded,
-                        size: 22,
-                      ),
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.whatshot_rounded, size: 22),
                     ),
-                    label: const Text('Share'),
+                    label: Text(
+                      strings.localized(telugu: 'Share', english: 'Share'),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF334155),
                       side: const BorderSide(color: Color(0xFFD8E2F0)),
@@ -1714,10 +1946,9 @@ class _TemplatePosterImage extends StatelessWidget {
         final width = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
-        final pixelRatio = MediaQuery.devicePixelRatioOf(context).clamp(
-          1.0,
-          3.0,
-        );
+        final pixelRatio = MediaQuery.devicePixelRatioOf(
+          context,
+        ).clamp(1.0, 3.0);
         final cacheWidth = (width * pixelRatio).round().clamp(360, 1440);
 
         final imageWidget = imageAssetPath != null
@@ -1739,18 +1970,27 @@ class _TemplatePosterImage extends StatelessWidget {
                   }
                   return const _ImageLoadingState();
                 },
-                errorBuilder: (_, _, _) => const _ImageErrorState(
-                  title: 'Template image unavailable',
-                  subtitle: 'Please refresh or try another template.',
+                errorBuilder: (_, _, _) => _ImageErrorState(
+                  title: context.strings.localized(
+                    telugu: 'Template image unavailable',
+                    english: 'Template image unavailable',
+                  ),
+                  subtitle: context.strings.localized(
+                    telugu: 'Please refresh or try another template.',
+                    english: 'Please refresh or try another template.',
+                  ),
                 ),
               )
-            : Image.network(
-                imageUrl ?? '',
+            : Image(
+                image: ResizeImage.resizeIfNeeded(
+                  cacheWidth,
+                  null,
+                  CachedNetworkImageProvider(imageUrl ?? ''),
+                ),
                 width: double.infinity,
                 fit: BoxFit.contain,
                 alignment: Alignment.topCenter,
                 filterQuality: FilterQuality.low,
-                cacheWidth: cacheWidth,
                 frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                   if (wasSynchronouslyLoaded || frame != null) {
                     if (onFirstFrameReady != null) {
@@ -1762,16 +2002,24 @@ class _TemplatePosterImage extends StatelessWidget {
                   }
                   return const _ImageLoadingState();
                 },
-                errorBuilder: (
-                  BuildContext context,
-                  Object error,
-                  StackTrace? stackTrace,
-                ) {
-                  return const _ImageErrorState(
-                    title: 'Template image unavailable',
-                    subtitle: 'Please refresh or try another template.',
-                  );
-                },
+                errorBuilder:
+                    (
+                      BuildContext context,
+                      Object error,
+                      StackTrace? stackTrace,
+                    ) {
+                      final strings = context.strings;
+                      return _ImageErrorState(
+                        title: strings.localized(
+                          telugu: 'Template image unavailable',
+                          english: 'Template image unavailable',
+                        ),
+                        subtitle: strings.localized(
+                          telugu: 'Please refresh or try another template.',
+                          english: 'Please refresh or try another template.',
+                        ),
+                      );
+                    },
               );
 
         return Align(alignment: Alignment.topCenter, child: imageWidget);
@@ -1782,11 +2030,13 @@ class _TemplatePosterImage extends StatelessWidget {
 
 class _CreatorPosterPreview extends StatefulWidget {
   const _CreatorPosterPreview({
+    super.key,
     required this.imageAssetPath,
     required this.imageUrl,
     required this.personalizationConfig,
     required this.viewerPosterProfile,
     required this.language,
+    required this.showProfilePhoto,
   });
 
   final String? imageAssetPath;
@@ -1794,6 +2044,7 @@ class _CreatorPosterPreview extends StatefulWidget {
   final CreatorPosterPersonalization personalizationConfig;
   final PosterProfileData viewerPosterProfile;
   final AppLanguage language;
+  final bool showProfilePhoto;
 
   @override
   State<_CreatorPosterPreview> createState() => _CreatorPosterPreviewState();
@@ -1824,28 +2075,16 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
 
   @override
   Widget build(BuildContext context) {
-    final localPath = widget.viewerPosterProfile.photoPath.trim();
-    final hasLocalPhoto = localPath.isNotEmpty && File(localPath).existsSync();
-    final hasRemotePhoto = widget.viewerPosterProfile.photoUrl.trim().isNotEmpty;
-    final ImageProvider<Object>? cutoutImage = hasLocalPhoto
-        ? FileImage(File(localPath))
-        : (hasRemotePhoto
-              ? NetworkImage(widget.viewerPosterProfile.photoUrl.trim())
-              : null);
-    final originalLocalPath = widget.viewerPosterProfile.originalPhotoPath.trim();
-    final hasOriginalLocalPhoto =
-        originalLocalPath.isNotEmpty && File(originalLocalPath).existsSync();
-    final hasOriginalRemotePhoto =
+    final hasBusinessIdentity =
+        widget.viewerPosterProfile.identityMode ==
+            PosterIdentityMode.business &&
+        widget.viewerPosterProfile.activeName.trim().isNotEmpty;
+    final hasPersonalIdentity =
+        widget.viewerPosterProfile.photoPath.trim().isNotEmpty ||
+        widget.viewerPosterProfile.photoUrl.trim().isNotEmpty ||
+        widget.viewerPosterProfile.originalPhotoPath.trim().isNotEmpty ||
         widget.viewerPosterProfile.originalPhotoUrl.trim().isNotEmpty;
-    final ImageProvider<Object>? originalImage = hasOriginalLocalPhoto
-        ? FileImage(File(originalLocalPath))
-        : (hasOriginalRemotePhoto
-              ? NetworkImage(widget.viewerPosterProfile.originalPhotoUrl.trim())
-              : null);
-    final ImageProvider<Object>? profileImage =
-        widget.personalizationConfig.photoRenderMode == 'original'
-        ? (originalImage ?? cutoutImage)
-        : (cutoutImage ?? originalImage);
+    final shouldShowIdentityVisual = hasBusinessIdentity || hasPersonalIdentity;
     final resolvedName = widget.viewerPosterProfile.resolvedName(
       language: widget.language,
     );
@@ -1854,11 +2093,9 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         : widget.viewerPosterProfile.nameFontFamily;
     final showWhatsapp =
         widget.personalizationConfig.showWhatsapp &&
-        widget.viewerPosterProfile.whatsappNumber.trim().isNotEmpty;
-    final stripPadding = (widget.personalizationConfig.stripHeight * 0.45).clamp(
-      6.0,
-      14.0,
-    );
+        widget.viewerPosterProfile.activeWhatsappNumber.trim().isNotEmpty;
+    final stripPadding = (widget.personalizationConfig.stripHeight * 0.45)
+        .clamp(6.0, 14.0);
 
     return SizedBox(
       width: double.infinity,
@@ -1873,78 +2110,100 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 imageUrl: widget.imageUrl,
                 onFirstFrameReady: _handleBasePosterReady,
               ),
-              if (_basePosterReady && profileImage != null)
+              if (_basePosterReady &&
+                  widget.showProfilePhoto &&
+                  shouldShowIdentityVisual)
                 Positioned(
                   left: 0,
                   right: 0,
                   top: 0,
                   bottom: 0,
                   child: LayoutBuilder(
-                    builder: (BuildContext context, BoxConstraints constraints) {
-                      final size =
-                          constraints.maxWidth *
-                          (widget.personalizationConfig.photoScale / 100);
-                      final left =
-                          (constraints.maxWidth *
+                    builder:
+                        (BuildContext context, BoxConstraints constraints) {
+                          final size =
+                              constraints.maxWidth *
+                              (widget.personalizationConfig.photoScale / 100);
+                          final left =
+                              (constraints.maxWidth *
                                   (widget.personalizationConfig.photoX / 100)) -
                               (size / 2);
-                      final top =
-                          (constraints.maxHeight *
+                          final top =
+                              (constraints.maxHeight *
                                   (widget.personalizationConfig.photoY / 100)) -
                               (size / 2);
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: <Widget>[
-                          Positioned(
-                            left: left,
-                            top: top,
-                            width: size,
-                            height: size,
-                            child: _PhotoShapeFrame(
-                              shape: widget.personalizationConfig.photoShape,
-                              image: profileImage,
-                              edgeStyle: widget.personalizationConfig.edgeStyle,
-                              photoRenderMode:
-                                  widget.personalizationConfig.photoRenderMode,
-                            ),
-                          ),
-                          if (!widget.personalizationConfig.showBottomStrip)
-                            Positioned(
-                              left:
-                                  constraints.maxWidth *
-                                      (widget.personalizationConfig.nameX / 100),
-                              top:
-                                  constraints.maxHeight *
-                                      (widget.personalizationConfig.nameY / 100),
-                              child: Transform.translate(
-                                offset: const Offset(-80, -16),
-                                child: SizedBox(
-                                  width: 160,
-                                  child: Text(
-                                    resolvedName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 18,
-                                      fontFamily: displayNameFontFamily,
-                                      shadows: const <Shadow>[
-                                        Shadow(
-                                          color: Color(0xCC000000),
-                                          blurRadius: 4,
-                                          offset: Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: <Widget>[
+                              Positioned(
+                                left: left,
+                                top: top,
+                                width: size,
+                                height: size,
+                                child: _PhotoShapeFrame(
+                                  shape:
+                                      widget.personalizationConfig.photoShape,
+                                  edgeStyle:
+                                      widget.personalizationConfig.edgeStyle,
+                                  photoRenderMode: widget
+                                      .personalizationConfig
+                                      .photoRenderMode,
+                                  child: PosterIdentityVisual(
+                                    profile: widget.viewerPosterProfile,
+                                    preferOriginalPersonalPhoto:
+                                        widget
+                                            .personalizationConfig
+                                            .photoRenderMode ==
+                                        'original',
+                                    textScale:
+                                        widget
+                                                .viewerPosterProfile
+                                                .identityMode ==
+                                            PosterIdentityMode.business
+                                        ? 0.84
+                                        : 1.0,
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    },
+                              if (!widget.personalizationConfig.showBottomStrip)
+                                Positioned(
+                                  left:
+                                      constraints.maxWidth *
+                                      (widget.personalizationConfig.nameX /
+                                          100),
+                                  top:
+                                      constraints.maxHeight *
+                                      (widget.personalizationConfig.nameY /
+                                          100),
+                                  child: Transform.translate(
+                                    offset: const Offset(-80, -16),
+                                    child: SizedBox(
+                                      width: 160,
+                                      child: Text(
+                                        resolvedName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 18,
+                                          fontFamily: displayNameFontFamily,
+                                          shadows: const <Shadow>[
+                                            Shadow(
+                                              color: Color(0xCC000000),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                   ),
                 ),
             ],
@@ -1979,7 +2238,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 vertical: stripPadding - 1,
               ),
               child: Text(
-                widget.viewerPosterProfile.whatsappNumber.trim(),
+                widget.viewerPosterProfile.activeWhatsappNumber.trim(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -1999,13 +2258,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
 class _PhotoShapeFrame extends StatelessWidget {
   const _PhotoShapeFrame({
     required this.shape,
-    required this.image,
+    required this.child,
     required this.edgeStyle,
     required this.photoRenderMode,
   });
 
   final String shape;
-  final ImageProvider<Object> image;
+  final Widget child;
   final String edgeStyle;
   final String photoRenderMode;
 
@@ -2017,13 +2276,11 @@ class _PhotoShapeFrame extends StatelessWidget {
     final imageScale = photoRenderMode == 'cutout' ? 0.95 : 1.0;
 
     final shapedImage = DecoratedBox(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: image,
-          fit: BoxFit.contain,
-          alignment: imageAlignment,
-          scale: imageScale,
-        ),
+      decoration: BoxDecoration(color: Colors.transparent),
+      child: FittedBox(
+        fit: BoxFit.contain,
+        alignment: imageAlignment,
+        child: SizedBox.square(dimension: 100 * imageScale, child: child),
       ),
     );
     final imageWidget = edgeStyle == 'soft_fade'
@@ -2060,10 +2317,7 @@ class _PhotoShapeFrame extends StatelessWidget {
           child: imageWidget,
         );
       case 'hexagon':
-        return ClipPath(
-          clipper: const _HexagonClipper(),
-          child: imageWidget,
-        );
+        return ClipPath(clipper: const _HexagonClipper(), child: imageWidget);
       case 'square':
       default:
         return imageWidget;
@@ -2218,6 +2472,3 @@ class _ImageErrorState extends StatelessWidget {
     );
   }
 }
-
-
-

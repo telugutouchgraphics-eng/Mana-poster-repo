@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions? get currentPlatformOrNull {
     if (kIsWeb) {
-      return null;
+      return web;
     }
 
     switch (defaultTargetPlatform) {
@@ -29,6 +29,16 @@ class DefaultFirebaseOptions {
     appId: '1:1093335255199:android:2b3e0d1f5edfb17c1bfaaa',
     messagingSenderId: '1093335255199',
     projectId: 'mana-poster-ap',
+    storageBucket: 'mana-poster-ap.firebasestorage.app',
+    databaseURL: 'https://mana-poster-ap-default-rtdb.firebaseio.com',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBc_SrDCjsg-DmWGP3A7Gq6dqTj7AH9q5w',
+    appId: '1:1093335255199:web:mana_poster_web',
+    messagingSenderId: '1093335255199',
+    projectId: 'mana-poster-ap',
+    authDomain: 'mana-poster-ap.firebaseapp.com',
     storageBucket: 'mana-poster-ap.firebasestorage.app',
     databaseURL: 'https://mana-poster-ap-default-rtdb.firebaseio.com',
   );

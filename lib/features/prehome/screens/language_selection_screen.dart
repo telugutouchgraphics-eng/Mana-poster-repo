@@ -15,7 +15,8 @@ class LanguageSelectionScreen extends StatefulWidget {
       _LanguageSelectionScreenState();
 }
 
-class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
+class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
+    with AppLanguageStateMixin {
   AppLanguage _selected = AppLanguage.telugu;
   bool _hasSelectedManually = false;
 

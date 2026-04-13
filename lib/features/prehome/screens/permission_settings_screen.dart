@@ -14,17 +14,28 @@ class PermissionSettingsScreen extends StatefulWidget {
 }
 
 class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, AppLanguageStateMixin {
   final PermissionService _permissionService = PermissionService();
 
-  PermissionSnapshot? _snapshot;
+  PermissionSnapshot _snapshot = const PermissionSnapshot(
+    photos: AppPermissionState(
+      type: AppPermissionType.photos,
+      status: PermissionStatus.denied,
+    ),
+    notifications: AppPermissionState(
+      type: AppPermissionType.notifications,
+      status: PermissionStatus.denied,
+    ),
+  );
   bool _loading = true;
   bool _openingSettings = false;
+  bool _loadUsedFallback = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _snapshot = _permissionService.defaultSnapshot();
     _loadSnapshot();
   }
 
@@ -42,15 +53,34 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
   }
 
   Future<void> _loadSnapshot() async {
-    setState(() => _loading = true);
-    final PermissionSnapshot snapshot = await _permissionService.getSnapshot();
-    if (!mounted) {
-      return;
+    if (mounted) {
+      setState(() => _loading = true);
     }
-    setState(() {
-      _snapshot = snapshot;
-      _loading = false;
-    });
+    try {
+      final PermissionSnapshot snapshot = await _permissionService
+          .getSnapshot()
+          .timeout(
+            const Duration(seconds: 4),
+            onTimeout: _permissionService.defaultSnapshot,
+          );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _snapshot = snapshot;
+        _loading = false;
+        _loadUsedFallback = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _snapshot = _permissionService.defaultSnapshot();
+        _loading = false;
+        _loadUsedFallback = true;
+      });
+    }
   }
 
   Future<void> _requestPermission(AppPermissionType type) async {
@@ -101,92 +131,125 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
   @override
   Widget build(BuildContext context) {
     final _PermissionCopy copy = _copy(context);
-    final PermissionSnapshot? snapshot = _snapshot;
+    final PermissionSnapshot effectiveSnapshot = _snapshot;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(copy.settingsTitle),
-        backgroundColor: Colors.white,
+        title: Text(
+          copy.settingsTitle,
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        backgroundColor: const Color(0xFFF3F6FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
       ),
       body: SafeArea(
         top: false,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _loadSnapshot,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: RefreshIndicator(
+          onRefresh: _loadSnapshot,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            children: <Widget>[
+              if (_loadUsedFallback) ...<Widget>[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFED7AA)),
+                  ),
+                  child: Text(
+                    copy.fallbackInfo,
+                    style: const TextStyle(
+                      color: Color(0xFF9A3412),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (_loading) ...<Widget>[
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              ],
+              _HeaderCard(copy: copy),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
                   children: <Widget>[
-                    _HeaderCard(copy: copy),
-                    const SizedBox(height: 16),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        children: <Widget>[
-                          _PermissionTile(
-                            icon: Icons.photo_library_outlined,
-                            title: context.strings.photosGallery,
-                            description: copy.photosDescription,
-                            state: snapshot!.photos,
-                            statusLabel: copy.statusLabel(snapshot.photos),
-                            statusColor: copy.statusColor(snapshot.photos),
-                            actionLabel: copy.actionLabel(snapshot.photos),
-                            onAction: () =>
-                                _requestPermission(AppPermissionType.photos),
-                          ),
-                          const Divider(
-                            height: 1,
-                            indent: 68,
-                            endIndent: 14,
-                            color: Color(0xFFE2E8F0),
-                          ),
-                          _PermissionTile(
-                            icon: Icons.notifications_none_rounded,
-                            title: context.strings.notifications,
-                            description: copy.notificationsDescription,
-                            state: snapshot.notifications,
-                            statusLabel: copy.statusLabel(
-                              snapshot.notifications,
-                            ),
-                            statusColor: copy.statusColor(
-                              snapshot.notifications,
-                            ),
-                            actionLabel: copy.actionLabel(
-                              snapshot.notifications,
-                            ),
-                            onAction: () => _requestPermission(
-                              AppPermissionType.notifications,
-                            ),
-                          ),
-                        ],
-                      ),
+                    _PermissionTile(
+                      icon: Icons.photo_library_outlined,
+                      title: context.strings.photosGallery,
+                      description: copy.photosDescription,
+                      state: effectiveSnapshot.photos,
+                      statusLabel: copy.statusLabel(effectiveSnapshot.photos),
+                      statusColor: copy.statusColor(effectiveSnapshot.photos),
+                      actionLabel: copy.actionLabel(effectiveSnapshot.photos),
+                      onAction: () =>
+                          _requestPermission(AppPermissionType.photos),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      copy.settingsHint,
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const Divider(
+                      height: 1,
+                      indent: 68,
+                      endIndent: 14,
+                      color: Color(0xFFE2E8F0),
                     ),
-                    const SizedBox(height: 20),
-                    PrimaryButton(
-                      label: copy.openSettingsLabel,
-                      icon: Icons.settings_outlined,
-                      loading: _openingSettings,
-                      onPressed: _openSettings,
+                    _PermissionTile(
+                      icon: Icons.notifications_none_rounded,
+                      title: context.strings.notifications,
+                      description: copy.notificationsDescription,
+                      state: effectiveSnapshot.notifications,
+                      statusLabel: copy.statusLabel(
+                        effectiveSnapshot.notifications,
+                      ),
+                      statusColor: copy.statusColor(
+                        effectiveSnapshot.notifications,
+                      ),
+                      actionLabel: copy.actionLabel(
+                        effectiveSnapshot.notifications,
+                      ),
+                      onAction: () =>
+                          _requestPermission(AppPermissionType.notifications),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              Text(
+                copy.settingsHint,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 20),
+              PrimaryButton(
+                label: copy.openSettingsLabel,
+                icon: Icons.settings_outlined,
+                loading: _openingSettings,
+                onPressed: _openSettings,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -206,9 +269,9 @@ class _HeaderCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: <Color>[
-            Color(0xFF132A6B),
-            Color(0xFF1E3A8A),
-            Color(0xFF2563EB),
+            Color(0xFF4C1D95),
+            Color(0xFF6D28D9),
+            Color(0xFF9333EA),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
@@ -368,7 +431,10 @@ class _PermissionCopy {
   String get settingsTitle => switch (language) {
     AppLanguage.telugu => 'Permissions',
     AppLanguage.hindi => 'Permissions',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Permissions',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'Permissions',
   };
 
   String get settingsSubtitle => switch (language) {
@@ -376,26 +442,38 @@ class _PermissionCopy {
       'Gallery మరియు notifications access ని మీరు ఎప్పుడైనా ఇక్కడ నుంచే చూసుకుని update చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'Gallery और notifications access को आप यहां कभी भी देख और update कर सकते हैं.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       'You can review and update gallery and notification access anytime from here.',
   };
 
   String get photosDescription => switch (language) {
     AppLanguage.telugu => 'ఫోటోలు ఎంచుకోవడం మరియు పోస్టర్లు సేవ్ చేయడం కోసం',
     AppLanguage.hindi => 'फोटो चुनने और पोस्टर सेव करने के लिए',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'For selecting photos and saving posters',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'For selecting photos and saving posters',
   };
 
   String get notificationsDescription => switch (language) {
     AppLanguage.telugu => 'కొత్త టెంప్లేట్స్ మరియు ముఖ్యమైన అప్‌డేట్స్ కోసం',
     AppLanguage.hindi => 'नए टेम्पलेट्स और महत्वपूर्ण अपडेट्स के लिए',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'For new templates and important updates',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'For new templates and important updates',
   };
 
   String get openSettingsLabel => switch (language) {
     AppLanguage.telugu => 'App Settings ఓపెన్ చేయండి',
     AppLanguage.hindi => 'App Settings खोलें',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Open App Settings',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'Open App Settings',
   };
 
   String get settingsHint => switch (language) {
@@ -403,8 +481,23 @@ class _PermissionCopy {
       'Permissions block అయినా కూడా app continue అవుతుంది. అవసరమైనప్పుడు settings నుండి enable చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'Permissions block होने पर भी app जारी रहेगा. ज़रूरत पड़ने पर settings से enable कर सकते हैं.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       'The app can continue even if permissions are off. You can enable them later from settings.',
+  };
+
+  String get fallbackInfo => switch (language) {
+    AppLanguage.telugu =>
+      'ప్రస్తుతం real permission status చదవడంలో ఆలస్యం వచ్చింది. క్రింద ఉన్న బటన్లతో permissions ని మళ్లీ చెక్ చేయండి.',
+    AppLanguage.hindi =>
+      'अभी real permission status पढ़ने में देरी हुई। नीचे दिए बटनों से permissions फिर से चेक करें।',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
+      'Permission status took too long to load. Use the actions below to re-check permissions.',
   };
 
   String get settingsRequiredHint => switch (language) {
@@ -412,7 +505,10 @@ class _PermissionCopy {
       'ఈ access ను మళ్లీ ఇవ్వాలంటే settings నుండి allow చేయాలి.',
     AppLanguage.hindi =>
       'इस access को फिर से देने के लिए settings से allow करना होगा.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       'To enable this again, please allow it from system settings.',
   };
 
@@ -421,20 +517,29 @@ class _PermissionCopy {
       'ఇప్పుడు అవసరం లేకపోతే తర్వాత కూడా enable చేసుకోవచ్చు.',
     AppLanguage.hindi =>
       'अगर अभी ज़रूरत नहीं है तो बाद में भी enable कर सकते हैं.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       'If you do not need it now, you can enable it later too.',
   };
 
   String get settingsOpened => switch (language) {
     AppLanguage.telugu => 'App settings ఓపెన్ అయ్యాయి.',
     AppLanguage.hindi => 'App settings खुल गई हैं.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'App settings opened.',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'App settings opened.',
   };
 
   String get settingsOpenFailed => switch (language) {
     AppLanguage.telugu => 'Settings ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
     AppLanguage.hindi => 'Settings नहीं खुलीं. फिर से कोशिश करें.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Could not open settings. Please try again.',
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam => 'Could not open settings. Please try again.',
   };
 
   String permissionGranted(AppPermissionType type) => switch (language) {
@@ -446,7 +551,10 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access अनुमति मिल गई.'
           : 'Notifications की अनुमति मिल गई.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access granted.'
           : 'Notifications permission granted.',
@@ -461,7 +569,10 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access अभी नहीं मिला. बाद में settings से enable कर सकते हैं.'
           : 'Notifications अभी off हैं. बाद में enable कर सकते हैं.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access is still off. You can enable it later from settings.'
           : 'Notifications are still off. You can enable them later from settings.',
@@ -476,7 +587,10 @@ class _PermissionCopy {
       type == AppPermissionType.photos
           ? 'Photos access settings से allow करना होगा.'
           : 'Notifications को settings से allow करना होगा.',
-    AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam =>
+    AppLanguage.english ||
+    AppLanguage.tamil ||
+    AppLanguage.kannada ||
+    AppLanguage.malayalam =>
       type == AppPermissionType.photos
           ? 'Photos access needs to be enabled from settings.'
           : 'Notifications need to be enabled from settings.',
@@ -487,20 +601,29 @@ class _PermissionCopy {
       return switch (language) {
         AppLanguage.telugu => 'Allowed',
         AppLanguage.hindi => 'Allowed',
-        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Allowed',
+        AppLanguage.english ||
+        AppLanguage.tamil ||
+        AppLanguage.kannada ||
+        AppLanguage.malayalam => 'Allowed',
       };
     }
     if (state.needsSettings) {
       return switch (language) {
         AppLanguage.telugu => 'Settings అవసరం',
         AppLanguage.hindi => 'Settings ज़रूरी',
-        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Needs Settings',
+        AppLanguage.english ||
+        AppLanguage.tamil ||
+        AppLanguage.kannada ||
+        AppLanguage.malayalam => 'Needs Settings',
       };
     }
     return switch (language) {
       AppLanguage.telugu => 'Allow చేయలేదు',
       AppLanguage.hindi => 'Allow नहीं',
-      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Not Allowed',
+      AppLanguage.english ||
+      AppLanguage.tamil ||
+      AppLanguage.kannada ||
+      AppLanguage.malayalam => 'Not Allowed',
     };
   }
 
@@ -519,26 +642,32 @@ class _PermissionCopy {
       return switch (language) {
         AppLanguage.telugu => 'మళ్లీ చూడండి',
         AppLanguage.hindi => 'फिर देखें',
-        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Check Again',
+        AppLanguage.english ||
+        AppLanguage.tamil ||
+        AppLanguage.kannada ||
+        AppLanguage.malayalam => 'Check Again',
       };
     }
     if (state.isGranted) {
       return switch (language) {
         AppLanguage.telugu => 'మళ్లీ చెక్ చేయండి',
         AppLanguage.hindi => 'फिर जांचें',
-        AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Check Again',
+        AppLanguage.english ||
+        AppLanguage.tamil ||
+        AppLanguage.kannada ||
+        AppLanguage.malayalam => 'Check Again',
       };
     }
     return switch (language) {
       AppLanguage.telugu => 'Allow చేయండి',
       AppLanguage.hindi => 'Allow करें',
-      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => 'Allow',
+      AppLanguage.english ||
+      AppLanguage.tamil ||
+      AppLanguage.kannada ||
+      AppLanguage.malayalam => 'Allow',
     };
   }
 }
 
 _PermissionCopy _copy(BuildContext context) =>
     _PermissionCopy(context.currentLanguage);
-
-
-

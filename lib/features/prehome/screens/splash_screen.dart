@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AppLanguageStateMixin {
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
@@ -39,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _animationController.forward();
 
-    _prepareNextRoute();
+    unawaited(_prepareNextRoute());
   }
 
   @override
@@ -65,22 +66,36 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _prepareNextRoute() async {
-    final snapshot = await AppFlowService.loadSnapshot();
-    final bool isAuthenticated = _hasAuthenticatedUser();
-    final String nextRoute = snapshot.nextRoute(
-      isAuthenticated: isAuthenticated,
-    );
-    await AppFlowService.syncInitialSetupCompletion(
-      isAuthenticated: isAuthenticated,
-    );
-    _nextRoute = nextRoute;
-    _navigationTimer = Timer(const Duration(seconds: 3), _goToNextScreen);
+    try {
+      final snapshot = await AppFlowService.loadSnapshot().timeout(
+        const Duration(seconds: 2),
+      );
+      final bool isAuthenticated = _hasAuthenticatedUser();
+      final String nextRoute = snapshot.nextRoute(
+        isAuthenticated: isAuthenticated,
+      );
+      await AppFlowService.syncInitialSetupCompletion(
+        isAuthenticated: isAuthenticated,
+      ).timeout(const Duration(seconds: 2));
+      _nextRoute = nextRoute;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Splash route preparation failed. Falling back to language screen.',
+        name: 'splash.startup',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _nextRoute = AppRoutes.language;
+    } finally {
+      _navigationTimer?.cancel();
+      _navigationTimer = Timer(const Duration(seconds: 3), _goToNextScreen);
+    }
   }
 
   bool _hasAuthenticatedUser() {
     try {
       return FirebaseAuth.instance.currentUser != null;
-    } on FirebaseException {
+    } on Exception {
       return false;
     }
   }

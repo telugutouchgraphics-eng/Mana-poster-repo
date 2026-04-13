@@ -171,7 +171,7 @@ void main() {
         language: AppLanguage.hindi,
       );
 
-      expect(categories.first.label, '🌼 जयंती');
+      expect(categories.first.label, 'जयंती');
     });
 
     test('ignores duplicate slugs safely', () {

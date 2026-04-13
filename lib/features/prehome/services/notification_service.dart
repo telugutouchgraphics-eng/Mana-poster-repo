@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   NotificationService._();
@@ -18,34 +22,49 @@ class NotificationService {
     description: 'General reminders and event updates',
     importance: Importance.high,
   );
+  static const String _publicTokenSyncedPrefix = 'public_push_token_synced_';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
 
+  bool get _supportsNativeNotifications {
+    if (kIsWeb) {
+      return false;
+    }
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
   Future<void> initialize() async {
     if (_initialized) {
+      return;
+    }
+    if (!_supportsNativeNotifications) {
+      _initialized = true;
       return;
     }
 
     await _initializeLocalNotifications();
 
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
     await messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    await messaging.subscribeToTopic('all_users');
+    try {
+      await messaging.subscribeToTopic('all_users');
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification topic subscription skipped: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
 
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
@@ -55,14 +74,14 @@ class NotificationService {
     }
 
     messaging.onTokenRefresh.listen((String token) {
-      unawaited(_syncToken(token));
+      unawaited(_guardedSyncToken(token));
     });
 
     FirebaseAuth.instance.authStateChanges().listen((_) {
-      unawaited(_registerCurrentToken());
+      unawaited(_guardedRegisterCurrentToken());
     });
 
-    await _registerCurrentToken();
+    await _guardedRegisterCurrentToken();
     _initialized = true;
   }
 
@@ -90,12 +109,41 @@ class NotificationService {
   }
 
   Future<void> _registerCurrentToken() async {
+    if (!_supportsNativeNotifications) {
+      return;
+    }
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     final String? token = await messaging.getToken();
     if (token == null || token.trim().isEmpty) {
       return;
     }
     await _syncToken(token);
+  }
+
+  Future<void> _guardedRegisterCurrentToken() async {
+    try {
+      await _registerCurrentToken();
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification token registration skipped: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _guardedSyncToken(String token) async {
+    try {
+      await _syncToken(token);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification token sync skipped: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _syncToken(String token) async {
@@ -114,24 +162,26 @@ class NotificationService {
         .instance
         .collection('publicDeviceTokens')
         .doc(tokenId);
-
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String syncedKey = '$_publicTokenSyncedPrefix$tokenId';
+    final String platform = Platform.isAndroid
+        ? 'android'
+        : Platform.isIOS
+            ? 'ios'
+            : 'other';
+    final bool alreadySynced = prefs.getBool(syncedKey) ?? false;
     final Map<String, dynamic> payload = <String, dynamic>{
       'token': token,
-      'platform': Platform.isAndroid
-          ? 'android'
-          : Platform.isIOS
-              ? 'ios'
-              : 'other',
+      'platform': platform,
       'updatedAt': FieldValue.serverTimestamp(),
     };
-
-    final DocumentSnapshot<Map<String, dynamic>> existing = await ref.get();
-    if (!existing.exists) {
+    if (!alreadySynced) {
       payload['createdAt'] = FieldValue.serverTimestamp();
       payload['welcomeSent'] = false;
     }
 
     await ref.set(payload, SetOptions(merge: true));
+    await prefs.setBool(syncedKey, true);
   }
 
   Future<void> _syncUserToken(User currentUser, String token) async {
@@ -174,25 +224,138 @@ class NotificationService {
       return;
     }
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'mana_poster_general',
-      'Mana Poster Notifications',
-      channelDescription: 'General reminders and event updates',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const NotificationDetails details = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(),
-    );
-
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+    final String? imageUrl = _resolveNotificationImageUrl(message);
+    final NotificationDetails details = await _buildNotificationDetails(
+      imageUrl: imageUrl,
+      title: title,
+      body: body,
+    );
     final String payload =
         (message.data['route'] ?? '').toString().trim().toLowerCase() == 'home'
             ? 'home'
             : '';
     await _localNotifications.show(id, title, body, details, payload: payload);
+  }
+
+  String? _resolveNotificationImageUrl(RemoteMessage message) {
+    final String dataImage =
+        (message.data['imageUrl'] ?? '').toString().trim();
+    if (dataImage.isNotEmpty) {
+      return dataImage;
+    }
+    final String notificationAndroidImage =
+        (message.notification?.android?.imageUrl ?? '').trim();
+    if (notificationAndroidImage.isNotEmpty) {
+      return notificationAndroidImage;
+    }
+    final String notificationAppleImage =
+        (message.notification?.apple?.imageUrl ?? '').trim();
+    if (notificationAppleImage.isNotEmpty) {
+      return notificationAppleImage;
+    }
+    return null;
+  }
+
+  Future<NotificationDetails> _buildNotificationDetails({
+    required String? imageUrl,
+    required String? title,
+    required String? body,
+  }) async {
+    final AndroidNotificationDetails androidDetails;
+    final String normalizedImageUrl = (imageUrl ?? '').trim();
+    if (normalizedImageUrl.isNotEmpty) {
+      final String? filePath = await _downloadImageForNotification(
+        normalizedImageUrl,
+      );
+      if (filePath != null) {
+        androidDetails = AndroidNotificationDetails(
+          'mana_poster_general',
+          'Mana Poster Notifications',
+          channelDescription: 'General reminders and event updates',
+          importance: Importance.high,
+          priority: Priority.high,
+          styleInformation: BigPictureStyleInformation(
+            FilePathAndroidBitmap(filePath),
+            largeIcon: FilePathAndroidBitmap(filePath),
+            contentTitle: title,
+            summaryText: body,
+            htmlFormatContentTitle: false,
+            htmlFormatSummaryText: false,
+          ),
+        );
+      } else {
+        androidDetails = const AndroidNotificationDetails(
+          'mana_poster_general',
+          'Mana Poster Notifications',
+          channelDescription: 'General reminders and event updates',
+          importance: Importance.high,
+          priority: Priority.high,
+        );
+      }
+    } else {
+      androidDetails = const AndroidNotificationDetails(
+        'mana_poster_general',
+        'Mana Poster Notifications',
+        channelDescription: 'General reminders and event updates',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+    }
+
+    return NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(),
+    );
+  }
+
+  Future<String?> _downloadImageForNotification(String imageUrl) async {
+    try {
+      final Uri uri = Uri.parse(imageUrl);
+      if (!uri.hasScheme) {
+        return null;
+      }
+      final HttpClient client = HttpClient();
+      final HttpClientRequest request = await client.getUrl(uri);
+      final HttpClientResponse response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        client.close(force: true);
+        return null;
+      }
+      final List<int> bytes = await consolidateHttpClientResponseBytes(
+        response,
+      );
+      client.close(force: true);
+      if (bytes.isEmpty) {
+        return null;
+      }
+      final Directory directory = await getTemporaryDirectory();
+      final String extension = _guessNotificationImageExtension(uri.path);
+      final File file = File(
+        '${directory.path}/notif_${DateTime.now().microsecondsSinceEpoch}.$extension',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification image download failed: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  String _guessNotificationImageExtension(String path) {
+    final String lower = path.toLowerCase();
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return 'jpg';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'webp';
+    }
+    return 'png';
   }
 
   void _handleNotificationTap(RemoteMessage message) {

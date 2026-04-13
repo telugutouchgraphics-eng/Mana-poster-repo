@@ -31,8 +31,7 @@ class AppLanguageScope extends InheritedWidget {
   final AppLanguageController _controller;
 
   static AppLanguageScope of(BuildContext context) {
-    final element = context.getElementForInheritedWidgetOfExactType<AppLanguageScope>();
-    final scope = element?.widget as AppLanguageScope?;
+    final scope = context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
     assert(scope != null, 'AppLanguageScope not found in widget tree.');
     return scope!;
   }
@@ -51,6 +50,35 @@ extension AppLanguageContextX on BuildContext {
   AppStrings get strings => AppStrings(currentLanguage);
 }
 
+mixin AppLanguageStateMixin<T extends StatefulWidget> on State<T> {
+  AppLanguageController? _appLanguageController;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = context.languageController;
+    if (_appLanguageController == controller) {
+      return;
+    }
+    _appLanguageController?.removeListener(_handleAppLanguageChanged);
+    _appLanguageController = controller;
+    _appLanguageController?.addListener(_handleAppLanguageChanged);
+  }
+
+  void _handleAppLanguageChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _appLanguageController?.removeListener(_handleAppLanguageChanged);
+    super.dispose();
+  }
+}
+
 class AppStrings {
   const AppStrings(this.language);
 
@@ -62,6 +90,261 @@ class AppStrings {
   bool get isTamil => language == AppLanguage.tamil;
   bool get isKannada => language == AppLanguage.kannada;
   bool get isMalayalam => language == AppLanguage.malayalam;
+
+  String localized({
+    required String telugu,
+    required String english,
+    String? hindi,
+    String? tamil,
+    String? kannada,
+    String? malayalam,
+  }) {
+    return switch (language) {
+      AppLanguage.telugu => telugu,
+      AppLanguage.hindi => hindi ?? _commonLocalizedFallback(english) ?? english,
+      AppLanguage.english => english,
+      AppLanguage.tamil => tamil ?? _commonLocalizedFallback(english) ?? english,
+      AppLanguage.kannada => kannada ?? _commonLocalizedFallback(english) ?? english,
+      AppLanguage.malayalam => malayalam ?? _commonLocalizedFallback(english) ?? english,
+    };
+  }
+
+  String? _commonLocalizedFallback(String english) {
+    switch (language) {
+      case AppLanguage.hindi:
+        return _commonHindiFallback(english);
+      case AppLanguage.tamil:
+        return _commonTamilFallback(english);
+      case AppLanguage.kannada:
+        return _commonKannadaFallback(english);
+      case AppLanguage.malayalam:
+        return _commonMalayalamFallback(english);
+      case AppLanguage.telugu:
+      case AppLanguage.english:
+        return null;
+    }
+  }
+
+  String? _commonHindiFallback(String english) {
+    return switch (english) {
+      'Add Photo' => 'फोटो जोड़ें',
+      'Text' => 'टेक्स्ट',
+      'Stickers' => 'स्टिकर्स',
+      'Background' => 'बैकग्राउंड',
+      'Layers' => 'लेयर्स',
+      'Adjust' => 'एडजस्ट',
+      'Crop' => 'क्रॉप',
+      'Eraser' => 'इरेज़र',
+      'Remove BG' => 'बीजी हटाएं',
+      'Edit' => 'एडिट',
+      'Fonts' => 'फॉन्ट्स',
+      'Options' => 'ऑप्शन्स',
+      'Style' => 'स्टाइल',
+      'Effects' => 'इफेक्ट्स',
+      'Size' => 'साइज़',
+      'Line' => 'लाइन',
+      'Letter' => 'लेटर',
+      'Opacity' => 'ओपेसिटी',
+      'Curve' => 'कर्व',
+      'Stroke' => 'स्ट्रोक',
+      'Shadow' => 'शैडो',
+      'Blur' => 'ब्लर',
+      'Offset' => 'ऑफसेट',
+      'Back' => 'वापस',
+      'Undo' => 'अनडू',
+      'Redo' => 'रीडू',
+      'Drafts' => 'ड्राफ्ट्स',
+      'Export' => 'एक्सपोर्ट',
+      'Saving...' => 'सेव हो रहा है...',
+      'Send back' => 'पीछे भेजें',
+      'Bring front' => 'आगे लाएं',
+      'Duplicate selected' => 'डुप्लिकेट',
+      'Delete selected' => 'डिलीट',
+      'Photo quick actions' => 'फोटो क्विक ऐक्शन्स',
+      'Selected photo' => 'चुनी हुई फोटो',
+      'Text tools' => 'टेक्स्ट टूल्स',
+      'Brush' => 'ब्रश',
+      'Soft' => 'सॉफ्ट',
+      'Strength' => 'स्ट्रेंथ',
+      'Reset' => 'रीसेट',
+      'Apply' => 'अप्लाई',
+      'Applying...' => 'अप्लाई हो रहा है...',
+      'Erase' => 'मिटाएं',
+      'Restore' => 'रीस्टोर',
+      'Brightness' => 'ब्राइटनेस',
+      'Contrast' => 'कॉन्ट्रास्ट',
+      'Saturation' => 'सैचुरेशन',
+      'Free' => 'फ्री',
+      'Elements' => 'एलिमेंट्स',
+      'Search elements' => 'एलिमेंट्स खोजें',
+      'Selected' => 'चुना गया',
+      'Hidden' => 'छिपा हुआ',
+      'Locked' => 'लॉक्ड',
+      'Show' => 'दिखाएं',
+      'Hide' => 'छिपाएं',
+      'Unlock' => 'अनलॉक',
+      'Lock' => 'लॉक',
+      'Delete' => 'डिलीट',
+      'Share' => 'शेयर',
+      'Select a photo first' => 'पहले एक फोटो चुनें',
+      'Selected image could not be loaded' => 'चुनी गई इमेज लोड नहीं हुई',
+      'Canvas is empty' => 'कैनवास खाली है',
+      'Cancel' => 'रद्द करें',
+      'Yes, export' => 'हाँ, एक्सपोर्ट करें',
+      'Crop mode' => 'क्रॉप मोड',
+      'Eraser mode' => 'इरेज़र मोड',
+      'Adjust mode' => 'एडजस्ट मोड',
+      'Text styling' => 'टेक्स्ट स्टाइलिंग',
+      'Text selected' => 'टेक्स्ट चुना गया',
+      'Photo selected' => 'फोटो चुनी गई',
+      'Object selected' => 'ऑब्जेक्ट चुना गया',
+      _ => null,
+    };
+  }
+
+  String? _commonTamilFallback(String english) {
+    return switch (english) {
+      'Add Photo' => 'புகைப்படம் சேர்க்க',
+      'Text' => 'உரை',
+      'Stickers' => 'ஸ்டிக்கர்கள்',
+      'Background' => 'பின்னணி',
+      'Layers' => 'லேயர்கள்',
+      'Adjust' => 'அட்ஜஸ்ட்',
+      'Crop' => 'கிராப்',
+      'Eraser' => 'இரேசர்',
+      'Remove BG' => 'பின்புலம் நீக்கு',
+      'Edit' => 'திருத்து',
+      'Fonts' => 'எழுத்துருக்கள்',
+      'Options' => 'விருப்பங்கள்',
+      'Style' => 'ஸ்டைல்',
+      'Effects' => 'எஃபெக்ட்ஸ்',
+      'Size' => 'அளவு',
+      'Line' => 'வரி',
+      'Letter' => 'எழுத்து',
+      'Opacity' => 'ஒப்பாசிட்டி',
+      'Curve' => 'வளைவு',
+      'Stroke' => 'ஸ்ட்ரோக்',
+      'Shadow' => 'நிழல்',
+      'Blur' => 'ப்ளர்',
+      'Offset' => 'ஆஃப்செட்',
+      'Back' => 'பின்',
+      'Undo' => 'அன்டூ',
+      'Redo' => 'ரீடூ',
+      'Drafts' => 'வரைவுகள்',
+      'Export' => 'ஏற்றுமதி',
+      'Saving...' => 'சேமிக்கிறது...',
+      'Reset' => 'ரீசெட்',
+      'Apply' => 'அப்ளை',
+      'Applying...' => 'அப்ளை ஆகிறது...',
+      'Erase' => 'அழி',
+      'Restore' => 'மீட்டமை',
+      'Brightness' => 'பிரைட்நஸ்',
+      'Contrast' => 'கான்ட்ராஸ்ட்',
+      'Saturation' => 'சாசுரேஷன்',
+      'Share' => 'பகிர்',
+      'Select a photo first' => 'முதலில் ஒரு புகைப்படத்தைத் தேர்ந்தெடுக்கவும்',
+      'Canvas is empty' => 'கேன்வாஸ் காலியாக உள்ளது',
+      'Cancel' => 'ரத்து',
+      'Yes, export' => 'ஆம், ஏற்றுமதி செய்',
+      _ => null,
+    };
+  }
+
+  String? _commonKannadaFallback(String english) {
+    return switch (english) {
+      'Add Photo' => 'ಫೋಟೋ ಸೇರಿಸಿ',
+      'Text' => 'ಪಠ್ಯ',
+      'Stickers' => 'ಸ್ಟಿಕರ್ಸ್',
+      'Background' => 'ಹಿನ್ನೆಲೆ',
+      'Layers' => 'ಲೇಯರ್ಸ್',
+      'Adjust' => 'ಅಡ್ಜಸ್ಟ್',
+      'Crop' => 'ಕ್ರಾಪ್',
+      'Eraser' => 'ಇರೇಸರ್',
+      'Remove BG' => 'ಹಿನ್ನೆಲೆ ತೆಗೆಯಿರಿ',
+      'Edit' => 'ಎಡಿಟ್',
+      'Fonts' => 'ಫಾಂಟ್ಸ್',
+      'Options' => 'ಆಯ್ಕೆಗಳು',
+      'Style' => 'ಸ್ಟೈಲ್',
+      'Effects' => 'ಇಫೆಕ್ಟ್ಸ್',
+      'Size' => 'ಗಾತ್ರ',
+      'Line' => 'ಲೈನ್',
+      'Letter' => 'ಅಕ್ಷರ',
+      'Opacity' => 'ಒಪಾಸಿಟಿ',
+      'Curve' => 'ಕರ್ವ್',
+      'Stroke' => 'ಸ್ಟ್ರೋಕ್',
+      'Shadow' => 'ನೆರಳು',
+      'Blur' => 'ಬ್ಲರ್',
+      'Offset' => 'ಆಫ್‌ಸೆಟ್',
+      'Back' => 'ಹಿಂದೆ',
+      'Undo' => 'ಅನ್ಡೂ',
+      'Redo' => 'ರೀಡೂ',
+      'Drafts' => 'ಡ್ರಾಫ್ಟ್ಸ್',
+      'Export' => 'ಎಕ್ಸ್‌ಪೋರ್ಟ್',
+      'Saving...' => 'ಸೇವ್ ಆಗುತ್ತಿದೆ...',
+      'Reset' => 'ರೀಸೆಟ್',
+      'Apply' => 'ಅಪ್ಲೈ',
+      'Applying...' => 'ಅಪ್ಲೈ ಆಗುತ್ತಿದೆ...',
+      'Erase' => 'ಅಳಿಸಿ',
+      'Restore' => 'ಮರುಸ್ಥಾಪನೆ',
+      'Brightness' => 'ಬ್ರೈಟ್‌ನೆಸ್',
+      'Contrast' => 'ಕಾನ್ಟ್ರಾಸ್ಟ್',
+      'Saturation' => 'ಸ್ಯಾಚುರೇಶನ್',
+      'Share' => 'ಹಂಚಿಕೆ',
+      'Select a photo first' => 'ಮೊದಲು ಒಂದು ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ',
+      'Canvas is empty' => 'ಕ್ಯಾನ್ವಾಸ್ ಖಾಲಿಯಾಗಿದೆ',
+      'Cancel' => 'ರದ್ದು',
+      'Yes, export' => 'ಹೌದು, ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ',
+      _ => null,
+    };
+  }
+
+  String? _commonMalayalamFallback(String english) {
+    return switch (english) {
+      'Add Photo' => 'ഫോട്ടോ ചേർക്കുക',
+      'Text' => 'ടെക്സ്റ്റ്',
+      'Stickers' => 'സ്റ്റിക്കറുകൾ',
+      'Background' => 'ബാക്ക്ഗ്രൗണ്ട്',
+      'Layers' => 'ലെയേഴ്സ്',
+      'Adjust' => 'അഡ്ജസ്റ്റ്',
+      'Crop' => 'ക്രോപ്പ്',
+      'Eraser' => 'ഇറേസർ',
+      'Remove BG' => 'ബാക്ക്ഗ്രൗണ്ട് നീക്കുക',
+      'Edit' => 'എഡിറ്റ്',
+      'Fonts' => 'ഫോണ്ടുകൾ',
+      'Options' => 'ഓപ്ഷനുകൾ',
+      'Style' => 'സ്റ്റൈൽ',
+      'Effects' => 'ഇഫക്റ്റ്സ്',
+      'Size' => 'വലിപ്പം',
+      'Line' => 'ലൈൻ',
+      'Letter' => 'അക്ഷരം',
+      'Opacity' => 'ഒപാസിറ്റി',
+      'Curve' => 'കർവ്',
+      'Stroke' => 'സ്ട്രോക്ക്',
+      'Shadow' => 'നിഴൽ',
+      'Blur' => 'ബ്ലർ',
+      'Offset' => 'ഓഫ്‌സെറ്റ്',
+      'Back' => 'പിന്നിലേക്ക്',
+      'Undo' => 'അൺഡൂ',
+      'Redo' => 'റീഡൂ',
+      'Drafts' => 'ഡ്രാഫ്റ്റുകൾ',
+      'Export' => 'എക്സ്പോർട്ട്',
+      'Saving...' => 'സേവ് ചെയ്യുന്നു...',
+      'Reset' => 'റീസെറ്റ്',
+      'Apply' => 'അപ്ലൈ',
+      'Applying...' => 'അപ്ലൈ ചെയ്യുന്നു...',
+      'Erase' => 'മായ്ക്കുക',
+      'Restore' => 'പുനഃസ്ഥാപിക്കുക',
+      'Brightness' => 'ബ്രൈറ്റ്‌നസ്',
+      'Contrast' => 'കോൺട്രാസ്റ്റ്',
+      'Saturation' => 'സാചുറേഷൻ',
+      'Share' => 'ഷെയർ',
+      'Select a photo first' => 'ആദ്യം ഒരു ഫോട്ടോ തിരഞ്ഞെടുക്കുക',
+      'Canvas is empty' => 'കാൻവാസ് കാലിയാണു',
+      'Cancel' => 'റദ്ദാക്കുക',
+      'Yes, export' => 'അതെ, എക്സ്പോർട്ട് ചെയ്യുക',
+      _ => null,
+    };
+  }
 
   String get splashTagline => switch (language) {
     AppLanguage.telugu => 'ఎంచుకోండి, మీ పేరుతో షేర్ చేయండి',
@@ -496,35 +779,35 @@ class AppStrings {
   };
 
   String get homeTagline => switch (language) {
-    AppLanguage.telugu => 'Create & Share',
-    AppLanguage.hindi => 'Create & Share',
+    AppLanguage.telugu => 'సృష్టించండి & పంచుకోండి',
+    AppLanguage.hindi => 'बनाएं और साझा करें',
     AppLanguage.english => 'Create & Share',
-    AppLanguage.tamil => '\u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd \u0baa\u0b95\u0bbf\u0bb0\u0bb5\u0bc1\u0bae\u0bcd',
-    AppLanguage.kannada => '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf \u0cb9\u0c82\u0c9a\u0cbf',
-    AppLanguage.malayalam => '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15 \u0d2a\u0d19\u0d4d\u0d15\u0d3f\u0d1f\u0d41\u0d15',
+    AppLanguage.tamil => 'உருவாக்கி பகிருங்கள்',
+    AppLanguage.kannada => 'ರಚಿಸಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ',
+    AppLanguage.malayalam => 'സൃഷ്ടിച്ച് പങ്കിടുക',
   };
 
   String get createLabel => switch (language) {
-    AppLanguage.telugu => 'Create',
-    AppLanguage.hindi => 'Create',
+    AppLanguage.telugu => 'సృష్టించండి',
+    AppLanguage.hindi => 'बनाएं',
     AppLanguage.english => 'Create',
-    AppLanguage.tamil => '\u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bc1',
-    AppLanguage.kannada => '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf',
-    AppLanguage.malayalam => '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+    AppLanguage.tamil => 'உருவாக்கு',
+    AppLanguage.kannada => 'ರಚಿಸಿ',
+    AppLanguage.malayalam => 'സൃഷ്ടിക്കുക',
   };
 
   String get searchTemplates => switch (language) {
-    AppLanguage.telugu => 'Search templates',
-    AppLanguage.hindi => 'Search templates',
+    AppLanguage.telugu => 'టెంప్లేట్లు వెతకండి',
+    AppLanguage.hindi => 'टेम्पलेट खोजें',
     AppLanguage.english => 'Search templates',
-    AppLanguage.tamil => 'Templates \u0ba4\u0bc7\u0b9f\u0bc1',
-    AppLanguage.kannada => 'Templates \u0cb9\u0cc1\u0ca1\u0cc1\u0c95\u0cbf',
-    AppLanguage.malayalam => 'Templates \u0d24\u0d46\u0d30\u0d2f\u0d41\u0d15',
+    AppLanguage.tamil => 'டெம்ப்ளேட்களை தேடுங்கள்',
+    AppLanguage.kannada => 'ಟೆಂಪ್ಲೇಟ್ ಹುಡುಕಿ',
+    AppLanguage.malayalam => 'ടെംപ്ലേറ്റുകൾ തിരയുക',
   };
 
   String get bannerTitle => switch (language) {
-    AppLanguage.telugu => 'Mana Poster Featured Banner',
-    AppLanguage.hindi => 'Mana Poster Featured Banner',
+    AppLanguage.telugu => 'మనా పోస్టర్ ఫీచర్డ్ బ్యానర్',
+    AppLanguage.hindi => 'मना पोस्टर फीचर्ड बैनर',
     AppLanguage.english => 'Mana Poster Featured Banner',
     AppLanguage.tamil => 'Mana Poster \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 banner',
     AppLanguage.kannada => 'Mana Poster \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 banner',
@@ -532,93 +815,93 @@ class AppStrings {
   };
 
   String get freeTab => switch (language) {
-    AppLanguage.telugu => 'Free',
-    AppLanguage.hindi => 'Free',
+    AppLanguage.telugu => 'ఉచితం',
+    AppLanguage.hindi => 'फ्री',
     AppLanguage.english => 'Free',
-    AppLanguage.tamil => '\u0b87\u0bb2\u0bb5\u0b9a\u0bae\u0bcd',
-    AppLanguage.kannada => '\u0c89\u0c9a\u0cbf\u0ca4',
-    AppLanguage.malayalam => '\u0d09\u0d1a\u0d3f\u0d24\u0d02',
+    AppLanguage.tamil => 'இலவசம்',
+    AppLanguage.kannada => 'ಉಚಿತ',
+    AppLanguage.malayalam => 'സൗജന്യം',
   };
 
   String get premiumTab => switch (language) {
-    AppLanguage.telugu => 'Premium',
-    AppLanguage.hindi => 'Premium',
+    AppLanguage.telugu => 'ప్రీమియం',
+    AppLanguage.hindi => 'प्रीमियम',
     AppLanguage.english => 'Premium',
-    AppLanguage.tamil => '\u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd',
-    AppLanguage.kannada => '\u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0cae\u0ccd',
-    AppLanguage.malayalam => '\u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02',
+    AppLanguage.tamil => 'பிரீமியம்',
+    AppLanguage.kannada => 'ಪ್ರೀಮಿಯಂ',
+    AppLanguage.malayalam => 'പ്രീമിയം',
   };
 
   String get buyLabel => switch (language) {
-    AppLanguage.telugu => 'Buy',
-    AppLanguage.hindi => 'Buy',
+    AppLanguage.telugu => 'కొనండి',
+    AppLanguage.hindi => 'खरीदें',
     AppLanguage.english => 'Buy',
-    AppLanguage.tamil => '\u0bb5\u0bbe\u0b99\u0bcd\u0b95\u0bc1',
-    AppLanguage.kannada => '\u0c96\u0cb0\u0cc0\u0ca6\u0cbf\u0cb8\u0cbf',
-    AppLanguage.malayalam => '\u0d35\u0d3e\u0d19\u0d4d\u0d19\u0d41\u0d15',
+    AppLanguage.tamil => 'வாங்கு',
+    AppLanguage.kannada => 'ಖರೀದಿಸಿ',
+    AppLanguage.malayalam => 'വാങ്ങുക',
   };
 
   String get shareWhatsApp => switch (language) {
-    AppLanguage.telugu => 'Share WhatsApp',
-    AppLanguage.hindi => 'Share WhatsApp',
+    AppLanguage.telugu => 'షేర్',
+    AppLanguage.hindi => 'शेयर',
     AppLanguage.english => 'Share WhatsApp',
-    AppLanguage.tamil => 'WhatsApp-\u0bb2\u0bcd \u0baa\u0b95\u0bbf\u0bb0\u0bc1',
-    AppLanguage.kannada => 'WhatsApp-\u0cb2\u0ccd\u0cb2\u0cbf share',
-    AppLanguage.malayalam => 'WhatsApp-\u0d32\u0d4d share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d41\u0d15',
+    AppLanguage.tamil => 'பகிர்',
+    AppLanguage.kannada => 'ಹಂಚಿಕೆ',
+    AppLanguage.malayalam => 'ഷെയർ',
   };
 
   String get downloadLabel => switch (language) {
-    AppLanguage.telugu => 'Download',
-    AppLanguage.hindi => 'Download',
+    AppLanguage.telugu => 'డౌన్‌లోడ్',
+    AppLanguage.hindi => 'डाउनलोड',
     AppLanguage.english => 'Download',
-    AppLanguage.tamil => '\u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bae\u0bcd',
-    AppLanguage.kannada => '\u0ca1\u0ccc\u0ca8\u0ccd\u0cb2\u0ccb\u0ca1\u0ccd',
-    AppLanguage.malayalam => '\u0d21\u0d57\u0d7a\u0d32\u0d4b\u0d21\u0d4d',
+    AppLanguage.tamil => 'பதிவிறக்கு',
+    AppLanguage.kannada => 'ಡೌನ್‌ಲೋಡ್',
+    AppLanguage.malayalam => 'ഡൗൺലോഡ്',
   };
 
   String get profileTitle => switch (language) {
-    AppLanguage.telugu => 'Profile & Settings',
-    AppLanguage.hindi => 'Profile & Settings',
+    AppLanguage.telugu => 'ప్రొఫైల్ & సెట్టింగ్స్',
+    AppLanguage.hindi => 'प्रोफ़ाइल और सेटिंग्स',
     AppLanguage.english => 'Profile & Settings',
-    AppLanguage.tamil => '\u0b9a\u0bc1\u0baf\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd & Settings',
-    AppLanguage.kannada => '\u0caa\u0ccd\u0cb0\u0cca\u0cab\u0cc8\u0cb2\u0ccd & Settings',
-    AppLanguage.malayalam => '\u0d2a\u0d4d\u0d30\u0d4a\u0d2b\u0d48\u0d32\u0d4d & Settings',
+    AppLanguage.tamil => 'ப்ரொஃபைல் & அமைப்புகள்',
+    AppLanguage.kannada => 'ಪ್ರೊಫೈಲ್ ಮತ್ತು ಸೆಟ್ಟಿಂಗ್ಸ್',
+    AppLanguage.malayalam => 'പ്രൊഫൈൽ & സെറ്റിംഗ്സ്',
   };
 
   String get accountSection => switch (language) {
-    AppLanguage.telugu => 'Account',
-    AppLanguage.hindi => 'Account',
+    AppLanguage.telugu => 'అకౌంట్',
+    AppLanguage.hindi => 'अकाउंट',
     AppLanguage.english => 'Account',
-    AppLanguage.tamil => '\u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1',
-    AppLanguage.kannada => '\u0c96\u0cbe\u0ca4\u0cc6',
-    AppLanguage.malayalam => '\u0d05\u0d15\u0d4d\u0d15\u0d57\u0d23\u0d4d\u0d1f\u0d4d',
+    AppLanguage.tamil => 'அகௌಂಟ್',
+    AppLanguage.kannada => 'ಅಕೌಂಟ್',
+    AppLanguage.malayalam => 'അക്കൗണ്ട്',
   };
 
   String get appSettingsSection => switch (language) {
-    AppLanguage.telugu => 'App Settings',
-    AppLanguage.hindi => 'App Settings',
+    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్',
+    AppLanguage.hindi => 'ऐप सेटिंग्स',
     AppLanguage.english => 'App Settings',
-    AppLanguage.tamil => 'App Settings',
-    AppLanguage.kannada => 'App Settings',
-    AppLanguage.malayalam => 'App Settings',
+    AppLanguage.tamil => 'ஆப் அமைப்புகள்',
+    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್',
+    AppLanguage.malayalam => 'ആപ്പ് സെറ്റിംഗ്സ്',
   };
 
   String get supportSection => switch (language) {
-    AppLanguage.telugu => 'Support',
-    AppLanguage.hindi => 'Support',
+    AppLanguage.telugu => 'సపోర్ట్',
+    AppLanguage.hindi => 'सपोर्ट',
     AppLanguage.english => 'Support',
-    AppLanguage.tamil => '\u0b86\u0ba4\u0bb0\u0bb5\u0bc1',
-    AppLanguage.kannada => '\u0cac\u0cbf\u0c82\u0cac\u0cb2',
-    AppLanguage.malayalam => '\u0d2a\u0d3f\u0d28\u0d4d\u0d24\u0d41\u0d23',
+    AppLanguage.tamil => 'ஆதரவு',
+    AppLanguage.kannada => 'ಬೆಂಬಲ',
+    AppLanguage.malayalam => 'സഹായം',
   };
 
   String get languageOption => switch (language) {
-    AppLanguage.telugu => 'Language',
-    AppLanguage.hindi => 'Language',
+    AppLanguage.telugu => 'భాష',
+    AppLanguage.hindi => 'भाषा',
     AppLanguage.english => 'Language',
-    AppLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf',
-    AppLanguage.kannada => '\u0cad\u0bbe\u0cb7\u0cc6',
-    AppLanguage.malayalam => '\u0d2d\u0d3e\u0d37',
+    AppLanguage.tamil => 'மொழி',
+    AppLanguage.kannada => 'ಭಾಷೆ',
+    AppLanguage.malayalam => 'ഭാഷ',
   };
 
   String get languageOptionSubtitle => switch (language) {
@@ -631,8 +914,8 @@ class AppStrings {
   };
 
   String get subscriptionOption => switch (language) {
-    AppLanguage.telugu => 'Subscription / Plans',
-    AppLanguage.hindi => 'Subscription / Plans',
+    AppLanguage.telugu => 'సబ్‌స్క్రిప్షన్ / ప్లాన్లు',
+    AppLanguage.hindi => 'सब्सक्रिप्शन / प्लान',
     AppLanguage.english => 'Subscription / Plans',
     AppLanguage.tamil => '\u0b9a\u0ba8\u0bcd\u0ba4\u0bbe / Plans',
     AppLanguage.kannada => '\u0c9a\u0c82\u0ca6\u0cbe / Plans',
@@ -667,8 +950,8 @@ class AppStrings {
   };
 
   String get helpSupport => switch (language) {
-    AppLanguage.telugu => 'Help & Support',
-    AppLanguage.hindi => 'Help & Support',
+    AppLanguage.telugu => 'సహాయం & సపోర్ట్',
+    AppLanguage.hindi => 'मदद और सपोर्ट',
     AppLanguage.english => 'Help & Support',
     AppLanguage.tamil => '\u0b89\u0ba4\u0bb5\u0bbf & Support',
     AppLanguage.kannada => '\u0cb8\u0cb9\u0cbe\u0caf & Support',
@@ -685,8 +968,8 @@ class AppStrings {
   };
 
   String get aboutApp => switch (language) {
-    AppLanguage.telugu => 'About App',
-    AppLanguage.hindi => 'About App',
+    AppLanguage.telugu => 'యాప్ గురించి',
+    AppLanguage.hindi => 'ऐप के बारे में',
     AppLanguage.english => 'About App',
     AppLanguage.tamil => 'App \u0baa\u0bb1\u0bcd\u0bb1\u0bbf',
     AppLanguage.kannada => 'App \u0cac\u0c97\u0ccd\u0c97\u0cc6',
@@ -703,8 +986,8 @@ class AppStrings {
   };
 
   String get logout => switch (language) {
-    AppLanguage.telugu => 'Logout',
-    AppLanguage.hindi => 'Logout',
+    AppLanguage.telugu => 'లాగ్ అవుట్',
+    AppLanguage.hindi => 'लॉग आउट',
     AppLanguage.english => 'Logout',
     AppLanguage.tamil => '\u0bb5\u0bc6\u0bb3\u0bbf\u0baf\u0bc7\u0bb1\u0bc1',
     AppLanguage.kannada => '\u0cb2\u0cbe\u0c97\u0ccd\u0c85\u0cb5\u0cc1\u0c9f\u0ccd',
@@ -721,8 +1004,8 @@ class AppStrings {
   };
 
   String get languageSettingsTitle => switch (language) {
-    AppLanguage.telugu => 'Language Settings',
-    AppLanguage.hindi => 'Language Settings',
+    AppLanguage.telugu => 'భాష సెట్టింగ్స్',
+    AppLanguage.hindi => 'भाषा सेटिंग्स',
     AppLanguage.english => 'Language Settings',
     AppLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf Settings',
     AppLanguage.kannada => '\u0cad\u0bbe\u0cb7\u0cc6 Settings',
@@ -730,8 +1013,8 @@ class AppStrings {
   };
 
   String get currentLanguageLabel => switch (language) {
-    AppLanguage.telugu => 'Current language',
-    AppLanguage.hindi => 'Current language',
+    AppLanguage.telugu => 'ప్రస్తుత భాష',
+    AppLanguage.hindi => 'वर्तमान भाषा',
     AppLanguage.english => 'Current language',
     AppLanguage.tamil => '\u0ba4\u0bb1\u0bcd\u0baa\u0bcb\u0ba4\u0bc8\u0baf \u0bae\u0bca\u0bb4\u0bbf',
     AppLanguage.kannada => '\u0caa\u0ccd\u0cb0\u0cb8\u0ccd\u0ca4\u0cc1\u0ca4 \u0cad\u0bbe\u0cb7\u0cc6',
@@ -739,8 +1022,8 @@ class AppStrings {
   };
 
   String get saveApply => switch (language) {
-    AppLanguage.telugu => 'Save / Apply',
-    AppLanguage.hindi => 'Save / Apply',
+    AppLanguage.telugu => 'సేవ్ / అప్లై',
+    AppLanguage.hindi => 'सेव / अप्लाई',
     AppLanguage.english => 'Save / Apply',
     AppLanguage.tamil => '\u0b9a\u0bc7\u0bae\u0bbf / Apply',
     AppLanguage.kannada => '\u0c89\u0cb3\u0cbf\u0cb8\u0cbf / Apply',
@@ -754,6 +1037,123 @@ class AppStrings {
     AppLanguage.tamil => '\u0ba4\u0bae\u0bbf\u0bb4\u0bcd',
     AppLanguage.kannada => '\u0c95\u0ca8\u0ccd\u0ca8\u0ca1',
     AppLanguage.malayalam => '\u0d2e\u0d32\u0d2f\u0d3e\u0d33\u0d02',
+  };
+
+  List<String> localizedHomeCategories() => switch (language) {
+    AppLanguage.telugu => const <String>[
+      'అన్నీ',
+      '🌙 శుభరాత్రి',
+      '🌅 శుభోదయం',
+      '💪 ప్రేరణాత్మక',
+      '❤️ ప్రేమ కోట్స్',
+      '✨ ఈరోజు ప్రత్యేకం',
+      '🎂 పుట్టినరోజులు',
+      '🌿 జీవితం సలహాలు',
+      '📖 గీతా జ్ఞానం',
+      '📰 వార్తలు',
+      '🙏 భక్తి',
+      '🏹 మహాభారతం',
+      '💍 వార్షికోత్సవం',
+      '💭 మంచి ఆలోచనలు',
+      '✝️ బైబిల్',
+      '☪️ ఇస్లాం',
+      '🆕 కొత్తవి',
+    ],
+    AppLanguage.hindi => const <String>[
+      'सभी',
+      '🌙 शुभ रात्रि',
+      '🌅 सुप्रभात',
+      '💪 प्रेरणादायक',
+      '❤️ प्रेम उद्धरण',
+      '✨ आज का विशेष',
+      '🎂 जन्मदिन',
+      '🌿 जीवन सलाह',
+      '📖 गीता ज्ञान',
+      '📰 समाचार',
+      '🙏 भक्ति',
+      '🏹 महाभारत',
+      '💍 वर्षगांठ',
+      '💭 अच्छे विचार',
+      '✝️ बाइबल',
+      '☪️ इस्लाम',
+      '🆕 नया',
+    ],
+    AppLanguage.english => const <String>[
+      'All',
+      '🌙 Good Night',
+      '🌅 Good Morning',
+      '💪 Motivational',
+      '❤️ Love Quotes',
+      '✨ Today Special',
+      '🎂 Birthdays',
+      '🌿 Life Advice',
+      '📖 Gita Wisdom',
+      '📰 News',
+      '🙏 Devotional',
+      '🏹 Mahabharata',
+      '💍 Anniversary',
+      '💭 Good Thoughts',
+      '✝️ Bible',
+      '☪️ Islam',
+      '🆕 New',
+    ],
+    AppLanguage.tamil => const <String>[
+      'அனைத்தும்',
+      '🌙 இனிய இரவு',
+      '🌅 இனிய காலை',
+      '💪 ஊக்கமளிப்பு',
+      '❤️ காதல் மேற்கோள்கள்',
+      '✨ இன்றைய சிறப்பு',
+      '🎂 பிறந்தநாள்கள்',
+      '🌿 வாழ்க்கை ஆலோசனை',
+      '📖 கீதா ஞானம்',
+      '📰 செய்திகள்',
+      '🙏 பக்தி',
+      '🏹 மகாபாரதம்',
+      '💍 ஆண்டு விழா',
+      '💭 நல்ல எண்ணங்கள்',
+      '✝️ பைபிள்',
+      '☪️ இஸ்லாம்',
+      '🆕 புதியவை',
+    ],
+    AppLanguage.kannada => const <String>[
+      'ಎಲ್ಲವೂ',
+      '🌙 ಶುಭ ರಾತ್ರಿ',
+      '🌅 ಶುಭೋದಯ',
+      '💪 ಪ್ರೇರಣಾದಾಯಕ',
+      '❤️ ಪ್ರೀತಿ ಉಕ್ತಿಗಳು',
+      '✨ ಇಂದಿನ ವಿಶೇಷ',
+      '🎂 ಜನ್ಮದಿನಗಳು',
+      '🌿 ಜೀವನ ಸಲಹೆ',
+      '📖 ಗೀತಾ ಜ್ಞಾನ',
+      '📰 ಸುದ್ದಿ',
+      '🙏 ಭಕ್ತಿ',
+      '🏹 ಮಹಾಭಾರತ',
+      '💍 ವಾರ್ಷಿಕೋತ್ಸವ',
+      '💭 ಒಳ್ಳೆಯ ಆಲೋಚನೆಗಳು',
+      '✝️ ಬೈಬಲ್',
+      '☪️ ಇಸ್ಲಾಂ',
+      '🆕 ಹೊಸದು',
+    ],
+    AppLanguage.malayalam => const <String>[
+      'എല്ലാം',
+      '🌙 ശുഭ രാത്രി',
+      '🌅 ശുഭോദയം',
+      '💪 പ്രചോദനാത്മകം',
+      '❤️ പ്രണയ ഉദ്ധരണികൾ',
+      '✨ ഇന്നത്തെ പ്രത്യേകത',
+      '🎂 ജന്മദിനങ്ങൾ',
+      '🌿 ജീവിത ഉപദേശം',
+      '📖 ഗീതാ ജ്ഞാനം',
+      '📰 വാർത്തകൾ',
+      '🙏 ഭക്തി',
+      '🏹 മഹാഭാരതം',
+      '💍 വാർഷികം',
+      '💭 നല്ല ചിന്തകൾ',
+      '✝️ ബൈബിൾ',
+      '☪️ ഇസ്ലാം',
+      '🆕 പുതിയത്',
+    ],
   };
 
   List<String> homeCategories() => switch (language) {
