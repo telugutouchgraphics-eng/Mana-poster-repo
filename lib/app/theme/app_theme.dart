@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static ThemeData light() {
-    const primary = Color(0xFF1E3A8A);
-    const accent = Color(0xFF0EA5E9);
-    const scaffold = Color(0xFFF4F7FC);
+    const primary = Color(0xFF0F766E);
+    const accent = Color(0xFFF97316);
+    const scaffold = Color(0xFFFFFBF5);
+    const surface = Colors.white;
+    const text = Color(0xFF172033);
+    const muted = Color(0xFF52607A);
 
     return ThemeData(
       useMaterial3: true,
@@ -15,40 +18,49 @@ class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: scaffold,
+      fontFamily: 'Poppins',
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontFamily: 'League Spartan',
+          fontWeight: FontWeight.w700,
+          color: text,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'League Spartan',
+          fontWeight: FontWeight.w700,
+          color: text,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'League Spartan',
+          fontWeight: FontWeight.w700,
+          color: text,
+        ),
+        titleMedium: TextStyle(
+          fontWeight: FontWeight.w700,
+          color: text,
+        ),
+        bodyLarge: TextStyle(color: muted, height: 1.5),
+        bodyMedium: TextStyle(color: muted, height: 1.45),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Color(0xFF0F172A),
-      ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF0F172A),
-        ),
-        titleLarge: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF0F172A),
-        ),
-        titleMedium: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF0F172A),
-        ),
-        bodyMedium: TextStyle(color: Color(0xFF334155), height: 1.35),
+        foregroundColor: text,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          borderSide: const BorderSide(color: Color(0xFFD7E0EA)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          borderSide: const BorderSide(color: Color(0xFFD7E0EA)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -56,7 +68,7 @@ class AppTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -65,21 +77,30 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size(0, 50),
+          backgroundColor: primary,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size(0, 50),
+          foregroundColor: text,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
           side: const BorderSide(color: Color(0xFFCBD5E1)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+          ),
         ),
       ),
     );

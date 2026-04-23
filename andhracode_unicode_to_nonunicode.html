@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Unicode to NonUnicode Converter - AndhraCode</title>
+    <meta name="description" content="Convert Telugu Unicode text to Non-Unicode text easily.">
+
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP1HLKDG1"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-NFP1HLKDG1');
+    </script>
+    
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body class="min-h-screen flex flex-col">
+    <nav>
+    <div class="nav-container">
+        <div class="nav-inner">
+            <div class="nav-left">
+                <a href="/" class="nav-logo">AndhraCode</a>
+                
+                <div class="desktop-nav">
+                    <a href="/" class="nav-link text-center ">Home</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/blog" class="nav-link text-center ">Blog</a>
+                    <span class="nav-divider"></span>
+
+                    <a href="/unicode-to-nonunicode" class="nav-link text-center nav-link-featured active">Unicode to NonUnicode</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/events" class="nav-link text-center ">Events</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/case-converter" class="nav-link text-center ">Case Converter</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/char-counter" class="nav-link text-center ">Character Counter</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/date-time-calculator" class="nav-link text-center ">Date-Time Calc</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/hidden-characters" class="nav-link text-center ">Hidden Characters</a>
+                    <span class="nav-divider"></span>
+                    
+                    <a href="/splitter" class="nav-link text-center ">Text Splitter</a>
+                </div>
+            </div>
+
+            <div class="nav-right">
+                <button id="theme-toggle" type="button" title="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button type="button" id="mobile-menu-button" class="mobile-menu-btn">
+                    <span class="sr-only">Open menu</span>
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="hidden" id="mobile-menu">
+        <div class="px-4 pt-2 pb-4 space-y-1">
+            <a href="/" class="mobile-link text-center ">Home</a>
+            <a href="/blog" class="mobile-link text-center ">Blog</a>
+            
+            <a href="/unicode-to-nonunicode" class="mobile-link text-center text-accent font-bold">Unicode to NonUnicode</a>
+            <a href="/events" class="mobile-link text-center ">Events</a>
+            
+            <a href="/case-converter" class="mobile-link text-center ">Case Converter</a>
+            <a href="/char-counter" class="mobile-link text-center ">Character Counter</a>
+            <a href="/date-time-calculator" class="mobile-link text-center ">Date-Time Calculator</a>
+            <a href="/hidden-characters" class="mobile-link text-center ">Hidden Characters</a>
+            <a href="/splitter" class="mobile-link text-center ">Text Splitter</a>
+        </div>
+    </div>
+</nav>
+
+    <div class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 flex flex-col lg:flex-row gap-8 items-start">
+        <main class="flex-1 w-full max-w-4xl mx-auto lg:mx-0">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold">Unicode to NonUnicode</h1>
+                <p class="mt-2 text-gray-600 dark:text-gray-400">Non Unicode Converter</p>
+                <p class="mt-2 text-xl font-semibold text-gray-800 dark:text-gray-200">Detailed <a href="https://www.andhracode.com/blog/How-to-Convert-Unicode-Telugu" class="guide-link hover:underline">Guide on how to use Unicode to NonUnicode</a> Converter Tool.</p>
+            </div>
+
+            
+            <div class="mb-8 flex justify-center w-full min-h-[50px] md:min-h-[90px]">
+                <ins class="adsbygoogle ad-header"
+                     data-ad-client="ca-pub-0000000000000000"
+                     data-ad-slot="1234567890"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+
+        <div class="mb-4 flex flex-wrap gap-4">
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="toggle-bible-loader-checkbox" class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Load Telugu Bible Verse</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="toggle-datetime-loader-checkbox" class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Insert Event Date & Time</span>
+            </label>
+        </div>
+
+        <div id="bible-loader-section" class="hidden mb-6">
+            
+            <div class="content-card">
+                <h2 class="text-xl font-semibold mb-4">Load Telugu Bible Verse</h2>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div>
+                        <label for="bible-book" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Book</label>
+                        <select id="bible-book" name="bible-book" class="w-full">
+                            <option value="">Select Book</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="bible-chapter" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chapter</label>
+                        <select id="bible-chapter" name="bible-chapter" class="w-full" disabled>
+                            <option value="">Select Chapter</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="bible-verse" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Verse</label>
+                        <select id="bible-verse" name="bible-verse" class="w-full" disabled>
+                            <option value="">Select Verse</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="bible-verse-to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Verse (optional)</label>
+                        <select id="bible-verse-to" name="bible-verse-to" class="w-full" disabled>
+                            <option value="">Select Verse</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button id="fetch-verse-btn" class="btn-primary w-full bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            Load & Copy Verse
+                        </button>
+                    </div>
+                </div>
+                <div id="bible-error" class="text-red-500 text-sm mt-2"></div>
+            </div>
+            
+        </div>
+
+        <div id="datetime-loader-section" class="hidden mb-6">
+            <div class="content-card">
+                <h2 class="text-xl font-semibold mb-4">Event Date & Time</h2>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div>
+                        <label for="event-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                        <input type="date" id="event-date" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="event-time" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time (opt)</label>
+                        <input type="time" id="event-time" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="event-suffix" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Suffix (opt)</label>
+                        <select id="event-suffix" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                            <option value="" selected>None</option>
+                            <option value="కు">కు</option>
+                            <option value="న">న</option>
+                            <option value="నుండి">నుండి</option>
+                            <option value="వరకు">వరకు</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center pt-6">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="event-long-form" checked class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Long Form</span>
+                        </label>
+                    </div>
+                    <div class="flex items-end" id="insert-btn-container-1">
+                        <button id="insert-datetime-btn" class="btn-primary w-full bg-blue-600 hover:bg-blue-700 text-white">
+                            Insert Time
+                        </button>
+                    </div>
+                </div>
+
+                <div id="datetime-to-row" class="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4 hidden">
+                    <div>
+                        <label for="event-date-to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Date (opt)</label>
+                        <input type="date" id="event-date-to" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="event-time-to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Time (opt)</label>
+                        <input type="time" id="event-time-to" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="event-suffix-to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Suffix (opt)</label>
+                        <select id="event-suffix-to" class="w-full p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                            <option value="">None</option>
+                            <option value="కు">కు</option>
+                            <option value="న">న</option>
+                            <option value="నుండి">నుండి</option>
+                            <option value="వరకు" selected>వరకు</option>
+                        </select>
+                    </div>
+                    <div></div>
+                    <div class="flex items-end" id="insert-btn-container-2">
+                    </div>
+                </div>
+                <div id="datetime-error" class="text-red-500 text-sm mt-2"></div>
+            </div>
+        </div>
+
+        <div class="content-card mb-6">
+            <label for="input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Input Text</label>
+            <div class="unicode-input-wrap relative">
+                <textarea id="input" name="input" rows="6"
+                    class="w-full p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+                    placeholder="Paste or type unicode Telugu to convert to Non Unicode Telugu..."></textarea>
+                <div id="char-count" class="unicode-char-count absolute bottom-2 right-2 text-xs text-gray-500 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded">Characters: 0 / 3000</div>
+            </div>
+
+            <div class="mt-4 space-y-3">
+                <div class="unicode-options-row flex flex-wrap gap-4 items-center justify-between">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="toggle-space" checked class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Replace spaces</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="toggle-output-click-copy" checked class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Enable click/tap copy (outputs)</span>
+                    </label>
+                </div>
+                <div class="flex flex-wrap gap-4 items-center">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="auto-copy-clipboard" checked class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Enable Auto-Copy on Pasting Text</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="comment-out-lines" class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">Alternative Ra vatthu</span>
+                        <span class="relative inline-flex items-center group">
+                            <span tabindex="0" aria-label="Alternative Ra vatthu font info" class="inline-flex items-center justify-center w-4 h-4 text-xs font-bold rounded-full border border-gray-400 text-gray-600 dark:text-gray-300 dark:border-gray-500">i</span>
+                            <div class="absolute z-20 hidden group-hover:block group-focus-within:block top-6 left-0 w-72 p-3 text-xs leading-5 rounded-lg shadow-lg border border-gray-200 bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700">
+                                <p class="font-semibold mb-2">for the Fonts listed below Ra Vatthu is from Right to Left</p>
+                                <ul class="list-disc pl-4 space-y-1">
+                                    <li>Aaradhana</li>
+                                    <li>Amrutha</li>
+                                    <li>Bapu Bold</li>
+                                    <li>Bapu Brush</li>
+                                    <li>Bapu Script</li>
+                                    <li>Brahma Script</li>
+                                    <li>Chandra Script</li>
+                                    <li>Kusuma</li>
+                                    <li>Maanasa</li>
+                                    <li>Madhubala</li>
+                                    <li>Ramana Brush Regular</li>
+                                    <li>Ramana Script Regular</li>
+                                    <li>Ramana Script Medium Regular</li>
+                                    <li>Subhadra Regular</li>
+                                </ul>
+                            </div>
+                        </span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="legacy-apps-checkbox" class="w-4 h-4 text-accent border-gray-300 rounded focus:ring-accent">
+                        <span class="text-sm text-gray-700 dark:text-gray-300">For Legacy Apps</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button id="convert-btn" class="btn-primary w-full px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                    🔁 Convert & Copy
+                </button>
+            </div>
+        </div>
+
+        
+        <div class="mb-6 flex justify-center w-full min-h-[250px]">
+            <ins class="adsbygoogle ad-in-content"
+                 data-ad-client="ca-pub-0000000000000000"
+                 data-ad-slot="1234567890"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+
+        <div class="content-card mb-6">
+            <div id="output-grid" class="grid grid-cols-1 gap-4">
+                <div>
+                    <label id="output-label" for="output" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Modern Output</label>
+                    <textarea id="output" rows="6"
+                        class="w-full p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+                        placeholder="Converted result..." readonly></textarea>
+                </div>
+
+                <div id="legacy-output-section" class="hidden">
+                    <label id="legacy-output-label" for="legacy-output" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Legacy Output</label>
+                    <textarea id="legacy-output" rows="6"
+                        class="w-full p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent focus:border-transparent"
+                        placeholder="Legacy-app compatible result..." readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card mb-6 text-gray-800 dark:text-gray-200">
+            <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Step-by-Step: Using the Converter</h2>
+            <p class="mb-4">Here’s the simple process:</p>
+
+            <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100">1. Open the Converter</h3>
+            <p class="mb-4">Go to the <strong>Unicode to NonUnicode</strong> page on AndhraCode in your browser.</p>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100">2. Input Your Unicode Text</h3>
+            <p class="mb-2">In the Input Field Type Unicode Text using Google input Tools on Desktops or using G-board Telugu keyboard or even Telugu Voice Typing on G-board on your Smartphone:</p>
+            <ul class="list-disc pl-5 mb-4 space-y-1">
+                <li>You can also Paste the copied Telugu Unicode Text from your Clipboard.</li>
+                <li>When you Paste into the input field you don't need to click <code class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-1 py-0.5 rounded text-sm">Convert &amp; Copy</code> button . . . It automatically Converts the text and Copies to Clipboard (Works in Windows and Android). Mac and iPhone users might have to copy manually (Once Check if that's the case).</li>
+            </ul>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100">3. Optional Settings</h3>
+            <p class="mb-2">You can choose what options you Need:</p>
+            <ul class="list-disc pl-5 mb-4 space-y-2">
+                <li>You can also Load the Telugu Bible Verse if You want.</li>
+                <li>You can also Insert the Date and Time of an event by using Insert Event Date &amp; Time Option.</li>
+                <li><strong>Replace spaces</strong> — uses Non-Unicode Space if this option is Checked. If it's Unchecked the Spaces are Unicode. This option is used to arrange the words in the sentences in proper order without breaking the sentence like in the middle of the word when resizing the text frame in Editing Software.</li>
+                <li><strong>Alternative Ra vatthu</strong> : By Default Ra - Type 01 is Selected.
+                    <ul class="pl-5 mt-2 space-y-1 list-[circle] marker:text-gray-500">
+                        <li><strong>Alternative Ra vatthu = OFF</strong> &rarr; Ra - Type 01 &rarr; Ra Vatthu comes Before the Letter (E.g: Pragathi)</li>
+                        <li><strong>Alternative Ra vatthu = ON</strong> &rarr; Ra - Type 02 &rarr; Ra Vatthu comes after the Letter (E.g: Hyranya)</li>
+                        <li>For the Fonts like Aaradhana, Amrutha, Bapu Brush, Chandra Script. . . Ra Vatthu is from Right to Left. Use this Feature for Proper Ra Vatthu Rendering.</li>
+                    </ul>
+                </li>
+                <li><strong>Enable auto-copy to Clipboard</strong> so the converted text automatically gets copied after conversion. (Works well on Windows, Android) on Mac not yet tested.</li>
+                <li><strong>For Legacy Apps</strong> If You are Using Legacy Apps like Pagemaker, or any other old Software You Need to Enable "For Legacy Apps"</li>
+            </ul>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100">4. Convert Text</h3>
+            <p class="mb-4">Click on <strong>“Convert &amp; Copy.”</strong> The tool will instantly generate the Non-Unicode Text. If you didn’t enable auto-copy, just select and copy the output manually.</p>
+
+            <hr class="my-4 border-gray-200 dark:border-gray-700">
+
+            <h3 class="text-lg font-semibold mt-6 mb-2 text-gray-900 dark:text-gray-100">5. Use the Converted Text</h3>
+            <p class="mb-2">Now that your text is in <strong>Non-Unicode format</strong>, paste it wherever you need it:</p>
+            <ul class="list-disc pl-5 mb-4 space-y-1">
+                <li>In a design app that supports Non-Unicode fonts,</li>
+                <li>In desktop publishing software,</li>
+                <li>Or into documents requiring specific Non-Unicode Telugu fonts.</li>
+            </ul>
+            <p class="mt-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm">
+                👉 Make sure you have the corresponding non-Unicode (Anu or other legacy) font installed, <em>otherwise the text may appear as gibberish or boxes</em>.
+            </p>
+
+            <hr class="my-8 border-gray-200 dark:border-gray-700">
+
+            <h2 class="text-xl font-bold mt-6 mb-4 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <span class="text-2xl">💡</span> Tips for Best Results
+            </h2>
+            <ul class="list-disc pl-5 mb-4 space-y-3">
+                <li><strong>Check font support</strong> — install the appropriate Anu font on your device before using the converted text, especially in tools like Photoshop or Word.</li>
+                <li><strong>Proofread</strong> — because conversion isn’t always perfect, review the output before final use.</li>
+                <li><strong>Replace spaces</strong> Use this Feature when App or Editing Software doesn’t render Spaces Properly or You already formatted Unicode text into proper Lines by pressing Enter.</li>
+                <li><strong>Tools for Telugu input</strong>
+                    <ul class="pl-5 mt-2 space-y-3 list-[circle] marker:text-gray-500">
+                        <li>For <strong>Mobile</strong> Users:
+                            <ul class="pl-5 mt-1 space-y-1 list-[square] marker:text-gray-400">
+                                <li>G-Board Keyboard App (Telugu keyboard)</li>
+                                <li>Google Telugu Voice Typing</li>
+                                <li>Google G-Board Translate</li>
+                                <li>Google Lens are some of the Good Options.</li>
+                            </ul>
+                        </li>
+                        <li>For <strong>Desktop</strong> Users:
+                            <ul class="pl-5 mt-1 space-y-1 list-[square] marker:text-gray-400">
+                                <li>Google Input Tools Software</li>
+                                <li>Google Docs Voice Dictation</li>
+                                <li>Google Lens when using Chrome Browser</li>
+                                <li>Screen Search Chrome Extension when using other Chromium Browsers are some of the Good Options.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        
+
+        <div class="disclaimer-box text-sm text-gray-700 dark:text-gray-200 mt-8 p-4 bg-gray-100 dark:bg-gray-800/90 rounded-lg border border-gray-200 dark:border-gray-600">
+            <strong class="text-gray-900 dark:text-gray-100">Disclaimer:</strong><br>
+            This Unicode to Non-Unicode converter is an independent utility for convenience and experimentation.
+            Accuracy and compatibility are not guaranteed.<strong class="text-gray-900 dark:text-gray-100"> It is not affiliated with or endorsed by AnuFonts,
+            Anu Script Manager, or their parent entities. Users must obtain and install the appropriate Anu fonts
+            through lawful means to view converted text. All related rights remain with their rightful
+            owners.</strong> Use is at your own risk and must comply with applicable laws and copyrights.
+        </div>
+        </main>
+
+        <aside class="w-full lg:w-[300px] flex-shrink-0">
+            <div class="sticky top-28 flex flex-col gap-8">
+                
+                <div>
+                    <ins class="adsbygoogle ad-sidebar"
+                         data-ad-client="ca-pub-0000000000000000"
+                         data-ad-slot="1234567890"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                </div>
+
+                
+                <div class="hidden lg:block">
+                    <ins class="adsbygoogle ad-sidebar"
+                         style="display:block"
+                         data-ad-client="ca-pub-0000000000000000"
+                         data-ad-slot="1234567890"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <footer class="mt-auto bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            
+            <div class="space-y-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">AndhraCode</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
+                    Free Useful text tools for creators and developers. Simple, fast, and privacy-focused.
+                </p>
+                <div class="flex space-x-4 mt-4">
+                    <a href="https://www.facebook.com/profile.php?id=61572930058446" target="_blank" class="text-gray-400 hover:text-blue-600 transition">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="https://x.com/MarkDigiSol_MDS" target="_blank" class="text-gray-400 hover:text-blue-400 transition">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://www.instagram.com/markdigisolutions/" target="_blank" class="text-gray-400 hover:text-pink-600 transition">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://www.linkedin.com/in/mark-digi-solutions-mark-digi-solutions-76ba6b367/" target="_blank" class="text-gray-400 hover:text-blue-700 transition">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Popular Tools</h3>
+                <ul class="space-y-2">
+                    <li><a href="/unicode-to-nonunicode" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Unicode to NonUnicode Converter</a></li>
+                    <li><a href="/case-converter" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Case Converter</a></li>
+                    <li><a href="/splitter" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Text Splitter</a></li>
+                    <li><a href="/date-time-calculator" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Date/Time Calc</a></li>
+                    <li><a href="/timers-countdown" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Timers</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Links</h3>
+                <ul class="space-y-2">
+                    <li><a href="/" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Home</a></li>
+                    <li><a href="/blog" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Blog</a></li>
+                    <li><a href="/about" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">About Us</a></li>
+                    <li><a href="/contact" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Contact</a></li>
+                    <li><a href="/privacy-policy" class="text-gray-500 dark:text-gray-400 hover:text-accent dark:hover:text-white transition text-sm">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-8 text-center">
+            <p class="text-sm text-gray-400">
+                &copy; 2026 AndhraCode. Made with <i class="fas fa-heart text-red-500 text-xs"></i> by <strong>MDS</strong>.
+            </p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    
+    const html = document.documentElement;
+    const themeToggle = document.getElementById('theme-toggle');
+    const mobileMenuBtn = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    
+    function setTheme(theme) {
+        
+        html.setAttribute('data-theme', theme);
+        
+        
+        if (theme === 'dark') {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+
+        localStorage.setItem('theme', theme);
+        
+        
+        if (themeToggle) {
+            themeToggle.innerHTML = theme === 'dark'
+                ? '<i class="fas fa-sun"></i>'
+                : '<i class="fas fa-moon"></i>';
+        }
+    }
+
+    
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+    
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const current = html.getAttribute('data-theme');
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+    }
+
+    
+    if (mobileMenuBtn && mobileMenu) {
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+            const nav = document.querySelector('nav');
+            if (nav) nav.classList.toggle('nav-open');
+        });
+    }
+
+    
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('scroll-to-top');
+        if (!btn) return;
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }, { passive: true });
+        btn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+</script>
+
+
+<button id="scroll-to-top" type="button" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-arrow-up"></i>
+</button>
+
+    <script>
+        
+        const MAX_LENGTH = 3000;
+        
+        const BIBLE_AVAILABLE = true;
+
+        
+        const $ = (id) => document.getElementById(id);
+        const inputBox = $("input");
+        const charCount = $("char-count");
+        const outputArea = $("output");
+        const bibleLoaderCheckbox = $("toggle-bible-loader-checkbox");
+        const bibleLoaderSection = $("bible-loader-section");
+        const bibleBookSelect = $("bible-book");
+        const bibleChapterSelect = $("bible-chapter");
+        const bibleVerseSelect = $("bible-verse");
+        const bibleVerseToSelect = $("bible-verse-to");
+        const fetchVerseBtn = $("fetch-verse-btn");
+        const bibleErrorDiv = $("bible-error");
+        const replaceSpacesCheckbox = $("toggle-space");
+        const outputClickCopyCheckbox = $("toggle-output-click-copy");
+        const convertBtn = $("convert-btn");
+        const autoCopyCheckbox = $("auto-copy-clipboard");
+        const commentOutLinesCheckbox = $("comment-out-lines");
+        const legacyAppsCheckbox = $("legacy-apps-checkbox");
+        const legacyOutputSection = $("legacy-output-section");
+        const outputGrid = $("output-grid");
+        const legacyOutputArea = $("legacy-output");
+        const outputLabel = $("output-label");
+        const legacyOutputLabel = $("legacy-output-label");
+
+        const datetimeLoaderCheckbox = $("toggle-datetime-loader-checkbox");
+        const datetimeLoaderSection = $("datetime-loader-section");
+        const eventDateInput = $("event-date");
+        const eventTimeInput = $("event-time");
+        const eventSuffixSelect = $("event-suffix");
+        const eventLongFormCheckbox = $("event-long-form");
+        const insertDatetimeBtn = $("insert-datetime-btn");
+        const datetimeErrorDiv = $("datetime-error");
+
+        
+        let bibleStructureData = null;
+        let isProcessingOnPaste = false;
+
+        
+        const countNonSpace = (text) => text.replace(/\s/g, "").length;
+
+        function showToast(msg) {
+            let toastContainer = document.getElementById('toast-notification');
+            if (!toastContainer) {
+                toastContainer = document.createElement("div");
+                toastContainer.id = "toast-notification";
+                toastContainer.className = "toast";
+                document.body.appendChild(toastContainer);
+            }
+            
+            toastContainer.textContent = msg;
+            toastContainer.classList.add("show");
+            
+            setTimeout(() => {
+                toastContainer.classList.remove("show");
+            }, 3000);
+        }
+
+        function createOption(value, text) {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = text;
+            return option;
+        }
+
+        async function copyTextValue(value, successMessage) {
+            if (!value) {
+                showToast("Nothing to copy.");
+                return;
+            }
+            try {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(value);
+                } else {
+                    throw new Error("Clipboard API unavailable");
+                }
+                showToast(successMessage);
+            } catch (_) {
+                showToast("Copy failed.");
+            }
+        }
+
+        function bindFieldCopy(field, successMessage) {
+            if (!field) return;
+            const copyFromField = (event) => {
+                if (!(outputClickCopyCheckbox?.checked ?? true)) return;
+                if (event?.type === "touchend") {
+                    event.preventDefault();
+                }
+                copyTextValue(field.value, successMessage);
+            };
+            field.addEventListener("click", copyFromField);
+            field.addEventListener("touchend", copyFromField, { passive: false });
+        }
+
+        function updateOutputCopyHintText() {
+            const copyEnabled = outputClickCopyCheckbox?.checked ?? true;
+            const suffix = copyEnabled ? " (Click/Tap to Copy)" : "";
+            if (outputLabel) outputLabel.textContent = `Modern Output${suffix}`;
+            if (legacyOutputLabel) legacyOutputLabel.textContent = `Legacy Output${suffix}`;
+        }
+
+        async function convertLegacyTextFromOutput(outputText) {
+            if (!legacyOutputArea) return;
+            if (!outputText) {
+                legacyOutputArea.value = "";
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/legacy-convert", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `input=${encodeURIComponent(outputText)}`
+                });
+
+                if (!response.ok) {
+                    const msg = await response.text();
+                    showToast(`Legacy conversion failed: ${msg}`);
+                    legacyOutputArea.value = "";
+                    return;
+                }
+
+                legacyOutputArea.value = await response.text();
+            } catch (err) {
+                console.error(err);
+                showToast("Legacy conversion request failed.");
+                legacyOutputArea.value = "";
+            }
+        }
+
+        function syncLegacyAppsState() {
+            const legacyEnabled = legacyAppsCheckbox?.checked ?? false;
+
+            if (legacyOutputSection) {
+                legacyOutputSection.classList.toggle("hidden", !legacyEnabled);
+            }
+            if (outputGrid) {
+                outputGrid.classList.toggle("md:grid-cols-2", legacyEnabled);
+            }
+            if (!legacyEnabled && legacyOutputArea) {
+                legacyOutputArea.value = "";
+            }
+            if (legacyEnabled && replaceSpacesCheckbox) {
+                replaceSpacesCheckbox.checked = false;
+            }
+
+            if (autoCopyCheckbox) {
+                if (legacyEnabled) {
+                    autoCopyCheckbox.checked = false;
+                    autoCopyCheckbox.disabled = true;
+                } else {
+                    autoCopyCheckbox.disabled = false;
+                }
+            }
+            updateButtonTexts();
+        }
+
+        
+        function updateInputCharCount() {
+            if (!inputBox || !charCount) return false;
+            const len = countNonSpace(inputBox.value);
+            charCount.textContent = `Characters: ${len} / ${MAX_LENGTH}`;
+            const isOver = len > MAX_LENGTH;
+            charCount.style.color = isOver ? "#ef4444" : "";
+            return !isOver;
+        }
+
+        
+        async function processTextConversion(isAuto = false) {
+            if (isProcessingOnPaste && isAuto) return;
+            if (isAuto) isProcessingOnPaste = true;
+
+            try {
+                if (!inputBox) return;
+                if (!isAuto && !updateInputCharCount()) {
+                    showToast("⚠️ Cannot convert: limit exceeded.");
+                    return;
+                }
+
+                let text = inputBox.value;
+                if (!text.trim()) {
+                    if (outputArea) outputArea.value = "";
+                    if (legacyOutputArea) legacyOutputArea.value = "";
+                    return;
+                }
+
+                const replaceSpaces = replaceSpacesCheckbox?.checked ?? true;
+                const autoCopy = autoCopyCheckbox?.checked ?? false;
+                
+                
+                const commentOutLines = !(commentOutLinesCheckbox?.checked ?? false);
+                const commentOutLineList = "";
+
+                const response = await fetch("/api/convert", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `input=${encodeURIComponent(text)}&replaceSpaces=${replaceSpaces}&mapping=mappingA.json&commentOutLines=${commentOutLines}&commentOutLineList=${encodeURIComponent(commentOutLineList)}`
+                });
+
+                if (!response.ok) {
+                    const msg = await response.text();
+                    showToast(`❌ Server Error: ${msg}`);
+                    if (outputArea) outputArea.value = "";
+                    if (legacyOutputArea) legacyOutputArea.value = "";
+                    return;
+                }
+
+                const result = await response.text();
+                if (outputArea) outputArea.value = result;
+
+                const legacyModeEnabled = legacyAppsCheckbox?.checked ?? false;
+                if (legacyModeEnabled) {
+                    await convertLegacyTextFromOutput(result);
+                } else if (legacyOutputArea) {
+                    legacyOutputArea.value = "";
+                }
+
+                if (autoCopy && navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(result);
+                    showToast(isAuto ? "✅ Converted & auto-copied!" : "✅ Converted & copied!");
+                } else {
+                    showToast("✅ Converted!");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("❌ Conversion Request Failed");
+                if (outputArea) outputArea.value = "";
+                    if (legacyOutputArea) legacyOutputArea.value = "";
+            } finally {
+                if (isAuto) isProcessingOnPaste = false;
+            }
+        }
+
+        function updateButtonTexts() {
+            if (!autoCopyCheckbox || !convertBtn) return;
+            const auto = autoCopyCheckbox.checked;
+            convertBtn.innerHTML = auto ? "🔁 Convert & Copy" : "🔁 Convert";
+            if (fetchVerseBtn) fetchVerseBtn.textContent = auto ? "Load & Copy Verse" : "Load Verse";
+        }
+
+        
+        function formatSingleDateTime(dateVal, timeVal, suffixVal, isLongForm) {
+            if (!dateVal) return "";
+            const dtObj = new Date(dateVal);
+            const days = ["ఆదివారం", "సోమవారం", "మంగళవారం", "బుధవారం", "గురువారం", "శుక్రవారం", "శనివారం"];
+            const months = ["జనవరి", "ఫిబ్రవరి", "మార్చి", "ఏప్రిల్", "మే", "జూన్", "జులై", "ఆగస్టు", "సెప్టెంబర్", "అక్టోబర్", "నవంబర్", "డిసెంబర్"];
+
+            const dayStr = days[dtObj.getDay()];
+            const datesStr = dtObj.getDate();
+            const monthStr = months[dtObj.getMonth()];
+            const yearStr = dtObj.getFullYear();
+
+            let resultStr = `${dayStr}, ${datesStr} ${monthStr} ${yearStr}`;
+
+            if (timeVal) {
+                const timeParts = timeVal.split(":");
+                let hr = parseInt(timeParts[0], 10);
+                const min = timeParts[1];
+
+                let tod = "ఉదయం";
+                if (hr >= 0 && hr < 4) tod = "రాత్రి";
+                else if (hr >= 4 && hr < 12) tod = "ఉదయం";
+                else if (hr >= 12 && hr < 16) tod = "మధ్యాహ్నం";
+                else if (hr >= 16 && hr < 20) tod = "సాయంత్రం";
+                else tod = "రాత్రి";
+
+                let hr12 = hr % 12;
+                if (hr12 === 0) hr12 = 12;
+
+                const hasMin = min !== "00";
+                
+                if (isLongForm) {
+                    let timeOutput = `${tod} ${hr12} గంటల`;
+                    if (hasMin) {
+                        timeOutput += ` ${min} నిమిషాల`;
+                    }
+                    resultStr += ` ${timeOutput}`;
+                } else {
+                    const timeOutput = hasMin ? `${hr12}:${min}` : `${hr12}`;
+                    resultStr += ` ${tod} ${timeOutput} గం॥ల`;
+                }
+            }
+
+            if (suffixVal) {
+                if (isLongForm && suffixVal === "కు" && timeVal) {
+                    resultStr = resultStr.replace(/ గంటల$/, " గంటలకు").replace(/ నిమిషాల$/, " నిమిషాలకు");
+                } else {
+                    resultStr += ` ${suffixVal}`;
+                }
+            }
+            return resultStr;
+        }
+
+        function populateTeluguDateTime() {
+            if (!eventDateInput.value) {
+                if (datetimeErrorDiv) datetimeErrorDiv.textContent = "Please select a date.";
+                return;
+            }
+            if (datetimeErrorDiv) datetimeErrorDiv.textContent = "";
+
+            const isLongForm = eventLongFormCheckbox && eventLongFormCheckbox.checked;
+            let resultStr = formatSingleDateTime(eventDateInput.value, eventTimeInput.value, eventSuffixSelect.value, isLongForm);
+
+            const showTo = eventSuffixSelect.value === "నుండి";
+            const toDateInput = $("event-date-to");
+            if (showTo && toDateInput && toDateInput.value) {
+                const toTimeInput = $("event-time-to");
+                const toSuffixSelect = $("event-suffix-to");
+                const toResultStr = formatSingleDateTime(toDateInput.value, toTimeInput?.value, toSuffixSelect?.value, isLongForm);
+                if (toResultStr) {
+                    resultStr += ` ${toResultStr}`;
+                }
+            }
+
+            if (inputBox) {
+                
+                if (inputBox.value && inputBox.value.trim().length > 0) {
+                    inputBox.value += `\n${resultStr}`;
+                } else {
+                    inputBox.value = resultStr;
+                }
+                updateInputCharCount();
+                showToast("📅 Date/Time inserted!");
+                setTimeout(() => processTextConversion(true), 10);
+            }
+        }
+
+        
+        async function loadBibleStructure() {
+            if (!BIBLE_AVAILABLE || !bibleBookSelect) return;
+            try {
+                const response = await fetch("/api/bible-structure");
+                if (!response.ok) {
+                    if (bibleErrorDiv) bibleErrorDiv.textContent = "Failed to load Bible books.";
+                    return;
+                }
+                bibleStructureData = await response.json();
+                bibleBookSelect.innerHTML = "";
+                bibleBookSelect.appendChild(createOption("", "Select Book"));
+                if (bibleStructureData?.testaments) {
+                    bibleStructureData.testaments.forEach(tg => {
+                        const og = document.createElement("optgroup");
+                        og.label = tg.name;
+                        tg.books.forEach(b => og.appendChild(createOption(b.short_name, b.name)));
+                        bibleBookSelect.appendChild(og);
+                    });
+                }
+            } catch (error) {
+                if (bibleErrorDiv) bibleErrorDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function updateBibleDropdowns(level) {
+            if (!BIBLE_AVAILABLE || !bibleStructureData) return;
+            const selBook = bibleBookSelect.value;
+            let selChap = bibleChapterSelect.value ? parseInt(bibleChapterSelect.value, 10) : null;
+
+            if (level === "book") {
+                bibleChapterSelect.innerHTML = "";
+                bibleChapterSelect.appendChild(createOption("", "Select Chapter"));
+                bibleVerseSelect.innerHTML = "";
+                bibleVerseSelect.appendChild(createOption("", "Select Verse"));
+                if (bibleVerseToSelect) {
+                    bibleVerseToSelect.innerHTML = "";
+                    bibleVerseToSelect.appendChild(createOption("", "Select Verse"));
+                    bibleVerseToSelect.disabled = true;
+                }
+                bibleChapterSelect.disabled = true;
+                bibleVerseSelect.disabled = true;
+            }
+            if (level === "chapter") {
+                bibleVerseSelect.innerHTML = "";
+                bibleVerseSelect.appendChild(createOption("", "Select Verse"));
+                bibleVerseSelect.disabled = true;
+                if (bibleVerseToSelect) {
+                    bibleVerseToSelect.innerHTML = "";
+                    bibleVerseToSelect.appendChild(createOption("", "Select Verse"));
+                    bibleVerseToSelect.disabled = true;
+                }
+            }
+            if (fetchVerseBtn) fetchVerseBtn.disabled = true;
+            if (bibleErrorDiv) bibleErrorDiv.textContent = "";
+
+            if (!selBook || !bibleStructureData.testaments) return;
+            let bookData = null;
+            for (const tg of bibleStructureData.testaments) {
+                bookData = tg.books.find(b => b.short_name === selBook);
+                if (bookData) break;
+            }
+            if (!bookData) return;
+
+            if (level === "book" && bookData.chapters) {
+                bookData.chapters.forEach(ch => bibleChapterSelect.appendChild(createOption(ch.chapter_number, `Chapter ${ch.chapter_number}`)));
+                bibleChapterSelect.disabled = false;
+            }
+
+            selChap = bibleChapterSelect.value ? parseInt(bibleChapterSelect.value, 10) : null;
+            if (level !== "verse" && selChap && bookData.chapters) {
+                const chData = bookData.chapters.find(c => c.chapter_number === selChap);
+                if (chData?.verse_count > 0) {
+                    for (let i = 1; i <= chData.verse_count; i++) {
+                        bibleVerseSelect.appendChild(createOption(i, `Verse ${i}`));
+                        if (bibleVerseToSelect) bibleVerseToSelect.appendChild(createOption(i, `Verse ${i}`));
+                    }
+                    bibleVerseSelect.disabled = false;
+                    if (bibleVerseToSelect) bibleVerseToSelect.disabled = false;
+                }
+            }
+
+            if (fetchVerseBtn && bibleBookSelect.value && bibleChapterSelect.value && bibleVerseSelect.value) {
+                fetchVerseBtn.disabled = false;
+            }
+        }
+
+        async function loadSelectedVerseAndConvert() {
+            if (!BIBLE_AVAILABLE || !bibleStructureData) return;
+            const bS = bibleBookSelect.value;
+            const cN = bibleChapterSelect.value;
+            const vN = bibleVerseSelect.value;
+            const vNTo = bibleVerseToSelect ? bibleVerseToSelect.value : "";
+
+            if (!bS || !cN || !vN) {
+                if (bibleErrorDiv) bibleErrorDiv.textContent = "Please select all.";
+                return;
+            }
+            
+            if (vNTo && parseInt(vNTo) < parseInt(vN)) {
+                if (bibleErrorDiv) bibleErrorDiv.textContent = "To Verse cannot be less than From Verse.";
+                return;
+            }
+            
+            if (bibleErrorDiv) bibleErrorDiv.textContent = "";
+
+            let fBN = bS;
+            for (const tg of bibleStructureData.testaments) {
+                const fb = tg.books.find(b => b.short_name === bS);
+                if (fb) { fBN = fb.name; break; }
+            }
+            let ref = `${fBN} ${cN}:${vN}`;
+            if (vNTo && vNTo !== vN) {
+                ref += `-${vNTo}`;
+            }
+
+            try {
+                let urlStr = `/api/get-verse?book=${encodeURIComponent(bS)}&chapter=${encodeURIComponent(cN)}&verse=${encodeURIComponent(vN)}`;
+                if (vNTo) {
+                    urlStr += `&verseTo=${encodeURIComponent(vNTo)}`;
+                }
+
+                const resp = await fetch(urlStr);
+                if (!resp.ok) {
+                    if (bibleErrorDiv) bibleErrorDiv.textContent = await resp.text();
+                    showToast("❌ Verse fetch error");
+                    return;
+                }
+                const vTxt = await resp.text();
+                if (inputBox) {
+                    inputBox.value = `${vTxt}\n${ref}`;
+                    updateInputCharCount();
+                }
+                showToast("📖 Verse loaded!");
+                setTimeout(() => processTextConversion(true), 10);
+            } catch (error) {
+                if (bibleErrorDiv) bibleErrorDiv.textContent = error.message;
+                showToast("❌ Client error");
+            }
+        }
+
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            updateInputCharCount();
+            updateButtonTexts();
+            updateOutputCopyHintText();
+            syncLegacyAppsState();
+            bindFieldCopy(outputArea, "Output copied to clipboard.");
+            bindFieldCopy(legacyOutputArea, "Legacy output copied to clipboard.");
+
+            
+            if (inputBox) {
+                inputBox.addEventListener("input", () => {
+                    updateInputCharCount();
+                    
+                    if (inputBox.dataset.justPasted === "true") {
+                        inputBox.dataset.justPasted = "false";
+                        if (!updateInputCharCount()) {
+                            showToast("⚠️ Paste exceeds limit.");
+                            return;
+                        }
+                        showToast("📋 Text pasted. Converting...");
+                        setTimeout(() => processTextConversion(true), 0);
+                    }
+                });
+                
+                inputBox.addEventListener("paste", () => {
+                    inputBox.dataset.justPasted = "true";
+                });
+            }
+
+            
+            convertBtn?.addEventListener("click", () => processTextConversion(false));
+            autoCopyCheckbox?.addEventListener("change", updateButtonTexts);
+            replaceSpacesCheckbox?.addEventListener("change", () => processTextConversion(false));
+            commentOutLinesCheckbox?.addEventListener("change", () => processTextConversion(false));
+            outputClickCopyCheckbox?.addEventListener("change", updateOutputCopyHintText);
+            legacyAppsCheckbox?.addEventListener("change", () => {
+                syncLegacyAppsState();
+                if (legacyAppsCheckbox?.checked) {
+                    processTextConversion(false);
+                }
+            });
+
+            
+            if (bibleLoaderCheckbox && bibleLoaderSection) {
+                bibleLoaderCheckbox.addEventListener("change", function () {
+                    bibleLoaderSection.classList.toggle("hidden", !this.checked);
+                    if (this.checked && BIBLE_AVAILABLE && !bibleStructureData) loadBibleStructure();
+                });
+            }
+
+            
+            function updateDateTimeToRow() {
+                if (!eventSuffixSelect) return;
+                const showTo = eventSuffixSelect.value === "నుండి";
+                const toRow = $("datetime-to-row");
+                const insertBtnContainer1 = $("insert-btn-container-1");
+                const insertBtnContainer2 = $("insert-btn-container-2");
+                const insertBtn = $("insert-datetime-btn");
+                
+                if (toRow) {
+                    toRow.classList.toggle("hidden", !showTo);
+                }
+                if (insertBtn && insertBtnContainer1 && insertBtnContainer2) {
+                    if (showTo) {
+                        insertBtnContainer2.appendChild(insertBtn);
+                        const toDateInput = $("event-date-to");
+                        if (toDateInput && !toDateInput.value && eventDateInput && eventDateInput.value) {
+                            toDateInput.value = eventDateInput.value;
+                        }
+                    } else {
+                        insertBtnContainer1.appendChild(insertBtn);
+                    }
+                }
+            }
+
+            if (eventSuffixSelect) {
+                eventSuffixSelect.addEventListener("change", updateDateTimeToRow);
+                updateDateTimeToRow(); 
+            }
+
+            function toggleNaSuffix(timeInput, suffixSelect) {
+                if (!timeInput || !suffixSelect) return;
+                const hasTime = timeInput.value.trim() !== "";
+                for (let i = 0; i < suffixSelect.options.length; i++) {
+                    if (suffixSelect.options[i].value === "న") {
+                        suffixSelect.options[i].hidden = hasTime;
+                        suffixSelect.options[i].disabled = hasTime;
+                        if (hasTime && suffixSelect.value === "న") {
+                            suffixSelect.value = ""; 
+                            if (suffixSelect.id === "event-suffix") {
+                                updateDateTimeToRow();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (eventTimeInput && eventSuffixSelect) {
+                eventTimeInput.addEventListener("input", () => toggleNaSuffix(eventTimeInput, eventSuffixSelect));
+                toggleNaSuffix(eventTimeInput, eventSuffixSelect);
+            }
+            
+            const toTimeInput = $("event-time-to");
+            const toSuffixSelect = $("event-suffix-to");
+            if (toTimeInput && toSuffixSelect) {
+                toTimeInput.addEventListener("input", () => toggleNaSuffix(toTimeInput, toSuffixSelect));
+                toggleNaSuffix(toTimeInput, toSuffixSelect);
+            }
+
+            if (datetimeLoaderCheckbox && datetimeLoaderSection) {
+                datetimeLoaderCheckbox.addEventListener("change", function () {
+                    datetimeLoaderSection.classList.toggle("hidden", !this.checked);
+                    if (this.checked && eventDateInput && !eventDateInput.value) {
+                        
+                        eventDateInput.valueAsDate = new Date();
+                    }
+                });
+            }
+
+            if (insertDatetimeBtn) {
+                insertDatetimeBtn.addEventListener("click", populateTeluguDateTime);
+            }
+
+            if (BIBLE_AVAILABLE) {
+                bibleBookSelect?.addEventListener("change", () => updateBibleDropdowns("book"));
+                bibleChapterSelect?.addEventListener("change", () => updateBibleDropdowns("chapter"));
+                bibleVerseSelect?.addEventListener("change", () => updateBibleDropdowns("verse"));
+                fetchVerseBtn?.addEventListener("click", loadSelectedVerseAndConvert);
+            }
+        });
+    </script>
+
+    
+    <div class="ad-sticky-footer-wrap">
+        <ins class="adsbygoogle ad-sticky-footer"
+             data-ad-client="ca-pub-0000000000000000"
+             data-ad-slot="1234567890"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+</body>
+</html>

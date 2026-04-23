@@ -1,10 +1,19 @@
+﻿import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/navigation/app_navigator.dart';
+import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 
 class SubscriptionPlanScreen extends StatefulWidget {
-  const SubscriptionPlanScreen({super.key});
+  const SubscriptionPlanScreen({
+    super.key,
+    this.triggerRestoreOnOpen = false,
+  });
+
+  final bool triggerRestoreOnOpen;
 
   @override
   State<SubscriptionPlanScreen> createState() => _SubscriptionPlanScreenState();
@@ -12,15 +21,60 @@ class SubscriptionPlanScreen extends StatefulWidget {
 
 class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     with AppLanguageStateMixin {
+  static const String _premiumPlanProductId = String.fromEnvironment(
+    'MANA_POSTER_PREMIUM_PLAN_PRODUCT_ID',
+    defaultValue: 'mana_poster_premium_monthly_149',
+  );
+  static const String _premiumPlanLegacyProductId = String.fromEnvironment(
+    'MANA_POSTER_PREMIUM_PLAN_LEGACY_PRODUCT_ID',
+    defaultValue: 'mana_poster_premium_monthly_149_legacy',
+  );
+
   final SubscriptionBackendService _backendService =
       SubscriptionBackendService();
+  final ProPurchaseGateway _freePlanGateway = InAppPurchaseGateway(
+    productId: _premiumPlanProductId,
+    fallbackProductIds: const <String>[
+      _premiumPlanLegacyProductId,
+      PurchaseProductIds.proMonthly20,
+      PurchaseProductIds.proMonthlyLegacy,
+    ],
+  );
+  final ProPurchaseGateway _premiumPlanGateway = InAppPurchaseGateway(
+    productId: _premiumPlanProductId,
+    fallbackProductIds: const <String>[
+      _premiumPlanLegacyProductId,
+      PurchaseProductIds.proMonthly20,
+      PurchaseProductIds.proMonthlyLegacy,
+    ],
+  );
+  final ProPurchaseGateway _restoreGateway = InAppPurchaseGateway(
+    productId: _premiumPlanProductId,
+    fallbackProductIds: const <String>[
+      _premiumPlanProductId,
+      _premiumPlanLegacyProductId,
+      PurchaseProductIds.proMonthly20,
+      PurchaseProductIds.proMonthlyLegacy,
+    ],
+  );
+
   SubscriptionBackendResult? _backendResult;
   bool _loading = true;
+  bool _busyFree = false;
+  bool _busyPremium = false;
+  bool _busyRestore = false;
+
+  bool get _isBusy => _loading || _busyFree || _busyPremium || _busyRestore;
 
   @override
   void initState() {
     super.initState();
-    _loadStatus();
+    unawaited(_loadStatus());
+    if (widget.triggerRestoreOnOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_restoreSubscriptions());
+      });
+    }
   }
 
   Future<void> _loadStatus() async {
@@ -35,424 +89,276 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     });
   }
 
+  Future<void> _subscribeFreePlan() async {
+    if (_isBusy) {
+      return;
+    }
+    setState(() => _busyFree = true);
+    try {
+      final outcome = await _freePlanGateway.purchaseMonthlyPro();
+      final activated = await _finalizeOutcome(
+        outcome,
+        successMessage: _t(
+          telugu: 'Free poster subscription activate ayyindi',
+          english: 'Free poster subscription activated',
+        ),
+      );
+      if (!mounted || !activated) {
+        return;
+      }
+      AppNavigator.openHome();
+    } finally {
+      if (mounted) {
+        setState(() => _busyFree = false);
+      }
+    }
+  }
+
+  Future<void> _subscribePremiumPlan() async {
+    if (_isBusy) {
+      return;
+    }
+    setState(() => _busyPremium = true);
+    try {
+      final outcome = await _premiumPlanGateway.purchaseMonthlyPro();
+      final activated = await _finalizeOutcome(
+        outcome,
+        successMessage: _t(
+          telugu: 'Premium subscription activate ayyindi',
+          english: 'Premium subscription activated',
+        ),
+      );
+      if (!mounted || !activated) {
+        return;
+      }
+      AppNavigator.openHome();
+    } finally {
+      if (mounted) {
+        setState(() => _busyPremium = false);
+      }
+    }
+  }
+
+  Future<void> _restoreSubscriptions() async {
+    if (_isBusy) {
+      return;
+    }
+    setState(() => _busyRestore = true);
+    try {
+      final outcome = await _restoreGateway.restorePurchases();
+      final restored = await _finalizeOutcome(
+        outcome,
+        successMessage: _t(
+          telugu: 'Subscription restore ayyindi',
+          english: 'Subscription restored',
+        ),
+      );
+      if (!mounted || !restored) {
+        return;
+      }
+      AppNavigator.openHome();
+    } finally {
+      if (mounted) {
+        setState(() => _busyRestore = false);
+      }
+    }
+  }
+
+  Future<bool> _finalizeOutcome(
+    PurchaseFlowOutcome outcome, {
+    required String successMessage,
+  }) async {
+    if (!mounted) {
+      return false;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (outcome.result != PurchaseFlowResult.success) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(_messageForPurchaseResult(outcome.result))),
+      );
+      return false;
+    }
+
+    if (!_backendService.isConfigured) {
+      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+      await _loadStatus();
+      return true;
+    }
+
+    final evidence = outcome.evidence;
+    if (evidence == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              telugu: 'Verification data dorakaledu. Restore try cheyyandi',
+              english: 'Verification data is missing. Try restore.',
+            ),
+          ),
+        ),
+      );
+      return false;
+    }
+
+    final verifyResult = await _backendService.verifyPurchase(evidence: evidence);
+    if (!mounted) {
+      return false;
+    }
+
+    if (!verifyResult.isSuccess) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            verifyResult.message?.isNotEmpty == true
+                ? 'Verification fail: ${verifyResult.message}'
+                : _t(
+                    telugu: 'Subscription verification fail ayyindi',
+                    english: 'Subscription verification failed',
+                  ),
+          ),
+        ),
+      );
+      return false;
+    }
+
+    await _loadStatus();
+    if (!mounted) {
+      return false;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+    return true;
+  }
+
+  String _messageForPurchaseResult(PurchaseFlowResult result) {
+    return switch (result) {
+      PurchaseFlowResult.cancelled =>
+        _t(telugu: 'Payment cancel chesaru', english: 'Payment was cancelled'),
+      PurchaseFlowResult.failed =>
+        _t(telugu: 'Payment fail ayyindi', english: 'Payment failed'),
+      PurchaseFlowResult.billingUnavailable => _t(
+        telugu: 'Billing service andubatulo ledu',
+        english: 'Billing service is unavailable',
+      ),
+      PurchaseFlowResult.productNotFound => _t(
+        telugu: 'Store product dorakaledu. Product id check cheyyandi',
+        english: 'Store product not found. Check product id.',
+      ),
+      PurchaseFlowResult.timedOut => _t(
+        telugu: 'Payment response timeout ayyindi. Malli try cheyyandi',
+        english: 'Payment response timed out. Please try again.',
+      ),
+      PurchaseFlowResult.nothingToRestore => _t(
+        telugu: 'Restore cheyadaniki subscription dorakaledu',
+        english: 'No subscription found to restore',
+      ),
+      PurchaseFlowResult.success => '',
+    };
+  }
+
+  String _statusLine() {
+    if (_loading) {
+      return _t(
+        telugu: 'Plan status check avuthondi...',
+        english: 'Checking plan status...',
+      );
+    }
+    final result = _backendResult;
+    if (result == null) {
+      return _t(
+        telugu: 'Status info andubatulo ledu',
+        english: 'Status information unavailable',
+      );
+    }
+
+    return switch (result.state) {
+      SubscriptionBackendState.verifiedPro => _t(
+        telugu: 'Active subscription undi',
+        english: 'Subscription is active',
+      ),
+      SubscriptionBackendState.verifiedFree => _t(
+        telugu: 'Subscription active ledu',
+        english: 'Subscription is not active',
+      ),
+      SubscriptionBackendState.notConfigured => _t(
+        telugu: 'Plan info mode lo undi',
+        english: 'Plan info mode',
+      ),
+      SubscriptionBackendState.failed => _t(
+        telugu: 'Status check fail ayyindi',
+        english: 'Status check failed',
+      ),
+    };
+  }
+
+  String _t({required String telugu, required String english}) {
+    return context.strings.localized(telugu: telugu, english: english);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final copy = _SubscriptionCopy(context.currentLanguage);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F8FE),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F6FB),
+        backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
-        title: Text(
-          copy.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
-        ),
       ),
       body: SafeArea(
         top: false,
-        child: Stack(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: <Widget>[
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[Color(0xFFF7FAFF), Color(0xFFF3F7FD)],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: -60,
-              right: -40,
-              child: IgnorePointer(
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: <Color>[
-                        const Color(0xFF6D28D9).withValues(alpha: 0.14),
-                        const Color(0xFF6D28D9).withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 220,
-              left: -55,
-              child: IgnorePointer(
-                child: Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: <Color>[
-                        const Color(0xFF16A34A).withValues(alpha: 0.10),
-                        const Color(0xFF16A34A).withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: <Widget>[
-                _HeroCard(copy: copy, statusLine: _statusLine(copy)),
-                const SizedBox(height: 16),
-                _FreePlanCard(copy: copy),
-                const SizedBox(height: 16),
-                _PremiumPlanCard(copy: copy),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _statusLine(_SubscriptionCopy copy) {
-    if (_loading) {
-      return copy.statusLoading;
-    }
-
-    final result = _backendResult;
-    if (result == null) {
-      return copy.statusUnknown;
-    }
-
-    switch (result.state) {
-      case SubscriptionBackendState.verifiedPro:
-        return copy.statusActive;
-      case SubscriptionBackendState.verifiedFree:
-        return copy.statusInactive;
-      case SubscriptionBackendState.notConfigured:
-        return copy.statusNotConfigured;
-      case SubscriptionBackendState.failed:
-        return copy.statusUnavailable;
-    }
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.copy, required this.statusLine});
-
-  final _SubscriptionCopy copy;
-  final String statusLine;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFF4C1D95),
-            Color(0xFF6D28D9),
-            Color(0xFF8B5CF6),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0x26FFFFFF)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x334C1D95),
-            blurRadius: 26,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0x26FFFFFF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: const Text(
-              'FREE PLAN',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            copy.heroTitle,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 23,
-              height: 1.18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            copy.heroSubtitle,
-            style: const TextStyle(
-              color: Color(0xFFEAF7EE),
-              fontSize: 14.5,
-              height: 1.35,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _PricePill(
-                  label: copy.trialChipLabel,
-                  value: copy.trialChipValue,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PricePill(
-                  label: copy.monthlyChipLabel,
-                  value: copy.monthlyChipValue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0x1FFFFFFF),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              statusLine,
+            Text(
+              _statusLine(),
               style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
+                color: Color(0xFF475569),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PricePill extends StatelessWidget {
-  const _PricePill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0x26FFFFFF),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFFF5F3FF),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
+            const SizedBox(height: 24),
+            _PlanSection(
+              title: _t(
+                telugu: 'Free poster plan (Trial + Monthly)',
+                english: 'Free poster plan (Trial + Monthly)',
+              ),
+              buttonLabel: _t(
+                telugu: 'Subscribe Free plan',
+                english: 'Subscribe Free plan',
+              ),
+              onTap: _subscribeFreePlan,
+              busy: _busyFree,
+              accent: const Color(0xFF1D4ED8),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16.5,
-              fontWeight: FontWeight.w800,
+            const SizedBox(height: 24),
+            _PlanSection(
+              title: _t(telugu: 'Premium plan', english: 'Premium plan'),
+              buttonLabel: _t(
+                telugu: 'Subscribe Premium plan',
+                english: 'Subscribe Premium plan',
+              ),
+              onTap: _subscribePremiumPlan,
+              busy: _busyPremium,
+              accent: const Color(0xFF7C3AED),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FreePlanCard extends StatelessWidget {
-  const _FreePlanCard({required this.copy});
-
-  final _SubscriptionCopy copy;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SurfaceCardShell(
-      accentGradient: const LinearGradient(
-        colors: <Color>[Color(0xFF60A5FA), Color(0xFF2563EB)],
-      ),
-      surfaceColor: const Color(0xFFFFFFFF),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _SectionTitle(
-            icon: Icons.auto_awesome_rounded,
-            title: copy.freeSectionTitle,
-            iconBg: const Color(0xFFE8EEFF),
-            iconColor: const Color(0xFF1E3A8A),
-          ),
-          const SizedBox(height: 10),
-          _SoftNote(
-            text: copy.heroSubtitle,
-            icon: Icons.info_outline_rounded,
-            background: const Color(0xFFF3F7FF),
-            foreground: const Color(0xFF1D4ED8),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: <Widget>[
-              _PlanMetric(label: copy.trialLabel, value: copy.trialValue),
-              _PlanMetric(label: copy.monthlyLabel, value: copy.monthlyValue),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...copy.freePoints.map(_BulletLine.new),
-        ],
-      ),
-    );
-  }
-}
-
-class _PremiumPlanCard extends StatelessWidget {
-  const _PremiumPlanCard({required this.copy});
-
-  final _SubscriptionCopy copy;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SurfaceCardShell(
-      accentGradient: const LinearGradient(
-        colors: <Color>[Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-      ),
-      surfaceColor: const Color(0xFFFBF8FF),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _SectionTitle(
-                  icon: Icons.workspace_premium_rounded,
-                  title: copy.premiumSectionTitle,
-                  iconBg: const Color(0xFFEDE9FE),
-                  iconColor: const Color(0xFF6D28D9),
-                  titleColor: const Color(0xFF2E1065),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _busyRestore ? null : _restoreSubscriptions,
+              icon: _busyRestore
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.restore_rounded),
+              label: Text(
+                _t(
+                  telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
+                  english: 'Restore subscriptions',
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3E8FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  copy.premiumBadge,
-                  style: const TextStyle(
-                    color: Color(0xFF6D28D9),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _SoftNote(
-            text: copy._isTelugu
-                ? 'ప్రతి Premium పోస్టర్‌కు విడిగా కొనుగోలు అవసరం.'
-                : 'Each Premium poster needs separate purchase.',
-            icon: Icons.workspace_premium_rounded,
-            background: const Color(0xFFF3E8FF),
-            foreground: const Color(0xFF6D28D9),
-          ),
-          const SizedBox(height: 12),
-          ...copy.premiumPoints.map(
-            (item) => _BulletLine(
-              item,
-              textColor: const Color(0xFF4C1D95),
-              dotColor: const Color(0xFF8B5CF6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SurfaceCardShell extends StatelessWidget {
-  const _SurfaceCardShell({
-    required this.accentGradient,
-    required this.surfaceColor,
-    required this.child,
-  });
-
-  final Gradient accentGradient;
-  final Color surfaceColor;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE6EBF5)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Stack(
-          children: <Widget>[
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(gradient: accentGradient),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
-              child: child,
             ),
           ],
         ),
@@ -461,239 +367,60 @@ class _SurfaceCardShell extends StatelessWidget {
   }
 }
 
-class _SoftNote extends StatelessWidget {
-  const _SoftNote({
-    required this.text,
-    required this.icon,
-    required this.background,
-    required this.foreground,
-  });
-
-  final String text;
-  final IconData icon;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, size: 18, color: foreground),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.35,
-                fontWeight: FontWeight.w700,
-                color: foreground,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.icon,
+class _PlanSection extends StatelessWidget {
+  const _PlanSection({
     required this.title,
-    required this.iconBg,
-    required this.iconColor,
-    this.titleColor = const Color(0xFF0F172A),
+    required this.buttonLabel,
+    required this.onTap,
+    required this.busy,
+    required this.accent,
   });
 
-  final IconData icon;
   final String title;
-  final Color iconBg;
-  final Color iconColor;
-  final Color titleColor;
+  final String buttonLabel;
+  final VoidCallback onTap;
+  final bool busy;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(11),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
           ),
-          alignment: Alignment.center,
-          child: Icon(icon, size: 18, color: iconColor),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: titleColor,
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: busy ? null : onTap,
+            style: FilledButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
+            child: busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(buttonLabel),
           ),
         ),
+        const SizedBox(height: 8),
+        const Divider(height: 1, color: Color(0xFFE2E8F0)),
       ],
     );
   }
 }
 
-class _PlanMetric extends StatelessWidget {
-  const _PlanMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-      decoration: BoxDecoration(
-        color: const Color(0x7FFFFFFF),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF475569),
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16.5,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BulletLine extends StatelessWidget {
-  const _BulletLine(
-    this.text, {
-    this.textColor = const Color(0xFF334155),
-    this.dotColor = const Color(0xFF1E3A8A),
-  });
-
-  final String text;
-  final Color textColor;
-  final Color dotColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Icon(Icons.brightness_1_rounded, size: 7, color: dotColor),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 14.8,
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SubscriptionCopy {
-  const _SubscriptionCopy(this.language);
-
-  final AppLanguage language;
-
-  bool get _isTelugu => language == AppLanguage.telugu;
-
-  String get title => _isTelugu ? 'సబ్‌స్క్రిప్షన్' : 'Subscription';
-  String get heroTitle =>
-      _isTelugu ? 'Free పోస్టర్ల ప్లాన్' : 'Free posters plan';
-  String get heroSubtitle => _isTelugu
-      ? 'ఈ ప్లాన్ Free ట్యాబ్ పోస్టర్లకే వర్తిస్తుంది.'
-      : 'This plan applies only to Free-tab posters.';
-  String get trialChipLabel => _isTelugu ? 'Trial' : 'Trial';
-  String get trialChipValue => _isTelugu ? '₹1 / 3 రోజులు' : '₹1 / 3 days';
-  String get monthlyChipLabel => _isTelugu ? 'తర్వాత' : 'After trial';
-  String get monthlyChipValue => _isTelugu ? '₹149 / నెల' : '₹149 / month';
-
-  String get freeSectionTitle =>
-      _isTelugu ? 'Free పోస్టర్ల ప్లాన్' : 'Free posters plan';
-  String get trialLabel => _isTelugu ? 'Trial ప్లాన్' : 'Trial plan';
-  String get trialValue => _isTelugu ? '₹1 / 3 రోజులు' : '₹1 / 3 days';
-  String get monthlyLabel => _isTelugu ? 'Trial తర్వాత' : 'After trial';
-  String get monthlyValue =>
-      _isTelugu ? '₹149 / నెల (Auto-renewal)' : '₹149 / month (Auto-renewal)';
-  List<String> get freePoints => _isTelugu
-      ? const <String>[
-          'Free పోస్టర్లను పూర్తిగా ఎడిట్ చేసి వాడుకోవచ్చు.',
-          'ఈ సబ్‌స్క్రిప్షన్ Premium పోస్టర్లకు వర్తించదు.',
-        ]
-      : const <String>[
-          'Free posters can be fully edited and used.',
-          'This subscription does not apply to Premium posters.',
-        ];
-
-  String get premiumSectionTitle =>
-      _isTelugu ? 'Premium పోస్టర్ల కొనుగోలు' : 'Premium poster purchase';
-  String get premiumBadge =>
-      _isTelugu ? 'Separate కొనుగోలు' : 'Separate purchase';
-  List<String> get premiumPoints => _isTelugu
-      ? const <String>[
-          'ప్రతి Premium పోస్టర్‌కు వేర్వేరు ధర ఉంటుంది.',
-          'కావాల్సిన పోస్టర్‌ను విడిగా కొనుగోలు చేయాలి.',
-          'కొనుగోలు చేసిన Premium పోస్టర్‌ను పూర్తిగా customize చేయవచ్చు.',
-        ]
-      : const <String>[
-          'Each Premium poster has separate pricing.',
-          'Buy the poster you need separately.',
-          'Purchased Premium posters can be fully customized.',
-        ];
-
-  String get statusLoading =>
-      _isTelugu ? 'ప్లాన్ స్థితి చెక్ అవుతోంది...' : 'Checking plan status...';
-  String get statusActive => _isTelugu
-      ? 'ప్రస్తుతం మీరు Free plan లో ఉన్నారు.'
-      : 'You are currently on Free plan.';
-  String get statusInactive => _isTelugu
-      ? 'ప్రస్తుతం Trial / Monthly plan active లేదు.'
-      : 'Trial / Monthly plan is not active now.';
-  String get statusNotConfigured => _isTelugu
-      ? 'ప్రస్తుతం ప్లాన్ సమాచారం మాత్రమే చూపిస్తున్నాం.'
-      : 'Showing plan information only for now.';
-  String get statusUnavailable => _isTelugu
-      ? 'ప్రస్తుతం స్థితిని నిర్ధారించలేకపోయాము.'
-      : 'Could not confirm status right now.';
-  String get statusUnknown => _isTelugu
-      ? 'ప్రస్తుతం స్థితి సమాచారం అందుబాటులో లేదు.'
-      : 'Status information is not available now.';
-}

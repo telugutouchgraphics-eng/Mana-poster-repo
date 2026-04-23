@@ -1,6 +1,11 @@
+import 'dart:async';
+
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:permission_handler/permission_handler.dart';
 
-enum AppPermissionType { photos, notifications }
+enum AppPermissionType { photos, camera, notifications }
 
 class AppPermissionState {
   const AppPermissionState({required this.type, required this.status});
@@ -16,13 +21,19 @@ class AppPermissionState {
 }
 
 class PermissionSnapshot {
-  const PermissionSnapshot({required this.photos, required this.notifications});
+  const PermissionSnapshot({
+    required this.photos,
+    required this.camera,
+    required this.notifications,
+  });
 
   final AppPermissionState photos;
+  final AppPermissionState camera;
   final AppPermissionState notifications;
 
   List<AppPermissionState> get items => <AppPermissionState>[
     photos,
+    camera,
     notifications,
   ];
 
@@ -34,12 +45,23 @@ class PermissionSnapshot {
 }
 
 class PermissionService {
-  PermissionService();
+  PermissionService({
+    DeviceInfoPlugin? deviceInfo,
+    Future<int?> Function()? androidSdkIntLoader,
+  }) : _deviceInfo = deviceInfo ?? DeviceInfoPlugin(),
+       _androidSdkIntLoader = androidSdkIntLoader;
+
+  final DeviceInfoPlugin _deviceInfo;
+  final Future<int?> Function()? _androidSdkIntLoader;
 
   PermissionSnapshot defaultSnapshot() {
     return const PermissionSnapshot(
       photos: AppPermissionState(
         type: AppPermissionType.photos,
+        status: PermissionStatus.denied,
+      ),
+      camera: AppPermissionState(
+        type: AppPermissionType.camera,
         status: PermissionStatus.denied,
       ),
       notifications: AppPermissionState(
@@ -51,7 +73,9 @@ class PermissionService {
 
   Future<PermissionSnapshot> getSnapshot() async {
     final Permission photosPermission = await _resolvePhotosPermission();
+    final Permission cameraPermission = await _resolveCameraPermission();
     final PermissionStatus photosStatus = await _safeStatus(photosPermission);
+    final PermissionStatus cameraStatus = await _safeStatus(cameraPermission);
     final PermissionStatus notificationsStatus = await _safeStatus(
       Permission.notification,
     );
@@ -60,6 +84,10 @@ class PermissionService {
       photos: AppPermissionState(
         type: AppPermissionType.photos,
         status: photosStatus,
+      ),
+      camera: AppPermissionState(
+        type: AppPermissionType.camera,
+        status: cameraStatus,
       ),
       notifications: AppPermissionState(
         type: AppPermissionType.notifications,
@@ -70,7 +98,9 @@ class PermissionService {
 
   Future<PermissionSnapshot> requestEssentialPermissions() async {
     final Permission photosPermission = await _resolvePhotosPermission();
+    final Permission cameraPermission = await _resolveCameraPermission();
     final PermissionStatus photosStatus = await _safeRequest(photosPermission);
+    final PermissionStatus cameraStatus = await _safeRequest(cameraPermission);
     final PermissionStatus notificationsStatus = await _safeRequest(
       Permission.notification,
     );
@@ -79,6 +109,10 @@ class PermissionService {
       photos: AppPermissionState(
         type: AppPermissionType.photos,
         status: photosStatus,
+      ),
+      camera: AppPermissionState(
+        type: AppPermissionType.camera,
+        status: cameraStatus,
       ),
       notifications: AppPermissionState(
         type: AppPermissionType.notifications,
@@ -98,13 +132,41 @@ class PermissionService {
     switch (type) {
       case AppPermissionType.photos:
         return _resolvePhotosPermission();
+      case AppPermissionType.camera:
+        return _resolveCameraPermission();
       case AppPermissionType.notifications:
         return Future<Permission>.value(Permission.notification);
     }
   }
 
   Future<Permission> _resolvePhotosPermission() async {
+    if (kIsWeb) {
+      return Permission.photos;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final sdkInt = await _loadAndroidSdkInt();
+      return sdkInt != null && sdkInt >= 33
+          ? Permission.photos
+          : Permission.storage;
+    }
     return Permission.photos;
+  }
+
+  Future<Permission> _resolveCameraPermission() async {
+    return Permission.camera;
+  }
+
+  Future<int?> _loadAndroidSdkInt() async {
+    final override = _androidSdkIntLoader;
+    if (override != null) {
+      return override();
+    }
+    try {
+      final info = await _deviceInfo.androidInfo;
+      return info.version.sdkInt;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<PermissionStatus> _safeStatus(Permission permission) async {

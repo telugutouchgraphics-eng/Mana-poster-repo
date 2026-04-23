@@ -1,21 +1,29 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 
 class PosterProfileDetailsScreen extends StatefulWidget {
-  const PosterProfileDetailsScreen({super.key, required this.initialProfile});
+  const PosterProfileDetailsScreen({
+    super.key,
+    required this.initialProfile,
+    this.completeToHomeOnSave = false,
+  });
 
   final PosterProfileData initialProfile;
+  final bool completeToHomeOnSave;
 
   @override
   State<PosterProfileDetailsScreen> createState() =>
@@ -161,18 +169,31 @@ class _PosterProfileDetailsScreenState
       }
       await _backgroundRemoverInitialization;
       final originalBytes = await File(cropped.path).readAsBytes();
-      final removedResult = await _backgroundRemovalService.removeBackground(
+      final optimizedOriginalBytes = await compute(
+        _optimizeProfilePhotoBytes,
         originalBytes,
       );
+      Uint8List finalPhotoBytes = optimizedOriginalBytes;
+      try {
+        final removedResult = await _backgroundRemovalService.removeBackground(
+          optimizedOriginalBytes,
+        );
+        finalPhotoBytes = removedResult.pngBytes;
+      } catch (_) {
+        finalPhotoBytes = optimizedOriginalBytes;
+      }
       final Directory dir = await getApplicationDocumentsDirectory();
       final String originalTargetPath =
           '${dir.path}${Platform.pathSeparator}poster_profile_original_photo.png';
       final File originalLocalFile = File(originalTargetPath);
-      await originalLocalFile.writeAsBytes(originalBytes, flush: true);
+      await originalLocalFile.writeAsBytes(
+        optimizedOriginalBytes,
+        flush: true,
+      );
       final String targetPath =
           '${dir.path}${Platform.pathSeparator}poster_profile_photo.png';
       final File localFile = File(targetPath);
-      await localFile.writeAsBytes(removedResult.pngBytes, flush: true);
+      await localFile.writeAsBytes(finalPhotoBytes, flush: true);
       final originalRemoteUrl = await PosterProfileService.uploadProfilePhoto(
         file: originalLocalFile,
         extension: 'png',
@@ -336,7 +357,11 @@ class _PosterProfileDetailsScreenState
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop(updated);
+      if (widget.completeToHomeOnSave) {
+        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      } else {
+        Navigator.of(context).pop(updated);
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -927,6 +952,31 @@ class _PosterProfileDetailsScreenState
       ),
     );
   }
+}
+
+Uint8List _optimizeProfilePhotoBytes(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) {
+    return bytes;
+  }
+
+  const targetMaxDimension = 1280;
+  final longest = decoded.width > decoded.height
+      ? decoded.width
+      : decoded.height;
+  img.Image output = decoded;
+
+  if (longest > targetMaxDimension) {
+    final scale = targetMaxDimension / longest;
+    final width = ((decoded.width * scale).round()).clamp(320, 1280);
+    final height = ((decoded.height * scale).round()).clamp(320, 1280);
+    output = img.copyResize(decoded, width: width, height: height);
+  }
+
+  if (output.hasAlpha) {
+    return Uint8List.fromList(img.encodePng(output));
+  }
+  return Uint8List.fromList(img.encodeJpg(output, quality: 90));
 }
 
 class _IdentityPreviewCard extends StatelessWidget {

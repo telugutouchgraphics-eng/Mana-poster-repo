@@ -220,6 +220,17 @@ class PosterProfileService {
         PosterNameFontOption(label: 'Gowthami Bold', family: 'Gowthami Bold'),
         PosterNameFontOption(label: 'Pallavi Bold', family: 'Pallavi Bold'),
         PosterNameFontOption(label: 'Tejafont', family: 'Tejafont'),
+        PosterNameFontOption(label: 'Anton', family: 'Anton'),
+        PosterNameFontOption(label: 'Archivo Black', family: 'Archivo Black'),
+        PosterNameFontOption(label: 'Bebas Neue', family: 'Bebas Neue'),
+        PosterNameFontOption(label: 'League Spartan', family: 'League Spartan'),
+        PosterNameFontOption(label: 'Montserrat', family: 'Montserrat'),
+        PosterNameFontOption(
+          label: 'Playfair Display',
+          family: 'Playfair Display',
+        ),
+        PosterNameFontOption(label: 'Poppins', family: 'Poppins'),
+        PosterNameFontOption(label: 'Rasa', family: 'Rasa'),
       ];
 
   static const String _defaultName = 'User';
@@ -228,6 +239,13 @@ class PosterProfileService {
       PosterDisplayNameMode.auto;
 
   static String get defaultName => _defaultName;
+
+  static bool isSetupComplete(PosterProfileData profile) {
+    return profile.photoPath.trim().isNotEmpty ||
+        profile.photoUrl.trim().isNotEmpty ||
+        profile.originalPhotoPath.trim().isNotEmpty ||
+        profile.originalPhotoUrl.trim().isNotEmpty;
+  }
 
   static Future<PosterProfileData> load() async {
     final localProfile = await loadLocal();

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:mana_poster/app/localization/app_language.dart';
+
 enum ExportPaywallDecision {
   cancel,
   freeWithWatermark,
@@ -28,18 +30,6 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
-  static const List<String> _titles = <String>[
-    'Free export preview',
-    'Pro export preview',
-    'Pro benefits',
-  ];
-
-  static const List<String> _descriptions = <String>[
-    'Free lo watermark tho export avuthundi.',
-    'Pro lo watermark lekunda clean export avuthundi.',
-    'Rs.20/month tho fast workflow and clean output pondandi.',
-  ];
-
   @override
   void dispose() {
     _pageController.dispose();
@@ -48,9 +38,44 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
+    final titles = <String>[
+      strings.localized(
+        telugu: 'ఫ్రీ ఎగుమతి ప్రివ్యూ',
+        english: 'Free export preview',
+      ),
+      strings.localized(
+        telugu: 'ప్రో ఎగుమతి ప్రివ్యూ',
+        english: 'Pro export preview',
+      ),
+      strings.localized(
+        telugu: 'ప్రో ప్రయోజనాలు',
+        english: 'Pro benefits',
+      ),
+    ];
+    final descriptions = <String>[
+      strings.localized(
+        telugu: 'ఫ్రీలో వాటర్‌మార్క్‌తో ఎగుమతి అవుతుంది.',
+        english: 'Free exports include a watermark.',
+      ),
+      strings.localized(
+        telugu: 'ప్రోలో వాటర్‌మార్క్ లేకుండా క్లియర్ ఎగుమతి అవుతుంది.',
+        english: 'Pro exports are clean and watermark-free.',
+      ),
+      strings.localized(
+        telugu: 'నెలకు రూ.20తో వేగమైన వర్క్‌ఫ్లో మరియు క్లీన్ అవుట్‌పుట్ పొందండి.',
+        english: 'Get a faster workflow and clean output for Rs.20/month.',
+      ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Export Options'),
+        title: Text(
+          strings.localized(
+            telugu: 'ఎగుమతి ఎంపికలు',
+            english: 'Export Options',
+          ),
+        ),
         leading: IconButton(
           onPressed: () {
             HapticFeedback.selectionClick();
@@ -67,7 +92,7 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
               Expanded(
                 child: PageView.builder(
                   controller: _pageController,
-                  itemCount: _titles.length,
+                  itemCount: titles.length,
                   onPageChanged: (value) {
                     setState(() {
                       _currentIndex = value;
@@ -75,8 +100,8 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
                   },
                   itemBuilder: (BuildContext context, int index) {
                     return _ExportSlideCard(
-                      title: _titles[index],
-                      description: _descriptions[index],
+                      title: titles[index],
+                      description: descriptions[index],
                       watermarkVisible: index != 1,
                       previewBytes: widget.previewBytes,
                     );
@@ -86,7 +111,7 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List<Widget>.generate(_titles.length, (index) {
+                children: List<Widget>.generate(titles.length, (index) {
                   final isActive = index == _currentIndex;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
@@ -109,11 +134,16 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
                   child: OutlinedButton(
                     onPressed: () {
                       HapticFeedback.selectionClick();
-                      Navigator.of(context).pop(
-                        ExportPaywallDecision.freeWithWatermark,
-                      );
+                      Navigator.of(
+                        context,
+                      ).pop(ExportPaywallDecision.freeWithWatermark);
                     },
-                    child: const Text('Free tho continue (Watermark)'),
+                    child: Text(
+                      strings.localized(
+                        telugu: 'ఫ్రీతో కొనసాగించండి (వాటర్‌మార్క్)',
+                        english: 'Continue Free (Watermark)',
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -125,14 +155,20 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
                       ? null
                       : () {
                           HapticFeedback.selectionClick();
-                          Navigator.of(context).pop(
-                            ExportPaywallDecision.upgradeAndExport,
-                          );
+                          Navigator.of(
+                            context,
+                          ).pop(ExportPaywallDecision.upgradeAndExport);
                         },
                   child: Text(
                     widget.isProUser
-                        ? 'Pro already active'
-                        : 'Pro ki Upgrade avvandi (Rs.20/month)',
+                        ? strings.localized(
+                            telugu: 'ప్రో ఇప్పటికే యాక్టివ్‌లో ఉంది',
+                            english: 'Pro already active',
+                          )
+                        : strings.localized(
+                            telugu: 'ప్రోకి అప్‌గ్రేడ్ అవ్వండి (రూ.20/నెల)',
+                            english: 'Upgrade to Pro (Rs.20/month)',
+                          ),
                   ),
                 ),
               ),
@@ -142,18 +178,28 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
                 child: TextButton(
                   onPressed: () {
                     HapticFeedback.selectionClick();
-                    Navigator.of(context).pop(
-                      ExportPaywallDecision.restorePurchase,
-                    );
+                    Navigator.of(
+                      context,
+                    ).pop(ExportPaywallDecision.restorePurchase);
                   },
-                  child: const Text('Existing plan ni Restore cheyyandi'),
+                  child: Text(
+                    strings.localized(
+                      telugu: 'ఉన్న ప్లాన్‌ను రిస్టోర్ చేయండి',
+                      english: 'Restore Existing Plan',
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Note: Live billing test ki Play/App Store tester account required.',
+              Text(
+                strings.localized(
+                  telugu:
+                      'గమనిక: లైవ్ బిల్లింగ్ టెస్ట్ కోసం Play/App Store టెస్టర్ అకౌంట్ అవసరం.',
+                  english:
+                      'Note: A Play/App Store tester account is required for live billing tests.',
+                ),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF64748B),
                 ),
@@ -218,10 +264,15 @@ class _ExportSlideCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(13),
                       child: previewBytes == null
-                          ? const ColoredBox(
-                              color: Color(0xFFF8FAFD),
+                          ? ColoredBox(
+                              color: const Color(0xFFF8FAFD),
                               child: Center(
-                                child: Text('Preview andubatulo ledu'),
+                                child: Text(
+                                  context.strings.localized(
+                                    telugu: 'ప్రివ్యూ అందుబాటులో లేదు',
+                                    english: 'Preview unavailable',
+                                  ),
+                                ),
                               ),
                             )
                           : Image.memory(

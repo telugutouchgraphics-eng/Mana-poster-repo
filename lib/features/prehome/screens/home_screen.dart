@@ -11,13 +11,15 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
-import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
+import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -27,6 +29,8 @@ import 'package:mana_poster/features/prehome/services/template_entitlement_backe
 import 'package:mana_poster/features/prehome/services/template_purchase_gateway.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -327,9 +331,9 @@ class _HomeScreenState extends State<HomeScreen> with AppLanguageStateMixin {
       addChip(staticCategories.first);
     } else {
       addChip(
-        const _CategoryChipData(
+        _CategoryChipData(
           slug: _allCategorySlug,
-          label: 'All',
+          label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
           matchTags: <String>['all'],
         ),
       );
@@ -535,9 +539,7 @@ class _HomeScreenState extends State<HomeScreen> with AppLanguageStateMixin {
       _showWebEditorUnavailableMessage();
       return;
     }
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const PageSetupScreen()));
+    Navigator.of(context).pushNamed(AppRoutes.pageSetup);
   }
 
   void _openProfile() {
@@ -918,9 +920,9 @@ class _HomeScreenState extends State<HomeScreen> with AppLanguageStateMixin {
         : _allCategorySlug;
     final selectedCategory = categories.firstWhere(
       (chip) => chip.slug == activeCategorySlug,
-      orElse: () => const _CategoryChipData(
+      orElse: () => _CategoryChipData(
         slug: _allCategorySlug,
-        label: 'All',
+        label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
         matchTags: <String>['all'],
       ),
     );
@@ -1245,7 +1247,7 @@ class _HomeHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            strings.homeTagline,
+            AppPublicInfo.appTagline,
             style: const TextStyle(
               color: Color(0xFFF3E8FF),
               fontSize: 12,
@@ -1592,6 +1594,8 @@ class _TemplateFeedItem extends StatelessWidget {
   final ValueNotifier<bool> _showPosterPhotoNotifier = ValueNotifier<bool>(
     true,
   );
+  static final SubscriptionBackendService _subscriptionBackendService =
+      SubscriptionBackendService();
 
   Future<Uint8List?> _capturePosterBytes() async {
     RenderRepaintBoundary? boundary =
@@ -1647,9 +1651,193 @@ class _TemplateFeedItem extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<bool> _ensurePaidAccessForFreePoster(BuildContext context) async {
+    final status = await _subscriptionBackendService.fetchEntitlement();
+    if (status.isPro) {
+      return true;
+    }
+    if (!context.mounted) {
+      return false;
+    }
+
+    final strings = context.strings;
+    final profileName = viewerPosterProfile
+        .resolvedName(language: language)
+        .trim()
+        .replaceAll(RegExp(r'\s+'), ' ');
+    final displayName = profileName.isEmpty ? 'User' : profileName;
+    final openPlan = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+          contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+          actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Row(
+            children: <Widget>[
+              ClipOval(
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: PosterIdentityVisual(profile: viewerPosterProfile),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  strings.localized(
+                    telugu: '$displayName గారు, share చేయడానికి',
+                    english: '$displayName, to share/download',
+                  ),
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Text(
+                  strings.localized(
+                    telugu: 'Trial plan - ₹1 for 3 days',
+                    english: 'Trial plan - ₹1 for 3 days',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF166534),
+                    fontSize: 14.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'OR',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.blueGrey.shade500,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFC7D2FE)),
+                ),
+                child: Text(
+                  strings.localized(
+                    telugu: 'Monthly plan - ₹149',
+                    english: 'Monthly plan - ₹149',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1E3A8A),
+                    fontSize: 14.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                strings.localized(
+                  telugu: 'Cancel anytime. Subscription auto-renewal.',
+                  english: 'Cancel anytime. Subscription auto-renewal.',
+                ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LegalDocumentScreen(
+                          documentType: LegalDocumentType.termsAndConditions,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    strings.localized(
+                      telugu: 'Read more about refund and cancellation',
+                      english: 'Read more about refund and cancellation',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                strings.localized(telugu: 'ఇప్పుడు వద్దు', english: 'Not now'),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                strings.localized(
+                  telugu: 'Subscribe',
+                  english: 'Subscribe',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (openPlan == true && context.mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const SubscriptionPlanScreen(),
+        ),
+      );
+      if (!context.mounted) {
+        return false;
+      }
+      final latestStatus = await _subscriptionBackendService.fetchEntitlement();
+      return latestStatus.isPro;
+    }
+
+    return false;
+  }
+
   Future<void> _onDownloadTap(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      final hasPaidAccess = await _ensurePaidAccessForFreePoster(context);
+      if (!hasPaidAccess) {
+        return;
+      }
       final hasPermission = await _ensureGallerySavePermission();
       if (!hasPermission) {
         _showSnack(messenger, 'Gallery permission ivvandi');
@@ -1693,6 +1881,10 @@ class _TemplateFeedItem extends StatelessWidget {
   Future<void> _onShareTap(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
+      final hasPaidAccess = await _ensurePaidAccessForFreePoster(context);
+      if (!hasPaidAccess) {
+        return;
+      }
       final bytes = await _capturePosterBytes();
       if (bytes == null) {
         _showSnack(messenger, 'Poster ready kaaledu, malli try cheyyandi');
@@ -2051,6 +2243,17 @@ class _CreatorPosterPreview extends StatefulWidget {
 }
 
 class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
+  static const List<String> _randomPosterNameFonts = <String>[
+    'Pragathi',
+    'Pallavi Bold',
+    'Prabhava',
+    'Dharani',
+    'Tejafont',
+    'Sravya',
+    'Reshma',
+    'Kranthi',
+  ];
+
   bool _basePosterReady = false;
 
   @override
@@ -2069,8 +2272,19 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     setState(() => _basePosterReady = true);
   }
 
-  bool _containsTelugu(String value) {
-    return RegExp(r'[\u0C00-\u0C7F]').hasMatch(value);
+  String _resolvePosterNameFontFamily(String resolvedName) {
+    final seedSource =
+        '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
+        '|${widget.personalizationConfig.nameX}'
+        '|${widget.personalizationConfig.nameY}'
+        '|${widget.personalizationConfig.stripHeight}'
+        '|$resolvedName';
+    var hash = 17;
+    for (final codeUnit in seedSource.codeUnits) {
+      hash = 37 * hash + codeUnit;
+    }
+    final index = hash.abs() % _randomPosterNameFonts.length;
+    return _randomPosterNameFonts[index];
   }
 
   @override
@@ -2088,9 +2302,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final resolvedName = widget.viewerPosterProfile.resolvedName(
       language: widget.language,
     );
-    final displayNameFontFamily = _containsTelugu(resolvedName)
-        ? 'Prabhava'
-        : widget.viewerPosterProfile.nameFontFamily;
+    final displayNameFontFamily = _resolvePosterNameFontFamily(resolvedName);
     final showWhatsapp =
         widget.personalizationConfig.showWhatsapp &&
         widget.viewerPosterProfile.activeWhatsappNumber.trim().isNotEmpty;

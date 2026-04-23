@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "mana-poster-ap"
-  }
+  },
+  "targets": {
+    "mana-poster-ap": {
+      "hosting": {
+        "public": [
+          "mana-poster-ap"
+        ],
+        "admin": [
+          "mana-poster-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

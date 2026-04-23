@@ -43,10 +43,10 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://mana-poster-ap-default-rtdb.firebaseio.com',
   );
 
-  static const String androidPackageName = 'com.telugutouch.manaposter';
+  static const String androidPackageName = 'com.manaposter.app';
   static const String webClientId =
       '1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com';
   static const String iosClientId =
       '1093335255199-ar6eh077lj97rhbfhvak4vi2dftr1bdl.apps.googleusercontent.com';
-  static const String iosBundleId = 'com.telugutouch.manaposter';
+  static const String iosBundleId = 'com.manaposter.app';
 }

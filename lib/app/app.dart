@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -48,9 +48,9 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             debugShowCheckedModeBanner: false,
             showPerformanceOverlay: _showPerformanceOverlay,
             checkerboardRasterCacheImages: _showRasterCheckerboard,
-            title: 'Mana Poster',
+            title: AppPublicInfo.appName,
             theme: AppTheme.light(),
-            initialRoute: kIsWeb ? AppRoutes.webLanding : AppRoutes.splash,
+            initialRoute: AppRoutes.initialRoute,
             routes: AppRoutes.map,
           ),
         );

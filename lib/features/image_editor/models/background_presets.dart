@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-const List<Color> editorBackgroundColors = <Color>[
+const List<Color> _seedBackgroundColors = <Color>[
   Color(0xFFF4F7FC),
   Color(0xFFFFFFFF),
   Color(0xFFF8FAFC),
@@ -18,6 +18,30 @@ const List<Color> editorBackgroundColors = <Color>[
   Color(0xFFE0F2FE),
   Color(0xFFF1F5F9),
 ];
+
+List<Color> _buildBackgroundColors(int count) {
+  if (count <= _seedBackgroundColors.length) {
+    return List<Color>.unmodifiable(_seedBackgroundColors.take(count));
+  }
+  final colors = <Color>[..._seedBackgroundColors];
+  final dynamicCount = count - _seedBackgroundColors.length;
+  for (var i = 0; i < dynamicCount; i++) {
+    final hue = (i * 360.0 / dynamicCount) % 360;
+    final saturation = 0.68 + ((i % 5) * 0.05);
+    final lightness = 0.42 + ((i % 4) * 0.08);
+    colors.add(
+      HSLColor.fromAHSL(
+        1,
+        hue,
+        saturation.clamp(0.45, 0.9),
+        lightness.clamp(0.32, 0.78),
+      ).toColor(),
+    );
+  }
+  return List<Color>.unmodifiable(colors);
+}
+
+final List<Color> editorBackgroundColors = _buildBackgroundColors(50);
 
 const List<List<Color>> editorBackgroundGradients = <List<Color>>[
   <Color>[Color(0xFFFFF3C4), Color(0xFFFFD86B), Color(0xFFFFA351)],

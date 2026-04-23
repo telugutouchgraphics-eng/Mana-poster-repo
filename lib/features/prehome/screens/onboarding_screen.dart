@@ -196,7 +196,10 @@ class _TemplatePlacementVisual extends StatelessWidget {
           top: 30,
           child: _FloatingBadge(
             icon: Icons.auto_awesome_rounded,
-            label: 'Auto',
+            label: context.strings.localized(
+              telugu: 'ఆటో',
+              english: 'Auto',
+            ),
             colors: colors,
           ),
         ),
@@ -324,7 +327,10 @@ class _PosterLibraryVisual extends StatelessWidget {
           child: _PosterMiniCard(
             width: 84,
             height: 118,
-            title: 'Festival',
+            title: context.strings.localized(
+              telugu: 'ఫెస్టివల్',
+              english: 'Festival',
+            ),
             colors: <Color>[const Color(0xFFF59E0B), const Color(0xFFFB7185)],
             icon: Icons.auto_awesome,
           ),
@@ -335,7 +341,10 @@ class _PosterLibraryVisual extends StatelessWidget {
           child: _PosterMiniCard(
             width: 90,
             height: 126,
-            title: 'Premium',
+            title: context.strings.localized(
+              telugu: 'ప్రీమియం',
+              english: 'Premium',
+            ),
             colors: colors,
             icon: Icons.workspace_premium_rounded,
             elevated: true,
@@ -347,7 +356,10 @@ class _PosterLibraryVisual extends StatelessWidget {
           child: _PosterMiniCard(
             width: 92,
             height: 118,
-            title: 'Devotional',
+            title: context.strings.localized(
+              telugu: 'భక్తి',
+              english: 'Devotional',
+            ),
             colors: <Color>[const Color(0xFF10B981), const Color(0xFF0EA5E9)],
             icon: Icons.temple_hindu_rounded,
           ),
@@ -358,7 +370,10 @@ class _PosterLibraryVisual extends StatelessWidget {
           child: _PosterMiniCard(
             width: 72,
             height: 98,
-            title: 'Birthday',
+            title: context.strings.localized(
+              telugu: 'పుట్టినరోజు',
+              english: 'Birthday',
+            ),
             colors: <Color>[const Color(0xFFEC4899), const Color(0xFFF97316)],
             icon: Icons.cake_rounded,
           ),
@@ -368,7 +383,10 @@ class _PosterLibraryVisual extends StatelessWidget {
           top: 18,
           child: _FloatingBadge(
             icon: Icons.view_carousel_rounded,
-            label: 'Free',
+            label: context.strings.localized(
+              telugu: 'ఫ్రీ',
+              english: 'Free',
+            ),
             colors: <Color>[const Color(0xFF0EA5E9), const Color(0xFF2563EB)],
           ),
         ),

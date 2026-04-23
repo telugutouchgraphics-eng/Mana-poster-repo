@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
@@ -8,7 +9,7 @@ class AboutAppScreen extends StatelessWidget {
 
   static const String _versionName = '1.0.0';
   static const String _buildNumber = '1';
-  static const String _supportEmail = 'telugutouchgraphics@gmail.com';
+  static const String _supportEmail = AppPublicInfo.supportEmail;
 
   @override
   Widget build(BuildContext context) {

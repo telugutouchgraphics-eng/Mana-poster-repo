@@ -2,14 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 
-enum TemplateEntitlementBackendState {
-  verified,
-  failed,
-  notConfigured,
-}
+enum TemplateEntitlementBackendState { verified, failed, notConfigured }
 
 class TemplateEntitlementBackendResult {
   const TemplateEntitlementBackendResult({
@@ -22,22 +19,24 @@ class TemplateEntitlementBackendResult {
   final String? message;
   final Set<String> unlockedTemplateIds;
 
-  bool get isConfigured => state != TemplateEntitlementBackendState.notConfigured;
+  bool get isConfigured =>
+      state != TemplateEntitlementBackendState.notConfigured;
   bool get isSuccess => state == TemplateEntitlementBackendState.verified;
 }
 
 class TemplateEntitlementBackendService {
-  TemplateEntitlementBackendService({
-    FirebaseAuth? firebaseAuth,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+  TemplateEntitlementBackendService({FirebaseAuth? firebaseAuth})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   static const String _verifyUrl = String.fromEnvironment(
     'MANA_POSTER_TEMPLATE_VERIFY_URL',
-    defaultValue: '',
+    defaultValue:
+        'https://asia-south1-mana-poster-ap.cloudfunctions.net/verifyTemplatePurchase',
   );
   static const String _statusUrl = String.fromEnvironment(
     'MANA_POSTER_TEMPLATE_STATUS_URL',
-    defaultValue: '',
+    defaultValue:
+        'https://asia-south1-mana-poster-ap.cloudfunctions.net/templateEntitlementStatus',
   );
 
   final FirebaseAuth _firebaseAuth;
@@ -57,7 +56,7 @@ class TemplateEntitlementBackendService {
     return _postJson(
       url: _verifyUrl,
       payload: <String, dynamic>{
-        'platform': Platform.operatingSystem,
+        'platform': _platformLabel,
         'templateId': templateId,
         'productId': evidence.productId,
         'verificationSource': evidence.source,
@@ -81,7 +80,7 @@ class TemplateEntitlementBackendService {
     return _postJson(
       url: _statusUrl,
       payload: <String, dynamic>{
-        'platform': Platform.operatingSystem,
+        'platform': _platformLabel,
         'uid': _firebaseAuth.currentUser?.uid,
       },
     );
@@ -122,7 +121,11 @@ class TemplateEntitlementBackendService {
 
       final rawIds = decoded['unlockedTemplateIds'] ?? decoded['templateIds'];
       final unlocked = rawIds is List
-          ? rawIds.whereType<String>().map((item) => item.trim()).where((item) => item.isNotEmpty).toSet()
+          ? rawIds
+                .whereType<String>()
+                .map((item) => item.trim())
+                .where((item) => item.isNotEmpty)
+                .toSet()
           : <String>{};
 
       return TemplateEntitlementBackendResult(
@@ -139,4 +142,6 @@ class TemplateEntitlementBackendService {
       client?.close(force: true);
     }
   }
+
+  String get _platformLabel => kIsWeb ? 'web' : Platform.operatingSystem;
 }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/features/image_editor/models/background_presets.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
+import 'package:mana_poster/features/image_editor/models/editor_stage_background.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 
 enum _UnitMode { pixels, inches }
+
+enum _SetupBackgroundChoice { white, transparent, color, gradient }
 
 class PageSetupScreen extends StatefulWidget {
   const PageSetupScreen({super.key});
@@ -15,16 +20,60 @@ class PageSetupScreen extends StatefulWidget {
 
 class _PageSetupScreenState extends State<PageSetupScreen>
     with AppLanguageStateMixin {
+  static const int _minCanvasPx = 320;
+  static const int _maxCanvasPx = 10000;
+  static const double _minInches = 1;
+  static const double _maxInches = 40;
+  static const int _minDpi = 72;
+  static const int _maxDpi = 600;
+
   static const List<EditorPageConfig> _presets = <EditorPageConfig>[
-    EditorPageConfig(name: 'Instagram Post', widthPx: 1080, heightPx: 1080),
-    EditorPageConfig(name: 'Instagram Story', widthPx: 1080, heightPx: 1920),
-    EditorPageConfig(name: 'YouTube Thumbnail', widthPx: 1280, heightPx: 720),
-    EditorPageConfig(name: 'Facebook Post', widthPx: 1200, heightPx: 630),
-    EditorPageConfig(name: 'WhatsApp Status', widthPx: 1080, heightPx: 1920),
-    EditorPageConfig(name: 'A4 Portrait', widthPx: 2480, heightPx: 3508),
-    EditorPageConfig(name: 'A4 Landscape', widthPx: 3508, heightPx: 2480),
-    EditorPageConfig(name: 'A3 Portrait', widthPx: 3508, heightPx: 4961),
-    EditorPageConfig(name: 'A3 Landscape', widthPx: 4961, heightPx: 3508),
+    EditorPageConfig(name: '1:1', widthPx: 1080, heightPx: 1080),
+    EditorPageConfig(name: '4:5', widthPx: 1080, heightPx: 1350),
+    EditorPageConfig(name: '9:16', widthPx: 1080, heightPx: 1920),
+    EditorPageConfig(name: '16:9', widthPx: 1920, heightPx: 1080),
+  ];
+
+  static final List<Color> _backgroundColors = <Color>[
+    editorBackgroundColors[1],
+    editorBackgroundColors[13],
+    editorBackgroundColors[7],
+    editorBackgroundColors[10],
+    editorBackgroundColors[9],
+    editorBackgroundColors[8],
+    editorBackgroundColors[3],
+    editorBackgroundColors[14],
+    editorBackgroundColors[15],
+  ];
+
+  static final List<List<Color>> _backgroundGradients = <List<Color>>[
+    editorBackgroundGradients[18],
+    editorBackgroundGradients[16],
+    editorBackgroundGradients[21],
+    editorBackgroundGradients[19],
+    editorBackgroundGradients[28],
+    editorBackgroundGradients[20],
+    editorBackgroundGradients[24],
+    editorBackgroundGradients[43],
+  ];
+
+  static const List<int> _backgroundGradientPresetIndices = <int>[
+    18,
+    16,
+    21,
+    19,
+    28,
+    20,
+    24,
+    43,
+  ];
+
+  static const List<Color> _stripColors = <Color>[
+    Color(0xFFE0F2FE),
+    Color(0xFFDCFCE7),
+    Color(0xFFFCE7F3),
+    Color(0xFFFEF3C7),
+    Color(0xFFEDE9FE),
   ];
 
   final TextEditingController _widthController = TextEditingController();
@@ -33,8 +82,19 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     text: '300',
   );
 
-  int? _selectedPresetIndex;
+  int? _selectedPresetIndex = 0;
   _UnitMode _unitMode = _UnitMode.pixels;
+  _SetupBackgroundChoice _backgroundChoice = _SetupBackgroundChoice.white;
+  int _selectedBackgroundColorIndex = 1;
+  int _selectedBackgroundGradientIndex = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _widthController.addListener(_onInputChanged);
+    _heightController.addListener(_onInputChanged);
+    _dpiController.addListener(_onInputChanged);
+  }
 
   @override
   void dispose() {
@@ -44,80 +104,141 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     super.dispose();
   }
 
-  void _applyPreset(int index) {
-    setState(() {
-      _selectedPresetIndex = _selectedPresetIndex == index ? null : index;
-    });
+  void _onInputChanged() {
+    if (mounted && _selectedPresetIndex == null) {
+      setState(() {});
+    }
   }
 
-  int _parseInt(String input, int fallback) {
-    final value = int.tryParse(input.trim());
-    return value == null || value <= 0 ? fallback : value;
+  int? _parsePositiveInt(String value) {
+    final parsed = int.tryParse(value.trim());
+    return (parsed == null || parsed <= 0) ? null : parsed;
   }
 
-  double _parseDouble(String input, double fallback) {
-    final value = double.tryParse(input.trim());
-    return value == null || value <= 0 ? fallback : value;
+  String _backgroundChoiceLabel(_SetupBackgroundChoice choice) {
+    final strings = context.strings;
+    return switch (choice) {
+      _SetupBackgroundChoice.white =>
+        strings.localized(telugu: 'తెలుపు', english: 'White'),
+      _SetupBackgroundChoice.transparent =>
+        strings.localized(telugu: 'పారదర్శకం', english: 'Transparent'),
+      _SetupBackgroundChoice.color =>
+        strings.localized(telugu: 'రంగు', english: 'Color'),
+      _SetupBackgroundChoice.gradient =>
+        strings.localized(telugu: 'గ్రేడియెంట్', english: 'Gradient'),
+    };
+  }
+
+  double? _parsePositiveDouble(String value) {
+    final parsed = double.tryParse(value.trim());
+    return (parsed == null || parsed <= 0) ? null : parsed;
+  }
+
+  String? _customError() {
+    if (_selectedPresetIndex != null) {
+      return null;
+    }
+    final widthText = _widthController.text.trim();
+    final heightText = _heightController.text.trim();
+    if (widthText.isEmpty || heightText.isEmpty) {
+      return 'Enter width and height for custom size.';
+    }
+    if (_unitMode == _UnitMode.pixels) {
+      final width = _parsePositiveInt(widthText);
+      final height = _parsePositiveInt(heightText);
+      if (width == null || height == null) {
+        return 'Width and height must be whole numbers.';
+      }
+      if (width < _minCanvasPx ||
+          width > _maxCanvasPx ||
+          height < _minCanvasPx ||
+          height > _maxCanvasPx) {
+        return 'Pixel size must be between $_minCanvasPx and $_maxCanvasPx.';
+      }
+      return null;
+    }
+    final widthIn = _parsePositiveDouble(widthText);
+    final heightIn = _parsePositiveDouble(heightText);
+    final dpi = _parsePositiveInt(_dpiController.text);
+    if (widthIn == null || heightIn == null || dpi == null) {
+      return 'Enter valid inches and DPI values.';
+    }
+    if (widthIn < _minInches ||
+        widthIn > _maxInches ||
+        heightIn < _minInches ||
+        heightIn > _maxInches) {
+      return 'Inches must be between $_minInches and $_maxInches.';
+    }
+    if (dpi < _minDpi || dpi > _maxDpi) {
+      return 'DPI must be between $_minDpi and $_maxDpi.';
+    }
+    final widthPx = (widthIn * dpi).round();
+    final heightPx = (heightIn * dpi).round();
+    if (widthPx < _minCanvasPx ||
+        widthPx > _maxCanvasPx ||
+        heightPx < _minCanvasPx ||
+        heightPx > _maxCanvasPx) {
+      return 'Converted pixel size is out of range.';
+    }
+    return null;
   }
 
   EditorPageConfig? _resolveConfig() {
-    final strings = context.strings;
     if (_selectedPresetIndex != null) {
       return _presets[_selectedPresetIndex!];
     }
-
-    if (_widthController.text.trim().isEmpty ||
-        _heightController.text.trim().isEmpty) {
+    if (_customError() != null) {
       return null;
     }
-
     if (_unitMode == _UnitMode.pixels) {
-      final width = _parseInt(_widthController.text, 1080).clamp(320, 10000);
-      final height = _parseInt(_heightController.text, 1080).clamp(320, 10000);
       return EditorPageConfig(
-        name: strings.localized(
-          telugu: 'Custom ${width}x$height px',
-          english: 'Custom ${width}x$height px',
-        ),
-        widthPx: width,
-        heightPx: height,
+        name: 'Custom',
+        widthPx: _parsePositiveInt(_widthController.text)!,
+        heightPx: _parsePositiveInt(_heightController.text)!,
       );
     }
-
-    final widthIn = _parseDouble(_widthController.text, 4);
-    final heightIn = _parseDouble(_heightController.text, 4);
-    final dpi = _parseDouble(_dpiController.text, 300).clamp(72, 600);
-    final widthPx = (widthIn * dpi).round().clamp(320, 10000);
-    final heightPx = (heightIn * dpi).round().clamp(320, 10000);
+    final widthIn = _parsePositiveDouble(_widthController.text)!;
+    final heightIn = _parsePositiveDouble(_heightController.text)!;
+    final dpi = _parsePositiveInt(_dpiController.text)!;
     return EditorPageConfig(
-      name: strings.localized(
-        telugu: 'Custom ${widthIn}x$heightIn in @${dpi.round()}dpi',
-        english: 'Custom ${widthIn}x$heightIn in @${dpi.round()}dpi',
-      ),
-      widthPx: widthPx,
-      heightPx: heightPx,
+      name: 'Custom',
+      widthPx: (widthIn * dpi).round().clamp(_minCanvasPx, _maxCanvasPx),
+      heightPx: (heightIn * dpi).round().clamp(_minCanvasPx, _maxCanvasPx),
     );
   }
 
+  EditorStageBackground _resolveBackground() {
+    return switch (_backgroundChoice) {
+      _SetupBackgroundChoice.white => const EditorStageBackground.white(),
+      _SetupBackgroundChoice.transparent =>
+        const EditorStageBackground.transparent(),
+      _SetupBackgroundChoice.color => EditorStageBackground.color(
+        _backgroundColors[_selectedBackgroundColorIndex],
+      ),
+      _SetupBackgroundChoice.gradient => EditorStageBackground.gradient(
+        _backgroundGradientPresetIndices[_selectedBackgroundGradientIndex],
+      ),
+    };
+  }
+
   void _openEditor() {
-    final strings = context.strings;
+    final error = _customError();
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
     final config = _resolveConfig();
     if (config == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            strings.localized(
-              telugu: 'Preset select cheyyandi lekapothe custom size ivvandi',
-              english: 'Select a preset or enter a custom size',
-            ),
-          ),
-        ),
-      );
       return;
     }
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ImageEditorScreen(pageConfig: config),
+        builder: (_) => ImageEditorScreen(
+          pageConfig: config,
+          initialStageBackground: _resolveBackground(),
+        ),
       ),
     );
   }
@@ -130,42 +251,31 @@ class _PageSetupScreenState extends State<PageSetupScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final unitLabel = _unitMode == _UnitMode.pixels ? 'px' : 'in';
-    final resolved = _resolveConfig();
     final strings = context.strings;
+    final theme = Theme.of(context);
+    final config = _resolveConfig() ?? _presets.first;
+    final customError = _customError();
+    final unit = _unitMode == _UnitMode.pixels ? 'px' : 'in';
+    final previewBackground = _resolveBackground();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF09111F),
+      backgroundColor: const Color(0xFF081126),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF09111F),
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          strings.localized(telugu: 'Page Setup', english: 'Page Setup'),
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: Color(0xFFF8FAFC),
-          ),
+          strings.localized(telugu: 'New Poster', english: 'New Poster'),
         ),
-        iconTheme: const IconThemeData(color: Color(0xFFF8FAFC)),
         actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: TextButton(
-              onPressed: _skipToEditor,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFE2E8F0),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                backgroundColor: const Color(0xFF141C2B),
+          TextButton(
+            onPressed: _skipToEditor,
+            child: Text(
+              strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+              style: const TextStyle(
+                color: Color(0xFFCCFBF1),
+                fontWeight: FontWeight.w700,
               ),
-              child: Text(strings.localized(telugu: 'Skip', english: 'Skip')),
             ),
           ),
         ],
@@ -179,9 +289,9 @@ class _PageSetupScreenState extends State<PageSetupScreen>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: <Color>[
-                    Color(0xFF09111F),
-                    Color(0xFF0F172A),
-                    Color(0xFF111827),
+                    Color(0xFF11203D),
+                    Color(0xFF0D2C3A),
+                    Color(0xFF1A2443),
                   ],
                 ),
               ),
@@ -189,358 +299,356 @@ class _PageSetupScreenState extends State<PageSetupScreen>
           ),
           Positioned(
             top: -90,
-            left: -40,
-            child: IgnorePointer(
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      const Color(0xFF2563EB).withValues(alpha: 0.16),
-                      const Color(0xFF2563EB).withValues(alpha: 0),
-                    ],
-                  ),
-                ),
+            right: -70,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF22D3EE).withValues(alpha: 0.18),
               ),
             ),
           ),
           Positioned(
-            right: -70,
-            top: 80,
-            child: IgnorePointer(
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: <Color>[
-                      const Color(0xFF8B5CF6).withValues(alpha: 0.14),
-                      const Color(0xFF8B5CF6).withValues(alpha: 0),
-                    ],
-                  ),
-                ),
+            bottom: -110,
+            left: -70,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFF472B6).withValues(alpha: 0.14),
               ),
             ),
           ),
           ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 168),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: <Widget>[
-              Container(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      const Color(0xFF111827),
-                      const Color(0xFF172033),
-                      const Color(0xFF1E293B),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFF253048)),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 22,
-                      offset: Offset(0, 6),
-                    ),
-                  ],
+              Text(
+                strings.localized(
+                  telugu: 'పోస్టర్ వర్క్‌స్పేస్',
+                  english: 'Poster workspace',
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF23163A),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        strings.localized(
-                          telugu: 'Creative canvas setup',
-                          english: 'Creative canvas setup',
-                        ),
-                        style: const TextStyle(
-                          color: Color(0xFFC4B5FD),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      strings.localized(
-                        telugu: 'Choose your canvas',
-                        english: 'Choose your canvas',
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFFF8FAFC),
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.6,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      strings.localized(
-                        telugu:
-                            'Social presets tho fast ga start avvandi leda print and custom designs kosam exact dimensions ivvandi.',
-                        english:
-                            'Start fast with social presets or enter exact dimensions for print and custom designs.',
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 13.5,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                strings.localized(
+                  telugu:
+                      'పేజీ సైజ్ ఎంచుకోండి, మొదటి బ్యాక్‌గ్రౌండ్ పెట్టండి, తర్వాత ఎడిటర్ ఓపెన్ చేయండి.',
+                  english:
+                      'Choose a page size, set the starting background, and open the editor.',
+                ),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFFDCFCE7),
+                  height: 1.35,
                 ),
               ),
               const SizedBox(height: 18),
-              _SetupSection(
+              _SectionHeading(
                 title: strings.localized(
-                  telugu: 'Quick Presets',
-                  english: 'Quick Presets',
+                  telugu: 'క్యాన్వాస్ సైజ్',
+                  english: 'Canvas Size',
                 ),
                 subtitle: strings.localized(
-                  telugu: 'Social media and print-ready sizes',
-                  english: 'Social media and print-ready sizes',
+                  telugu:
+                      'ప్రీసెట్ సైజులు లైట్ స్ట్రిప్స్‌గా కనిపిస్తాయి. కస్టమ్ సైజ్ ఫ్లెక్సిబుల్ లేఅవుట్ మరియు ప్రింట్ ఎగుమతికి ఉపయోగపడుతుంది.',
+                  english:
+                      'Preset sizes appear as light strips. Custom size works for flexible layouts and print export.',
                 ),
-                child: Wrap(
+              ),
+              const SizedBox(height: 12),
+              ...List<Widget>.generate(_presets.length + 1, (index) {
+                final isCustom = index == _presets.length;
+                final selected = isCustom
+                    ? _selectedPresetIndex == null
+                    : _selectedPresetIndex == index;
+                final label = isCustom
+                    ? strings.localized(telugu: 'కస్టమ్', english: 'Custom')
+                    : _presets[index].name;
+                final subtitle = isCustom
+                    ? strings.localized(
+                        telugu: 'మీ లేఅవుట్ కోసం ఫ్లెక్సిబుల్ సైజ్',
+                        english: 'Flexible size for your own layout',
+                      )
+                    : '${_presets[index].widthPx} x ${_presets[index].heightPx} px';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _SelectionStrip(
+                    title: label,
+                    subtitle: subtitle,
+                    color: _stripColors[index % _stripColors.length],
+                    selected: selected,
+                    onTap: () => setState(
+                      () => _selectedPresetIndex = isCustom ? null : index,
+                    ),
+                  ),
+                );
+              }),
+              if (_selectedPresetIndex == null) ...<Widget>[
+                const SizedBox(height: 8),
+                Theme(
+                  data: theme.copyWith(
+                    segmentedButtonTheme: SegmentedButtonThemeData(
+                      style: ButtonStyle(
+                        backgroundColor:
+                            WidgetStateProperty.resolveWith<Color?>(
+                              (Set<WidgetState> states) =>
+                                  states.contains(WidgetState.selected)
+                                  ? const Color(0xFF0EA5E9)
+                                  : Colors.white.withValues(alpha: 0.06),
+                            ),
+                        foregroundColor: const WidgetStatePropertyAll<Color>(
+                          Colors.white,
+                        ),
+                        side: WidgetStateProperty.resolveWith<BorderSide?>(
+                          (Set<WidgetState> states) => BorderSide(
+                            color: states.contains(WidgetState.selected)
+                                ? const Color(0xFF67E8F9)
+                                : Colors.white.withValues(alpha: 0.14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: SegmentedButton<_UnitMode>(
+                    segments: <ButtonSegment<_UnitMode>>[
+                      ButtonSegment<_UnitMode>(
+                        value: _UnitMode.pixels,
+                        label: Text(
+                          strings.localized(telugu: 'పిక్సెల్స్', english: 'Pixels'),
+                        ),
+                      ),
+                      ButtonSegment<_UnitMode>(
+                        value: _UnitMode.inches,
+                        label: Text(
+                          strings.localized(telugu: 'ఇంచులు', english: 'Inches'),
+                        ),
+                      ),
+                    ],
+                    selected: <_UnitMode>{_unitMode},
+                    onSelectionChanged: (value) =>
+                        setState(() => _unitMode = value.first),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _Input(
+                        controller: _widthController,
+                        label:
+                            '${strings.localized(telugu: 'వెడల్పు', english: 'Width')} ($unit)',
+                        numberOnly: _unitMode == _UnitMode.pixels,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _Input(
+                        controller: _heightController,
+                        label:
+                            '${strings.localized(telugu: 'ఎత్తు', english: 'Height')} ($unit)',
+                        numberOnly: _unitMode == _UnitMode.pixels,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_unitMode == _UnitMode.inches) ...<Widget>[
+                  const SizedBox(height: 10),
+                  _Input(
+                    controller: _dpiController,
+                    label: 'DPI',
+                    numberOnly: true,
+                  ),
+                ],
+                if (customError != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  Text(
+                    customError,
+                    style: const TextStyle(
+                      color: Color(0xFFFECACA),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+              const SizedBox(height: 18),
+              _SectionHeading(
+                title: strings.localized(
+                  telugu: 'బ్యాక్‌గ్రౌండ్',
+                  english: 'Background',
+                ),
+                subtitle: strings.localized(
+                  telugu:
+                      'ప్రతి ఎంపిక బాక్స్ కార్డుల బదులు సాఫ్ట్ స్ట్రిప్‌గా కనిపిస్తుంది.',
+                  english:
+                      'Each option is shown as a soft strip instead of boxed cards.',
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._SetupBackgroundChoice.values.map((choice) {
+                final selected = _backgroundChoice == choice;
+                final color = switch (choice) {
+                  _SetupBackgroundChoice.white => const Color(0xFFF8FAFC),
+                  _SetupBackgroundChoice.transparent => const Color(0xFFE0F2FE),
+                  _SetupBackgroundChoice.color => const Color(0xFFDCFCE7),
+                  _SetupBackgroundChoice.gradient => const Color(0xFFFCE7F3),
+                };
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _SelectionStrip(
+                    title: _backgroundChoiceLabel(choice),
+                    subtitle: strings.localized(
+                      telugu: 'దీనిని మొదటి బ్యాక్‌గ్రౌండ్‌గా వాడేందుకు ట్యాప్ చేయండి',
+                      english: 'Tap to use this as your starting background',
+                    ),
+                    color: color,
+                    selected: selected,
+                    onTap: () => setState(() => _backgroundChoice = choice),
+                  ),
+                );
+              }),
+              if (_backgroundChoice == _SetupBackgroundChoice.color) ...<Widget>[
+                const SizedBox(height: 8),
+                Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: List<Widget>.generate(_presets.length, (index) {
-                    final preset = _presets[index];
-                    final selected = _selectedPresetIndex == index;
-                    return _PresetCard(
-                      preset: preset,
-                      selected: selected,
-                      onTap: () => _applyPreset(index),
+                  children: List<Widget>.generate(_backgroundColors.length, (
+                    index,
+                  ) {
+                    final selected = index == _selectedBackgroundColorIndex;
+                    return InkWell(
+                      onTap: () => setState(
+                        () => _selectedBackgroundColorIndex = index,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: _backgroundColors[index],
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFF5EEAD4)
+                                : Colors.white.withValues(alpha: 0.18),
+                            width: selected ? 2.4 : 1,
+                          ),
+                        ),
+                      ),
                     );
                   }),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _SetupSection(
-                title: strings.localized(
-                  telugu: 'Custom Setup',
-                  english: 'Custom Setup',
-                ),
-                subtitle: strings.localized(
-                  telugu: 'Manual size input in pixels or inches',
-                  english: 'Manual size input in pixels or inches',
-                ),
-                child: Column(
-                  children: <Widget>[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: SegmentedButton<_UnitMode>(
-                        segments: const <ButtonSegment<_UnitMode>>[
-                          ButtonSegment<_UnitMode>(
-                            value: _UnitMode.pixels,
-                            label: Text('Pixels'),
-                          ),
-                          ButtonSegment<_UnitMode>(
-                            value: _UnitMode.inches,
-                            label: Text('Inches'),
-                          ),
-                        ],
-                        selected: <_UnitMode>{_unitMode},
-                        style: const ButtonStyle(
-                          side: WidgetStatePropertyAll<BorderSide>(
-                            BorderSide(color: Color(0xFF334155)),
-                          ),
-                          backgroundColor: WidgetStatePropertyAll<Color>(
-                            Color(0xFF0F172A),
-                          ),
-                          foregroundColor: WidgetStatePropertyAll<Color>(
-                            Color(0xFFF8FAFC),
-                          ),
+              ],
+              if (_backgroundChoice == _SetupBackgroundChoice.gradient) ...<Widget>[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: List<Widget>.generate(
+                    _backgroundGradients.length,
+                    (index) {
+                      final selected = index == _selectedBackgroundGradientIndex;
+                      return InkWell(
+                        onTap: () => setState(
+                          () => _selectedBackgroundGradientIndex = index,
                         ),
-                        onSelectionChanged: (value) {
-                          setState(() => _unitMode = value.first);
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: _StyledInput(
-                            controller: _widthController,
-                            label: strings.localized(
-                              telugu: 'Width ($unitLabel)',
-                              english: 'Width ($unitLabel)',
-                            ),
-                            onChanged: (_) {
-                              if (_selectedPresetIndex != null) {
-                                setState(() => _selectedPresetIndex = null);
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _StyledInput(
-                            controller: _heightController,
-                            label: strings.localized(
-                              telugu: 'Height ($unitLabel)',
-                              english: 'Height ($unitLabel)',
-                            ),
-                            onChanged: (_) {
-                              if (_selectedPresetIndex != null) {
-                                setState(() => _selectedPresetIndex = null);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_unitMode == _UnitMode.inches) ...<Widget>[
-                      const SizedBox(height: 12),
-                      _StyledInput(
-                        controller: _dpiController,
-                        label: 'DPI',
-                        keyboardType: TextInputType.number,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xF0111826),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFF263246)),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x4A000000),
-                      blurRadius: 28,
-                      offset: Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Container(
-                          width: 42,
-                          height: 42,
+                        borderRadius: BorderRadius.circular(10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 120),
+                          width: 64,
+                          height: 36,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: <Color>[
-                                Color(0xFF2563EB),
-                                Color(0xFF7C3AED),
-                              ],
+                            gradient: LinearGradient(
+                              colors: _backgroundGradients[index],
                             ),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.crop_portrait_rounded,
-                            color: Colors.white,
-                            size: 21,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                resolved == null
-                                    ? strings.localized(
-                                        telugu: 'Canvas ఎంపిక కాలేదు',
-                                        english: 'No canvas selected',
-                                      )
-                                    : resolved.name,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFF8FAFC),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                resolved == null
-                                    ? strings.localized(
-                                        telugu:
-                                            'Preset select cheyyandi leda direct editor open cheyyandi',
-                                        english:
-                                            'Select a preset or open the editor directly',
-                                      )
-                                    : '${resolved.widthPx} x ${resolved.heightPx} px',
-                                style: const TextStyle(
-                                  color: Color(0xFF94A3B8),
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFFFDE68A)
+                                  : Colors.white.withValues(alpha: 0.16),
+                              width: selected ? 2.4 : 1,
+                            ),
                           ),
                         ),
-                      ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
+              _SectionHeading(
+                title: strings.localized(telugu: 'ప్రివ్యూ', english: 'Preview'),
+                subtitle: '${config.widthPx} x ${config.heightPx} px',
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 156,
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: config.aspectRatio.clamp(0.2, 5),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color:
+                            previewBackground.type ==
+                                EditorStageBackgroundType.color
+                            ? previewBackground.color
+                            : Colors.white,
+                        gradient:
+                            previewBackground.type ==
+                                EditorStageBackgroundType.gradient
+                            ? LinearGradient(
+                                colors:
+                                    _backgroundGradients[(previewBackground
+                                                .gradientIndex ??
+                                            0)
+                                        .clamp(
+                                          0,
+                                          _backgroundGradients.length - 1,
+                                        )],
+                              )
+                            : null,
+                        border: Border.all(
+                          color: const Color(0xFFCBD5E1).withValues(alpha: 0.5),
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child:
+                          previewBackground.type ==
+                              EditorStageBackgroundType.transparent
+                          ? CustomPaint(
+                              painter: _TransparentPreviewPainter(),
+                              child: const SizedBox.expand(),
+                            )
+                          : const SizedBox.expand(),
                     ),
-                    const SizedBox(height: 14),
-                    FilledButton.icon(
-                      onPressed: _openEditor,
-                      icon: const Icon(Icons.auto_awesome_rounded),
-                      label: Text(
-                        strings.localized(
-                          telugu: 'Create Canvas',
-                          english: 'Create Canvas',
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
-                        backgroundColor: const Color(0xFF2563EB),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    OutlinedButton(
-                      onPressed: _skipToEditor,
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        backgroundColor: const Color(0xFF141C2B),
-                        foregroundColor: const Color(0xFFE2E8F0),
-                        side: const BorderSide(color: Color(0xFF334155)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: Text(
-                        strings.localized(
-                          telugu: 'Skip & Open Editor',
-                          english: 'Skip & Open Editor',
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 18),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF14B8A6),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _resolveConfig() != null ? _openEditor : null,
+                child: Text(
+                  strings.localized(
+                    telugu: 'Start Design',
+                    english: 'Start Design',
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -548,200 +656,192 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   }
 }
 
-class _SetupSection extends StatelessWidget {
-  const _SetupSection({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[const Color(0xFF111827), const Color(0xFF172033)],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFF253048)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x24000000),
-            blurRadius: 14,
-            offset: Offset(0, 5),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: Color(0xFFBFDBFE),
+            fontSize: 12.5,
+            height: 1.35,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFFF8FAFC),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _PresetCard extends StatelessWidget {
-  const _PresetCard({
-    required this.preset,
+class _SelectionStrip extends StatelessWidget {
+  const _SelectionStrip({
+    required this.title,
+    required this.subtitle,
+    required this.color,
     required this.selected,
     required this.onTap,
   });
 
-  final EditorPageConfig preset;
+  final String title;
+  final String subtitle;
+  final Color color;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final previewRatio = preset.widthPx / preset.heightPx;
-    final portrait = previewRatio < 1;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        width: 162,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: selected
-                ? <Color>[const Color(0xFF172554), const Color(0xFF312E81)]
-                : <Color>[const Color(0xFF111827), const Color(0xFF162133)],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.95)
+                  : color.withValues(alpha: 0.95),
+              width: selected ? 1.8 : 1,
+            ),
+            boxShadow: selected
+                ? const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x220F172A),
+                      blurRadius: 14,
+                      offset: Offset(0, 6),
+                    ),
+                  ]
+                : null,
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? const Color(0xFF60A5FA) : const Color(0xFF334155),
-            width: selected ? 1.4 : 1,
-          ),
-          boxShadow: selected
-              ? const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x222563EB),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF334155)),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: portrait ? 15 : 22,
-                      height: portrait ? 24 : 16,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF60A5FA)
-                            : const Color(0xFF64748B),
-                        borderRadius: BorderRadius.circular(4),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                if (selected)
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    size: 20,
-                    color: Color(0xFF60A5FA),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              preset.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Color(0xFFF8FAFC),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${preset.widthPx} x ${preset.heightPx}',
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: const Color(0xFF0F172A),
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _StyledInput extends StatelessWidget {
-  const _StyledInput({
+class _TransparentPreviewPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const tileSize = 12.0;
+    final light = Paint()..color = const Color(0xFFF8FAFC);
+    final dark = Paint()..color = const Color(0xFFE2E8F0);
+    for (double y = 0; y < size.height; y += tileSize) {
+      for (double x = 0; x < size.width; x += tileSize) {
+        final isDark = ((x / tileSize).floor() + (y / tileSize).floor()).isOdd;
+        canvas.drawRect(
+          Rect.fromLTWH(x, y, tileSize, tileSize),
+          isDark ? dark : light,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _Input extends StatelessWidget {
+  const _Input({
     required this.controller,
     required this.label,
-    this.onChanged,
-    this.keyboardType = const TextInputType.numberWithOptions(decimal: true),
+    required this.numberOnly,
   });
 
   final TextEditingController controller;
   final String label;
-  final ValueChanged<String>? onChanged;
-  final TextInputType keyboardType;
+  final bool numberOnly;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      onChanged: onChanged,
-      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      keyboardType: numberOnly
+          ? TextInputType.number
+          : const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: numberOnly
+          ? <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+            ]
+          : <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(
+                RegExp(r'^\d+\.?\d{0,2}$|^\d*$'),
+              ),
+            ],
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(color: Color(0xFFCCFBF1)),
         filled: true,
-        fillColor: const Color(0xFF0F172A),
-        labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+        fillColor: Colors.white.withValues(alpha: 0.08),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF334155)),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF60A5FA)),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(14)),
+          borderSide: BorderSide(color: Color(0xFF5EEAD4), width: 1.6),
         ),
       ),
-      style: const TextStyle(color: Color(0xFFF8FAFC)),
     );
   }
 }

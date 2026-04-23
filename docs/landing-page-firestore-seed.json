@@ -1,0 +1,43 @@
+{
+  "websiteConfig/landingPage": {
+    "showHero": true,
+    "showPreview": true,
+    "showFeatures": true,
+    "showCategories": true,
+    "showDynamicEvents": true,
+    "showPlans": true,
+    "showTestimonials": false,
+    "showFaq": true,
+    "showDownloadCta": false,
+    "downloadUrl": "REPLACE_WITH_PLAY_STORE_OR_APP_DOWNLOAD_URL",
+    "watchDemoUrl": "REPLACE_WITH_YOUTUBE_OR_DEMO_VIDEO_URL",
+    "supportEmail": "manaposter2026@gmail.com",
+    "facebookUrl": "REPLACE_WITH_FACEBOOK_PAGE_URL",
+    "instagramUrl": "REPLACE_WITH_INSTAGRAM_PAGE_URL",
+    "youtubeUrl": "REPLACE_WITH_YOUTUBE_CHANNEL_URL",
+    "sections": {
+      "hero": { "enabled": true },
+      "preview": { "enabled": true },
+      "features": { "enabled": true },
+      "categories": { "enabled": true },
+      "dynamicEvents": { "enabled": true },
+      "plans": { "enabled": true },
+      "testimonials": { "enabled": false },
+      "faq": { "enabled": true },
+      "downloadCta": { "enabled": false }
+    },
+    "links": {
+      "downloadUrl": "REPLACE_WITH_PLAY_STORE_OR_APP_DOWNLOAD_URL",
+      "watchDemoUrl": "REPLACE_WITH_YOUTUBE_OR_DEMO_VIDEO_URL"
+    },
+    "social": {
+      "facebookUrl": "REPLACE_WITH_FACEBOOK_PAGE_URL",
+      "instagramUrl": "REPLACE_WITH_INSTAGRAM_PAGE_URL",
+      "youtubeUrl": "REPLACE_WITH_YOUTUBE_CHANNEL_URL"
+    },
+    "contact": {
+      "supportEmail": "manaposter2026@gmail.com"
+    }
+  },
+  "websitePosters": []
+}

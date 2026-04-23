@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+3
 
 environment:
   sdk: ^3.11.1
@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_web_plugins:
     sdk: flutter
   cupertino_icons: ^1.0.8
   firebase_core: ^4.6.0
@@ -51,6 +53,7 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_local_notifications: ^18.0.1
   cached_network_image: ^3.4.1
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +72,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/adi-registration.properties
     - assets/branding/mana_poster_logo.png
     - assets/branding/whatsapp_icon.png
     - assets/elements/political/logos/
@@ -356,6 +360,47 @@ flutter:
     - family: Vikaas
       fonts:
         - asset: assets/fonts/telugu_legacy/vikaas.ttf
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/english/anton.regular.ttf
+    - family: Archivo Black
+      fonts:
+        - asset: assets/fonts/english/archivo-black.regular.ttf
+    - family: Bebas Neue
+      fonts:
+        - asset: assets/fonts/english/bebas-neue.regular.ttf
+    - family: League Spartan
+      fonts:
+        - asset: assets/fonts/english/league-spartan.bold.ttf
+          weight: 700
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/english/montserrat.extrabold.ttf
+          weight: 800
+        - asset: assets/fonts/english/montserrat.black.ttf
+          weight: 900
+    - family: Playfair Display
+      fonts:
+        - asset: assets/fonts/english/playfair-display.regular.ttf
+          weight: 400
+        - asset: assets/fonts/english/playfair-display.bold.ttf
+          weight: 700
+        - asset: assets/fonts/english/playfair-display.bold-italic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/english/playfair-display.black-italic.ttf
+          weight: 900
+          style: italic
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/english/poppins.bold.ttf
+          weight: 700
+        - asset: assets/fonts/english/poppins.extrabold.ttf
+          weight: 800
+    - family: Rasa
+      fonts:
+        - asset: assets/fonts/english/rasa.bold.ttf
+          weight: 700
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -1,12 +1,53 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    function isAllowedImageUpload(maxSizeBytes) {
+      return request.resource != null &&
+        request.resource.size < maxSizeBytes &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    function isAllowedLandingUpload(maxSizeBytes) {
+      return request.resource != null &&
+        request.resource.size < maxSizeBytes &&
+        (request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('video/.*'));
+    }
+
     match /users/{userId}/rembg_jobs/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        isAllowedImageUpload(15 * 1024 * 1024);
+      allow delete: if isOwner(userId);
     }
 
     match /users/{userId}/poster_profile/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        isAllowedImageUpload(15 * 1024 * 1024);
+      allow delete: if isOwner(userId);
+    }
+
+    match /landing-media/{mediaId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isAdmin() &&
+        isAllowedImageUpload(25 * 1024 * 1024);
+      allow delete: if isAdmin();
+    }
+
+    match /landing-site/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() &&
+        isAllowedLandingUpload(80 * 1024 * 1024);
+      allow delete: if isAdmin();
     }
 
     match /{allPaths=**} {

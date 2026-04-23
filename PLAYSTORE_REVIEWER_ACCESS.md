@@ -30,8 +30,9 @@ Provide a demo account only if your release environment restricts new sign-ups.
 - If Google Sign-In is blocked in reviewer environment, use email/password login instead.
 
 ## 6. To be filled before submission
-- demo email: `<FILL_ME>`
-- demo password: `<FILL_ME>`
-- support email: `<FILL_ME>`
-- privacy policy url: `<FILL_ME>`
-- any OTP/login note if needed: `<FILL_ME>`
+- demo email: optional if reviewer self-signup is allowed
+- demo password: optional if reviewer self-signup is allowed
+- support email: `manaposter2026@gmail.com`
+- privacy policy url: `https://mana-poster-ap.web.app/legal/privacy-policy.html`
+- account deletion url: `https://mana-poster-ap.web.app/legal/account-deletion.html`
+- OTP/login note if needed: not applicable, current repo supports Google Sign-In and email/password only

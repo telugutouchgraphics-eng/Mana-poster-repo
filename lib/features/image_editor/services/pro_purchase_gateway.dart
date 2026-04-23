@@ -5,6 +5,9 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 class PurchaseProductIds {
   const PurchaseProductIds._();
 
+  static const String premiumMonthly149 = 'mana_poster_premium_monthly_149';
+  static const String premiumMonthly149Legacy =
+      'mana_poster_premium_monthly_149_legacy';
   static const String proMonthly20 = 'pro_monthly_20';
   static const String proMonthlyLegacy = 'mana_poster_pro_monthly_20';
 }
@@ -58,21 +61,19 @@ abstract class ProPurchaseGateway {
 
 class MockProPurchaseGateway extends ProPurchaseGateway {
   const MockProPurchaseGateway({
-    this.productId = PurchaseProductIds.proMonthly20,
+    this.productId = PurchaseProductIds.premiumMonthly149,
   });
 
   final String productId;
 
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
-    // TODO: Replace with Play Billing / StoreKit purchase call.
     await Future<void>.delayed(const Duration(milliseconds: 900));
     return const PurchaseFlowOutcome(result: PurchaseFlowResult.success);
   }
 
   @override
   Future<PurchaseFlowOutcome> restorePurchases() async {
-    // TODO: Replace with restore purchases API call.
     await Future<void>.delayed(const Duration(milliseconds: 700));
     return const PurchaseFlowOutcome(result: PurchaseFlowResult.nothingToRestore);
   }
@@ -80,12 +81,12 @@ class MockProPurchaseGateway extends ProPurchaseGateway {
 
 class InAppPurchaseGateway extends ProPurchaseGateway {
   InAppPurchaseGateway({
-    this.productId = PurchaseProductIds.proMonthly20,
+    this.productId = PurchaseProductIds.premiumMonthly149,
     List<String>? fallbackProductIds,
     InAppPurchase? inAppPurchase,
   }) : _fallbackProductIds = fallbackProductIds ?? const <String>[
-         PurchaseProductIds.proMonthlyLegacy,
-       ],
+         PurchaseProductIds.premiumMonthly149Legacy,
+      ],
        _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
 
   final String productId;

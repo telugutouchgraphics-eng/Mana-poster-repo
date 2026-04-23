@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class AppFlowSnapshot {
   const AppFlowSnapshot({
@@ -98,7 +100,17 @@ class AppFlowService {
     await prefs.setBool(_initialSetupCompletedKey, completed);
   }
 
+  static Future<String> resolveAuthenticatedEntryRoute() async {
+    final PosterProfileData profile = await PosterProfileService.load();
+    return PosterProfileService.isSetupComplete(profile)
+        ? AppRoutes.home
+        : AppRoutes.profileSetup;
+  }
+
   static AppLanguage _readLanguage(String? rawValue) {
+    if (kIsWeb && (rawValue == null || rawValue.trim().isEmpty)) {
+      return AppLanguage.english;
+    }
     return AppLanguage.values.firstWhere(
       (AppLanguage item) => item.name == rawValue,
       orElse: () => AppLanguage.telugu,

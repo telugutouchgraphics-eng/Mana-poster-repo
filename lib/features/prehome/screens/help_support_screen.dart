@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
@@ -13,7 +14,7 @@ class HelpSupportScreen extends StatefulWidget {
 
 class _HelpSupportScreenState extends State<HelpSupportScreen>
     with AppLanguageStateMixin {
-  static const String _supportEmail = 'telugutouchgraphics@gmail.com';
+  static const String _supportEmail = AppPublicInfo.supportEmail;
   int? _expandedIndex;
 
   Future<void> _contactSupport(_HelpSupportCopy copy) async {

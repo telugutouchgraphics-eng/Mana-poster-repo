@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:mana_poster/firebase_options.dart';
+import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 
 class FirebaseAuthService {
   FirebaseAuthService({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
@@ -23,6 +24,12 @@ class FirebaseAuthService {
   Future<void> signInWithGoogle() async {
     _ensureFirebaseConfigured();
     try {
+      if (kIsWeb) {
+        await _signInWithGoogleOnWeb();
+        await DeviceSessionService.instance.registerCurrentDeviceSession();
+        return;
+      }
+
       await _ensureGoogleInitialized();
 
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
@@ -36,8 +43,11 @@ class FirebaseAuthService {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await _firebaseAuth.signInWithCredential(credential);
+      await DeviceSessionService.instance.registerCurrentDeviceSession();
     } on AuthFailure {
       rethrow;
+    } on FirebaseAuthException catch (error) {
+      throw AuthFailure(_mapFirebaseAuthError(error));
     } on GoogleSignInException catch (error) {
       throw AuthFailure(_mapGoogleSignInError(error));
     } on UnsupportedError {
@@ -59,6 +69,7 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
+      await DeviceSessionService.instance.registerCurrentDeviceSession();
     } on FirebaseAuthException catch (error) {
       throw AuthFailure(_mapFirebaseAuthError(error));
     }
@@ -74,6 +85,7 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
+      await DeviceSessionService.instance.registerCurrentDeviceSession();
     } on FirebaseAuthException catch (error) {
       throw AuthFailure(_mapFirebaseAuthError(error));
     }
@@ -100,6 +112,22 @@ class FirebaseAuthService {
       _firebaseAuth.signOut(),
       _googleSignIn.signOut(),
     ]);
+  }
+
+  Future<void> _signInWithGoogleOnWeb() async {
+    final provider = GoogleAuthProvider()
+      ..addScope('email')
+      ..setCustomParameters(<String, String>{'prompt': 'select_account'});
+
+    try {
+      await _firebaseAuth.signInWithPopup(provider);
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'operation-not-supported-in-this-environment') {
+        await _firebaseAuth.signInWithRedirect(provider);
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _ensureGoogleInitialized() async {
@@ -137,6 +165,14 @@ class FirebaseAuthService {
         return 'Password should be at least 6 characters.';
       case 'operation-not-allowed':
         return 'This sign-in method is not enabled in Firebase yet.';
+      case 'unauthorized-domain':
+        return 'This admin domain is not authorized in Firebase Authentication. Add this domain under Authorized domains.';
+      case 'popup-blocked':
+        return 'Google Sign-In popup was blocked. Allow popups and try again.';
+      case 'popup-closed-by-user':
+        return 'Google Sign-In popup was closed before completing sign-in.';
+      case 'cancelled-popup-request':
+        return 'Google Sign-In popup was interrupted. Try again once.';
       case 'network-request-failed':
         return 'Network issue. Please check your internet connection.';
       case 'too-many-requests':

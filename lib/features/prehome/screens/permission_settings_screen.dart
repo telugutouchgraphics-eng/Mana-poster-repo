@@ -22,6 +22,10 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
       type: AppPermissionType.photos,
       status: PermissionStatus.denied,
     ),
+    camera: AppPermissionState(
+      type: AppPermissionType.camera,
+      status: PermissionStatus.denied,
+    ),
     notifications: AppPermissionState(
       type: AppPermissionType.notifications,
       status: PermissionStatus.denied,
@@ -204,6 +208,26 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                       actionLabel: copy.actionLabel(effectiveSnapshot.photos),
                       onAction: () =>
                           _requestPermission(AppPermissionType.photos),
+                    ),
+                    const Divider(
+                      height: 1,
+                      indent: 68,
+                      endIndent: 14,
+                      color: Color(0xFFE2E8F0),
+                    ),
+                    _PermissionTile(
+                      icon: Icons.photo_camera_outlined,
+                      title: context.strings.localized(
+                        telugu: 'కెమెరా',
+                        english: 'Camera',
+                      ),
+                      description: copy.cameraDescription,
+                      state: effectiveSnapshot.camera,
+                      statusLabel: copy.statusLabel(effectiveSnapshot.camera),
+                      statusColor: copy.statusColor(effectiveSnapshot.camera),
+                      actionLabel: copy.actionLabel(effectiveSnapshot.camera),
+                      onAction: () =>
+                          _requestPermission(AppPermissionType.camera),
                     ),
                     const Divider(
                       height: 1,
@@ -428,203 +452,57 @@ class _PermissionCopy {
 
   final AppLanguage language;
 
-  String get settingsTitle => switch (language) {
-    AppLanguage.telugu => 'Permissions',
-    AppLanguage.hindi => 'Permissions',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'Permissions',
+  String get settingsTitle => 'Permissions';
+  String get settingsSubtitle =>
+      'You can review and update gallery, camera, and notification access anytime from here.';
+  String get photosDescription => 'For selecting photos and saving posters';
+  String get cameraDescription => 'For directly capturing photos from camera';
+  String get notificationsDescription =>
+      'For new templates and important updates';
+  String get openSettingsLabel => 'Open App Settings';
+  String get settingsHint =>
+      'The app can continue even if permissions are off. You can enable them later from settings.';
+  String get fallbackInfo =>
+      'Permission status took too long to load. Use the actions below to re-check permissions.';
+  String get settingsRequiredHint =>
+      'To enable this again, please allow it from system settings.';
+  String get requestHint =>
+      'If you do not need it now, you can enable it later too.';
+  String get settingsOpened => 'App settings opened.';
+  String get settingsOpenFailed => 'Could not open settings. Please try again.';
+
+  String permissionGranted(AppPermissionType type) => switch (type) {
+    AppPermissionType.photos => 'Photos access granted.',
+    AppPermissionType.camera => 'Camera access granted.',
+    AppPermissionType.notifications => 'Notifications permission granted.',
   };
 
-  String get settingsSubtitle => switch (language) {
-    AppLanguage.telugu =>
-      'Gallery మరియు notifications access ని మీరు ఎప్పుడైనా ఇక్కడ నుంచే చూసుకుని update చేసుకోవచ్చు.',
-    AppLanguage.hindi =>
-      'Gallery और notifications access को आप यहां कभी भी देख और update कर सकते हैं.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      'You can review and update gallery and notification access anytime from here.',
+  String permissionDenied(AppPermissionType type) => switch (type) {
+    AppPermissionType.photos =>
+      'Photos access is still off. You can enable it later from settings.',
+    AppPermissionType.camera =>
+      'Camera access is still off. You can enable it later from settings.',
+    AppPermissionType.notifications =>
+      'Notifications are still off. You can enable them later from settings.',
   };
 
-  String get photosDescription => switch (language) {
-    AppLanguage.telugu => 'ఫోటోలు ఎంచుకోవడం మరియు పోస్టర్లు సేవ్ చేయడం కోసం',
-    AppLanguage.hindi => 'फोटो चुनने और पोस्टर सेव करने के लिए',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'For selecting photos and saving posters',
-  };
-
-  String get notificationsDescription => switch (language) {
-    AppLanguage.telugu => 'కొత్త టెంప్లేట్స్ మరియు ముఖ్యమైన అప్‌డేట్స్ కోసం',
-    AppLanguage.hindi => 'नए टेम्पलेट्स और महत्वपूर्ण अपडेट्स के लिए',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'For new templates and important updates',
-  };
-
-  String get openSettingsLabel => switch (language) {
-    AppLanguage.telugu => 'App Settings ఓపెన్ చేయండి',
-    AppLanguage.hindi => 'App Settings खोलें',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'Open App Settings',
-  };
-
-  String get settingsHint => switch (language) {
-    AppLanguage.telugu =>
-      'Permissions block అయినా కూడా app continue అవుతుంది. అవసరమైనప్పుడు settings నుండి enable చేసుకోవచ్చు.',
-    AppLanguage.hindi =>
-      'Permissions block होने पर भी app जारी रहेगा. ज़रूरत पड़ने पर settings से enable कर सकते हैं.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      'The app can continue even if permissions are off. You can enable them later from settings.',
-  };
-
-  String get fallbackInfo => switch (language) {
-    AppLanguage.telugu =>
-      'ప్రస్తుతం real permission status చదవడంలో ఆలస్యం వచ్చింది. క్రింద ఉన్న బటన్లతో permissions ని మళ్లీ చెక్ చేయండి.',
-    AppLanguage.hindi =>
-      'अभी real permission status पढ़ने में देरी हुई। नीचे दिए बटनों से permissions फिर से चेक करें।',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      'Permission status took too long to load. Use the actions below to re-check permissions.',
-  };
-
-  String get settingsRequiredHint => switch (language) {
-    AppLanguage.telugu =>
-      'ఈ access ను మళ్లీ ఇవ్వాలంటే settings నుండి allow చేయాలి.',
-    AppLanguage.hindi =>
-      'इस access को फिर से देने के लिए settings से allow करना होगा.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      'To enable this again, please allow it from system settings.',
-  };
-
-  String get requestHint => switch (language) {
-    AppLanguage.telugu =>
-      'ఇప్పుడు అవసరం లేకపోతే తర్వాత కూడా enable చేసుకోవచ్చు.',
-    AppLanguage.hindi =>
-      'अगर अभी ज़रूरत नहीं है तो बाद में भी enable कर सकते हैं.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      'If you do not need it now, you can enable it later too.',
-  };
-
-  String get settingsOpened => switch (language) {
-    AppLanguage.telugu => 'App settings ఓపెన్ అయ్యాయి.',
-    AppLanguage.hindi => 'App settings खुल गई हैं.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'App settings opened.',
-  };
-
-  String get settingsOpenFailed => switch (language) {
-    AppLanguage.telugu => 'Settings ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
-    AppLanguage.hindi => 'Settings नहीं खुलीं. फिर से कोशिश करें.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'Could not open settings. Please try again.',
-  };
-
-  String permissionGranted(AppPermissionType type) => switch (language) {
-    AppLanguage.telugu =>
-      type == AppPermissionType.photos
-          ? 'Photos access అనుమతించబడింది.'
-          : 'Notifications అనుమతించబడింది.',
-    AppLanguage.hindi =>
-      type == AppPermissionType.photos
-          ? 'Photos access अनुमति मिल गई.'
-          : 'Notifications की अनुमति मिल गई.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      type == AppPermissionType.photos
-          ? 'Photos access granted.'
-          : 'Notifications permission granted.',
-  };
-
-  String permissionDenied(AppPermissionType type) => switch (language) {
-    AppLanguage.telugu =>
-      type == AppPermissionType.photos
-          ? 'Photos access ఇప్పటికీ ఇవ్వలేదు. తర్వాత settings లో enable చేసుకోవచ్చు.'
-          : 'Notifications ఇప్పటికీ off లో ఉన్నాయి. తర్వాత enable చేసుకోవచ్చు.',
-    AppLanguage.hindi =>
-      type == AppPermissionType.photos
-          ? 'Photos access अभी नहीं मिला. बाद में settings से enable कर सकते हैं.'
-          : 'Notifications अभी off हैं. बाद में enable कर सकते हैं.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      type == AppPermissionType.photos
-          ? 'Photos access is still off. You can enable it later from settings.'
-          : 'Notifications are still off. You can enable them later from settings.',
-  };
-
-  String permissionNeedsSettings(AppPermissionType type) => switch (language) {
-    AppLanguage.telugu =>
-      type == AppPermissionType.photos
-          ? 'Photos access settings నుండి allow చేయాలి.'
-          : 'Notifications ను settings నుండి allow చేయాలి.',
-    AppLanguage.hindi =>
-      type == AppPermissionType.photos
-          ? 'Photos access settings से allow करना होगा.'
-          : 'Notifications को settings से allow करना होगा.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      type == AppPermissionType.photos
-          ? 'Photos access needs to be enabled from settings.'
-          : 'Notifications need to be enabled from settings.',
+  String permissionNeedsSettings(AppPermissionType type) => switch (type) {
+    AppPermissionType.photos =>
+      'Photos access needs to be enabled from settings.',
+    AppPermissionType.camera =>
+      'Camera access needs to be enabled from settings.',
+    AppPermissionType.notifications =>
+      'Notifications need to be enabled from settings.',
   };
 
   String statusLabel(AppPermissionState state) {
     if (state.isGranted) {
-      return switch (language) {
-        AppLanguage.telugu => 'Allowed',
-        AppLanguage.hindi => 'Allowed',
-        AppLanguage.english ||
-        AppLanguage.tamil ||
-        AppLanguage.kannada ||
-        AppLanguage.malayalam => 'Allowed',
-      };
+      return 'Allowed';
     }
     if (state.needsSettings) {
-      return switch (language) {
-        AppLanguage.telugu => 'Settings అవసరం',
-        AppLanguage.hindi => 'Settings ज़रूरी',
-        AppLanguage.english ||
-        AppLanguage.tamil ||
-        AppLanguage.kannada ||
-        AppLanguage.malayalam => 'Needs Settings',
-      };
+      return 'Needs Settings';
     }
-    return switch (language) {
-      AppLanguage.telugu => 'Allow చేయలేదు',
-      AppLanguage.hindi => 'Allow नहीं',
-      AppLanguage.english ||
-      AppLanguage.tamil ||
-      AppLanguage.kannada ||
-      AppLanguage.malayalam => 'Not Allowed',
-    };
+    return 'Not Allowed';
   }
 
   Color statusColor(AppPermissionState state) {
@@ -638,34 +516,10 @@ class _PermissionCopy {
   }
 
   String actionLabel(AppPermissionState state) {
-    if (state.needsSettings) {
-      return switch (language) {
-        AppLanguage.telugu => 'మళ్లీ చూడండి',
-        AppLanguage.hindi => 'फिर देखें',
-        AppLanguage.english ||
-        AppLanguage.tamil ||
-        AppLanguage.kannada ||
-        AppLanguage.malayalam => 'Check Again',
-      };
+    if (state.needsSettings || state.isGranted) {
+      return 'Check Again';
     }
-    if (state.isGranted) {
-      return switch (language) {
-        AppLanguage.telugu => 'మళ్లీ చెక్ చేయండి',
-        AppLanguage.hindi => 'फिर जांचें',
-        AppLanguage.english ||
-        AppLanguage.tamil ||
-        AppLanguage.kannada ||
-        AppLanguage.malayalam => 'Check Again',
-      };
-    }
-    return switch (language) {
-      AppLanguage.telugu => 'Allow చేయండి',
-      AppLanguage.hindi => 'Allow करें',
-      AppLanguage.english ||
-      AppLanguage.tamil ||
-      AppLanguage.kannada ||
-      AppLanguage.malayalam => 'Allow',
-    };
+    return 'Allow';
   }
 }
 

@@ -103,13 +103,13 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
   Future<void> _continueAfterAuth() async {
     final snapshot = await AppFlowService.loadSnapshot();
     await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
+    final String nextRoute = snapshot.permissionsStepHandled
+        ? await AppFlowService.resolveAuthenticatedEntryRoute()
+        : AppRoutes.permissions;
     if (!mounted) {
       return;
     }
-    Navigator.pushReplacementNamed(
-      context,
-      snapshot.permissionsStepHandled ? AppRoutes.home : AppRoutes.permissions,
-    );
+    Navigator.pushReplacementNamed(context, nextRoute);
   }
 
   Future<void> _onForgotPassword() async {

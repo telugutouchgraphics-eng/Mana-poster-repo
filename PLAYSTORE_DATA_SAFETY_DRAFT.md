@@ -75,7 +75,7 @@ Draft only (final legal/compliance sign-off required):
   `Likely Yes` (HTTPS cloud function endpoints and Firebase SDK traffic), but formal declaration is `NEEDS CONFIRMATION`.
 
 - **Can users request deletion?**  
-  `NEEDS CONFIRMATION` (no explicit in-app account deletion flow confirmed in current repo).
+  `Yes` via in-app account deletion flow and public deletion information page.
 
 - **Does app use data only for app functionality/account management/personalization?**  
   `Likely Yes` based on code paths; no ad SDK found in current audits.
@@ -89,5 +89,5 @@ Draft only (final legal/compliance sign-off required):
   - purchase verification payload fields
 - Whether any dependency-level SDK adds analytics/crash/identifier collection not visible in app code.
 - Whether encryption-at-rest is enabled/configured for all backend stored fields.
-- Account/data deletion policy and in-app/user support handling process.
-- Privacy policy URL and support email (currently marked missing in existing checklist).
+- Final checkbox interpretation for "data shared" vs "service provider processing".
+- Final Play Console submission of privacy policy URL and support email.

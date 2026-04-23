@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'pro_purchase_gateway.dart';
 
@@ -57,7 +58,7 @@ class SubscriptionBackendService {
     }
 
     final payload = <String, dynamic>{
-      'platform': Platform.operatingSystem,
+      'platform': _platformLabel,
       'productId': evidence.productId,
       'verificationSource': evidence.source,
       'serverVerificationData': evidence.serverVerificationData,
@@ -81,7 +82,7 @@ class SubscriptionBackendService {
     return _postJson(
       url: _statusUrl,
       payload: <String, dynamic>{
-        'platform': Platform.operatingSystem,
+        'platform': _platformLabel,
         'uid': _firebaseAuth.currentUser?.uid,
       },
     );
@@ -148,4 +149,6 @@ class SubscriptionBackendService {
       client?.close(force: true);
     }
   }
+
+  String get _platformLabel => kIsWeb ? 'web' : Platform.operatingSystem;
 }

@@ -8,6 +8,50 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1093335255199:android:a4dcfd76f84fbf0c1bfaaa",
+        "android_client_info": {
+          "package_name": "com.manaposter.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1093335255199-lm6j59q88sta1nvjc9els4720ghijhof.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.manaposter.app",
+            "certificate_hash": "b03d90b57a879ec3be205a776aea01c589d0365a"
+          }
+        },
+        {
+          "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc_SrDCjsg-DmWGP3A7Gq6dqTj7AH9q5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1093335255199-b1ivtd5u83bchcv22hvqes7dsounkui2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1093335255199-ar6eh077lj97rhbfhvak4vi2dftr1bdl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.telugutouch.manaposter"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1093335255199:android:2b3e0d1f5edfb17c1bfaaa",
         "android_client_info": {
           "package_name": "com.telugutouch.manaposter"

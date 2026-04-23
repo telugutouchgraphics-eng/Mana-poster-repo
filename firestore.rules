@@ -2,35 +2,169 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function validPlatform(value) {
+      return value in ["android", "ios", "web", "other"];
+    }
+
+    function profileKeysAllowed() {
+      return request.resource.data.keys().hasOnly([
+        "displayName",
+        "nameTelugu",
+        "nameEnglish",
+        "whatsappNumber",
+        "nameFontFamily",
+        "photoUrl",
+        "originalPhotoUrl",
+        "identityMode",
+        "businessName",
+        "businessTagline",
+        "businessWhatsappNumber",
+        "businessLogoUrl",
+        "businessLogoStyleId",
+        "updatedAt",
+      ]);
+    }
+
+    function validPosterProfileWrite() {
+      return profileKeysAllowed() &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() <= 120 &&
+        request.resource.data.nameTelugu is string &&
+        request.resource.data.nameTelugu.size() <= 120 &&
+        request.resource.data.nameEnglish is string &&
+        request.resource.data.nameEnglish.size() <= 120 &&
+        request.resource.data.whatsappNumber is string &&
+        request.resource.data.whatsappNumber.size() <= 30 &&
+        request.resource.data.nameFontFamily is string &&
+        request.resource.data.nameFontFamily.size() <= 80 &&
+        request.resource.data.photoUrl is string &&
+        request.resource.data.photoUrl.size() <= 2000 &&
+        request.resource.data.originalPhotoUrl is string &&
+        request.resource.data.originalPhotoUrl.size() <= 2000 &&
+        request.resource.data.identityMode in ["personal", "business"] &&
+        request.resource.data.businessName is string &&
+        request.resource.data.businessName.size() <= 120 &&
+        request.resource.data.businessTagline is string &&
+        request.resource.data.businessTagline.size() <= 180 &&
+        request.resource.data.businessWhatsappNumber is string &&
+        request.resource.data.businessWhatsappNumber.size() <= 30 &&
+        request.resource.data.businessLogoUrl is string &&
+        request.resource.data.businessLogoUrl.size() <= 2000 &&
+        request.resource.data.businessLogoStyleId is string &&
+        request.resource.data.businessLogoStyleId.size() <= 40;
+    }
+
+    function tokenKeysAllowed() {
+      return request.resource.data.keys().hasOnly([
+        "token",
+        "platform",
+        "uid",
+        "createdAt",
+        "updatedAt",
+        "welcomeSent",
+        "welcomeSentAt",
+      ]);
+    }
+
+    function validUserTokenWrite(userId) {
+      return tokenKeysAllowed() &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 40 &&
+        validPlatform(request.resource.data.platform) &&
+        request.resource.data.uid == userId &&
+        (
+          !("welcomeSent" in request.resource.data) ||
+          request.resource.data.welcomeSent == false
+        ) &&
+        !("welcomeSentAt" in request.resource.data);
+    }
+
+    function validPublicTokenWrite() {
+      return request.resource.data.keys().hasOnly([
+          "token",
+          "platform",
+          "createdAt",
+          "updatedAt",
+          "welcomeSent",
+          "welcomeSentAt",
+        ]) &&
+        request.resource.data.token is string &&
+        request.resource.data.token.size() > 40 &&
+        validPlatform(request.resource.data.platform) &&
+        (
+          !("welcomeSent" in request.resource.data) ||
+          request.resource.data.welcomeSent == false
+        ) &&
+        !("welcomeSentAt" in request.resource.data);
+    }
+
+    function validActiveSessionWrite(userId) {
+      return request.resource.data.keys().hasOnly([
+          "activeDeviceId",
+          "uid",
+          "email",
+          "platform",
+          "updatedAt",
+        ]) &&
+        request.resource.data.activeDeviceId is string &&
+        request.resource.data.activeDeviceId.size() >= 8 &&
+        request.resource.data.activeDeviceId.size() <= 160 &&
+        request.resource.data.uid == userId &&
+        (!("email" in request.resource.data) ||
+          request.resource.data.email == null ||
+          request.resource.data.email is string) &&
+        validPlatform(request.resource.data.platform);
+    }
+
     // Direct client access to subscription entitlements is read-only for owner.
     // Writes must go through trusted backend (Cloud Functions with Admin SDK).
     match /users/{userId}/entitlements/{entitlementId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
       allow create, update, delete: if false;
     }
 
     // Optional purchase event view: owner can read own events only.
     match /users/{userId}/purchaseEvents/{eventId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
       allow create, update, delete: if false;
     }
 
     // User-owned poster profile sync for app-side profile persistence.
     match /users/{userId}/posterProfile/{profileId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validPosterProfileWrite();
+      allow delete: if isOwner(userId);
     }
 
     // User-owned device FCM tokens for push notification delivery.
     match /users/{userId}/deviceTokens/{tokenId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validUserTokenWrite(userId);
+      allow delete: if isOwner(userId);
+    }
+
+    // Single-device session ownership per user account.
+    match /users/{userId}/activeSession/{sessionId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validActiveSessionWrite(userId);
+      allow delete: if isOwner(userId);
     }
 
     // App-open token capture before login to send welcome push.
     match /publicDeviceTokens/{tokenId} {
-      allow create, update: if
-        request.resource.data.token is string &&
-        request.resource.data.token.size() > 40 &&
-        request.resource.data.platform in ["android", "ios", "other"];
+      allow create, update: if validPublicTokenWrite();
       allow read, delete: if false;
     }
 
@@ -44,6 +178,50 @@ service cloud.firestore {
     match /appBanners/{bannerId} {
       allow read: if resource.data.active == true;
       allow create, update, delete: if false;
+    }
+
+    // Public website posters must come from a dedicated admin-managed source.
+    match /websitePosters/{posterId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
+    // Public website config drives the landing page links and section toggles.
+    match /websiteConfig/{docId} {
+      allow read: if docId == "landingPage";
+      allow create, update, delete: if false;
+    }
+
+    // Public landing page content managed from website admin.
+    match /landingSite/{docId} {
+      allow read: if docId == "main";
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin-managed landing draft document.
+    match /landingDrafts/{draftId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Published landing content snapshot managed by admin publish action.
+    match /landingPublished/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin media metadata catalog for landing assets.
+    match /mediaLibrary/{mediaId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Version snapshots for publish history and draft restore.
+    match /landingVersions/{versionId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    // Admin-only activity/audit history for dashboard actions.
+    match /adminAuditLogs/{logId} {
+      allow read, create, update, delete: if isAdmin();
     }
 
     // Block all other direct access by default.

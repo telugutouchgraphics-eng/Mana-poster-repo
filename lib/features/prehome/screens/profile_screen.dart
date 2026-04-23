@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/screens/account_deletion_screen.dart';
 import 'package:mana_poster/features/prehome/screens/about_app_screen.dart';
 import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
@@ -107,210 +109,187 @@ class _ProfileScreenState extends State<ProfileScreen>
                     .copyWith(displayName: fallbackUserName)
                     .resolvedName(language: strings.language)
               : profileResolvedName);
-    final email = user?.email ?? 'user@manaposter.app';
+    final email = user?.email ?? AppPublicInfo.supportEmail;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        backgroundColor: const Color(0xFFF3F6FB),
+        backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
-        title: Text(
-          copy.screenTitle,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
-        ),
       ),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              Color(0xFFF5F8FF),
-              Color(0xFFF9FBFF),
-              Color(0xFFFFFFFF),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(0, 10, 0, 24),
-            children: <Widget>[
-              if (_loadingProfile) ...<Widget>[
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
-                    child: LinearProgressIndicator(minHeight: 3),
-                  ),
-                ),
-                const SizedBox(height: 14),
-              ],
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: _ProfileHeader(
-                  appName: copy.appName,
-                  name: displayName,
-                  email: email,
-                  profile: _posterProfile,
-                  helperText: copy.headerSupportText,
-                ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          children: <Widget>[
+            if (_loadingProfile) ...<Widget>[
+              const ClipRRect(
+                borderRadius: BorderRadius.all(Radius.circular(999)),
+                child: LinearProgressIndicator(minHeight: 3),
               ),
               const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: _SettingsGroup(
-                  title: copy.accountTitle,
-                  visual: const _SectionVisual(
-                    start: Color(0xFFEEF4FF),
-                    end: Color(0xFFFFFFFF),
-                    iconTint: Color(0xFF1D4ED8),
-                  ),
-                  items: <_ProfileItemData>[
-                    _ProfileItemData(
-                      icon: Icons.badge_outlined,
-                      title: copy.posterProfileTitle,
-                      subtitle: copy.posterProfileSubtitle,
-                      onTap: _openPosterProfileScreen,
-                    ),
-                    _ProfileItemData(
-                      icon: Icons.language_rounded,
-                      title: copy.languageTitle,
-                      subtitle: copy.languageSubtitle,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const LanguageSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ProfileItemData(
-                      icon: Icons.workspace_premium_outlined,
-                      title: copy.subscriptionTitle,
-                      subtitle: copy.subscriptionSubtitle,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const SubscriptionPlanScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: _SettingsGroup(
-                  title: copy.settingsTitle,
-                  visual: const _SectionVisual(
-                    start: Color(0xFFECFDF5),
-                    end: Color(0xFFFFFFFF),
-                    iconTint: Color(0xFF0F766E),
-                  ),
-                  items: <_ProfileItemData>[
-                    _ProfileItemData(
-                      icon: Icons.verified_user_outlined,
-                      title: copy.permissionsTitle,
-                      subtitle: copy.permissionsSubtitle,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const PermissionSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ProfileItemData(
-                      icon: Icons.notifications_none_rounded,
-                      title: copy.notificationsTitle,
-                      subtitle: copy.notificationsSubtitle,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const NotificationsSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: _SettingsGroup(
-                  title: copy.supportTitle,
-                  visual: const _SectionVisual(
-                    start: Color(0xFFFFF7ED),
-                    end: Color(0xFFFFFFFF),
-                    iconTint: Color(0xFFB45309),
-                  ),
-                  items: <_ProfileItemData>[
-                    _ProfileItemData(
-                      icon: Icons.help_outline_rounded,
-                      title: copy.helpTitle,
-                      subtitle: copy.helpSubtitle,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const HelpSupportScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ProfileItemData(
-                      icon: Icons.info_outline_rounded,
-                      title: copy.aboutTitle,
-                      subtitle: null,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const AboutAppScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _ProfileItemData(
-                      icon: Icons.logout_rounded,
-                      title: copy.logoutTitle,
-                      subtitle: copy.logoutSubtitle,
-                      isDestructive: true,
-                      onTap: () async {
-                        try {
-                          await _authService.signOut();
-                          await AppFlowService.syncInitialSetupCompletion(
-                            isAuthenticated: false,
-                          );
-                          if (!context.mounted) {
-                            return;
-                          }
-                          Navigator.of(context).pushNamedAndRemoveUntil(
-                            AppRoutes.login,
-                            (Route<dynamic> route) => false,
-                          );
-                        } catch (_) {
-                          if (!context.mounted) {
-                            return;
-                          }
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(copy.logoutFailedMessage)),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
             ],
-          ),
+            _ProfileHeader(
+              appName: copy.appName,
+              name: displayName,
+              email: email,
+              profile: _posterProfile,
+              helperText: copy.headerSupportText,
+            ),
+            const SizedBox(height: 28),
+            _SettingsGroup(
+              title: copy.accountTitle,
+              items: <_ProfileItemData>[
+                _ProfileItemData(
+                  icon: Icons.badge_outlined,
+                  title: copy.posterProfileTitle,
+                  subtitle: copy.posterProfileSubtitle,
+                  onTap: _openPosterProfileScreen,
+                ),
+                _ProfileItemData(
+                  icon: Icons.language_rounded,
+                  title: copy.languageTitle,
+                  subtitle: copy.languageSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LanguageSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.workspace_premium_outlined,
+                  title: copy.subscriptionTitle,
+                  subtitle: copy.subscriptionSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SubscriptionPlanScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.restore_rounded,
+                  title: copy.restoreSubscriptionTitle,
+                  subtitle: copy.restoreSubscriptionSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SubscriptionPlanScreen(
+                          triggerRestoreOnOpen: true,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SettingsGroup(
+              title: copy.settingsTitle,
+              items: <_ProfileItemData>[
+                _ProfileItemData(
+                  icon: Icons.verified_user_outlined,
+                  title: copy.permissionsTitle,
+                  subtitle: copy.permissionsSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PermissionSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.notifications_none_rounded,
+                  title: copy.notificationsTitle,
+                  subtitle: copy.notificationsSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const NotificationsSettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _SettingsGroup(
+              title: copy.supportTitle,
+              items: <_ProfileItemData>[
+                _ProfileItemData(
+                  icon: Icons.help_outline_rounded,
+                  title: copy.helpTitle,
+                  subtitle: copy.helpSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HelpSupportScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.info_outline_rounded,
+                  title: copy.aboutTitle,
+                  subtitle: null,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AboutAppScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.logout_rounded,
+                  title: copy.logoutTitle,
+                  subtitle: copy.logoutSubtitle,
+                  isDestructive: true,
+                  onTap: () async {
+                    try {
+                      await _authService.signOut();
+                      await AppFlowService.syncInitialSetupCompletion(
+                        isAuthenticated: false,
+                      );
+                      if (!context.mounted) {
+                        return;
+                      }
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        AppRoutes.login,
+                        (Route<dynamic> route) => false,
+                      );
+                    } catch (_) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(copy.logoutFailedMessage)),
+                      );
+                    }
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.delete_forever_outlined,
+                  title: copy.deleteAccountTitle,
+                  subtitle: copy.deleteAccountSubtitle,
+                  isDestructive: true,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AccountDeletionScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -334,127 +313,62 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFFEAF4FF),
-            Color(0xFFF3F9FF),
-            Color(0xFFFFFFFF),
-          ],
-        ),
-        border: Border.all(color: const Color(0xD9E2ECFA)),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x14223D70),
-            blurRadius: 28,
-            offset: Offset(0, 14),
+    return Column(
+      children: <Widget>[
+        Container(
+          width: 116,
+          height: 116,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFF1F5F9),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 88,
-            height: 88,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x120F172A),
-                  blurRadius: 16,
-                  offset: Offset(0, 8),
+          clipBehavior: Clip.antiAlias,
+          child: profile == null
+              ? const Icon(
+                  Icons.person_rounded,
+                  size: 48,
+                  color: Color(0xFF475569),
+                )
+              : PosterIdentityVisual(
+                  profile: profile!,
+                  fallbackBackground: const Color(0xFFF1F5F9),
+                  fallbackIconColor: const Color(0xFF475569),
                 ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: profile == null
-                ? const Icon(
-                    Icons.person_rounded,
-                    size: 38,
-                    color: Color(0xFF1D4ED8),
-                  )
-                : PosterIdentityVisual(
-                    profile: profile!,
-                    fallbackBackground: const Color(0xFFE9F0FF),
-                    fallbackIconColor: const Color(0xFF1D4ED8),
-                  ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          name,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.86),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              appName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF166534),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          email,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(height: 10),
-          Text(
-            name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 21,
-              height: 1.12,
-              fontWeight: FontWeight.w900,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          appName,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(height: 6),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              email,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 12.2,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.76),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              helperText,
-              style: const TextStyle(
-                color: Color(0xFF334155),
-                fontSize: 12.8,
-                fontWeight: FontWeight.w600,
-                height: 1.45,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -463,12 +377,10 @@ class _SettingsGroup extends StatelessWidget {
   const _SettingsGroup({
     required this.title,
     required this.items,
-    required this.visual,
   });
 
   final String title;
   final List<_ProfileItemData> items;
-  final _SectionVisual visual;
 
   @override
   Widget build(BuildContext context) {
@@ -476,48 +388,27 @@ class _SettingsGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             title,
             style: const TextStyle(
-              fontSize: 11.5,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: Color(0xFF64748B),
-              letterSpacing: 0.5,
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: <Color>[visual.start, visual.end],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE8EEF8)),
-            boxShadow: const <BoxShadow>[
-              BoxShadow(
-                color: Color(0x0F0F172A),
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: items
-                .asMap()
-                .entries
-                .map(
-                  (entry) => _ProfileOptionTile(
-                    item: entry.value,
-                    showDivider: entry.key != items.length - 1,
-                    accent: visual.iconTint,
-                  ),
-                )
-                .toList(growable: false),
-          ),
+        Column(
+          children: items
+              .asMap()
+              .entries
+              .map(
+                (entry) => _ProfileOptionTile(
+                  item: entry.value,
+                  showDivider: entry.key != items.length - 1,
+                ),
+              )
+              .toList(growable: false),
         ),
       ],
     );
@@ -528,47 +419,44 @@ class _ProfileOptionTile extends StatelessWidget {
   const _ProfileOptionTile({
     required this.item,
     required this.showDivider,
-    required this.accent,
   });
 
   final _ProfileItemData item;
   final bool showDivider;
-  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = item.isDestructive ? const Color(0xFFB91C1C) : accent;
+    final iconColor = item.isDestructive
+        ? const Color(0xFFB91C1C)
+        : const Color(0xFF0F172A);
     final titleColor = item.isDestructive
         ? const Color(0xFFB91C1C)
         : const Color(0xFF0F172A);
     final iconBackground = item.isDestructive
         ? const Color(0xFFFEE2E2)
-        : accent.withValues(alpha: 0.14);
+        : const Color(0xFFF8FAFC);
 
     return Column(
       children: <Widget>[
         ListTile(
-          minTileHeight: 60,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 1,
-          ),
+          minTileHeight: 56,
+          contentPadding: EdgeInsets.zero,
           leading: Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: iconBackground,
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(item.icon, color: iconColor, size: 19),
+            child: Icon(item.icon, color: iconColor, size: 20),
           ),
           title: Text(
             item.title,
             style: TextStyle(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: titleColor,
-              fontSize: 14.6,
+              fontSize: 15,
             ),
           ),
           subtitle: item.subtitle == null
@@ -581,8 +469,8 @@ class _ProfileOptionTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Color(0xFF64748B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
@@ -596,25 +484,12 @@ class _ProfileOptionTile extends StatelessWidget {
         if (showDivider)
           const Divider(
             height: 1,
-            indent: 60,
-            endIndent: 12,
+            indent: 54,
             color: Color(0x1A0F172A),
           ),
       ],
     );
   }
-}
-
-class _SectionVisual {
-  const _SectionVisual({
-    required this.start,
-    required this.end,
-    required this.iconTint,
-  });
-
-  final Color start;
-  final Color end;
-  final Color iconTint;
 }
 
 class _ProfileItemData {
@@ -707,7 +582,22 @@ class _ProfileCopy {
           kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
           malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
         );
-
+  String get restoreSubscriptionTitle => strings.localized(
+    telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
+    english: 'Restore subscriptions',
+    hindi: 'सदस्यताएँ रिस्टोर करें',
+    tamil: 'சந்தாக்களை மீட்டெடுக்கவும்',
+    kannada: 'ಸಬ್ಸ್ಕ್ರಿಪ್ಶನ್‌ಗಳನ್ನು ರಿಸ್ಟೋರ್ ಮಾಡಿ',
+    malayalam: 'സബ്സ്ക്രിപ്ഷനുകൾ റിസ്റ്റോർ ചെയ്യുക',
+  );
+  String get restoreSubscriptionSubtitle => strings.localized(
+    telugu: 'అదే అకౌంట్‌తో లాగిన్ అయితే కొనుగోళ్లు రిస్టోర్ అవుతాయి',
+    english: 'Restore purchases for the same account after phone change',
+    hindi: 'फ़ोन बदलने के बाद उसी अकाउंट की खरीदारी रिस्टोर करें',
+    tamil: 'போன் மாற்றிய பிறகு அதே கணக்கின் வாங்குதல்களை மீட்டெடுக்கவும்',
+    kannada: 'ಫೋನ್ ಬದಲಿಸಿದ ನಂತರ ಅದೇ ಖಾತೆಯ ಖರೀದಿಗಳನ್ನು ರಿಸ್ಟೋರ್ ಮಾಡಿ',
+    malayalam: 'ഫോൺ മാറ്റിയ ശേഷം അതേ അക്കൗണ്ടിലെ വാങ്ങലുകൾ റിസ്റ്റോർ ചെയ്യുക',
+  );
   String get permissionsTitle => _isTelugu
       ? '\u0c2a\u0c30\u0c4d\u0c2e\u0c3f\u0c37\u0c28\u0c4d\u0c38\u0c4d'
       : strings.permissionsTitle;
@@ -772,4 +662,12 @@ class _ProfileCopy {
     kannada: 'ಲಾಗೌಟ್ ಪೂರ್ಣವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     malayalam: 'ലോഗ്ഔട്ട് പൂർത്തിയായില്ല. വീണ്ടും ശ്രമിക്കുക.',
   );
+  String get deleteAccountTitle => _isTelugu
+      ? 'అకౌంట్ డిలీట్'
+      : 'Delete account';
+  String get deleteAccountSubtitle => strings.localized(
+    telugu: 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్‌ను ప్రారంభించండి',
+    english: 'Start your account and data removal request',
+  );
 }
+

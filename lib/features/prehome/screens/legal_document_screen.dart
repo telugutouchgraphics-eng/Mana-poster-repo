@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 
@@ -254,14 +255,14 @@ class _LegalCopy {
       _isPrivacy ? _privacySections : _termsSections;
 
   String get footer => strings.localized(
-    telugu: 'ప్రశ్నలు ఉంటే telugutouchgraphics@gmail.com కి సంప్రదించండి.',
-    english: 'For questions, contact telugutouchgraphics@gmail.com.',
-    hindi: 'प्रश्न होने पर telugutouchgraphics@gmail.com पर संपर्क करें।',
+    telugu: 'ప్రశ్నలు ఉంటే ${AppPublicInfo.supportEmail} కి సంప్రదించండి.',
+    english: 'For questions, contact ${AppPublicInfo.supportEmail}.',
+    hindi: 'प्रश्न होने पर ${AppPublicInfo.supportEmail} पर संपर्क करें।',
     tamil:
-        'கேள்விகள் இருந்தால் telugutouchgraphics@gmail.com-ஐ தொடர்பு கொள்ளுங்கள்.',
-    kannada: 'ಪ್ರಶ್ನೆಗಳಿದ್ದರೆ telugutouchgraphics@gmail.com ಗೆ ಸಂಪರ್ಕಿಸಿ.',
+        'கேள்விகள் இருந்தால் ${AppPublicInfo.supportEmail}-ஐ தொடர்பு கொள்ளுங்கள்.',
+    kannada: 'ಪ್ರಶ್ನೆಗಳಿದ್ದರೆ ${AppPublicInfo.supportEmail} ಗೆ ಸಂಪರ್ಕಿಸಿ.',
     malayalam:
-        'ചോദ്യങ്ങൾ ഉണ്ടെങ്കിൽ telugutouchgraphics@gmail.com-ൽ ബന്ധപ്പെടുക.',
+        'ചോദ്യങ്ങൾ ഉണ്ടെങ്കിൽ ${AppPublicInfo.supportEmail}-ൽ ബന്ധപ്പെടുക.',
   );
 
   List<_LegalSection> get _privacySections => <_LegalSection>[
@@ -439,6 +440,42 @@ class _LegalCopy {
     _LegalSection(
       strings.localized(
         telugu: 'సేవ మార్పులు',
+        english: 'Refund, cancellation, and auto-renewal',
+      ),
+      strings.localized(
+        telugu:
+            'Subscription cancel cheyyadam saadharananga Play Store leda App Store subscription settings dwara cheyyali. Cancel chesina tarvatha current billing period mugise varaku access undavachu. Refund eligibility Google Play leda Apple policies prakaram untundi.',
+        english:
+            'Subscription cancellation is generally managed through your Play Store or App Store subscription settings. After cancelling, access may continue until the current billing period ends. Refund eligibility is determined by Google Play or Apple policies.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'Account deletion and data removal',
+        english: 'Account deletion and data removal',
+      ),
+      strings.localized(
+        telugu:
+            'App lo account deletion request option andubatulo untundi. Delete request tarvatha login access, poster profile details, and linked in-app data remove avvachu. Konni billing leda platform-required records kontha kalam retain avvachu. Public deletion details: ${AppPublicInfo.accountDeletionUrl}',
+        english:
+            'The app provides an in-app account deletion request option. After deletion, login access, poster profile details, and linked in-app data may be removed. Some billing or platform-required records may be retained for a limited period. Public deletion details: ${AppPublicInfo.accountDeletionUrl}',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'Single-device account access',
+        english: 'Single-device account access',
+      ),
+      strings.localized(
+        telugu:
+            'Oke account okesari oka primary device lo active ga undela session controls vadavachu. Ade account maro device lo login ayithe previous device automatic ga sign out kavachu.',
+        english:
+            'Session controls may keep one account active on one primary device at a time. If the same account signs in on another device, the previous device session may be signed out automatically.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'Service Changes',
         english: 'Service Changes',
         hindi: 'सेवा परिवर्तन',
         tamil: 'சேவை மாற்றங்கள்',

@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
@@ -71,12 +72,17 @@ class _SplashScreenState extends State<SplashScreen>
         const Duration(seconds: 2),
       );
       final bool isAuthenticated = _hasAuthenticatedUser();
-      final String nextRoute = snapshot.nextRoute(
+      String nextRoute = snapshot.nextRoute(
         isAuthenticated: isAuthenticated,
       );
       await AppFlowService.syncInitialSetupCompletion(
         isAuthenticated: isAuthenticated,
       ).timeout(const Duration(seconds: 2));
+      if (nextRoute == AppRoutes.home) {
+        nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute().timeout(
+          const Duration(seconds: 2),
+        );
+      }
       _nextRoute = nextRoute;
     } catch (error, stackTrace) {
       developer.log(
@@ -130,8 +136,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.strings;
-
     return Scaffold(
       body: SizedBox.expand(
         child: Stack(
@@ -199,7 +203,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                strings.splashTagline,
+                                AppPublicInfo.appTagline,
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   color: Color(0xFF475569),
