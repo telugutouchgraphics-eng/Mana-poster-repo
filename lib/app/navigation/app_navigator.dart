@@ -7,6 +7,8 @@ class AppNavigator {
 
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
+  static final RouteObserver<ModalRoute<void>> routeObserver =
+      RouteObserver<ModalRoute<void>>();
 
   static void openHome() {
     final NavigatorState? state = navigatorKey.currentState;

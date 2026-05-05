@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 
 enum PosterDisplayNameMode { auto, telugu, english }
+
 enum PosterIdentityMode { personal, business }
 
 class PosterProfileData {
@@ -104,8 +105,13 @@ class PosterProfileData {
     String? originalPhotoUrl,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
-    final nextTelugu = nameTelugu ?? (resolvedDisplayName.isNotEmpty ? resolvedDisplayName : this.nameTelugu);
-    final nextEnglish = nameEnglish ?? (resolvedDisplayName.isNotEmpty ? '' : this.nameEnglish);
+    final nextTelugu =
+        nameTelugu ??
+        (resolvedDisplayName.isNotEmpty
+            ? resolvedDisplayName
+            : this.nameTelugu);
+    final nextEnglish =
+        nameEnglish ?? (resolvedDisplayName.isNotEmpty ? '' : this.nameEnglish);
     return PosterProfileData(
       nameTelugu: nextTelugu,
       nameEnglish: nextEnglish,
@@ -128,10 +134,19 @@ class PosterProfileData {
   }
 
   String resolvedName({required AppLanguage language}) {
+    final name = switch (identityMode) {
+      PosterIdentityMode.business => activeName.trim(),
+      PosterIdentityMode.personal => displayName.trim(),
+    };
+    return name.isEmpty ? PosterProfileService.defaultName : name;
+  }
+
+  String translatedName({required AppLanguage language}) {
     final base = switch (identityMode) {
-      PosterIdentityMode.business => activeName.trim().isEmpty
-          ? PosterProfileService.defaultName
-          : activeName.trim(),
+      PosterIdentityMode.business =>
+        activeName.trim().isEmpty
+            ? PosterProfileService.defaultName
+            : activeName.trim(),
       PosterIdentityMode.personal => _preferredPersonalNameFor(language),
     };
     if (language == AppLanguage.english) {
@@ -139,7 +154,6 @@ class PosterProfileData {
       if (english.isNotEmpty) {
         return english;
       }
-      return base;
     }
     return _NameScriptConverter.convert(base, language);
   }
@@ -181,11 +195,15 @@ class PosterProfileService {
   static const String _businessNameKey = 'poster_profile_business_name';
   static const String _businessTaglineKey = 'poster_profile_business_tagline';
   static const String _businessWhatsappKey = 'poster_profile_business_whatsapp';
-  static const String _businessLogoPathKey = 'poster_profile_business_logo_path';
+  static const String _businessLogoPathKey =
+      'poster_profile_business_logo_path';
   static const String _businessLogoUrlKey = 'poster_profile_business_logo_url';
-  static const String _businessLogoStyleKey = 'poster_profile_business_logo_style';
-  static const String _originalPhotoPathKey = 'poster_profile_original_photo_path';
-  static const String _originalPhotoUrlKey = 'poster_profile_original_photo_url';
+  static const String _businessLogoStyleKey =
+      'poster_profile_business_logo_style';
+  static const String _originalPhotoPathKey =
+      'poster_profile_original_photo_path';
+  static const String _originalPhotoUrlKey =
+      'poster_profile_original_photo_url';
 
   static const List<PosterNameFontOption> nameFontOptions =
       <PosterNameFontOption>[
@@ -286,12 +304,12 @@ class PosterProfileService {
       identityMode: _parseIdentityMode(prefs.getString(_identityModeKey)),
       businessName: (prefs.getString(_businessNameKey) ?? '').trim(),
       businessTagline: (prefs.getString(_businessTaglineKey) ?? '').trim(),
-      businessWhatsappNumber:
-          (prefs.getString(_businessWhatsappKey) ?? '').trim(),
+      businessWhatsappNumber: (prefs.getString(_businessWhatsappKey) ?? '')
+          .trim(),
       businessLogoPath: (prefs.getString(_businessLogoPathKey) ?? '').trim(),
       businessLogoUrl: (prefs.getString(_businessLogoUrlKey) ?? '').trim(),
-      businessLogoStyleId:
-          (prefs.getString(_businessLogoStyleKey) ?? 'style_1').trim(),
+      businessLogoStyleId: (prefs.getString(_businessLogoStyleKey) ?? 'style_1')
+          .trim(),
       originalPhotoPath: (prefs.getString(_originalPhotoPathKey) ?? '').trim(),
       originalPhotoUrl: (prefs.getString(_originalPhotoUrlKey) ?? '').trim(),
     );
@@ -318,6 +336,13 @@ class PosterProfileService {
       }
       final remote = _fromRemoteMap(snapshot.data() ?? <String, dynamic>{});
       final fallbackProfile = localProfile ?? await loadLocal();
+      final localHasBusinessProfile =
+          fallbackProfile.identityMode == PosterIdentityMode.business ||
+          fallbackProfile.businessName.trim().isNotEmpty ||
+          fallbackProfile.businessTagline.trim().isNotEmpty ||
+          fallbackProfile.businessWhatsappNumber.trim().isNotEmpty ||
+          fallbackProfile.businessLogoPath.trim().isNotEmpty ||
+          fallbackProfile.businessLogoUrl.trim().isNotEmpty;
       final merged = remote.copyWith(
         photoPath: fallbackProfile.photoPath.trim().isNotEmpty
             ? fallbackProfile.photoPath
@@ -325,9 +350,28 @@ class PosterProfileService {
         originalPhotoPath: fallbackProfile.originalPhotoPath.trim().isNotEmpty
             ? fallbackProfile.originalPhotoPath
             : remote.originalPhotoPath,
+        identityMode: localHasBusinessProfile
+            ? fallbackProfile.identityMode
+            : remote.identityMode,
+        businessName: fallbackProfile.businessName.trim().isNotEmpty
+            ? fallbackProfile.businessName
+            : remote.businessName,
+        businessTagline: fallbackProfile.businessTagline.trim().isNotEmpty
+            ? fallbackProfile.businessTagline
+            : remote.businessTagline,
+        businessWhatsappNumber:
+            fallbackProfile.businessWhatsappNumber.trim().isNotEmpty
+            ? fallbackProfile.businessWhatsappNumber
+            : remote.businessWhatsappNumber,
         businessLogoPath: fallbackProfile.businessLogoPath.trim().isNotEmpty
             ? fallbackProfile.businessLogoPath
             : remote.businessLogoPath,
+        businessLogoUrl: fallbackProfile.businessLogoUrl.trim().isNotEmpty
+            ? fallbackProfile.businessLogoUrl
+            : remote.businessLogoUrl,
+        businessLogoStyleId: fallbackProfile.businessLogoStyleId.trim().isEmpty
+            ? remote.businessLogoStyleId
+            : fallbackProfile.businessLogoStyleId,
       );
       await _saveLocal(merged);
       return merged;
@@ -339,7 +383,52 @@ class PosterProfileService {
   static ImageProvider<Object>? resolveImageProvider(
     PosterProfileData profile, {
     bool preferOriginalPersonalPhoto = false,
+    bool preferPersonalPhotoOverBusinessLogo = false,
+    bool allowOriginalFallbackWhenCutoutUnavailable = true,
   }) {
+    if (preferPersonalPhotoOverBusinessLogo) {
+      if (preferOriginalPersonalPhoto) {
+        final localOriginalPath = profile.originalPhotoPath.trim();
+        if (localOriginalPath.isNotEmpty) {
+          final file = File(localOriginalPath);
+          if (file.existsSync()) {
+            return FileImage(file);
+          }
+        }
+        final remoteOriginalUrl = profile.originalPhotoUrl.trim();
+        if (remoteOriginalUrl.isNotEmpty) {
+          return CachedNetworkImageProvider(remoteOriginalUrl);
+        }
+      }
+
+      final localCutoutPath = profile.photoPath.trim();
+      if (localCutoutPath.isNotEmpty) {
+        final file = File(localCutoutPath);
+        if (file.existsSync()) {
+          return FileImage(file);
+        }
+      }
+      final remoteCutoutUrl = profile.photoUrl.trim();
+      if (remoteCutoutUrl.isNotEmpty) {
+        return CachedNetworkImageProvider(remoteCutoutUrl);
+      }
+
+      if (!preferOriginalPersonalPhoto &&
+          allowOriginalFallbackWhenCutoutUnavailable) {
+        final localOriginalPath = profile.originalPhotoPath.trim();
+        if (localOriginalPath.isNotEmpty) {
+          final file = File(localOriginalPath);
+          if (file.existsSync()) {
+            return FileImage(file);
+          }
+        }
+        final remoteOriginalUrl = profile.originalPhotoUrl.trim();
+        if (remoteOriginalUrl.isNotEmpty) {
+          return CachedNetworkImageProvider(remoteOriginalUrl);
+        }
+      }
+    }
+
     if (profile.identityMode == PosterIdentityMode.business) {
       final localLogoPath = profile.businessLogoPath.trim();
       if (localLogoPath.isNotEmpty) {
@@ -381,7 +470,8 @@ class PosterProfileService {
       return CachedNetworkImageProvider(remoteCutoutUrl);
     }
 
-    if (!preferOriginalPersonalPhoto) {
+    if (!preferOriginalPersonalPhoto &&
+        allowOriginalFallbackWhenCutoutUnavailable) {
       final localOriginalPath = profile.originalPhotoPath.trim();
       if (localOriginalPath.isNotEmpty) {
         final file = File(localOriginalPath);
@@ -429,6 +519,132 @@ class PosterProfileService {
         }, SetOptions(merge: true));
   }
 
+  static Future<void> savePersonalPhotoAssets({
+    required String photoPath,
+    required String originalPhotoPath,
+    String photoUrl = '',
+    String originalPhotoUrl = '',
+    bool saveRemoteUrls = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final trimmedPhotoPath = photoPath.trim();
+    final trimmedOriginalPhotoPath = originalPhotoPath.trim();
+    final trimmedPhotoUrl = photoUrl.trim();
+    final trimmedOriginalPhotoUrl = originalPhotoUrl.trim();
+
+    if (trimmedPhotoPath.isEmpty) {
+      await prefs.remove(_photoPathKey);
+    } else {
+      await prefs.setString(_photoPathKey, trimmedPhotoPath);
+    }
+    if (trimmedOriginalPhotoPath.isEmpty) {
+      await prefs.remove(_originalPhotoPathKey);
+    } else {
+      await prefs.setString(_originalPhotoPathKey, trimmedOriginalPhotoPath);
+    }
+    if (trimmedPhotoUrl.isEmpty) {
+      await prefs.remove(_photoUrlKey);
+    } else {
+      await prefs.setString(_photoUrlKey, trimmedPhotoUrl);
+    }
+    if (trimmedOriginalPhotoUrl.isEmpty) {
+      await prefs.remove(_originalPhotoUrlKey);
+    } else {
+      await prefs.setString(_originalPhotoUrlKey, trimmedOriginalPhotoUrl);
+    }
+
+    if (!saveRemoteUrls) {
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+
+    final Map<String, dynamic> payload = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (trimmedPhotoUrl.isNotEmpty) {
+      payload['photoUrl'] = trimmedPhotoUrl;
+    }
+    if (trimmedOriginalPhotoUrl.isNotEmpty) {
+      payload['originalPhotoUrl'] = trimmedOriginalPhotoUrl;
+    }
+    if (payload.length == 1) {
+      return;
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('posterProfile')
+        .doc('main')
+        .set(payload, SetOptions(merge: true));
+  }
+
+  static Future<void> saveBusinessLogoAssets({
+    required String businessLogoPath,
+    String businessLogoUrl = '',
+    String? businessLogoStyleId,
+    PosterIdentityMode? identityMode,
+    bool saveRemoteUrl = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final trimmedLogoPath = businessLogoPath.trim();
+    final trimmedLogoUrl = businessLogoUrl.trim();
+    final trimmedStyleId = businessLogoStyleId?.trim();
+
+    if (trimmedLogoPath.isEmpty) {
+      await prefs.remove(_businessLogoPathKey);
+    } else {
+      await prefs.setString(_businessLogoPathKey, trimmedLogoPath);
+    }
+    if (trimmedLogoUrl.isEmpty) {
+      await prefs.remove(_businessLogoUrlKey);
+    } else {
+      await prefs.setString(_businessLogoUrlKey, trimmedLogoUrl);
+    }
+    if (trimmedStyleId != null && trimmedStyleId.isNotEmpty) {
+      await prefs.setString(_businessLogoStyleKey, trimmedStyleId);
+    }
+    if (identityMode != null) {
+      await prefs.setString(_identityModeKey, identityMode.name);
+    }
+
+    if (!saveRemoteUrl && trimmedStyleId == null && identityMode == null) {
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+
+    final payload = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (saveRemoteUrl && trimmedLogoUrl.isNotEmpty) {
+      payload['businessLogoUrl'] = trimmedLogoUrl;
+    }
+    if (trimmedStyleId != null && trimmedStyleId.isNotEmpty) {
+      payload['businessLogoStyleId'] = trimmedStyleId;
+    }
+    if (identityMode != null) {
+      payload['identityMode'] = identityMode.name;
+    }
+    if (payload.length == 1) {
+      return;
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('posterProfile')
+        .doc('main')
+        .set(payload, SetOptions(merge: true));
+  }
+
   static Future<String> uploadProfilePhoto({
     required File file,
     required String extension,
@@ -439,8 +655,9 @@ class PosterProfileService {
       return '';
     }
     final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
+    final stamp = DateTime.now().millisecondsSinceEpoch;
     final ref = FirebaseStorage.instance.ref(
-      'users/${user.uid}/poster_profile/${isOriginal ? 'original_photo' : 'photo'}.$cleanExtension',
+      'users/${user.uid}/poster_profile/${isOriginal ? 'original_photo' : 'photo'}_$stamp.$cleanExtension',
     );
     await ref.putFile(
       file,
@@ -458,8 +675,9 @@ class PosterProfileService {
       return '';
     }
     final cleanExtension = extension.trim().isEmpty ? 'png' : extension.trim();
+    final stamp = DateTime.now().millisecondsSinceEpoch;
     final ref = FirebaseStorage.instance.ref(
-      'users/${user.uid}/poster_profile/business_logo.$cleanExtension',
+      'users/${user.uid}/poster_profile/business_logo_$stamp.$cleanExtension',
     );
     await ref.putFile(
       file,
@@ -468,9 +686,7 @@ class PosterProfileService {
     return ref.getDownloadURL();
   }
 
-  static Future<void> deleteProfilePhoto({
-    required String photoUrl,
-  }) async {
+  static Future<void> deleteProfilePhoto({required String photoUrl}) async {
     final trimmedUrl = photoUrl.trim();
     if (trimmedUrl.isEmpty) {
       return;
@@ -528,7 +744,10 @@ class PosterProfileService {
     if (data.originalPhotoPath.trim().isEmpty) {
       await prefs.remove(_originalPhotoPathKey);
     } else {
-      await prefs.setString(_originalPhotoPathKey, data.originalPhotoPath.trim());
+      await prefs.setString(
+        _originalPhotoPathKey,
+        data.originalPhotoPath.trim(),
+      );
     }
     if (data.originalPhotoUrl.trim().isEmpty) {
       await prefs.remove(_originalPhotoUrlKey);
@@ -559,12 +778,12 @@ class PosterProfileService {
       identityMode: _parseIdentityMode(data['identityMode'] as String?),
       businessName: (data['businessName'] as String? ?? '').trim(),
       businessTagline: (data['businessTagline'] as String? ?? '').trim(),
-      businessWhatsappNumber:
-          (data['businessWhatsappNumber'] as String? ?? '').trim(),
+      businessWhatsappNumber: (data['businessWhatsappNumber'] as String? ?? '')
+          .trim(),
       businessLogoPath: '',
       businessLogoUrl: (data['businessLogoUrl'] as String? ?? '').trim(),
-      businessLogoStyleId:
-          (data['businessLogoStyleId'] as String? ?? 'style_1').trim(),
+      businessLogoStyleId: (data['businessLogoStyleId'] as String? ?? 'style_1')
+          .trim(),
       originalPhotoPath: '',
       originalPhotoUrl: (data['originalPhotoUrl'] as String? ?? '').trim(),
     );
@@ -1063,7 +1282,10 @@ class _NameScriptConverter {
     }
     return value.replaceAllMapped(_latinPhraseRegExp, (match) {
       final phrase = match.group(0) ?? '';
-      final normalized = phrase.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      final normalized = phrase.trim().toLowerCase().replaceAll(
+        RegExp(r'\s+'),
+        ' ',
+      );
       return overrides[normalized] ?? phrase;
     });
   }
@@ -1151,6 +1373,3 @@ class _NameScriptConverter {
     return buffer.toString();
   }
 }
-
-
-

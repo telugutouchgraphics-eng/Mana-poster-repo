@@ -230,7 +230,7 @@ class AdminLandingDraft {
         primaryCtaText: 'Download App',
         secondaryCtaText: 'Watch Demo',
         trustBullets: <String>[
-          'Free and premium templates',
+          'Ready-made poster templates',
           'One tap share to WhatsApp',
           'Telugu fonts and festival posters',
         ],
@@ -295,7 +295,7 @@ class AdminLandingDraft {
           title: 'Birthday Gold Theme',
           subtitle: 'Photo-ready birthday poster',
           categoryTag: 'Birthday',
-          accessLabel: 'Premium',
+          accessLabel: 'Featured',
           imageAssetPath: 'assets/landing/showcase/birthday_gold.png',
         ),
         ShowcasePosterDraft(
@@ -320,7 +320,7 @@ class AdminLandingDraft {
         FaqDraft(
           question: 'Are free templates available?',
           answer:
-              'Yes, the app includes free templates and also premium templates for advanced designs.',
+              'Yes, the app includes ready-made templates for quick poster creation.',
         ),
       ],
       footer: FooterContentDraft(
@@ -331,7 +331,7 @@ class AdminLandingDraft {
         privacyLink: 'https://manaposter.in/legal/privacy-policy.html',
         termsLink: 'https://manaposter.in/legal/terms-and-conditions.html',
         downloadLink:
-            'https://play.google.com/store/apps/details?id=com.telugutouch.manaposter',
+            'https://play.google.com/store/apps/details?id=com.manaposter.app',
         quickLinks: <String>[
           'Home',
           'Features',
@@ -359,7 +359,7 @@ class AdminLandingDraft {
       ],
       appLinks: AppLinksDraft(
         playStoreUrl:
-            'https://play.google.com/store/apps/details?id=com.telugutouch.manaposter',
+            'https://play.google.com/store/apps/details?id=com.manaposter.app',
         watchDemoUrl: 'https://manaposter.in/demo',
         privacyPolicyUrl: 'https://manaposter.in/legal/privacy-policy.html',
         termsUrl: 'https://manaposter.in/legal/terms-and-conditions.html',

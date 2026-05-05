@@ -12,11 +12,11 @@ class AppPublicInfo {
     'MANA_POSTER_SUPPORT_PHONE',
     defaultValue: '',
   );
-  static const String playStorePackageName = 'com.telugutouch.manaposter';
+  static const String playStorePackageName = 'com.manaposter.app';
   static const String playStoreUrl = String.fromEnvironment(
     'MANA_POSTER_PLAY_STORE_URL',
     defaultValue:
-        'https://play.google.com/store/apps/details?id=com.telugutouch.manaposter',
+        'https://play.google.com/store/apps/details?id=com.manaposter.app',
   );
   static const String demoUrl = String.fromEnvironment(
     'MANA_POSTER_DEMO_URL',

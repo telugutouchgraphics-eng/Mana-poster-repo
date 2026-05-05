@@ -181,10 +181,13 @@ extension _EditorExportState on _ImageEditorScreenState {
               children: <Widget>[
                 ListTile(
                   leading: const Icon(Icons.image_rounded),
-                  title: Text(strings.localized(telugu: 'PNG', english: 'PNG')),
+                  title: Text(
+                    strings.localized(telugu: 'పిఎన్‌జి', english: 'PNG'),
+                  ),
                   subtitle: Text(
                     strings.localized(
-                      telugu: 'పారదర్శక బ్యాక్‌గ్రౌండ్, Remove BG కోసం ఉత్తమం',
+                      telugu:
+                          'పారదర్శక బ్యాక్‌గ్రౌండ్, బ్యాక్‌గ్రౌండ్ తీసేయడానికి ఉత్తమం',
                       english: 'Transparent background, best for Remove BG',
                     ),
                   ),
@@ -196,7 +199,7 @@ extension _EditorExportState on _ImageEditorScreenState {
                   leading: const Icon(Icons.crop_square_rounded),
                   title: Text(
                     strings.localized(
-                      telugu: 'బ్యాక్‌గ్రౌండ్‌తో PNG',
+                      telugu: 'బ్యాక్‌గ్రౌండ్‌తో పిఎన్‌జి',
                       english: 'PNG with Background',
                     ),
                   ),
@@ -211,7 +214,9 @@ extension _EditorExportState on _ImageEditorScreenState {
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_rounded),
-                  title: Text(strings.localized(telugu: 'JPG', english: 'JPG')),
+                  title: Text(
+                    strings.localized(telugu: 'జేపీజీ', english: 'JPG'),
+                  ),
                   subtitle: Text(
                     strings.localized(
                       telugu: 'చిన్న ఫైల్ సైజ్',
@@ -248,7 +253,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           content: Text(
             strings.localized(
               telugu:
-                  'డిజైన్ లేయర్లు లేవు. అయినా కూడా బ్యాక్‌గ్రౌండ్ మాత్రమే ఎగుమతి చేయాలా?',
+                  'డిజైన్ లేయర్లు ఏవీ లేవు. బ్యాక్‌గ్రౌండ్ మాత్రమే ఎక్స్‌పోర్ట్ చేయాలనుకుంటున్నారా?',
               english:
                   'There are no design layers. Do you still want to export only the background?',
             ),
@@ -395,18 +400,72 @@ extension _EditorExportState on _ImageEditorScreenState {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(switch (restoreResult) {
-            PurchaseFlowResult.billingUnavailable =>
-              'Billing service అందుబాటులో లేదు. తర్వాత మళ్లీ ప్రయత్నించండి',
-            PurchaseFlowResult.failed =>
-              'Restore fail అయ్యింది, మళ్లీ ప్రయత్నించండి',
-            PurchaseFlowResult.cancelled => 'Restore process cancel అయింది',
-            PurchaseFlowResult.productNotFound =>
-              'Restore చేయడానికి product details కనిపించలేదు',
-            PurchaseFlowResult.timedOut =>
-              'Restore response ఆలస్యం అయింది. కొద్దిసేపటి తర్వాత ప్రయత్నించండి',
-            PurchaseFlowResult.nothingToRestore =>
-              'Restore చేయడానికి active plan కనిపించలేదు',
-            PurchaseFlowResult.success => 'Purchase restore అయ్యింది',
+            PurchaseFlowResult.billingUnavailable => context.strings.localized(
+              telugu:
+                  'బిల్లింగ్ సేవ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
+              english: 'Billing service is unavailable. Please try again later.',
+              hindi:
+                  'बिलिंग सेवा अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर से प्रयास करें।',
+              tamil:
+                  'பில்லிங் சேவை தற்போது கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
+              kannada:
+                  'ಬಿಲ್ಲಿಂಗ್ ಸೇವೆ ಈಗ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam:
+                  'ബില്ലിംഗ് സേവനം ഇപ്പോൾ ലഭ്യമല്ല. കുറച്ച് സമയത്തിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.',
+            ),
+            PurchaseFlowResult.failed => context.strings.localized(
+              telugu: 'రీస్టోర్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి',
+              english: 'Restore failed. Please try again.',
+              hindi: 'रिस्टोर विफल हुआ। कृपया फिर से प्रयास करें।',
+              tamil: 'ரிஸ்டோர் தோல்வியடைந்தது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.',
+              kannada: 'ರಿಸ್ಟೋರ್ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam: 'റിസ്റ്റോർ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+            ),
+            PurchaseFlowResult.cancelled => context.strings.localized(
+              telugu: 'రీస్టోర్ ప్రక్రియ రద్దు అయింది',
+              english: 'Restore process was cancelled',
+              hindi: 'रिस्टोर प्रक्रिया रद्द हो गई',
+              tamil: 'ரிஸ்டோர் செயல்முறை ரத்து செய்யப்பட்டது',
+              kannada: 'ರಿಸ್ಟೋರ್ ಪ್ರಕ್ರಿಯೆ ರದ್ದಾಯಿತು',
+              malayalam: 'റിസ്റ്റോർ പ്രക്രിയ റദ്ദാക്കി',
+            ),
+            PurchaseFlowResult.productNotFound => context.strings.localized(
+              telugu: 'రీస్టోర్‌కు అవసరమైన ప్రోడక్ట్ వివరాలు కనిపించలేదు',
+              english: 'Product details needed for restore were not found',
+              hindi: 'रिस्टोर के लिए जरूरी प्रोडक्ट विवरण नहीं मिले',
+              tamil: 'ரிஸ்டோருக்கு தேவையான தயாரிப்பு விவரங்கள் கிடைக்கவில்லை',
+              kannada: 'ರಿಸ್ಟೋರ್‌ಗೆ ಬೇಕಾದ ಉತ್ಪನ್ನ ವಿವರಗಳು ಸಿಗಲಿಲ್ಲ',
+              malayalam: 'റിസ്റ്റോറിന് ആവശ്യമായ പ്രൊഡക്റ്റ് വിശദാംശങ്ങൾ ലഭിച്ചില്ല',
+            ),
+            PurchaseFlowResult.timedOut => context.strings.localized(
+              telugu:
+                  'రీస్టోర్ స్పందన ఆలస్యమైంది. దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
+              english: 'Restore response timed out. Please try again later.',
+              hindi:
+                  'रिस्टोर प्रतिक्रिया में समय लग गया। कृपया थोड़ी देर बाद फिर से प्रयास करें।',
+              tamil:
+                  'ரிஸ்டோர் பதில் நேரம் முடிந்தது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
+              kannada:
+                  'ರಿಸ್ಟೋರ್ ಪ್ರತಿಕ್ರಿಯೆಗೆ ಸಮಯ ಮೀರಿದೆ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam:
+                  'റിസ്റ്റോർ പ്രതികരണം വൈകി. കുറച്ച് സമയത്തിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.',
+            ),
+            PurchaseFlowResult.nothingToRestore => context.strings.localized(
+              telugu: 'రీస్టోర్ చేయడానికి యాక్టివ్ ప్లాన్ కనిపించలేదు',
+              english: 'No active plan found to restore',
+              hindi: 'रिस्टोर करने के लिए कोई एक्टिव प्लान नहीं मिला',
+              tamil: 'ரிஸ்டோர் செய்ய எந்த செயலில் உள்ள திட்டமும் கிடைக்கவில்லை',
+              kannada: 'ರಿಸ್ಟೋರ್ ಮಾಡಲು ಯಾವುದೇ ಸಕ್ರಿಯ ಪ್ಲಾನ್ ಸಿಗಲಿಲ್ಲ',
+              malayalam: 'റിസ്റ്റോർ ചെയ്യാൻ സജീവ പ്ലാൻ കണ്ടെത്താനായില്ല',
+            ),
+            PurchaseFlowResult.success => context.strings.localized(
+              telugu: 'కొనుగోలు రీస్టోర్ అయింది',
+              english: 'Purchase restored',
+              hindi: 'खरीदारी रिस्टोर हो गई',
+              tamil: 'வாங்குதல் ரிஸ்டோர் செய்யப்பட்டது',
+              kannada: 'ಖರೀದಿ ರಿಸ್ಟೋರ್ ಆಯಿತು',
+              malayalam: 'വാങ്ങൽ റിസ്റ്റോർ ചെയ്തു',
+            ),
           }),
         ),
       );
@@ -542,6 +601,7 @@ extension _EditorExportState on _ImageEditorScreenState {
         onFinish: () {
           _isExporting = false;
           _isTransparentExportCapture = false;
+          unawaited(ScreenSecurityService.enableSecure());
         },
         operation: () async {
           if (format == _ExportImageFormat.pngTransparent) {
@@ -558,6 +618,9 @@ extension _EditorExportState on _ImageEditorScreenState {
           if (!hasPermission) {
             throw Exception(exportPermissionMessage);
           }
+          await ScreenSecurityService.disableSecure();
+          await WidgetsBinding.instance.endOfFrame;
+          await Future<void>.delayed(const Duration(milliseconds: 80));
           final image = await _captureStageImage(
             pixelRatio: _exportPixelRatio(devicePixelRatio),
           );
@@ -574,34 +637,20 @@ extension _EditorExportState on _ImageEditorScreenState {
           );
           final fileName =
               'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}';
-          final result = await ImageGallerySaverPlus.saveImage(
-            exportedBytes,
-            quality: 100,
-            name: fileName,
+          final tempDirectory = await getTemporaryDirectory();
+          final tempPath =
+              '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+          final tempFile = File(tempPath);
+          await tempFile.writeAsBytes(exportedBytes, flush: true);
+          debugPrint('editor export bytes=${exportedBytes.length}');
+          final isSuccess = await MediaExportService.saveImageFileToGallery(
+            tempFile.path,
+            fileName: fileName,
           );
-          var isSuccess = _isGallerySaveSuccess(result);
-          dynamic finalResult = result;
-          if (!isSuccess) {
-            final tempDirectory = await getTemporaryDirectory();
-            final tempPath =
-                '${tempDirectory.path}${Platform.pathSeparator}$fileName';
-            final tempFile = File(tempPath);
-            await tempFile.writeAsBytes(exportedBytes, flush: true);
-            final fallbackResult = await ImageGallerySaverPlus.saveFile(
-              tempFile.path,
-              name: fileName,
-            );
-            if (_isGallerySaveSuccess(fallbackResult)) {
-              isSuccess = true;
-              finalResult = fallbackResult;
-            }
-          }
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  _exportResultMessage(finalResult, isSuccess: isSuccess),
-                ),
+                content: Text(_exportResultMessage(isSuccess: isSuccess)),
                 action: isSuccess
                     ? SnackBarAction(
                         label: context.strings.localized(
@@ -650,48 +699,28 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (!Platform.isAndroid && !Platform.isIOS) {
       return true;
     }
-    final photosStatus = await Permission.photos.status;
+    if (Platform.isAndroid &&
+        !(await MediaExportService.needsGalleryPermission())) {
+      return true;
+    }
+    final permission = Platform.isAndroid
+        ? Permission.storage
+        : Permission.photos;
+    final photosStatus = await permission.status;
     if (photosStatus.isGranted || photosStatus.isLimited) {
       return true;
     }
-    final requested = await <Permission>[Permission.photos].request();
+    final requested = await <Permission>[permission].request();
     return requested.values.any(
       (status) => status.isGranted || status.isLimited,
     );
   }
 
-  bool _isGallerySaveSuccess(dynamic saveResult) {
-    if (saveResult is bool) {
-      return saveResult;
-    }
-    if (saveResult is! Map) {
-      return false;
-    }
-    final status = saveResult['isSuccess'] ?? saveResult['success'];
-    if (status is bool) {
-      return status;
-    }
-    if (status is num) {
-      return status > 0;
-    }
-    final normalized = status?.toString().trim().toLowerCase();
-    return normalized == 'true' || normalized == '1';
-  }
-
-  String _exportResultMessage(dynamic saveResult, {required bool isSuccess}) {
+  String _exportResultMessage({required bool isSuccess}) {
     if (isSuccess) {
-      return 'Poster gallery లో save అయ్యింది';
+      return 'Poster saved to gallery';
     }
-    final errorText = saveResult is Map
-        ? (saveResult['errorMessage']?.toString() ??
-              saveResult['message']?.toString() ??
-              saveResult['error']?.toString() ??
-              '')
-        : '';
-    if (errorText.toLowerCase().contains('permission')) {
-      return 'Gallery permission ఇవ్వండి, తర్వాత మళ్లీ export చేయండి';
-    }
-    return 'Export fail అయ్యింది, మళ్లీ ప్రయత్నించండి';
+    return 'Export failed. Please try again.';
   }
 
   double _exportPixelRatio(double devicePixelRatio) {
@@ -715,15 +744,29 @@ extension _EditorExportState on _ImageEditorScreenState {
       _isSharing = true;
     });
     try {
+      await ScreenSecurityService.disableSecure();
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      debugPrint('editor share bytes=${imageBytes.length}');
+      if (!mounted) {
+        return;
+      }
+      final box = context.findRenderObject() as RenderBox?;
       final directory = await getTemporaryDirectory();
       final filePath =
           '${directory.path}${Platform.pathSeparator}mana_poster_share.${_exportFileExtension(format)}';
       final file = File(filePath);
       await file.writeAsBytes(imageBytes, flush: true);
-      await Share.shareXFiles(<XFile>[
-        XFile(file.path),
-      ], text: 'Mana Poster తో create చేసిన నా poster');
-    } catch (_) {
+      await MediaExportService.shareImageFile(
+        file.path,
+        text: 'Mana Poster',
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('editor share failed: $error');
+      debugPrint('$stackTrace');
       if (!mounted) {
         return;
       }
@@ -731,7 +774,7 @@ extension _EditorExportState on _ImageEditorScreenState {
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'షేర్ కాలేదు, మళ్లీ ప్రయత్నించండి',
+              telugu: 'Share fail ayindi, malli prayatninchandi',
               english: 'Share failed, please try again',
             ),
           ),
@@ -743,6 +786,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           _isSharing = false;
         });
       }
+      await ScreenSecurityService.enableSecure();
     }
   }
 

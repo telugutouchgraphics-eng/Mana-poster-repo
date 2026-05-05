@@ -96,6 +96,40 @@ void main() {
       );
     });
 
+    test('shows event categories only from the event date by default', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[
+          DynamicCalendarEvent(
+            id: 'same_day',
+            slug: 'same_day_event',
+            type: DynamicCategoryType.importantDay,
+            scope: DynamicEventScope.india,
+            priority: 90,
+            sortOrder: 1,
+            startMonth: 8,
+            startDay: 15,
+            title: DynamicLocalizedTitle(
+              telugu: 'à°ˆà°µà±†à°‚à°Ÿà±',
+              english: 'Same Day Event',
+              hindi: 'à¤‡à¤µà¥‡à¤‚à¤Ÿ',
+            ),
+          ),
+        ]),
+      );
+
+      final dayBefore = service.categoriesForDate(
+        DateTime(2026, 8, 14),
+        language: AppLanguage.english,
+      );
+      final eventDay = service.categoriesForDate(
+        DateTime(2026, 8, 15),
+        language: AppLanguage.english,
+      );
+
+      expect(dayBefore.any((item) => item.slug == 'same_day_event'), isFalse);
+      expect(eventDay.any((item) => item.slug == 'same_day_event'), isTrue);
+    });
+
     test('filters events by scope', () {
       const service = DynamicCategoryService(
         repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[

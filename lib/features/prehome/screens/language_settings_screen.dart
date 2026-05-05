@@ -36,7 +36,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
         title: Text(
           strings.languageSettingsTitle,
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: Color(0xFF0F172A),
           ),
         ),

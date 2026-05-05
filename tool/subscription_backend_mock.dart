@@ -6,12 +6,11 @@ const _host = '127.0.0.1';
 const _verifyPath = '/api/subscription/verify';
 const _statusPath = '/api/subscription/status';
 const _supportedProductIds = <String>{
-  'pro_monthly_20',
-  'mana_poster_pro_monthly_20',
+  'mana_poster_premium_monthly_149',
 };
 
 Future<void> main() async {
-  final entitlements = <String, bool>{};
+  final entitlements = <String, Map<String, dynamic>>{};
   final server = await HttpServer.bind(_host, _port);
   stdout.writeln('Mock subscription backend running on http://$_host:$_port');
   stdout.writeln('Endpoints: $_verifyPath, $_statusPath');
@@ -73,7 +72,7 @@ Future<void> main() async {
 Future<void> _handleVerify(
   HttpResponse response,
   Map<String, dynamic> payload,
-  Map<String, bool> entitlements,
+  Map<String, Map<String, dynamic>> entitlements,
 ) async {
   final uid = (payload['uid']?.toString() ?? '').trim();
   final productId = (payload['productId']?.toString() ?? '').trim();
@@ -96,8 +95,16 @@ Future<void> _handleVerify(
   final hasToken = token.isNotEmpty;
   final hasSource = source.isNotEmpty;
   final isValid = hasProduct && hasToken && hasSource;
+  final now = DateTime.now();
+  final expiryDate = now.add(const Duration(days: 30)).toIso8601String();
+  final startDate = now.toIso8601String();
 
-  entitlements[uid] = isValid;
+  entitlements[uid] = <String, dynamic>{
+    'isPro': isValid,
+    'status': isValid ? 'active' : 'expired',
+    'startDate': startDate,
+    'expiryTime': expiryDate,
+  };
 
   await _writeJson(
     response,
@@ -107,6 +114,9 @@ Future<void> _handleVerify(
       'message': isValid
           ? 'Mock verification success'
           : 'Mock verification failed (product/token/source check)',
+      'status': isValid ? 'active' : 'expired',
+      'startDate': startDate,
+      'expiryTime': expiryDate,
       'uid': uid,
       'productId': productId,
     },
@@ -116,7 +126,7 @@ Future<void> _handleVerify(
 Future<void> _handleStatus(
   HttpResponse response,
   Map<String, dynamic> payload,
-  Map<String, bool> entitlements,
+  Map<String, Map<String, dynamic>> entitlements,
 ) async {
   final uid = (payload['uid']?.toString() ?? '').trim();
   if (uid.isEmpty) {
@@ -131,13 +141,24 @@ Future<void> _handleStatus(
     return;
   }
 
-  final isPro = entitlements[uid] ?? false;
+  final entry =
+      entitlements[uid] ??
+      <String, dynamic>{
+        'isPro': false,
+        'status': 'expired',
+        'startDate': null,
+        'expiryTime': null,
+      };
+  final isPro = entry['isPro'] == true;
   await _writeJson(
     response,
     statusCode: HttpStatus.ok,
     body: <String, dynamic>{
       'isPro': isPro,
       'message': isPro ? 'Entitlement active' : 'Entitlement inactive',
+      'status': entry['status'],
+      'startDate': entry['startDate'],
+      'expiryTime': entry['expiryTime'],
       'uid': uid,
     },
   );

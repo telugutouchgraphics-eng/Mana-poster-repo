@@ -13,5 +13,19 @@ if (!window._flutter) {
     } catch (_) {}
   }
 
-  _flutter.loader.load({});
+  _flutter.loader.load({
+    onEntrypointLoaded: async function (engineInitializer) {
+      const appRunner = await engineInitializer.initializeEngine();
+      await appRunner.runApp();
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          const loader = document.getElementById('flutter-loader');
+          if (loader) {
+            loader.remove();
+          }
+        });
+      });
+    },
+  });
 })();

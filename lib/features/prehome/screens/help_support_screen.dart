@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
@@ -66,7 +67,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
         title: Text(
           copy.title,
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: Color(0xFF0F172A),
           ),
         ),
@@ -131,7 +132,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                         copy.headerTitle,
                         style: theme.textTheme.titleLarge?.copyWith(
                           color: const Color(0xFF0F172A),
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -192,7 +193,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                                   title: Text(
                                     copy.faqs[i].question,
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w500,
                                       color: Color(0xFF0F172A),
                                       fontSize: 14,
                                       height: 1.45,
@@ -297,7 +298,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                         style: const TextStyle(
                           color: Color(0xFF0F172A),
                           fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -324,7 +325,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                           _supportEmail,
                           style: TextStyle(
                             color: Color(0xFF1E3A8A),
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -385,7 +386,7 @@ class _SupportSectionLabel extends StatelessWidget {
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
           color: const Color(0xFF0F172A),
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -423,7 +424,7 @@ class _InfoCard extends StatelessWidget {
             style: const TextStyle(
               color: Color(0xFF0F172A),
               fontSize: 15,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 6),
@@ -483,7 +484,7 @@ class _ActionTileButton extends StatelessWidget {
               label,
               style: const TextStyle(
                 color: Color(0xFF0F172A),
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
                 height: 1.35,
               ),
             ),
@@ -555,17 +556,17 @@ class _HelpSupportCopy {
           _HelpFaqItem(
             question: 'పోస్టర్ సేవ్ లేదా ఎగుమతి విఫలమైతే?',
             answer:
-                '1) ఫోన్‌లో ఖాళీ స్టోరేజ్ ఉందో చూడండి.\n2) సేవ్ లేదా ఎగుమతి జరుగుతున్న సమయంలో యాప్‌ను minimize చేయకండి.\n3) మరోసారి ప్రయత్నించండి.\n4) సమస్య అలాగే ఉంటే screenshot తో support కు మెయిల్ పంపండి.',
+                '1) ఫోన్‌లో ఖాళీ స్టోరేజ్ ఉందో చూడండి.\n2) సేవ్ లేదా ఎగుమతి జరుగుతున్న సమయంలో యాప్‌ను వెనుకకు పంపకండి.\n3) మరోసారి ప్రయత్నించండి.\n4) సమస్య అలాగే ఉంటే స్క్రీన్‌షాట్‌తో సపోర్ట్‌కు మెయిల్ పంపండి.',
           ),
           _HelpFaqItem(
             question: 'సబ్‌స్క్రిప్షన్ గురించి సందేహం ఉంటే?',
             answer:
-                'Trial ప్లాన్ రూ.1 కు 3 రోజులు. Trial తర్వాత నెలకు రూ.149 auto-renewal ఉంటుంది. Free ట్యాబ్ పోస్టర్లకు మాత్రమే ప్లాన్ వర్తిస్తుంది. Premium పోస్టర్లు వేరుగా కొనాలి.',
+                'ట్రయల్ ప్లాన్ ${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}. ${SubscriptionPlanConfig.trialDays} రోజుల లోపు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రిన్యువల్ ఉంటుంది. ఈ ప్లాన్ పోస్టర్ క్రియేషన్ మరియు ఎగుమతులకు ఉపయోగపడుతుంది.',
           ),
           _HelpFaqItem(
             question: 'యాప్ స్లోగా ఉంటే లేదా వింతగా ప్రవర్తిస్తే?',
             answer:
-                '1) యాప్‌ను పూర్తిగా close చేసి మళ్లీ తెరవండి.\n2) ఫోన్‌ను restart చేయండి.\n3) background లో ఉన్న heavy apps close చేయండి.\n4) సమస్య ఏ step లో వస్తుందో support కు పంపండి.',
+                '1) యాప్‌ను పూర్తిగా మూసి మళ్లీ తెరవండి.\n2) ఫోన్‌ను రీస్టార్ట్ చేయండి.\n3) వెనుక భాగంలో నడుస్తున్న పెద్ద apps ను మూసివేయండి.\n4) సమస్య ఏ దశలో వస్తుందో సపోర్ట్‌కు పంపండి.',
           ),
         ]
       : const <_HelpFaqItem>[
@@ -587,7 +588,7 @@ class _HelpSupportCopy {
           _HelpFaqItem(
             question: 'What if I have subscription-related doubts?',
             answer:
-                'The trial plan is Rs.1 for 3 days. After the trial, the monthly plan renews at Rs.149. The plan applies only to Free-tab posters. Premium posters must be purchased separately.',
+                'The trial plan is ${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days. If not cancelled within ${SubscriptionPlanConfig.trialDays} days, the subscription auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month. The plan supports poster creation and exports.',
           ),
           _HelpFaqItem(
             question: 'What if the app is slow or behaving unexpectedly?',

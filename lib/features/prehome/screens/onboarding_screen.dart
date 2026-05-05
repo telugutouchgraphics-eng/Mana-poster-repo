@@ -196,10 +196,7 @@ class _TemplatePlacementVisual extends StatelessWidget {
           top: 30,
           child: _FloatingBadge(
             icon: Icons.auto_awesome_rounded,
-            label: context.strings.localized(
-              telugu: 'ఆటో',
-              english: 'Auto',
-            ),
+            label: context.strings.localized(telugu: 'ఆటో', english: 'Auto'),
             colors: colors,
           ),
         ),
@@ -342,11 +339,11 @@ class _PosterLibraryVisual extends StatelessWidget {
             width: 90,
             height: 126,
             title: context.strings.localized(
-              telugu: 'ప్రీమియం',
-              english: 'Premium',
+              telugu: 'ఫీచర్డ్',
+              english: 'Featured',
             ),
             colors: colors,
-            icon: Icons.workspace_premium_rounded,
+            icon: Icons.auto_awesome_rounded,
             elevated: true,
           ),
         ),
@@ -383,10 +380,7 @@ class _PosterLibraryVisual extends StatelessWidget {
           top: 18,
           child: _FloatingBadge(
             icon: Icons.view_carousel_rounded,
-            label: context.strings.localized(
-              telugu: 'ఫ్రీ',
-              english: 'Free',
-            ),
+            label: context.strings.localized(telugu: 'తయారు', english: 'Ready'),
             colors: <Color>[const Color(0xFF0EA5E9), const Color(0xFF2563EB)],
           ),
         ),
@@ -783,3 +777,4 @@ class _ShareOrbit extends StatelessWidget {
     );
   }
 }
+

@@ -2,12 +2,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
+import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
 
 class ApprovedCreatorTemplateService {
-  const ApprovedCreatorTemplateService({FirebaseFirestore? firestore})
-    : _firestore = firestore;
+  static const int _posterRetentionWindowMillis =
+      7 * 24 * 60 * 60 * 1000;
+
+  ApprovedCreatorTemplateService({
+    FirebaseFirestore? firestore,
+    DynamicEventRepository dynamicEventRepository =
+        const LocalDynamicEventRepository(),
+  }) : _firestore = firestore,
+       _dynamicEventRepository = dynamicEventRepository;
 
   final FirebaseFirestore? _firestore;
+  final DynamicEventRepository _dynamicEventRepository;
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
@@ -22,9 +33,9 @@ class ApprovedCreatorTemplateService {
           .collection('creatorPosters')
           .where('status', isEqualTo: 'approved')
           .orderBy('createdAt', descending: true)
-          .limit(maxItems)
+          .limit(maxItems * 3)
           .get();
-      return _mapSnapshot(snapshot);
+      return _filterPublished(_mapSnapshot(snapshot), snapshot, maxItems);
     } catch (error, stackTrace) {
       debugPrint(
         'ApprovedCreatorTemplateService.fetchApprovedTemplates failed: $error',
@@ -42,9 +53,9 @@ class ApprovedCreatorTemplateService {
           .collection('creatorPosters')
           .where('status', isEqualTo: 'approved')
           .orderBy('createdAt', descending: true)
-          .limit(maxItems)
+          .limit(maxItems * 3)
           .get(const GetOptions(source: Source.cache));
-      return _mapSnapshot(snapshot);
+      return _filterPublished(_mapSnapshot(snapshot), snapshot, maxItems);
     } catch (error, stackTrace) {
       debugPrint(
         'ApprovedCreatorTemplateService.fetchApprovedTemplatesFromCache failed: $error',
@@ -65,20 +76,72 @@ class ApprovedCreatorTemplateService {
     return templates;
   }
 
+  List<ApprovedCreatorTemplate> _filterPublished(
+    List<ApprovedCreatorTemplate> templates,
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+    int maxItems,
+  ) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final nowDate = DateTime.now();
+    final activeDynamicTags = _activeDynamicTagsForDate(nowDate);
+    final knownDynamicTags = _knownDynamicTags();
+    final publishMap = <String, int>{};
+    for (final doc in snapshot.docs) {
+      final raw = doc.data()['publishAt'];
+      publishMap[doc.id] = _toMillis(raw) ?? 0;
+    }
+    final filtered = templates
+        .where((template) {
+          final publishAt = publishMap[template.id] ?? 0;
+          final visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
+          if (visibleFrom > now) {
+            return false;
+          }
+          if (visibleFrom + _posterRetentionWindowMillis <= now) {
+            return false;
+          }
+          return _isTemplateDynamicCategoryVisible(
+            template.categoryId,
+            activeDynamicTags,
+            knownDynamicTags,
+          );
+        })
+        .toList(growable: false);
+    filtered.sort((a, b) {
+      final publishA = publishMap[a.id] ?? 0;
+      final publishB = publishMap[b.id] ?? 0;
+      final left = publishA > 0 ? publishA : a.createdAtMillis;
+      final right = publishB > 0 ? publishB : b.createdAtMillis;
+      return right.compareTo(left);
+    });
+    if (filtered.length <= maxItems) {
+      return filtered;
+    }
+    return filtered.take(maxItems).toList(growable: false);
+  }
+
   ApprovedCreatorTemplate? _mapDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
+    final mediaType = (data['mediaType'] as String? ?? 'image')
+        .trim()
+        .toLowerCase();
     final imageUrl =
         (data['imageUrl'] as String?)?.trim() ??
         (data['posterUrl'] as String?)?.trim() ??
         (data['previewUrl'] as String?)?.trim();
-    if (imageUrl == null || imageUrl.isEmpty) {
+    final videoUrl =
+        (data['videoUrl'] as String?)?.trim() ??
+        (data['videoPreviewUrl'] as String?)?.trim() ??
+        '';
+    final hasVideo = mediaType == 'video' && videoUrl.isNotEmpty;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    if (!hasVideo && !hasImage) {
       return null;
     }
 
-    final title =
-        (data['title'] as String?)?.trim().isNotEmpty == true
+    final title = (data['title'] as String?)?.trim().isNotEmpty == true
         ? (data['title'] as String).trim()
         : 'Creator Poster';
     final categoryId = (data['categoryId'] as String?)?.trim() ?? '';
@@ -91,42 +154,83 @@ class ApprovedCreatorTemplateService {
     return ApprovedCreatorTemplate(
       id: doc.id,
       title: title,
-      imageUrl: imageUrl,
+      imageUrl: imageUrl ?? '',
+      mediaType: hasVideo ? 'video' : 'image',
+      videoUrl: videoUrl,
       categoryId: categoryId,
       categoryLabel: categoryLabel,
       createdAtMillis: createdAtMillis,
       personalizationConfig: _parsePersonalization(
-        data['personalizationConfig'],
+        data['personalizationConfig'] ?? data['personalization'],
       ),
       creatorPublicId: (data['creatorPublicId'] as String? ?? '').trim(),
     );
   }
 
   CreatorPosterPersonalization _parsePersonalization(Object? raw) {
-    if (raw is! Map<String, dynamic>) {
+    final Map<String, dynamic> source;
+    if (raw is Map<String, dynamic>) {
+      source = raw;
+    } else if (raw is Map) {
+      source = raw.cast<String, dynamic>();
+    } else {
       return CreatorPosterPersonalization.defaults;
     }
+    final bool hasAdminBoardConfig =
+        source.containsKey('boardVariant') ||
+        source.containsKey('nameScale') ||
+        source.containsKey('designationScale') ||
+        source.containsKey('phoneScale') ||
+        source.containsKey('showStyledNameStrip') ||
+        source.containsKey('showStyledDesignationStrip');
     return CreatorPosterPersonalization(
-      photoShape: _parsePhotoShape(raw['photoShape']),
-      photoX: _parseDouble(raw['photoX'], 50),
-      photoY: _parseDouble(raw['photoY'], 45),
-      photoScale: _parseDouble(raw['photoScale'], 36),
-      nameX: _parseDouble(raw['nameX'], 50),
-      nameY: _parseDouble(raw['nameY'], 82),
-      showBottomStrip: raw['showBottomStrip'] is bool
-          ? raw['showBottomStrip'] as bool
+      photoShape: _parsePhotoShape(source['photoShape']),
+      photoX: _parseDouble(source['photoX'], 50),
+      photoY: _parseDouble(source['photoY'], 45),
+      photoScale: _parseDouble(source['photoScale'], 36),
+      nameX: _parseDouble(source['nameX'], 50),
+      nameY: _parseDouble(source['nameY'], 82),
+      showBottomStrip: source['showBottomStrip'] is bool
+          ? source['showBottomStrip'] as bool
+          : !hasAdminBoardConfig,
+      stripHeight: _parseDouble(source['stripHeight'], 16),
+      showWhatsapp: source['showWhatsapp'] is bool
+          ? source['showWhatsapp'] as bool
           : true,
-      stripHeight: _parseDouble(raw['stripHeight'], 16),
-      showWhatsapp: raw['showWhatsapp'] is bool
-          ? raw['showWhatsapp'] as bool
-          : true,
-      sampleName: (raw['sampleName'] as String? ?? '').trim().isNotEmpty
-          ? (raw['sampleName'] as String).trim()
+      sampleName: (source['sampleName'] as String? ?? '').trim().isNotEmpty
+          ? (source['sampleName'] as String).trim()
           : CreatorPosterPersonalization.defaults.sampleName,
-      photoRenderMode: _parseRenderMode(raw['photoRenderMode']),
-      edgeStyle: _parseEdgeStyle(raw['edgeStyle']),
-      showSafeAreas: raw['showSafeAreas'] is bool
-          ? raw['showSafeAreas'] as bool
+      nameScale: _parseDouble(source['nameScale'], 100),
+      showStyledNameStrip: source['showStyledNameStrip'] is bool
+          ? source['showStyledNameStrip'] as bool
+          : hasAdminBoardConfig,
+      showStyledDesignationStrip: source['showStyledDesignationStrip'] is bool
+          ? source['showStyledDesignationStrip'] as bool
+          : hasAdminBoardConfig,
+      sampleDesignation: (source['sampleDesignation'] as String? ?? '').trim(),
+      designationScale: _parseDouble(
+        source['designationScale'],
+        CreatorPosterPersonalization.defaults.designationScale,
+      ),
+      phoneScale: _parseDouble(
+        source['phoneScale'],
+        CreatorPosterPersonalization.defaults.phoneScale,
+      ),
+      nameStripColor:
+          (source['nameStripColor'] as String? ?? '').trim().isNotEmpty
+          ? (source['nameStripColor'] as String).trim()
+          : CreatorPosterPersonalization.defaults.nameStripColor,
+      designationStripColor:
+          (source['designationStripColor'] as String? ?? '').trim().isNotEmpty
+          ? (source['designationStripColor'] as String).trim()
+          : CreatorPosterPersonalization.defaults.designationStripColor,
+      boardVariant: source['boardVariant'] is num
+          ? (source['boardVariant'] as num).toInt()
+          : CreatorPosterPersonalization.defaults.boardVariant,
+      photoRenderMode: _parseRenderMode(source['photoRenderMode']),
+      edgeStyle: _parseEdgeStyle(source['edgeStyle']),
+      showSafeAreas: source['showSafeAreas'] is bool
+          ? source['showSafeAreas'] as bool
           : true,
     );
   }
@@ -145,14 +249,118 @@ class ApprovedCreatorTemplateService {
     final value = (raw as String? ?? '').trim().toLowerCase();
     switch (value) {
       case 'circle':
+      case 'scallop_circle':
+      case 'soft_burst':
+      case 'rounded_square':
+      case 'vertical_rectangle':
       case 'rounded':
       case 'square':
       case 'hexagon':
       case 'pill':
+      case 'oval':
+      case 'flower':
+      case 'diamond':
+      case 'arch':
+      case 'shield':
+      case 'star':
+      case 'blob':
+      case 'badge':
+      case 'heart':
+      case 'sunburst':
+      case 'transparent_bottom_fade':
+      case 'transparent_clean':
+      case 'transparent_soft_round':
+      case 'transparent_sharp_round':
+      case 'custom_screen_fit':
+      case 'custom_board_fit':
+      case 'custom_frame_fit':
+      case 'custom_polygon_fit':
         return value;
       default:
         return CreatorPosterPersonalization.defaults.photoShape;
     }
+  }
+
+  bool _isTemplateDynamicCategoryVisible(
+    String categoryId,
+    Set<String> activeDynamicTags,
+    Set<String> knownDynamicTags,
+  ) {
+    final normalized = _normalizeTag(categoryId);
+    if (normalized.isEmpty || !knownDynamicTags.contains(normalized)) {
+      return true;
+    }
+    return activeDynamicTags.contains(normalized);
+  }
+
+  Set<String> _activeDynamicTagsForDate(DateTime now) {
+    final service = DynamicCategoryService(
+      repository: _dynamicEventRepository,
+      daysBeforeEvent: 0,
+    );
+    final output = <String>{};
+    for (final category in service.categoriesForDate(now)) {
+      output.add(_normalizeTag(category.id));
+      output.add(_normalizeTag(category.slug));
+      output.addAll(category.tags.map(_normalizeTag));
+      output.addAll(_dynamicTypeFilterTags(category.type).map(_normalizeTag));
+    }
+    return output.where((item) => item.isNotEmpty).toSet();
+  }
+
+  Set<String> _knownDynamicTags() {
+    final output = <String>{
+      'festival',
+      'jayanthi',
+      'vardhanthi',
+      'important_day',
+      'regional_special',
+      'weekday_special',
+      'weekday_monday_special',
+      'weekday_tuesday_special',
+      'weekday_wednesday_special',
+      'weekday_thursday_special',
+      'weekday_friday_special',
+      'weekday_saturday_special',
+      'weekday_sunday_special',
+    };
+    for (final event in _dynamicEventRepository.loadEvents()) {
+      output.add(_normalizeTag(event.id));
+      output.add(_normalizeTag(event.slug));
+      output.addAll(event.tags.map(_normalizeTag));
+      output.addAll(_dynamicTypeFilterTags(event.type).map(_normalizeTag));
+    }
+    return output.where((item) => item.isNotEmpty).toSet();
+  }
+
+  Iterable<String> _dynamicTypeFilterTags(DynamicCategoryType type) {
+    return switch (type) {
+      DynamicCategoryType.festival => const <String>['festival'],
+      DynamicCategoryType.jayanthi => const <String>[
+        'jayanthi',
+        'important_day',
+        'regional_special',
+      ],
+      DynamicCategoryType.vardhanthi => const <String>[
+        'vardhanthi',
+        'important_day',
+        'regional_special',
+      ],
+      DynamicCategoryType.importantDay => const <String>['important_day'],
+      DynamicCategoryType.weekdaySpecial => const <String>['weekday_special'],
+      DynamicCategoryType.regionalSpecial => const <String>[
+        'regional_special',
+        'important_day',
+      ],
+    };
+  }
+
+  String _normalizeTag(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
   }
 
   double _parseDouble(Object? raw, double fallback) {

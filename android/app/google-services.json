@@ -15,11 +15,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "1093335255199-lb9jjv0oca6hqi80v3pnn2nsf4ceq49l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.manaposter.app",
+            "certificate_hash": "a0908e87e7981c4035ebbd64bc54900ad4d86e5c"
+          }
+        },
+        {
           "client_id": "1093335255199-lm6j59q88sta1nvjc9els4720ghijhof.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.manaposter.app",
             "certificate_hash": "b03d90b57a879ec3be205a776aea01c589d0365a"
+          }
+        },
+        {
+          "client_id": "1093335255199-lsrp4fm4et9pv2mcsf8oddh257lbm2ih.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.manaposter.app",
+            "certificate_hash": "fab5ad518f09645fd63ba1a0e310c4fecf0f11cd"
           }
         },
         {

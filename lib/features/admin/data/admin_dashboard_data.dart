@@ -103,9 +103,9 @@ class AdminDashboardData {
       color: Color(0xFF16A34A),
     ),
     AdminOverviewMetric(
-      label: 'Premium Templates',
+      label: 'Published Templates',
       value: '52',
-      icon: Icons.workspace_premium_rounded,
+      icon: Icons.publish_rounded,
       color: Color(0xFFF97316),
     ),
     AdminOverviewMetric(
@@ -157,7 +157,7 @@ class AdminDashboardData {
     ),
     AdminSectionStatus(
       sectionName: 'Showcase Section',
-      statusText: 'Preview cards with free/premium labels.',
+      statusText: 'Preview cards with category and poster labels.',
       visible: true,
     ),
     AdminSectionStatus(

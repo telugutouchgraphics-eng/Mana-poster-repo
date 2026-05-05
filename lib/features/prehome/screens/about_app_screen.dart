@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
 class AboutAppScreen extends StatelessWidget {
   const AboutAppScreen({super.key});
 
-  static const String _versionName = '1.0.0';
-  static const String _buildNumber = '1';
+  static const String _versionName = '1.0.13';
+  static const String _buildNumber = '17';
   static const String _supportEmail = AppPublicInfo.supportEmail;
 
   @override
@@ -203,13 +204,6 @@ class AboutAppScreen extends StatelessWidget {
               _SectionLabel(title: copy.flowTitle),
               const SizedBox(height: 8),
               _ChecklistSection(title: copy.flowTitle, items: copy.flowItems),
-              const SizedBox(height: 14),
-              _SectionLabel(title: copy.subscriptionTitle),
-              const SizedBox(height: 8),
-              _ChecklistSection(
-                title: copy.subscriptionTitle,
-                items: copy.subscriptionItems,
-              ),
               const SizedBox(height: 14),
               _SectionLabel(title: copy.languagesTitle),
               const SizedBox(height: 8),
@@ -546,7 +540,7 @@ class _AboutCopy {
   String get appName => 'Mana Poster';
 
   String get heroSubtitle => strings.localized(
-    telugu: 'పోస్టర్లు సులభంగా రూపొందించుకునే తెలుగు-ఫస్ట్ యాప్',
+    telugu: 'పోస్టర్లు సులభంగా రూపొందించుకునే తెలుగునే ప్రధానంగా ఉంచిన యాప్',
     english: 'A Telugu-first app for creating posters with ease',
     hindi: 'पोस्टर आसानी से बनाने के लिए तेलुगु-फर्स्ट ऐप',
     tamil: 'போஸ்டர்களை எளிதாக உருவாக்கும் தெலுங்கு-முதல் ஆப்',
@@ -557,7 +551,7 @@ class _AboutCopy {
 
   String get heroBody => strings.localized(
     telugu:
-        'Mana Poster ద్వారా శుభాకాంక్షలు, పండుగ పోస్టర్లు, బిజినెస్ ప్రమోషన్ డిజైన్లు, భక్తి పోస్టర్లు, ప్రత్యేక సందర్భాల పోస్టర్లు వంటి వాటిని వేగంగా ఎంచుకుని మీ వివరాలతో వ్యక్తిగతంగా మార్చుకోవచ్చు. మొబైల్‌లోనే చూసి, ఎంపిక చేసి, సవరించి, షేర్ చేయడానికి సరళమైన పని విధానం ఈ యాప్‌లో అందుబాటులో ఉంటుంది.',
+        'Mana Poster ద్వారా శుభాకాంక్షలు, పండుగ పోస్టర్లు, వ్యాపార ప్రచార డిజైన్లు, భక్తి పోస్టర్లు, ప్రత్యేక సందర్భాల పోస్టర్లు వంటి వాటిని వేగంగా ఎంచుకుని మీ వివరాలతో వ్యక్తిగతంగా మార్చుకోవచ్చు. మొబైల్‌లోనే చూసి, ఎంపిక చేసి, సవరించి, ఇతరులతో పంచుకోవడానికి సరళమైన పని విధానం ఈ యాప్‌లో అందుబాటులో ఉంటుంది.',
     english:
         'Mana Poster helps users quickly choose, personalize, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app is built around a simple mobile workflow for browsing, editing, and sharing in one place.',
     hindi:
@@ -571,7 +565,7 @@ class _AboutCopy {
   );
 
   String get teluguFirstPill => strings.localized(
-    telugu: 'తెలుగు-ఫస్ట్ అనుభవం',
+    telugu: 'తెలుగు ప్రధాన అనుభవం',
     english: 'Telugu-first experience',
     hindi: 'तेलुगु-फर्स्ट अनुभव',
     tamil: 'தெலுங்கு-முதல் அனுபவம்',
@@ -580,7 +574,7 @@ class _AboutCopy {
   );
 
   String get versionPill => strings.localized(
-    telugu: 'వెర్షన్',
+    telugu: 'ఆవృతి',
     english: 'Version',
     hindi: 'वर्ज़न',
     tamil: 'பதிப்பு',
@@ -589,7 +583,7 @@ class _AboutCopy {
   );
 
   String get buildPill => strings.localized(
-    telugu: 'బిల్డ్',
+    telugu: 'నిర్మాణ సంఖ్య',
     english: 'Build',
     hindi: 'बिल्ड',
     tamil: 'பில்ட்',
@@ -608,7 +602,7 @@ class _AboutCopy {
 
   String get whatIsBody => strings.localized(
     telugu:
-        'ఇది రెడీమేడ్ పోస్టర్లను చూసి, మీ ఫోటో, బిజినెస్ పేరు, వాట్సాప్ వివరాలు లేదా అవసరమైన వ్యక్తిగత వివరాలు జోడించి, మీ అవసరానికి తగ్గట్టుగా మార్చుకునే పోస్టర్ క్రియేషన్ యాప్. టెంప్లేట్లు, ప్రొఫైల్ వివరాలు, సబ్‌స్క్రిప్షన్ సమాచారం, సహాయం మరియు లీగల్ సమాచారం ఒకే చోట అందుబాటులో ఉంటాయి.',
+        'ఇది ముందుగానే సిద్ధంగా ఉన్న పోస్టర్లను చూసి, మీ ఫోటో, వ్యాపార పేరు, వాట్సాప్ వివరాలు లేదా అవసరమైన వ్యక్తిగత వివరాలు జోడించి, మీ అవసరానికి తగ్గట్టుగా మార్చుకునే పోస్టర్ తయారీ యాప్. నమూనాలు, ప్రొఫైల్ వివరాలు, సబ్‌స్క్రిప్షన్ సమాచారం, సహాయం మరియు న్యాయ సమాచారం ఒకే చోట అందుబాటులో ఉంటాయి.',
     english:
         'This is a poster creation app where users can choose ready-made designs and personalize them with their photo, business name, WhatsApp details, and other relevant information. Templates, profile details, subscription information, help, and legal access are available in one place.',
     hindi:
@@ -671,7 +665,7 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'పోస్టర్ ప్రొఫైల్, బిజినెస్ పేరు, ఫోటో, వాట్సాప్ వివరాలు సేవ్ చేసుకోవచ్చు.',
+          'పోస్టర్ ప్రొఫైల్, వ్యాపార పేరు, ఫోటో, వాట్సాప్ వివరాలు సేవ్ చేసుకోవచ్చు.',
       english:
           'Save poster profile, business name, photo, and WhatsApp details.',
       hindi:
@@ -779,8 +773,8 @@ class _AboutCopy {
   ];
 
   String get subscriptionTitle => strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ మరియు ప్రీమియం వివరాలు',
-    english: 'Subscription and premium details',
+    telugu: 'సబ్‌స్క్రిప్షన్ వివరాలు',
+    english: 'Subscription details',
     hindi: 'सब्सक्रिप्शन और प्रीमियम विवरण',
     tamil: 'சந்தா மற்றும் பிரீமியம் விவரங்கள்',
     kannada: 'ಚಂದಾದಾರಿಕೆ ಮತ್ತು ಪ್ರೀಮಿಯಂ ವಿವರಗಳು',
@@ -790,27 +784,30 @@ class _AboutCopy {
   List<String> get subscriptionItems => <String>[
     strings.localized(
       telugu:
-          'సబ్‌స్క్రిప్షన్ ప్లాన్ Free ట్యాబ్ పోస్టర్లకు మాత్రమే వర్తిస్తుంది.',
-      english: 'The subscription plan applies only to Free-tab posters.',
-      hindi: 'सब्सक्रिप्शन प्लान केवल Free टैब पोस्टरों पर लागू होता है।',
-      tamil: 'சந்தா திட்டம் Free டாப் போஸ்டர்களுக்கு மட்டும் பொருந்தும்.',
+          'సబ్‌స్క్రిప్షన్ ప్లాన్ ఫ్రీ ట్యాబ్ పోస్టర్లకు మాత్రమే వర్తిస్తుంది.',
+      english: 'The subscription plan supports poster creation and exports.',
+      hindi: 'सब्सक्रिप्शन प्लान केवल फ्री टैब पोस्टरों पर लागू होता है।',
+      tamil: 'சந்தா திட்டம் இலவச டாப் போஸ்டர்களுக்கு மட்டும் பொருந்தும்.',
       kannada:
-          'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ Free ಟ್ಯಾಬ್ ಪೋಸ್ಟರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ.',
+          'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ ಉಚಿತ ಟ್ಯಾಬ್ ಪೋಸ್ಟರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ.',
       malayalam:
-          'സബ്സ്ക്രിപ്ഷൻ പദ്ധതി Free ടാബിലെ പോസ്റ്ററുകൾക്ക് മാത്രമാണ് ബാധകമാകുന്നത്.',
+          'സബ്സ്ക്രിപ്ഷൻ പദ്ധതി ഫ്രീ ടാബിലെ പോസ്റ്ററുകൾക്ക് മാത്രമാണ് ബാധകം.',
     ),
     strings.localized(
-      telugu: 'ట్రయల్ ప్లాన్: 3 రోజుల పాటు రూ.1.',
-      english: 'Trial plan: Rs.1 for 3 days.',
-      hindi: 'ट्रायल प्लान: 3 दिनों के लिए ₹1।',
-      tamil: 'ட்ரயல் திட்டம்: 3 நாட்களுக்கு ₹1.',
-      kannada: 'ಟ್ರಯಲ್ ಯೋಜನೆ: 3 ದಿನಗಳಿಗೆ ₹1.',
-      malayalam: 'ട്രയൽ പദ്ധതി: 3 ദിവസത്തിന് ₹1.',
-    ),
-    strings.localized(
-      telugu: 'ట్రయల్ తర్వాత నెలకు రూ.149 ఆటో రీన్యువల్‌గా కొనసాగుతుంది.',
+      telugu:
+          'ట్రయల్ ప్లాన్: ${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}.',
       english:
-          'After the trial, it continues at Rs.149 per month with auto-renewal.',
+          'Trial plan: ${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days.',
+      hindi: 'ट्रायल प्लान: 3 दिनों के लिए ₹4।',
+      tamil: 'ட்ரயல் திட்டம்: 3 நாட்களுக்கு ₹4.',
+      kannada: 'ಟ್ರಯಲ್ ಯೋಜನೆ: 3 ದಿನಗಳಿಗೆ ₹4.',
+      malayalam: 'ട്രയൽ പദ്ധതി: 3 ദിവസത്തിന് ₹4.',
+    ),
+    strings.localized(
+      telugu:
+          '${SubscriptionPlanConfig.trialDays} రోజులు పూర్తయ్యాక మీరు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రీన్యువల్‌గా కొనసాగుతుంది.',
+      english:
+          'After ${SubscriptionPlanConfig.trialDays} days, it continues at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month with auto-renewal unless cancelled.',
       hindi:
           'ट्रायल के बाद यह ₹149 प्रति माह ऑटो-रिन्यूअल के साथ जारी रहता है।',
       tamil: 'ட்ரயலுக்குப் பிறகு மாதத்திற்கு ₹149 ஆட்டோ ரினியூவலாக தொடரும்.',
@@ -819,29 +816,30 @@ class _AboutCopy {
           'ട്രയലിന് ശേഷം മാസം ₹149 എന്ന നിരക്കിൽ ഓട്ടോ റിന്യൂവലോടെ തുടരും.',
     ),
     strings.localized(
-      telugu: 'Premium పోస్టర్లు ఈ ప్లాన్‌లో రావు. అవి వేరుగా కొనాలి.',
+      telugu:
+          'పోస్టర్ యాక్సెస్ మరియు ఎగుమతి ఫీచర్లు యాక్టివ్ ప్లాన్ ప్రకారం ఉంటాయి.',
       english:
-          'Premium posters are not included in this plan. They must be purchased separately.',
+          'Poster access and export features follow the active subscription plan.',
       hindi:
-          'Premium पोस्टर इस प्लान में शामिल नहीं हैं। उन्हें अलग से खरीदना होगा।',
+          'प्रीमियम पोस्टर इस प्लान में शामिल नहीं हैं। उन्हें अलग से खरीदना होगा।',
       tamil:
-          'Premium போஸ்டர்கள் இந்த திட்டத்தில் சேராது. அவை தனியாக வாங்கப்பட வேண்டும்.',
+          'பிரீமியம் போஸ்டர்கள் இந்த திட்டத்தில் சேராது. அவற்றை தனியாக வாங்க வேண்டும்.',
       kannada:
-          'Premium ಪೋಸ್ಟರ್‌ಗಳು ಈ ಯೋಜನೆಯಲ್ಲಿ ಸೇರಿರುವುದಿಲ್ಲ. ಅವನ್ನು ಪ್ರತ್ಯೇಕವಾಗಿ ಖರೀದಿಸಬೇಕು.',
+          'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್‌ಗಳು ಈ ಯೋಜನೆಯಲ್ಲಿ ಸೇರಿರುವುದಿಲ್ಲ. ಅವನ್ನು ಪ್ರತ್ಯೇಕವಾಗಿ ಖರೀದಿಸಬೇಕು.',
       malayalam:
-          'Premium പോസ്റ്ററുകൾ ഈ പദ്ധതിയിൽ ഉൾപ്പെടുന്നില്ല. അവ വേർതിരിച്ച് വാങ്ങണം.',
+          'പ്രീമിയം പോസ്റ്ററുകൾ ഈ പദ്ധതിയിൽ ഉൾപ്പെടില്ല. അവ വേർതിരിച്ച് വാങ്ങണം.',
     ),
     strings.localized(
       telugu:
-          'ప్రీమియం పోస్టర్ కొనుగోలు చేసిన తర్వాత దాన్ని పూర్తిగా అనుకూలంగా మార్చుకోవచ్చు.',
-      english: 'After purchasing a premium poster, it can be fully customized.',
+          'పోస్టర్ ఎంచుకున్న తర్వాత దాన్ని ఎడిటర్‌లో అనుకూలంగా మార్చుకోవచ్చు.',
+      english: 'After choosing a poster, it can be customized in the editor.',
       hindi:
-          'Premium पोस्टर खरीदने के बाद उसे पूरी तरह से कस्टमाइज़ किया जा सकता है।',
-      tamil: 'Premium போஸ்டரை வாங்கிய பிறகு அதை முழுமையாக தனிப்பயனாக்கலாம்.',
+          'प्रीमियम पोस्टर खरीदने के बाद उसे पूरी तरह कस्टमाइज़ किया जा सकता है।',
+      tamil: 'பிரீமியம் போஸ்டரை வாங்கிய பிறகு அதை முழுமையாக தனிப்பயனாக்கலாம்.',
       kannada:
-          'Premium ಪೋಸ್ಟರ್ ಖರೀದಿಸಿದ ನಂತರ ಅದನ್ನು ಪೂರ್ಣವಾಗಿ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು.',
+          'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್ ಖರೀದಿಸಿದ ನಂತರ ಅದನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು.',
       malayalam:
-          'Premium പോസ്റ്റർ വാങ്ങിയ ശേഷം അത് പൂർണ്ണമായി വ്യക്തിപരമാക്കാം.',
+          'പ്രീമിയം പോസ്റ്റർ വാങ്ങിയ ശേഷം അത് പൂർണ്ണമായി വ്യക്തിഗതമാക്കാം.',
     ),
   ];
 

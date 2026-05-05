@@ -3,7 +3,33 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/features/admin/data/services/firebase_admin_auth_service.dart';
 
 class AdminLoginScreen extends StatefulWidget {
-  const AdminLoginScreen({super.key});
+  const AdminLoginScreen({
+    super.key,
+    this.title = 'Admin Login',
+    this.subtitle =
+        'Sign in to access the Mana Poster admin dashboard, preview workflow, and future backend publishing tools.',
+    this.emailLabel = 'Admin Email',
+    this.emailHint = 'admin@manaposter.in',
+    this.buttonLabel = 'Login to Admin',
+    this.footerText =
+        'Use a Firebase Authentication email/password admin account. Draft editing remains local until content save integration is added.',
+    this.brandTitle = 'Mana Poster\nAdmin Console',
+    this.brandSubtitle =
+        'Access the landing page editor, live preview, media references, app links, and future publish workflow from one controlled admin entry point.',
+    this.badgeText = 'Admin Access',
+    this.authEmailResolver,
+  });
+
+  final String title;
+  final String subtitle;
+  final String emailLabel;
+  final String emailHint;
+  final String buttonLabel;
+  final String footerText;
+  final String brandTitle;
+  final String brandSubtitle;
+  final String badgeText;
+  final String Function(String email)? authEmailResolver;
 
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
@@ -37,8 +63,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     });
 
     try {
+      final String email = _emailController.text.trim();
       await FirebaseAdminAuthService.instance.signInWithEmailAndPassword(
-        email: _emailController.text,
+        email: widget.authEmailResolver?.call(email) ?? email,
         password: _passwordController.text,
       );
     } on AdminAuthFailure catch (error) {
@@ -71,8 +98,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1080),
               child: compact
-                  ? _MobileLayout(form: _buildFormCard())
-                  : _DesktopLayout(form: _buildFormCard()),
+                  ? _MobileLayout(
+                      form: _buildFormCard(),
+                      badgeText: widget.badgeText,
+                      brandTitle: widget.brandTitle,
+                      brandSubtitle: widget.brandSubtitle,
+                    )
+                  : _DesktopLayout(
+                      form: _buildFormCard(),
+                      badgeText: widget.badgeText,
+                      brandTitle: widget.brandTitle,
+                      brandSubtitle: widget.brandSubtitle,
+                    ),
             ),
           ),
         ),
@@ -100,8 +137,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text(
-              'Admin Login',
+            Text(
+              widget.title,
               style: TextStyle(
                 fontFamily: 'League Spartan',
                 fontSize: 34,
@@ -110,8 +147,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Sign in to access the Mana Poster admin dashboard, preview workflow, and future backend publishing tools.',
+            Text(
+              widget.subtitle,
               style: TextStyle(
                 fontSize: 14,
                 height: 1.55,
@@ -119,14 +156,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const _FormLabel(label: 'Admin Email'),
+            _FormLabel(label: widget.emailLabel),
             TextFormField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const <String>[AutofillHints.username],
               decoration: _inputDecoration(
-                hintText: 'admin@manaposter.in',
+                hintText: widget.emailHint,
                 icon: Icons.alternate_email_rounded,
               ),
               validator: (String? value) {
@@ -217,12 +254,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         ),
                       )
                     : const Icon(Icons.login_rounded),
-                label: Text(_submitting ? 'Signing In...' : 'Login to Admin'),
+                label: Text(_submitting ? 'Signing In...' : widget.buttonLabel),
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Use a Firebase Authentication email/password admin account. Draft editing remains local until content save integration is added.',
+            Text(
+              widget.footerText,
               style: TextStyle(
                 fontSize: 12.5,
                 color: Color(0xFF68758F),
@@ -237,9 +274,17 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 }
 
 class _DesktopLayout extends StatelessWidget {
-  const _DesktopLayout({required this.form});
+  const _DesktopLayout({
+    required this.form,
+    required this.badgeText,
+    required this.brandTitle,
+    required this.brandSubtitle,
+  });
 
   final Widget form;
+  final String badgeText;
+  final String brandTitle;
+  final String brandSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -269,15 +314,15 @@ class _DesktopLayout extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _BrandBadge(),
-                SizedBox(height: 22),
+                _BrandBadge(text: badgeText),
+                const SizedBox(height: 22),
                 Text(
-                  'Mana Poster\nAdmin Console',
-                  style: TextStyle(
+                  brandTitle,
+                  style: const TextStyle(
                     fontFamily: 'League Spartan',
                     fontSize: 54,
                     height: 0.95,
@@ -285,22 +330,24 @@ class _DesktopLayout extends StatelessWidget {
                     color: Color(0xFF15203B),
                   ),
                 ),
-                SizedBox(height: 18),
+                const SizedBox(height: 18),
                 Text(
-                  'Access the landing page editor, live preview, media references, app links, and future publish workflow from one controlled admin entry point.',
-                  style: TextStyle(
+                  brandSubtitle,
+                  style: const TextStyle(
                     fontSize: 15,
                     height: 1.6,
                     color: Color(0xFF556481),
                   ),
                 ),
-                SizedBox(height: 20),
-                _InfoBullet(text: 'Email/password login through Firebase Auth'),
-                _InfoBullet(
+                const SizedBox(height: 20),
+                const _InfoBullet(
+                  text: 'Email/password login through Firebase Auth',
+                ),
+                const _InfoBullet(
                   text:
                       'Admin route protection for dashboard and preview access',
                 ),
-                _InfoBullet(
+                const _InfoBullet(
                   text:
                       'Current draft editor remains local until Firestore save is added',
                 ),
@@ -316,9 +363,17 @@ class _DesktopLayout extends StatelessWidget {
 }
 
 class _MobileLayout extends StatelessWidget {
-  const _MobileLayout({required this.form});
+  const _MobileLayout({
+    required this.form,
+    required this.badgeText,
+    required this.brandTitle,
+    required this.brandSubtitle,
+  });
 
   final Widget form;
+  final String badgeText;
+  final String brandTitle;
+  final String brandSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -347,14 +402,14 @@ class _MobileLayout extends StatelessWidget {
               ),
             ],
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _BrandBadge(),
-              SizedBox(height: 14),
+              _BrandBadge(text: badgeText),
+              const SizedBox(height: 14),
               Text(
-                'Mana Poster Admin Console',
-                style: TextStyle(
+                brandTitle.replaceAll('\n', ' '),
+                style: const TextStyle(
                   fontFamily: 'League Spartan',
                   fontSize: 34,
                   height: 1,
@@ -362,10 +417,10 @@ class _MobileLayout extends StatelessWidget {
                   color: Color(0xFF15203B),
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
-                'Secure admin access for dashboard editing and live preview.',
-                style: TextStyle(
+                brandSubtitle,
+                style: const TextStyle(
                   fontSize: 14,
                   height: 1.55,
                   color: Color(0xFF5A6885),
@@ -382,7 +437,9 @@ class _MobileLayout extends StatelessWidget {
 }
 
 class _BrandBadge extends StatelessWidget {
-  const _BrandBadge();
+  const _BrandBadge({required this.text});
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -393,18 +450,18 @@ class _BrandBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0xFFE1E6F5)),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(
+          const Icon(
             Icons.admin_panel_settings_rounded,
             size: 18,
             color: Color(0xFF5A31E1),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Text(
-            'Admin Access',
-            style: TextStyle(
+            text,
+            style: const TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: Color(0xFF372E68),

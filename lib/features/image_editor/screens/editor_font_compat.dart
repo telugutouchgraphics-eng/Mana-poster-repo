@@ -157,6 +157,17 @@ String _resolveTextRenderFontFamily(String family) {
   return family;
 }
 
+double _effectiveTextLineHeightForRender({
+  required String fontFamily,
+  required double textLineHeight,
+}) {
+  final clamped = textLineHeight.clamp(0.8, 2.2).toDouble();
+  if (!_isLegacyTeluguFontFamily(fontFamily)) {
+    return clamped;
+  }
+  return (clamped * 0.72).clamp(0.58, 1.15).toDouble();
+}
+
 String _resolveTextRenderValue({
   required String text,
   required String fontFamily,

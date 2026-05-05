@@ -12,6 +12,7 @@ import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
 import 'package:mana_poster/features/prehome/screens/web_landing_screen.dart';
+import 'package:mana_poster/features/prehome/screens/website_admin_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -36,14 +37,23 @@ class AppRoutes {
         host == 'mana-poster.web.app';
   }
 
-  static bool get isAdminWebHost {
+  static bool get isWebsiteAdminHost {
+    if (!kIsWeb) {
+      return false;
+    }
+    final host = Uri.base.host.toLowerCase();
+    return host == 'webapp.manaposter.in' ||
+        host == 'mana-poster-admin.web.app';
+  }
+
+  static bool get isRoleDashboardHost {
     if (!kIsWeb) {
       return false;
     }
     final host = Uri.base.host.toLowerCase();
     return host == 'admin.manaposter.in' ||
-        host == 'webapp.manaposter.in' ||
-        host == 'mana-poster-admin.web.app';
+        host == 'creator.manaposter.in' ||
+        host == 'manager.manaposter.in';
   }
 
   static bool get isWebsiteAdminPath {
@@ -55,7 +65,7 @@ class AppRoutes {
   }
 
   static String get initialRoute {
-    if (kIsWeb && (isAdminWebHost || isWebsiteAdminPath)) {
+    if (kIsWeb && (isWebsiteAdminHost || isWebsiteAdminPath)) {
       return websiteAdmin;
     }
     return splash;
@@ -65,10 +75,13 @@ class AppRoutes {
     if (!kIsWeb) {
       return mobileScreen;
     }
-    if (isAdminWebHost || isWebsiteAdminPath) {
+    if (isWebsiteAdminHost || isWebsiteAdminPath) {
+      return const WebsiteAdminScreen();
+    }
+    if (isRoleDashboardHost) {
       return const AdminAuthGate();
     }
-    if (isWebLandingHost || Uri.base.host.isNotEmpty) {
+    if (isWebLandingHost) {
       return const WebLandingScreen();
     }
     return mobileScreen;
@@ -84,7 +97,7 @@ class AppRoutes {
     home: (_) => _webEntry(const HomeScreen()),
     pageSetup: (_) => _webEntry(const PageSetupScreen()),
     imageEditor: (_) => _webEntry(const ImageEditorScreen()),
-    websiteAdmin: (_) => const AdminAuthGate(),
+    websiteAdmin: (_) => const WebsiteAdminScreen(),
     adminLogin: (_) => const AdminAuthGate(),
   };
 }

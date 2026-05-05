@@ -86,7 +86,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       id: 'layer_${_layerSeed++}',
       type: _CanvasLayerType.text,
       text: context.strings.localized(telugu: 'టెక్స్ట్', english: 'Text'),
-      textColor: Colors.white,
+      textColor: Colors.black,
       textStrokeColor: Colors.black,
       textStrokeWidth: 0,
       fontFamily: 'Anek Telugu Condensed Regular',

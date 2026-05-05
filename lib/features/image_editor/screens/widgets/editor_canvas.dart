@@ -1,4 +1,5 @@
 part of '../image_editor_screen.dart';
+
 double _mapAdjustBlurToSigma(double blur) {
   final normalized = (blur / 10).clamp(0.0, 1.0);
   final eased = math.pow(normalized, 1.65).toDouble();
@@ -618,6 +619,13 @@ class _CanvasWorkspace extends StatelessWidget {
                                     style: TextStyle(fontSize: layer.fontSize),
                                   );
                             if (layer.isPhoto &&
+                                layer.photoMaskShape.trim().isNotEmpty) {
+                              layerChild = _EditorPhotoMaskFrame(
+                                shape: layer.photoMaskShape,
+                                child: layerChild,
+                              );
+                            }
+                            if (layer.isPhoto &&
                                 borderStyle != _BorderStyle.none &&
                                 layer.id == borderTargetLayerId) {
                               final borderRadius =
@@ -752,22 +760,21 @@ class _CanvasWorkspace extends StatelessWidget {
                                                             height:
                                                                 transformLayerSize
                                                                     .height,
-                                                            child:
-                                                                GestureDetector(
-                                                                  behavior:
-                                                                      HitTestBehavior
-                                                                          .translucent,
-                                                                  onDoubleTap:
-                                                                      onSelectedLayerDoubleTap,
-                                                                  onScaleStart:
-                                                                      onSelectedLayerInteractionStart,
-                                                                  onScaleUpdate:
-                                                                      onSelectedLayerScaleUpdate,
-                                                                  onScaleEnd: (_) =>
-                                                                      onSelectedLayerInteractionEnd(),
-                                                                  child:
-                                                                      decoratedChild,
-                                                                ),
+                                                            child: GestureDetector(
+                                                              behavior:
+                                                                  HitTestBehavior
+                                                                      .translucent,
+                                                              onDoubleTap:
+                                                                  onSelectedLayerDoubleTap,
+                                                              onScaleStart:
+                                                                  onSelectedLayerInteractionStart,
+                                                              onScaleUpdate:
+                                                                  onSelectedLayerScaleUpdate,
+                                                              onScaleEnd: (_) =>
+                                                                  onSelectedLayerInteractionEnd(),
+                                                              child:
+                                                                  decoratedChild,
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
@@ -826,27 +833,25 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                 onSelectedTextPointerMove,
                                                             onPointerUp: (_) =>
                                                                 onSelectedTextPointerCancel(),
-                                                            onPointerCancel:
-                                                                (_) =>
-                                                                    onSelectedTextPointerCancel(),
-                                                            child:
-                                                                GestureDetector(
-                                                                  behavior:
-                                                                      HitTestBehavior
-                                                                          .opaque,
-                                                                  onTap:
-                                                                      onSelectedTextTap,
-                                                                  onDoubleTap:
-                                                                      onSelectedTextDoubleTap,
-                                                                  onScaleStart:
-                                                                      onSelectedLayerInteractionStart,
-                                                                  onScaleUpdate:
-                                                                      onSelectedLayerScaleUpdate,
-                                                                  onScaleEnd:
-                                                                      (_) => onSelectedLayerInteractionEnd(),
-                                                                  child:
-                                                                      effectiveTextChild,
-                                                                ),
+                                                            onPointerCancel: (_) =>
+                                                                onSelectedTextPointerCancel(),
+                                                            child: GestureDetector(
+                                                              behavior:
+                                                                  HitTestBehavior
+                                                                      .opaque,
+                                                              onTap:
+                                                                  onSelectedTextTap,
+                                                              onDoubleTap:
+                                                                  onSelectedTextDoubleTap,
+                                                              onScaleStart:
+                                                                  onSelectedLayerInteractionStart,
+                                                              onScaleUpdate:
+                                                                  onSelectedLayerScaleUpdate,
+                                                              onScaleEnd: (_) =>
+                                                                  onSelectedLayerInteractionEnd(),
+                                                              child:
+                                                                  effectiveTextChild,
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
@@ -1132,6 +1137,712 @@ Size _fitPhotoLayerSize({
   return Size(width, height);
 }
 
+double _editorPhotoMaskAspectRatio(String shape) {
+  switch (shape) {
+    case 'custom_screen_fit':
+      return 16 / 9;
+    case 'custom_board_fit':
+      return 16 / 7;
+    case 'custom_frame_fit':
+    case 'oval':
+      return 4 / 5;
+    case 'custom_polygon_fit':
+      return 4 / 3;
+    default:
+      return 1;
+  }
+}
+
+Path _buildEditorRadialMaskPath(
+  Size size, {
+  required int pointCount,
+  required double innerRadiusFactor,
+  double outerRadiusFactor = 1,
+  double rotationRadians = -math.pi / 2,
+}) {
+  final center = Offset(size.width / 2, size.height / 2);
+  final radius = math.min(size.width, size.height) / 2;
+  final path = Path();
+  final totalPoints = pointCount * 2;
+
+  for (int index = 0; index < totalPoints; index += 1) {
+    final currentRadius =
+        radius *
+        (index.isEven ? outerRadiusFactor : innerRadiusFactor);
+    final angle = rotationRadians + ((math.pi * 2) / totalPoints) * index;
+    final point = Offset(
+      center.dx + math.cos(angle) * currentRadius,
+      center.dy + math.sin(angle) * currentRadius,
+    );
+    if (index == 0) {
+      path.moveTo(point.dx, point.dy);
+    } else {
+      path.lineTo(point.dx, point.dy);
+    }
+  }
+
+  path.close();
+  return path;
+}
+
+Path _buildEditorSmoothRadialMaskPath(
+  Size size, {
+  required int pointCount,
+  required double innerRadiusFactor,
+  double outerRadiusFactor = 1,
+  double rotationRadians = -math.pi / 2,
+}) {
+  final center = Offset(size.width / 2, size.height / 2);
+  final radius = math.min(size.width, size.height) / 2;
+  final vertices = <Offset>[];
+  final totalPoints = pointCount * 2;
+
+  for (int index = 0; index < totalPoints; index += 1) {
+    final currentRadius =
+        radius *
+        (index.isEven ? outerRadiusFactor : innerRadiusFactor);
+    final angle = rotationRadians + ((math.pi * 2) / totalPoints) * index;
+    vertices.add(
+      Offset(
+        center.dx + math.cos(angle) * currentRadius,
+        center.dy + math.sin(angle) * currentRadius,
+      ),
+    );
+  }
+
+  Offset midpoint(Offset a, Offset b) =>
+      Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+
+  final path = Path();
+  final start = midpoint(vertices.last, vertices.first);
+  path.moveTo(start.dx, start.dy);
+
+  for (int index = 0; index < vertices.length; index += 1) {
+    final current = vertices[index];
+    final next = vertices[(index + 1) % vertices.length];
+    final end = midpoint(current, next);
+    path.quadraticBezierTo(current.dx, current.dy, end.dx, end.dy);
+  }
+
+  path.close();
+  return path;
+}
+
+class _EditorPhotoMaskFrame extends StatelessWidget {
+  const _EditorPhotoMaskFrame({required this.shape, required this.child});
+
+  final String shape;
+  final Widget child;
+
+  bool _isTransparentPhotoShape(String currentShape) {
+    return currentShape == 'transparent_bottom_fade' ||
+        currentShape == 'transparent_clean' ||
+        currentShape == 'transparent_soft_round' ||
+        currentShape == 'transparent_sharp_round';
+  }
+
+  bool _isTransparentRoundShape(String currentShape) {
+    return currentShape == 'transparent_soft_round' ||
+        currentShape == 'transparent_sharp_round';
+  }
+
+  String _resolvedShape(String currentShape) {
+    if (_isTransparentRoundShape(currentShape)) {
+      return 'circle';
+    }
+    return currentShape;
+  }
+
+  String _resolvedEdgeStyle(String currentShape) {
+    if (currentShape == 'transparent_bottom_fade') {
+      return 'bottom_fade';
+    }
+    if (currentShape == 'transparent_soft_round') {
+      return 'feather';
+    }
+    if (currentShape == 'transparent_clean' ||
+        currentShape == 'transparent_sharp_round') {
+      return 'sharp';
+    }
+    return 'bottom_fade';
+  }
+
+  BoxDecoration _outerDecorationForShape(String currentShape) {
+    if (_isTransparentPhotoShape(currentShape)) {
+      return const BoxDecoration(color: Colors.transparent);
+    }
+    switch (currentShape) {
+      case 'circle':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF22C55E), Color(0xFF14B8A6)],
+          ),
+        );
+      case 'scallop_circle':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFFF59E0B), Color(0xFFEF4444)],
+          ),
+        );
+      case 'soft_burst':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFFA855F7), Color(0xFFEC4899)],
+          ),
+        );
+      case 'badge':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF2563EB), Color(0xFF06B6D4)],
+          ),
+        );
+      case 'rounded':
+      case 'rounded_square':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF8B5CF6), Color(0xFF3B82F6)],
+          ),
+        );
+      case 'custom_frame_fit':
+      case 'vertical_rectangle':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF0EA5E9), Color(0xFF22C55E)],
+          ),
+        );
+      case 'square':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFFF97316), Color(0xFFFACC15)],
+          ),
+        );
+      default:
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF64748B), Color(0xFF334155)],
+          ),
+        );
+    }
+  }
+
+  Alignment _maskAlignmentForShape(String currentShape) {
+    switch (_resolvedShape(currentShape)) {
+      case 'flower':
+        return const Alignment(0, 0.24);
+      case 'scallop_circle':
+      case 'soft_burst':
+      case 'sunburst':
+        return const Alignment(0, 0.2);
+      case 'badge':
+        return const Alignment(0, 0.22);
+      case 'oval':
+        return const Alignment(0, 0.16);
+      case 'circle':
+      case 'square':
+        return const Alignment(0, 0.12);
+      default:
+        return const Alignment(0, 0.12);
+    }
+  }
+
+  _EditorShapeFramePreset _presetForShape(String currentShape) {
+    switch (currentShape) {
+      case 'circle':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'scallop_circle':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'soft_burst':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'square':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'badge':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'rounded':
+      case 'rounded_square':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      case 'vertical_rectangle':
+      case 'custom_frame_fit':
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+      default:
+        return const _EditorShapeFramePreset(
+          photoInset: EdgeInsets.zero,
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preset = _presetForShape(shape);
+    final normalizedEdgeStyle = _resolvedEdgeStyle(shape);
+    Widget buildImageLayer({
+      required double scale,
+      required bool isBlurLayer,
+    }) {
+      Widget layer = DecoratedBox(
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: FittedBox(
+          fit: BoxFit.contain,
+          alignment: _maskAlignmentForShape(shape),
+          child: SizedBox.square(dimension: 100, child: child),
+        ),
+      );
+      layer = Transform.scale(
+        scale: scale,
+        alignment: Alignment.topCenter,
+        child: layer,
+      );
+      if (normalizedEdgeStyle == 'feather') {
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const RadialGradient(
+              center: Alignment.center,
+              radius: 0.72,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xE6FFFFFF),
+                Color(0x52FFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.78, 0.84, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+        if (isBlurLayer) {
+          layer = ImageFiltered(
+            imageFilter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Opacity(opacity: 0.9, child: layer),
+          );
+        }
+      } else if (normalizedEdgeStyle == 'bottom_fade') {
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xFAFFFFFF),
+                Color(0xD1FFFFFF),
+                Color(0x70FFFFFF),
+                Color(0x1FFFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.56, 0.68, 0.78, 0.88, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+      }
+      return layer;
+    }
+
+    Widget alignedChild;
+    if (normalizedEdgeStyle == 'feather') {
+      alignedChild = Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Positioned.fill(
+            child: buildImageLayer(scale: 1.07, isBlurLayer: true),
+          ),
+          Positioned.fill(
+            child: buildImageLayer(scale: 1.035, isBlurLayer: false),
+          ),
+        ],
+      );
+    } else {
+      alignedChild = buildImageLayer(scale: 1.035, isBlurLayer: false);
+    }
+    final photoLayer = Padding(
+      padding: preset.photoInset,
+      child: _isTransparentRoundShape(shape)
+          ? _editorClipPhotoShape(_resolvedShape(shape), alignedChild)
+          : _isTransparentPhotoShape(shape)
+          ? ClipRect(
+              clipBehavior: Clip.antiAliasWithSaveLayer,
+              child: alignedChild,
+            )
+          : _editorClipPhotoShape(shape, alignedChild),
+    );
+    final framedChild = Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        if (!_isTransparentPhotoShape(shape))
+          _editorClipPhotoShape(
+            shape,
+            DecoratedBox(decoration: _outerDecorationForShape(shape)),
+          ),
+        photoLayer,
+      ],
+    );
+
+    if (_isTransparentPhotoShape(shape)) {
+      return framedChild;
+    }
+
+    switch (shape) {
+      case 'circle':
+      case 'oval':
+        return ClipOval(
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'rounded':
+      case 'rounded_square':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'pill':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(40),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'custom_screen_fit':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'custom_board_fit':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'custom_frame_fit':
+      case 'vertical_rectangle':
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'hexagon':
+      case 'scallop_circle':
+      case 'soft_burst':
+      case 'diamond':
+      case 'flower':
+      case 'sunburst':
+      case 'star':
+      case 'shield':
+      case 'arch':
+      case 'blob':
+      case 'badge':
+      case 'heart':
+      case 'custom_polygon_fit':
+        return ClipPath(
+          clipper: _EditorPhotoMaskClipper(shape),
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+      case 'square':
+      default:
+        return ClipRect(
+          clipBehavior: Clip.antiAliasWithSaveLayer,
+          child: framedChild,
+        );
+    }
+  }
+}
+
+class _EditorShapeFramePreset {
+  const _EditorShapeFramePreset({
+    required this.photoInset,
+  });
+
+  final EdgeInsets photoInset;
+}
+
+Widget _editorClipPhotoShape(String shape, Widget child) {
+  switch (shape) {
+    case 'circle':
+    case 'oval':
+      return ClipOval(
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'rounded':
+    case 'rounded_square':
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'pill':
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(40),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'custom_screen_fit':
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'custom_board_fit':
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'custom_frame_fit':
+    case 'vertical_rectangle':
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'hexagon':
+    case 'scallop_circle':
+    case 'soft_burst':
+    case 'diamond':
+    case 'flower':
+    case 'sunburst':
+    case 'star':
+    case 'shield':
+    case 'arch':
+    case 'blob':
+    case 'badge':
+    case 'heart':
+    case 'custom_polygon_fit':
+      return ClipPath(
+        clipper: _EditorPhotoMaskClipper(shape),
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+    case 'square':
+    default:
+      return ClipRect(
+        clipBehavior: Clip.antiAliasWithSaveLayer,
+        child: child,
+      );
+  }
+}
+
+class _EditorPhotoMaskClipper extends CustomClipper<Path> {
+  const _EditorPhotoMaskClipper(this.shape);
+
+  final String shape;
+
+  @override
+  Path getClip(Size size) {
+    switch (shape) {
+      case 'scallop_circle':
+        return _buildEditorSmoothRadialMaskPath(
+          size,
+          pointCount: 16,
+          innerRadiusFactor: 0.9,
+        );
+      case 'soft_burst':
+        return _buildEditorRadialMaskPath(
+          size,
+          pointCount: 44,
+          innerRadiusFactor: 0.95,
+        );
+      case 'hexagon':
+        return Path()
+          ..moveTo(size.width * 0.25, size.height * 0.06)
+          ..lineTo(size.width * 0.75, size.height * 0.06)
+          ..lineTo(size.width, size.height * 0.5)
+          ..lineTo(size.width * 0.75, size.height * 0.94)
+          ..lineTo(size.width * 0.25, size.height * 0.94)
+          ..lineTo(0, size.height * 0.5)
+          ..close();
+      case 'diamond':
+        return Path()
+          ..moveTo(size.width * 0.5, 0)
+          ..lineTo(size.width, size.height * 0.5)
+          ..lineTo(size.width * 0.5, size.height)
+          ..lineTo(0, size.height * 0.5)
+          ..close();
+      case 'star':
+        return Path()
+          ..moveTo(size.width * 0.5, 0)
+          ..lineTo(size.width * 0.61, size.height * 0.34)
+          ..lineTo(size.width * 0.98, size.height * 0.35)
+          ..lineTo(size.width * 0.68, size.height * 0.56)
+          ..lineTo(size.width * 0.79, size.height * 0.91)
+          ..lineTo(size.width * 0.5, size.height * 0.7)
+          ..lineTo(size.width * 0.21, size.height * 0.91)
+          ..lineTo(size.width * 0.32, size.height * 0.56)
+          ..lineTo(size.width * 0.02, size.height * 0.35)
+          ..lineTo(size.width * 0.39, size.height * 0.34)
+          ..close();
+      case 'shield':
+        return Path()
+          ..moveTo(size.width * 0.5, 0)
+          ..lineTo(size.width * 0.92, size.height * 0.18)
+          ..lineTo(size.width * 0.82, size.height * 0.76)
+          ..lineTo(size.width * 0.5, size.height)
+          ..lineTo(size.width * 0.18, size.height * 0.76)
+          ..lineTo(size.width * 0.08, size.height * 0.18)
+          ..close();
+      case 'arch':
+        return Path()
+          ..moveTo(0, size.height)
+          ..lineTo(0, size.height * 0.44)
+          ..cubicTo(
+            0,
+            size.height * 0.14,
+            size.width * 0.22,
+            0,
+            size.width * 0.5,
+            0,
+          )
+          ..cubicTo(
+            size.width * 0.78,
+            0,
+            size.width,
+            size.height * 0.14,
+            size.width,
+            size.height * 0.44,
+          )
+          ..lineTo(size.width, size.height)
+          ..close();
+      case 'blob':
+        return Path()
+          ..moveTo(size.width * 0.55, size.height * 0.02)
+          ..cubicTo(
+            size.width * 0.82,
+            0,
+            size.width,
+            size.height * 0.2,
+            size.width * 0.94,
+            size.height * 0.48,
+          )
+          ..cubicTo(
+            size.width * 0.9,
+            size.height * 0.78,
+            size.width * 0.68,
+            size.height,
+            size.width * 0.42,
+            size.height * 0.95,
+          )
+          ..cubicTo(
+            size.width * 0.14,
+            size.height * 0.9,
+            0,
+            size.height * 0.68,
+            size.width * 0.06,
+            size.height * 0.38,
+          )
+          ..cubicTo(
+            size.width * 0.12,
+            size.height * 0.1,
+            size.width * 0.3,
+            size.height * 0.03,
+            size.width * 0.55,
+            size.height * 0.02,
+          )
+          ..close();
+      case 'flower':
+        return _buildEditorSmoothRadialMaskPath(
+          size,
+          pointCount: 8,
+          innerRadiusFactor: 0.74,
+        );
+      case 'badge':
+        return _buildEditorSmoothRadialMaskPath(
+          size,
+          pointCount: 12,
+          innerRadiusFactor: 0.86,
+        );
+      case 'heart':
+        return Path()
+          ..moveTo(size.width * 0.5, size.height * 0.92)
+          ..cubicTo(
+            size.width * 0.18,
+            size.height * 0.68,
+            0,
+            size.height * 0.48,
+            size.width * 0.08,
+            size.height * 0.25,
+          )
+          ..cubicTo(
+            size.width * 0.16,
+            size.height * 0.02,
+            size.width * 0.4,
+            size.height * 0.08,
+            size.width * 0.5,
+            size.height * 0.25,
+          )
+          ..cubicTo(
+            size.width * 0.6,
+            size.height * 0.08,
+            size.width * 0.84,
+            size.height * 0.02,
+            size.width * 0.92,
+            size.height * 0.25,
+          )
+          ..cubicTo(
+            size.width,
+            size.height * 0.48,
+            size.width * 0.82,
+            size.height * 0.68,
+            size.width * 0.5,
+            size.height * 0.92,
+          )
+          ..close();
+      case 'sunburst':
+        return _buildEditorRadialMaskPath(
+          size,
+          pointCount: 20,
+          innerRadiusFactor: 0.56,
+        );
+      case 'custom_polygon_fit':
+        return Path()
+          ..moveTo(size.width * 0.07, size.height * 0.1)
+          ..lineTo(size.width * 0.95, 0)
+          ..lineTo(size.width * 0.88, size.height)
+          ..lineTo(0, size.height * 0.88)
+          ..close();
+      default:
+        return Path()..addRect(Offset.zero & size);
+    }
+  }
+
+  @override
+  bool shouldReclip(covariant _EditorPhotoMaskClipper oldClipper) =>
+      oldClipper.shape != shape;
+}
+
 Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
   if (layer.isPhoto) {
     return _fitPhotoLayerSize(
@@ -1140,13 +1851,18 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
     );
   }
   if (layer.isText) {
+    final renderFontFamily = _resolveLayerRenderFontFamily(layer);
+    final renderLineHeight = _effectiveTextLineHeightForRender(
+      fontFamily: layer.fontFamily,
+      textLineHeight: layer.textLineHeight,
+    );
     final painter = TextPainter(
       text: TextSpan(
         text: _resolveLayerRenderText(layer),
         style: TextStyle(
-          fontFamily: _resolveLayerRenderFontFamily(layer),
+          fontFamily: renderFontFamily,
           fontSize: layer.fontSize,
-          height: layer.textLineHeight,
+          height: renderLineHeight,
           letterSpacing: layer.textLetterSpacing,
           fontWeight: layer.isTextBold ? FontWeight.w800 : FontWeight.w500,
           fontStyle: layer.isTextItalic ? FontStyle.italic : FontStyle.normal,
@@ -1363,9 +2079,7 @@ class _CanvasTextLayerView extends StatelessWidget {
     final fillForeground = textGradient == null
         ? null
         : (Paint()
-            ..shader = LinearGradient(
-              colors: textGradient!,
-            ).createShader(
+            ..shader = LinearGradient(colors: textGradient!).createShader(
               Rect.fromLTWH(
                 0,
                 0,
@@ -1375,7 +2089,10 @@ class _CanvasTextLayerView extends StatelessWidget {
             ));
     final baseStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
       fontSize: fontSize,
-      height: textLineHeight,
+      height: _effectiveTextLineHeightForRender(
+        fontFamily: fontFamily,
+        textLineHeight: textLineHeight,
+      ),
       letterSpacing: textLetterSpacing,
       fontWeight: isTextBold ? FontWeight.w700 : FontWeight.w500,
       fontStyle: isTextItalic ? FontStyle.italic : FontStyle.normal,
@@ -1408,7 +2125,10 @@ class _CanvasTextLayerView extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontSize: fontSize,
-              height: textLineHeight,
+              height: _effectiveTextLineHeightForRender(
+                fontFamily: fontFamily,
+                textLineHeight: textLineHeight,
+              ),
               letterSpacing: textLetterSpacing,
               fontWeight: isTextBold ? FontWeight.w700 : FontWeight.w500,
               fontStyle: isTextItalic ? FontStyle.italic : FontStyle.normal,

@@ -7,6 +7,10 @@ import 'package:mana_poster/features/admin/data/models/admin_audit_log.dart';
 import 'package:mana_poster/features/admin/data/repositories/admin_auth_repository.dart';
 import 'package:mana_poster/features/admin/data/services/admin_audit_log_service.dart';
 
+const Set<String> _bootstrapAdminEmails = <String>{
+  'manaposter2026@gmail.com',
+};
+
 class FirebaseAdminAuthService implements AdminAuthRepository {
   FirebaseAdminAuthService._({FirebaseAuth? firebaseAuth})
     : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
@@ -36,11 +40,13 @@ class FirebaseAdminAuthService implements AdminAuthRepository {
 
   @override
   Future<AdminAuthorizationResult> checkAdminAuthorization({
+    required AdminPortalRole role,
     bool forceRefresh = false,
   }) async {
     if (Firebase.apps.isEmpty) {
-      return const AdminAuthorizationResult(
+      return AdminAuthorizationResult(
         status: AdminAuthorizationStatus.error,
+        role: role,
         message:
             'Firebase is not configured on this build. Complete Firebase setup first.',
       );
@@ -48,40 +54,47 @@ class FirebaseAdminAuthService implements AdminAuthRepository {
 
     final User? user = _firebaseAuth.currentUser;
     if (user == null) {
-      return const AdminAuthorizationResult(
+      return AdminAuthorizationResult(
         status: AdminAuthorizationStatus.signedOut,
+        role: role,
       );
     }
 
     try {
       final IdTokenResult token = await user.getIdTokenResult(forceRefresh);
-      final bool isAdmin = token.claims?['admin'] == true;
+      final Map<String, dynamic> claims = Map<String, dynamic>.from(
+        token.claims ?? const <String, dynamic>{},
+      );
+      final bool isAuthorized = _hasPortalAccess(role: role, claims: claims);
 
-      if (isAdmin) {
+      if (isAuthorized) {
         return AdminAuthorizationResult(
           status: AdminAuthorizationStatus.authorized,
+          role: role,
           user: user,
         );
       }
 
       return AdminAuthorizationResult(
         status: AdminAuthorizationStatus.unauthorized,
+        role: role,
         user: user,
-        message:
-            'This account is signed in, but it does not have Mana Poster admin access.',
+        message: _unauthorizedMessage(role),
       );
     } on FirebaseAuthException catch (error) {
       return AdminAuthorizationResult(
         status: AdminAuthorizationStatus.error,
+        role: role,
         user: user,
         message: _mapFirebaseAuthError(error),
       );
     } catch (_) {
       return AdminAuthorizationResult(
         status: AdminAuthorizationStatus.error,
+        role: role,
         user: user,
         message:
-            'Could not verify admin access right now. Check your connection and try again.',
+            'Could not verify ${_roleLabel(role).toLowerCase()} access right now. Check your connection and try again.',
       );
     }
   }
@@ -155,6 +168,44 @@ class FirebaseAdminAuthService implements AdminAuthRepository {
         return 'Email/password sign-in is not enabled in Firebase Authentication yet.';
       default:
         return error.message ?? 'Admin login failed. Please try again.';
+    }
+  }
+
+  bool _hasPortalAccess({
+    required AdminPortalRole role,
+    required Map<String, dynamic> claims,
+  }) {
+    switch (role) {
+      case AdminPortalRole.admin:
+        final String email =
+            _firebaseAuth.currentUser?.email?.trim().toLowerCase() ?? '';
+        return claims['admin'] == true || _bootstrapAdminEmails.contains(email);
+      case AdminPortalRole.manager:
+        return claims['manager'] == true;
+      case AdminPortalRole.creator:
+        return claims['creator'] == true;
+    }
+  }
+
+  String _unauthorizedMessage(AdminPortalRole role) {
+    switch (role) {
+      case AdminPortalRole.admin:
+        return 'This account is signed in, but it does not have Mana Poster admin access.';
+      case AdminPortalRole.manager:
+        return 'This account is signed in, but it does not have Mana Poster manager access.';
+      case AdminPortalRole.creator:
+        return 'This account is signed in, but it does not have Mana Poster creator access.';
+    }
+  }
+
+  String _roleLabel(AdminPortalRole role) {
+    switch (role) {
+      case AdminPortalRole.admin:
+        return 'Admin';
+      case AdminPortalRole.manager:
+        return 'Manager';
+      case AdminPortalRole.creator:
+        return 'Creator';
     }
   }
 }

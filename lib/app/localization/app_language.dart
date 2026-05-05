@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 enum AppLanguage { telugu, hindi, english, tamil, kannada, malayalam }
 
@@ -83,394 +83,394 @@ mixin AppLanguageStateMixin<T extends StatefulWidget> on State<T> {
 }
 
 const Map<String, String> _landingHindiFallbacks = <String, String>{
-  'Home': 'होम',
-  'Features': 'फ़ीचर्स',
-  'Categories': 'कैटेगरी',
-  'Download': 'डाउनलोड',
-  'Admin Login': 'एडमिन लॉगिन',
-  'Sign Out': 'साइन आउट',
-  'Get App': 'ऐप पाएं',
-  'Ready Telugu templates': 'तैयार तेलुगु टेम्पलेट्स',
+  'Home': '\u0939\u094b\u092e',
+  'Features': '\u092b\u093c\u0940\u091a\u0930\u094d\u0938',
+  'Categories': '\u0915\u0948\u091f\u0947\u0917\u0930\u0940',
+  'Download': '\u0921\u093e\u0909\u0928\u0932\u094b\u0921',
+  'Admin Login': '\u090f\u0921\u092e\u093f\u0928 \u0932\u0949\u0917\u093f\u0928',
+  'Sign Out': '\u0938\u093e\u0907\u0928 \u0906\u0909\u091f',
+  'Get App': '\u0910\u092a \u092a\u093e\u090f\u0902',
+  'Ready Telugu templates': '\u0924\u0948\u092f\u093e\u0930 \u0924\u0947\u0932\u0941\u0917\u0941 \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938',
   'Start fast with reusable layouts for daily poster needs.':
-      'रोज़ाना पोस्टर ज़रूरतों के लिए reusable layouts के साथ जल्दी शुरू करें।',
-  'Photo + name personalization': 'फोटो + नाम पर्सनलाइज़ेशन',
+      '\u0930\u094b\u091c\u093c\u093e\u0928\u093e \u092a\u094b\u0938\u094d\u091f\u0930 \u091c\u093c\u0930\u0942\u0930\u0924\u094b\u0902 \u0915\u0947 \u0932\u093f\u090f reusable layouts \u0915\u0947 \u0938\u093e\u0925 \u091c\u0932\u094d\u0926\u0940 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902\u0964',
+  'Photo + name personalization': '\u092b\u094b\u091f\u094b + \u0928\u093e\u092e \u092a\u0930\u094d\u0938\u0928\u0932\u093e\u0907\u091c\u093c\u0947\u0936\u0928',
   'Update poster identity quickly without redesigning everything.':
-      'पूरा डिज़ाइन बदले बिना पोस्टर विवरण जल्दी अपडेट करें।',
-  'Fast sharing flow': 'तेज़ शेयरिंग फ्लो',
+      '\u092a\u0942\u0930\u093e \u0921\u093f\u091c\u093c\u093e\u0907\u0928 \u092c\u0926\u0932\u0947 \u092c\u093f\u0928\u093e \u092a\u094b\u0938\u094d\u091f\u0930 \u0935\u093f\u0935\u0930\u0923 \u091c\u0932\u094d\u0926\u0940 \u0905\u092a\u0921\u0947\u091f \u0915\u0930\u0947\u0902\u0964',
+  'Fast sharing flow': '\u0924\u0947\u091c\u093c \u0936\u0947\u092f\u0930\u093f\u0902\u0917 \u092b\u094d\u0932\u094b',
   'Export and share in a few taps for WhatsApp-first usage.':
-      'WhatsApp-first उपयोग के लिए कुछ taps में export और share करें।',
-  'Free and premium mix': 'फ्री और प्रीमियम मिक्स',
-  'Keep free discovery open while premium design quality stays clear.':
-      'फ्री डिस्कवरी खुली रखें और प्रीमियम डिज़ाइन क्वालिटी साफ़ दिखाएँ।',
-  'Festival posters': 'त्योहार पोस्टर्स',
+      'WhatsApp-first \u0909\u092a\u092f\u094b\u0917 \u0915\u0947 \u0932\u093f\u090f \u0915\u0941\u091b taps \u092e\u0947\u0902 export \u0914\u0930 share \u0915\u0930\u0947\u0902\u0964',
+  'Poster design mix': '\u092b\u094d\u0930\u0940 \u0914\u0930 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092e\u093f\u0915\u094d\u0938',
+  'Keep poster discovery open while design quality stays clear.':
+      '\u092b\u094d\u0930\u0940 \u0921\u093f\u0938\u094d\u0915\u0935\u0930\u0940 \u0916\u0941\u0932\u0940 \u0930\u0916\u0947\u0902 \u0914\u0930 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u0921\u093f\u091c\u093c\u093e\u0907\u0928 \u0915\u094d\u0935\u093e\u0932\u093f\u091f\u0940 \u0938\u093e\u092b\u093c \u0926\u093f\u0916\u093e\u090f\u0901\u0964',
+  'Festival posters': '\u0924\u094d\u092f\u094b\u0939\u093e\u0930 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
   'Date-based festival content can stay discoverable without manual browsing.':
-      'तारीख़ के हिसाब से त्योहार कंटेंट बिना manual browsing के दिख सकता है।',
-  'National days': 'राष्ट्रीय दिवस',
+      '\u0924\u093e\u0930\u0940\u0916\u093c \u0915\u0947 \u0939\u093f\u0938\u093e\u092c \u0938\u0947 \u0924\u094d\u092f\u094b\u0939\u093e\u0930 \u0915\u0902\u091f\u0947\u0902\u091f \u092c\u093f\u0928\u093e manual browsing \u0915\u0947 \u0926\u093f\u0916 \u0938\u0915\u0924\u093e \u0939\u0948\u0964',
+  'National days': '\u0930\u093e\u0937\u094d\u091f\u094d\u0930\u0940\u092f \u0926\u093f\u0935\u0938',
   'Important observances are easier to surface when the day matters.':
-      'ज़रूरी observances सही दिन पर आसानी से दिखते हैं।',
-  'Local event updates': 'लोकल इवेंट अपडेट्स',
+      '\u091c\u093c\u0930\u0942\u0930\u0940 observances \u0938\u0939\u0940 \u0926\u093f\u0928 \u092a\u0930 \u0906\u0938\u093e\u0928\u0940 \u0938\u0947 \u0926\u093f\u0916\u0924\u0947 \u0939\u0948\u0902\u0964',
+  'Local event updates': '\u0932\u094b\u0915\u0932 \u0907\u0935\u0947\u0902\u091f \u0905\u092a\u0921\u0947\u091f\u094d\u0938',
   'Telugu state relevance stays visible in one dedicated block.':
-      'तेलुगु राज्यों से जुड़ा कंटेंट एक dedicated block में दिखता रहता है।',
-  'Free Posters': 'फ्री पोस्टर्स',
-  'Starter': 'स्टार्टर',
-  'Basic templates': 'बेसिक टेम्पलेट्स',
-  'Quick sharing': 'क्विक शेयरिंग',
-  'Simple export': 'सिंपल एक्सपोर्ट',
-  'Premium Posters': 'प्रीमियम पोस्टर्स',
-  'Pro Access': 'प्रो एक्सेस',
-  'Fully editable posters': 'पूरी तरह editable पोस्टर्स',
-  'Premium templates': 'प्रीमियम टेम्पलेट्स',
-  'Unlimited customization': 'अनलिमिटेड कस्टमाइज़ेशन',
-  'HD export': 'HD एक्सपोर्ट',
+      '\u0924\u0947\u0932\u0941\u0917\u0941 \u0930\u093e\u091c\u094d\u092f\u094b\u0902 \u0938\u0947 \u091c\u0941\u0921\u093c\u093e \u0915\u0902\u091f\u0947\u0902\u091f \u090f\u0915 dedicated block \u092e\u0947\u0902 \u0926\u093f\u0916\u0924\u093e \u0930\u0939\u0924\u093e \u0939\u0948\u0964',
+  'Free Posters': '\u092b\u094d\u0930\u0940 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
+  'Starter': '\u0938\u094d\u091f\u093e\u0930\u094d\u091f\u0930',
+  'Basic templates': '\u092c\u0947\u0938\u093f\u0915 \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938',
+  'Quick sharing': '\u0915\u094d\u0935\u093f\u0915 \u0936\u0947\u092f\u0930\u093f\u0902\u0917',
+  'Simple export': '\u0938\u093f\u0902\u092a\u0932 \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f',
+  'Featured Posters': '\u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
+  'Pro Access': '\u092a\u094d\u0930\u094b \u090f\u0915\u094d\u0938\u0947\u0938',
+  'Fully editable posters': '\u092a\u0942\u0930\u0940 \u0924\u0930\u0939 editable \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
+  'More templates': '\u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938',
+  'Unlimited customization': '\u0905\u0928\u0932\u093f\u092e\u093f\u091f\u0947\u0921 \u0915\u0938\u094d\u091f\u092e\u093e\u0907\u091c\u093c\u0947\u0936\u0928',
+  'HD export': 'HD \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f',
   'Is Mana Poster AI free?': 'क्या Mana Poster AI फ्री है?',
-  'Free posters are available. Premium access unlocks stronger templates and deeper editing.':
-      'फ्री पोस्टर्स उपलब्ध हैं। प्रीमियम एक्सेस से बेहतर templates और deeper editing मिलती है।',
+  'Posters are available with stronger templates and deeper editing inside the app.':
+      '\u092b\u094d\u0930\u0940 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0902\u0964 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u090f\u0915\u094d\u0938\u0947\u0938 \u0938\u0947 \u092c\u0947\u0939\u0924\u0930 templates \u0914\u0930 deeper editing \u092e\u093f\u0932\u0924\u0940 \u0939\u0948\u0964',
   'Can I add photo and name?': 'क्या मैं फोटो और नाम जोड़ सकता हूँ?',
   'Yes. Personal details can be placed directly on poster templates.':
-      'हाँ। व्यक्तिगत विवरण सीधे पोस्टर टेम्पलेट्स पर रखे जा सकते हैं।',
+      '\u0939\u093e\u0901\u0964 \u0935\u094d\u092f\u0915\u094d\u0924\u093f\u0917\u0924 \u0935\u093f\u0935\u0930\u0923 \u0938\u0940\u0927\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938 \u092a\u0930 \u0930\u0916\u0947 \u091c\u093e \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
   'Are daily categories updated?': 'क्या daily categories अपडेट होती हैं?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page और app समय-आधारित categories और special poster needs दिखा सकते हैं।',
+      'Landing page \u0914\u0930 app \u0938\u092e\u092f-\u0906\u0927\u093e\u0930\u093f\u0924 categories \u0914\u0930 special poster needs \u0926\u093f\u0916\u093e \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
   'Can I export posters?': 'क्या मैं पोस्टर्स export कर सकता हूँ?',
   'Yes. Export and share flows stay simple for daily usage.':
-      'हाँ। रोज़ाना उपयोग के लिए export और share flow सरल रहता है।',
-  'Quick Links': 'क्विक लिंक्स',
-  'Legal': 'लीगल',
-  'Privacy Policy': 'प्राइवेसी पॉलिसी',
-  'Terms & Conditions': 'नियम और शर्तें',
-  'Contact': 'संपर्क',
-  'Telugu-first poster creation': 'तेलुगु-फर्स्ट पोस्टर क्रिएशन',
-  'Create Telugu Posters in Seconds': 'सेकंडों में तेलुगु पोस्टर बनाएं',
+      '\u0939\u093e\u0901\u0964 \u0930\u094b\u091c\u093c\u093e\u0928\u093e \u0909\u092a\u092f\u094b\u0917 \u0915\u0947 \u0932\u093f\u090f export \u0914\u0930 share flow \u0938\u0930\u0932 \u0930\u0939\u0924\u093e \u0939\u0948\u0964',
+  'Quick Links': '\u0915\u094d\u0935\u093f\u0915 \u0932\u093f\u0902\u0915\u094d\u0938',
+  'Legal': '\u0932\u0940\u0917\u0932',
+  'Privacy Policy': '\u092a\u094d\u0930\u093e\u0907\u0935\u0947\u0938\u0940 \u092a\u0949\u0932\u093f\u0938\u0940',
+  'Terms & Conditions': '\u0928\u093f\u092f\u092e \u0914\u0930 \u0936\u0930\u094d\u0924\u0947\u0902',
+  'Contact': '\u0938\u0902\u092a\u0930\u094d\u0915',
+  'Telugu-first poster creation': '\u0924\u0947\u0932\u0941\u0917\u0941-\u092b\u0930\u094d\u0938\u094d\u091f \u092a\u094b\u0938\u094d\u091f\u0930 \u0915\u094d\u0930\u093f\u090f\u0936\u0928',
+  'Create Telugu Posters in Seconds': '\u0938\u0947\u0915\u0902\u0921\u094b\u0902 \u092e\u0947\u0902 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u090f\u0902',
   'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster यूज़र्स को simple और fast workflow के साथ तेलुगु पोस्टर्स तुरंत create, customize और share करने देता है।',
-  'Watch Demo': 'डेमो देखें',
-  'Free & Premium Posters Available': 'फ्री और प्रीमियम पोस्टर्स उपलब्ध',
-  'App Preview': 'ऐप प्रीव्यू',
+      'Mana Poster \u092f\u0942\u091c\u093c\u0930\u094d\u0938 \u0915\u094b simple \u0914\u0930 fast workflow \u0915\u0947 \u0938\u093e\u0925 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0924\u0941\u0930\u0902\u0924 create, customize \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
+  'Watch Demo': '\u0921\u0947\u092e\u094b \u0926\u0947\u0916\u0947\u0902',
+  'Poster Collections Available': '\u092b\u094d\u0930\u0940 \u0914\u0930 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0909\u092a\u0932\u092c\u094d\u0927',
+  'App Preview': '\u0910\u092a \u092a\u094d\u0930\u0940\u0935\u094d\u092f\u0942',
   'A clear view of how poster flow looks inside the app':
-      'ऐप के अंदर पोस्टर फ्लो कैसा दिखता है, इसका स्पष्ट दृश्य',
+      '\u0910\u092a \u0915\u0947 \u0905\u0902\u0926\u0930 \u092a\u094b\u0938\u094d\u091f\u0930 \u092b\u094d\u0932\u094b \u0915\u0948\u0938\u093e \u0926\u093f\u0916\u0924\u093e \u0939\u0948, \u0907\u0938\u0915\u093e \u0938\u094d\u092a\u0937\u094d\u091f \u0926\u0943\u0936\u094d\u092f',
   'The flow is designed to stay simple from category selection to preview, personalization, and final sharing.':
-      'Category selection से preview, personalization और final sharing तक flow सरल रखा गया है।',
+      'Category selection \u0938\u0947 preview, personalization \u0914\u0930 final sharing \u0924\u0915 flow \u0938\u0930\u0932 \u0930\u0916\u093e \u0917\u092f\u093e \u0939\u0948\u0964',
   'Built for fast Telugu poster creation':
-      'तेज़ तेलुगु पोस्टर क्रिएशन के लिए बनाया गया',
+      '\u0924\u0947\u091c\u093c \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930 \u0915\u094d\u0930\u093f\u090f\u0936\u0928 \u0915\u0947 \u0932\u093f\u090f \u092c\u0928\u093e\u092f\u093e \u0917\u092f\u093e',
   'Templates, sharing, personalization, and daily-use category flows are organized to keep poster making quick and repeatable.':
-      'Templates, sharing, personalization और daily-use category flows पोस्टर बनाना तेज़ और repeatable रखने के लिए organized हैं।',
-  'Colorful Category Gallery': 'रंगीन कैटेगरी गैलरी',
+      'Templates, sharing, personalization \u0914\u0930 daily-use category flows \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u0928\u093e \u0924\u0947\u091c\u093c \u0914\u0930 repeatable \u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f organized \u0939\u0948\u0902\u0964',
+  'Colorful Category Gallery': '\u0930\u0902\u0917\u0940\u0928 \u0915\u0948\u091f\u0947\u0917\u0930\u0940 \u0917\u0948\u0932\u0930\u0940',
   'Each category opens like a poster wall so the landing page feels rich, bold, and closer to a real creative marketplace.':
-      'हर category poster wall की तरह खुलती है, इसलिए landing page rich, bold और creative marketplace जैसा लगता है।',
-  'Today\'s Special Posters': 'आज के स्पेशल पोस्टर्स',
-  'Every Day New Posters Automatically': 'हर दिन नए पोस्टर्स अपने आप',
+      '\u0939\u0930 category poster wall \u0915\u0940 \u0924\u0930\u0939 \u0916\u0941\u0932\u0924\u0940 \u0939\u0948, \u0907\u0938\u0932\u093f\u090f landing page rich, bold \u0914\u0930 creative marketplace \u091c\u0948\u0938\u093e \u0932\u0917\u0924\u093e \u0939\u0948\u0964',
+  'Today\'s Special Posters': '\u0906\u091c \u0915\u0947 \u0938\u094d\u092a\u0947\u0936\u0932 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
+  'Every Day New Posters Automatically': '\u0939\u0930 \u0926\u093f\u0928 \u0928\u090f \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0905\u092a\u0928\u0947 \u0906\u092a',
   'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      'Mana Poster चुनी हुई तारीख़ के आधार पर Festivals, Jayanthi, Vardhanthi, National Days और Telugu State Events के पोस्टर्स अपने आप दिखाता है।',
-  'Free vs Premium': 'फ्री बनाम प्रीमियम',
+      'Mana Poster \u091a\u0941\u0928\u0940 \u0939\u0941\u0908 \u0924\u093e\u0930\u0940\u0916\u093c \u0915\u0947 \u0906\u0927\u093e\u0930 \u092a\u0930 Festivals, Jayanthi, Vardhanthi, National Days \u0914\u0930 Telugu State Events \u0915\u0947 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0905\u092a\u0928\u0947 \u0906\u092a \u0926\u093f\u0916\u093e\u0924\u093e \u0939\u0948\u0964',
+  'Poster Options': '\u092b\u094d\u0930\u0940 \u092c\u0928\u093e\u092e \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e',
   'Choose the plan that fits your poster workflow':
-      'अपने पोस्टर workflow के लिए सही प्लान चुनें',
-  'Free covers quick daily use. Premium opens fully editable posters, stronger templates, better exports, and faster personalization.':
-      'फ्री quick daily use के लिए है। प्रीमियम में fully editable posters, better templates, better exports और faster personalization मिलता है।',
-  'Frequently asked questions': 'अक्सर पूछे जाने वाले सवाल',
+      '\u0905\u092a\u0928\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 workflow \u0915\u0947 \u0932\u093f\u090f \u0938\u0939\u0940 \u092a\u094d\u0932\u093e\u0928 \u091a\u0941\u0928\u0947\u0902',
+  'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
+      '\u092b\u094d\u0930\u0940 quick daily use \u0915\u0947 \u0932\u093f\u090f \u0939\u0948\u0964 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092e\u0947\u0902 fully editable posters, better templates, better exports \u0914\u0930 faster personalization \u092e\u093f\u0932\u0924\u093e \u0939\u0948\u0964',
+  'Frequently asked questions': '\u0905\u0915\u094d\u0938\u0930 \u092a\u0942\u091b\u0947 \u091c\u093e\u0928\u0947 \u0935\u093e\u0932\u0947 \u0938\u0935\u093e\u0932',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
-      'Templates, photos, HD downloads और daily Telugu poster updates से जुड़े सामान्य सवाल।',
-  'Final CTA': 'अंतिम CTA',
+      'Templates, photos, HD downloads \u0914\u0930 daily Telugu poster updates \u0938\u0947 \u091c\u0941\u0921\u093c\u0947 \u0938\u093e\u092e\u093e\u0928\u094d\u092f \u0938\u0935\u093e\u0932\u0964',
+  'Final CTA': '\u0905\u0902\u0924\u093f\u092e CTA',
   'Start Creating Beautiful Telugu Posters Today':
-      'आज ही सुंदर तेलुगु पोस्टर बनाना शुरू करें',
+      '\u0906\u091c \u0939\u0940 \u0938\u0941\u0902\u0926\u0930 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u0928\u093e \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
-      'Ready templates, Telugu-friendly typing, photo placement और fast sharing एक ही app में मिलते हैं।',
+      'Ready templates, Telugu-friendly typing, photo placement \u0914\u0930 fast sharing \u090f\u0915 \u0939\u0940 app \u092e\u0947\u0902 \u092e\u093f\u0932\u0924\u0947 \u0939\u0948\u0902\u0964',
   'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster रोज़ तेलुगु पोस्टर्स create और share करने का आसान तरीका है।',
+      'Mana Poster \u0930\u094b\u091c\u093c \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 create \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0915\u093e \u0906\u0938\u093e\u0928 \u0924\u0930\u0940\u0915\u093e \u0939\u0948\u0964',
 };
 
 const Map<String, String> _landingTamilFallbacks = <String, String>{
-  'Home': 'முகப்பு',
-  'Features': 'அம்சங்கள்',
-  'Categories': 'வகைகள்',
-  'Download': 'பதிவிறக்கம்',
-  'Admin Login': 'அட்மின் உள்நுழைவு',
-  'Sign Out': 'வெளியேறு',
-  'Get App': 'ஆப்பைப் பெறுங்கள்',
-  'Ready Telugu templates': 'தயார் தெலுங்கு டெம்ப்ளேட்டுகள்',
+  'Home': '\u0bae\u0bc1\u0b95\u0baa\u0bcd\u0baa\u0bc1',
+  'Features': '\u0b85\u0bae\u0bcd\u0b9a\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+  'Categories': '\u0bb5\u0b95\u0bc8\u0b95\u0bb3\u0bcd',
+  'Download': '\u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bae\u0bcd',
+  'Admin Login': '\u0b85\u0b9f\u0bcd\u0bae\u0bbf\u0ba9\u0bcd \u0b89\u0bb3\u0bcd\u0ba8\u0bc1\u0bb4\u0bc8\u0bb5\u0bc1',
+  'Sign Out': '\u0bb5\u0bc6\u0bb3\u0bbf\u0baf\u0bc7\u0bb1\u0bc1',
+  'Get App': '\u0b86\u0baa\u0bcd\u0baa\u0bc8\u0baa\u0bcd \u0baa\u0bc6\u0bb1\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+  'Ready Telugu templates': '\u0ba4\u0baf\u0bbe\u0bb0\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0b9f\u0bc6\u0bae\u0bcd\u0baa\u0bcd\u0bb3\u0bc7\u0b9f\u0bcd\u0b9f\u0bc1\u0b95\u0bb3\u0bcd',
   'Start fast with reusable layouts for daily poster needs.':
-      'தினசரி போஸ்டர் தேவைகளுக்கு reusable layouts உடன் விரைவாக தொடங்குங்கள்.',
-  'Photo + name personalization': 'புகைப்படம் + பெயர் தனிப்பயனாக்கம்',
+      '\u0ba4\u0bbf\u0ba9\u0b9a\u0bb0\u0bbf \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8\u0b95\u0bb3\u0bc1\u0b95\u0bcd\u0b95\u0bc1 reusable layouts \u0b89\u0b9f\u0ba9\u0bcd \u0bb5\u0bbf\u0bb0\u0bc8\u0bb5\u0bbe\u0b95 \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd.',
+  'Photo + name personalization': '\u0baa\u0bc1\u0b95\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bae\u0bcd + \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0ba4\u0ba9\u0bbf\u0baa\u0bcd\u0baa\u0baf\u0ba9\u0bbe\u0b95\u0bcd\u0b95\u0bae\u0bcd',
   'Update poster identity quickly without redesigning everything.':
-      'முழு வடிவமைப்பை மாற்றாமல் போஸ்டர் விவரங்களை விரைவாக புதுப்பிக்கவும்.',
-  'Fast sharing flow': 'வேகமான பகிர்வு ஓட்டம்',
+      '\u0bae\u0bc1\u0bb4\u0bc1 \u0bb5\u0b9f\u0bbf\u0bb5\u0bae\u0bc8\u0baa\u0bcd\u0baa\u0bc8 \u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bbe\u0bae\u0bb2\u0bcd \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bc8 \u0bb5\u0bbf\u0bb0\u0bc8\u0bb5\u0bbe\u0b95 \u0baa\u0bc1\u0ba4\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd.',
+  'Fast sharing flow': '\u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 \u0baa\u0b95\u0bbf\u0bb0\u0bcd\u0bb5\u0bc1 \u0b93\u0b9f\u0bcd\u0b9f\u0bae\u0bcd',
   'Export and share in a few taps for WhatsApp-first usage.':
-      'WhatsApp-first பயன்பாட்டிற்கு சில taps-ல் export செய்து share செய்யுங்கள்.',
-  'Free and premium mix': 'இலவச மற்றும் பிரீமியம் கலவை',
-  'Keep free discovery open while premium design quality stays clear.':
-      'இலவச discovery-ஐ திறந்தவாறு வைத்து, premium design quality-ஐ தெளிவாக காட்டுங்கள்.',
-  'Festival posters': 'திருவிழா போஸ்டர்கள்',
+      'WhatsApp-first \u0baa\u0baf\u0ba9\u0bcd\u0baa\u0bbe\u0b9f\u0bcd\u0b9f\u0bbf\u0bb1\u0bcd\u0b95\u0bc1 \u0b9a\u0bbf\u0bb2 taps-\u0bb2\u0bcd export \u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bc1 share \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd.',
+  'Poster design mix': '\u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b9f\u0bbf\u0b9a\u0bc8\u0ba9\u0bcd \u0b95\u0bb2\u0bb5\u0bc8',
+  'Keep poster discovery open while design quality stays clear.':
+      '\u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0ba4\u0bc7\u0b9f\u0bb2\u0bc8 \u0ba4\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0bc1 \u0bb5\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1, \u0b9f\u0bbf\u0b9a\u0bc8\u0ba9\u0bcd \u0ba4\u0bb0\u0bae\u0bcd \u0ba4\u0bc6\u0bb3\u0bbf\u0bb5\u0bbe\u0b95 \u0ba4\u0bc6\u0bb0\u0bbf\u0baf\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
+  'Festival posters': '\u0ba4\u0bbf\u0bb0\u0bc1\u0bb5\u0bbf\u0bb4\u0bbe \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
   'Date-based festival content can stay discoverable without manual browsing.':
-      'தேதி அடிப்படையிலான திருவிழா உள்ளடக்கம் manual browsing இன்றியும் காணப்படலாம்.',
-  'National days': 'தேசிய நாட்கள்',
+      '\u0ba4\u0bc7\u0ba4\u0bbf \u0b85\u0b9f\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bc8\u0baf\u0bbf\u0bb2\u0bbe\u0ba9 \u0ba4\u0bbf\u0bb0\u0bc1\u0bb5\u0bbf\u0bb4\u0bbe \u0b89\u0bb3\u0bcd\u0bb3\u0b9f\u0b95\u0bcd\u0b95\u0bae\u0bcd manual browsing \u0b87\u0ba9\u0bcd\u0bb1\u0bbf\u0baf\u0bc1\u0bae\u0bcd \u0b95\u0bbe\u0ba3\u0baa\u0bcd\u0baa\u0b9f\u0bb2\u0bbe\u0bae\u0bcd.',
+  'National days': '\u0ba4\u0bc7\u0b9a\u0bbf\u0baf \u0ba8\u0bbe\u0b9f\u0bcd\u0b95\u0bb3\u0bcd',
   'Important observances are easier to surface when the day matters.':
-      'முக்கிய observances சரியான நாளில் எளிதாக தெரிய வரும்.',
-  'Local event updates': 'உள்ளூர் நிகழ்வு புதுப்பிப்புகள்',
+      '\u0bae\u0bc1\u0b95\u0bcd\u0b95\u0bbf\u0baf observances \u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 \u0ba8\u0bbe\u0bb3\u0bbf\u0bb2\u0bcd \u0b8e\u0bb3\u0bbf\u0ba4\u0bbe\u0b95 \u0ba4\u0bc6\u0bb0\u0bbf\u0baf \u0bb5\u0bb0\u0bc1\u0bae\u0bcd.',
+  'Local event updates': '\u0b89\u0bb3\u0bcd\u0bb3\u0bc2\u0bb0\u0bcd \u0ba8\u0bbf\u0b95\u0bb4\u0bcd\u0bb5\u0bc1 \u0baa\u0bc1\u0ba4\u0bc1\u0baa\u0bcd\u0baa\u0bbf\u0baa\u0bcd\u0baa\u0bc1\u0b95\u0bb3\u0bcd',
   'Telugu state relevance stays visible in one dedicated block.':
-      'தெலுங்கு மாநிலங்களுக்கு தொடர்பானவை ஒரு dedicated block-ல் தெளிவாக இருக்கும்.',
-  'Free Posters': 'இலவச போஸ்டர்கள்',
-  'Starter': 'ஸ்டார்டர்',
-  'Basic templates': 'அடிப்படை டெம்ப்ளேட்டுகள்',
-  'Quick sharing': 'வேகமான பகிர்வு',
-  'Simple export': 'எளிய export',
-  'Premium Posters': 'பிரீமியம் போஸ்டர்கள்',
-  'Pro Access': 'ப்ரோ அணுகல்',
-  'Fully editable posters': 'முழுமையாக editable போஸ்டர்கள்',
-  'Premium templates': 'பிரீமியம் டெம்ப்ளேட்டுகள்',
-  'Unlimited customization': 'வரம்பற்ற customization',
+      '\u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0bae\u0bbe\u0ba8\u0bbf\u0bb2\u0b99\u0bcd\u0b95\u0bb3\u0bc1\u0b95\u0bcd\u0b95\u0bc1 \u0ba4\u0bca\u0b9f\u0bb0\u0bcd\u0baa\u0bbe\u0ba9\u0bb5\u0bc8 \u0b92\u0bb0\u0bc1 dedicated block-\u0bb2\u0bcd \u0ba4\u0bc6\u0bb3\u0bbf\u0bb5\u0bbe\u0b95 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
+  'Free Posters': '\u0b87\u0bb2\u0bb5\u0b9a \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
+  'Starter': '\u0bb8\u0bcd\u0b9f\u0bbe\u0bb0\u0bcd\u0b9f\u0bb0\u0bcd',
+  'Basic templates': '\u0b85\u0b9f\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bc8 \u0b9f\u0bc6\u0bae\u0bcd\u0baa\u0bcd\u0bb3\u0bc7\u0b9f\u0bcd\u0b9f\u0bc1\u0b95\u0bb3\u0bcd',
+  'Quick sharing': '\u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 \u0baa\u0b95\u0bbf\u0bb0\u0bcd\u0bb5\u0bc1',
+  'Simple export': '\u0b8e\u0bb3\u0bbf\u0baf export',
+  'Featured Posters': '\u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
+  'Pro Access': '\u0baa\u0bcd\u0bb0\u0bcb \u0b85\u0ba3\u0bc1\u0b95\u0bb2\u0bcd',
+  'Fully editable posters': '\u0bae\u0bc1\u0bb4\u0bc1\u0bae\u0bc8\u0baf\u0bbe\u0b95 editable \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
+  'More templates': '\u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd \u0b9f\u0bc6\u0bae\u0bcd\u0baa\u0bcd\u0bb3\u0bc7\u0b9f\u0bcd\u0b9f\u0bc1\u0b95\u0bb3\u0bcd',
+  'Unlimited customization': '\u0bb5\u0bb0\u0bae\u0bcd\u0baa\u0bb1\u0bcd\u0bb1 customization',
   'HD export': 'HD export',
   'Is Mana Poster AI free?': 'Mana Poster AI இலவசமா?',
-  'Free posters are available. Premium access unlocks stronger templates and deeper editing.':
-      'இலவச போஸ்டர்கள் கிடைக்கும். Premium access மூலம் மேம்பட்ட templates மற்றும் deeper editing திறக்கும்.',
+  'Posters are available with stronger templates and deeper editing inside the app.':
+      '\u0b87\u0bb2\u0bb5\u0b9a \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd. Premium access \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0bae\u0bc7\u0bae\u0bcd\u0baa\u0b9f\u0bcd\u0b9f templates \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd deeper editing \u0ba4\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
   'Can I add photo and name?': 'நான் புகைப்படம் மற்றும் பெயரை சேர்க்கலாமா?',
   'Yes. Personal details can be placed directly on poster templates.':
-      'ஆம். தனிப்பட்ட விவரங்களை நேரடியாக poster templates-ல் சேர்க்கலாம்.',
+      '\u0b86\u0bae\u0bcd. \u0ba4\u0ba9\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bc8 \u0ba8\u0bc7\u0bb0\u0b9f\u0bbf\u0baf\u0bbe\u0b95 poster templates-\u0bb2\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95\u0bb2\u0bbe\u0bae\u0bcd.',
   'Are daily categories updated?': 'தினசரி categories புதுப்பிக்கப்படுமா?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page மற்றும் app, time-based categories மற்றும் special poster needs-ஐ காட்டும்.',
+      'Landing page \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd app, time-based categories \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd special poster needs-\u0b90 \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
   'Can I export posters?': 'நான் போஸ்டர்களை export செய்யலாமா?',
   'Yes. Export and share flows stay simple for daily usage.':
-      'ஆம். தினசரி பயன்பாட்டிற்கு export மற்றும் share flow எளிமையாக இருக்கும்.',
-  'Quick Links': 'விரைவு இணைப்புகள்',
-  'Legal': 'சட்டம்',
-  'Privacy Policy': 'தனியுரிமைக் கொள்கை',
-  'Terms & Conditions': 'விதிமுறைகள் மற்றும் நிபந்தனைகள்',
-  'Contact': 'தொடர்பு',
-  'Telugu-first poster creation': 'தெலுங்கு-முதன்மை போஸ்டர் உருவாக்கம்',
+      '\u0b86\u0bae\u0bcd. \u0ba4\u0bbf\u0ba9\u0b9a\u0bb0\u0bbf \u0baa\u0baf\u0ba9\u0bcd\u0baa\u0bbe\u0b9f\u0bcd\u0b9f\u0bbf\u0bb1\u0bcd\u0b95\u0bc1 export \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd share flow \u0b8e\u0bb3\u0bbf\u0bae\u0bc8\u0baf\u0bbe\u0b95 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
+  'Quick Links': '\u0bb5\u0bbf\u0bb0\u0bc8\u0bb5\u0bc1 \u0b87\u0ba3\u0bc8\u0baa\u0bcd\u0baa\u0bc1\u0b95\u0bb3\u0bcd',
+  'Legal': '\u0b9a\u0b9f\u0bcd\u0b9f\u0bae\u0bcd',
+  'Privacy Policy': '\u0ba4\u0ba9\u0bbf\u0baf\u0bc1\u0bb0\u0bbf\u0bae\u0bc8\u0b95\u0bcd \u0b95\u0bca\u0bb3\u0bcd\u0b95\u0bc8',
+  'Terms & Conditions': '\u0bb5\u0bbf\u0ba4\u0bbf\u0bae\u0bc1\u0bb1\u0bc8\u0b95\u0bb3\u0bcd \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0ba8\u0bbf\u0baa\u0ba8\u0bcd\u0ba4\u0ba9\u0bc8\u0b95\u0bb3\u0bcd',
+  'Contact': '\u0ba4\u0bca\u0b9f\u0bb0\u0bcd\u0baa\u0bc1',
+  'Telugu-first poster creation': '\u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1-\u0bae\u0bc1\u0ba4\u0ba9\u0bcd\u0bae\u0bc8 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bae\u0bcd',
   'Create Telugu Posters in Seconds':
-      'விநாடிகளில் தெலுங்கு போஸ்டர்கள் உருவாக்குங்கள்',
+      '\u0bb5\u0bbf\u0ba8\u0bbe\u0b9f\u0bbf\u0b95\u0bb3\u0bbf\u0bb2\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
   'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster எளிய, வேகமான workflow மூலம் தெலுங்கு போஸ்டர்களை உடனே create, customize மற்றும் share செய்ய உதவுகிறது.',
-  'Watch Demo': 'டெமோ பார்க்கவும்',
-  'Free & Premium Posters Available':
-      'இலவச மற்றும் பிரீமியம் போஸ்டர்கள் கிடைக்கும்',
-  'App Preview': 'ஆப் முன்னோட்டம்',
+      'Mana Poster \u0b8e\u0bb3\u0bbf\u0baf, \u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 workflow \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0b9f\u0ba9\u0bc7 create, customize \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd share \u0b9a\u0bc6\u0baf\u0bcd\u0baf \u0b89\u0ba4\u0bb5\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.',
+  'Watch Demo': '\u0b9f\u0bc6\u0bae\u0bcb \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
+  'Poster Collections Available':
+      '\u0b87\u0bb2\u0bb5\u0b9a \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd',
+  'App Preview': '\u0b86\u0baa\u0bcd \u0bae\u0bc1\u0ba9\u0bcd\u0ba9\u0bcb\u0b9f\u0bcd\u0b9f\u0bae\u0bcd',
   'A clear view of how poster flow looks inside the app':
-      'ஆப்பிற்குள் poster flow எப்படி இருக்கிறது என்பதற்கான தெளிவான பார்வை',
+      '\u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb1\u0bcd\u0b95\u0bc1\u0bb3\u0bcd poster flow \u0b8e\u0baa\u0bcd\u0baa\u0b9f\u0bbf \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1 \u0b8e\u0ba9\u0bcd\u0baa\u0ba4\u0bb1\u0bcd\u0b95\u0bbe\u0ba9 \u0ba4\u0bc6\u0bb3\u0bbf\u0bb5\u0bbe\u0ba9 \u0baa\u0bbe\u0bb0\u0bcd\u0bb5\u0bc8',
   'The flow is designed to stay simple from category selection to preview, personalization, and final sharing.':
-      'Category selection முதல் preview, personalization, final sharing வரை flow எளிமையாக வடிவமைக்கப்பட்டுள்ளது.',
+      'Category selection \u0bae\u0bc1\u0ba4\u0bb2\u0bcd preview, personalization, final sharing \u0bb5\u0bb0\u0bc8 flow \u0b8e\u0bb3\u0bbf\u0bae\u0bc8\u0baf\u0bbe\u0b95 \u0bb5\u0b9f\u0bbf\u0bb5\u0bae\u0bc8\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0bc1\u0bb3\u0bcd\u0bb3\u0ba4\u0bc1.',
   'Built for fast Telugu poster creation':
-      'வேகமான தெலுங்கு போஸ்டர் உருவாக்கத்திற்காக உருவாக்கப்பட்டது',
+      '\u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0ba4\u0bcd\u0ba4\u0bbf\u0bb1\u0bcd\u0b95\u0bbe\u0b95 \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0ba4\u0bc1',
   'Templates, sharing, personalization, and daily-use category flows are organized to keep poster making quick and repeatable.':
-      'Templates, sharing, personalization மற்றும் daily-use category flows, poster making-ஐ வேகமாகவும் repeatable-ஆகவும் வைத்திருக்க ஒழுங்குபடுத்தப்பட்டுள்ளன.',
-  'Colorful Category Gallery': 'நிறமுள்ள வகை காட்சி',
+      'Templates, sharing, personalization \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd daily-use category flows, poster making-\u0b90 \u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0b95\u0bb5\u0bc1\u0bae\u0bcd repeatable-\u0b86\u0b95\u0bb5\u0bc1\u0bae\u0bcd \u0bb5\u0bc8\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0\u0bc1\u0b95\u0bcd\u0b95 \u0b92\u0bb4\u0bc1\u0b99\u0bcd\u0b95\u0bc1\u0baa\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0bc1\u0bb3\u0bcd\u0bb3\u0ba9.',
+  'Colorful Category Gallery': '\u0ba8\u0bbf\u0bb1\u0bae\u0bc1\u0bb3\u0bcd\u0bb3 \u0bb5\u0b95\u0bc8 \u0b95\u0bbe\u0b9f\u0bcd\u0b9a\u0bbf',
   'Each category opens like a poster wall so the landing page feels rich, bold, and closer to a real creative marketplace.':
-      'ஒவ்வொரு category-யும் poster wall போல திறக்கிறது; அதனால் landing page செழுமையாகவும் bold-ஆகவும் creative marketplace போலவும் தோன்றுகிறது.',
-  'Today\'s Special Posters': 'இன்றைய சிறப்பு போஸ்டர்கள்',
+      '\u0b92\u0bb5\u0bcd\u0bb5\u0bca\u0bb0\u0bc1 category-\u0baf\u0bc1\u0bae\u0bcd poster wall \u0baa\u0bcb\u0bb2 \u0ba4\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1; \u0b85\u0ba4\u0ba9\u0bbe\u0bb2\u0bcd landing page \u0b9a\u0bc6\u0bb4\u0bc1\u0bae\u0bc8\u0baf\u0bbe\u0b95\u0bb5\u0bc1\u0bae\u0bcd bold-\u0b86\u0b95\u0bb5\u0bc1\u0bae\u0bcd creative marketplace \u0baa\u0bcb\u0bb2\u0bb5\u0bc1\u0bae\u0bcd \u0ba4\u0bcb\u0ba9\u0bcd\u0bb1\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.',
+  'Today\'s Special Posters': '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
   'Every Day New Posters Automatically':
-      'ஒவ்வொரு நாளும் புதிய போஸ்டர்கள் தானாக',
+      '\u0b92\u0bb5\u0bcd\u0bb5\u0bca\u0bb0\u0bc1 \u0ba8\u0bbe\u0bb3\u0bc1\u0bae\u0bcd \u0baa\u0bc1\u0ba4\u0bbf\u0baf \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bbe\u0ba9\u0bbe\u0b95',
   'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      'தேர்ந்தெடுத்த தேதியின் அடிப்படையில் Festivals, Jayanthi, Vardhanthi, National Days மற்றும் Telugu State Events போஸ்டர்களை Mana Poster தானாக காட்டும்.',
-  'Free vs Premium': 'இலவசம் vs பிரீமியம்',
+      '\u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0ba4\u0bc7\u0ba4\u0bbf\u0baf\u0bbf\u0ba9\u0bcd \u0b85\u0b9f\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bc8\u0baf\u0bbf\u0bb2\u0bcd Festivals, Jayanthi, Vardhanthi, National Days \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd Telugu State Events \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 Mana Poster \u0ba4\u0bbe\u0ba9\u0bbe\u0b95 \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
+  'Poster Options': '\u0b87\u0bb2\u0bb5\u0b9a\u0bae\u0bcd vs \u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd',
   'Choose the plan that fits your poster workflow':
-      'உங்கள் poster workflow-க்கு பொருத்தமான திட்டத்தைத் தேர்ந்தெடுக்கவும்',
-  'Free covers quick daily use. Premium opens fully editable posters, stronger templates, better exports, and faster personalization.':
-      'Free, quick daily use-ஐ கையாளும். Premium மூலம் fully editable posters, stronger templates, better exports மற்றும் faster personalization கிடைக்கும்.',
-  'Frequently asked questions': 'அடிக்கடி கேட்கப்படும் கேள்விகள்',
+      '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd poster workflow-\u0b95\u0bcd\u0b95\u0bc1 \u0baa\u0bca\u0bb0\u0bc1\u0ba4\u0bcd\u0ba4\u0bae\u0bbe\u0ba9 \u0ba4\u0bbf\u0b9f\u0bcd\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8\u0ba4\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
+  'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
+      'Free, quick daily use-\u0b90 \u0b95\u0bc8\u0baf\u0bbe\u0bb3\u0bc1\u0bae\u0bcd. Premium \u0bae\u0bc2\u0bb2\u0bae\u0bcd fully editable posters, stronger templates, better exports \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd faster personalization \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
+  'Frequently asked questions': '\u0b85\u0b9f\u0bbf\u0b95\u0bcd\u0b95\u0b9f\u0bbf \u0b95\u0bc7\u0b9f\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0b95\u0bc7\u0bb3\u0bcd\u0bb5\u0bbf\u0b95\u0bb3\u0bcd',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
-      'Templates, photos, HD downloads மற்றும் தினசரி Telugu poster updates பற்றிய பொதுவான கேள்விகள்.',
-  'Final CTA': 'இறுதி CTA',
+      'Templates, photos, HD downloads \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0ba4\u0bbf\u0ba9\u0b9a\u0bb0\u0bbf Telugu poster updates \u0baa\u0bb1\u0bcd\u0bb1\u0bbf\u0baf \u0baa\u0bca\u0ba4\u0bc1\u0bb5\u0bbe\u0ba9 \u0b95\u0bc7\u0bb3\u0bcd\u0bb5\u0bbf\u0b95\u0bb3\u0bcd.',
+  'Final CTA': '\u0b87\u0bb1\u0bc1\u0ba4\u0bbf CTA',
   'Start Creating Beautiful Telugu Posters Today':
-      'இன்றே அழகான தெலுங்கு போஸ்டர்கள் உருவாக்கத் தொடங்குங்கள்',
+      '\u0b87\u0ba9\u0bcd\u0bb1\u0bc7 \u0b85\u0bb4\u0b95\u0bbe\u0ba9 \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0ba4\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
-      'Ready templates, Telugu-friendly typing, photo placement மற்றும் fast sharing அனைத்தும் ஒரே app-ல் கிடைக்கின்றன.',
+      'Ready templates, Telugu-friendly typing, photo placement \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd fast sharing \u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1\u0bae\u0bcd \u0b92\u0bb0\u0bc7 app-\u0bb2\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bbf\u0ba9\u0bcd\u0bb1\u0ba9.',
   'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster தினமும் தெலுங்கு போஸ்டர்களை உருவாக்கவும் பகிரவும் எளிய வழி.',
+      'Mana Poster \u0ba4\u0bbf\u0ba9\u0bae\u0bc1\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd \u0baa\u0b95\u0bbf\u0bb0\u0bb5\u0bc1\u0bae\u0bcd \u0b8e\u0bb3\u0bbf\u0baf \u0bb5\u0bb4\u0bbf.',
 };
 
 const Map<String, String> _landingKannadaFallbacks = <String, String>{
-  'Home': 'ಮುಖಪುಟ',
-  'Features': 'ವೈಶಿಷ್ಟ್ಯಗಳು',
-  'Categories': 'ವರ್ಗಗಳು',
-  'Download': 'ಡೌನ್‌ಲೋಡ್',
-  'Admin Login': 'ಅಡ್ಮಿನ್ ಲಾಗಿನ್',
-  'Sign Out': 'ಸೈನ್ ಔಟ್',
-  'Get App': 'ಆಪ್ ಪಡೆಯಿರಿ',
-  'Ready Telugu templates': 'ಸಿದ್ಧ ತೆಲುಗು ಟೆಂಪ್ಲೇಟ್‌ಗಳು',
+  'Home': '\u0cae\u0cc1\u0c96\u0caa\u0cc1\u0c9f',
+  'Features': '\u0cb5\u0cc8\u0cb6\u0cbf\u0cb7\u0ccd\u0c9f\u0ccd\u0caf\u0c97\u0cb3\u0cc1',
+  'Categories': '\u0cb5\u0cb0\u0ccd\u0c97\u0c97\u0cb3\u0cc1',
+  'Download': '\u0ca1\u0ccc\u0ca8\u0ccd\u200c\u0cb2\u0ccb\u0ca1\u0ccd',
+  'Admin Login': '\u0c85\u0ca1\u0ccd\u0cae\u0cbf\u0ca8\u0ccd \u0cb2\u0cbe\u0c97\u0cbf\u0ca8\u0ccd',
+  'Sign Out': '\u0cb8\u0cc8\u0ca8\u0ccd \u0c94\u0c9f\u0ccd',
+  'Get App': '\u0c86\u0caa\u0ccd \u0caa\u0ca1\u0cc6\u0caf\u0cbf\u0cb0\u0cbf',
+  'Ready Telugu templates': '\u0cb8\u0cbf\u0ca6\u0ccd\u0ca7 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Start fast with reusable layouts for daily poster needs.':
-      'ದೈನಂದಿನ ಪೋಸ್ಟರ್ ಅಗತ್ಯಗಳಿಗೆ reusable layouts ಜೊತೆಗೆ ಬೇಗ ಆರಂಭಿಸಿ.',
-  'Photo + name personalization': 'ಫೋಟೋ + ಹೆಸರು ವೈಯಕ್ತೀಕರಣ',
+      '\u0ca6\u0cc8\u0ca8\u0c82\u0ca6\u0cbf\u0ca8 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0c85\u0c97\u0ca4\u0ccd\u0caf\u0c97\u0cb3\u0cbf\u0c97\u0cc6 reusable layouts \u0c9c\u0cca\u0ca4\u0cc6\u0c97\u0cc6 \u0cac\u0cc7\u0c97 \u0c86\u0cb0\u0c82\u0cad\u0cbf\u0cb8\u0cbf.',
+  'Photo + name personalization': '\u0cab\u0ccb\u0c9f\u0ccb + \u0cb9\u0cc6\u0cb8\u0cb0\u0cc1 \u0cb5\u0cc8\u0caf\u0c95\u0ccd\u0ca4\u0cc0\u0c95\u0cb0\u0ca3',
   'Update poster identity quickly without redesigning everything.':
-      'ಪೂರ್ತಿ ಡಿಸೈನ್ ಬದಲಿಸದೆ ಪೋಸ್ಟರ್ ವಿವರಗಳನ್ನು ಬೇಗ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ.',
-  'Fast sharing flow': 'ವೇಗವಾದ ಹಂಚಿಕೆ ಪ್ರವಾಹ',
+      '\u0caa\u0cc2\u0cb0\u0ccd\u0ca4\u0cbf \u0ca1\u0cbf\u0cb8\u0cc8\u0ca8\u0ccd \u0cac\u0ca6\u0cb2\u0cbf\u0cb8\u0ca6\u0cc6 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0cb5\u0cbf\u0cb5\u0cb0\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cac\u0cc7\u0c97 \u0c85\u0caa\u0ccd\u200c\u0ca1\u0cc7\u0c9f\u0ccd \u0cae\u0cbe\u0ca1\u0cbf.',
+  'Fast sharing flow': '\u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 \u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cc6 \u0caa\u0ccd\u0cb0\u0cb5\u0cbe\u0cb9',
   'Export and share in a few taps for WhatsApp-first usage.':
-      'WhatsApp-first ಬಳಕೆಗಾಗಿ ಕೆಲವು taps-ಗಳಲ್ಲಿ export ಮಾಡಿ share ಮಾಡಿ.',
-  'Free and premium mix': 'ಉಚಿತ ಮತ್ತು ಪ್ರೀಮಿಯಂ ಮಿಶ್ರಣ',
-  'Keep free discovery open while premium design quality stays clear.':
-      'Free discovery ತೆರೆದಿರಲಿ, premium design quality ಸ್ಪಷ್ಟವಾಗಿರಲಿ.',
-  'Festival posters': 'ಹಬ್ಬದ ಪೋಸ್ಟರ್‌ಗಳು',
+      'WhatsApp-first \u0cac\u0cb3\u0c95\u0cc6\u0c97\u0cbe\u0c97\u0cbf \u0c95\u0cc6\u0cb2\u0cb5\u0cc1 taps-\u0c97\u0cb3\u0cb2\u0ccd\u0cb2\u0cbf export \u0cae\u0cbe\u0ca1\u0cbf share \u0cae\u0cbe\u0ca1\u0cbf.',
+  'Poster design mix': '\u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca1\u0cbf\u0c9c\u0cc8\u0ca8\u0ccd \u0cae\u0cbf\u0c95\u0ccd\u0cb8\u0ccd',
+  'Keep poster discovery open while design quality stays clear.':
+      '\u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca4\u0cc6\u0cb0\u0cb5\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca4\u0cc6\u0cb0\u0cc6\u0ca6\u0cbf\u0c9f\u0ccd\u0c9f\u0cc1, \u0ca1\u0cbf\u0c9c\u0cc8\u0ca8\u0ccd \u0ca4\u0cb0 \u0cb8\u0ccd\u0caa\u0cb7\u0ccd\u0c9f\u0cb5\u0cbe\u0c97\u0cbf \u0c95\u0cbe\u0ca3\u0cbf\u0cb8\u0cc1\u0cb5\u0c82\u0ca4\u0cc6 \u0cae\u0cbe\u0ca1\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Festival posters': '\u0cb9\u0cac\u0ccd\u0cac\u0ca6 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Date-based festival content can stay discoverable without manual browsing.':
-      'ದಿನಾಂಕ ಆಧಾರಿತ ಹಬ್ಬದ ವಿಷಯ manual browsing ಇಲ್ಲದೆ ಕಾಣಿಸಬಹುದು.',
-  'National days': 'ರಾಷ್ಟ್ರೀಯ ದಿನಗಳು',
+      '\u0ca6\u0cbf\u0ca8\u0cbe\u0c82\u0c95 \u0c86\u0ca7\u0cbe\u0cb0\u0cbf\u0ca4 \u0cb9\u0cac\u0ccd\u0cac\u0ca6 \u0cb5\u0cbf\u0cb7\u0caf manual browsing \u0c87\u0cb2\u0ccd\u0cb2\u0ca6\u0cc6 \u0c95\u0cbe\u0ca3\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
+  'National days': '\u0cb0\u0cbe\u0cb7\u0ccd\u0c9f\u0ccd\u0cb0\u0cc0\u0caf \u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
   'Important observances are easier to surface when the day matters.':
-      'ಮುಖ್ಯ observances ಸರಿಯಾದ ದಿನದಲ್ಲಿ ಸುಲಭವಾಗಿ ಕಾಣುತ್ತವೆ.',
-  'Local event updates': 'ಸ್ಥಳೀಯ ಈವೆಂಟ್ ಅಪ್‌ಡೇಟ್‌ಗಳು',
+      '\u0cae\u0cc1\u0c96\u0ccd\u0caf observances \u0cb8\u0cb0\u0cbf\u0caf\u0cbe\u0ca6 \u0ca6\u0cbf\u0ca8\u0ca6\u0cb2\u0ccd\u0cb2\u0cbf \u0cb8\u0cc1\u0cb2\u0cad\u0cb5\u0cbe\u0c97\u0cbf \u0c95\u0cbe\u0ca3\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
+  'Local event updates': '\u0cb8\u0ccd\u0ca5\u0cb3\u0cc0\u0caf \u0c88\u0cb5\u0cc6\u0c82\u0c9f\u0ccd \u0c85\u0caa\u0ccd\u200c\u0ca1\u0cc7\u0c9f\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Telugu state relevance stays visible in one dedicated block.':
-      'ತೆಲುಗು ರಾಜ್ಯಗಳಿಗೆ ಸಂಬಂಧಿಸಿದ ವಿಷಯ ಒಂದು dedicated block-ನಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.',
-  'Free Posters': 'ಉಚಿತ ಪೋಸ್ಟರ್‌ಗಳು',
-  'Starter': 'ಸ್ಟಾರ್ಟರ್',
-  'Basic templates': 'ಮೂಲಭೂತ ಟೆಂಪ್ಲೇಟ್‌ಗಳು',
-  'Quick sharing': 'ಕ್ವಿಕ್ ಶೇರಿಂಗ್',
-  'Simple export': 'ಸರಳ export',
-  'Premium Posters': 'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್‌ಗಳು',
-  'Pro Access': 'ಪ್ರೋ ಆಕ್ಸೆಸ್',
-  'Fully editable posters': 'ಪೂರ್ಣ editable ಪೋಸ್ಟರ್‌ಗಳು',
-  'Premium templates': 'ಪ್ರೀಮಿಯಂ ಟೆಂಪ್ಲೇಟ್‌ಗಳು',
-  'Unlimited customization': 'ಅನಿಯಮಿತ customization',
+      '\u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0cb0\u0cbe\u0c9c\u0ccd\u0caf\u0c97\u0cb3\u0cbf\u0c97\u0cc6 \u0cb8\u0c82\u0cac\u0c82\u0ca7\u0cbf\u0cb8\u0cbf\u0ca6 \u0cb5\u0cbf\u0cb7\u0caf \u0c92\u0c82\u0ca6\u0cc1 dedicated block-\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0c95\u0cbe\u0ca3\u0cbf\u0cb8\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Free Posters': '\u0c89\u0c9a\u0cbf\u0ca4 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
+  'Starter': '\u0cb8\u0ccd\u0c9f\u0cbe\u0cb0\u0ccd\u0c9f\u0cb0\u0ccd',
+  'Basic templates': '\u0cae\u0cc2\u0cb2\u0cad\u0cc2\u0ca4 \u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd\u200c\u0c97\u0cb3\u0cc1',
+  'Quick sharing': '\u0c95\u0ccd\u0cb5\u0cbf\u0c95\u0ccd \u0cb6\u0cc7\u0cb0\u0cbf\u0c82\u0c97\u0ccd',
+  'Simple export': '\u0cb8\u0cb0\u0cb3 export',
+  'Featured Posters': '\u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
+  'Pro Access': '\u0caa\u0ccd\u0cb0\u0ccb \u0c86\u0c95\u0ccd\u0cb8\u0cc6\u0cb8\u0ccd',
+  'Fully editable posters': '\u0caa\u0cc2\u0cb0\u0ccd\u0ca3 editable \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
+  'More templates': '\u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82 \u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd\u200c\u0c97\u0cb3\u0cc1',
+  'Unlimited customization': '\u0c85\u0ca8\u0cbf\u0caf\u0cae\u0cbf\u0ca4 customization',
   'HD export': 'HD export',
   'Is Mana Poster AI free?': 'Mana Poster AI ಉಚಿತವೇ?',
-  'Free posters are available. Premium access unlocks stronger templates and deeper editing.':
-      'ಉಚಿತ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯ. Premium access ಮೂಲಕ ಉತ್ತಮ templates ಮತ್ತು deeper editing ದೊರೆಯುತ್ತದೆ.',
+  'Posters are available with stronger templates and deeper editing inside the app.':
+      '\u0c89\u0c9a\u0cbf\u0ca4 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb2\u0cad\u0ccd\u0caf. Premium access \u0cae\u0cc2\u0cb2\u0c95 \u0c89\u0ca4\u0ccd\u0ca4\u0cae templates \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 deeper editing \u0ca6\u0cca\u0cb0\u0cc6\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
   'Can I add photo and name?': 'ನಾನು ಫೋಟೋ ಮತ್ತು ಹೆಸರು ಸೇರಿಸಬಹುದೇ?',
   'Yes. Personal details can be placed directly on poster templates.':
-      'ಹೌದು. ವೈಯಕ್ತಿಕ ವಿವರಗಳನ್ನು ನೇರವಾಗಿ poster templates ಮೇಲೆ ಇರಿಸಬಹುದು.',
+      '\u0cb9\u0ccc\u0ca6\u0cc1. \u0cb5\u0cc8\u0caf\u0c95\u0ccd\u0ca4\u0cbf\u0c95 \u0cb5\u0cbf\u0cb5\u0cb0\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca8\u0cc7\u0cb0\u0cb5\u0cbe\u0c97\u0cbf poster templates \u0cae\u0cc7\u0cb2\u0cc6 \u0c87\u0cb0\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
   'Are daily categories updated?': 'ದೈನಂದಿನ categories update ಆಗುತ್ತವೆಯೇ?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page ಮತ್ತು app time-based categories ಮತ್ತು special poster needs ತೋರಿಸಬಹುದು.',
+      'Landing page \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 app time-based categories \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 special poster needs \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
   'Can I export posters?': 'ನಾನು ಪೋಸ್ಟರ್‌ಗಳನ್ನು export ಮಾಡಬಹುದೇ?',
   'Yes. Export and share flows stay simple for daily usage.':
-      'ಹೌದು. ದೈನಂದಿನ ಬಳಕೆಗೆ export ಮತ್ತು share flow ಸರಳವಾಗಿರುತ್ತದೆ.',
-  'Quick Links': 'ಕ್ವಿಕ್ ಲಿಂಕ್ಸ್',
-  'Legal': 'ಕಾನೂನು',
-  'Privacy Policy': 'ಗೌಪ್ಯತಾ ನೀತಿ',
-  'Terms & Conditions': 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು',
-  'Contact': 'ಸಂಪರ್ಕ',
-  'Telugu-first poster creation': 'ತೆಲುಗು-ಮೊದಲ ಪೋಸ್ಟರ್ ನಿರ್ಮಾಣ',
+      '\u0cb9\u0ccc\u0ca6\u0cc1. \u0ca6\u0cc8\u0ca8\u0c82\u0ca6\u0cbf\u0ca8 \u0cac\u0cb3\u0c95\u0cc6\u0c97\u0cc6 export \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share flow \u0cb8\u0cb0\u0cb3\u0cb5\u0cbe\u0c97\u0cbf\u0cb0\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Quick Links': '\u0c95\u0ccd\u0cb5\u0cbf\u0c95\u0ccd \u0cb2\u0cbf\u0c82\u0c95\u0ccd\u0cb8\u0ccd',
+  'Legal': '\u0c95\u0cbe\u0ca8\u0cc2\u0ca8\u0cc1',
+  'Privacy Policy': '\u0c97\u0ccc\u0caa\u0ccd\u0caf\u0ca4\u0cbe \u0ca8\u0cc0\u0ca4\u0cbf',
+  'Terms & Conditions': '\u0ca8\u0cbf\u0caf\u0cae\u0c97\u0cb3\u0cc1 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb7\u0cb0\u0ca4\u0ccd\u0ca4\u0cc1\u0c97\u0cb3\u0cc1',
+  'Contact': '\u0cb8\u0c82\u0caa\u0cb0\u0ccd\u0c95',
+  'Telugu-first poster creation': '\u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1-\u0cae\u0cca\u0ca6\u0cb2 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca8\u0cbf\u0cb0\u0ccd\u0cae\u0cbe\u0ca3',
   'Create Telugu Posters in Seconds':
-      'ಸೆಕೆಂಡುಗಳಲ್ಲಿ ತೆಲುಗು ಪೋಸ್ಟರ್‌ಗಳನ್ನು ರಚಿಸಿ',
+      '\u0cb8\u0cc6\u0c95\u0cc6\u0c82\u0ca1\u0cc1\u0c97\u0cb3\u0cb2\u0ccd\u0cb2\u0cbf \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cbf',
   'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster ಸರಳ ಮತ್ತು ವೇಗವಾದ workflow ಜೊತೆ ಬಳಕೆದಾರರಿಗೆ ತೆಲುಗು ಪೋಸ್ಟರ್‌ಗಳನ್ನು ತಕ್ಷಣ create, customize ಮತ್ತು share ಮಾಡಲು ಸಹಾಯ ಮಾಡುತ್ತದೆ.',
-  'Watch Demo': 'ಡೆಮೋ ನೋಡಿ',
-  'Free & Premium Posters Available': 'ಉಚಿತ ಮತ್ತು ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯ',
-  'App Preview': 'ಆಪ್ ಪೂರ್ವವೀಕ್ಷಣೆ',
+      'Mana Poster \u0cb8\u0cb0\u0cb3 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 workflow \u0c9c\u0cca\u0ca4\u0cc6 \u0cac\u0cb3\u0c95\u0cc6\u0ca6\u0cbe\u0cb0\u0cb0\u0cbf\u0c97\u0cc6 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca4\u0c95\u0ccd\u0cb7\u0ca3 create, customize \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 \u0cb8\u0cb9\u0cbe\u0caf \u0cae\u0cbe\u0ca1\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Watch Demo': '\u0ca1\u0cc6\u0cae\u0ccb \u0ca8\u0ccb\u0ca1\u0cbf',
+  'Poster Collections Available': '\u0c89\u0c9a\u0cbf\u0ca4 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb2\u0cad\u0ccd\u0caf',
+  'App Preview': '\u0c86\u0caa\u0ccd \u0caa\u0cc2\u0cb0\u0ccd\u0cb5\u0cb5\u0cc0\u0c95\u0ccd\u0cb7\u0ca3\u0cc6',
   'A clear view of how poster flow looks inside the app':
-      'ಆಪ್ ಒಳಗೆ poster flow ಹೇಗೆ ಕಾಣುತ್ತದೆ ಎಂಬುದರ ಸ್ಪಷ್ಟ ನೋಟ',
+      '\u0c86\u0caa\u0ccd \u0c92\u0cb3\u0c97\u0cc6 poster flow \u0cb9\u0cc7\u0c97\u0cc6 \u0c95\u0cbe\u0ca3\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6 \u0c8e\u0c82\u0cac\u0cc1\u0ca6\u0cb0 \u0cb8\u0ccd\u0caa\u0cb7\u0ccd\u0c9f \u0ca8\u0ccb\u0c9f',
   'The flow is designed to stay simple from category selection to preview, personalization, and final sharing.':
-      'Category selection ಇಂದ preview, personalization ಮತ್ತು final sharing ವರೆಗೆ flow ಸರಳವಾಗಿರಲು ವಿನ್ಯಾಸಗೊಳಿಸಲಾಗಿದೆ.',
+      'Category selection \u0c87\u0c82\u0ca6 preview, personalization \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 final sharing \u0cb5\u0cb0\u0cc6\u0c97\u0cc6 flow \u0cb8\u0cb0\u0cb3\u0cb5\u0cbe\u0c97\u0cbf\u0cb0\u0cb2\u0cc1 \u0cb5\u0cbf\u0ca8\u0ccd\u0caf\u0cbe\u0cb8\u0c97\u0cca\u0cb3\u0cbf\u0cb8\u0cb2\u0cbe\u0c97\u0cbf\u0ca6\u0cc6.',
   'Built for fast Telugu poster creation':
-      'ವೇಗವಾದ ತೆಲುಗು ಪೋಸ್ಟರ್ ನಿರ್ಮಾಣಕ್ಕಾಗಿ ನಿರ್ಮಿಸಲಾಗಿದೆ',
+      '\u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca8\u0cbf\u0cb0\u0ccd\u0cae\u0cbe\u0ca3\u0c95\u0ccd\u0c95\u0cbe\u0c97\u0cbf \u0ca8\u0cbf\u0cb0\u0ccd\u0cae\u0cbf\u0cb8\u0cb2\u0cbe\u0c97\u0cbf\u0ca6\u0cc6',
   'Templates, sharing, personalization, and daily-use category flows are organized to keep poster making quick and repeatable.':
-      'Templates, sharing, personalization ಮತ್ತು daily-use category flows ಪೋಸ್ಟರ್ ಮಾಡುವುದನ್ನು ವೇಗವಾಗಿ ಮತ್ತು repeatable ಆಗಿರಲು ವ್ಯವಸ್ಥಿತವಾಗಿವೆ.',
-  'Colorful Category Gallery': 'ಬಣ್ಣಬಣ್ಣದ ವರ್ಗ ಗ್ಯಾಲರಿ',
+      'Templates, sharing, personalization \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 daily-use category flows \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0cae\u0cbe\u0ca1\u0cc1\u0cb5\u0cc1\u0ca6\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0c97\u0cbf \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 repeatable \u0c86\u0c97\u0cbf\u0cb0\u0cb2\u0cc1 \u0cb5\u0ccd\u0caf\u0cb5\u0cb8\u0ccd\u0ca5\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf\u0cb5\u0cc6.',
+  'Colorful Category Gallery': '\u0cac\u0ca3\u0ccd\u0ca3\u0cac\u0ca3\u0ccd\u0ca3\u0ca6 \u0cb5\u0cb0\u0ccd\u0c97 \u0c97\u0ccd\u0caf\u0cbe\u0cb2\u0cb0\u0cbf',
   'Each category opens like a poster wall so the landing page feels rich, bold, and closer to a real creative marketplace.':
-      'ಪ್ರತಿ category poster wall ಹಾಗೆ ತೆರೆದು landing page rich, bold ಮತ್ತು creative marketplace ಹತ್ತಿರವಾಗಿರುವಂತೆ ಕಾಣುತ್ತದೆ.',
-  'Today\'s Special Posters': 'ಇಂದಿನ ವಿಶೇಷ ಪೋಸ್ಟರ್‌ಗಳು',
+      '\u0caa\u0ccd\u0cb0\u0ca4\u0cbf category poster wall \u0cb9\u0cbe\u0c97\u0cc6 \u0ca4\u0cc6\u0cb0\u0cc6\u0ca6\u0cc1 landing page rich, bold \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 creative marketplace \u0cb9\u0ca4\u0ccd\u0ca4\u0cbf\u0cb0\u0cb5\u0cbe\u0c97\u0cbf\u0cb0\u0cc1\u0cb5\u0c82\u0ca4\u0cc6 \u0c95\u0cbe\u0ca3\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Today\'s Special Posters': '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Every Day New Posters Automatically':
-      'ಪ್ರತಿ ದಿನ ಹೊಸ ಪೋಸ್ಟರ್‌ಗಳು ಸ್ವಯಂಚಾಲಿತವಾಗಿ',
+      '\u0caa\u0ccd\u0cb0\u0ca4\u0cbf \u0ca6\u0cbf\u0ca8 \u0cb9\u0cca\u0cb8 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb8\u0ccd\u0cb5\u0caf\u0c82\u0c9a\u0cbe\u0cb2\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf',
   'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      'ಆಯ್ಕೆ ಮಾಡಿದ ದಿನಾಂಕದ ಆಧಾರದ ಮೇಲೆ Festivals, Jayanthi, Vardhanthi, National Days ಮತ್ತು Telugu State Events ಪೋಸ್ಟರ್‌ಗಳನ್ನು Mana Poster ಸ್ವಯಂಚಾಲಿತವಾಗಿ ತೋರಿಸುತ್ತದೆ.',
-  'Free vs Premium': 'ಉಚಿತ vs ಪ್ರೀಮಿಯಂ',
+      '\u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0cbe\u0ca1\u0cbf\u0ca6 \u0ca6\u0cbf\u0ca8\u0cbe\u0c82\u0c95\u0ca6 \u0c86\u0ca7\u0cbe\u0cb0\u0ca6 \u0cae\u0cc7\u0cb2\u0cc6 Festivals, Jayanthi, Vardhanthi, National Days \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 Telugu State Events \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 Mana Poster \u0cb8\u0ccd\u0cb5\u0caf\u0c82\u0c9a\u0cbe\u0cb2\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Poster Options': '\u0c89\u0c9a\u0cbf\u0ca4 vs \u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82',
   'Choose the plan that fits your poster workflow':
-      'ನಿಮ್ಮ poster workflow ಗೆ ಸರಿಹೊಂದುವ ಯೋಜನೆ ಆಯ್ಕೆಮಾಡಿ',
-  'Free covers quick daily use. Premium opens fully editable posters, stronger templates, better exports, and faster personalization.':
-      'Free quick daily use ಗೆ ಸಾಕಾಗುತ್ತದೆ. Premium ಮೂಲಕ fully editable posters, stronger templates, better exports ಮತ್ತು faster personalization ಸಿಗುತ್ತವೆ.',
-  'Frequently asked questions': 'ಅನೇಕರಾಗಿ ಕೇಳಲಾಗುವ ಪ್ರಶ್ನೆಗಳು',
+      '\u0ca8\u0cbf\u0cae\u0ccd\u0cae poster workflow \u0c97\u0cc6 \u0cb8\u0cb0\u0cbf\u0cb9\u0cca\u0c82\u0ca6\u0cc1\u0cb5 \u0caf\u0ccb\u0c9c\u0ca8\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0cbe\u0ca1\u0cbf',
+  'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
+      'Free quick daily use \u0c97\u0cc6 \u0cb8\u0cbe\u0c95\u0cbe\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6. Premium \u0cae\u0cc2\u0cb2\u0c95 fully editable posters, stronger templates, better exports \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 faster personalization \u0cb8\u0cbf\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
+  'Frequently asked questions': '\u0c85\u0ca8\u0cc7\u0c95\u0cb0\u0cbe\u0c97\u0cbf \u0c95\u0cc7\u0cb3\u0cb2\u0cbe\u0c97\u0cc1\u0cb5 \u0caa\u0ccd\u0cb0\u0cb6\u0ccd\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
-      'Templates, photos, HD downloads ಮತ್ತು daily Telugu poster updates ಬಗ್ಗೆ ಸಾಮಾನ್ಯ ಪ್ರಶ್ನೆಗಳು.',
-  'Final CTA': 'ಅಂತಿಮ CTA',
+      'Templates, photos, HD downloads \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 daily Telugu poster updates \u0cac\u0c97\u0ccd\u0c97\u0cc6 \u0cb8\u0cbe\u0cae\u0cbe\u0ca8\u0ccd\u0caf \u0caa\u0ccd\u0cb0\u0cb6\u0ccd\u0ca8\u0cc6\u0c97\u0cb3\u0cc1.',
+  'Final CTA': '\u0c85\u0c82\u0ca4\u0cbf\u0cae CTA',
   'Start Creating Beautiful Telugu Posters Today':
-      'ಇಂದೇ ಸುಂದರ ತೆಲುಗು ಪೋಸ್ಟರ್‌ಗಳನ್ನು ರಚಿಸಲು ಆರಂಭಿಸಿ',
+      '\u0c87\u0c82\u0ca6\u0cc7 \u0cb8\u0cc1\u0c82\u0ca6\u0cb0 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cb2\u0cc1 \u0c86\u0cb0\u0c82\u0cad\u0cbf\u0cb8\u0cbf',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
-      'Ready templates, Telugu-friendly typing, photo placement ಮತ್ತು fast sharing ಎಲ್ಲವೂ ಒಂದೇ app ನಲ್ಲಿ ದೊರೆಯುತ್ತವೆ.',
+      'Ready templates, Telugu-friendly typing, photo placement \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 fast sharing \u0c8e\u0cb2\u0ccd\u0cb2\u0cb5\u0cc2 \u0c92\u0c82\u0ca6\u0cc7 app \u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0ca6\u0cca\u0cb0\u0cc6\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
   'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster ಪ್ರತಿದಿನ ತೆಲುಗು ಪೋಸ್ಟರ್‌ಗಳನ್ನು ರಚಿಸಿ share ಮಾಡುವ ಸರಳ ಮಾರ್ಗ.',
+      'Mana Poster \u0caa\u0ccd\u0cb0\u0ca4\u0cbf\u0ca6\u0cbf\u0ca8 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cbf share \u0cae\u0cbe\u0ca1\u0cc1\u0cb5 \u0cb8\u0cb0\u0cb3 \u0cae\u0cbe\u0cb0\u0ccd\u0c97.',
 };
 
 const Map<String, String> _landingMalayalamFallbacks = <String, String>{
-  'Home': 'ഹോം',
-  'Features': 'ഫീച്ചറുകൾ',
-  'Categories': 'കാറ്റഗറികൾ',
-  'Download': 'ഡൗൺലോഡ്',
-  'Admin Login': 'അഡ്മിൻ ലോഗിൻ',
-  'Sign Out': 'സൈൻ ഔട്ട്',
-  'Get App': 'ആപ്പ് നേടൂ',
-  'Ready Telugu templates': 'തയ്യാർ തെലുങ്ക് ടെംപ്ലേറ്റുകൾ',
+  'Home': '\u0d39\u0d4b\u0d02',
+  'Features': '\u0d2b\u0d40\u0d1a\u0d4d\u0d1a\u0d31\u0d41\u0d15\u0d7e',
+  'Categories': '\u0d15\u0d3e\u0d31\u0d4d\u0d31\u0d17\u0d31\u0d3f\u0d15\u0d7e',
+  'Download': '\u0d21\u0d57\u0d7a\u0d32\u0d4b\u0d21\u0d4d',
+  'Admin Login': '\u0d05\u0d21\u0d4d\u0d2e\u0d3f\u0d7b \u0d32\u0d4b\u0d17\u0d3f\u0d7b',
+  'Sign Out': '\u0d38\u0d48\u0d7b \u0d14\u0d1f\u0d4d\u0d1f\u0d4d',
+  'Get App': '\u0d06\u0d2a\u0d4d\u0d2a\u0d4d \u0d28\u0d47\u0d1f\u0d42',
+  'Ready Telugu templates': '\u0d24\u0d2f\u0d4d\u0d2f\u0d3e\u0d7c \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
   'Start fast with reusable layouts for daily poster needs.':
-      'ദൈനംദിന പോസ്റ്റർ ആവശ്യങ്ങൾക്ക് reusable layouts ഉപയോഗിച്ച് വേഗത്തിൽ തുടങ്ങൂ.',
-  'Photo + name personalization': 'ഫോട്ടോ + പേര് വ്യക്തിഗതമാക്കൽ',
+      '\u0d26\u0d48\u0d28\u0d02\u0d26\u0d3f\u0d28 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d7c \u0d06\u0d35\u0d36\u0d4d\u0d2f\u0d19\u0d4d\u0d19\u0d7e\u0d15\u0d4d\u0d15\u0d4d reusable layouts \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d7d \u0d24\u0d41\u0d1f\u0d19\u0d4d\u0d19\u0d42.',
+  'Photo + name personalization': '\u0d2b\u0d4b\u0d1f\u0d4d\u0d1f\u0d4b + \u0d2a\u0d47\u0d30\u0d4d \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d3f\u0d17\u0d24\u0d2e\u0d3e\u0d15\u0d4d\u0d15\u0d7d',
   'Update poster identity quickly without redesigning everything.':
-      'മുഴുവൻ ഡിസൈൻ മാറ്റാതെ പോസ്റ്ററിലെ വിവരങ്ങൾ വേഗത്തിൽ അപ്‌ഡേറ്റ് ചെയ്യൂ.',
-  'Fast sharing flow': 'വേഗത്തിലുള്ള ഷെയറിംഗ് ഫ്ലോ',
+      '\u0d2e\u0d41\u0d34\u0d41\u0d35\u0d7b \u0d21\u0d3f\u0d38\u0d48\u0d7b \u0d2e\u0d3e\u0d31\u0d4d\u0d31\u0d3e\u0d24\u0d46 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d3f\u0d32\u0d46 \u0d35\u0d3f\u0d35\u0d30\u0d19\u0d4d\u0d19\u0d7e \u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d7d \u0d05\u0d2a\u0d4d\u200c\u0d21\u0d47\u0d31\u0d4d\u0d31\u0d4d \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d42.',
+  'Fast sharing flow': '\u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d32\u0d41\u0d33\u0d4d\u0d33 \u0d37\u0d46\u0d2f\u0d31\u0d3f\u0d02\u0d17\u0d4d \u0d2b\u0d4d\u0d32\u0d4b',
   'Export and share in a few taps for WhatsApp-first usage.':
-      'WhatsApp-first ഉപയോഗത്തിന് കുറച്ച് taps-ൽ export ചെയ്ത് share ചെയ്യൂ.',
-  'Free and premium mix': 'ഫ്രീയും പ്രീമിയവും ചേർന്ന മിശ്രണം',
-  'Keep free discovery open while premium design quality stays clear.':
-      'Free discovery തുറന്നുവെച്ച് premium design quality വ്യക്തമായി കാണിക്കൂ.',
-  'Festival posters': 'ഉത്സവ പോസ്റ്ററുകൾ',
+      'WhatsApp-first \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d28\u0d4d \u0d15\u0d41\u0d31\u0d1a\u0d4d\u0d1a\u0d4d taps-\u0d7d export \u0d1a\u0d46\u0d2f\u0d4d\u0d24\u0d4d share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d42.',
+  'Poster design mix': '\u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d31\u0d4d \u0d21\u0d3f\u0d38\u0d48\u0d28\u0d4d \u0d2e\u0d3f\u0d15\u0d4d\u0d38\u0d4d',
+  'Keep poster discovery open while design quality stays clear.':
+      '\u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d31\u0d4d \u0d15\u0d23\u0d4d\u0d1f\u0d46\u0d24\u0d4d\u0d24\u0d7d \u0d24\u0d41\u0d31\u0d28\u0d4d\u0d28\u0d41 \u0d35\u0d46\u0d1a\u0d4d\u0d1a\u0d4d, \u0d21\u0d3f\u0d38\u0d48\u0d28\u0d4d \u0d17\u0d41\u0d23\u0d28\u0d3f\u0d32\u0d35\u0d3e\u0d30\u0d02 \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d2e\u0d3e\u0d15\u0d41\u0d28\u0d4d\u0d28 \u0d30\u0d40\u0d24\u0d3f\u0d2f\u0d3f\u0d32\u0d3e\u0d23\u0d4d.',
+  'Festival posters': '\u0d09\u0d24\u0d4d\u0d38\u0d35 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
   'Date-based festival content can stay discoverable without manual browsing.':
-      'തീയതി അടിസ്ഥാനത്തിലുള്ള ഉത്സവ content manual browsing ഇല്ലാതെയും കാണാനാകും.',
-  'National days': 'ദേശീയ ദിനങ്ങൾ',
+      '\u0d24\u0d40\u0d2f\u0d24\u0d3f \u0d05\u0d1f\u0d3f\u0d38\u0d4d\u0d25\u0d3e\u0d28\u0d24\u0d4d\u0d24\u0d3f\u0d32\u0d41\u0d33\u0d4d\u0d33 \u0d09\u0d24\u0d4d\u0d38\u0d35 content manual browsing \u0d07\u0d32\u0d4d\u0d32\u0d3e\u0d24\u0d46\u0d2f\u0d41\u0d02 \u0d15\u0d3e\u0d23\u0d3e\u0d28\u0d3e\u0d15\u0d41\u0d02.',
+  'National days': '\u0d26\u0d47\u0d36\u0d40\u0d2f \u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
   'Important observances are easier to surface when the day matters.':
-      'പ്രധാന observances ശരിയായ ദിവസം എളുപ്പത്തിൽ കാണിക്കും.',
-  'Local event updates': 'ലോക്കൽ ഇവന്റ് അപ്‌ഡേറ്റുകൾ',
+      '\u0d2a\u0d4d\u0d30\u0d27\u0d3e\u0d28 observances \u0d36\u0d30\u0d3f\u0d2f\u0d3e\u0d2f \u0d26\u0d3f\u0d35\u0d38\u0d02 \u0d0e\u0d33\u0d41\u0d2a\u0d4d\u0d2a\u0d24\u0d4d\u0d24\u0d3f\u0d7d \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+  'Local event updates': '\u0d32\u0d4b\u0d15\u0d4d\u0d15\u0d7d \u0d07\u0d35\u0d28\u0d4d\u0d31\u0d4d \u0d05\u0d2a\u0d4d\u200c\u0d21\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
   'Telugu state relevance stays visible in one dedicated block.':
-      'തെലുങ്ക് സംസ്ഥാനങ്ങളുമായി ബന്ധപ്പെട്ടത് ഒരു dedicated block-ൽ വ്യക്തമായി കാണാം.',
-  'Free Posters': 'ഫ്രീ പോസ്റ്ററുകൾ',
-  'Starter': 'സ്റ്റാർട്ടർ',
-  'Basic templates': 'ബേസിക് ടെംപ്ലേറ്റുകൾ',
-  'Quick sharing': 'ക്വിക്ക് ഷെയറിംഗ്',
-  'Simple export': 'ലളിതമായ export',
-  'Premium Posters': 'പ്രീമിയം പോസ്റ്ററുകൾ',
-  'Pro Access': 'പ്രോ ആക്സസ്',
-  'Fully editable posters': 'പൂർണ്ണമായി editable പോസ്റ്ററുകൾ',
-  'Premium templates': 'പ്രീമിയം ടെംപ്ലേറ്റുകൾ',
-  'Unlimited customization': 'അൺലിമിറ്റഡ് customization',
+      '\u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d38\u0d02\u0d38\u0d4d\u0d25\u0d3e\u0d28\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d2e\u0d3e\u0d2f\u0d3f \u0d2c\u0d28\u0d4d\u0d27\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d4d\u0d1f\u0d24\u0d4d \u0d12\u0d30\u0d41 dedicated block-\u0d7d \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d2e\u0d3e\u0d2f\u0d3f \u0d15\u0d3e\u0d23\u0d3e\u0d02.',
+  'Free Posters': '\u0d2b\u0d4d\u0d30\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
+  'Starter': '\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d3e\u0d7c\u0d1f\u0d4d\u0d1f\u0d7c',
+  'Basic templates': '\u0d2c\u0d47\u0d38\u0d3f\u0d15\u0d4d \u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
+  'Quick sharing': '\u0d15\u0d4d\u0d35\u0d3f\u0d15\u0d4d\u0d15\u0d4d \u0d37\u0d46\u0d2f\u0d31\u0d3f\u0d02\u0d17\u0d4d',
+  'Simple export': '\u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f export',
+  'Featured Posters': '\u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
+  'Pro Access': '\u0d2a\u0d4d\u0d30\u0d4b \u0d06\u0d15\u0d4d\u0d38\u0d38\u0d4d',
+  'Fully editable posters': '\u0d2a\u0d42\u0d7c\u0d23\u0d4d\u0d23\u0d2e\u0d3e\u0d2f\u0d3f editable \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
+  'More templates': '\u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02 \u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
+  'Unlimited customization': '\u0d05\u0d7a\u0d32\u0d3f\u0d2e\u0d3f\u0d31\u0d4d\u0d31\u0d21\u0d4d customization',
   'HD export': 'HD export',
   'Is Mana Poster AI free?': 'Mana Poster AI ഫ്രീ ആണോ?',
-  'Free posters are available. Premium access unlocks stronger templates and deeper editing.':
-      'ഫ്രീ പോസ്റ്ററുകൾ ലഭ്യമാണ്. Premium access ഉപയോഗിച്ച് മെച്ചപ്പെട്ട templates ഉം deeper editing ഉം ലഭിക്കും.',
+  'Posters are available with stronger templates and deeper editing inside the app.':
+      '\u0d2b\u0d4d\u0d30\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d. Premium access \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d2e\u0d46\u0d1a\u0d4d\u0d1a\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d4d\u0d1f templates \u0d09\u0d02 deeper editing \u0d09\u0d02 \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Can I add photo and name?': 'ഫോട്ടോയും പേരും ചേർക്കാനാകുമോ?',
   'Yes. Personal details can be placed directly on poster templates.':
-      'അതെ. വ്യക്തിഗത വിവരങ്ങൾ poster templates-ിൽ നേരിട്ട് ചേർക്കാം.',
+      '\u0d05\u0d24\u0d46. \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d3f\u0d17\u0d24 \u0d35\u0d3f\u0d35\u0d30\u0d19\u0d4d\u0d19\u0d7e poster templates-\u0d3f\u0d7d \u0d28\u0d47\u0d30\u0d3f\u0d1f\u0d4d\u0d1f\u0d4d \u0d1a\u0d47\u0d7c\u0d15\u0d4d\u0d15\u0d3e\u0d02.',
   'Are daily categories updated?': 'ദൈനംദിന categories update ആവുമോ?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page-വും app-വും time-based categories ഉം special poster needs ഉം കാണിക്കും.',
+      'Landing page-\u0d35\u0d41\u0d02 app-\u0d35\u0d41\u0d02 time-based categories \u0d09\u0d02 special poster needs \u0d09\u0d02 \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Can I export posters?': 'എനിക്ക് പോസ്റ്ററുകൾ export ചെയ്യാനാകുമോ?',
   'Yes. Export and share flows stay simple for daily usage.':
-      'അതെ. ദൈനംദിന ഉപയോഗത്തിന് export, share flow ലളിതമായിരിക്കും.',
-  'Quick Links': 'ക്വിക്ക് ലിങ്കുകൾ',
-  'Legal': 'ലീഗൽ',
-  'Privacy Policy': 'പ്രൈവസി പോളിസി',
-  'Terms & Conditions': 'നിബന്ധനകളും വ്യവസ്ഥകളും',
-  'Contact': 'ബന്ധപ്പെടുക',
-  'Telugu-first poster creation': 'തെലുങ്ക്-ഫസ്റ്റ് പോസ്റ്റർ സൃഷ്ടി',
+      '\u0d05\u0d24\u0d46. \u0d26\u0d48\u0d28\u0d02\u0d26\u0d3f\u0d28 \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d28\u0d4d export, share flow \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f\u0d3f\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+  'Quick Links': '\u0d15\u0d4d\u0d35\u0d3f\u0d15\u0d4d\u0d15\u0d4d \u0d32\u0d3f\u0d19\u0d4d\u0d15\u0d41\u0d15\u0d7e',
+  'Legal': '\u0d32\u0d40\u0d17\u0d7d',
+  'Privacy Policy': '\u0d2a\u0d4d\u0d30\u0d48\u0d35\u0d38\u0d3f \u0d2a\u0d4b\u0d33\u0d3f\u0d38\u0d3f',
+  'Terms & Conditions': '\u0d28\u0d3f\u0d2c\u0d28\u0d4d\u0d27\u0d28\u0d15\u0d33\u0d41\u0d02 \u0d35\u0d4d\u0d2f\u0d35\u0d38\u0d4d\u0d25\u0d15\u0d33\u0d41\u0d02',
+  'Contact': '\u0d2c\u0d28\u0d4d\u0d27\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d41\u0d15',
+  'Telugu-first poster creation': '\u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d-\u0d2b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d7c \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f',
   'Create Telugu Posters in Seconds':
-      'സെക്കൻഡുകൾക്കകം തെലുങ്ക് പോസ്റ്ററുകൾ സൃഷ്ടിക്കൂ',
+      '\u0d38\u0d46\u0d15\u0d4d\u0d15\u0d7b\u0d21\u0d41\u0d15\u0d7e\u0d15\u0d4d\u0d15\u0d15\u0d02 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d42',
   'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'സരളവും വേഗമുള്ള workflow ഉപയോഗിച്ച് തെലുങ്ക് പോസ്റ്ററുകൾ ഉടൻ create, customize, share ചെയ്യാൻ Mana Poster സഹായിക്കുന്നു.',
-  'Watch Demo': 'ഡെമോ കാണൂ',
-  'Free & Premium Posters Available':
-      'ഫ്രീയും പ്രീമിയവും ഉള്ള പോസ്റ്ററുകൾ ലഭ്യമാണ്',
-  'App Preview': 'ആപ്പ് പ്രിവ്യൂ',
+      '\u0d38\u0d30\u0d33\u0d35\u0d41\u0d02 \u0d35\u0d47\u0d17\u0d2e\u0d41\u0d33\u0d4d\u0d33 workflow \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d09\u0d1f\u0d7b create, customize, share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d7b Mana Poster \u0d38\u0d39\u0d3e\u0d2f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
+  'Watch Demo': '\u0d21\u0d46\u0d2e\u0d4b \u0d15\u0d3e\u0d23\u0d42',
+  'Poster Collections Available':
+      '\u0d2b\u0d4d\u0d30\u0d40\u0d2f\u0d41\u0d02 \u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d35\u0d41\u0d02 \u0d09\u0d33\u0d4d\u0d33 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d',
+  'App Preview': '\u0d06\u0d2a\u0d4d\u0d2a\u0d4d \u0d2a\u0d4d\u0d30\u0d3f\u0d35\u0d4d\u0d2f\u0d42',
   'A clear view of how poster flow looks inside the app':
-      'ആപ്പിനുള്ളിലെ poster flow എങ്ങനെ കാണപ്പെടുന്നു എന്നതിന്റെ വ്യക്തമായ ദൃശ്യം',
+      '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d28\u0d41\u0d33\u0d4d\u0d33\u0d3f\u0d32\u0d46 poster flow \u0d0e\u0d19\u0d4d\u0d19\u0d28\u0d46 \u0d15\u0d3e\u0d23\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d41\u0d28\u0d4d\u0d28\u0d41 \u0d0e\u0d28\u0d4d\u0d28\u0d24\u0d3f\u0d28\u0d4d\u0d31\u0d46 \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d2e\u0d3e\u0d2f \u0d26\u0d43\u0d36\u0d4d\u0d2f\u0d02',
   'The flow is designed to stay simple from category selection to preview, personalization, and final sharing.':
-      'Category selection മുതൽ preview, personalization, final sharing വരെ flow ലളിതമായി രൂപകൽപ്പന ചെയ്തിരിക്കുന്നു.',
+      'Category selection \u0d2e\u0d41\u0d24\u0d7d preview, personalization, final sharing \u0d35\u0d30\u0d46 flow \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f\u0d3f \u0d30\u0d42\u0d2a\u0d15\u0d7d\u0d2a\u0d4d\u0d2a\u0d28 \u0d1a\u0d46\u0d2f\u0d4d\u0d24\u0d3f\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
   'Built for fast Telugu poster creation':
-      'വേഗത്തിലുള്ള തെലുങ്ക് പോസ്റ്റർ സൃഷ്ടിക്കായി നിർമ്മിച്ചത്',
+      '\u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d32\u0d41\u0d33\u0d4d\u0d33 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d7c \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d2f\u0d3f \u0d28\u0d3f\u0d7c\u0d2e\u0d4d\u0d2e\u0d3f\u0d1a\u0d4d\u0d1a\u0d24\u0d4d',
   'Templates, sharing, personalization, and daily-use category flows are organized to keep poster making quick and repeatable.':
-      'Templates, sharing, personalization, daily-use category flows എന്നിവ poster making വേഗത്തിലും repeatable ആയും നിലനിർത്താൻ ക്രമീകരിച്ചിരിക്കുന്നു.',
-  'Colorful Category Gallery': 'നിറമുള്ള കാറ്റഗറി ഗാലറി',
+      'Templates, sharing, personalization, daily-use category flows \u0d0e\u0d28\u0d4d\u0d28\u0d3f\u0d35 poster making \u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d32\u0d41\u0d02 repeatable \u0d06\u0d2f\u0d41\u0d02 \u0d28\u0d3f\u0d32\u0d28\u0d3f\u0d7c\u0d24\u0d4d\u0d24\u0d3e\u0d7b \u0d15\u0d4d\u0d30\u0d2e\u0d40\u0d15\u0d30\u0d3f\u0d1a\u0d4d\u0d1a\u0d3f\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
+  'Colorful Category Gallery': '\u0d28\u0d3f\u0d31\u0d2e\u0d41\u0d33\u0d4d\u0d33 \u0d15\u0d3e\u0d31\u0d4d\u0d31\u0d17\u0d31\u0d3f \u0d17\u0d3e\u0d32\u0d31\u0d3f',
   'Each category opens like a poster wall so the landing page feels rich, bold, and closer to a real creative marketplace.':
-      'ഓരോ category-യും poster wall പോലെ തുറക്കുന്നതിനാൽ landing page സമ്പന്നവും bold-ഉം creative marketplace പോലെ അനുഭവപ്പെടും.',
-  'Today\'s Special Posters': 'ഇന്നത്തെ സ്പെഷ്യൽ പോസ്റ്ററുകൾ',
-  'Every Day New Posters Automatically': 'പ്രതിദിനം പുതിയ പോസ്റ്ററുകൾ സ്വയം',
+      '\u0d13\u0d30\u0d4b category-\u0d2f\u0d41\u0d02 poster wall \u0d2a\u0d4b\u0d32\u0d46 \u0d24\u0d41\u0d31\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d24\u0d3f\u0d28\u0d3e\u0d7d landing page \u0d38\u0d2e\u0d4d\u0d2a\u0d28\u0d4d\u0d28\u0d35\u0d41\u0d02 bold-\u0d09\u0d02 creative marketplace \u0d2a\u0d4b\u0d32\u0d46 \u0d05\u0d28\u0d41\u0d2d\u0d35\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d41\u0d02.',
+  'Today\'s Special Posters': '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d38\u0d4d\u0d2a\u0d46\u0d37\u0d4d\u0d2f\u0d7d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
+  'Every Day New Posters Automatically': '\u0d2a\u0d4d\u0d30\u0d24\u0d3f\u0d26\u0d3f\u0d28\u0d02 \u0d2a\u0d41\u0d24\u0d3f\u0d2f \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d4d\u0d35\u0d2f\u0d02',
   'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      'തിരഞ്ഞെടുത്ത തീയതിയുടെ അടിസ്ഥാനത്തിൽ Festivals, Jayanthi, Vardhanthi, National Days, Telugu State Events എന്നീ പോസ്റ്ററുകൾ Mana Poster സ്വമേധയാ കാണിക്കും.',
-  'Free vs Premium': 'ഫ്രീ vs പ്രീമിയം',
+      '\u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d\u0d24 \u0d24\u0d40\u0d2f\u0d24\u0d3f\u0d2f\u0d41\u0d1f\u0d46 \u0d05\u0d1f\u0d3f\u0d38\u0d4d\u0d25\u0d3e\u0d28\u0d24\u0d4d\u0d24\u0d3f\u0d7d Festivals, Jayanthi, Vardhanthi, National Days, Telugu State Events \u0d0e\u0d28\u0d4d\u0d28\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e Mana Poster \u0d38\u0d4d\u0d35\u0d2e\u0d47\u0d27\u0d2f\u0d3e \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+  'Poster Options': '\u0d2b\u0d4d\u0d30\u0d40 vs \u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02',
   'Choose the plan that fits your poster workflow':
-      'നിങ്ങളുടെ poster workflow-യ്ക്ക് ചേരുന്ന പ്ലാൻ തിരഞ്ഞെടുക്കൂ',
-  'Free covers quick daily use. Premium opens fully editable posters, stronger templates, better exports, and faster personalization.':
-      'Free quick daily use നിറവേറ്റും. Premium വഴി fully editable posters, stronger templates, better exports, faster personalization ലഭിക്കും.',
-  'Frequently asked questions': 'പതിവ് ചോദ്യങ്ങൾ',
+      '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 poster workflow-\u0d2f\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d1a\u0d47\u0d30\u0d41\u0d28\u0d4d\u0d28 \u0d2a\u0d4d\u0d32\u0d3e\u0d7b \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
+  'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
+      'Free quick daily use \u0d28\u0d3f\u0d31\u0d35\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d02. Premium \u0d35\u0d34\u0d3f fully editable posters, stronger templates, better exports, faster personalization \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+  'Frequently asked questions': '\u0d2a\u0d24\u0d3f\u0d35\u0d4d \u0d1a\u0d4b\u0d26\u0d4d\u0d2f\u0d19\u0d4d\u0d19\u0d7e',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
-      'Templates, photos, HD downloads, daily Telugu poster updates എന്നിവയെക്കുറിച്ചുള്ള പൊതുവായ സംശയങ്ങൾ.',
-  'Final CTA': 'അവസാന CTA',
+      'Templates, photos, HD downloads, daily Telugu poster updates \u0d0e\u0d28\u0d4d\u0d28\u0d3f\u0d35\u0d2f\u0d46\u0d15\u0d4d\u0d15\u0d41\u0d31\u0d3f\u0d1a\u0d4d\u0d1a\u0d41\u0d33\u0d4d\u0d33 \u0d2a\u0d4a\u0d24\u0d41\u0d35\u0d3e\u0d2f \u0d38\u0d02\u0d36\u0d2f\u0d19\u0d4d\u0d19\u0d7e.',
+  'Final CTA': '\u0d05\u0d35\u0d38\u0d3e\u0d28 CTA',
   'Start Creating Beautiful Telugu Posters Today':
-      'ഇന്നുതന്നെ മനോഹരമായ തെലുങ്ക് പോസ്റ്ററുകൾ സൃഷ്ടിക്കാൻ തുടങ്ങൂ',
+      '\u0d07\u0d28\u0d4d\u0d28\u0d41\u0d24\u0d28\u0d4d\u0d28\u0d46 \u0d2e\u0d28\u0d4b\u0d39\u0d30\u0d2e\u0d3e\u0d2f \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d7b \u0d24\u0d41\u0d1f\u0d19\u0d4d\u0d19\u0d42',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
-      'Ready templates, Telugu-friendly typing, photo placement, fast sharing എന്നിവ എല്ലാം ഒരൊറ്റ app-ൽ ഒന്നിക്കുന്നു.',
+      'Ready templates, Telugu-friendly typing, photo placement, fast sharing \u0d0e\u0d28\u0d4d\u0d28\u0d3f\u0d35 \u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02 \u0d12\u0d30\u0d4a\u0d31\u0d4d\u0d31 app-\u0d7d \u0d12\u0d28\u0d4d\u0d28\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
   'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'പ്രതിദിനം തെലുങ്ക് പോസ്റ്ററുകൾ സൃഷ്ടിക്കാനും share ചെയ്യാനും Mana Poster ഒരു ലളിതമായ മാർഗമാണ്.',
+      '\u0d2a\u0d4d\u0d30\u0d24\u0d3f\u0d26\u0d3f\u0d28\u0d02 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d28\u0d41\u0d02 share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 Mana Poster \u0d12\u0d30\u0d41 \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f \u0d2e\u0d3e\u0d7c\u0d17\u0d2e\u0d3e\u0d23\u0d4d.',
 };
 
 class AppStrings {
@@ -511,17 +511,17 @@ class AppStrings {
 
   String _sanitizeDisplayText(String value, {String? fallback}) {
     final normalized = value
-        .replaceAll("â€™", "'")
-        .replaceAll("â€˜", "'")
-        .replaceAll("â€œ", '"')
-        .replaceAll("â€", '"')
-        .replaceAll("â€“", "-")
-        .replaceAll("â€”", "-")
-        .replaceAll("â€¦", "...")
-        .replaceAll("â€Œ", "")
-        .replaceAll("â€", "")
-        .replaceAll("â‚¹", "Rs.")
-        .replaceAll(RegExp(r"^(?:ðŸ[^\s]*|â[^\s]*)\s*"), "")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u201e\u00a2", "'")
+        .replaceAll("\u00e2\u20ac\u02dc", "'")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c5\u201c", '"')
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u009d", '"')
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u0153", "-")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u20ac\u009d", "-")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u00a6", "...")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c5\u2019", "")
+        .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c2\u008d", "")
+        .replaceAll("\u00c3\u00a2\u20ac\u0161\u00c2\u00b9", "Rs.")
+        .replaceAll(RegExp(r"^(?:\u00c3\u00b0\u00c5\u00b8[^\s]*|\u00c3\u00a2[^\s]*)\s*"), "")
         .trim();
     if (_looksCorrupted(normalized)) {
       return (fallback == null || fallback.trim().isEmpty)
@@ -532,12 +532,12 @@ class AppStrings {
   }
 
   bool _looksCorrupted(String value) {
-    return value.contains("à") ||
-        value.contains("â€") ||
-        value.contains("âœ") ||
-        value.contains("ðŸ") ||
-        value.contains("ï¸") ||
-        value.contains("â");
+    return value.contains("\u00c3\u00a0") ||
+        value.contains("\u00c3\u00a2\u00e2\u201a\u00ac") ||
+        value.contains("\u00c3\u00a2\u00c5\u201c") ||
+        value.contains("\u00c3\u00b0\u00c5\u00b8") ||
+        value.contains("\u00c3\u00af\u00c2\u00b8") ||
+        value.contains("\u00c3\u00a2\u00c2\u009d");
   }
 
   String? _commonLocalizedFallback(String english) {
@@ -562,77 +562,77 @@ class AppStrings {
       return landing;
     }
     return switch (english) {
-      'Add Photo' => 'फोटो जोड़ें',
-      'Text' => 'टेक्स्ट',
-      'Stickers' => 'स्टिकर्स',
-      'Background' => 'बैकग्राउंड',
-      'Layers' => 'लेयर्स',
-      'Adjust' => 'एडजस्ट',
-      'Crop' => 'क्रॉप',
-      'Eraser' => 'इरेज़र',
-      'Remove BG' => 'बीजी हटाएं',
-      'Edit' => 'एडिट',
-      'Fonts' => 'फॉन्ट्स',
-      'Options' => 'ऑप्शन्स',
-      'Style' => 'स्टाइल',
-      'Effects' => 'इफेक्ट्स',
-      'Size' => 'साइज़',
-      'Line' => 'लाइन',
-      'Letter' => 'लेटर',
-      'Opacity' => 'ओपेसिटी',
-      'Curve' => 'कर्व',
-      'Stroke' => 'स्ट्रोक',
-      'Shadow' => 'शैडो',
-      'Blur' => 'ब्लर',
-      'Offset' => 'ऑफसेट',
-      'Back' => 'वापस',
-      'Undo' => 'अनडू',
-      'Redo' => 'रीडू',
-      'Drafts' => 'ड्राफ्ट्स',
-      'Export' => 'एक्सपोर्ट',
-      'Saving...' => 'सेव हो रहा है...',
-      'Send back' => 'पीछे भेजें',
-      'Bring front' => 'आगे लाएं',
-      'Duplicate selected' => 'डुप्लिकेट',
-      'Delete selected' => 'डिलीट',
-      'Photo quick actions' => 'फोटो क्विक ऐक्शन्स',
-      'Selected photo' => 'चुनी हुई फोटो',
-      'Text tools' => 'टेक्स्ट टूल्स',
-      'Brush' => 'ब्रश',
-      'Soft' => 'सॉफ्ट',
-      'Strength' => 'स्ट्रेंथ',
-      'Reset' => 'रीसेट',
-      'Apply' => 'अप्लाई',
-      'Applying...' => 'अप्लाई हो रहा है...',
-      'Erase' => 'मिटाएं',
-      'Restore' => 'रीस्टोर',
-      'Brightness' => 'ब्राइटनेस',
-      'Contrast' => 'कॉन्ट्रास्ट',
-      'Saturation' => 'सैचुरेशन',
-      'Free' => 'फ्री',
-      'Elements' => 'एलिमेंट्स',
-      'Search elements' => 'एलिमेंट्स खोजें',
-      'Selected' => 'चुना गया',
-      'Hidden' => 'छिपा हुआ',
-      'Locked' => 'लॉक्ड',
-      'Show' => 'दिखाएं',
-      'Hide' => 'छिपाएं',
-      'Unlock' => 'अनलॉक',
-      'Lock' => 'लॉक',
-      'Delete' => 'डिलीट',
-      'Share' => 'शेयर',
-      'Select a photo first' => 'पहले एक फोटो चुनें',
-      'Selected image could not be loaded' => 'चुनी गई इमेज लोड नहीं हुई',
-      'Canvas is empty' => 'कैनवास खाली है',
-      'Cancel' => 'रद्द करें',
-      'Yes, export' => 'हाँ, एक्सपोर्ट करें',
-      'Crop mode' => 'क्रॉप मोड',
-      'Eraser mode' => 'इरेज़र मोड',
-      'Adjust mode' => 'एडजस्ट मोड',
-      'Text styling' => 'टेक्स्ट स्टाइलिंग',
-      'Text selected' => 'टेक्स्ट चुना गया',
-      'Photo selected' => 'फोटो चुनी गई',
-      'Object selected' => 'ऑब्जेक्ट चुना गया',
+      'Add Photo' => '\u092b\u094b\u091f\u094b \u091c\u094b\u0921\u093c\u0947\u0902',
+      'Text' => '\u091f\u0947\u0915\u094d\u0938\u094d\u091f',
+      'Stickers' => '\u0938\u094d\u091f\u093f\u0915\u0930\u094d\u0938',
+      'Background' => '\u092c\u0948\u0915\u0917\u094d\u0930\u093e\u0909\u0902\u0921',
+      'Layers' => '\u0932\u0947\u092f\u0930\u094d\u0938',
+      'Adjust' => '\u090f\u0921\u091c\u0938\u094d\u091f',
+      'Crop' => '\u0915\u094d\u0930\u0949\u092a',
+      'Eraser' => '\u0907\u0930\u0947\u091c\u093c\u0930',
+      'Remove BG' => '\u092c\u0940\u091c\u0940 \u0939\u091f\u093e\u090f\u0902',
+      'Edit' => '\u090f\u0921\u093f\u091f',
+      'Fonts' => '\u092b\u0949\u0928\u094d\u091f\u094d\u0938',
+      'Options' => '\u0911\u092a\u094d\u0936\u0928\u094d\u0938',
+      'Style' => '\u0938\u094d\u091f\u093e\u0907\u0932',
+      'Effects' => '\u0907\u092b\u0947\u0915\u094d\u091f\u094d\u0938',
+      'Size' => '\u0938\u093e\u0907\u091c\u093c',
+      'Line' => '\u0932\u093e\u0907\u0928',
+      'Letter' => '\u0932\u0947\u091f\u0930',
+      'Opacity' => '\u0913\u092a\u0947\u0938\u093f\u091f\u0940',
+      'Curve' => '\u0915\u0930\u094d\u0935',
+      'Stroke' => '\u0938\u094d\u091f\u094d\u0930\u094b\u0915',
+      'Shadow' => '\u0936\u0948\u0921\u094b',
+      'Blur' => '\u092c\u094d\u0932\u0930',
+      'Offset' => '\u0911\u092b\u0938\u0947\u091f',
+      'Back' => '\u0935\u093e\u092a\u0938',
+      'Undo' => '\u0905\u0928\u0921\u0942',
+      'Redo' => '\u0930\u0940\u0921\u0942',
+      'Drafts' => '\u0921\u094d\u0930\u093e\u092b\u094d\u091f\u094d\u0938',
+      'Export' => '\u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f',
+      'Saving...' => '\u0938\u0947\u0935 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...',
+      'Send back' => '\u092a\u0940\u091b\u0947 \u092d\u0947\u091c\u0947\u0902',
+      'Bring front' => '\u0906\u0917\u0947 \u0932\u093e\u090f\u0902',
+      'Duplicate selected' => '\u0921\u0941\u092a\u094d\u0932\u093f\u0915\u0947\u091f',
+      'Delete selected' => '\u0921\u093f\u0932\u0940\u091f',
+      'Photo quick actions' => '\u092b\u094b\u091f\u094b \u0915\u094d\u0935\u093f\u0915 \u0910\u0915\u094d\u0936\u0928\u094d\u0938',
+      'Selected photo' => '\u091a\u0941\u0928\u0940 \u0939\u0941\u0908 \u092b\u094b\u091f\u094b',
+      'Text tools' => '\u091f\u0947\u0915\u094d\u0938\u094d\u091f \u091f\u0942\u0932\u094d\u0938',
+      'Brush' => '\u092c\u094d\u0930\u0936',
+      'Soft' => '\u0938\u0949\u092b\u094d\u091f',
+      'Strength' => '\u0938\u094d\u091f\u094d\u0930\u0947\u0902\u0925',
+      'Reset' => '\u0930\u0940\u0938\u0947\u091f',
+      'Apply' => '\u0905\u092a\u094d\u0932\u093e\u0908',
+      'Applying...' => '\u0905\u092a\u094d\u0932\u093e\u0908 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...',
+      'Erase' => '\u092e\u093f\u091f\u093e\u090f\u0902',
+      'Restore' => '\u0930\u0940\u0938\u094d\u091f\u094b\u0930',
+      'Brightness' => '\u092c\u094d\u0930\u093e\u0907\u091f\u0928\u0947\u0938',
+      'Contrast' => '\u0915\u0949\u0928\u094d\u091f\u094d\u0930\u093e\u0938\u094d\u091f',
+      'Saturation' => '\u0938\u0948\u091a\u0941\u0930\u0947\u0936\u0928',
+      'Free' => '\u092b\u094d\u0930\u0940',
+      'Elements' => '\u090f\u0932\u093f\u092e\u0947\u0902\u091f\u094d\u0938',
+      'Search elements' => '\u090f\u0932\u093f\u092e\u0947\u0902\u091f\u094d\u0938 \u0916\u094b\u091c\u0947\u0902',
+      'Selected' => '\u091a\u0941\u0928\u093e \u0917\u092f\u093e',
+      'Hidden' => '\u091b\u093f\u092a\u093e \u0939\u0941\u0906',
+      'Locked' => '\u0932\u0949\u0915\u094d\u0921',
+      'Show' => '\u0926\u093f\u0916\u093e\u090f\u0902',
+      'Hide' => '\u091b\u093f\u092a\u093e\u090f\u0902',
+      'Unlock' => '\u0905\u0928\u0932\u0949\u0915',
+      'Lock' => '\u0932\u0949\u0915',
+      'Delete' => '\u0921\u093f\u0932\u0940\u091f',
+      'Share' => '\u0936\u0947\u092f\u0930',
+      'Select a photo first' => '\u092a\u0939\u0932\u0947 \u090f\u0915 \u092b\u094b\u091f\u094b \u091a\u0941\u0928\u0947\u0902',
+      'Selected image could not be loaded' => '\u091a\u0941\u0928\u0940 \u0917\u0908 \u0907\u092e\u0947\u091c \u0932\u094b\u0921 \u0928\u0939\u0940\u0902 \u0939\u0941\u0908',
+      'Canvas is empty' => '\u0915\u0948\u0928\u0935\u093e\u0938 \u0916\u093e\u0932\u0940 \u0939\u0948',
+      'Cancel' => '\u0930\u0926\u094d\u0926 \u0915\u0930\u0947\u0902',
+      'Yes, export' => '\u0939\u093e\u0901, \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f \u0915\u0930\u0947\u0902',
+      'Crop mode' => '\u0915\u094d\u0930\u0949\u092a \u092e\u094b\u0921',
+      'Eraser mode' => '\u0907\u0930\u0947\u091c\u093c\u0930 \u092e\u094b\u0921',
+      'Adjust mode' => '\u090f\u0921\u091c\u0938\u094d\u091f \u092e\u094b\u0921',
+      'Text styling' => '\u091f\u0947\u0915\u094d\u0938\u094d\u091f \u0938\u094d\u091f\u093e\u0907\u0932\u093f\u0902\u0917',
+      'Text selected' => '\u091f\u0947\u0915\u094d\u0938\u094d\u091f \u091a\u0941\u0928\u093e \u0917\u092f\u093e',
+      'Photo selected' => '\u092b\u094b\u091f\u094b \u091a\u0941\u0928\u0940 \u0917\u0908',
+      'Object selected' => '\u0911\u092c\u094d\u091c\u0947\u0915\u094d\u091f \u091a\u0941\u0928\u093e \u0917\u092f\u093e',
       _ => null,
     };
   }
@@ -643,48 +643,48 @@ class AppStrings {
       return landing;
     }
     return switch (english) {
-      'Add Photo' => 'புகைப்படம் சேர்க்க',
-      'Text' => 'உரை',
-      'Stickers' => 'ஸ்டிக்கர்கள்',
-      'Background' => 'பின்னணி',
-      'Layers' => 'லேயர்கள்',
-      'Adjust' => 'அட்ஜஸ்ட்',
-      'Crop' => 'கிராப்',
-      'Eraser' => 'இரேசர்',
-      'Remove BG' => 'பின்புலம் நீக்கு',
-      'Edit' => 'திருத்து',
-      'Fonts' => 'எழுத்துருக்கள்',
-      'Options' => 'விருப்பங்கள்',
-      'Style' => 'ஸ்டைல்',
-      'Effects' => 'எஃபெக்ட்ஸ்',
-      'Size' => 'அளவு',
-      'Line' => 'வரி',
-      'Letter' => 'எழுத்து',
-      'Opacity' => 'ஒப்பாசிட்டி',
-      'Curve' => 'வளைவு',
-      'Stroke' => 'ஸ்ட்ரோக்',
-      'Shadow' => 'நிழல்',
-      'Blur' => 'ப்ளர்',
-      'Offset' => 'ஆஃப்செட்',
-      'Back' => 'பின்',
-      'Undo' => 'அன்டூ',
-      'Redo' => 'ரீடூ',
-      'Drafts' => 'வரைவுகள்',
-      'Export' => 'ஏற்றுமதி',
-      'Saving...' => 'சேமிக்கிறது...',
-      'Reset' => 'ரீசெட்',
-      'Apply' => 'அப்ளை',
-      'Applying...' => 'அப்ளை ஆகிறது...',
-      'Erase' => 'அழி',
-      'Restore' => 'மீட்டமை',
-      'Brightness' => 'பிரைட்நஸ்',
-      'Contrast' => 'கான்ட்ராஸ்ட்',
-      'Saturation' => 'சாசுரேஷன்',
-      'Share' => 'பகிர்',
-      'Select a photo first' => 'முதலில் ஒரு புகைப்படத்தைத் தேர்ந்தெடுக்கவும்',
-      'Canvas is empty' => 'கேன்வாஸ் காலியாக உள்ளது',
-      'Cancel' => 'ரத்து',
-      'Yes, export' => 'ஆம், ஏற்றுமதி செய்',
+      'Add Photo' => '\u0baa\u0bc1\u0b95\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0bae\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95',
+      'Text' => '\u0b89\u0bb0\u0bc8',
+      'Stickers' => '\u0bb8\u0bcd\u0b9f\u0bbf\u0b95\u0bcd\u0b95\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
+      'Background' => '\u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0ba3\u0bbf',
+      'Layers' => '\u0bb2\u0bc7\u0baf\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
+      'Adjust' => '\u0b85\u0b9f\u0bcd\u0b9c\u0bb8\u0bcd\u0b9f\u0bcd',
+      'Crop' => '\u0b95\u0bbf\u0bb0\u0bbe\u0baa\u0bcd',
+      'Eraser' => '\u0b87\u0bb0\u0bc7\u0b9a\u0bb0\u0bcd',
+      'Remove BG' => '\u0baa\u0bbf\u0ba9\u0bcd\u0baa\u0bc1\u0bb2\u0bae\u0bcd \u0ba8\u0bc0\u0b95\u0bcd\u0b95\u0bc1',
+      'Edit' => '\u0ba4\u0bbf\u0bb0\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1',
+      'Fonts' => '\u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bb3\u0bcd',
+      'Options' => '\u0bb5\u0bbf\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+      'Style' => '\u0bb8\u0bcd\u0b9f\u0bc8\u0bb2\u0bcd',
+      'Effects' => '\u0b8e\u0b83\u0baa\u0bc6\u0b95\u0bcd\u0b9f\u0bcd\u0bb8\u0bcd',
+      'Size' => '\u0b85\u0bb3\u0bb5\u0bc1',
+      'Line' => '\u0bb5\u0bb0\u0bbf',
+      'Letter' => '\u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1',
+      'Opacity' => '\u0b92\u0baa\u0bcd\u0baa\u0bbe\u0b9a\u0bbf\u0b9f\u0bcd\u0b9f\u0bbf',
+      'Curve' => '\u0bb5\u0bb3\u0bc8\u0bb5\u0bc1',
+      'Stroke' => '\u0bb8\u0bcd\u0b9f\u0bcd\u0bb0\u0bcb\u0b95\u0bcd',
+      'Shadow' => '\u0ba8\u0bbf\u0bb4\u0bb2\u0bcd',
+      'Blur' => '\u0baa\u0bcd\u0bb3\u0bb0\u0bcd',
+      'Offset' => '\u0b86\u0b83\u0baa\u0bcd\u0b9a\u0bc6\u0b9f\u0bcd',
+      'Back' => '\u0baa\u0bbf\u0ba9\u0bcd',
+      'Undo' => '\u0b85\u0ba9\u0bcd\u0b9f\u0bc2',
+      'Redo' => '\u0bb0\u0bc0\u0b9f\u0bc2',
+      'Drafts' => '\u0bb5\u0bb0\u0bc8\u0bb5\u0bc1\u0b95\u0bb3\u0bcd',
+      'Export' => '\u0b8f\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0ba4\u0bbf',
+      'Saving...' => '\u0b9a\u0bc7\u0bae\u0bbf\u0b95\u0bcd\u0b95\u0bbf\u0bb1\u0ba4\u0bc1...',
+      'Reset' => '\u0bb0\u0bc0\u0b9a\u0bc6\u0b9f\u0bcd',
+      'Apply' => '\u0b85\u0baa\u0bcd\u0bb3\u0bc8',
+      'Applying...' => '\u0b85\u0baa\u0bcd\u0bb3\u0bc8 \u0b86\u0b95\u0bbf\u0bb1\u0ba4\u0bc1...',
+      'Erase' => '\u0b85\u0bb4\u0bbf',
+      'Restore' => '\u0bae\u0bc0\u0b9f\u0bcd\u0b9f\u0bae\u0bc8',
+      'Brightness' => '\u0baa\u0bbf\u0bb0\u0bc8\u0b9f\u0bcd\u0ba8\u0bb8\u0bcd',
+      'Contrast' => '\u0b95\u0bbe\u0ba9\u0bcd\u0b9f\u0bcd\u0bb0\u0bbe\u0bb8\u0bcd\u0b9f\u0bcd',
+      'Saturation' => '\u0b9a\u0bbe\u0b9a\u0bc1\u0bb0\u0bc7\u0bb7\u0ba9\u0bcd',
+      'Share' => '\u0baa\u0b95\u0bbf\u0bb0\u0bcd',
+      'Select a photo first' => '\u0bae\u0bc1\u0ba4\u0bb2\u0bbf\u0bb2\u0bcd \u0b92\u0bb0\u0bc1 \u0baa\u0bc1\u0b95\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8\u0ba4\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
+      'Canvas is empty' => '\u0b95\u0bc7\u0ba9\u0bcd\u0bb5\u0bbe\u0bb8\u0bcd \u0b95\u0bbe\u0bb2\u0bbf\u0baf\u0bbe\u0b95 \u0b89\u0bb3\u0bcd\u0bb3\u0ba4\u0bc1',
+      'Cancel' => '\u0bb0\u0ba4\u0bcd\u0ba4\u0bc1',
+      'Yes, export' => '\u0b86\u0bae\u0bcd, \u0b8f\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0ba4\u0bbf \u0b9a\u0bc6\u0baf\u0bcd',
       _ => null,
     };
   }
@@ -695,48 +695,48 @@ class AppStrings {
       return landing;
     }
     return switch (english) {
-      'Add Photo' => 'ಫೋಟೋ ಸೇರಿಸಿ',
-      'Text' => 'ಪಠ್ಯ',
-      'Stickers' => 'ಸ್ಟಿಕರ್ಸ್',
-      'Background' => 'ಹಿನ್ನೆಲೆ',
-      'Layers' => 'ಲೇಯರ್ಸ್',
-      'Adjust' => 'ಅಡ್ಜಸ್ಟ್',
-      'Crop' => 'ಕ್ರಾಪ್',
-      'Eraser' => 'ಇರೇಸರ್',
-      'Remove BG' => 'ಹಿನ್ನೆಲೆ ತೆಗೆಯಿರಿ',
-      'Edit' => 'ಎಡಿಟ್',
-      'Fonts' => 'ಫಾಂಟ್ಸ್',
-      'Options' => 'ಆಯ್ಕೆಗಳು',
-      'Style' => 'ಸ್ಟೈಲ್',
-      'Effects' => 'ಇಫೆಕ್ಟ್ಸ್',
-      'Size' => 'ಗಾತ್ರ',
-      'Line' => 'ಲೈನ್',
-      'Letter' => 'ಅಕ್ಷರ',
-      'Opacity' => 'ಒಪಾಸಿಟಿ',
-      'Curve' => 'ಕರ್ವ್',
-      'Stroke' => 'ಸ್ಟ್ರೋಕ್',
-      'Shadow' => 'ನೆರಳು',
-      'Blur' => 'ಬ್ಲರ್',
-      'Offset' => 'ಆಫ್‌ಸೆಟ್',
-      'Back' => 'ಹಿಂದೆ',
-      'Undo' => 'ಅನ್ಡೂ',
-      'Redo' => 'ರೀಡೂ',
-      'Drafts' => 'ಡ್ರಾಫ್ಟ್ಸ್',
-      'Export' => 'ಎಕ್ಸ್‌ಪೋರ್ಟ್',
-      'Saving...' => 'ಸೇವ್ ಆಗುತ್ತಿದೆ...',
-      'Reset' => 'ರೀಸೆಟ್',
-      'Apply' => 'ಅಪ್ಲೈ',
-      'Applying...' => 'ಅಪ್ಲೈ ಆಗುತ್ತಿದೆ...',
-      'Erase' => 'ಅಳಿಸಿ',
-      'Restore' => 'ಮರುಸ್ಥಾಪನೆ',
-      'Brightness' => 'ಬ್ರೈಟ್‌ನೆಸ್',
-      'Contrast' => 'ಕಾನ್ಟ್ರಾಸ್ಟ್',
-      'Saturation' => 'ಸ್ಯಾಚುರೇಶನ್',
-      'Share' => 'ಹಂಚಿಕೆ',
-      'Select a photo first' => 'ಮೊದಲು ಒಂದು ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ',
-      'Canvas is empty' => 'ಕ್ಯಾನ್ವಾಸ್ ಖಾಲಿಯಾಗಿದೆ',
-      'Cancel' => 'ರದ್ದು',
-      'Yes, export' => 'ಹೌದು, ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ',
+      'Add Photo' => '\u0cab\u0ccb\u0c9f\u0ccb \u0cb8\u0cc7\u0cb0\u0cbf\u0cb8\u0cbf',
+      'Text' => '\u0caa\u0ca0\u0ccd\u0caf',
+      'Stickers' => '\u0cb8\u0ccd\u0c9f\u0cbf\u0c95\u0cb0\u0ccd\u0cb8\u0ccd',
+      'Background' => '\u0cb9\u0cbf\u0ca8\u0ccd\u0ca8\u0cc6\u0cb2\u0cc6',
+      'Layers' => '\u0cb2\u0cc7\u0caf\u0cb0\u0ccd\u0cb8\u0ccd',
+      'Adjust' => '\u0c85\u0ca1\u0ccd\u0c9c\u0cb8\u0ccd\u0c9f\u0ccd',
+      'Crop' => '\u0c95\u0ccd\u0cb0\u0cbe\u0caa\u0ccd',
+      'Eraser' => '\u0c87\u0cb0\u0cc6\u0cd5\u0cb8\u0cb0\u0ccd',
+      'Remove BG' => '\u0cb9\u0cbf\u0ca8\u0ccd\u0ca8\u0cc6\u0cb2\u0cc6 \u0ca4\u0cc6\u0c97\u0cc6\u0caf\u0cbf\u0cb0\u0cbf',
+      'Edit' => '\u0c8e\u0ca1\u0cbf\u0c9f\u0ccd',
+      'Fonts' => '\u0cab\u0cbe\u0c82\u0c9f\u0ccd\u0cb8\u0ccd',
+      'Options' => '\u0c86\u0caf\u0ccd\u0c95\u0cc6\u0c97\u0cb3\u0cc1',
+      'Style' => '\u0cb8\u0ccd\u0c9f\u0cc8\u0cb2\u0ccd',
+      'Effects' => '\u0c87\u0cab\u0cc6\u0c95\u0ccd\u0c9f\u0ccd\u0cb8\u0ccd',
+      'Size' => '\u0c97\u0cbe\u0ca4\u0ccd\u0cb0',
+      'Line' => '\u0cb2\u0cc8\u0ca8\u0ccd',
+      'Letter' => '\u0c85\u0c95\u0ccd\u0cb7\u0cb0',
+      'Opacity' => '\u0c92\u0caa\u0cbe\u0cb8\u0cbf\u0c9f\u0cbf',
+      'Curve' => '\u0c95\u0cb0\u0ccd\u0cb5\u0ccd',
+      'Stroke' => '\u0cb8\u0ccd\u0c9f\u0ccd\u0cb0\u0ccb\u0c95\u0ccd',
+      'Shadow' => '\u0ca8\u0cc6\u0cb0\u0cb3\u0cc1',
+      'Blur' => '\u0cac\u0ccd\u0cb2\u0cb0\u0ccd',
+      'Offset' => '\u0c86\u0cab\u0ccd\u200c\u0cb8\u0cc6\u0c9f\u0ccd',
+      'Back' => '\u0cb9\u0cbf\u0c82\u0ca6\u0cc6',
+      'Undo' => '\u0c85\u0ca8\u0ccd\u0ca1\u0cc2',
+      'Redo' => '\u0cb0\u0cc0\u0ca1\u0cc2',
+      'Drafts' => '\u0ca1\u0ccd\u0cb0\u0cbe\u0cab\u0ccd\u0c9f\u0ccd\u0cb8\u0ccd',
+      'Export' => '\u0c8e\u0c95\u0ccd\u0cb8\u0ccd\u200c\u0caa\u0ccb\u0cb0\u0ccd\u0c9f\u0ccd',
+      'Saving...' => '\u0cb8\u0cc7\u0cb5\u0ccd \u0c86\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6...',
+      'Reset' => '\u0cb0\u0cc0\u0cb8\u0cc6\u0c9f\u0ccd',
+      'Apply' => '\u0c85\u0caa\u0ccd\u0cb2\u0cc8',
+      'Applying...' => '\u0c85\u0caa\u0ccd\u0cb2\u0cc8 \u0c86\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cbf\u0ca6\u0cc6...',
+      'Erase' => '\u0c85\u0cb3\u0cbf\u0cb8\u0cbf',
+      'Restore' => '\u0cae\u0cb0\u0cc1\u0cb8\u0ccd\u0ca5\u0cbe\u0caa\u0ca8\u0cc6',
+      'Brightness' => '\u0cac\u0ccd\u0cb0\u0cc8\u0c9f\u0ccd\u200c\u0ca8\u0cc6\u0cb8\u0ccd',
+      'Contrast' => '\u0c95\u0cbe\u0ca8\u0ccd\u0c9f\u0ccd\u0cb0\u0cbe\u0cb8\u0ccd\u0c9f\u0ccd',
+      'Saturation' => '\u0cb8\u0ccd\u0caf\u0cbe\u0c9a\u0cc1\u0cb0\u0cc7\u0cb6\u0ca8\u0ccd',
+      'Share' => '\u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cc6',
+      'Select a photo first' => '\u0cae\u0cca\u0ca6\u0cb2\u0cc1 \u0c92\u0c82\u0ca6\u0cc1 \u0cab\u0ccb\u0c9f\u0ccb \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0cbe\u0ca1\u0cbf',
+      'Canvas is empty' => '\u0c95\u0ccd\u0caf\u0cbe\u0ca8\u0ccd\u0cb5\u0cbe\u0cb8\u0ccd \u0c96\u0cbe\u0cb2\u0cbf\u0caf\u0cbe\u0c97\u0cbf\u0ca6\u0cc6',
+      'Cancel' => '\u0cb0\u0ca6\u0ccd\u0ca6\u0cc1',
+      'Yes, export' => '\u0cb9\u0ccc\u0ca6\u0cc1, \u0c8e\u0c95\u0ccd\u0cb8\u0ccd\u200c\u0caa\u0ccb\u0cb0\u0ccd\u0c9f\u0ccd \u0cae\u0cbe\u0ca1\u0cbf',
       _ => null,
     };
   }
@@ -747,55 +747,55 @@ class AppStrings {
       return landing;
     }
     return switch (english) {
-      'Add Photo' => 'ഫോട്ടോ ചേർക്കുക',
-      'Text' => 'ടെക്സ്റ്റ്',
-      'Stickers' => 'സ്റ്റിക്കറുകൾ',
-      'Background' => 'ബാക്ക്ഗ്രൗണ്ട്',
-      'Layers' => 'ലെയേഴ്സ്',
-      'Adjust' => 'അഡ്ജസ്റ്റ്',
-      'Crop' => 'ക്രോപ്പ്',
-      'Eraser' => 'ഇറേസർ',
-      'Remove BG' => 'ബാക്ക്ഗ്രൗണ്ട് നീക്കുക',
-      'Edit' => 'എഡിറ്റ്',
-      'Fonts' => 'ഫോണ്ടുകൾ',
-      'Options' => 'ഓപ്ഷനുകൾ',
-      'Style' => 'സ്റ്റൈൽ',
-      'Effects' => 'ഇഫക്റ്റ്സ്',
-      'Size' => 'വലിപ്പം',
-      'Line' => 'ലൈൻ',
-      'Letter' => 'അക്ഷരം',
-      'Opacity' => 'ഒപാസിറ്റി',
-      'Curve' => 'കർവ്',
-      'Stroke' => 'സ്ട്രോക്ക്',
-      'Shadow' => 'നിഴൽ',
-      'Blur' => 'ബ്ലർ',
-      'Offset' => 'ഓഫ്‌സെറ്റ്',
-      'Back' => 'പിന്നിലേക്ക്',
-      'Undo' => 'അൺഡൂ',
-      'Redo' => 'റീഡൂ',
-      'Drafts' => 'ഡ്രാഫ്റ്റുകൾ',
-      'Export' => 'എക്സ്പോർട്ട്',
-      'Saving...' => 'സേവ് ചെയ്യുന്നു...',
-      'Reset' => 'റീസെറ്റ്',
-      'Apply' => 'അപ്ലൈ',
-      'Applying...' => 'അപ്ലൈ ചെയ്യുന്നു...',
-      'Erase' => 'മായ്ക്കുക',
-      'Restore' => 'പുനഃസ്ഥാപിക്കുക',
-      'Brightness' => 'ബ്രൈറ്റ്‌നസ്',
-      'Contrast' => 'കോൺട്രാസ്റ്റ്',
-      'Saturation' => 'സാചുറേഷൻ',
-      'Share' => 'ഷെയർ',
-      'Select a photo first' => 'ആദ്യം ഒരു ഫോട്ടോ തിരഞ്ഞെടുക്കുക',
-      'Canvas is empty' => 'കാൻവാസ് കാലിയാണു',
-      'Cancel' => 'റദ്ദാക്കുക',
-      'Yes, export' => 'അതെ, എക്സ്പോർട്ട് ചെയ്യുക',
+      'Add Photo' => '\u0d2b\u0d4b\u0d1f\u0d4d\u0d1f\u0d4b \u0d1a\u0d47\u0d7c\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Text' => '\u0d1f\u0d46\u0d15\u0d4d\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d4d',
+      'Stickers' => '\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d3f\u0d15\u0d4d\u0d15\u0d31\u0d41\u0d15\u0d7e',
+      'Background' => '\u0d2c\u0d3e\u0d15\u0d4d\u0d15\u0d4d\u0d17\u0d4d\u0d30\u0d57\u0d23\u0d4d\u0d1f\u0d4d',
+      'Layers' => '\u0d32\u0d46\u0d2f\u0d47\u0d34\u0d4d\u0d38\u0d4d',
+      'Adjust' => '\u0d05\u0d21\u0d4d\u0d1c\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d4d',
+      'Crop' => '\u0d15\u0d4d\u0d30\u0d4b\u0d2a\u0d4d\u0d2a\u0d4d',
+      'Eraser' => '\u0d07\u0d31\u0d47\u0d38\u0d7c',
+      'Remove BG' => '\u0d2c\u0d3e\u0d15\u0d4d\u0d15\u0d4d\u0d17\u0d4d\u0d30\u0d57\u0d23\u0d4d\u0d1f\u0d4d \u0d28\u0d40\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Edit' => '\u0d0e\u0d21\u0d3f\u0d31\u0d4d\u0d31\u0d4d',
+      'Fonts' => '\u0d2b\u0d4b\u0d23\u0d4d\u0d1f\u0d41\u0d15\u0d7e',
+      'Options' => '\u0d13\u0d2a\u0d4d\u0d37\u0d28\u0d41\u0d15\u0d7e',
+      'Style' => '\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d48\u0d7d',
+      'Effects' => '\u0d07\u0d2b\u0d15\u0d4d\u0d31\u0d4d\u0d31\u0d4d\u0d38\u0d4d',
+      'Size' => '\u0d35\u0d32\u0d3f\u0d2a\u0d4d\u0d2a\u0d02',
+      'Line' => '\u0d32\u0d48\u0d7b',
+      'Letter' => '\u0d05\u0d15\u0d4d\u0d37\u0d30\u0d02',
+      'Opacity' => '\u0d12\u0d2a\u0d3e\u0d38\u0d3f\u0d31\u0d4d\u0d31\u0d3f',
+      'Curve' => '\u0d15\u0d7c\u0d35\u0d4d',
+      'Stroke' => '\u0d38\u0d4d\u0d1f\u0d4d\u0d30\u0d4b\u0d15\u0d4d\u0d15\u0d4d',
+      'Shadow' => '\u0d28\u0d3f\u0d34\u0d7d',
+      'Blur' => '\u0d2c\u0d4d\u0d32\u0d7c',
+      'Offset' => '\u0d13\u0d2b\u0d4d\u200c\u0d38\u0d46\u0d31\u0d4d\u0d31\u0d4d',
+      'Back' => '\u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d3f\u0d32\u0d47\u0d15\u0d4d\u0d15\u0d4d',
+      'Undo' => '\u0d05\u0d7a\u0d21\u0d42',
+      'Redo' => '\u0d31\u0d40\u0d21\u0d42',
+      'Drafts' => '\u0d21\u0d4d\u0d30\u0d3e\u0d2b\u0d4d\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
+      'Export' => '\u0d0e\u0d15\u0d4d\u0d38\u0d4d\u0d2a\u0d4b\u0d7c\u0d1f\u0d4d\u0d1f\u0d4d',
+      'Saving...' => '\u0d38\u0d47\u0d35\u0d4d \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d41\u0d28\u0d4d\u0d28\u0d41...',
+      'Reset' => '\u0d31\u0d40\u0d38\u0d46\u0d31\u0d4d\u0d31\u0d4d',
+      'Apply' => '\u0d05\u0d2a\u0d4d\u0d32\u0d48',
+      'Applying...' => '\u0d05\u0d2a\u0d4d\u0d32\u0d48 \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d41\u0d28\u0d4d\u0d28\u0d41...',
+      'Erase' => '\u0d2e\u0d3e\u0d2f\u0d4d\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Restore' => '\u0d2a\u0d41\u0d28\u0d03\u0d38\u0d4d\u0d25\u0d3e\u0d2a\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Brightness' => '\u0d2c\u0d4d\u0d30\u0d48\u0d31\u0d4d\u0d31\u0d4d\u200c\u0d28\u0d38\u0d4d',
+      'Contrast' => '\u0d15\u0d4b\u0d7a\u0d1f\u0d4d\u0d30\u0d3e\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d4d',
+      'Saturation' => '\u0d38\u0d3e\u0d1a\u0d41\u0d31\u0d47\u0d37\u0d7b',
+      'Share' => '\u0d37\u0d46\u0d2f\u0d7c',
+      'Select a photo first' => '\u0d06\u0d26\u0d4d\u0d2f\u0d02 \u0d12\u0d30\u0d41 \u0d2b\u0d4b\u0d1f\u0d4d\u0d1f\u0d4b \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Canvas is empty' => '\u0d15\u0d3e\u0d7b\u0d35\u0d3e\u0d38\u0d4d \u0d15\u0d3e\u0d32\u0d3f\u0d2f\u0d3e\u0d23\u0d41',
+      'Cancel' => '\u0d31\u0d26\u0d4d\u0d26\u0d3e\u0d15\u0d4d\u0d15\u0d41\u0d15',
+      'Yes, export' => '\u0d05\u0d24\u0d46, \u0d0e\u0d15\u0d4d\u0d38\u0d4d\u0d2a\u0d4b\u0d7c\u0d1f\u0d4d\u0d1f\u0d4d \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d41\u0d15',
       _ => null,
     };
   }
 
   String get splashTagline => switch (language) {
-    AppLanguage.telugu => 'ఎంచుకోండి, మీ పేరుతో షేర్ చేయండి',
-    AppLanguage.hindi => 'चुनें, अपने नाम के साथ शेयर करें',
+    AppLanguage.telugu => '\u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f, \u0c2e\u0c40 \u0c2a\u0c47\u0c30\u0c41\u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u091a\u0941\u0928\u0947\u0902, \u0905\u092a\u0928\u0947 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Choose and share with your name',
     AppLanguage.tamil =>
       '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0b89\u0b9f\u0ba9\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bc1 \u0baa\u0b95\u0bbf\u0bb0\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -806,8 +806,8 @@ class AppStrings {
   };
 
   String get languageScreenTitle => switch (language) {
-    AppLanguage.telugu => 'మీ భాషను ఎంచుకోండి',
-    AppLanguage.hindi => 'अपनी भाषा चुनें',
+    AppLanguage.telugu => '\u0c2e\u0c40 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0905\u092a\u0928\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902',
     AppLanguage.english => 'Choose your language',
     AppLanguage.tamil =>
       '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -819,9 +819,9 @@ class AppStrings {
 
   String get languageScreenSubtitle => switch (language) {
     AppLanguage.telugu =>
-      'యాప్‌లో మీకు కావాల్సిన భాషను ఎంచుకోండి. తర్వాత కూడా మార్చుకోవచ్చు.',
+      '\u0c2f\u0c3e\u0c2a\u0c4d\u200c\u0c32\u0c4b \u0c2e\u0c40\u0c15\u0c41 \u0c15\u0c3e\u0c35\u0c3e\u0c32\u0c4d\u0c38\u0c3f\u0c28 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f. \u0c24\u0c30\u0c4d\u0c35\u0c3e\u0c24 \u0c15\u0c42\u0c21\u0c3e \u0c2e\u0c3e\u0c30\u0c4d\u0c1a\u0c41\u0c15\u0c4b\u0c35\u0c1a\u0c4d\u0c1a\u0c41.',
     AppLanguage.hindi =>
-      'ऐप में अपनी पसंद की भाषा चुनें। बाद में भी बदल सकते हैं।',
+      '\u0910\u092a \u092e\u0947\u0902 \u0905\u092a\u0928\u0940 \u092a\u0938\u0902\u0926 \u0915\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902\u0964 \u092c\u093e\u0926 \u092e\u0947\u0902 \u092d\u0940 \u092c\u0926\u0932 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
     AppLanguage.english =>
       'Choose the language you want in the app. You can change it later too.',
     AppLanguage.tamil =>
@@ -833,8 +833,8 @@ class AppStrings {
   };
 
   String get continueLabel => switch (language) {
-    AppLanguage.telugu => 'కొనసాగించండి',
-    AppLanguage.hindi => 'जारी रखें',
+    AppLanguage.telugu => '\u0c15\u0c4a\u0c28\u0c38\u0c3e\u0c17\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u091c\u093e\u0930\u0940 \u0930\u0916\u0947\u0902',
     AppLanguage.english => 'Continue',
     AppLanguage.tamil => '\u0ba4\u0bca\u0b9f\u0bb0\u0bb5\u0bc1\u0bae\u0bcd',
     AppLanguage.kannada =>
@@ -843,8 +843,8 @@ class AppStrings {
   };
 
   String get onboardingNext => switch (language) {
-    AppLanguage.telugu => 'తదుపరి',
-    AppLanguage.hindi => 'आगे',
+    AppLanguage.telugu => '\u0c24\u0c26\u0c41\u0c2a\u0c30\u0c3f',
+    AppLanguage.hindi => '\u0906\u0917\u0947',
     AppLanguage.english => 'Next',
     AppLanguage.tamil => '\u0b85\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0ba4\u0bc1',
     AppLanguage.kannada => '\u0cae\u0cc1\u0c82\u0ca6\u0cc6',
@@ -852,8 +852,8 @@ class AppStrings {
   };
 
   String get onboardingGetStarted => switch (language) {
-    AppLanguage.telugu => 'ప్రారంభించండి',
-    AppLanguage.hindi => 'शुरू करें',
+    AppLanguage.telugu => '\u0c2a\u0c4d\u0c30\u0c3e\u0c30\u0c02\u0c2d\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Get Started',
     AppLanguage.tamil =>
       '\u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -863,8 +863,8 @@ class AppStrings {
   };
 
   String get onboardingSkip => switch (language) {
-    AppLanguage.telugu => 'స్కిప్',
-    AppLanguage.hindi => 'स्किप',
+    AppLanguage.telugu => '\u0c38\u0c4d\u0c15\u0c3f\u0c2a\u0c4d',
+    AppLanguage.hindi => '\u0938\u094d\u0915\u093f\u092a',
     AppLanguage.english => 'Skip',
     AppLanguage.tamil => '\u0ba4\u0bb5\u0bbf\u0bb0\u0bcd',
     AppLanguage.kannada =>
@@ -878,23 +878,24 @@ class AppStrings {
       const <({IconData icon, String title, String desc, List<Color> colors})>[
         (
           icon: Icons.auto_awesome_rounded,
-          title: 'అందమైన పోస్టర్లు సులభంగా తయారు చేయండి',
+          title: '\u0c05\u0c02\u0c26\u0c2e\u0c48\u0c28 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u0c32\u0c41 \u0c38\u0c41\u0c32\u0c2d\u0c02\u0c17\u0c3e \u0c24\u0c2f\u0c3e\u0c30\u0c41 \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
           desc:
-              'రెడీమేడ్ టెంప్లేట్స్‌తో మీ పేరు, ఫోటో జోడించి వెంటనే పోస్టర్ తయారు చేయండి.',
+              '\u0c30\u0c46\u0c21\u0c40\u0c2e\u0c47\u0c21\u0c4d \u0c1f\u0c46\u0c02\u0c2a\u0c4d\u0c32\u0c47\u0c1f\u0c4d\u0c38\u0c4d\u200c\u0c24\u0c4b \u0c2e\u0c40 \u0c2a\u0c47\u0c30\u0c41, \u0c2b\u0c4b\u0c1f\u0c4b \u0c1c\u0c4b\u0c21\u0c3f\u0c02\u0c1a\u0c3f \u0c35\u0c46\u0c02\u0c1f\u0c28\u0c47 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c24\u0c2f\u0c3e\u0c30\u0c41 \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f.',
           colors: <Color>[Color(0xFF7C3AED), Color(0xFF2563EB)],
         ),
         (
           icon: Icons.style_rounded,
-          title: 'ఫ్రీ & ప్రీమియమ్ డిజైన్స్ ఒకేచోట',
+          title:
+              '\u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c21\u0c3f\u0c1c\u0c48\u0c28\u0c4d\u0c38\u0c4d \u0c12\u0c15\u0c47 \u0c1a\u0c4b\u0c1f',
           desc:
-              'ప్రతి రోజు కొత్త కేటగిరీలు, పండుగ పోస్టర్లు, స్పెషల్ డిజైన్స్ పొందండి.',
+              '\u0c2a\u0c4d\u0c30\u0c24\u0c3f \u0c30\u0c4b\u0c1c\u0c41 \u0c15\u0c4a\u0c24\u0c4d\u0c24 \u0c15\u0c47\u0c1f\u0c17\u0c3f\u0c30\u0c40\u0c32\u0c41, \u0c2a\u0c02\u0c21\u0c41\u0c17 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u0c32\u0c41, \u0c38\u0c4d\u0c2a\u0c46\u0c37\u0c32\u0c4d \u0c21\u0c3f\u0c1c\u0c48\u0c28\u0c4d\u0c38\u0c4d \u0c2a\u0c4a\u0c02\u0c26\u0c02\u0c21\u0c3f.',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
         ),
         (
           icon: Icons.share_rounded,
-          title: 'షేర్ చేయండి, డౌన్‌లోడ్ చేసుకోండి',
+          title: '\u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f, \u0c21\u0c4c\u0c28\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c1a\u0c47\u0c38\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
           desc:
-              'మీ పోస్టర్‌ను ఎడిట్ చేసి WhatsApp, Facebook, Instagramలో సులభంగా షేర్ చేయండి.',
+              '\u0c2e\u0c40 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u200c\u0c28\u0c41 \u0c0e\u0c21\u0c3f\u0c1f\u0c4d \u0c1a\u0c47\u0c38\u0c3f WhatsApp, Facebook, Instagram\u0c32\u0c4b \u0c38\u0c41\u0c32\u0c2d\u0c02\u0c17\u0c3e \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f.',
           colors: <Color>[Color(0xFFEC4899), Color(0xFFF97316)],
         ),
       ],
@@ -902,22 +903,23 @@ class AppStrings {
       const <({IconData icon, String title, String desc, List<Color> colors})>[
         (
           icon: Icons.auto_awesome_rounded,
-          title: 'सुंदर पोस्टर आसानी से बनाएं',
+          title: '\u0938\u0941\u0902\u0926\u0930 \u092a\u094b\u0938\u094d\u091f\u0930 \u0906\u0938\u093e\u0928\u0940 \u0938\u0947 \u092c\u0928\u093e\u090f\u0902',
           desc:
-              'रेडीमेड टेम्पलेट्स में अपना नाम और फोटो जोड़कर तुरंत पोस्टर बनाएं।',
+              '\u0930\u0947\u0921\u0940\u092e\u0947\u0921 \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938 \u092e\u0947\u0902 \u0905\u092a\u0928\u093e \u0928\u093e\u092e \u0914\u0930 \u092b\u094b\u091f\u094b \u091c\u094b\u0921\u093c\u0915\u0930 \u0924\u0941\u0930\u0902\u0924 \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u090f\u0902\u0964',
           colors: <Color>[Color(0xFF7C3AED), Color(0xFF2563EB)],
         ),
         (
           icon: Icons.style_rounded,
-          title: 'फ्री और प्रीमियम डिज़ाइन एक ही जगह',
-          desc: 'हर दिन नई कैटेगरी, फेस्टिवल पोस्टर और खास डिज़ाइन पाएं।',
+          title:
+              '\u092a\u094b\u0938\u094d\u091f\u0930 \u0921\u093f\u091c\u093e\u0907\u0928 \u090f\u0915 \u0939\u0940 \u091c\u0917\u0939',
+          desc: '\u0939\u0930 \u0926\u093f\u0928 \u0928\u0908 \u0915\u0948\u091f\u0947\u0917\u0930\u0940, \u092b\u0947\u0938\u094d\u091f\u093f\u0935\u0932 \u092a\u094b\u0938\u094d\u091f\u0930 \u0914\u0930 \u0916\u093e\u0938 \u0921\u093f\u091c\u093c\u093e\u0907\u0928 \u092a\u093e\u090f\u0902\u0964',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
         ),
         (
           icon: Icons.share_rounded,
-          title: 'शेयर करें, डाउनलोड करें',
+          title: '\u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902, \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902',
           desc:
-              'अपने पोस्टर को एडिट करके WhatsApp, Facebook और Instagram पर आसानी से शेयर करें।',
+              '\u0905\u092a\u0928\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 \u0915\u094b \u090f\u0921\u093f\u091f \u0915\u0930\u0915\u0947 WhatsApp, Facebook \u0914\u0930 Instagram \u092a\u0930 \u0906\u0938\u093e\u0928\u0940 \u0938\u0947 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902\u0964',
           colors: <Color>[Color(0xFFEC4899), Color(0xFFF97316)],
         ),
       ],
@@ -932,7 +934,7 @@ class AppStrings {
         ),
         (
           icon: Icons.style_rounded,
-          title: 'Free & premium designs in one place',
+          title: 'Poster designs in one place',
           desc:
               'Get daily categories, festival posters, and special designs in one app.',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
@@ -958,7 +960,7 @@ class AppStrings {
         (
           icon: Icons.style_rounded,
           title:
-              '\u0b87\u0bb2\u0bb5\u0b9a \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd premium \u0b9f\u0bbf\u0b9a\u0bc8\u0ba9\u0bcd\u0b95\u0bb3\u0bcd \u0b92\u0bb0\u0bc7 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd',
+              '\u0b92\u0bb0\u0bc7 \u0b87\u0b9f\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b9f\u0bbf\u0b9a\u0bc8\u0ba9\u0bcd\u0b95\u0bb3\u0bcd',
           desc:
               '\u0ba4\u0bbf\u0ba9\u0ba8\u0bcd\u0ba4\u0bcb\u0bb1\u0bc1\u0bae\u0bcd \u0baa\u0bc1\u0ba4\u0bbf\u0baf categories, festival posters \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bbe\u0ba9 \u0b9f\u0bbf\u0b9a\u0bc8\u0ba9\u0bcd\u0b95\u0bb3\u0bc8 \u0b92\u0bb0\u0bc7 \u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0baa\u0bc6\u0bb1\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd.',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
@@ -985,7 +987,7 @@ class AppStrings {
         (
           icon: Icons.style_rounded,
           title:
-              '\u0c89\u0c9a\u0cbf\u0ca4 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 premium \u0ca1\u0cbf\u0c9c\u0cc8\u0ca8\u0ccd\u0c97\u0cb3\u0cc1 \u0c92\u0c82\u0ca6\u0cc7 \u0c9c\u0cbe\u0c97\u0ca6\u0cb2\u0ccd\u0cb2\u0cbf',
+              '\u0c92\u0c82\u0ca6\u0cc7 \u0c9c\u0c97\u0ca6\u0cb2\u0ccd\u0cb2\u0cbf \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca1\u0cbf\u0c9c\u0cc8\u0ca8\u0ccd\u0c97\u0cb3\u0cc1',
           desc:
               '\u0ca6\u0cbf\u0ca8\u0ca8\u0cbf\u0ca4\u0ccd\u0caf categories, festival posters \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 \u0ca1\u0cbf\u0c9c\u0cc8\u0ca8\u0ccd\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0c92\u0c82\u0ca6\u0cc7 app-\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0caa\u0ca1\u0cc6\u0caf\u0cbf\u0cb0\u0cbf.',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
@@ -1012,7 +1014,7 @@ class AppStrings {
         (
           icon: Icons.style_rounded,
           title:
-              '\u0d09\u0d1a\u0d3f\u0d24\u0d35\u0d41\u0d02 premium \u0d21\u0d3f\u0d38\u0d48\u0d28\u0d41\u0d15\u0d33\u0d41\u0d02 \u0d12\u0d30\u0d47 \u0d38\u0d4d\u0d25\u0d32\u0d24\u0d4d\u0d24\u0d4d',
+              '\u0d12\u0d30\u0d47 \u0d38\u0d4d\u0d25\u0d32\u0d24\u0d4d\u0d24\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d31\u0d4d \u0d21\u0d3f\u0d38\u0d48\u0d28\u0d41\u0d15\u0d33\u0d4d',
           desc:
               '\u0d26\u0d3f\u0d28\u0d82\u0d24\u0d4b\u0d31\u0d41\u0d02 categories, festival posters, \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15 \u0d21\u0d3f\u0d38\u0d48\u0d28\u0d41\u0d15\u0d33\u0d4d \u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02 \u0d12\u0d30\u0d47 app-\u0d32\u0d4d \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d15\u0d41\u0d02.',
           colors: <Color>[Color(0xFF0EA5E9), Color(0xFF10B981)],
@@ -1029,8 +1031,8 @@ class AppStrings {
   };
 
   String get loginWelcome => switch (language) {
-    AppLanguage.telugu => 'Mana Poster కి స్వాగతం',
-    AppLanguage.hindi => 'Mana Poster में आपका स्वागत है',
+    AppLanguage.telugu => 'Mana Poster \u0c15\u0c3f \u0c38\u0c4d\u0c35\u0c3e\u0c17\u0c24\u0c02',
+    AppLanguage.hindi => 'Mana Poster \u092e\u0947\u0902 \u0906\u092a\u0915\u093e \u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948',
     AppLanguage.english => 'Welcome to Mana Poster',
     AppLanguage.tamil =>
       '\u0bae\u0ba9\u0bbe \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b86\u0baa\u0bcd\u0baa\u0bc1\u00b95\u0bcd\u0b95\u0bc1 \u0bb5\u0bb0\u0bb5\u0bc7\u0bb1\u0bcd\u0baa\u0bc1',
@@ -1042,9 +1044,9 @@ class AppStrings {
 
   String get loginSubtitle => switch (language) {
     AppLanguage.telugu =>
-      'Google లేదా Email తో login అయి మీ పోస్టర్ ప్రయాణాన్ని ప్రారంభించండి.',
+      'Google \u0c32\u0c47\u0c26\u0c3e Email \u0c24\u0c4b login \u0c05\u0c2f\u0c3f \u0c2e\u0c40 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c2a\u0c4d\u0c30\u0c2f\u0c3e\u0c23\u0c3e\u0c28\u0c4d\u0c28\u0c3f \u0c2a\u0c4d\u0c30\u0c3e\u0c30\u0c02\u0c2d\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f.',
     AppLanguage.hindi =>
-      'Google या Email से login करके अपनी poster journey शुरू करें.',
+      'Google \u092f\u093e Email \u0938\u0947 login \u0915\u0930\u0915\u0947 \u0905\u092a\u0928\u0940 poster journey \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902.',
     AppLanguage.english =>
       'Login with Google or Email and start your poster journey.',
     AppLanguage.tamil =>
@@ -1075,8 +1077,8 @@ class AppStrings {
   };
 
   String get googleContinue => switch (language) {
-    AppLanguage.telugu => 'Google తో కొనసాగించండి',
-    AppLanguage.hindi => 'Google से जारी रखें',
+    AppLanguage.telugu => 'Google \u0c24\u0c4b \u0c15\u0c4a\u0c28\u0c38\u0c3e\u0c17\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => 'Google \u0938\u0947 \u091c\u093e\u0930\u0940 \u0930\u0916\u0947\u0902',
     AppLanguage.english => 'Continue with Google',
     AppLanguage.tamil =>
       'Google \u0b89\u0b9f\u0ba9\u0bcd \u0ba4\u0bca\u0b9f\u0bb0\u0bb5\u0bc1\u0bae\u0bcd',
@@ -1087,36 +1089,36 @@ class AppStrings {
   };
 
   String get emailAddress => switch (language) {
-    AppLanguage.telugu => 'Email address',
-    AppLanguage.hindi => 'Email address',
+    AppLanguage.telugu => 'ఈమెయిల్ చిరునామా',
+    AppLanguage.hindi => 'ईमेल पता',
     AppLanguage.english => 'Email address',
-    AppLanguage.tamil => 'Email address',
-    AppLanguage.kannada => 'Email address',
-    AppLanguage.malayalam => 'Email address',
+    AppLanguage.tamil => 'மின்னஞ்சல் முகவரி',
+    AppLanguage.kannada => 'ಇಮೇಲ್ ವಿಳಾಸ',
+    AppLanguage.malayalam => 'ഇമെയിൽ വിലാസം',
   };
 
   String get password => switch (language) {
-    AppLanguage.telugu => 'Password',
-    AppLanguage.hindi => 'Password',
+    AppLanguage.telugu => 'పాస్‌వర్డ్',
+    AppLanguage.hindi => 'पासवर्ड',
     AppLanguage.english => 'Password',
-    AppLanguage.tamil => 'Password',
-    AppLanguage.kannada => 'Password',
-    AppLanguage.malayalam => 'Password',
+    AppLanguage.tamil => 'கடவுச்சொல்',
+    AppLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್',
+    AppLanguage.malayalam => 'പാസ്‌വേഡ്',
   };
 
   String get forgotPassword => switch (language) {
-    AppLanguage.telugu => 'Forgot Password',
-    AppLanguage.hindi => 'Forgot Password',
+    AppLanguage.telugu => 'పాస్‌వర్డ్ మర్చిపోయారా?',
+    AppLanguage.hindi => 'पासवर्ड भूल गए?',
     AppLanguage.english => 'Forgot Password',
-    AppLanguage.tamil => 'Forgot Password',
-    AppLanguage.kannada => 'Forgot Password',
-    AppLanguage.malayalam => 'Forgot Password',
+    AppLanguage.tamil => 'கடவுச்சொல் மறந்துவிட்டதா?',
+    AppLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
+    AppLanguage.malayalam => 'പാസ്‌വേഡ് മറന്നോ?',
   };
 
   String get noAccount => switch (language) {
-    AppLanguage.telugu => 'Account లేదా?',
-    AppLanguage.hindi => 'Account नहीं है?',
-    AppLanguage.english => 'Account or not?',
+    AppLanguage.telugu => 'ఖాతా లేదా?',
+    AppLanguage.hindi => 'खाता नहीं है?',
+    AppLanguage.english => "Don't have an account?",
     AppLanguage.tamil =>
       '\u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1 \u0b87\u0bb2\u0bcd\u0bb2\u0bc8\u0baf\u0bbe?',
     AppLanguage.kannada =>
@@ -1126,8 +1128,8 @@ class AppStrings {
   };
 
   String get alreadyHaveAccount => switch (language) {
-    AppLanguage.telugu => 'ఇప్పటికే account ఉందా?',
-    AppLanguage.hindi => 'Already have an account?',
+    AppLanguage.telugu => 'ఇప్పటికే ఖాతా ఉందా?',
+    AppLanguage.hindi => 'क्या पहले से खाता है?',
     AppLanguage.english => 'Already have an account?',
     AppLanguage.tamil =>
       '\u0b8f\u0bb1\u0bcd\u0b95\u0ba9\u0bb5\u0bc7 \u0b92\u0bb0\u0bc1 \u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1 \u0b89\u0bb3\u0bcd\u0bb3\u0ba4\u0bbe?',
@@ -1138,8 +1140,8 @@ class AppStrings {
   };
 
   String get loginWithEmail => switch (language) {
-    AppLanguage.telugu => 'Email తో Login',
-    AppLanguage.hindi => 'Email से Login',
+    AppLanguage.telugu => 'ఈమెయిల్‌తో లాగిన్ అవ్వండి',
+    AppLanguage.hindi => 'ईमेल से लॉग इन करें',
     AppLanguage.english => 'Login with Email',
     AppLanguage.tamil =>
       'Email \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0b89\u0bb3\u0bcd\u0ba8\u0bc1\u0bb4\u0bc8',
@@ -1150,8 +1152,8 @@ class AppStrings {
   };
 
   String get signUpWithEmail => switch (language) {
-    AppLanguage.telugu => 'Email తో Sign Up',
-    AppLanguage.hindi => 'Email से Sign Up',
+    AppLanguage.telugu => 'ఈమెయిల్‌తో నమోదు చేసుకోండి',
+    AppLanguage.hindi => 'ईमेल से साइन अप करें',
     AppLanguage.english => 'Sign Up with Email',
     AppLanguage.tamil =>
       'Email \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd',
@@ -1162,8 +1164,8 @@ class AppStrings {
   };
 
   String get validEmailError => switch (language) {
-    AppLanguage.telugu => 'సరైన email ఇవ్వండి',
-    AppLanguage.hindi => 'सही email दर्ज करें',
+    AppLanguage.telugu => '\u0c38\u0c30\u0c48\u0c28 email \u0c07\u0c35\u0c4d\u0c35\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0938\u0939\u0940 email \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Enter valid email',
     AppLanguage.tamil =>
       '\u0b9a\u0bb0\u0bbf\u0baf\u0bbe\u0ba9 email \u0b89\u0bb3\u0bcd\u0bb3\u0bbf\u0b9f\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -1174,8 +1176,8 @@ class AppStrings {
   };
 
   String get passwordError => switch (language) {
-    AppLanguage.telugu => 'కనీసం 6 అక్షరాలు అవసరం',
-    AppLanguage.hindi => 'कम से कम 6 अक्षर चाहिए',
+    AppLanguage.telugu => '\u0c15\u0c28\u0c40\u0c38\u0c02 6 \u0c05\u0c15\u0c4d\u0c37\u0c30\u0c3e\u0c32\u0c41 \u0c05\u0c35\u0c38\u0c30\u0c02',
+    AppLanguage.hindi => '\u0915\u092e \u0938\u0947 \u0915\u092e 6 \u0905\u0915\u094d\u0937\u0930 \u091a\u093e\u0939\u093f\u090f',
     AppLanguage.english => 'Minimum 6 characters required',
     AppLanguage.tamil =>
       '\u0b95\u0bc1\u0bb1\u0bc8\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1 6 \u0b8e\u0bb4\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b95\u0bb3\u0bcd \u0ba4\u0bc7\u0bb5\u0bc8',
@@ -1187,36 +1189,33 @@ class AppStrings {
 
   String get forgotPasswordPlaceholder => switch (language) {
     AppLanguage.telugu =>
-      'Forgot Password flow backend integration తర్వాత activate అవుతుంది.',
+      'పాస్‌వర్డ్ రీసెట్ సదుపాయం త్వరలో అందుబాటులోకి వస్తుంది.',
     AppLanguage.hindi =>
-      'Forgot Password flow backend integration के बाद activate होगा.',
+      'पासवर्ड रीसेट सुविधा जल्द उपलब्ध होगी।',
     AppLanguage.english =>
-      'Forgot Password flow will activate after backend integration.',
+      'Password reset will be available soon.',
     AppLanguage.tamil =>
-      'Forgot Password flow backend integration \u0bae\u0bc1\u0b9f\u0bbf\u0ba8\u0bcd\u0ba4\u0baa\u0bbf\u0ba9\u0bcd \u0b9a\u0bc6\u0baf\u0bb2\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd.',
+      'கடவுச்சொல் மீட்டமைப்பு வசதி விரைவில் கிடைக்கும்.',
     AppLanguage.kannada =>
-      'Forgot Password flow backend integration \u0c86\u0ca6 \u0cae\u0cc7\u0cb2\u0cc6 \u0cb8\u0c95\u0ccd\u0cb0\u0cbf\u0caf\u0c97\u0cca\u0cb3\u0ccd\u0cb3\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+      'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ಸೌಲಭ್ಯ ಶೀಘ್ರದಲ್ಲೇ ಬರುತ್ತದೆ.',
     AppLanguage.malayalam =>
-      'Forgot Password flow backend integration \u0d2a\u0d42\u0d7c\u0d24\u0d4d\u0d24\u0d3f\u0d2f\u0d3e\u0d2f\u0d3f \u0d15\u0d34\u0d3f\u0d1e\u0d4d\u0d1e\u0d3e\u0d32\u0d4d \u0d38\u0d1c\u0d40\u0d35\u0d2e\u0d3e\u0d15\u0d41\u0d02.',
+      'പാസ്‌വേഡ് റീസെറ്റ് സൗകര്യം ഉടൻ ലഭ്യമാകും.',
   };
 
   String get permissionsTitle => switch (language) {
-    AppLanguage.telugu => 'కొన్ని అనుమతులు అవసరం',
-    AppLanguage.hindi => 'कुछ permissions आवश्यक हैं',
+    AppLanguage.telugu => '\u0c15\u0c4a\u0c28\u0c4d\u0c28\u0c3f \u0c05\u0c28\u0c41\u0c2e\u0c24\u0c41\u0c32\u0c41 \u0c05\u0c35\u0c38\u0c30\u0c02',
+    AppLanguage.hindi => 'कुछ अनुमतियां जरूरी हैं',
     AppLanguage.english => 'A few permissions are needed',
-    AppLanguage.tamil =>
-      '\u0b9a\u0bbf\u0bb2 permissions \u0ba4\u0bc7\u0bb5\u0bc8',
-    AppLanguage.kannada =>
-      '\u0c95\u0cc6\u0cb2\u0cb5\u0cc1 permissions \u0cac\u0cc7\u0c95\u0cbe\u0c97\u0cbf\u0cb5\u0cc6',
-    AppLanguage.malayalam =>
-      '\u0d15\u0d41\u0d31\u0d1a\u0d4d\u0d1a\u0d4d permissions \u0d06\u0d35\u0d36\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d',
+    AppLanguage.tamil => 'சில அனுமதிகள் தேவை',
+    AppLanguage.kannada => 'ಕೆಲವು ಅನುಮತಿಗಳು ಬೇಕಾಗಿವೆ',
+    AppLanguage.malayalam => 'ചില അനുമതികൾ ആവശ്യമാണ്',
   };
 
   String get permissionsSubtitle => switch (language) {
     AppLanguage.telugu =>
-      'ఫోటోలు ఎంచుకోవడానికి, పోస్టర్లు సేవ్ చేయడానికి, ముఖ్యమైన అప్‌డేట్స్ తెలుసుకోవడానికి permissions అవసరం.',
+      '\u0c2b\u0c4b\u0c1f\u0c4b\u0c32\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c35\u0c21\u0c3e\u0c28\u0c3f\u0c15\u0c3f, \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u0c32\u0c41 \u0c38\u0c47\u0c35\u0c4d \u0c1a\u0c47\u0c2f\u0c21\u0c3e\u0c28\u0c3f\u0c15\u0c3f, \u0c2e\u0c41\u0c16\u0c4d\u0c2f\u0c2e\u0c48\u0c28 \u0c05\u0c2a\u0c4d\u200c\u0c21\u0c47\u0c1f\u0c4d\u0c38\u0c4d \u0c24\u0c46\u0c32\u0c41\u0c38\u0c41\u0c15\u0c4b\u0c35\u0c21\u0c3e\u0c28\u0c3f\u0c15\u0c3f permissions \u0c05\u0c35\u0c38\u0c30\u0c02.',
     AppLanguage.hindi =>
-      'फोटो चुनने, पोस्टर सेव करने और महत्वपूर्ण अपडेट पाने के लिए permissions चाहिए.',
+      '\u092b\u094b\u091f\u094b \u091a\u0941\u0928\u0928\u0947, \u092a\u094b\u0938\u094d\u091f\u0930 \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u0914\u0930 \u092e\u0939\u0924\u094d\u0935\u092a\u0942\u0930\u094d\u0923 \u0905\u092a\u0921\u0947\u091f \u092a\u093e\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f permissions \u091a\u093e\u0939\u093f\u090f.',
     AppLanguage.english =>
       'Permissions are needed to choose photos, save posters, and receive important updates.',
     AppLanguage.tamil =>
@@ -1228,19 +1227,17 @@ class AppStrings {
   };
 
   String get photosGallery => switch (language) {
-    AppLanguage.telugu => 'Photos/Gallery',
-    AppLanguage.hindi => 'Photos/Gallery',
+    AppLanguage.telugu => 'ఫోటోలు / గ్యాలరీ',
+    AppLanguage.hindi => 'फोटो / गैलरी',
     AppLanguage.english => 'Photos/Gallery',
-    AppLanguage.tamil =>
-      '\u0baa\u0bc1\u0b95\u0bc8\u0baa\u0bcd\u0baa\u0b9f\u0b99\u0bcd\u0b95\u0bb3\u0bcd/Gallery',
-    AppLanguage.kannada => '\u0cab\u0ccb\u0c9f\u0ccb\u0c97\u0cb3\u0cc1/Gallery',
-    AppLanguage.malayalam =>
-      '\u0d2b\u0d4b\u0d1f\u0d4b\u0d15\u0d33\u0d4d/Gallery',
+    AppLanguage.tamil => 'புகைப்படங்கள் / கேலரி',
+    AppLanguage.kannada => 'ಫೋಟోలు / ಗ್ಯಾಲರಿ',
+    AppLanguage.malayalam => 'ഫോട്ടോകൾ / ഗാലറി',
   };
 
   String get notifications => switch (language) {
-    AppLanguage.telugu => 'Notifications',
-    AppLanguage.hindi => 'Notifications',
+    AppLanguage.telugu => 'నోటిఫికేషన్లు',
+    AppLanguage.hindi => 'सूचनाएं',
     AppLanguage.english => 'Notifications',
     AppLanguage.tamil =>
       '\u0b85\u0bb1\u0bbf\u0bb5\u0bbf\u0baa\u0bcd\u0baa\u0bc1\u0b95\u0bb3\u0bcd',
@@ -1252,22 +1249,22 @@ class AppStrings {
 
   String get enableLaterHint => switch (language) {
     AppLanguage.telugu =>
-      'మీరు తర్వాత Settings లో కూడా permissions enable చేయవచ్చు.',
+      'ఈ అనుమతులను తరువాత సెట్టింగ్స్‌లో కూడా ఆన్ చేయవచ్చు.',
     AppLanguage.hindi =>
-      'आप बाद में Settings में भी permissions enable कर सकते हैं.',
+      'इन अनुमतियों को बाद में सेटिंग्स में भी चालू कर सकते हैं।',
     AppLanguage.english =>
       'You can enable permissions later from Settings as well.',
     AppLanguage.tamil =>
-      '\u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0bb0\u0bcd Settings-\u0bb2\u0bbf\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1 permissions-\u0b90 enable \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bb2\u0bbe\u0bae\u0bcd.',
+      'இந்த அனுமதிகளை பிறகு அமைப்புகளில் இருந்து இயக்கலாம்.',
     AppLanguage.kannada =>
-      '\u0ca8\u0cc0\u0cb5\u0cc1 \u0ca8\u0c82\u0ca4\u0cb0 Settings-\u0ca8\u0cbf\u0c82\u0ca6\u0cb2\u0cc2 permissions enable \u0cae\u0cbe\u0ca1\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
+      'ಈ ಅನುಮತಿಗಳನ್ನು ನಂತರ ಸೆಟ್ಟಿಂಗ್ಸ್‌ನಿಂದಲೂ ಆನ್ ಮಾಡಬಹುದು.',
     AppLanguage.malayalam =>
-      '\u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d Settings-\u0d32\u0d4d \u0d28\u0d3f\u0d28\u0d4d\u0d28\u0d4d permissions enable \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0dbe\u0d35\u0d41\u0d28\u0d4d\u0d28\u0d24\u0d3e\u0d23\u0d4d.',
+      'ഈ അനുമതികൾ പിന്നീട് സെറ്റിംഗ്സിൽ നിന്നും ഓൺ ചെയ്യാം.',
   };
 
   String get allowLabel => switch (language) {
-    AppLanguage.telugu => 'అనుమతించండి',
-    AppLanguage.hindi => 'अनुमति दें',
+    AppLanguage.telugu => '\u0c05\u0c28\u0c41\u0c2e\u0c24\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0905\u0928\u0941\u092e\u0924\u093f \u0926\u0947\u0902',
     AppLanguage.english => 'Allow',
     AppLanguage.tamil => '\u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf',
     AppLanguage.kannada => '\u0c85\u0ca8\u0cc1\u0cae\u0ca4\u0cbf\u0cb8\u0cbf',
@@ -1276,8 +1273,8 @@ class AppStrings {
   };
 
   String get laterLabel => switch (language) {
-    AppLanguage.telugu => 'తర్వాత చూద్దాం',
-    AppLanguage.hindi => 'बाद में देखेंगे',
+    AppLanguage.telugu => '\u0c24\u0c30\u0c4d\u0c35\u0c3e\u0c24 \u0c1a\u0c42\u0c26\u0c4d\u0c26\u0c3e\u0c02',
+    AppLanguage.hindi => '\u092c\u093e\u0926 \u092e\u0947\u0902 \u0926\u0947\u0916\u0947\u0902\u0917\u0947',
     AppLanguage.english => 'Later',
     AppLanguage.tamil => '\u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0bb0\u0bcd',
     AppLanguage.kannada => '\u0ca8\u0c82\u0ca4\u0cb0',
@@ -1285,35 +1282,35 @@ class AppStrings {
   };
 
   String get homeTagline => switch (language) {
-    AppLanguage.telugu => 'సృష్టించండి & పంచుకోండి',
-    AppLanguage.hindi => 'बनाएं और साझा करें',
+    AppLanguage.telugu => '\u0c38\u0c43\u0c37\u0c4d\u0c1f\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f & \u0c2a\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u092c\u0928\u093e\u090f\u0902 \u0914\u0930 \u0938\u093e\u091d\u093e \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Create & Share',
-    AppLanguage.tamil => 'உருவாக்கி பகிருங்கள்',
-    AppLanguage.kannada => 'ರಚಿಸಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ',
-    AppLanguage.malayalam => 'സൃഷ്ടിച്ച് പങ്കിടുക',
+    AppLanguage.tamil => '\u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bbf \u0baa\u0b95\u0bbf\u0bb0\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+    AppLanguage.kannada => '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cca\u0cb3\u0ccd\u0cb3\u0cbf',
+    AppLanguage.malayalam => '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d2a\u0d19\u0d4d\u0d15\u0d3f\u0d1f\u0d41\u0d15',
   };
 
   String get createLabel => switch (language) {
-    AppLanguage.telugu => 'సృష్టించండి',
-    AppLanguage.hindi => 'बनाएं',
+    AppLanguage.telugu => '\u0c38\u0c43\u0c37\u0c4d\u0c1f\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u092c\u0928\u093e\u090f\u0902',
     AppLanguage.english => 'Create',
-    AppLanguage.tamil => 'உருவாக்கு',
-    AppLanguage.kannada => 'ರಚಿಸಿ',
-    AppLanguage.malayalam => 'സൃഷ്ടിക്കുക',
+    AppLanguage.tamil => '\u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bc1',
+    AppLanguage.kannada => '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf',
+    AppLanguage.malayalam => '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
   };
 
   String get searchTemplates => switch (language) {
-    AppLanguage.telugu => 'టెంప్లేట్లు వెతకండి',
-    AppLanguage.hindi => 'टेम्पलेट खोजें',
+    AppLanguage.telugu => '\u0c1f\u0c46\u0c02\u0c2a\u0c4d\u0c32\u0c47\u0c1f\u0c4d\u0c32\u0c41 \u0c35\u0c46\u0c24\u0c15\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f \u0916\u094b\u091c\u0947\u0902',
     AppLanguage.english => 'Search templates',
-    AppLanguage.tamil => 'டெம்ப்ளேட்களை தேடுங்கள்',
-    AppLanguage.kannada => 'ಟೆಂಪ್ಲೇಟ್ ಹುಡುಕಿ',
-    AppLanguage.malayalam => 'ടെംപ്ലേറ്റുകൾ തിരയുക',
+    AppLanguage.tamil => '\u0b9f\u0bc6\u0bae\u0bcd\u0baa\u0bcd\u0bb3\u0bc7\u0b9f\u0bcd\u0b95\u0bb3\u0bc8 \u0ba4\u0bc7\u0b9f\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+    AppLanguage.kannada => '\u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd \u0cb9\u0cc1\u0ca1\u0cc1\u0c95\u0cbf',
+    AppLanguage.malayalam => '\u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e \u0d24\u0d3f\u0d30\u0d2f\u0d41\u0d15',
   };
 
   String get bannerTitle => switch (language) {
-    AppLanguage.telugu => 'మనా పోస్టర్ ఫీచర్డ్ బ్యానర్',
-    AppLanguage.hindi => 'मना पोस्टर फीचर्ड बैनर',
+    AppLanguage.telugu => '\u0c2e\u0c28\u0c3e \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c2b\u0c40\u0c1a\u0c30\u0c4d\u0c21\u0c4d \u0c2c\u0c4d\u0c2f\u0c3e\u0c28\u0c30\u0c4d',
+    AppLanguage.hindi => '\u092e\u0928\u093e \u092a\u094b\u0938\u094d\u091f\u0930 \u092b\u0940\u091a\u0930\u094d\u0921 \u092c\u0948\u0928\u0930',
     AppLanguage.english => 'Mana Poster Featured Banner',
     AppLanguage.tamil =>
       'Mana Poster \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 banner',
@@ -1323,98 +1320,98 @@ class AppStrings {
   };
 
   String get freeTab => switch (language) {
-    AppLanguage.telugu => 'ఉచితం',
-    AppLanguage.hindi => 'फ्री',
-    AppLanguage.english => 'Free',
-    AppLanguage.tamil => 'இலவசம்',
-    AppLanguage.kannada => 'ಉಚಿತ',
-    AppLanguage.malayalam => 'സൗജന്യം',
+    AppLanguage.telugu => '\u0c09\u0c1a\u0c3f\u0c24\u0c02',
+    AppLanguage.hindi => '\u092e\u0941\u095e\u094d\u0924',
+    AppLanguage.english => 'Ready',
+    AppLanguage.tamil => '\u0b87\u0bb2\u0bb5\u0b9a\u0bae\u0bcd',
+    AppLanguage.kannada => '\u0c89\u0c9a\u0cbf\u0ca4',
+    AppLanguage.malayalam => '\u0d38\u0d57\u0d1c\u0d28\u0d4d\u0d2f\u0d02',
   };
 
   String get premiumTab => switch (language) {
-    AppLanguage.telugu => 'ప్రీమియం',
-    AppLanguage.hindi => 'प्रीमियम',
-    AppLanguage.english => 'Premium',
-    AppLanguage.tamil => 'பிரீமியம்',
-    AppLanguage.kannada => 'ಪ್ರೀಮಿಯಂ',
-    AppLanguage.malayalam => 'പ്രീമിയം',
+    AppLanguage.telugu => '\u0c2a\u0c4d\u0c30\u0c24\u0c4d\u0c2f\u0c47\u0c15\u0c02',
+    AppLanguage.hindi => '\u0935\u093f\u0936\u0947\u0937',
+    AppLanguage.english => 'Special',
+    AppLanguage.tamil => '\u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
+    AppLanguage.kannada => '\u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
+    AppLanguage.malayalam => '\u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d02',
   };
 
   String get buyLabel => switch (language) {
-    AppLanguage.telugu => 'కొనండి',
-    AppLanguage.hindi => 'खरीदें',
+    AppLanguage.telugu => '\u0c15\u0c4a\u0c28\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0916\u0930\u0940\u0926\u0947\u0902',
     AppLanguage.english => 'Buy',
-    AppLanguage.tamil => 'வாங்கு',
-    AppLanguage.kannada => 'ಖರೀದಿಸಿ',
-    AppLanguage.malayalam => 'വാങ്ങുക',
+    AppLanguage.tamil => '\u0bb5\u0bbe\u0b99\u0bcd\u0b95\u0bc1',
+    AppLanguage.kannada => '\u0c96\u0cb0\u0cc0\u0ca6\u0cbf\u0cb8\u0cbf',
+    AppLanguage.malayalam => '\u0d35\u0d3e\u0d19\u0d4d\u0d19\u0d41\u0d15',
   };
 
   String get shareWhatsApp => switch (language) {
-    AppLanguage.telugu => 'షేర్',
-    AppLanguage.hindi => 'शेयर',
+    AppLanguage.telugu => '\u0c37\u0c47\u0c30\u0c4d',
+    AppLanguage.hindi => '\u0936\u0947\u092f\u0930',
     AppLanguage.english => 'Share WhatsApp',
-    AppLanguage.tamil => 'பகிர்',
-    AppLanguage.kannada => 'ಹಂಚಿಕೆ',
-    AppLanguage.malayalam => 'ഷെയർ',
+    AppLanguage.tamil => '\u0baa\u0b95\u0bbf\u0bb0\u0bcd',
+    AppLanguage.kannada => '\u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cc6',
+    AppLanguage.malayalam => '\u0d37\u0d46\u0d2f\u0d7c',
   };
 
   String get downloadLabel => switch (language) {
-    AppLanguage.telugu => 'డౌన్‌లోడ్',
-    AppLanguage.hindi => 'डाउनलोड',
+    AppLanguage.telugu => '\u0c21\u0c4c\u0c28\u0c4d\u0c32\u0c4b\u0c21\u0c4d',
+    AppLanguage.hindi => '\u0921\u093e\u0909\u0928\u0932\u094b\u0921',
     AppLanguage.english => 'Download',
-    AppLanguage.tamil => 'பதிவிறக்கு',
-    AppLanguage.kannada => 'ಡೌನ್‌ಲೋಡ್',
-    AppLanguage.malayalam => 'ഡൗൺലോഡ്',
+    AppLanguage.tamil => '\u0baa\u0ba4\u0bbf\u0bb5\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bc1',
+    AppLanguage.kannada => '\u0ca1\u0ccc\u0ca8\u0ccd\u200c\u0cb2\u0ccb\u0ca1\u0ccd',
+    AppLanguage.malayalam => '\u0d21\u0d57\u0d7a\u0d32\u0d4b\u0d21\u0d4d',
   };
 
   String get profileTitle => switch (language) {
-    AppLanguage.telugu => 'ప్రొఫైల్ & సెట్టింగ్స్',
-    AppLanguage.hindi => 'प्रोफ़ाइल और सेटिंग्स',
+    AppLanguage.telugu => '\u0c2a\u0c4d\u0c30\u0c4a\u0c2b\u0c48\u0c32\u0c4d & \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d',
+    AppLanguage.hindi => '\u092a\u094d\u0930\u094b\u092b\u093e\u0907\u0932 \u0914\u0930 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938',
     AppLanguage.english => 'Profile & Settings',
-    AppLanguage.tamil => 'ப்ரொஃபைல் & அமைப்புகள்',
-    AppLanguage.kannada => 'ಪ್ರೊಫೈಲ್ ಮತ್ತು ಸೆಟ್ಟಿಂಗ್ಸ್',
-    AppLanguage.malayalam => 'പ്രൊഫൈൽ & സെറ്റിംഗ്സ്',
+    AppLanguage.tamil => '\u0b9a\u0bc1\u0baf\u0bb5\u0bbf\u0bb5\u0bb0\u0bae\u0bcd & \u0b85\u0bae\u0bc8\u0baa\u0bcd\u0baa\u0bc1\u0b95\u0bb3\u0bcd',
+    AppLanguage.kannada => '\u0caa\u0ccd\u0cb0\u0cca\u0cab\u0cc8\u0cb2\u0ccd \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb8\u0cc6\u0c9f\u0ccd\u0c9f\u0cbf\u0c82\u0c97\u0ccd\u0cb8\u0ccd',
+    AppLanguage.malayalam => '\u0d2a\u0d4d\u0d30\u0d4a\u0d2b\u0d48\u0d7d & \u0d38\u0d46\u0d31\u0d4d\u0d31\u0d3f\u0d02\u0d17\u0d4d\u0d38\u0d4d',
   };
 
   String get accountSection => switch (language) {
-    AppLanguage.telugu => 'అకౌంట్',
-    AppLanguage.hindi => 'अकाउंट',
+    AppLanguage.telugu => '\u0c05\u0c15\u0c4c\u0c02\u0c1f\u0c4d',
+    AppLanguage.hindi => '\u0905\u0915\u093e\u0909\u0902\u091f',
     AppLanguage.english => 'Account',
-    AppLanguage.tamil => 'அகௌಂಟ್',
-    AppLanguage.kannada => 'ಅಕೌಂಟ್',
-    AppLanguage.malayalam => 'അക്കൗണ്ട്',
+    AppLanguage.tamil => '\u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1',
+    AppLanguage.kannada => '\u0c96\u0cbe\u0ca4\u0cc6',
+    AppLanguage.malayalam => '\u0d05\u0d15\u0d4d\u0d15\u0d57\u0d23\u0d4d\u0d1f\u0d4d',
   };
 
   String get appSettingsSection => switch (language) {
-    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్',
-    AppLanguage.hindi => 'ऐप सेटिंग्स',
+    AppLanguage.telugu => '\u0c2f\u0c3e\u0c2a\u0c4d \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d',
+    AppLanguage.hindi => '\u090f\u092a \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938',
     AppLanguage.english => 'App Settings',
-    AppLanguage.tamil => 'ஆப் அமைப்புகள்',
-    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್',
-    AppLanguage.malayalam => 'ആപ്പ് സെറ്റിംഗ്സ്',
+    AppLanguage.tamil => '\u0b86\u0baa\u0bcd \u0b85\u0bae\u0bc8\u0baa\u0bcd\u0baa\u0bc1\u0b95\u0bb3\u0bcd',
+    AppLanguage.kannada => '\u0c86\u0caa\u0ccd \u0cb8\u0cc6\u0c9f\u0ccd\u0c9f\u0cbf\u0c82\u0c97\u0ccd\u0cb8\u0ccd',
+    AppLanguage.malayalam => '\u0d06\u0d2a\u0d4d\u0d2a\u0d4d \u0d38\u0d46\u0d31\u0d4d\u0d31\u0d3f\u0d02\u0d17\u0d4d\u0d38\u0d4d',
   };
 
   String get supportSection => switch (language) {
-    AppLanguage.telugu => 'సపోర్ట్',
-    AppLanguage.hindi => 'सपोर्ट',
+    AppLanguage.telugu => '\u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d',
+    AppLanguage.hindi => '\u0938\u092a\u094b\u0930\u094d\u091f',
     AppLanguage.english => 'Support',
-    AppLanguage.tamil => 'ஆதரவு',
-    AppLanguage.kannada => 'ಬೆಂಬಲ',
-    AppLanguage.malayalam => 'സഹായം',
+    AppLanguage.tamil => '\u0b86\u0ba4\u0bb0\u0bb5\u0bc1',
+    AppLanguage.kannada => '\u0cb8\u0cb9\u0cbe\u0caf',
+    AppLanguage.malayalam => '\u0d38\u0d39\u0d3e\u0d2f\u0d02',
   };
 
   String get languageOption => switch (language) {
-    AppLanguage.telugu => 'భాష',
-    AppLanguage.hindi => 'भाषा',
+    AppLanguage.telugu => '\u0c2d\u0c3e\u0c37',
+    AppLanguage.hindi => '\u092d\u093e\u0937\u093e',
     AppLanguage.english => 'Language',
-    AppLanguage.tamil => 'மொழி',
-    AppLanguage.kannada => 'ಭಾಷೆ',
-    AppLanguage.malayalam => 'ഭാഷ',
+    AppLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf',
+    AppLanguage.kannada => '\u0cad\u0cbe\u0cb7\u0cc6',
+    AppLanguage.malayalam => '\u0d2d\u0d3e\u0d37',
   };
 
   String get languageOptionSubtitle => switch (language) {
-    AppLanguage.telugu => 'మీ app భాషను ఎంచుకోండి',
-    AppLanguage.hindi => 'अपनी app language चुनें',
+    AppLanguage.telugu => '\u0c2e\u0c40 app \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u0905\u092a\u0928\u0940 app language \u091a\u0941\u0928\u0947\u0902',
     AppLanguage.english => 'Choose your app language',
     AppLanguage.tamil =>
       '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd app \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -1425,8 +1422,8 @@ class AppStrings {
   };
 
   String get subscriptionOption => switch (language) {
-    AppLanguage.telugu => 'సబ్‌స్క్రిప్షన్ / ప్లాన్లు',
-    AppLanguage.hindi => 'सब्सक्रिप्शन / प्लान',
+    AppLanguage.telugu => '\u0c38\u0c2c\u0c4d\u200c\u0c38\u0c4d\u0c15\u0c4d\u0c30\u0c3f\u0c2a\u0c4d\u0c37\u0c28\u0c4d / \u0c2a\u0c4d\u0c32\u0c3e\u0c28\u0c4d\u0c32\u0c41',
+    AppLanguage.hindi => '\u0938\u092c\u094d\u0938\u094d\u0915\u094d\u0930\u093f\u092a\u094d\u0936\u0928 / \u092a\u094d\u0932\u093e\u0928',
     AppLanguage.english => 'Subscription / Plans',
     AppLanguage.tamil => '\u0b9a\u0ba8\u0bcd\u0ba4\u0bbe / Plans',
     AppLanguage.kannada => '\u0c9a\u0c82\u0ca6\u0cbe / Plans',
@@ -1435,8 +1432,8 @@ class AppStrings {
   };
 
   String get subscriptionSubtitle => switch (language) {
-    AppLanguage.telugu => 'ప్రస్తుతం ఉన్న plan మరియు upgrades',
-    AppLanguage.hindi => 'Current plan और upgrades manage करें',
+    AppLanguage.telugu => '\u0c2a\u0c4d\u0c30\u0c38\u0c4d\u0c24\u0c41\u0c24\u0c02 \u0c09\u0c28\u0c4d\u0c28 plan \u0c2e\u0c30\u0c3f\u0c2f\u0c41 upgrades',
+    AppLanguage.hindi => 'Current plan \u0914\u0930 upgrades manage \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Manage current plan and upgrades',
     AppLanguage.tamil =>
       '\u0ba4\u0bb1\u0bcd\u0baa\u0bcb\u0ba4\u0bc1\u0baf plan \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd upgrades-\u0b90 manage \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bb5\u0bc1\u0bae\u0bcd',
@@ -1447,8 +1444,8 @@ class AppStrings {
   };
 
   String get permissionsOptionSubtitle => switch (language) {
-    AppLanguage.telugu => 'Photos, storage మరియు ఇతర access',
-    AppLanguage.hindi => 'Photos, storage और other access',
+    AppLanguage.telugu => 'Photos, storage \u0c2e\u0c30\u0c3f\u0c2f\u0c41 \u0c07\u0c24\u0c30 access',
+    AppLanguage.hindi => 'Photos, storage \u0914\u0930 other access',
     AppLanguage.english => 'Photos, storage and other access',
     AppLanguage.tamil =>
       'Photos, storage \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0baa\u0bbf\u0bb1 access',
@@ -1459,8 +1456,8 @@ class AppStrings {
   };
 
   String get notificationsOptionSubtitle => switch (language) {
-    AppLanguage.telugu => 'Alerts మరియు updates నియంత్రించండి',
-    AppLanguage.hindi => 'Alerts और updates नियंत्रित करें',
+    AppLanguage.telugu => 'Alerts \u0c2e\u0c30\u0c3f\u0c2f\u0c41 updates \u0c28\u0c3f\u0c2f\u0c02\u0c24\u0c4d\u0c30\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => 'Alerts \u0914\u0930 updates \u0928\u093f\u092f\u0902\u0924\u094d\u0930\u093f\u0924 \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Control alerts and updates',
     AppLanguage.tamil =>
       'Alerts \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd updates-\u0b90 \u0b95\u0b9f\u0bcd\u0b9f\u0bc1\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -1471,8 +1468,8 @@ class AppStrings {
   };
 
   String get helpSupport => switch (language) {
-    AppLanguage.telugu => 'సహాయం & సపోర్ట్',
-    AppLanguage.hindi => 'मदद और सपोर्ट',
+    AppLanguage.telugu => '\u0c38\u0c39\u0c3e\u0c2f\u0c02 & \u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d',
+    AppLanguage.hindi => '\u092e\u0926\u0926 \u0914\u0930 \u0938\u092a\u094b\u0930\u094d\u091f',
     AppLanguage.english => 'Help & Support',
     AppLanguage.tamil => '\u0b89\u0ba4\u0bb5\u0bbf & Support',
     AppLanguage.kannada => '\u0cb8\u0cb9\u0cbe\u0caf & Support',
@@ -1480,8 +1477,8 @@ class AppStrings {
   };
 
   String get helpSupportSubtitle => switch (language) {
-    AppLanguage.telugu => 'సహాయం పొందండి మరియు support ను సంప్రదించండి',
-    AppLanguage.hindi => 'मदद लें और support से संपर्क करें',
+    AppLanguage.telugu => '\u0c38\u0c39\u0c3e\u0c2f\u0c02 \u0c2a\u0c4a\u0c02\u0c26\u0c02\u0c21\u0c3f \u0c2e\u0c30\u0c3f\u0c2f\u0c41 support \u0c28\u0c41 \u0c38\u0c02\u0c2a\u0c4d\u0c30\u0c26\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+    AppLanguage.hindi => '\u092e\u0926\u0926 \u0932\u0947\u0902 \u0914\u0930 support \u0938\u0947 \u0938\u0902\u092a\u0930\u094d\u0915 \u0915\u0930\u0947\u0902',
     AppLanguage.english => 'Get help and contact support',
     AppLanguage.tamil =>
       '\u0b89\u0ba4\u0bb5\u0bbf \u0baa\u0bc6\u0bb1\u0bcd\u0bb1\u0bc1 support-\u0b90 \u0ba4\u0bca\u0b9f\u0bb0\u0bcd\u0baa\u0bc1 \u0b95\u0bca\u0bb3\u0bcd\u0bb3\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
@@ -1492,8 +1489,8 @@ class AppStrings {
   };
 
   String get aboutApp => switch (language) {
-    AppLanguage.telugu => 'యాప్ గురించి',
-    AppLanguage.hindi => 'ऐप के बारे में',
+    AppLanguage.telugu => '\u0c2f\u0c3e\u0c2a\u0c4d \u0c17\u0c41\u0c30\u0c3f\u0c02\u0c1a\u0c3f',
+    AppLanguage.hindi => '\u090f\u092a \u0915\u0947 \u092c\u093e\u0930\u0947 \u092e\u0947\u0902',
     AppLanguage.english => 'About App',
     AppLanguage.tamil => 'App \u0baa\u0bb1\u0bcd\u0bb1\u0bbf',
     AppLanguage.kannada => 'App \u0cac\u0c97\u0ccd\u0c97\u0cc6',
@@ -1502,8 +1499,8 @@ class AppStrings {
   };
 
   String get aboutAppSubtitle => switch (language) {
-    AppLanguage.telugu => 'App వివరాలు మరియు version సమాచారం',
-    AppLanguage.hindi => 'App details और version info',
+    AppLanguage.telugu => 'App \u0c35\u0c3f\u0c35\u0c30\u0c3e\u0c32\u0c41 \u0c2e\u0c30\u0c3f\u0c2f\u0c41 version \u0c38\u0c2e\u0c3e\u0c1a\u0c3e\u0c30\u0c02',
+    AppLanguage.hindi => 'App details \u0914\u0930 version info',
     AppLanguage.english => 'App details and version info',
     AppLanguage.tamil =>
       'App details \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd version info',
@@ -1514,8 +1511,8 @@ class AppStrings {
   };
 
   String get logout => switch (language) {
-    AppLanguage.telugu => 'లాగ్ అవుట్',
-    AppLanguage.hindi => 'लॉग आउट',
+    AppLanguage.telugu => '\u0c32\u0c3e\u0c17\u0c4d \u0c05\u0c35\u0c41\u0c1f\u0c4d',
+    AppLanguage.hindi => '\u0932\u0949\u0917 \u0906\u0909\u091f',
     AppLanguage.english => 'Logout',
     AppLanguage.tamil => '\u0bb5\u0bc6\u0bb3\u0bbf\u0baf\u0bc7\u0bb1\u0bc1',
     AppLanguage.kannada =>
@@ -1524,8 +1521,8 @@ class AppStrings {
   };
 
   String get logoutSubtitle => switch (language) {
-    AppLanguage.telugu => 'Sign out logic తర్వాత connect అవుతుంది',
-    AppLanguage.hindi => 'Sign out logic बाद में connect होगी',
+    AppLanguage.telugu => 'Sign out logic \u0c24\u0c30\u0c4d\u0c35\u0c3e\u0c24 connect \u0c05\u0c35\u0c41\u0c24\u0c41\u0c02\u0c26\u0c3f',
+    AppLanguage.hindi => 'Sign out logic \u092c\u093e\u0926 \u092e\u0947\u0902 connect \u0939\u094b\u0917\u0940',
     AppLanguage.english => 'Sign out logic can be connected later',
     AppLanguage.tamil =>
       'Sign out logic \u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0bb0\u0bcd connect \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bb2\u0bbe\u0bae\u0bcd.',
@@ -1536,8 +1533,8 @@ class AppStrings {
   };
 
   String get languageSettingsTitle => switch (language) {
-    AppLanguage.telugu => 'భాష సెట్టింగ్స్',
-    AppLanguage.hindi => 'भाषा सेटिंग्स',
+    AppLanguage.telugu => '\u0c2d\u0c3e\u0c37 \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d',
+    AppLanguage.hindi => '\u092d\u093e\u0937\u093e \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938',
     AppLanguage.english => 'Language Settings',
     AppLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf Settings',
     AppLanguage.kannada => '\u0cad\u0bbe\u0cb7\u0cc6 Settings',
@@ -1545,8 +1542,8 @@ class AppStrings {
   };
 
   String get currentLanguageLabel => switch (language) {
-    AppLanguage.telugu => 'ప్రస్తుత భాష',
-    AppLanguage.hindi => 'वर्तमान भाषा',
+    AppLanguage.telugu => '\u0c2a\u0c4d\u0c30\u0c38\u0c4d\u0c24\u0c41\u0c24 \u0c2d\u0c3e\u0c37',
+    AppLanguage.hindi => '\u0935\u0930\u094d\u0924\u092e\u093e\u0928 \u092d\u093e\u0937\u093e',
     AppLanguage.english => 'Current language',
     AppLanguage.tamil =>
       '\u0ba4\u0bb1\u0bcd\u0baa\u0bcb\u0ba4\u0bc8\u0baf \u0bae\u0bca\u0bb4\u0bbf',
@@ -1557,8 +1554,8 @@ class AppStrings {
   };
 
   String get saveApply => switch (language) {
-    AppLanguage.telugu => 'సేవ్ / అప్లై',
-    AppLanguage.hindi => 'सेव / अप्लाई',
+    AppLanguage.telugu => '\u0c38\u0c47\u0c35\u0c4d / \u0c05\u0c2a\u0c4d\u0c32\u0c48',
+    AppLanguage.hindi => '\u0938\u0947\u0935 / \u0905\u092a\u094d\u0932\u093e\u0908',
     AppLanguage.english => 'Save / Apply',
     AppLanguage.tamil => '\u0b9a\u0bc7\u0bae\u0bbf / Apply',
     AppLanguage.kannada => '\u0c89\u0cb3\u0cbf\u0cb8\u0cbf / Apply',
@@ -1576,235 +1573,128 @@ class AppStrings {
 
   List<String> localizedHomeCategories() => (switch (language) {
     AppLanguage.telugu => const <String>[
-      'అన్నీ',
-      '🌙 శుభరాత్రి',
-      '🌅 శుభోదయం',
-      '💪 ప్రేరణాత్మక',
-      '❤️ ప్రేమ కోట్స్',
-      '✨ ఈరోజు ప్రత్యేకం',
-      '🎂 పుట్టినరోజులు',
-      '🌿 జీవితం సలహాలు',
-      '📖 గీతా జ్ఞానం',
-      '📰 వార్తలు',
-      '🙏 భక్తి',
-      '🏹 మహాభారతం',
-      '💍 వార్షికోత్సవం',
-      '💭 మంచి ఆలోచనలు',
-      '✝️ బైబిల్',
-      '☪️ ఇస్లాం',
-      '🆕 కొత్తవి',
+      '\u0c05\u0c28\u0c4d\u0c28\u0c40',
+      '\u0c36\u0c41\u0c2d\u0c4b\u0c26\u0c2f\u0c02',
+      '\u0c36\u0c41\u0c2d \u0c2e\u0c27\u0c4d\u0c2f\u0c3e\u0c39\u0c4d\u0c28\u0c02',
+      '\u0c36\u0c41\u0c2d\u0c30\u0c3e\u0c24\u0c4d\u0c30\u0c3f',
+      '\u0c2a\u0c4d\u0c30\u0c47\u0c30\u0c23\u0c3e\u0c24\u0c4d\u0c2e\u0c15',
+      '\u0c2a\u0c4d\u0c30\u0c47\u0c2e \u0c15\u0c4b\u0c1f\u0c4d\u0c38\u0c4d',
+      '\u0c08\u0c30\u0c4b\u0c1c\u0c41 \u0c2a\u0c4d\u0c30\u0c24\u0c4d\u0c2f\u0c47\u0c15\u0c02',
+      '\u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41\u0c32\u0c41',
+      '\u0c1c\u0c40\u0c35\u0c3f\u0c24 \u0c38\u0c32\u0c39\u0c3e\u0c32\u0c41',
+      '\u0c17\u0c40\u0c24\u0c3e \u0c1c\u0c4d\u0c1e\u0c3e\u0c28\u0c02',
+      '\u0c35\u0c3e\u0c30\u0c4d\u0c24\u0c32\u0c41',
+      '\u0c2d\u0c15\u0c4d\u0c24\u0c3f',
+      '\u0c2e\u0c39\u0c3e\u0c2d\u0c3e\u0c30\u0c24\u0c02',
+      '\u0c35\u0c3e\u0c30\u0c4d\u0c37\u0c3f\u0c15\u0c4b\u0c24\u0c4d\u0c38\u0c35\u0c02',
+      '\u0c2e\u0c02\u0c1a\u0c3f \u0c06\u0c32\u0c4b\u0c1a\u0c28\u0c32\u0c41',
+      '\u0c2c\u0c48\u0c2c\u0c3f\u0c32\u0c4d',
+      '\u0c07\u0c38\u0c4d\u0c32\u0c3e\u0c02',
+      '\u0c15\u0c4a\u0c24\u0c4d\u0c24\u0c35\u0c3f',
     ],
     AppLanguage.hindi => const <String>[
-      'सभी',
-      '🌙 शुभ रात्रि',
-      '🌅 सुप्रभात',
-      '💪 प्रेरणादायक',
-      '❤️ प्रेम उद्धरण',
-      '✨ आज का विशेष',
-      '🎂 जन्मदिन',
-      '🌿 जीवन सलाह',
-      '📖 गीता ज्ञान',
-      '📰 समाचार',
-      '🙏 भक्ति',
-      '🏹 महाभारत',
-      '💍 वर्षगांठ',
-      '💭 अच्छे विचार',
-      '✝️ बाइबल',
-      '☪️ इस्लाम',
-      '🆕 नया',
+      '\u0938\u092d\u0940',
+      '\u0938\u0941\u092a\u094d\u0930\u092d\u093e\u0924',
+      '\u0936\u0941\u092d \u0926\u094b\u092a\u0939\u0930',
+      '\u0936\u0941\u092d \u0930\u093e\u0924\u094d\u0930\u093f',
+      '\u092a\u094d\u0930\u0947\u0930\u0923\u093e\u0926\u093e\u092f\u0915',
+      '\u092a\u094d\u0930\u0947\u092e \u0909\u0926\u094d\u0927\u0930\u0923',
+      '\u0906\u091c \u0915\u093e \u0935\u093f\u0936\u0947\u0937',
+      '\u091c\u0928\u094d\u092e\u0926\u093f\u0928',
+      '\u091c\u0940\u0935\u0928 \u0938\u0932\u093e\u0939',
+      '\u0917\u0940\u0924\u093e \u091c\u094d\u091e\u093e\u0928',
+      '\u0938\u092e\u093e\u091a\u093e\u0930',
+      '\u092d\u0915\u094d\u0924\u093f',
+      '\u092e\u0939\u093e\u092d\u093e\u0930\u0924',
+      '\u0935\u0930\u094d\u0937\u0917\u093e\u0901\u0920',
+      '\u0905\u091a\u094d\u091b\u0947 \u0935\u093f\u091a\u093e\u0930',
+      '\u092c\u093e\u0907\u092c\u0932',
+      '\u0907\u0938\u094d\u0932\u093e\u092e',
+      '\u0928\u092f\u093e',
     ],
     AppLanguage.english => const <String>[
       'All',
-      '🌙 Good Night',
-      '🌅 Good Morning',
-      '💪 Motivational',
-      '❤️ Love Quotes',
-      '✨ Today Special',
-      '🎂 Birthdays',
-      '🌿 Life Advice',
-      '📖 Gita Wisdom',
-      '📰 News',
-      '🙏 Devotional',
-      '🏹 Mahabharata',
-      '💍 Anniversary',
-      '💭 Good Thoughts',
-      '✝️ Bible',
-      '☪️ Islam',
-      '🆕 New',
-    ],
-    AppLanguage.tamil => const <String>[
-      'அனைத்தும்',
-      '🌙 இனிய இரவு',
-      '🌅 இனிய காலை',
-      '💪 ஊக்கமளிப்பு',
-      '❤️ காதல் மேற்கோள்கள்',
-      '✨ இன்றைய சிறப்பு',
-      '🎂 பிறந்தநாள்கள்',
-      '🌿 வாழ்க்கை ஆலோசனை',
-      '📖 கீதா ஞானம்',
-      '📰 செய்திகள்',
-      '🙏 பக்தி',
-      '🏹 மகாபாரதம்',
-      '💍 ஆண்டு விழா',
-      '💭 நல்ல எண்ணங்கள்',
-      '✝️ பைபிள்',
-      '☪️ இஸ்லாம்',
-      '🆕 புதியவை',
-    ],
-    AppLanguage.kannada => const <String>[
-      'ಎಲ್ಲವೂ',
-      '🌙 ಶುಭ ರಾತ್ರಿ',
-      '🌅 ಶುಭೋದಯ',
-      '💪 ಪ್ರೇರಣಾದಾಯಕ',
-      '❤️ ಪ್ರೀತಿ ಉಕ್ತಿಗಳು',
-      '✨ ಇಂದಿನ ವಿಶೇಷ',
-      '🎂 ಜನ್ಮದಿನಗಳು',
-      '🌿 ಜೀವನ ಸಲಹೆ',
-      '📖 ಗೀತಾ ಜ್ಞಾನ',
-      '📰 ಸುದ್ದಿ',
-      '🙏 ಭಕ್ತಿ',
-      '🏹 ಮಹಾಭಾರತ',
-      '💍 ವಾರ್ಷಿಕೋತ್ಸವ',
-      '💭 ಒಳ್ಳೆಯ ಆಲೋಚನೆಗಳು',
-      '✝️ ಬೈಬಲ್',
-      '☪️ ಇಸ್ಲಾಂ',
-      '🆕 ಹೊಸದು',
-    ],
-    AppLanguage.malayalam => const <String>[
-      'എല്ലാം',
-      '🌙 ശുഭ രാത്രി',
-      '🌅 ശുഭോദയം',
-      '💪 പ്രചോദനാത്മകം',
-      '❤️ പ്രണയ ഉദ്ധരണികൾ',
-      '✨ ഇന്നത്തെ പ്രത്യേകത',
-      '🎂 ജന്മദിനങ്ങൾ',
-      '🌿 ജീവിത ഉപദേശം',
-      '📖 ഗീതാ ജ്ഞാനം',
-      '📰 വാർത്തകൾ',
-      '🙏 ഭക്തി',
-      '🏹 മഹാഭാരതം',
-      '💍 വാർഷികം',
-      '💭 നല്ല ചിന്തകൾ',
-      '✝️ ബൈബിൾ',
-      '☪️ ഇസ്ലാം',
-      '🆕 പുതിയത്',
-    ],
-  }).map((item) => _sanitizeDisplayText(item)).toList(growable: false);
-
-  List<String> homeCategories() => (switch (language) {
-    AppLanguage.telugu => const <String>[
-      'All',
-      '🌙 Good Night',
-      '🌅 Good Morning',
-      '💪 Motivational',
-      '❤️ Love Quotes',
-      '✨ Today Special',
-      '🎂 Birthdays',
-      '🌿 జీవిత సలహాలు',
-      '📖 గీతోపదేశం',
-      '📰 News',
-      '🙏 Devotional',
-      '🏹 మహా భారతం',
-      '💍 వార్షికోత్సవం',
-      '💭 మంచి ఆలోచనలు',
-      '✝️ బైబిల్',
-      '☪️ ఇస్లాం',
-      '🆕 New',
-    ],
-    AppLanguage.hindi => const <String>[
-      'All',
-      '🌙 Good Night',
-      '🌅 Good Morning',
-      '💪 Motivational',
-      '❤️ Love Quotes',
-      '✨ Today Special',
-      '🎂 Birthdays',
-      '🌿 जीवन सलाह',
-      '📖 गीता उपदेश',
-      '📰 News',
-      '🙏 Devotional',
-      '🏹 महाभारत',
-      '💍 वर्षगाँठ',
-      '💭 अच्छे विचार',
-      '✝️ बाइबल',
-      '☪️ इस्लाम',
-      '🆕 New',
-    ],
-    AppLanguage.english => const <String>[
-      'All',
-      '🌙 Good Night',
-      '🌅 Good Morning',
-      '💪 Motivational',
-      '❤️ Love Quotes',
-      '✨ Today Special',
-      '🎂 Birthdays',
-      '🌿 Life Advice',
-      '📖 Gita Wisdom',
-      '📰 News',
-      '🙏 Devotional',
-      '🏹 Mahabharata',
-      '💍 Anniversary',
-      '💭 Good Thoughts',
-      '✝️ Bible',
-      '☪️ Islam',
-      '🆕 New',
+      'Good Morning',
+      'Good Afternoon',
+      'Good Night',
+      'Motivational',
+      'Love Quotes',
+      'Today Special',
+      'Birthdays',
+      'Life Advice',
+      'Gita Wisdom',
+      'News',
+      'Devotional',
+      'Mahabharata',
+      'Anniversary',
+      'Good Thoughts',
+      'Bible',
+      'Islam',
+      'New',
     ],
     AppLanguage.tamil => const <String>[
       '\u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1\u0bae\u0bcd',
-      '🌙 \u0b87\u0ba9\u0bbf\u0baf \u0b87\u0bb0\u0bb5\u0bc1 \u0bb5\u0ba3\u0b95\u0bcd\u0b95\u0bae\u0bcd',
-      '🌅 \u0b87\u0ba9\u0bbf\u0baf \u0b95\u0bbe\u0bb2\u0bc8 \u0bb5\u0ba3\u0b95\u0bcd\u0b95\u0bae\u0bcd',
-      '💪 \u0b8a\u0b95\u0b95\u0bcd \u0bb5\u0bbe\u0bb0\u0bcd\u0ba4\u0bcd\u0ba4\u0bc8\u0b95\u0bb3\u0bcd',
-      '❤️ \u0b95\u0bbe\u0ba4\u0bb2\u0bcd \u0bae\u0bc6\u0bbe\u0bb4\u0bbf\u0b95\u0bb3\u0bcd',
-      '✨ \u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
-      '🎂 \u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
-      '🌿 \u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b85\u0bb1\u0bbf\u0bb5\u0bc1\u0bb0\u0bc8',
-      '📖 \u0b95\u0bc0\u0ba4\u0bbe \u0b9e\u0bbe\u0ba9\u0bae\u0bcd',
-      '📰 \u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bbf\u0b95\u0bb3\u0bcd',
-      '🙏 \u0baa\u0b95\u0bcd\u0ba4\u0bbf',
-      '🏹 \u0bae\u0b95\u0bbe\u0baa\u0bbe\u0bb0\u0ba4\u0bae\u0bcd',
-      '💍 \u0ba4\u0bbf\u0bb0\u0bc1\u0bae\u0ba3 \u0ba8\u0bbe\u0bb3\u0bcd',
-      '💭 \u0ba8\u0bb2\u0bcd\u0bb2 \u0b8e\u0ba3\u0bcd\u0ba3\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
-      '✝️ \u0baa\u0bc8\u0baa\u0bbf\u0bb3\u0bcd',
-      '☪️ \u0b87\u0bb8\u0bcd\u0bb2\u0bbe\u0bae\u0bcd',
-      '🆕 \u0baa\u0bc1\u0ba4\u0bbf\u0baf\u0ba4\u0bc1',
+      '\u0b87\u0ba9\u0bbf\u0baf \u0b95\u0bbe\u0bb2\u0bc8',
+      '\u0b87\u0ba9\u0bbf\u0baf \u0bae\u0ba4\u0bbf\u0baf\u0bae\u0bcd',
+      '\u0b87\u0ba9\u0bbf\u0baf \u0b87\u0bb0\u0bb5\u0bc1',
+      '\u0b8a\u0b95\u0bcd\u0b95\u0bae\u0bb3\u0bbf\u0baa\u0bcd\u0baa\u0bc1',
+      '\u0b95\u0bbe\u0ba4\u0bb2\u0bcd \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
+      '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
+      '\u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
+      '\u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b86\u0bb2\u0bcb\u0b9a\u0ba9\u0bc8',
+      '\u0b95\u0bc0\u0ba4\u0bbe \u0b9e\u0bbe\u0ba9\u0bae\u0bcd',
+      '\u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bbf\u0b95\u0bb3\u0bcd',
+      '\u0baa\u0b95\u0bcd\u0ba4\u0bbf',
+      '\u0bae\u0b95\u0bbe\u0baa\u0bbe\u0bb0\u0ba4\u0bae\u0bcd',
+      '\u0b86\u0ba3\u0bcd\u0b9f\u0bc1 \u0bb5\u0bbf\u0bb4\u0bbe',
+      '\u0ba8\u0bb2\u0bcd\u0bb2 \u0b8e\u0ba3\u0bcd\u0ba3\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+      '\u0baa\u0bc8\u0baa\u0bbf\u0bb3\u0bcd',
+      '\u0b87\u0bb8\u0bcd\u0bb2\u0bbe\u0bae\u0bcd',
+      '\u0baa\u0bc1\u0ba4\u0bbf\u0baf\u0bb5\u0bc8',
     ],
     AppLanguage.kannada => const <String>[
       '\u0c8e\u0cb2\u0ccd\u0cb2\u0cb5\u0cc2',
-      '🌙 \u0cb6\u0cc1\u0cad \u0cb0\u0cbe\u0ca4\u0ccd\u0cb0\u0cbf',
-      '🌅 \u0cb6\u0cc1\u0cad\u0cca\u0ca6\u0caf',
-      '💪 \u0caa\u0ccd\u0cb0\u0cc7\u0cb0\u0ca3\u0cbe\u0ca4\u0ccd\u0cae\u0c95',
-      '❤️ \u0caa\u0ccd\u0cb0\u0cc0\u0ca4\u0cbf \u0c89\u0ca6\u0ccd\u0ca7\u0cb0\u0ca3\u0cc6\u0c97\u0cb3\u0cc1',
-      '✨ \u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
-      '🎂 \u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
-      '🌿 \u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
-      '📖 \u0c97\u0cc0\u0ca4\u0cc6 \u0c9c\u0ccd\u0c9e\u0cbe\u0ca8',
-      '📰 \u0cb8\u0cc1\u0ca6\u0ccd\u0ca6\u0cbf',
-      '🙏 \u0cad\u0c95\u0ccd\u0ca4\u0cbf',
-      '🏹 \u0cae\u0cb9\u0cbe\u0cad\u0cbe\u0cb0\u0ca4',
-      '💍 \u0cb5\u0cbf\u0cb5\u0cbe\u0cb9 \u0cb5\u0cbe\u0cb0\u0ccd\u0cb7\u0cbf\u0c95\u0ccb\u0ca4\u0ccd\u0cb8\u0cb5',
-      '💭 \u0c92\u0cb3\u0ccd\u0cb3\u0cc6\u0caf \u0c86\u0cb2\u0ccb\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
-      '✝️ \u0cac\u0cc8\u0cac\u0cb2\u0ccd',
-      '☪️ \u0c87\u0cb8\u0ccd\u0cb2\u0cbe\u0c82',
-      '🆕 \u0cb9\u0cca\u0cb8\u0ca6\u0cc1',
+      '\u0cb6\u0cc1\u0cad\u0ccb\u0ca6\u0caf',
+      '\u0cb6\u0cc1\u0cad \u0cae\u0ca7\u0ccd\u0caf\u0cbe\u0cb9\u0ccd\u0ca8',
+      '\u0cb6\u0cc1\u0cad \u0cb0\u0cbe\u0ca4\u0ccd\u0cb0\u0cbf',
+      '\u0caa\u0ccd\u0cb0\u0cc7\u0cb0\u0ca3\u0cbe\u0ca6\u0cbe\u0caf\u0c95',
+      '\u0caa\u0ccd\u0cb0\u0cc0\u0ca4\u0cbf \u0c89\u0c95\u0ccd\u0ca4\u0cbf\u0c97\u0cb3\u0cc1',
+      '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
+      '\u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
+      '\u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
+      '\u0c97\u0cc0\u0ca4\u0cbe \u0c9c\u0ccd\u0c9e\u0cbe\u0ca8',
+      '\u0cb8\u0cc1\u0ca6\u0ccd\u0ca6\u0cbf',
+      '\u0cad\u0c95\u0ccd\u0ca4\u0cbf',
+      '\u0cae\u0cb9\u0cbe\u0cad\u0cbe\u0cb0\u0ca4',
+      '\u0cb5\u0cbe\u0cb0\u0ccd\u0cb7\u0cbf\u0c95\u0ccb\u0ca4\u0ccd\u0cb8\u0cb5',
+      '\u0c92\u0cb3\u0ccd\u0cb3\u0cc6\u0caf \u0c86\u0cb2\u0ccb\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
+      '\u0cac\u0cc8\u0cac\u0cb2\u0ccd',
+      '\u0c87\u0cb8\u0ccd\u0cb2\u0cbe\u0c82',
+      '\u0cb9\u0cca\u0cb8\u0ca6\u0cc1',
     ],
     AppLanguage.malayalam => const <String>[
       '\u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02',
-      '🌙 \u0d36\u0d41\u0d2d\u0d30\u0d3e\u0d24\u0d4d\u0d30\u0d3f',
-      '🌅 \u0d36\u0d41\u0d2d\u0d4b\u0d26\u0d2f\u0d02',
-      '💪 \u0d2a\u0d4d\u0d30\u0d1a\u0d4b\u0d26\u0d28\u0d2a\u0d30\u0d2e\u0d3e\u0d2f',
-      '❤️ \u0d38\u0d4d\u0d28\u0d47\u0d39 \u0d09\u0d26\u0d4d\u0d27\u0d30\u0d23\u0d3f\u0d15\u0d33\u0d4d',
-      '✨ \u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d24',
-      '🎂 \u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d33\u0d4d',
-      '🌿 \u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',
-      '📖 \u0d17\u0d40\u0d24\u0d3e \u0d1c\u0d4d\u0d1e\u0d3e\u0d28\u0d02',
-      '📰 \u0d35\u0d3e\u0d7c\u0d24\u0d4d\u0d24\u0d15\u0d33\u0d4d',
-      '🙏 \u0d2d\u0d15\u0d4d\u0d24\u0d3f',
-      '🏹 \u0d2e\u0d39\u0d3e\u0d2d\u0d3e\u0d30\u0d24\u0d02',
-      '💍 \u0d35\u0d3e\u0d7c\u0d37\u0d3f\u0d15\u0d02',
-      '💭 \u0d28\u0d32\u0d4d\u0d32 \u0d1a\u0d3f\u0d28\u0d4d\u0d24\u0d15\u0d33\u0d4d',
-      '✝️ \u0d2c\u0d48\u0d2c\u0d3f\u0d7e',
-      '☪️ \u0d07\u0d38\u0d4d\u0d32\u0d3e\u0d02',
-      '🆕 \u0d2a\u0d41\u0d24\u0d3f\u0d2f\u0d24\u0d4d',
+      '\u0d36\u0d41\u0d2d\u0d4b\u0d26\u0d2f\u0d02',
+      '\u0d36\u0d41\u0d2d \u0d09\u0d1a\u0d4d\u0d1a\u0d15\u0d4d\u0d15\u0d4d',
+      '\u0d36\u0d41\u0d2d \u0d30\u0d3e\u0d24\u0d4d\u0d30\u0d3f',
+      '\u0d2a\u0d4d\u0d30\u0d1a\u0d4b\u0d26\u0d28\u0d3e\u0d24\u0d4d\u0d2e\u0d15\u0d02',
+      '\u0d2a\u0d4d\u0d30\u0d23\u0d2f \u0d09\u0d26\u0d4d\u0d27\u0d30\u0d23\u0d3f\u0d15\u0d7e',
+      '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d24',
+      '\u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
+      '\u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',
+      '\u0d17\u0d40\u0d24\u0d3e \u0d1c\u0d4d\u0d1e\u0d3e\u0d28\u0d02',
+      '\u0d35\u0d3e\u0d30\u0d4d\u0d24\u0d4d\u0d24\u0d15\u0d7e',
+      '\u0d2d\u0d15\u0d4d\u0d24\u0d3f',
+      '\u0d2e\u0d39\u0d3e\u0d2d\u0d3e\u0d30\u0d24\u0d02',
+      '\u0d35\u0d3e\u0d30\u0d4d\u0d37\u0d3f\u0d15\u0d02',
+      '\u0d28\u0d32\u0d4d\u0d32 \u0d1a\u0d3f\u0d28\u0d4d\u0d24\u0d15\u0d7e',
+      '\u0d2c\u0d48\u0d2c\u0d3f\u0d7d',
+      '\u0d07\u0d38\u0d4d\u0d32\u0d3e\u0d02',
+      '\u0d2a\u0d41\u0d24\u0d3f\u0d2f\u0d24\u0d4d',
     ],
   }).map((item) => _sanitizeDisplayText(item)).toList(growable: false);
+
+  List<String> homeCategories() => localizedHomeCategories();
 }
+
+

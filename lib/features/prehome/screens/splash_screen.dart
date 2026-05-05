@@ -72,9 +72,22 @@ class _SplashScreenState extends State<SplashScreen>
         const Duration(seconds: 2),
       );
       final bool isAuthenticated = _hasAuthenticatedUser();
-      String nextRoute = snapshot.nextRoute(
-        isAuthenticated: isAuthenticated,
-      );
+      final bool permissionsHandled =
+          await AppFlowService.resolvePermissionsStepHandled().timeout(
+            const Duration(seconds: 2),
+          );
+      String nextRoute;
+      if (!snapshot.languageSelected) {
+        nextRoute = AppRoutes.language;
+      } else if (!snapshot.onboardingCompleted) {
+        nextRoute = AppRoutes.onboarding;
+      } else if (!isAuthenticated) {
+        nextRoute = AppRoutes.login;
+      } else if (!permissionsHandled) {
+        nextRoute = AppRoutes.permissions;
+      } else {
+        nextRoute = AppRoutes.home;
+      }
       await AppFlowService.syncInitialSetupCompletion(
         isAuthenticated: isAuthenticated,
       ).timeout(const Duration(seconds: 2));

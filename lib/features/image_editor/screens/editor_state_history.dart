@@ -540,6 +540,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'textBackgroundOpacity': layer.textBackgroundOpacity,
       'textBackgroundRadius': layer.textBackgroundRadius,
       'photoAspectRatio': layer.photoAspectRatio,
+      'photoMaskShape': layer.photoMaskShape,
       'transform': _matrixToList(layer.transform),
     };
   }
@@ -612,6 +613,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         textBackgroundRadius:
             (raw['textBackgroundRadius'] as num?)?.toDouble() ?? 0,
         photoAspectRatio: (raw['photoAspectRatio'] as num?)?.toDouble(),
+        photoMaskShape: raw['photoMaskShape'] as String? ?? '',
         transform: _matrixFromList(raw['transform']),
       );
     } catch (_) {
@@ -732,14 +734,14 @@ extension _EditorHistoryState on _ImageEditorScreenState {
           return AlertDialog(
             title: Text(
               strings.localized(
-                telugu: 'Recover Draft',
+                telugu: 'డ్రాఫ్ట్‌ను తిరిగి తెరవాలా',
                 english: 'Recover Draft',
               ),
             ),
             content: Text(
               strings.localized(
                 telugu:
-                    'Last autosaved project dorikindi. Danni restore cheyala?',
+                    'చివరిసారి ఆటోసేవ్ అయిన ప్రాజెక్ట్ దొరికింది. దాన్ని తిరిగి తెరవాలా?',
                 english:
                     'A last autosaved project was found. Do you want to restore it?',
               ),
@@ -747,12 +749,15 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(strings.localized(telugu: 'No', english: 'No')),
+                child: Text(strings.localized(telugu: 'వద్దు', english: 'No')),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(
-                  strings.localized(telugu: 'Restore', english: 'Restore'),
+                  strings.localized(
+                    telugu: 'తిరిగి తెరవండి',
+                    english: 'Restore',
+                  ),
                 ),
               ),
             ],
@@ -775,7 +780,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'Draft saved in app storage',
+              telugu: 'డ్రాఫ్ట్ యాప్ స్టోరేజీలో సేవ్ అయింది',
               english: 'Draft saved in app storage',
             ),
           ),
@@ -787,7 +792,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'Draft save fail ayyindi',
+              telugu: 'డ్రాఫ్ట్ సేవ్ కాలేదు',
               english: 'Draft save failed',
             ),
           ),

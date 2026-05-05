@@ -42,7 +42,7 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
     final titles = <String>[
       strings.localized(
         telugu: 'ఫ్రీ ఎగుమతి ప్రివ్యూ',
-        english: 'Free export preview',
+        english: 'Export preview',
       ),
       strings.localized(
         telugu: 'ప్రో ఎగుమతి ప్రివ్యూ',
@@ -56,7 +56,7 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
     final descriptions = <String>[
       strings.localized(
         telugu: 'ఫ్రీలో వాటర్‌మార్క్‌తో ఎగుమతి అవుతుంది.',
-        english: 'Free exports include a watermark.',
+        english: 'Exports include a watermark.',
       ),
       strings.localized(
         telugu: 'ప్రోలో వాటర్‌మార్క్ లేకుండా క్లియర్ ఎగుమతి అవుతుంది.',
@@ -141,7 +141,7 @@ class _ExportPaywallScreenState extends State<ExportPaywallScreen> {
                     child: Text(
                       strings.localized(
                         telugu: 'ఫ్రీతో కొనసాగించండి (వాటర్‌మార్క్)',
-                        english: 'Continue Free (Watermark)',
+                        english: 'Continue with Watermark',
                       ),
                     ),
                   ),
@@ -333,3 +333,4 @@ class _ExportSlideCard extends StatelessWidget {
     );
   }
 }
+

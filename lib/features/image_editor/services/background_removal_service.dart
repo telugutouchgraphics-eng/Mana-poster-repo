@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui show ImageByteFormat;
@@ -24,28 +25,55 @@ class BackgroundRemovalResult {
 class OfflineBackgroundRemovalService {
   const OfflineBackgroundRemovalService();
 
-  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
-    final resultImage = await BackgroundRemover.instance.removeBg(imageBytes);
-    try {
-      final byteData = await resultImage.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-      if (byteData == null) {
-        throw Exception('PNG encode failed');
+  static Future<void>? _initialization;
+  static Future<void> _serialQueue = Future<void>.value();
+
+  static Future<void> warmUp() {
+    return const OfflineBackgroundRemovalService().ensureReady();
+  }
+
+  Future<void> ensureReady() {
+    return _initialization ??= BackgroundRemover.instance.initializeOrt();
+  }
+
+  Future<T> _runSerialized<T>(Future<T> Function() action) {
+    final completer = Completer<T>();
+    _serialQueue = _serialQueue.catchError((_) {}).then((_) async {
+      try {
+        final result = await action();
+        completer.complete(result);
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
       }
-      final pngBytes = await _decontaminateRemovedImage(
-        byteData.buffer.asUint8List(),
-      );
-      final tempFile = await _persistTempPng(pngBytes);
-      return BackgroundRemovalResult(
-        pngBytes: pngBytes,
-        engineLabel: 'image_background_remover',
-        didRemoveBackground: true,
-        outputFilePath: tempFile.path,
-      );
-    } finally {
-      resultImage.dispose();
-    }
+    });
+    return completer.future;
+  }
+
+  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
+    return _runSerialized(() async {
+      await ensureReady();
+      final resultImage = await BackgroundRemover.instance.removeBg(imageBytes);
+      try {
+        final byteData = await resultImage.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        if (byteData == null) {
+          throw Exception('PNG encode failed');
+        }
+        final pngBytes = await _decontaminateRemovedImage(
+          byteData.buffer.asUint8List(),
+        );
+        final tempFile = await _persistTempPng(pngBytes);
+        return BackgroundRemovalResult(
+          pngBytes: pngBytes,
+          engineLabel: 'image_background_remover',
+          didRemoveBackground: true,
+          outputFilePath: tempFile.path,
+        );
+      } finally {
+        resultImage.dispose();
+      }
+    });
   }
 
   Future<Uint8List> finalizeCutout(Uint8List pngBytes) async {
@@ -68,6 +96,14 @@ class OfflineBackgroundRemovalService {
 
 int _blendChannel(int from, int to, double weight) {
   return (from + ((to - from) * weight)).round().clamp(0, 255);
+}
+
+int _channelMax3(int a, int b, int c) {
+  return math.max(a, math.max(b, c));
+}
+
+int _channelMin3(int a, int b, int c) {
+  return math.min(a, math.min(b, c));
 }
 
 Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
@@ -176,6 +212,24 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
             (alpha < 160 ? 6 : 0) +
             (alpha < 96 ? 6 : 0);
         nextAlpha = (alpha - contractAmount).clamp(0, 255);
+      }
+
+      // White or near-white edge mattes become visible on posters when the
+      // source photo background is bright. Trim those edge pixels a bit more
+      // so the subject stays clean without a light halo.
+      if (transparentNeighbors > 0) {
+        final brightness = (red + green + blue) / 3.0;
+        final spread = _channelMax3(red, green, blue) - _channelMin3(red, green, blue);
+        final looksLikeWhiteMatte = brightness > 214 && spread < 44;
+        final looksLikeVeryBrightFringe = brightness > 235 && spread < 64;
+
+        if (looksLikeWhiteMatte || looksLikeVeryBrightFringe) {
+          final extraTrim =
+              ((brightness - 210) * 0.55).round() +
+              (fringeStrength * 26).round() +
+              (looksLikeWhiteMatte ? 12 : 0);
+          nextAlpha = (nextAlpha - extraTrim).clamp(0, 255);
+        }
       }
 
       output.setPixelRgba(x, y, red, green, blue, nextAlpha);

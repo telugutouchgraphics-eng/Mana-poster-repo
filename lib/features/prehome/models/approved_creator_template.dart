@@ -10,6 +10,15 @@ class CreatorPosterPersonalization {
     required this.stripHeight,
     required this.showWhatsapp,
     required this.sampleName,
+    this.nameScale = 100,
+    this.showStyledNameStrip = false,
+    this.showStyledDesignationStrip = false,
+    this.sampleDesignation = '',
+    this.designationScale = 100,
+    this.phoneScale = 100,
+    this.nameStripColor = '#0F172A',
+    this.designationStripColor = '#1E293B',
+    this.boardVariant = 0,
     this.photoRenderMode = 'cutout',
     this.edgeStyle = 'soft_fade',
     this.showSafeAreas = true,
@@ -27,6 +36,15 @@ class CreatorPosterPersonalization {
         stripHeight: 16,
         showWhatsapp: true,
         sampleName: 'User Name',
+        nameScale: 100,
+        showStyledNameStrip: false,
+        showStyledDesignationStrip: false,
+        sampleDesignation: '',
+        designationScale: 100,
+        phoneScale: 100,
+        nameStripColor: '#0F172A',
+        designationStripColor: '#1E293B',
+        boardVariant: 0,
         photoRenderMode: 'cutout',
         edgeStyle: 'soft_fade',
         showSafeAreas: true,
@@ -42,6 +60,15 @@ class CreatorPosterPersonalization {
   final double stripHeight;
   final bool showWhatsapp;
   final String sampleName;
+  final double nameScale;
+  final bool showStyledNameStrip;
+  final bool showStyledDesignationStrip;
+  final String sampleDesignation;
+  final double designationScale;
+  final double phoneScale;
+  final String nameStripColor;
+  final String designationStripColor;
+  final int boardVariant;
   final String photoRenderMode;
   final String edgeStyle;
   final bool showSafeAreas;
@@ -52,6 +79,8 @@ class ApprovedCreatorTemplate {
     required this.id,
     required this.title,
     required this.imageUrl,
+    this.mediaType = 'image',
+    this.videoUrl = '',
     required this.categoryId,
     required this.categoryLabel,
     required this.createdAtMillis,
@@ -62,6 +91,8 @@ class ApprovedCreatorTemplate {
   final String id;
   final String title;
   final String imageUrl;
+  final String mediaType;
+  final String videoUrl;
   final String categoryId;
   final String categoryLabel;
   final int createdAtMillis;

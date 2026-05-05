@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -32,12 +33,16 @@ class LandingSiteContentService {
       return LandingSiteContent.empty();
     }
     try {
-      final DocumentSnapshot<Map<String, dynamic>> snapshot = await _doc.get();
+      final DocumentSnapshot<Map<String, dynamic>> snapshot = await _doc
+          .get()
+          .timeout(const Duration(seconds: 15));
       final Map<String, dynamic>? data = snapshot.data();
       if (!snapshot.exists || data == null) {
         return LandingSiteContent.empty();
       }
       return LandingSiteContent.fromJson(_normalizeMap(data));
+    } on TimeoutException {
+      return LandingSiteContent.empty();
     } catch (_) {
       return LandingSiteContent.empty();
     }
@@ -145,7 +150,8 @@ class LandingSiteContentService {
       bytes: bytes,
       contentType: contentType,
     );
-    final int nextSortOrder = current.posters
+    final int nextSortOrder =
+        current.posters
             .where((LandingSitePoster item) => item.categoryId == categoryId)
             .length +
         1;
@@ -157,9 +163,134 @@ class LandingSiteContentService {
       storagePath: upload.storagePath,
       sortOrder: nextSortOrder,
       createdAt: DateTime.now().toUtc(),
+      altText: title.trim().isEmpty ? 'Mana Poster artwork' : title.trim(),
     );
     final LandingSiteContent next = current.copyWith(
       posters: <LandingSitePoster>[...current.posters, poster],
+      updatedAt: DateTime.now().toUtc(),
+    );
+    await _doc.set(next.toJson(), SetOptions(merge: true));
+    return next;
+  }
+
+  Future<LandingSiteContent> savePageSettings({
+    required String heroLine1,
+    required String heroLine2,
+    required String heroBody1,
+    required String heroBody2,
+    required String heroBody3,
+    required String primaryCtaLabel,
+    required String secondaryCtaLabel,
+    required String playStoreUrl,
+    required String featureTitle,
+    required String featureSubtitle,
+    required String installTitle,
+    required String installBody,
+    required String seoTitle,
+    required String seoDescription,
+    required String seoKeywords,
+  }) async {
+    _ensureFirebase();
+    final LandingSiteContent current = await load();
+    final LandingSiteContent next = current.copyWith(
+      heroLine1: _cleanOr(heroLine1, current.heroLine1),
+      heroLine2: _cleanOr(heroLine2, current.heroLine2),
+      heroBody1: _cleanOr(heroBody1, current.heroBody1),
+      heroBody2: _cleanOr(heroBody2, current.heroBody2),
+      heroBody3: _cleanOr(heroBody3, current.heroBody3),
+      primaryCtaLabel: _cleanOr(primaryCtaLabel, current.primaryCtaLabel),
+      secondaryCtaLabel: _cleanOr(secondaryCtaLabel, current.secondaryCtaLabel),
+      playStoreUrl: _cleanOr(playStoreUrl, current.playStoreUrl),
+      featureTitle: _cleanOr(featureTitle, current.featureTitle),
+      featureSubtitle: _cleanOr(featureSubtitle, current.featureSubtitle),
+      installTitle: _cleanOr(installTitle, current.installTitle),
+      installBody: _cleanOr(installBody, current.installBody),
+      seoTitle: _cleanOr(seoTitle, current.seoTitle),
+      seoDescription: _cleanOr(seoDescription, current.seoDescription),
+      seoKeywords: _cleanOr(seoKeywords, current.seoKeywords),
+      updatedAt: DateTime.now().toUtc(),
+    );
+    await _doc.set(next.toJson(), SetOptions(merge: true));
+    return next;
+  }
+
+  Future<LandingSiteContent> updatePosterDetails({
+    required String posterId,
+    required String title,
+    required String altText,
+    required bool isVisible,
+  }) async {
+    _ensureFirebase();
+    final LandingSiteContent current = await load();
+    final List<LandingSitePoster> posters = current.posters
+        .map(
+          (LandingSitePoster poster) => poster.id == posterId
+              ? poster.copyWith(
+                  title: _cleanOr(title, poster.title),
+                  altText: altText.trim(),
+                  isVisible: isVisible,
+                )
+              : poster,
+        )
+        .toList(growable: false);
+    final LandingSiteContent next = current.copyWith(
+      posters: posters,
+      updatedAt: DateTime.now().toUtc(),
+    );
+    await _doc.set(next.toJson(), SetOptions(merge: true));
+    return next;
+  }
+
+  Future<LandingSiteContent> movePoster({
+    required String posterId,
+    required int direction,
+  }) async {
+    _ensureFirebase();
+    final LandingSiteContent current = await load();
+    LandingSitePoster? target;
+    for (final LandingSitePoster poster in current.posters) {
+      if (poster.id == posterId) {
+        target = poster;
+        break;
+      }
+    }
+    if (target == null) {
+      return current;
+    }
+    final String categoryId = target.categoryId;
+    final List<LandingSitePoster> categoryPosters =
+        current.posters
+            .where(
+              (LandingSitePoster poster) => poster.categoryId == categoryId,
+            )
+            .toList()
+          ..sort(
+            (LandingSitePoster a, LandingSitePoster b) =>
+                a.sortOrder.compareTo(b.sortOrder),
+          );
+    final int currentIndex = categoryPosters.indexWhere(
+      (LandingSitePoster poster) => poster.id == posterId,
+    );
+    final int nextIndex = currentIndex + direction;
+    if (currentIndex < 0 ||
+        nextIndex < 0 ||
+        nextIndex >= categoryPosters.length) {
+      return current;
+    }
+    final LandingSitePoster moved = categoryPosters.removeAt(currentIndex);
+    categoryPosters.insert(nextIndex, moved);
+    final Map<String, int> nextOrderById = <String, int>{};
+    for (int index = 0; index < categoryPosters.length; index++) {
+      nextOrderById[categoryPosters[index].id] = index + 1;
+    }
+    final LandingSiteContent next = current.copyWith(
+      posters: current.posters
+          .map(
+            (LandingSitePoster poster) => poster.categoryId == categoryId
+                ? poster.copyWith(sortOrder: nextOrderById[poster.id])
+                : poster,
+          )
+          .toList(growable: false),
       updatedAt: DateTime.now().toUtc(),
     );
     await _doc.set(next.toJson(), SetOptions(merge: true));
@@ -202,7 +333,9 @@ class LandingSiteContentService {
     await ref.putData(
       bytes,
       SettableMetadata(
-        contentType: contentType.isEmpty ? 'application/octet-stream' : contentType,
+        contentType: contentType.isEmpty
+            ? 'application/octet-stream'
+            : contentType,
       ),
     );
     return _UploadResult(
@@ -253,6 +386,11 @@ class LandingSiteContentService {
       return 'upload.bin';
     }
     return trimmed.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+  }
+
+  String _cleanOr(String input, String fallback) {
+    final String trimmed = input.trim();
+    return trimmed.isEmpty ? fallback : trimmed;
   }
 
   void _ensureFirebase() {

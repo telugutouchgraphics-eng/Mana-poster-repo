@@ -1,15 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:mana_poster/app/config/subscription_plan_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PurchaseProductIds {
   const PurchaseProductIds._();
 
-  static const String premiumMonthly149 = 'mana_poster_premium_monthly_149';
-  static const String premiumMonthly149Legacy =
-      'mana_poster_premium_monthly_149_legacy';
-  static const String proMonthly20 = 'pro_monthly_20';
-  static const String proMonthlyLegacy = 'mana_poster_pro_monthly_20';
+  static const String premiumMonthly149 =
+      SubscriptionPlanConfig.primaryMonthlyProductId;
 }
 
 enum PurchaseFlowResult {
@@ -31,6 +33,7 @@ class PurchaseVerificationEvidence {
     this.transactionId,
     this.transactionDate,
     this.status,
+    this.completePurchase,
   });
 
   final String productId;
@@ -40,13 +43,18 @@ class PurchaseVerificationEvidence {
   final String? transactionId;
   final String? transactionDate;
   final String? status;
+  final Future<void> Function()? completePurchase;
+
+  Future<void> completeStorePurchase() async {
+    final completion = completePurchase;
+    if (completion != null) {
+      await completion();
+    }
+  }
 }
 
 class PurchaseFlowOutcome {
-  const PurchaseFlowOutcome({
-    required this.result,
-    this.evidence,
-  });
+  const PurchaseFlowOutcome({required this.result, this.evidence});
 
   final PurchaseFlowResult result;
   final PurchaseVerificationEvidence? evidence;
@@ -55,6 +63,7 @@ class PurchaseFlowOutcome {
 abstract class ProPurchaseGateway {
   const ProPurchaseGateway();
 
+  Future<void> initialize();
   Future<PurchaseFlowOutcome> purchaseMonthlyPro();
   Future<PurchaseFlowOutcome> restorePurchases();
 }
@@ -67,6 +76,9 @@ class MockProPurchaseGateway extends ProPurchaseGateway {
   final String productId;
 
   @override
+  Future<void> initialize() async {}
+
+  @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     return const PurchaseFlowOutcome(result: PurchaseFlowResult.success);
@@ -75,23 +87,43 @@ class MockProPurchaseGateway extends ProPurchaseGateway {
   @override
   Future<PurchaseFlowOutcome> restorePurchases() async {
     await Future<void>.delayed(const Duration(milliseconds: 700));
-    return const PurchaseFlowOutcome(result: PurchaseFlowResult.nothingToRestore);
+    return const PurchaseFlowOutcome(
+      result: PurchaseFlowResult.nothingToRestore,
+    );
   }
 }
 
 class InAppPurchaseGateway extends ProPurchaseGateway {
   InAppPurchaseGateway({
-    this.productId = PurchaseProductIds.premiumMonthly149,
+    this.productId = SubscriptionPlanConfig.primaryMonthlyProductId,
     List<String>? fallbackProductIds,
     InAppPurchase? inAppPurchase,
-  }) : _fallbackProductIds = fallbackProductIds ?? const <String>[
-         PurchaseProductIds.premiumMonthly149Legacy,
-      ],
+  }) : _fallbackProductIds =
+           fallbackProductIds ??
+           const <String>[SubscriptionPlanConfig.primaryMonthlyProductId],
        _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
+
+  static StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  static final StreamController<PurchaseVerificationEvidence>
+  _purchaseEvidenceController =
+      StreamController<PurchaseVerificationEvidence>.broadcast();
+  static const String _playStoreProActiveKey =
+      'mana_poster_play_store_pro_active_v1';
+  static PurchaseVerificationEvidence? _lastObservedEvidence;
+  static final Set<String> _trackedSubscriptionProductIds = <String>{
+    SubscriptionPlanConfig.primaryMonthlyProductId,
+  };
+  static bool _playStoreProActive = false;
 
   final String productId;
   final List<String> _fallbackProductIds;
   final InAppPurchase _inAppPurchase;
+
+  static bool get playStoreProActive => _playStoreProActive;
+
+  static Future<void> syncBackendEntitlement(bool isPro) async {
+    await _setPlayStoreProActive(isPro);
+  }
 
   Set<String> get _allProductIds {
     const envProductId = String.fromEnvironment(
@@ -107,7 +139,37 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   @override
+  Future<void> initialize() async {
+    await _restoreCachedPlayStoreProState();
+    if (_purchaseSubscription != null) {
+      return;
+    }
+    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
+      (updates) async {
+        for (final purchase in updates) {
+          final isAcknowledged = _isAcknowledgedForPurchase(purchase);
+          debugPrint('purchase.status=${purchase.status.name}');
+          debugPrint('productId=${purchase.productID}');
+          debugPrint('isAcknowledged=$isAcknowledged');
+          if (!_trackedSubscriptionProductIds.contains(purchase.productID)) {
+            continue;
+          }
+          if (purchase.status != PurchaseStatus.purchased &&
+              purchase.status != PurchaseStatus.restored) {
+            continue;
+          }
+          final evidence = _buildEvidenceForPurchase(purchase);
+          _lastObservedEvidence = evidence;
+          _purchaseEvidenceController.add(evidence);
+          await evidence.completeStorePurchase();
+        }
+      },
+    );
+  }
+
+  @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
+    await initialize();
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
       return const PurchaseFlowOutcome(
@@ -121,21 +183,23 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     }
     if (query.productDetails.isEmpty) {
-      return const PurchaseFlowOutcome(result: PurchaseFlowResult.productNotFound);
+      return const PurchaseFlowOutcome(
+        result: PurchaseFlowResult.productNotFound,
+      );
     }
 
     ProductDetails? details;
     for (final id in targetProductIds) {
       try {
-        details = query.productDetails.firstWhere(
-          (item) => item.id == id,
-        );
+        details = query.productDetails.firstWhere((item) => item.id == id);
         break;
       } catch (_) {
         continue;
       }
     }
     final selectedDetails = details ?? query.productDetails.first;
+    _logSelectedProductForPurchase(selectedDetails);
+    final purchaseParam = _buildPurchaseParam(selectedDetails);
 
     return _waitForPurchaseResult(
       acceptedProductIds: targetProductIds,
@@ -144,13 +208,14 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
         result: PurchaseFlowResult.timedOut,
       ),
       trigger: () => _inAppPurchase.buyNonConsumable(
-        purchaseParam: PurchaseParam(productDetails: selectedDetails),
+        purchaseParam: purchaseParam,
       ),
     );
   }
 
   @override
   Future<PurchaseFlowOutcome> restorePurchases() async {
+    await initialize();
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
       return const PurchaseFlowOutcome(
@@ -158,21 +223,150 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       );
     }
 
-    final result = await _waitForPurchaseResult(
-      acceptedProductIds: _allProductIds,
-      timeout: const Duration(seconds: 45),
-      timeoutResult: const PurchaseFlowOutcome(
-        result: PurchaseFlowResult.nothingToRestore,
-      ),
-      trigger: _inAppPurchase.restorePurchases,
-    );
-    if (result.result == PurchaseFlowResult.cancelled ||
-        result.result == PurchaseFlowResult.failed) {
-      return result;
+    final localActivePurchase = await _findExistingPurchaseLocally();
+    if (localActivePurchase != null) {
+      return PurchaseFlowOutcome(
+        result: PurchaseFlowResult.success,
+        evidence: localActivePurchase,
+      );
     }
-    return result.result == PurchaseFlowResult.success
-        ? result
-        : const PurchaseFlowOutcome(result: PurchaseFlowResult.nothingToRestore);
+
+    final matchingEvidenceFuture = _purchaseEvidenceController.stream
+        .firstWhere((evidence) => _allProductIds.contains(evidence.productId));
+    await _inAppPurchase.restorePurchases();
+    try {
+      final matchedEvidence = await matchingEvidenceFuture.timeout(
+        const Duration(seconds: 45),
+      );
+      return PurchaseFlowOutcome(
+        result: PurchaseFlowResult.success,
+        evidence: matchedEvidence,
+      );
+    } on TimeoutException {
+      final lastObservedEvidence = _lastObservedEvidence;
+      if (lastObservedEvidence != null &&
+          _allProductIds.contains(lastObservedEvidence.productId)) {
+        return PurchaseFlowOutcome(
+          result: PurchaseFlowResult.success,
+          evidence: lastObservedEvidence,
+        );
+      }
+    }
+
+    final fallbackPurchase = await _findExistingPurchaseLocally();
+    if (fallbackPurchase != null) {
+      return PurchaseFlowOutcome(
+        result: PurchaseFlowResult.success,
+        evidence: fallbackPurchase,
+      );
+    }
+
+    return const PurchaseFlowOutcome(result: PurchaseFlowResult.nothingToRestore);
+  }
+
+  Future<PurchaseVerificationEvidence?> _findExistingPurchaseLocally() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return null;
+    }
+    try {
+      final addition =
+          _inAppPurchase
+              .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+      final response = await addition.queryPastPurchases();
+      if (response.error != null) {
+        return null;
+      }
+      for (final purchase in response.pastPurchases) {
+        final isAcknowledged = _isAcknowledgedForPurchase(purchase);
+        debugPrint('purchase.status=${purchase.status.name}');
+        debugPrint('productId=${purchase.productID}');
+        debugPrint('isAcknowledged=$isAcknowledged');
+        if (!_allProductIds.contains(purchase.productID)) {
+          continue;
+        }
+        if (purchase.status != PurchaseStatus.purchased &&
+            purchase.status != PurchaseStatus.restored) {
+          continue;
+        }
+        final evidence = _buildEvidenceForPurchase(purchase);
+        await evidence.completeStorePurchase();
+        return evidence;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  bool _isAcknowledgedForPurchase(PurchaseDetails purchase) {
+    if (purchase is GooglePlayPurchaseDetails) {
+      return purchase.billingClientPurchase.isAcknowledged;
+    }
+    return !purchase.pendingCompletePurchase;
+  }
+
+  PurchaseVerificationEvidence _buildEvidenceForPurchase(
+    PurchaseDetails purchase,
+  ) {
+    return PurchaseVerificationEvidence(
+      productId: purchase.productID,
+      source: purchase.verificationData.source,
+      serverVerificationData: purchase.verificationData.serverVerificationData,
+      localVerificationData: purchase.verificationData.localVerificationData,
+      transactionId: purchase.purchaseID,
+      transactionDate: purchase.transactionDate,
+      status: purchase.status.name,
+      completePurchase: purchase.pendingCompletePurchase
+          ? () => _inAppPurchase.completePurchase(purchase)
+          : null,
+    );
+  }
+
+  PurchaseParam _buildPurchaseParam(ProductDetails productDetails) {
+    if (!kIsWeb && Platform.isAndroid && productDetails is GooglePlayProductDetails) {
+      final subscriptionOffers = productDetails.productDetails.subscriptionOfferDetails;
+      final offerToken =
+          subscriptionOffers != null && subscriptionOffers.isNotEmpty
+          ? subscriptionOffers.first.offerIdToken
+          : productDetails.offerToken;
+      if (offerToken != null && offerToken.isNotEmpty) {
+        return GooglePlayPurchaseParam(
+          productDetails: productDetails,
+          offerToken: offerToken,
+        );
+      }
+    }
+    return PurchaseParam(productDetails: productDetails);
+  }
+
+  void _logSelectedProductForPurchase(ProductDetails selectedDetails) {
+    debugPrint('productId=${selectedDetails.id}');
+    debugPrint(
+      'isGooglePlayProduct=${selectedDetails is GooglePlayProductDetails}',
+    );
+    if (!kIsWeb &&
+        Platform.isAndroid &&
+        selectedDetails is GooglePlayProductDetails) {
+      final offers = selectedDetails.productDetails.subscriptionOfferDetails;
+      debugPrint('offersCount=${offers?.length ?? 0}');
+      if (offers != null && offers.isNotEmpty) {
+        debugPrint('offerToken=${offers.first.offerIdToken}');
+      }
+    }
+  }
+
+  static Future<void> _restoreCachedPlayStoreProState() async {
+    final prefs = await SharedPreferences.getInstance();
+    _playStoreProActive = prefs.getBool(_playStoreProActiveKey) ?? false;
+  }
+
+  static Future<void> _setPlayStoreProActive(bool value) async {
+    if (_playStoreProActive == value) {
+      return;
+    }
+    _playStoreProActive = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_playStoreProActiveKey, value);
   }
 
   Future<PurchaseFlowOutcome> _waitForPurchaseResult({
@@ -196,9 +390,6 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
           if (!acceptedProductIds.contains(purchase.productID)) {
             continue;
           }
-          if (purchase.pendingCompletePurchase) {
-            await _inAppPurchase.completePurchase(purchase);
-          }
           switch (purchase.status) {
             case PurchaseStatus.purchased:
             case PurchaseStatus.restored:
@@ -215,6 +406,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
                     transactionId: purchase.purchaseID,
                     transactionDate: purchase.transactionDate,
                     status: purchase.status.name,
+                    completePurchase: purchase.pendingCompletePurchase
+                        ? () => _inAppPurchase.completePurchase(purchase)
+                        : null,
                   ),
                 ),
               );

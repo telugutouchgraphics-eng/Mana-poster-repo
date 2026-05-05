@@ -5,9 +5,8 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 
 class TemplatePurchaseGateway {
-  TemplatePurchaseGateway({
-    InAppPurchase? inAppPurchase,
-  }) : _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
+  TemplatePurchaseGateway({InAppPurchase? inAppPurchase})
+    : _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
 
   final InAppPurchase _inAppPurchase;
 
@@ -28,7 +27,9 @@ class TemplatePurchaseGateway {
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     }
     if (query.productDetails.isEmpty) {
-      return const PurchaseFlowOutcome(result: PurchaseFlowResult.productNotFound);
+      return const PurchaseFlowOutcome(
+        result: PurchaseFlowResult.productNotFound,
+      );
     }
 
     ProductDetails? details;
@@ -70,12 +71,12 @@ class TemplatePurchaseGateway {
           if (!productIds.contains(purchase.productID)) {
             continue;
           }
-          if (purchase.pendingCompletePurchase) {
-            await _inAppPurchase.completePurchase(purchase);
-          }
           if (purchase.status == PurchaseStatus.purchased ||
               purchase.status == PurchaseStatus.restored) {
             restored.add(purchase.productID);
+            if (purchase.pendingCompletePurchase) {
+              await _inAppPurchase.completePurchase(purchase);
+            }
           }
         }
       },
@@ -121,9 +122,6 @@ class TemplatePurchaseGateway {
           if (!acceptedProductIds.contains(purchase.productID)) {
             continue;
           }
-          if (purchase.pendingCompletePurchase) {
-            await _inAppPurchase.completePurchase(purchase);
-          }
           switch (purchase.status) {
             case PurchaseStatus.purchased:
             case PurchaseStatus.restored:
@@ -140,6 +138,9 @@ class TemplatePurchaseGateway {
                     transactionId: purchase.purchaseID,
                     transactionDate: purchase.transactionDate,
                     status: purchase.status.name,
+                    completePurchase: purchase.pendingCompletePurchase
+                        ? () => _inAppPurchase.completePurchase(purchase)
+                        : null,
                   ),
                 ),
               );

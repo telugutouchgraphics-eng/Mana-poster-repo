@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class AppFlowSnapshot {
@@ -65,6 +68,7 @@ class AppFlowService {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedLanguageKey, language.name);
     await prefs.setBool(_languageSelectedKey, true);
+    await _syncLanguageToRemote(language);
   }
 
   static Future<void> markOnboardingCompleted() async {
@@ -92,12 +96,37 @@ class AppFlowService {
     required bool isAuthenticated,
   }) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool permissionsHandled = await resolvePermissionsStepHandled();
     final bool completed =
         (prefs.getBool(_languageSelectedKey) ?? false) &&
         (prefs.getBool(_onboardingCompletedKey) ?? false) &&
         isAuthenticated &&
-        (prefs.getBool(_permissionsHandledKey) ?? false);
+        permissionsHandled;
     await prefs.setBool(_initialSetupCompletedKey, completed);
+  }
+
+  static Future<bool> resolvePermissionsStepHandled() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool storedHandled = prefs.getBool(_permissionsHandledKey) ?? false;
+    if (!storedHandled) {
+      return false;
+    }
+    if (kIsWeb) {
+      return true;
+    }
+    final PermissionSnapshot snapshot = await PermissionService().getSnapshot();
+    if (snapshot.allGranted) {
+      return true;
+    }
+    final bool allDenied = snapshot.items.every(
+      (AppPermissionState item) => item.isDenied,
+    );
+    if (allDenied) {
+      await prefs.setBool(_permissionsHandledKey, false);
+      await prefs.setBool(_initialSetupCompletedKey, false);
+      return false;
+    }
+    return true;
   }
 
   static Future<String> resolveAuthenticatedEntryRoute() async {
@@ -105,6 +134,29 @@ class AppFlowService {
     return PosterProfileService.isSetupComplete(profile)
         ? AppRoutes.home
         : AppRoutes.profileSetup;
+  }
+
+  static Future<void> syncStoredLanguageToRemote() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final AppLanguage language = _readLanguage(
+      prefs.getString(_selectedLanguageKey),
+    );
+    await _syncLanguageToRemote(language);
+  }
+
+  static Future<void> _syncLanguageToRemote(AppLanguage language) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'preferredLanguage': language.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (_) {
+      // Best-effort sync only. Local flow should continue even if remote save fails.
+    }
   }
 
   static AppLanguage _readLanguage(String? rawValue) {

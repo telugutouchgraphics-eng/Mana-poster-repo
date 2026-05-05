@@ -6,7 +6,7 @@ import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.
 class DynamicCategoryService {
   const DynamicCategoryService({
     DynamicEventRepository repository = const LocalDynamicEventRepository(),
-    this.daysBeforeEvent = 2,
+    this.daysBeforeEvent = 0,
   }) : _repository = repository;
 
   final DynamicEventRepository _repository;
@@ -24,13 +24,14 @@ class DynamicCategoryService {
 
     _addUnique(output, seenSlugs, _weekdayCategory(today.weekday, language));
 
-    final activeEvents = _repository
-        .loadEvents()
-        .where((event) => event.enabled)
-        .where((event) => scopes.contains(event.scope))
-        .where((event) => _isEventActive(event, today))
-        .toList(growable: false)
-      ..sort(_compareEvents);
+    final activeEvents =
+        _repository
+            .loadEvents()
+            .where((event) => event.enabled)
+            .where((event) => scopes.contains(event.scope))
+            .where((event) => _isEventActive(event, today))
+            .toList(growable: false)
+          ..sort(_compareEvents);
 
     for (final event in activeEvents) {
       _addUnique(output, seenSlugs, _toCategory(event, language));
@@ -53,7 +54,7 @@ class DynamicCategoryService {
   }
 
   bool _isResolvedLunarEventActive(DynamicCalendarEvent event, DateTime today) {
-    final resolved = kResolvedLunarEventDates[today.year]?[event.slug];
+    final resolved = resolvedLunarEventDatesForYear(today.year)[event.slug];
     if (resolved == null) {
       return false;
     }
@@ -61,7 +62,11 @@ class DynamicCategoryService {
     final eventStart = DateTime(today.year, resolved.month, resolved.day);
     final visibleStart = eventStart.subtract(Duration(days: daysBeforeEvent));
     final eventEnd = switch ((resolved.endMonth, resolved.endDay)) {
-      (final int endMonth, final int endDay) => DateTime(today.year, endMonth, endDay),
+      (final int endMonth, final int endDay) => DateTime(
+        today.year,
+        endMonth,
+        endDay,
+      ),
       _ => eventStart.add(Duration(days: resolved.durationDays - 1)),
     };
 
@@ -78,14 +83,19 @@ class DynamicCategoryService {
     final eventStart = DateTime(today.year, startMonth, startDay);
     final visibleStart = eventStart.subtract(Duration(days: daysBeforeEvent));
     final eventEnd = switch ((event.endMonth, event.endDay)) {
-      (final int endMonth, final int endDay) => DateTime(today.year, endMonth, endDay),
+      (final int endMonth, final int endDay) => DateTime(
+        today.year,
+        endMonth,
+        endDay,
+      ),
       _ => eventStart.add(Duration(days: event.durationDays - 1)),
     };
 
     if (eventEnd.isBefore(eventStart)) {
       return !today.isBefore(visibleStart) ||
           !today.isAfter(DateTime(today.year, 12, 31)) ||
-          !today.isBefore(DateTime(today.year, 1, 1)) && !today.isAfter(eventEnd);
+          !today.isBefore(DateTime(today.year, 1, 1)) &&
+              !today.isAfter(eventEnd);
     }
 
     return !today.isBefore(visibleStart) && !today.isAfter(eventEnd);
@@ -148,7 +158,19 @@ class DynamicCategoryService {
     );
   }
 
-  DynamicCategory _toCategory(DynamicCalendarEvent event, AppLanguage language) {
+  DynamicCategory _toCategory(
+    DynamicCalendarEvent event,
+    AppLanguage language,
+  ) {
+    final tags = <String>{
+      event.slug,
+      _normalizeToken(event.slug),
+      ..._categoryTypeTags(event.type),
+      ..._scopeTags(event.scope),
+      ...event.tags.expand((tag) => <String>{tag, _normalizeToken(tag)}),
+      ..._titleTags(event.title),
+    }.where((value) => value.isNotEmpty).toList(growable: false);
+
     return DynamicCategory(
       id: event.id,
       slug: event.slug,
@@ -157,7 +179,7 @@ class DynamicCategoryService {
       scope: event.scope,
       priority: event.priority,
       sortOrder: event.sortOrder,
-      tags: <String>[event.slug, event.type.name, event.scope.name, ...event.tags],
+      tags: tags,
     );
   }
 
@@ -183,10 +205,37 @@ class DynamicCategoryService {
           DateTime.saturday => 'शनिवार स्पेशल',
           _ => 'रविवार स्पेशल',
         };
-      case AppLanguage.english:
       case AppLanguage.tamil:
+        return switch (weekday) {
+          DateTime.monday => 'திங்கட்கிழமை சிறப்பு',
+          DateTime.tuesday => 'செவ்வாய்க்கிழமை சிறப்பு',
+          DateTime.wednesday => 'புதன்கிழமை சிறப்பு',
+          DateTime.thursday => 'வியாழக்கிழமை சிறப்பு',
+          DateTime.friday => 'வெள்ளிக்கிழமை சிறப்பு',
+          DateTime.saturday => 'சனிக்கிழமை சிறப்பு',
+          _ => 'ஞாயிற்றுக்கிழமை சிறப்பு',
+        };
       case AppLanguage.kannada:
+        return switch (weekday) {
+          DateTime.monday => 'ಸೋಮವಾರ ವಿಶೇಷ',
+          DateTime.tuesday => 'ಮಂಗಳವಾರ ವಿಶೇಷ',
+          DateTime.wednesday => 'ಬುಧವಾರ ವಿಶೇಷ',
+          DateTime.thursday => 'ಗುರುವಾರ ವಿಶೇಷ',
+          DateTime.friday => 'ಶುಕ್ರವಾರ ವಿಶೇಷ',
+          DateTime.saturday => 'ಶನಿವಾರ ವಿಶೇಷ',
+          _ => 'ಭಾನುವಾರ ವಿಶೇಷ',
+        };
       case AppLanguage.malayalam:
+        return switch (weekday) {
+          DateTime.monday => 'തിങ്കളാഴ്ച സ്പെഷ്യൽ',
+          DateTime.tuesday => 'ചൊവ്വാഴ്ച സ്പെഷ്യൽ',
+          DateTime.wednesday => 'ബുധനാഴ്ച സ്പെഷ്യൽ',
+          DateTime.thursday => 'വ്യാഴാഴ്ച സ്പെഷ്യൽ',
+          DateTime.friday => 'വെള്ളിയാഴ്ച സ്പെഷ്യൽ',
+          DateTime.saturday => 'ശനിയാഴ്ച സ്പെഷ്യൽ',
+          _ => 'ഞായറാഴ്ച സ്പെഷ്യൽ',
+        };
+      case AppLanguage.english:
         return switch (weekday) {
           DateTime.monday => 'Monday Special',
           DateTime.tuesday => 'Tuesday Special',
@@ -196,6 +245,88 @@ class DynamicCategoryService {
           DateTime.saturday => 'Saturday Special',
           _ => 'Sunday Special',
         };
+    }
+  }
+
+  String _normalizeToken(String value) {
+    return value
+        .replaceAllMapped(
+          RegExp(r'([a-z0-9])([A-Z])'),
+          (match) => '${match.group(1)}_${match.group(2)}',
+        )
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  Iterable<String> _categoryTypeTags(DynamicCategoryType type) {
+    return switch (type) {
+      DynamicCategoryType.festival => const <String>['festival', 'devotional'],
+      DynamicCategoryType.jayanthi => const <String>[
+        'jayanthi',
+        'important_day',
+        'today_special',
+      ],
+      DynamicCategoryType.vardhanthi => const <String>[
+        'vardhanthi',
+        'important_day',
+        'today_special',
+      ],
+      DynamicCategoryType.importantDay => const <String>[
+        'important_day',
+        'today_special',
+      ],
+      DynamicCategoryType.weekdaySpecial => const <String>[
+        'weekday_special',
+        'today_special',
+      ],
+      DynamicCategoryType.regionalSpecial => const <String>[
+        'regional_special',
+        'important_day',
+        'today_special',
+      ],
+    };
+  }
+
+  Iterable<String> _scopeTags(DynamicEventScope scope) {
+    return switch (scope) {
+      DynamicEventScope.india => const <String>['india'],
+      DynamicEventScope.andhraPradesh => const <String>[
+        'andhra_pradesh',
+        'regional_special',
+      ],
+      DynamicEventScope.telangana => const <String>[
+        'telangana',
+        'regional_special',
+      ],
+      DynamicEventScope.bothTeluguStates => const <String>[
+        'both_telugu_states',
+        'regional_special',
+      ],
+      DynamicEventScope.global => const <String>['global'],
+    };
+  }
+
+  Iterable<String> _titleTags(DynamicLocalizedTitle title) sync* {
+    for (final value in <String>[title.telugu, title.english, title.hindi]) {
+      final normalized = _normalizeToken(value);
+      if (normalized.isNotEmpty) {
+        yield normalized;
+      }
+
+      final words = value
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where((item) => item.isNotEmpty);
+      for (final word in words) {
+        final normalizedWord = _normalizeToken(word);
+        if (normalizedWord.isNotEmpty) {
+          yield normalizedWord;
+        }
+      }
     }
   }
 }

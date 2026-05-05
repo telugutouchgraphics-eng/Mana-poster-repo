@@ -396,137 +396,146 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(18),
-              children: <Widget>[
-                _StatusBanner(saving: _saving, text: _statusText),
-                const SizedBox(height: 14),
-                _Panel(
-                  title: 'Banner',
-                  subtitle:
-                      'Top landing page banner. Perfect size: $_recommendedBannerSize. Upload one wide image; no text or buttons will be placed on top of it.',
-                  action: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: <Widget>[
-                      FilledButton.icon(
-                        onPressed: _saving ? null : _uploadBanner,
-                        icon: const Icon(Icons.cloud_upload_rounded),
-                        label: const Text('Upload Banner'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _adminPrimary,
-                          foregroundColor: Colors.white,
-                        ),
+          : LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool compact = constraints.maxWidth < 520;
+                return ListView(
+                  padding: EdgeInsets.all(compact ? 10 : 18),
+                  children: <Widget>[
+                    _StatusBanner(saving: _saving, text: _statusText),
+                    const SizedBox(height: 14),
+                    _Panel(
+                      title: 'Banner',
+                      subtitle:
+                          'Top landing page banner. Perfect size: $_recommendedBannerSize. Upload one wide image; no text or buttons will be placed on top of it.',
+                      action: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: <Widget>[
+                          FilledButton.icon(
+                            onPressed: _saving ? null : _uploadBanner,
+                            icon: const Icon(Icons.cloud_upload_rounded),
+                            label: const Text('Upload Banner'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _adminPrimary,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _saving ||
+                                    (_content.bannerImageUrl.isEmpty &&
+                                        _content.bannerStoragePath.isEmpty)
+                                ? null
+                                : _deleteBanner,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            label: const Text('Delete Banner'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFDC2626),
+                            ),
+                          ),
+                        ],
                       ),
-                      OutlinedButton.icon(
-                        onPressed: _saving ||
-                                (_content.bannerImageUrl.isEmpty &&
-                                    _content.bannerStoragePath.isEmpty)
-                            ? null
-                            : _deleteBanner,
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        label: const Text('Delete Banner'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFDC2626),
-                        ),
+                      child: _BannerPreview(
+                        imageUrl: _content.bannerImageUrl,
+                        previewBytes: _bannerPreviewBytes,
                       ),
-                    ],
-                  ),
-                  child: _BannerPreview(
-                    imageUrl: _content.bannerImageUrl,
-                    previewBytes: _bannerPreviewBytes,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _Panel(
-                  title: 'Middle Section Media',
-                  subtitle:
-                      'This is separate from the top banner. Upload image or video for the section shown near app details.',
-                  action: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: <Widget>[
-                      FilledButton.icon(
-                        onPressed: _saving ? null : _uploadSectionImage,
-                        icon: const Icon(Icons.image_rounded),
-                        label: const Text('Upload Image'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _adminPrimary,
-                          foregroundColor: Colors.white,
-                        ),
+                    ),
+                    const SizedBox(height: 14),
+                    _Panel(
+                      title: 'Middle Section Media',
+                      subtitle:
+                          'This is separate from the top banner. Upload image or video for the section shown near app details.',
+                      action: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: <Widget>[
+                          FilledButton.icon(
+                            onPressed: _saving ? null : _uploadSectionImage,
+                            icon: const Icon(Icons.image_rounded),
+                            label: const Text('Upload Image'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _adminPrimary,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed: _saving ? null : _uploadSectionVideo,
+                            icon: const Icon(Icons.videocam_rounded),
+                            label: const Text('Upload Video'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _adminAccent,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed:
+                                _saving ||
+                                    (_content.sectionMediaUrl.isEmpty &&
+                                        _content
+                                            .sectionMediaStoragePath
+                                            .isEmpty)
+                                ? null
+                                : _deleteSectionMedia,
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            label: const Text('Delete'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFDC2626),
+                            ),
+                          ),
+                        ],
                       ),
-                      FilledButton.icon(
-                        onPressed: _saving ? null : _uploadSectionVideo,
-                        icon: const Icon(Icons.videocam_rounded),
-                        label: const Text('Upload Video'),
+                      child: _SectionMediaPreview(
+                        mediaUrl: _content.sectionMediaUrl,
+                        mediaType: _content.sectionMediaType,
+                        previewBytes: _sectionMediaPreviewBytes,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _Panel(
+                      title: 'Category Posters',
+                      subtitle:
+                          'Select a category and upload unlimited posters. Portrait, square, landscape and custom sizes will fit on the landing page.',
+                      action: FilledButton.icon(
+                        onPressed: _saving ? null : _uploadPoster,
+                        icon: const Icon(Icons.add_photo_alternate_rounded),
+                        label: const Text('Upload Poster'),
                         style: FilledButton.styleFrom(
                           backgroundColor: _adminAccent,
                           foregroundColor: Colors.white,
                         ),
                       ),
-                      OutlinedButton.icon(
-                        onPressed: _saving ||
-                                (_content.sectionMediaUrl.isEmpty &&
-                                    _content.sectionMediaStoragePath.isEmpty)
-                            ? null
-                            : _deleteSectionMedia,
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        label: const Text('Delete'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFDC2626),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          _CategorySelector(
+                            selectedId: _selectedCategoryId,
+                            counts: categoryCounts,
+                            onSelected: (String id) {
+                              setState(() => _selectedCategoryId = id);
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          TextField(
+                            controller: _posterTitleController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Poster title',
+                              hintText: 'Example: Morning wishes poster',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _PosterAdminGrid(
+                            posters: selectedPosters,
+                            previewBytes: _posterPreviewBytes,
+                            onDelete: _saving ? null : _deletePoster,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: _SectionMediaPreview(
-                    mediaUrl: _content.sectionMediaUrl,
-                    mediaType: _content.sectionMediaType,
-                    previewBytes: _sectionMediaPreviewBytes,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _Panel(
-                  title: 'Category Posters',
-                  subtitle:
-                      'Select a category and upload unlimited posters. Portrait, square, landscape and custom sizes will fit on the landing page.',
-                  action: FilledButton.icon(
-                    onPressed: _saving ? null : _uploadPoster,
-                    icon: const Icon(Icons.add_photo_alternate_rounded),
-                    label: const Text('Upload Poster'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _adminAccent,
-                      foregroundColor: Colors.white,
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _CategorySelector(
-                        selectedId: _selectedCategoryId,
-                        counts: categoryCounts,
-                        onSelected: (String id) {
-                          setState(() => _selectedCategoryId = id);
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: _posterTitleController,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Poster title',
-                          hintText: 'Example: Morning wishes poster',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _PosterAdminGrid(
-                        posters: selectedPosters,
-                        previewBytes: _posterPreviewBytes,
-                        onDelete: _saving ? null : _deletePoster,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
     );
   }
@@ -605,60 +614,67 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _adminBorder),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x184C1D95),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Wrap(
-            spacing: 14,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: <Widget>[
-              SizedBox(
-                width: 520,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: _adminInk,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: _adminMuted,
-                        fontWeight: FontWeight.w700,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact = constraints.maxWidth < 560;
+        return Container(
+          padding: EdgeInsets.all(compact ? 14 : 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _adminBorder),
+            boxShadow: const <BoxShadow>[
+              BoxShadow(
+                color: Color(0x184C1D95),
+                blurRadius: 18,
+                offset: Offset(0, 8),
               ),
-              action,
             ],
           ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Wrap(
+                spacing: 14,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: compact ? constraints.maxWidth : 520,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: compact ? 20 : 24,
+                            fontWeight: FontWeight.w900,
+                            color: _adminInk,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: _adminMuted,
+                            fontWeight: FontWeight.w700,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  action,
+                ],
+              ),
+              const SizedBox(height: 16),
+              child,
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -736,35 +752,43 @@ class _BannerPreview extends StatelessWidget {
                           imageUrl,
                           fit: BoxFit.contain,
                           alignment: Alignment.center,
-                          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-                          loadingBuilder: (BuildContext context, Widget child,
-                              ImageChunkEvent? loadingProgress) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
-                            return const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            );
-                          },
-                          errorBuilder: (
-                            BuildContext context,
-                            Object error,
-                            StackTrace? stackTrace,
-                          ) {
-                            return const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(18),
-                                child: Text(
-                                  'Banner preview could not load. Upload again or refresh.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFDC2626),
-                                    fontWeight: FontWeight.w900,
+                          webHtmlElementStrategy:
+                              WebHtmlElementStrategy.fallback,
+                          loadingBuilder:
+                              (
+                                BuildContext context,
+                                Widget child,
+                                ImageChunkEvent? loadingProgress,
+                              ) {
+                                if (loadingProgress == null) {
+                                  return child;
+                                }
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
-                                ),
-                              ),
-                            );
-                          },
+                                );
+                              },
+                          errorBuilder:
+                              (
+                                BuildContext context,
+                                Object error,
+                                StackTrace? stackTrace,
+                              ) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(18),
+                                    child: Text(
+                                      'Banner preview could not load. Upload again or refresh.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFFDC2626),
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                         ),
                 ),
               ),
@@ -849,25 +873,22 @@ class _SectionMediaPreview extends StatelessWidget {
               fit: BoxFit.contain,
               alignment: Alignment.center,
               webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-              errorBuilder: (
-                BuildContext context,
-                Object error,
-                StackTrace? stackTrace,
-              ) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(18),
-                    child: Text(
-                      'Section media preview could not load. Upload again or refresh.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFFDC2626),
-                        fontWeight: FontWeight.w900,
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? stackTrace) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(18),
+                        child: Text(
+                          'Section media preview could not load. Upload again or refresh.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              },
+                    );
+                  },
             ),
     );
   }
@@ -1014,23 +1035,24 @@ class _PosterAdminCard extends StatelessWidget {
                         width: double.infinity,
                         height: double.infinity,
                         webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-                        errorBuilder: (
-                          BuildContext context,
-                          Object error,
-                          StackTrace? stackTrace,
-                        ) {
-                          return const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Text(
-                              'Preview failed',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFFDC2626),
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          );
-                        },
+                        errorBuilder:
+                            (
+                              BuildContext context,
+                              Object error,
+                              StackTrace? stackTrace,
+                            ) {
+                              return const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Text(
+                                  'Preview failed',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              );
+                            },
                       ),
               ),
             ),

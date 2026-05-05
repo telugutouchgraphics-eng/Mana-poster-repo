@@ -2,14 +2,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 enum AdminAuthorizationStatus { signedOut, authorized, unauthorized, error }
 
+enum AdminPortalRole { admin, manager, creator }
+
 class AdminAuthorizationResult {
   const AdminAuthorizationResult({
     required this.status,
+    required this.role,
     this.user,
     this.message,
   });
 
   final AdminAuthorizationStatus status;
+  final AdminPortalRole role;
   final User? user;
   final String? message;
 
@@ -26,6 +30,7 @@ abstract class AdminAuthRepository {
   bool isLoggedIn();
 
   Future<AdminAuthorizationResult> checkAdminAuthorization({
+    required AdminPortalRole role,
     bool forceRefresh = false,
   });
 

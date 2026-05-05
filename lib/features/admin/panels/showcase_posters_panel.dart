@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/features/admin/models/admin_content_models.dart';
 import 'package:mana_poster/features/admin/widgets/admin_panel_card.dart';
 
-const List<String> _accessOptions = <String>['Free', 'Premium'];
+const List<String> _accessOptions = <String>['Free', 'Featured'];
 
 class ShowcasePostersPanel extends StatelessWidget {
   const ShowcasePostersPanel({
@@ -43,8 +43,7 @@ class ShowcasePostersPanel extends StatelessWidget {
       children: <Widget>[
         AdminPanelCard(
           title: 'Showcase Posters Management',
-          subtitle:
-              'Manage poster title, tag, free/premium label and image asset path.',
+          subtitle: 'Manage poster title, tag, label and image asset path.',
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -265,8 +264,6 @@ class _PosterPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool premium = poster.accessLabel.toLowerCase() == 'premium';
-
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
@@ -334,18 +331,14 @@ class _PosterPreviewCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(999),
-                        color: premium
-                            ? const Color(0xFFFFF1DA)
-                            : const Color(0xFFE8F8EE),
+                        color: const Color(0xFFE8F8EE),
                       ),
                       child: Text(
                         poster.accessLabel,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: premium
-                              ? const Color(0xFF8C5B04)
-                              : const Color(0xFF1C7B42),
+                          color: Color(0xFF1C7B42),
                         ),
                       ),
                     ),

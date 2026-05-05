@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
-import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionSettingsScreen extends StatefulWidget {
@@ -135,19 +134,18 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
   @override
   Widget build(BuildContext context) {
     final _PermissionCopy copy = _copy(context);
-    final PermissionSnapshot effectiveSnapshot = _snapshot;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           copy.settingsTitle,
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w500,
             color: Color(0xFF0F172A),
           ),
         ),
-        backgroundColor: const Color(0xFFF3F6FB),
+        backgroundColor: Colors.white,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
@@ -157,172 +155,70 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
         child: RefreshIndicator(
           onRefresh: _loadSnapshot,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
             children: <Widget>[
-              if (_loadUsedFallback) ...<Widget>[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7ED),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFED7AA)),
-                  ),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              if (_loadUsedFallback)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
                     copy.fallbackInfo,
                     style: const TextStyle(
-                      color: Color(0xFF9A3412),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4,
+                      color: Color(0xFFB45309),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (_loading) ...<Widget>[
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: LinearProgressIndicator(minHeight: 3),
-                ),
-              ],
-              _HeaderCard(copy: copy),
-              const SizedBox(height: 16),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: <Widget>[
-                    _PermissionTile(
-                      icon: Icons.photo_library_outlined,
-                      title: context.strings.photosGallery,
-                      description: copy.photosDescription,
-                      state: effectiveSnapshot.photos,
-                      statusLabel: copy.statusLabel(effectiveSnapshot.photos),
-                      statusColor: copy.statusColor(effectiveSnapshot.photos),
-                      actionLabel: copy.actionLabel(effectiveSnapshot.photos),
-                      onAction: () =>
-                          _requestPermission(AppPermissionType.photos),
-                    ),
-                    const Divider(
-                      height: 1,
-                      indent: 68,
-                      endIndent: 14,
-                      color: Color(0xFFE2E8F0),
-                    ),
-                    _PermissionTile(
-                      icon: Icons.photo_camera_outlined,
-                      title: context.strings.localized(
-                        telugu: 'కెమెరా',
-                        english: 'Camera',
-                      ),
-                      description: copy.cameraDescription,
-                      state: effectiveSnapshot.camera,
-                      statusLabel: copy.statusLabel(effectiveSnapshot.camera),
-                      statusColor: copy.statusColor(effectiveSnapshot.camera),
-                      actionLabel: copy.actionLabel(effectiveSnapshot.camera),
-                      onAction: () =>
-                          _requestPermission(AppPermissionType.camera),
-                    ),
-                    const Divider(
-                      height: 1,
-                      indent: 68,
-                      endIndent: 14,
-                      color: Color(0xFFE2E8F0),
-                    ),
-                    _PermissionTile(
-                      icon: Icons.notifications_none_rounded,
-                      title: context.strings.notifications,
-                      description: copy.notificationsDescription,
-                      state: effectiveSnapshot.notifications,
-                      statusLabel: copy.statusLabel(
-                        effectiveSnapshot.notifications,
-                      ),
-                      statusColor: copy.statusColor(
-                        effectiveSnapshot.notifications,
-                      ),
-                      actionLabel: copy.actionLabel(
-                        effectiveSnapshot.notifications,
-                      ),
-                      onAction: () =>
-                          _requestPermission(AppPermissionType.notifications),
-                    ),
-                  ],
-                ),
+              _PermissionTile(
+                icon: Icons.photo_library_outlined,
+                title: context.strings.photosGallery,
+                statusLabel: copy.statusLabel(_snapshot.photos),
+                statusColor: copy.statusColor(_snapshot.photos),
+                actionLabel: copy.actionLabel(_snapshot.photos),
+                onAction: () => _requestPermission(AppPermissionType.photos),
               ),
-              const SizedBox(height: 16),
-              Text(
-                copy.settingsHint,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              _PermissionTile(
+                icon: Icons.photo_camera_outlined,
+                title: context.strings.localized(
+                  telugu: 'కెమెరా',
+                  english: 'Camera',
                 ),
+                statusLabel: copy.statusLabel(_snapshot.camera),
+                statusColor: copy.statusColor(_snapshot.camera),
+                actionLabel: copy.actionLabel(_snapshot.camera),
+                onAction: () => _requestPermission(AppPermissionType.camera),
               ),
-              const SizedBox(height: 20),
-              PrimaryButton(
-                label: copy.openSettingsLabel,
-                icon: Icons.settings_outlined,
-                loading: _openingSettings,
-                onPressed: _openSettings,
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              _PermissionTile(
+                icon: Icons.notifications_none_rounded,
+                title: context.strings.notifications,
+                statusLabel: copy.statusLabel(_snapshot.notifications),
+                statusColor: copy.statusColor(_snapshot.notifications),
+                actionLabel: copy.actionLabel(_snapshot.notifications),
+                onAction: () =>
+                    _requestPermission(AppPermissionType.notifications),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _openingSettings ? null : _openSettings,
+                icon: _openingSettings
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.settings_outlined),
+                label: Text(copy.openSettingsLabel),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.copy});
-
-  final _PermissionCopy copy;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFF4C1D95),
-            Color(0xFF6D28D9),
-            Color(0xFF9333EA),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Icon(Icons.security_rounded, color: Colors.white, size: 28),
-          const SizedBox(height: 12),
-          Text(
-            copy.settingsTitle,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            copy.settingsSubtitle,
-            style: const TextStyle(
-              color: Color(0xFFDCE8FF),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -332,8 +228,6 @@ class _PermissionTile extends StatelessWidget {
   const _PermissionTile({
     required this.icon,
     required this.title,
-    required this.description,
-    required this.state,
     required this.statusLabel,
     required this.statusColor,
     required this.actionLabel,
@@ -342,8 +236,6 @@ class _PermissionTile extends StatelessWidget {
 
   final IconData icon;
   final String title;
-  final String description;
-  final AppPermissionState state;
   final String statusLabel;
   final Color statusColor;
   final String actionLabel;
@@ -351,98 +243,29 @@ class _PermissionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, color: const Color(0xFF1E3A8A), size: 21),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  state.needsSettings
-                      ? _copy(context).settingsRequiredHint
-                      : _copy(context).requestHint,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: onAction,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(actionLabel),
-              ),
-            ],
-          ),
-        ],
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+      leading: Icon(icon, color: const Color(0xFF334155), size: 22),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF0F172A),
+        ),
       ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          statusLabel,
+          style: TextStyle(
+            fontSize: 13.5,
+            color: statusColor,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ),
+      trailing: TextButton(onPressed: onAction, child: Text(actionLabel)),
     );
   }
 }
@@ -452,57 +275,111 @@ class _PermissionCopy {
 
   final AppLanguage language;
 
-  String get settingsTitle => 'Permissions';
-  String get settingsSubtitle =>
-      'You can review and update gallery, camera, and notification access anytime from here.';
-  String get photosDescription => 'For selecting photos and saving posters';
-  String get cameraDescription => 'For directly capturing photos from camera';
-  String get notificationsDescription =>
-      'For new templates and important updates';
-  String get openSettingsLabel => 'Open App Settings';
-  String get settingsHint =>
-      'The app can continue even if permissions are off. You can enable them later from settings.';
-  String get fallbackInfo =>
-      'Permission status took too long to load. Use the actions below to re-check permissions.';
-  String get settingsRequiredHint =>
-      'To enable this again, please allow it from system settings.';
-  String get requestHint =>
-      'If you do not need it now, you can enable it later too.';
-  String get settingsOpened => 'App settings opened.';
-  String get settingsOpenFailed => 'Could not open settings. Please try again.';
+  String get settingsTitle => switch (language) {
+    AppLanguage.telugu => 'అనుమతులు',
+    AppLanguage.hindi => 'अनुमतियां',
+    AppLanguage.english => 'Permissions',
+    AppLanguage.tamil => 'அனுமதிகள்',
+    AppLanguage.kannada => 'ಅನುಮತಿಗಳು',
+    AppLanguage.malayalam => 'അനുമതികൾ',
+  };
+
+  String get openSettingsLabel => switch (language) {
+    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరువు',
+    AppLanguage.hindi => 'ऐप सेटिंग्स खोलें',
+    AppLanguage.english => 'Open App Settings',
+    AppLanguage.tamil => 'ஆப் அமைப்புகளை திற',
+    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಿರಿ',
+    AppLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറക്കുക',
+  };
+
+  String get fallbackInfo => switch (language) {
+    AppLanguage.telugu =>
+      'స్టేటస్ రిఫ్రెష్ కాలేదు. కిందికి లాగి మళ్లీ ప్రయత్నించండి.',
+    AppLanguage.hindi => 'स्टेटस रीफ्रेश नहीं हुआ। नीचे खींचकर फिर कोशिश करें।',
+    AppLanguage.english => 'Could not refresh status. Pull down to retry.',
+    AppLanguage.tamil =>
+      'நிலை புதுப்பிக்கப்படவில்லை. கீழே இழுத்து மீண்டும் முயற்சிக்கவும்.',
+    AppLanguage.kannada => 'ಸ್ಥಿತಿ ನವೀಕರಿಸಲಿಲ್ಲ. ಕೆಳಗೆ ಎಳೆದು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    AppLanguage.malayalam =>
+      'സ്ഥിതി പുതുക്കാനായില്ല. താഴേക്ക് വലിച്ച് വീണ്ടും ശ്രമിക്കുക.',
+  };
+
+  String get settingsOpened => switch (language) {
+    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరుచుకున్నాయి.',
+    AppLanguage.hindi => 'ऐप सेटिंग्स खुल गई हैं।',
+    AppLanguage.english => 'App settings opened.',
+    AppLanguage.tamil => 'ஆப் அமைப்புகள் திறக்கப்பட்டன.',
+    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಿದೆ.',
+    AppLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറന്നു.',
+  };
+
+  String get settingsOpenFailed => switch (language) {
+    AppLanguage.telugu => 'సెట్టింగ్స్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+    AppLanguage.hindi => 'सेटिंग्स नहीं खुलीं। फिर कोशिश करें।',
+    AppLanguage.english => 'Could not open settings. Please try again.',
+    AppLanguage.tamil =>
+      'அமைப்புகளை திறக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    AppLanguage.kannada => 'ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    AppLanguage.malayalam => 'ക്രമീകരണങ്ങൾ തുറക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+  };
 
   String permissionGranted(AppPermissionType type) => switch (type) {
-    AppPermissionType.photos => 'Photos access granted.',
-    AppPermissionType.camera => 'Camera access granted.',
-    AppPermissionType.notifications => 'Notifications permission granted.',
+    AppPermissionType.photos => _localized(
+      telugu: 'ఫోటోలు అనుమతి ఇచ్చారు.',
+      english: 'Photos access granted.',
+    ),
+    AppPermissionType.camera => _localized(
+      telugu: 'కెమెరా అనుమతి ఇచ్చారు.',
+      english: 'Camera access granted.',
+    ),
+    AppPermissionType.notifications => _localized(
+      telugu: 'నోటిఫికేషన్ అనుమతి ఇచ్చారు.',
+      english: 'Notifications access granted.',
+    ),
   };
 
   String permissionDenied(AppPermissionType type) => switch (type) {
-    AppPermissionType.photos =>
-      'Photos access is still off. You can enable it later from settings.',
-    AppPermissionType.camera =>
-      'Camera access is still off. You can enable it later from settings.',
-    AppPermissionType.notifications =>
-      'Notifications are still off. You can enable them later from settings.',
+    AppPermissionType.photos => _localized(
+      telugu: 'ఫోటోలు అనుమతి ఆఫ్‌లో ఉంది.',
+      english: 'Photos access is off.',
+    ),
+    AppPermissionType.camera => _localized(
+      telugu: 'కెమెరా అనుమతి ఆఫ్‌లో ఉంది.',
+      english: 'Camera access is off.',
+    ),
+    AppPermissionType.notifications => _localized(
+      telugu: 'నోటిఫికేషన్లు ఆఫ్‌లో ఉన్నాయి.',
+      english: 'Notifications are off.',
+    ),
   };
 
   String permissionNeedsSettings(AppPermissionType type) => switch (type) {
-    AppPermissionType.photos =>
-      'Photos access needs to be enabled from settings.',
-    AppPermissionType.camera =>
-      'Camera access needs to be enabled from settings.',
-    AppPermissionType.notifications =>
-      'Notifications need to be enabled from settings.',
+    AppPermissionType.photos => _localized(
+      telugu: 'సెట్టింగ్స్‌లో ఫోటోలు అనుమతించండి.',
+      english: 'Allow photos from settings.',
+    ),
+    AppPermissionType.camera => _localized(
+      telugu: 'సెట్టింగ్స్‌లో కెమెరా అనుమతించండి.',
+      english: 'Allow camera from settings.',
+    ),
+    AppPermissionType.notifications => _localized(
+      telugu: 'సెట్టింగ్స్‌లో నోటిఫికేషన్లు అనుమతించండి.',
+      english: 'Allow notifications from settings.',
+    ),
   };
 
   String statusLabel(AppPermissionState state) {
     if (state.isGranted) {
-      return 'Allowed';
+      return _localized(telugu: 'అనుమతించారు', english: 'Allowed');
     }
     if (state.needsSettings) {
-      return 'Needs Settings';
+      return _localized(
+        telugu: 'సెట్టింగ్స్‌లో అనుమతించండి',
+        english: 'Allow from Settings',
+      );
     }
-    return 'Not Allowed';
+    return _localized(telugu: 'అనుమతి లేదు', english: 'Not allowed');
   }
 
   Color statusColor(AppPermissionState state) {
@@ -517,10 +394,20 @@ class _PermissionCopy {
 
   String actionLabel(AppPermissionState state) {
     if (state.needsSettings || state.isGranted) {
-      return 'Check Again';
+      return _localized(telugu: 'చూడు', english: 'Check');
     }
-    return 'Allow';
+    return _localized(telugu: 'అనుమతించు', english: 'Allow');
   }
+
+  String _localized({required String telugu, required String english}) =>
+      switch (language) {
+        AppLanguage.telugu => telugu,
+        AppLanguage.hindi => english,
+        AppLanguage.english => english,
+        AppLanguage.tamil => english,
+        AppLanguage.kannada => english,
+        AppLanguage.malayalam => english,
+      };
 }
 
 _PermissionCopy _copy(BuildContext context) =>

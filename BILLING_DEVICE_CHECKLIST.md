@@ -1,7 +1,7 @@
 # Billing Device Checklist (Android/iOS)
 
 ## Store Setup
-- Create product id: `pro_monthly_20`
+- Create product id: `mana_poster_premium_monthly_149`
 - Ensure product is Active in store console
 - App package/bundle id matches uploaded build
 

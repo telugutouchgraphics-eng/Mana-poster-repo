@@ -58,14 +58,10 @@ class WebsiteAdminService {
       Uri.parse('$_baseFunctionsUrl/websiteAdminUpdateAccess');
 
   Future<WebsiteAdminContent> loadContent() async {
-    final decoded = await _postJson(
-      _getContentUri,
-      const <String, dynamic>{},
-    );
-    final configMap =
-        decoded['config'] is Map<String, dynamic>
-            ? decoded['config'] as Map<String, dynamic>
-            : <String, dynamic>{};
+    final decoded = await _postJson(_getContentUri, const <String, dynamic>{});
+    final configMap = decoded['config'] is Map<String, dynamic>
+        ? decoded['config'] as Map<String, dynamic>
+        : <String, dynamic>{};
     final postersRaw = decoded['posters'];
     final posters = postersRaw is List
         ? postersRaw
@@ -86,7 +82,9 @@ class WebsiteAdminService {
               .toList(growable: false)
         : const <WebsitePoster>[];
     return WebsiteAdminContent(
-      config: LandingPageConfig.fromMap(configMap),
+      config: configMap.isEmpty
+          ? LandingPageConfig.fallback()
+          : LandingPageConfig.fromMap(configMap),
       posters: posters,
       adminPrimaryEmail: (decoded['adminPrimaryEmail'] as String? ?? '').trim(),
     );
@@ -110,10 +108,9 @@ class WebsiteAdminService {
       'sortOrder': sortOrder,
       'active': active,
     });
-    final posterMap =
-        decoded['poster'] is Map<String, dynamic>
-            ? decoded['poster'] as Map<String, dynamic>
-            : <String, dynamic>{};
+    final posterMap = decoded['poster'] is Map<String, dynamic>
+        ? decoded['poster'] as Map<String, dynamic>
+        : <String, dynamic>{};
     return WebsitePoster.fromMap(
       posterMap,
       id: (posterMap['id'] as String? ?? posterId ?? '').trim(),
@@ -131,6 +128,32 @@ class WebsiteAdminService {
   }) {
     return _uploadAsset(
       assetType: 'posterImage',
+      fileName: fileName,
+      contentType: contentType,
+      bytes: bytes,
+    );
+  }
+
+  Future<WebsiteAssetUploadResult> uploadHeroImage({
+    required String fileName,
+    required String contentType,
+    required Uint8List bytes,
+  }) {
+    return _uploadAsset(
+      assetType: 'heroImage',
+      fileName: fileName,
+      contentType: contentType,
+      bytes: bytes,
+    );
+  }
+
+  Future<WebsiteAssetUploadResult> uploadPreviewImage({
+    required String fileName,
+    required String contentType,
+    required Uint8List bytes,
+  }) {
+    return _uploadAsset(
+      assetType: 'previewImage',
       fileName: fileName,
       contentType: contentType,
       bytes: bytes,

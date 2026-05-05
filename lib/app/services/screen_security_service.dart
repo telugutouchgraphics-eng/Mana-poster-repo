@@ -1,0 +1,28 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+class ScreenSecurityService {
+  ScreenSecurityService._();
+
+  static const MethodChannel _channel = MethodChannel(
+    'mana_poster/screen_security',
+  );
+
+  static Future<void> enableSecure() async {
+    if (kIsWeb) {
+      return;
+    }
+    try {
+      await _channel.invokeMethod<void>('enableSecure');
+    } catch (_) {}
+  }
+
+  static Future<void> disableSecure() async {
+    if (kIsWeb) {
+      return;
+    }
+    try {
+      await _channel.invokeMethod<void>('disableSecure');
+    } catch (_) {}
+  }
+}

@@ -18,12 +18,22 @@ class AppHomeBannerService {
           .where('active', isEqualTo: true)
           .orderBy('sortOrder')
           .limit(maxItems)
-          .get();
+          .get(const GetOptions(source: Source.server));
       return _mapSnapshot(snapshot);
     } catch (error, stackTrace) {
       debugPrint('AppHomeBannerService.fetchBanners failed: $error');
       debugPrintStack(stackTrace: stackTrace);
-      return const <AppHomeBanner>[];
+      try {
+        final fallbackSnapshot = await firestore
+            .collection('appBanners')
+            .where('active', isEqualTo: true)
+            .orderBy('sortOrder')
+            .limit(maxItems)
+            .get();
+        return _mapSnapshot(fallbackSnapshot);
+      } catch (_) {
+        return const <AppHomeBanner>[];
+      }
     }
   }
 

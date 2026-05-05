@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 
@@ -301,17 +302,17 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'లాగిన్, ఖాతా భద్రత, పాస్‌వర్డ్ రీసెట్, పోస్టర్ personalization, save/export, subscription అర్హత మరియు premium access చూపించడం కోసం ఈ సమాచారం ఉపయోగించబడుతుంది.',
+            'లాగిన్, ఖాతా భద్రత, పాస్‌వర్డ్ రీసెట్, పోస్టర్ personalization, save/export, subscription అర్హత చూపించడం కోసం ఈ సమాచారం ఉపయోగించబడుతుంది.',
         english:
-            'We use this information for login, account security, password reset, poster personalization, save/export flows, subscription eligibility, and premium access status.',
+            'We use this information for login, account security, password reset, poster personalization, save/export flows, and subscription eligibility.',
         hindi:
-            'यह जानकारी लॉगिन, अकाउंट सुरक्षा, पासवर्ड रीसेट, पोस्टर personalization, save/export, subscription पात्रता और premium access दिखाने के लिए उपयोग की जाती है।',
+            'यह जानकारी लॉगिन, अकाउंट सुरक्षा, पासवर्ड रीसेट, पोस्टर personalization, save/export और subscription पात्रता दिखाने के लिए उपयोग की जाती है।',
         tamil:
-            'இந்த தகவல் login, account security, password reset, poster personalization, save/export, subscription தகுதி மற்றும் premium access நிலைக்காக பயன்படுகிறது.',
+            'இந்த தகவல் login, account security, password reset, poster personalization, save/export மற்றும் subscription தகுதிக்காக பயன்படுகிறது.',
         kannada:
-            'ಈ ಮಾಹಿತಿ login, account security, password reset, poster personalization, save/export, subscription ಅರ್ಹತೆ ಮತ್ತು premium access ತೋರಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ.',
+            'ಈ ಮಾಹಿತಿ login, account security, password reset, poster personalization, save/export ಮತ್ತು subscription ಅರ್ಹತೆ ತೋರಿಸಲು ಬಳಸಲಾಗುತ್ತದೆ.',
         malayalam:
-            'ഈ വിവരങ്ങൾ login, account security, password reset, poster personalization, save/export, subscription യോഗ്യത, premium access എന്നിവയ്ക്കായി ഉപയോഗിക്കുന്നു.',
+            'ഈ വിവരങ്ങൾ login, account security, password reset, poster personalization, save/export, subscription യോഗ്യത എന്നിവയ്ക്കായി ഉപയോഗിക്കുന്നു.',
       ),
     ),
     _LegalSection(
@@ -349,7 +350,7 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'యాప్ Firebase, Google Sign-In, storage మరియు notifications సేవలను వాడవచ్చు. అవసరం లేని permissions ని ఆఫ్ చేయవచ్చు. ఖాతా లేదా డేటా సహాయం కోసం support email ను సంప్రదించండి.',
+            'యాప్ Firebase, Google Sign-In, స్టోరేజ్ మరియు నోటిఫికేషన్ సేవలను వాడవచ్చు. అవసరం లేని అనుమతులను ఆఫ్ చేయవచ్చు. ఖాతా లేదా డేటా సహాయం కోసం సపోర్ట్ ఇమెయిల్‌ను సంప్రదించండి.',
         english:
             'The app may use Firebase, Google Sign-In, storage, and notification services. Optional permissions can be turned off. Contact support if you need help with account or data-related issues.',
         hindi:
@@ -415,67 +416,75 @@ class _LegalCopy {
     ),
     _LegalSection(
       strings.localized(
-        telugu: 'సబ్స్క్రిప్షన్ మరియు ప్రీమియం',
-        english: 'Subscription and Premium',
+        telugu: 'సబ్స్క్రిప్షన్',
+        english: 'Subscription',
         hindi: 'सब्सक्रिप्शन और प्रीमियम',
-        tamil: 'சந்தா மற்றும் Premium',
-        kannada: 'ಸಬ್ಸ್ಕ್ರಿಪ್ಷನ್ ಮತ್ತು Premium',
-        malayalam: 'സബ്സ്ക്രിപ്ഷനും Premium',
+        tamil: 'சந்தா மற்றும் பிரீமியம்',
+        kannada: 'ಸಬ್ಸ್ಕ್ರಿಪ್ಷನ್ ಮತ್ತು ಪ್ರೀಮಿಯಂ',
+        malayalam: 'സബ്സ്ക്രിപ്ഷനും പ്രീമിയവും',
       ),
       strings.localized(
         telugu:
-            'Free tab పోస్టర్లకు trial ₹1 / 3 రోజులు ఉండవచ్చు. తర్వాత ₹149 నెలవారీ auto-renewal వర్తించవచ్చు. Premium పోస్టర్లు subscription ద్వారా unlock కావు; ప్రతి premium poster కు వేరు ధర ఉండవచ్చు.',
+            'ఫ్రీ-ట్యాబ్ పోస్టర్లకు ${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay} ట్రయల్ ఉంటుంది. ఆ ${SubscriptionPlanConfig.trialDays} రోజుల లోపు మీరు రద్దు చేయవచ్చు. రద్దు చేయకపోతే, తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున ఆటో రీన్యువల్ అవుతుంది. ప్రీమియమ్ పోస్టర్లు సబ్‌స్క్రిప్షన్‌తో అన్‌లాక్ కావు; వాటికి ప్రత్యేకంగా ఒక్కో పోస్టర్ ధర ఉండవచ్చు.',
         english:
-            'Free-tab posters may have a ₹1 / 3 day trial, followed by a ₹149 monthly auto-renewal plan. Premium posters are not unlocked by subscription and may have separate per-poster pricing.',
+            'The subscription includes a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. You may cancel within those ${SubscriptionPlanConfig.trialDays} days. If not cancelled, the plan auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month.',
         hindi:
-            'Free tab पोस्टरों के लिए ₹1 / 3 दिन trial हो सकता है, जिसके बाद ₹149 monthly auto-renewal लागू हो सकता है। Premium posters subscription से unlock नहीं होते और हर poster की अलग कीमत हो सकती है।',
+            'फ्री-टैब पोस्टर्स के लिए 3 दिनों का Rs.4 ट्रायल शामिल है। 3 दिन पूरे होने के बाद आप cancel नहीं करते हैं तो यह प्लान Rs.149 प्रति माह पर auto-renew हो जाएगा। प्रीमियम पोस्टर्स इस सदस्यता से अनलॉक नहीं होते; उनके लिए अलग प्रति-पोस्टर कीमत हो सकती है।',
         tamil:
-            'Free tab posters க்கு ₹1 / 3 நாள் trial இருக்கலாம்; அதன் பிறகு ₹149 monthly auto-renewal அமலாகலாம். Premium posters subscription மூலம் unlock ஆகாது; ஒவ்வொரு poster-க்கும் தனி விலை இருக்கலாம்.',
+            'ஃப்ரீ-டாப் போஸ்டர்களுக்கு 3 நாட்களுக்கு Rs.4 டிரயல் வழங்கப்படுகிறது. 3 நாட்கள் முடிந்த பிறகு நீங்கள் cancel செய்யாவிட்டால், இந்த திட்டம் Rs.149/மாதம் என auto-renew ஆகும். பிரீமியம் போஸ்டர்கள் இந்த சந்தாவால் unlock ஆகாது; அவற்றுக்கு தனியாக ஒவ்வொரு போஸ்டருக்கும் விலை இருக்கலாம்.',
         kannada:
-            'Free tab posters ಗೆ ₹1 / 3 ದಿನ trial ಇರಬಹುದು; ನಂತರ ₹149 monthly auto-renewal ಅನ್ವಯಿಸಬಹುದು. Premium posters subscription ಮೂಲಕ unlock ಆಗುವುದಿಲ್ಲ; ಪ್ರತಿಯೊಂದು poster ಗೆ ಬೇರೆ ಬೆಲೆ ಇರಬಹುದು.',
+            'ಫ್ರೀ-ಟ್ಯಾಬ್ ಪೋಸ್ಟರ್‌ಗಳಿಗೆ 3 ದಿನಗಳ Rs.4 ಟ್ರಯಲ್ ಒಳಗೊಂಡಿದೆ. 3 ದಿನಗಳ ನಂತರ ನೀವು cancel ಮಾಡದಿದ್ದರೆ, ಈ ಪ್ಲಾನ್ Rs.149 ಪ್ರತಿ ತಿಂಗಳು auto-renew ಆಗುತ್ತದೆ. ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್‌ಗಳು ಈ ಚಂದಾದಾರಿಕೆಯಿಂದ unlock ಆಗುವುದಿಲ್ಲ; ಅವುಗಳಿಗೆ ಪ್ರತಿ ಪೋಸ್ಟರ್‌ಗೆ ಪ್ರತ್ಯೇಕ ದರವಿರಬಹುದು.',
         malayalam:
-            'Free tab posters ന് ₹1 / 3 day trial ലഭിക്കാം; തുടർന്ന് ₹149 monthly auto-renewal ബാധകമായേക്കാം. Premium posters subscription വഴി unlock ആവില്ല; ഓരോ poster-നും വേറെ വില ഉണ്ടായേക്കാം.',
+            'ഫ്രീ-ടാബ് പോസ്റ്ററുകൾക്ക് 3 ദിവസത്തേക്ക് Rs.4 ട്രയൽ ലഭ്യമാണ്. 3 ദിവസം കഴിഞ്ഞിട്ടും നിങ്ങൾ cancel ചെയ്യാത്ത പക്ഷം ഈ പ്ലാൻ Rs.149/മാസം നിരക്കിൽ auto-renewal ആയി തുടരും. പ്രീമിയം പോസ്റ്ററുകൾ ഈ സബ്സ്ക്രിപ്ഷനിലൂടെ unlock ആവില്ല; അവയ്ക്ക് ഓരോ പോസ്റ്ററിനും വേറെ വില ഉണ്ടായിരിക്കാം.',
       ),
     ),
     _LegalSection(
       strings.localized(
-        telugu: 'సేవ మార్పులు',
+        telugu: 'రీఫండ్, రద్దు, ఆటో రీన్యువల్',
         english: 'Refund, cancellation, and auto-renewal',
       ),
       strings.localized(
         telugu:
-            'Subscription cancel cheyyadam saadharananga Play Store leda App Store subscription settings dwara cheyyali. Cancel chesina tarvatha current billing period mugise varaku access undavachu. Refund eligibility Google Play leda Apple policies prakaram untundi.',
+            'సబ్‌స్క్రిప్షన్ రద్దు సాధారణంగా మీ Play Store లేదా App Store సబ్‌స్క్రిప్షన్ సెట్టింగ్స్‌లో చేయాలి. రద్దు చేసిన తర్వాత ప్రస్తుత బిల్లింగ్ గడువు ముగిసే వరకు యాక్సెస్ కొనసాగవచ్చు. రీఫండ్ అర్హత Google Play లేదా Apple విధానాల ప్రకారం నిర్ణయించబడుతుంది.',
         english:
             'Subscription cancellation is generally managed through your Play Store or App Store subscription settings. After cancelling, access may continue until the current billing period ends. Refund eligibility is determined by Google Play or Apple policies.',
+        hindi:
+            'सब्सक्रिप्शन रद्द करना आमतौर पर आपके Play Store या App Store सब्सक्रिप्शन सेटिंग्स में करना होता है। रद्द करने के बाद, वर्तमान बिलिंग अवधि समाप्त होने तक एक्सेस जारी रह सकता है। रिफंड पात्रता Google Play या Apple नीतियों के अनुसार तय होती है।',
+        tamil:
+            'சந்தாவை ரத்து செய்வது பொதுவாக உங்கள் Play Store அல்லது App Store சந்தா அமைப்புகளில் செய்ய வேண்டும். ரத்து செய்த பிறகு, தற்போதைய பில்லிங் காலம் முடியும் வரை அணுகல் தொடரலாம். ரீஃபண்ட் தகுதி Google Play அல்லது Apple விதிகளின் அடிப்படையில் தீர்மானிக்கப்படும்.',
+        kannada:
+            'ಚಂದಾವನ್ನು ರದ್ದುಪಡಿಸುವುದು ಸಾಮಾನ್ಯವಾಗಿ ನಿಮ್ಮ Play Store ಅಥವಾ App Store ಚಂದಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಮಾಡಬೇಕು. ರದ್ದು ಮಾಡಿದ ನಂತರ, ಪ್ರಸ್ತುತ ಬಿಲ್ಲಿಂಗ್ ಅವಧಿ ಮುಗಿಯುವವರೆಗೆ ಪ್ರವೇಶ ಮುಂದುವರಿಯಬಹುದು. ರಿಫಂಡ್ ಅರ್ಹತೆ Google Play ಅಥವಾ Apple ನೀತಿಗಳ ಪ್ರಕಾರ ನಿರ್ಧರಿಸಲಾಗುತ್ತದೆ.',
+        malayalam:
+            'സബ്സ്ക്രിപ്ഷൻ റദ്ദാക്കുന്നത് സാധാരണയായി നിങ്ങളുടെ Play Store അല്ലെങ്കിൽ App Store സബ്സ്ക്രിപ്ഷൻ ക്രമീകരണങ്ങളിൽ ചെയ്യേണ്ടതാണ്. റദ്ദാക്കിയ ശേഷം, നിലവിലെ ബില്ലിംഗ് കാലയളവ് അവസാനിക്കുന്നതുവരെ ആക്സസ് തുടർന്നേക്കാം. റീഫണ്ട് അർഹത Google Play അല്ലെങ്കിൽ Apple നയങ്ങൾ പ്രകാരം തീരുമാനിക്കപ്പെടും.',
       ),
     ),
     _LegalSection(
       strings.localized(
-        telugu: 'Account deletion and data removal',
+        telugu: 'ఖాతా తొలగింపు మరియు డేటా తొలగింపు',
         english: 'Account deletion and data removal',
       ),
       strings.localized(
         telugu:
-            'App lo account deletion request option andubatulo untundi. Delete request tarvatha login access, poster profile details, and linked in-app data remove avvachu. Konni billing leda platform-required records kontha kalam retain avvachu. Public deletion details: ${AppPublicInfo.accountDeletionUrl}',
+            'యాప్‌లో ఖాతా తొలగింపు అభ్యర్థన చేసే ఆప్షన్ అందుబాటులో ఉంటుంది. డిలీట్ అభ్యర్థన తర్వాత లాగిన్ యాక్సెస్, పోస్టర్ ప్రొఫైల్ వివరాలు మరియు అనుసంధానమైన యాప్ డేటా తొలగించబడవచ్చు. కొన్ని బిల్లింగ్ లేదా ప్లాట్‌ఫారమ్‌కు అవసరమైన రికార్డులు కొంతకాలం నిల్వ ఉండవచ్చు. పబ్లిక్ డిలీషన్ వివరాలు: ${AppPublicInfo.accountDeletionUrl}',
         english:
             'The app provides an in-app account deletion request option. After deletion, login access, poster profile details, and linked in-app data may be removed. Some billing or platform-required records may be retained for a limited period. Public deletion details: ${AppPublicInfo.accountDeletionUrl}',
       ),
     ),
     _LegalSection(
       strings.localized(
-        telugu: 'Single-device account access',
+        telugu: 'ఒకే పరికర ఖాతా యాక్సెస్',
         english: 'Single-device account access',
       ),
       strings.localized(
         telugu:
-            'Oke account okesari oka primary device lo active ga undela session controls vadavachu. Ade account maro device lo login ayithe previous device automatic ga sign out kavachu.',
+            'ఒకే ఖాతా ఒకేసారి ఒక ప్రధాన పరికరంలో మాత్రమే యాక్టివ్‌గా ఉండేలా సెషన్ నియంత్రణలు అమల్లో ఉండవచ్చు. అదే ఖాతాతో మరో పరికరంలో లాగిన్ అయితే, ముందున్న పరికరం ఆటోమేటిక్‌గా సైన్ అవుట్ కావచ్చు.',
         english:
             'Session controls may keep one account active on one primary device at a time. If the same account signs in on another device, the previous device session may be signed out automatically.',
       ),
     ),
     _LegalSection(
       strings.localized(
-        telugu: 'Service Changes',
+        telugu: 'సేవ మార్పులు',
         english: 'Service Changes',
         hindi: 'सेवा परिवर्तन',
         tamil: 'சேவை மாற்றங்கள்',

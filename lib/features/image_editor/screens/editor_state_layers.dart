@@ -152,13 +152,18 @@ extension _EditorLayersState on _ImageEditorScreenState {
       );
     }
     if (layer.isText) {
+      final renderFontFamily = _resolveLayerRenderFontFamily(layer);
+      final renderLineHeight = _effectiveTextLineHeightForRender(
+        fontFamily: layer.fontFamily,
+        textLineHeight: layer.textLineHeight,
+      );
       final painter = TextPainter(
         text: TextSpan(
           text: _resolveLayerRenderText(layer),
           style: TextStyle(
-            fontFamily: _resolveLayerRenderFontFamily(layer),
+            fontFamily: renderFontFamily,
             fontSize: layer.fontSize,
-            height: layer.textLineHeight,
+            height: renderLineHeight,
             letterSpacing: layer.textLetterSpacing,
             fontWeight: layer.isTextBold ? FontWeight.w800 : FontWeight.w500,
             fontStyle: layer.isTextItalic ? FontStyle.italic : FontStyle.normal,
@@ -663,7 +668,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'Remove BG కోసం సోర్స్ ఫోటో అందుబాటులో లేదు',
+              telugu: 'బ్యాక్‌గ్రౌండ్ తీసేయడానికి సోర్స్ ఫోటో అందుబాటులో లేదు',
               english: 'Source photo unavailable for Remove BG',
             ),
           ),
@@ -680,7 +685,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
           english: 'Removing background',
         ),
         detail: context.strings.localized(
-          telugu: 'ఎంచుకున్న ఫోటో లేయర్‌ను AI ప్రాసెస్ చేస్తోంది',
+          telugu: 'ఎంచుకున్న ఫోటో లేయర్‌ను ఏఐ ప్రాసెస్ చేస్తోంది',
           english: 'AI is processing the selected photo layer',
         ),
         onStart: () {
@@ -717,7 +722,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'Remove BG కాలేదు: ${error.toString()}',
+              telugu: 'బ్యాక్‌గ్రౌండ్ తీసేయడానికి సోర్స్ ఫోటో అందుబాటులో లేదు',
               english: 'Remove BG failed: ${error.toString()}',
             ),
           ),

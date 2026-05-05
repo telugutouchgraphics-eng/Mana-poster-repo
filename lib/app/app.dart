@@ -1,3 +1,4 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
@@ -7,9 +8,16 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/theme/app_theme.dart';
 
 class ManaPosterApp extends StatefulWidget {
-  const ManaPosterApp({super.key, this.initialLanguage = AppLanguage.telugu});
+  const ManaPosterApp({
+    super.key,
+    this.initialLanguage = AppLanguage.telugu,
+    this.forcedHome,
+    this.forceSingleRoute = false,
+  });
 
   final AppLanguage initialLanguage;
+  final Widget? forcedHome;
+  final bool forceSingleRoute;
 
   @override
   State<ManaPosterApp> createState() => _ManaPosterAppState();
@@ -26,12 +34,16 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   );
 
   late final AppLanguageController _languageController;
+  late final FirebaseAnalyticsObserver _analyticsObserver;
 
   @override
   void initState() {
     super.initState();
     _languageController = AppLanguageController(
       initialLanguage: widget.initialLanguage,
+    );
+    _analyticsObserver = FirebaseAnalyticsObserver(
+      analytics: FirebaseAnalytics.instance,
     );
   }
 
@@ -50,7 +62,23 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             checkerboardRasterCacheImages: _showRasterCheckerboard,
             title: AppPublicInfo.appName,
             theme: AppTheme.light(),
-            initialRoute: AppRoutes.initialRoute,
+            navigatorObservers: <NavigatorObserver>[
+              AppNavigator.routeObserver,
+              _analyticsObserver,
+            ],
+            home: widget.forceSingleRoute ? null : widget.forcedHome,
+            initialRoute: widget.forcedHome == null
+                ? AppRoutes.initialRoute
+                : null,
+            onGenerateInitialRoutes: widget.forceSingleRoute &&
+                    widget.forcedHome != null
+                ? (String _) => <Route<dynamic>>[
+                    MaterialPageRoute<void>(
+                      builder: (_) => widget.forcedHome!,
+                      settings: const RouteSettings(name: '/'),
+                    ),
+                  ]
+                : null,
             routes: AppRoutes.map,
           ),
         );

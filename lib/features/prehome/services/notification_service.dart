@@ -1,15 +1,26 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
+import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  DartPluginRegistrant.ensureInitialized();
+  await FirebaseBootstrap.ensureInitialized();
+  await NotificationService.showRemoteMessage(message);
+}
 
 class NotificationService {
   NotificationService._();
@@ -29,12 +40,19 @@ class NotificationService {
 
   bool _initialized = false;
 
+  static FlutterLocalNotificationsPlugin get _backgroundNotifications =>
+      FlutterLocalNotificationsPlugin();
+
   bool get _supportsNativeNotifications {
     if (kIsWeb) {
       return false;
     }
     return defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  static void registerBackgroundHandler() {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
 
   Future<void> initialize() async {
@@ -46,13 +64,13 @@ class NotificationService {
       return;
     }
 
-    await _initializeLocalNotifications();
+    await _initializeLocalNotifications(_localNotifications);
 
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     await messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
+      alert: false,
       badge: true,
-      sound: true,
+      sound: false,
     );
 
     try {
@@ -66,7 +84,9 @@ class NotificationService {
       );
     }
 
-    FirebaseMessaging.onMessage.listen(_showForegroundNotification);
+    FirebaseMessaging.onMessage.listen((message) async {
+      await showRemoteMessage(message);
+    });
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
     final RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
@@ -85,14 +105,39 @@ class NotificationService {
     _initialized = true;
   }
 
-  Future<void> _initializeLocalNotifications() async {
+  static Future<void> showRemoteMessage(RemoteMessage message) async {
+    final plugin = _backgroundNotifications;
+    await _initializeLocalNotifications(plugin);
+
+    final resolved = await _resolveMessageText(message.data);
+    if (resolved.title.isEmpty && resolved.body.isEmpty) {
+      return;
+    }
+
+    final NotificationDetails details = await _buildNotificationDetails(
+      posterImageUrl: _readDataValue(message.data, 'posterImage'),
+      userPhotoUrl: _readDataValue(message.data, 'userPhoto'),
+      title: resolved.title,
+      body: resolved.body,
+    );
+    final payload =
+        (_readDataValue(message.data, 'route')).trim().toLowerCase() == 'home'
+            ? 'home'
+            : '';
+    final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+    await plugin.show(id, resolved.title, resolved.body, details, payload: payload);
+  }
+
+  static Future<void> _initializeLocalNotifications(
+    FlutterLocalNotificationsPlugin plugin,
+  ) async {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
       iOS: DarwinInitializationSettings(),
     );
-    await _localNotifications.initialize(
+    await plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final String payload = response.payload ?? '';
@@ -102,9 +147,10 @@ class NotificationService {
       },
     );
 
-    await _localNotifications
+    await plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_channel);
   }
 
@@ -167,8 +213,8 @@ class NotificationService {
     final String platform = Platform.isAndroid
         ? 'android'
         : Platform.isIOS
-            ? 'ios'
-            : 'other';
+        ? 'ios'
+        : 'other';
     final bool alreadySynced = prefs.getBool(syncedKey) ?? false;
     final Map<String, dynamic> payload = <String, dynamic>{
       'token': token,
@@ -198,8 +244,8 @@ class NotificationService {
       'platform': Platform.isAndroid
           ? 'android'
           : Platform.isIOS
-              ? 'ios'
-              : 'other',
+          ? 'ios'
+          : 'other',
       'uid': currentUser.uid,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -217,89 +263,141 @@ class NotificationService {
     return token.replaceAll('/', '_');
   }
 
-  Future<void> _showForegroundNotification(RemoteMessage message) async {
-    final String? title = message.notification?.title;
-    final String? body = message.notification?.body;
-    if ((title == null || title.isEmpty) && (body == null || body.isEmpty)) {
+  void _handleNotificationTap(RemoteMessage message) {
+    final String route = _readDataValue(message.data, 'route').trim().toLowerCase();
+    if (route == 'home') {
+      _openHomeWithRetry();
+    }
+  }
+
+  static void _openHomeWithRetry([int attempt = 0]) {
+    AppNavigator.openHome();
+    if (AppNavigator.navigatorKey.currentState != null || attempt >= 6) {
       return;
     }
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      _openHomeWithRetry(attempt + 1);
+    });
+  }
 
-    final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-    final String? imageUrl = _resolveNotificationImageUrl(message);
-    final NotificationDetails details = await _buildNotificationDetails(
-      imageUrl: imageUrl,
-      title: title,
-      body: body,
+  static Future<_ResolvedNotificationText> _resolveMessageText(
+    Map<String, dynamic> data,
+  ) async {
+    final directTitle = _readDataValue(data, 'title');
+    final directBody = _readDataValue(data, 'body');
+    if (directTitle.isNotEmpty || directBody.isNotEmpty) {
+      return _ResolvedNotificationText(title: directTitle, body: directBody);
+    }
+
+    final snapshot = await AppFlowService.loadSnapshot();
+    final title = _localizedNotificationText(
+      key: _readDataValue(data, 'title_key'),
+      language: snapshot.language,
     );
-    final String payload =
-        (message.data['route'] ?? '').toString().trim().toLowerCase() == 'home'
-            ? 'home'
-            : '';
-    await _localNotifications.show(id, title, body, details, payload: payload);
+    final body = _localizedNotificationText(
+      key: _readDataValue(data, 'body_key'),
+      language: snapshot.language,
+    );
+    return _ResolvedNotificationText(title: title, body: body);
   }
 
-  String? _resolveNotificationImageUrl(RemoteMessage message) {
-    final String dataImage =
-        (message.data['imageUrl'] ?? '').toString().trim();
-    if (dataImage.isNotEmpty) {
-      return dataImage;
+  static String _localizedNotificationText({
+    required String key,
+    required AppLanguage language,
+  }) {
+    final normalized = key.trim().toLowerCase();
+    const fallback = <String, Map<AppLanguage, String>>{
+      'welcome_title': {
+        AppLanguage.telugu: 'మన పోస్టర్‌కు స్వాగతం',
+        AppLanguage.hindi: 'मना पोस्टर में आपका स्वागत है',
+        AppLanguage.english: 'Welcome to Mana Poster',
+        AppLanguage.tamil: 'மனா போஸ்டருக்கு வரவேற்கிறோம்',
+        AppLanguage.kannada: 'ಮನಾ ಪೋಸ್ಟರ್‌ಗೆ ಸ್ವಾಗತ',
+        AppLanguage.malayalam: 'മന പോസ്റ്ററിലേക്ക് സ്വാഗതം',
+      },
+      'welcome_body': {
+        AppLanguage.telugu: 'మీ కోసం పోస్టర్లు సిద్ధంగా ఉన్నాయి. ఇప్పుడే చూడండి.',
+        AppLanguage.hindi: 'आपके लिए पोस्टर तैयार हैं। अभी देखें।',
+        AppLanguage.english: 'Your posters are ready. Open now.',
+        AppLanguage.tamil: 'உங்களுக்கான போஸ்டர்கள் தயார். இப்போது திறக்கவும்.',
+        AppLanguage.kannada: 'ನಿಮಗಾಗಿ ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಈಗ ತೆರೆಯಿರಿ.',
+        AppLanguage.malayalam: 'നിങ്ങൾക്കായി പോസ്റ്ററുകൾ തയ്യാറാണ്. ഇപ്പോൾ തുറക്കൂ.',
+      },
+      'morning_title': {
+        AppLanguage.telugu: 'శుభోదయం',
+        AppLanguage.hindi: 'शुभ प्रभात',
+        AppLanguage.english: 'Good Morning',
+        AppLanguage.tamil: 'காலை வணக்கம்',
+        AppLanguage.kannada: 'ಶುಭೋದಯ',
+        AppLanguage.malayalam: 'ശുഭ പ്രഭാതം',
+      },
+      'afternoon_title': {
+        AppLanguage.telugu: 'శుభ మధ్యాహ్నం',
+        AppLanguage.hindi: 'शुभ दोपहर',
+        AppLanguage.english: 'Good Afternoon',
+        AppLanguage.tamil: 'மதிய வணக்கம்',
+        AppLanguage.kannada: 'ಶುಭ ಮಧ್ಯಾಹ್ನ',
+        AppLanguage.malayalam: 'ശുഭ ഉച്ചകഴിഞ്ഞ്',
+      },
+      'night_title': {
+        AppLanguage.telugu: 'శుభ రాత్రి',
+        AppLanguage.hindi: 'शुभ रात्रि',
+        AppLanguage.english: 'Good Night',
+        AppLanguage.tamil: 'இரவு வணக்கம்',
+        AppLanguage.kannada: 'ಶುಭ ರಾತ್ರಿ',
+        AppLanguage.malayalam: 'ശുഭ രാത്രി',
+      },
+    };
+
+    final bucket = fallback[normalized];
+    if (bucket == null) {
+      return '';
     }
-    final String notificationAndroidImage =
-        (message.notification?.android?.imageUrl ?? '').trim();
-    if (notificationAndroidImage.isNotEmpty) {
-      return notificationAndroidImage;
-    }
-    final String notificationAppleImage =
-        (message.notification?.apple?.imageUrl ?? '').trim();
-    if (notificationAppleImage.isNotEmpty) {
-      return notificationAppleImage;
-    }
-    return null;
+    return bucket[language] ?? bucket[AppLanguage.english] ?? '';
   }
 
-  Future<NotificationDetails> _buildNotificationDetails({
-    required String? imageUrl,
-    required String? title,
-    required String? body,
+  static String _readDataValue(Map<String, dynamic> data, String key) {
+    return (data[key] ?? '').toString().trim();
+  }
+
+  static Future<NotificationDetails> _buildNotificationDetails({
+    required String posterImageUrl,
+    required String userPhotoUrl,
+    required String title,
+    required String body,
   }) async {
+    final posterPath = await _downloadImageForNotification(posterImageUrl);
+    final userPhotoPath = await _downloadImageForNotification(userPhotoUrl);
+
     final AndroidNotificationDetails androidDetails;
-    final String normalizedImageUrl = (imageUrl ?? '').trim();
-    if (normalizedImageUrl.isNotEmpty) {
-      final String? filePath = await _downloadImageForNotification(
-        normalizedImageUrl,
-      );
-      if (filePath != null) {
-        androidDetails = AndroidNotificationDetails(
-          'mana_poster_general',
-          'Mana Poster Notifications',
-          channelDescription: 'General reminders and event updates',
-          importance: Importance.high,
-          priority: Priority.high,
-          styleInformation: BigPictureStyleInformation(
-            FilePathAndroidBitmap(filePath),
-            largeIcon: FilePathAndroidBitmap(filePath),
-            contentTitle: title,
-            summaryText: body,
-            htmlFormatContentTitle: false,
-            htmlFormatSummaryText: false,
-          ),
-        );
-      } else {
-        androidDetails = const AndroidNotificationDetails(
-          'mana_poster_general',
-          'Mana Poster Notifications',
-          channelDescription: 'General reminders and event updates',
-          importance: Importance.high,
-          priority: Priority.high,
-        );
-      }
-    } else {
-      androidDetails = const AndroidNotificationDetails(
+    if (posterPath != null) {
+      androidDetails = AndroidNotificationDetails(
         'mana_poster_general',
         'Mana Poster Notifications',
         channelDescription: 'General reminders and event updates',
         importance: Importance.high,
         priority: Priority.high,
+        styleInformation: BigPictureStyleInformation(
+          FilePathAndroidBitmap(posterPath),
+          largeIcon: userPhotoPath != null
+              ? FilePathAndroidBitmap(userPhotoPath)
+              : null,
+          contentTitle: title,
+          summaryText: body,
+          htmlFormatContentTitle: false,
+          htmlFormatSummaryText: false,
+        ),
+      );
+    } else {
+      androidDetails = AndroidNotificationDetails(
+        'mana_poster_general',
+        'Mana Poster Notifications',
+        channelDescription: 'General reminders and event updates',
+        importance: Importance.high,
+        priority: Priority.high,
+        largeIcon: userPhotoPath != null
+            ? FilePathAndroidBitmap(userPhotoPath)
+            : null,
       );
     }
 
@@ -309,9 +407,13 @@ class NotificationService {
     );
   }
 
-  Future<String?> _downloadImageForNotification(String imageUrl) async {
+  static Future<String?> _downloadImageForNotification(String imageUrl) async {
+    final normalizedUrl = imageUrl.trim();
+    if (normalizedUrl.isEmpty) {
+      return null;
+    }
     try {
-      final Uri uri = Uri.parse(imageUrl);
+      final Uri uri = Uri.parse(normalizedUrl);
       if (!uri.hasScheme) {
         return null;
       }
@@ -322,9 +424,7 @@ class NotificationService {
         client.close(force: true);
         return null;
       }
-      final List<int> bytes = await consolidateHttpClientResponseBytes(
-        response,
-      );
+      final List<int> bytes = await consolidateHttpClientResponseBytes(response);
       client.close(force: true);
       if (bytes.isEmpty) {
         return null;
@@ -347,7 +447,7 @@ class NotificationService {
     }
   }
 
-  String _guessNotificationImageExtension(String path) {
+  static String _guessNotificationImageExtension(String path) {
     final String lower = path.toLowerCase();
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
       return 'jpg';
@@ -357,22 +457,11 @@ class NotificationService {
     }
     return 'png';
   }
+}
 
-  void _handleNotificationTap(RemoteMessage message) {
-    final String route =
-        (message.data['route'] ?? '').toString().trim().toLowerCase();
-    if (route == 'home') {
-      _openHomeWithRetry();
-    }
-  }
+class _ResolvedNotificationText {
+  const _ResolvedNotificationText({required this.title, required this.body});
 
-  void _openHomeWithRetry([int attempt = 0]) {
-    AppNavigator.openHome();
-    if (AppNavigator.navigatorKey.currentState != null || attempt >= 6) {
-      return;
-    }
-    Future<void>.delayed(const Duration(milliseconds: 300), () {
-      _openHomeWithRetry(attempt + 1);
-    });
-  }
+  final String title;
+  final String body;
 }

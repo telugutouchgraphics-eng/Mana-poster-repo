@@ -1,4 +1,4 @@
-﻿// ignore_for_file: use_build_context_synchronously, unused_element, unused_field
+// ignore_for_file: use_build_context_synchronously, unused_element, unused_field
 
 import 'dart:async';
 import 'dart:collection';
@@ -12,15 +12,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mana_poster/app/services/media_export_service.dart';
+import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 
 import '../models/background_presets.dart';
@@ -60,11 +60,15 @@ class ImageEditorScreen extends StatefulWidget {
     this.pageConfig,
     this.initialStageBackground,
     this.templateDocumentSource,
+    this.initialPosterProfile,
+    this.initialPersonalizationConfig,
   });
 
   final EditorPageConfig? pageConfig;
   final EditorStageBackground? initialStageBackground;
   final String? templateDocumentSource;
+  final PosterProfileData? initialPosterProfile;
+  final CreatorPosterPersonalization? initialPersonalizationConfig;
 
   @override
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
@@ -180,6 +184,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isTemplateHydrated = false;
   bool _isTemplateHydrationInProgress = false;
   bool _templateHydrationScheduled = false;
+  bool _didApplyInitialPersonalization = false;
   ui.Image? _watermarkLogoImage;
 
   _CanvasLayer? get _selectedLayer {
@@ -441,20 +446,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final strings = context.strings;
     final message = switch (tool) {
       _BottomPrimaryTool.photo => strings.localized(
-        telugu: 'Photo టూల్: Gallery లేదా Camera నుంచి ఫోటో జోడించండి.',
+        telugu: 'ఫోటో టూల్: గ్యాలరీ లేదా కెమెరా నుంచి ఫోటో జోడించండి.',
         english: 'Photo tool: add from Gallery or Camera.',
       ),
       _BottomPrimaryTool.text => strings.localized(
-        telugu: 'Text టూల్: Add Text నొక్కి వెంటనే style మార్చండి.',
+        telugu: 'టెక్స్ట్ టూల్: టెక్స్ట్ జోడించి వెంటనే రూపాన్ని మార్చండి.',
         english: 'Text tool: tap Add Text, then style it.',
       ),
       _BottomPrimaryTool.background => strings.localized(
-        telugu: 'Background టూల్: White, Color, Gradient లేదా Image ఎంచుకోండి.',
+        telugu:
+            'బ్యాక్‌గ్రౌండ్ టూల్: తెలుపు, రంగు, గ్రేడియెంట్ లేదా చిత్రం ఎంచుకోండి.',
         english: 'Background tool: choose White, Color, Gradient, or Image.',
       ),
       _BottomPrimaryTool.tools => strings.localized(
-        telugu:
-            'Tools టూల్: Crop, Erase, Layers, Stickers మరియు Border ఇక్కడ ఉన్నాయి.',
+        telugu: 'టూల్స్‌లో క్రాప్, ఎరేజ్, లేయర్లు, స్టికర్లు, బార్డర్ ఉన్నాయి.',
         english: 'Tools: Crop, Erase, Layers, Stickers, and Border.',
       ),
       _BottomPrimaryTool.none => '',
@@ -1071,7 +1076,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   colors: _textColors,
                   backgroundColors: editorBackgroundColors,
                   gradients: _textGradients,
-                  onEditTap: () => _syncSelectedTextEditor(requestFocus: true),
+                  onEditTap: () =>
+                      unawaited(_openSelectedTextFullScreenEditor()),
                   onTextChanged: _handleSelectedTextChanged,
                   onFontsTap: () => unawaited(_openFontPickerOverlay()),
                   onColorSelected: _setSelectedTextColor,
@@ -1356,15 +1362,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final config = widget.pageConfig!;
     final backgroundLabel = switch (widget.initialStageBackground?.type) {
       EditorStageBackgroundType.transparent => strings.localized(
-        telugu: 'Transparent',
+        telugu: 'పారదర్శకం',
         english: 'Transparent',
       ),
       EditorStageBackgroundType.color => strings.localized(
-        telugu: 'Color',
+        telugu: 'రంగు',
         english: 'Color',
       ),
       EditorStageBackgroundType.gradient => strings.localized(
-        telugu: 'Gradient',
+        telugu: 'గ్రేడియెంట్',
         english: 'Gradient',
       ),
       _ => strings.localized(telugu: 'వైట్', english: 'White'),
@@ -1388,6 +1394,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(ScreenSecurityService.enableSecure());
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
     _photoGlideController =
         AnimationController(
@@ -1404,8 +1411,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           });
     _pageAspectRatio = widget.pageConfig?.aspectRatio;
     _applyInitialStageBackground(widget.initialStageBackground);
-    _backgroundRemoverInitialization = BackgroundRemover.instance
-        .initializeOrt();
+    _backgroundRemoverInitialization = _backgroundRemovalService.ensureReady();
     _enterEditorImmersiveMode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_enterEditorImmersiveMode());
@@ -1485,6 +1491,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_enterEditorImmersiveMode());
+      unawaited(ScreenSecurityService.enableSecure());
     }
   }
 
@@ -1510,12 +1517,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _selectedTextFocusNode.dispose();
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
-    unawaited(BackgroundRemover.instance.dispose());
     _photoGlideController.dispose();
     _selectedTextLongPressTimer?.cancel();
     _transformationController.dispose();
     _cropTransformationController.dispose();
     unawaited(_restoreSystemUiMode());
+    unawaited(ScreenSecurityService.disableSecure());
     super.dispose();
   }
 
@@ -1680,6 +1687,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _templateDocument = null;
         _isTemplateHydrated = true;
       });
+      await _applyInitialTemplatePersonalizationIfNeeded(pageSize);
       if (importedLayers.isEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1695,6 +1703,193 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     } finally {
       _isTemplateHydrationInProgress = false;
     }
+  }
+
+  Future<void> _applyInitialTemplatePersonalizationIfNeeded(
+    Size pageSize,
+  ) async {
+    if (_didApplyInitialPersonalization ||
+        pageSize.width <= 0 ||
+        pageSize.height <= 0) {
+      return;
+    }
+
+    final posterProfile = widget.initialPosterProfile;
+    final personalization = widget.initialPersonalizationConfig;
+    if (posterProfile == null || personalization == null) {
+      _didApplyInitialPersonalization = true;
+      return;
+    }
+
+    _didApplyInitialPersonalization = true;
+
+    final photoBytes = await _loadInitialPosterPhotoBytes(
+      posterProfile: posterProfile,
+      personalization: personalization,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final resolvedName = posterProfile
+        .resolvedName(language: context.currentLanguage)
+        .trim();
+    final insertedLayers = <_CanvasLayer>[];
+
+    if (photoBytes != null) {
+      final photoLayer = _buildInitialPersonalizedPhotoLayer(
+        bytes: photoBytes.bytes,
+        aspectRatio: photoBytes.aspectRatio,
+        pageSize: pageSize,
+        personalization: personalization,
+      );
+      if (photoLayer != null) {
+        insertedLayers.add(photoLayer);
+      }
+    }
+
+    if (resolvedName.isNotEmpty) {
+      insertedLayers.add(
+        _buildInitialPersonalizedTextLayer(
+          text: resolvedName,
+          fontFamily: posterProfile.nameFontFamily,
+          pageSize: pageSize,
+          personalization: personalization,
+        ),
+      );
+    }
+
+    if (insertedLayers.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _layers.addAll(insertedLayers);
+      _selectedLayerId = insertedLayers.last.id;
+    });
+  }
+
+  Future<_OptimizedPhotoPayload?> _loadInitialPosterPhotoBytes({
+    required PosterProfileData posterProfile,
+    required CreatorPosterPersonalization personalization,
+  }) async {
+    final preferOriginal = personalization.photoRenderMode == 'original';
+    final localPath = preferOriginal
+        ? posterProfile.originalPhotoPath.trim()
+        : posterProfile.photoPath.trim();
+    if (localPath.isNotEmpty) {
+      final file = File(localPath);
+      if (await file.exists()) {
+        final rawBytes = await file.readAsBytes();
+        return compute(_optimizeEditorPhotoPayload, rawBytes);
+      }
+    }
+
+    final remoteUrl = preferOriginal
+        ? posterProfile.originalPhotoUrl.trim()
+        : posterProfile.photoUrl.trim();
+    if (remoteUrl.isNotEmpty) {
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse(remoteUrl));
+        final response = await request.close();
+        final rawBytes = await consolidateHttpClientResponseBytes(response);
+        return compute(_optimizeEditorPhotoPayload, rawBytes);
+      } catch (_) {
+        return null;
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    return null;
+  }
+
+  _CanvasLayer? _buildInitialPersonalizedPhotoLayer({
+    required Uint8List bytes,
+    required double? aspectRatio,
+    required Size pageSize,
+    required CreatorPosterPersonalization personalization,
+  }) {
+    final maskShape = personalization.photoShape.trim();
+    final resolvedAspectRatio = maskShape.isNotEmpty
+        ? _editorPhotoMaskAspectRatio(maskShape)
+        : (aspectRatio ?? 1);
+    if (resolvedAspectRatio <= 0) {
+      return null;
+    }
+
+    final baseSize = _fitPhotoLayerSize(
+      pageSize: pageSize,
+      photoAspectRatio: resolvedAspectRatio,
+    );
+    if (baseSize.width <= 0 || baseSize.height <= 0) {
+      return null;
+    }
+
+    final targetWidth =
+        pageSize.width * (personalization.photoScale.clamp(1, 100) / 100);
+    final scale = (targetWidth / baseSize.width).clamp(0.05, 20.0);
+    final pageCenter = Offset(pageSize.width / 2, pageSize.height / 2);
+    final targetCenter = Offset(
+      pageSize.width * (personalization.photoX / 100),
+      pageSize.height * (personalization.photoY / 100),
+    );
+    final translation = targetCenter - pageCenter;
+    final transform = Matrix4.identity()
+      ..translateByDouble(translation.dx, translation.dy, 0, 1)
+      ..scaleByDouble(scale, scale, 1, 1);
+
+    return _CanvasLayer(
+      id: 'layer_${_layerSeed++}',
+      type: _CanvasLayerType.photo,
+      bytes: bytes,
+      originalPhotoBytes: bytes,
+      photoAspectRatio: resolvedAspectRatio,
+      photoMaskShape: maskShape,
+      transform: transform,
+    );
+  }
+
+  _CanvasLayer _buildInitialPersonalizedTextLayer({
+    required String text,
+    required String fontFamily,
+    required Size pageSize,
+    required CreatorPosterPersonalization personalization,
+  }) {
+    final pageCenter = Offset(pageSize.width / 2, pageSize.height / 2);
+    final targetCenter = Offset(
+      pageSize.width * (personalization.nameX / 100),
+      pageSize.height * (personalization.nameY / 100),
+    );
+    final translation = targetCenter - pageCenter;
+    final scale = (personalization.nameScale / 100).clamp(0.2, 4.0);
+    final fontSize =
+        (personalization.showBottomStrip
+            ? pageSize.width * 0.05
+            : pageSize.width * 0.04) *
+        scale;
+    final textColor = personalization.showBottomStrip
+        ? const Color(0xFF0F172A)
+        : Colors.white;
+    final strokeColor = personalization.showBottomStrip
+        ? const Color(0x00000000)
+        : const Color(0xCC000000);
+
+    return _CanvasLayer(
+      id: 'layer_${_layerSeed++}',
+      type: _CanvasLayerType.text,
+      text: text,
+      textColor: textColor,
+      textStrokeColor: strokeColor,
+      textStrokeWidth: personalization.showBottomStrip ? 0 : 1.5,
+      fontSize: fontSize,
+      fontFamily: _textFontFamilies.contains(fontFamily)
+          ? fontFamily
+          : 'Anek Telugu Condensed Bold',
+      transform: Matrix4.identity()
+        ..translateByDouble(translation.dx, translation.dy, 0, 1),
+    );
   }
 
   /*
@@ -1752,11 +1947,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     if (result.isSuccess) {
-      await _setProStatus(result.isPro);
+      final refreshed = await _subscriptionBackendService
+          .fetchFreshEntitlementWithRetry();
+      await _setProStatus(refreshed.isPro);
       if (!mounted) {
         return false;
       }
-      if (result.isPro) {
+      if (refreshed.isPro) {
         return true;
       }
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1891,18 +2088,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               Size pageSizeIgnored,
                             ) {}
                           : _handleCanvasTapDown,
-                      onCanvasTap: _isCropMode
-                          ? () {}
-                          : _handleCanvasTap,
+                      onCanvasTap: _isCropMode ? () {} : _handleCanvasTap,
                       showCanvasBackground: !_isTransparentExportCapture,
                       photoBrightnessForLayer: _effectivePhotoBrightness,
                       photoContrastForLayer: _effectivePhotoContrast,
                       photoSaturationForLayer: _effectivePhotoSaturation,
                       photoBlurForLayer: _effectivePhotoBlur,
                       showSelectionDecorations:
-                          !_isCropMode &&
-                          !_isExporting &&
-                          !_isCapturingStage,
+                          !_isCropMode && !_isExporting && !_isCapturingStage,
                       showPageFramePreview: !_isExporting && !_isCapturingStage,
                       snapGuideListenable: _snapGuideNotifier,
                       snapGuidesEnabled: !_isCropMode && !_isCapturingStage,

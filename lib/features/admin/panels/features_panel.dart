@@ -8,7 +8,7 @@ const List<String> _featureIconOptions = <String>[
   'language',
   'share',
   'calendar',
-  'premium',
+  'featured',
   'speed',
 ];
 

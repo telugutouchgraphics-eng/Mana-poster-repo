@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_background_remover/image_background_remover.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,10 +19,12 @@ class PosterProfileDetailsScreen extends StatefulWidget {
     super.key,
     required this.initialProfile,
     this.completeToHomeOnSave = false,
+    this.openPersonalPhotoPickerOnStart = false,
   });
 
   final PosterProfileData initialProfile;
   final bool completeToHomeOnSave;
+  final bool openPersonalPhotoPickerOnStart;
 
   @override
   State<PosterProfileDetailsScreen> createState() =>
@@ -57,7 +58,7 @@ class _PosterProfileDetailsScreenState
   bool _saving = false;
   bool _personalPhotoBusy = false;
   bool _businessLogoBusy = false;
-  late final Future<void> _backgroundRemoverInitialization;
+  Future<void>? _backgroundRemoverInitialization;
   AppLanguageController? _languageController;
 
   @override
@@ -79,8 +80,13 @@ class _PosterProfileDetailsScreenState
     _businessWhatsappController = TextEditingController(
       text: widget.initialProfile.businessWhatsappNumber,
     );
-    _backgroundRemoverInitialization = BackgroundRemover.instance
-        .initializeOrt();
+    if (widget.openPersonalPhotoPickerOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          unawaited(_pickPersonalPhoto());
+        }
+      });
+    }
   }
 
   @override
@@ -110,8 +116,12 @@ class _PosterProfileDetailsScreenState
     _businessTaglineController.dispose();
     _businessWhatsappController.dispose();
     _languageController?.removeListener(_handleLanguageChanged);
-    unawaited(BackgroundRemover.instance.dispose());
     super.dispose();
+  }
+
+  Future<void> _ensureBackgroundRemoverReady() {
+    return _backgroundRemoverInitialization ??=
+        _backgroundRemovalService.ensureReady();
   }
 
   Future<void> _pickPersonalPhoto() async {
@@ -123,9 +133,9 @@ class _PosterProfileDetailsScreenState
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 92,
+        maxWidth: 720,
+        maxHeight: 720,
+        imageQuality: 82,
       );
       if (picked == null) {
         return;
@@ -167,52 +177,60 @@ class _PosterProfileDetailsScreenState
       if (cropped == null) {
         return;
       }
-      await _backgroundRemoverInitialization;
       final originalBytes = await File(cropped.path).readAsBytes();
       final optimizedOriginalBytes = await compute(
         _optimizeProfilePhotoBytes,
         originalBytes,
       );
-      Uint8List finalPhotoBytes = optimizedOriginalBytes;
-      try {
-        final removedResult = await _backgroundRemovalService.removeBackground(
-          optimizedOriginalBytes,
-        );
-        finalPhotoBytes = removedResult.pngBytes;
-      } catch (_) {
-        finalPhotoBytes = optimizedOriginalBytes;
-      }
-      final Directory dir = await getApplicationDocumentsDirectory();
-      final String originalTargetPath =
-          '${dir.path}${Platform.pathSeparator}poster_profile_original_photo.png';
-      final File originalLocalFile = File(originalTargetPath);
-      await originalLocalFile.writeAsBytes(
+      final Uint8List? finalPhotoBytes = await _removePersonalPhotoBackground(
         optimizedOriginalBytes,
-        flush: true,
       );
-      final String targetPath =
-          '${dir.path}${Platform.pathSeparator}poster_profile_photo.png';
-      final File localFile = File(targetPath);
-      await localFile.writeAsBytes(finalPhotoBytes, flush: true);
-      final originalRemoteUrl = await PosterProfileService.uploadProfilePhoto(
-        file: originalLocalFile,
-        extension: 'png',
-        isOriginal: true,
-      );
-      final remoteUrl = await PosterProfileService.uploadProfilePhoto(
-        file: localFile,
-        extension: 'png',
-      );
+      final Directory dir = await getApplicationDocumentsDirectory();
+      final String stamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String originalTargetPath =
+          '${dir.path}${Platform.pathSeparator}poster_profile_original_photo_$stamp.png';
+      final File originalLocalFile = File(originalTargetPath);
+      await originalLocalFile.writeAsBytes(optimizedOriginalBytes, flush: true);
+      String targetPath = '';
+      File? localFile;
+      if (finalPhotoBytes != null) {
+        targetPath =
+            '${dir.path}${Platform.pathSeparator}poster_profile_photo_$stamp.png';
+        localFile = File(targetPath);
+        await localFile.writeAsBytes(finalPhotoBytes, flush: true);
+      }
       setState(() {
         _draftProfile = _draftProfile.copyWith(
           photoPath: targetPath,
-          photoUrl: remoteUrl.isEmpty ? _draftProfile.photoUrl : remoteUrl,
+          photoUrl: '',
           originalPhotoPath: originalTargetPath,
-          originalPhotoUrl: originalRemoteUrl.isEmpty
-              ? _draftProfile.originalPhotoUrl
-              : originalRemoteUrl,
+          originalPhotoUrl: '',
         );
       });
+      await PosterProfileService.savePersonalPhotoAssets(
+        photoPath: targetPath,
+        originalPhotoPath: originalTargetPath,
+      );
+      unawaited(
+        _syncPersonalPhotoUploads(
+          originalLocalFile: originalLocalFile,
+          cutoutLocalFile: localFile,
+        ),
+      );
+      if (finalPhotoBytes == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              strings.localized(
+                telugu:
+                    'ఫోటో సేవ్ అయింది, కానీ background remove ఇంకా complete కాలేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+                english:
+                    'Photo was saved, but background removal did not complete. Please try again after some time.',
+              ),
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -221,7 +239,7 @@ class _PosterProfileDetailsScreenState
         SnackBar(
           content: Text(
             strings.localized(
-              telugu: 'Personal photo update fail ayindi',
+              telugu: 'వ్యక్తిగత ఫోటో అప్‌డేట్ కాలేదు',
               english: 'Personal photo update failed',
               hindi: 'पर्सनल फोटो अपडेट नहीं हुआ',
               tamil: 'தனிப்பட்ட புகைப்படம் அப்டேட் ஆகவில்லை',
@@ -238,6 +256,87 @@ class _PosterProfileDetailsScreenState
     }
   }
 
+  Future<void> _syncPersonalPhotoUploads({
+    required File originalLocalFile,
+    required File? cutoutLocalFile,
+  }) async {
+    try {
+      final originalRemoteUrl = await PosterProfileService.uploadProfilePhoto(
+        file: originalLocalFile,
+        extension: 'png',
+        isOriginal: true,
+      );
+      String cutoutRemoteUrl = '';
+      if (cutoutLocalFile != null) {
+        cutoutRemoteUrl = await PosterProfileService.uploadProfilePhoto(
+          file: cutoutLocalFile,
+          extension: 'png',
+        );
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      final updatedProfile = _draftProfile.copyWith(
+        photoUrl: cutoutRemoteUrl.isEmpty
+            ? _draftProfile.photoUrl
+            : cutoutRemoteUrl,
+        originalPhotoUrl: originalRemoteUrl.isEmpty
+            ? _draftProfile.originalPhotoUrl
+            : originalRemoteUrl,
+      );
+      await PosterProfileService.savePersonalPhotoAssets(
+        photoPath: updatedProfile.photoPath,
+        originalPhotoPath: updatedProfile.originalPhotoPath,
+        photoUrl: updatedProfile.photoUrl,
+        originalPhotoUrl: updatedProfile.originalPhotoUrl,
+        saveRemoteUrls: true,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _draftProfile = updatedProfile;
+      });
+    } catch (_) {
+      // Local preview is already ready; remote sync can retry on next upload.
+    }
+  }
+
+  Future<Uint8List?> _removePersonalPhotoBackground(
+    Uint8List optimizedOriginalBytes,
+  ) async {
+    Future<Uint8List?> attempt(Uint8List sourceBytes, Duration timeout) async {
+      await _ensureBackgroundRemoverReady();
+      final removedResult = await _backgroundRemovalService
+          .removeBackground(sourceBytes)
+          .timeout(timeout);
+      return removedResult.pngBytes;
+    }
+
+    try {
+      return await attempt(
+        optimizedOriginalBytes,
+        const Duration(seconds: 18),
+      );
+    } catch (_) {
+      try {
+        final smallerBytes = await compute(
+          _prepareProfilePhotoRemovalBytes,
+          optimizedOriginalBytes,
+        );
+        return await attempt(
+          smallerBytes,
+          const Duration(seconds: 14),
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   Future<void> _pickBusinessLogo() async {
     if (_businessLogoBusy) {
       return;
@@ -247,16 +346,16 @@ class _PosterProfileDetailsScreenState
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 94,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 88,
       );
       if (picked == null) {
         return;
       }
       final CroppedFile? cropped = await ImageCropper().cropImage(
         sourcePath: picked.path,
-        compressQuality: 94,
+        compressQuality: 90,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
@@ -293,22 +392,23 @@ class _PosterProfileDetailsScreenState
       }
       final logoBytes = await File(cropped.path).readAsBytes();
       final Directory dir = await getApplicationDocumentsDirectory();
+      final String stamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String targetPath =
-          '${dir.path}${Platform.pathSeparator}poster_business_logo.png';
+          '${dir.path}${Platform.pathSeparator}poster_business_logo_$stamp.png';
       final File localFile = File(targetPath);
       await localFile.writeAsBytes(logoBytes, flush: true);
-      final remoteUrl = await PosterProfileService.uploadBusinessLogo(
-        file: localFile,
-        extension: 'png',
-      );
       setState(() {
         _draftProfile = _draftProfile.copyWith(
+          identityMode: PosterIdentityMode.business,
           businessLogoPath: targetPath,
-          businessLogoUrl: remoteUrl.isEmpty
-              ? _draftProfile.businessLogoUrl
-              : remoteUrl,
+          businessLogoUrl: '',
         );
       });
+      await PosterProfileService.saveBusinessLogoAssets(
+        businessLogoPath: targetPath,
+        identityMode: PosterIdentityMode.business,
+      );
+      unawaited(_syncBusinessLogoUpload(localFile));
     } catch (_) {
       if (!mounted) {
         return;
@@ -317,7 +417,7 @@ class _PosterProfileDetailsScreenState
         SnackBar(
           content: Text(
             strings.localized(
-              telugu: 'Business logo update fail ayindi',
+              telugu: 'వ్యాపార లోగో అప్‌డేట్ కాలేదు',
               english: 'Business logo update failed',
               hindi: 'बिजनेस लोगो अपडेट नहीं हुआ',
               tamil: 'பிஸினஸ் லோகோ அப்டேட் ஆகவில்லை',
@@ -334,6 +434,36 @@ class _PosterProfileDetailsScreenState
     }
   }
 
+  Future<void> _syncBusinessLogoUpload(File localFile) async {
+    try {
+      final remoteUrl = await PosterProfileService.uploadBusinessLogo(
+        file: localFile,
+        extension: 'png',
+      );
+      if (remoteUrl.trim().isEmpty) {
+        return;
+      }
+      final updatedProfile = _draftProfile.copyWith(
+        identityMode: PosterIdentityMode.business,
+        businessLogoUrl: remoteUrl,
+      );
+      await PosterProfileService.saveBusinessLogoAssets(
+        businessLogoPath: updatedProfile.businessLogoPath,
+        businessLogoUrl: updatedProfile.businessLogoUrl,
+        identityMode: PosterIdentityMode.business,
+        saveRemoteUrl: true,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _draftProfile = updatedProfile;
+      });
+    } catch (_) {
+      // Local business logo preview is already ready; remote sync can retry later.
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (_saving) {
       return;
@@ -346,7 +476,7 @@ class _PosterProfileDetailsScreenState
       nameEnglish: PosterProfileService.splitDisplayName(
         _nameController.text.trim(),
       ).$2,
-      whatsappNumber: _onlyDigits(_whatsappController.text),
+      whatsappNumber: _whatsappController.text.trim(),
       businessName: _businessNameController.text.trim(),
       businessTagline: _businessTaglineController.text.trim(),
       businessWhatsappNumber: _onlyDigits(_businessWhatsappController.text),
@@ -370,7 +500,7 @@ class _PosterProfileDetailsScreenState
         SnackBar(
           content: Text(
             context.strings.localized(
-              telugu: 'Profile details save kaaledu',
+              telugu: 'ప్రొఫైల్ వివరాలు సేవ్ కాలేదు',
               english: 'Profile details could not be saved',
               hindi: 'प्रोफ़ाइल विवरण सेव नहीं हुए',
               tamil: 'ப்ரொஃபைல் விவரங்களை சேமிக்க முடியவில்லை',
@@ -404,7 +534,7 @@ class _PosterProfileDetailsScreenState
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
         title: Text(
           strings.localized(
-            telugu: 'Poster Profile',
+            telugu: 'పోస్టర్ ప్రొఫైల్',
             english: 'Poster Profile',
             hindi: 'पोस्टर प्रोफ़ाइल',
             tamil: 'போஸ்டர் ப்ரொஃபைல்',
@@ -434,7 +564,7 @@ class _PosterProfileDetailsScreenState
             child: Text(
               _saving
                   ? strings.localized(
-                      telugu: 'Saving...',
+                      telugu: 'సేవ్ అవుతోంది...',
                       english: 'Saving...',
                       hindi: 'सेव हो रहा है...',
                       tamil: 'சேமிக்கப்படுகிறது...',
@@ -442,7 +572,7 @@ class _PosterProfileDetailsScreenState
                       malayalam: 'സേവ് ചെയ്യുന്നു...',
                     )
                   : strings.localized(
-                      telugu: 'Save Changes',
+                      telugu: 'మార్పులు సేవ్ చేయండి',
                       english: 'Save Changes',
                       hindi: 'बदलाव सेव करें',
                       tamil: 'மாற்றங்களை சேமிக்கவும்',
@@ -458,7 +588,7 @@ class _PosterProfileDetailsScreenState
         children: <Widget>[
           Text(
             strings.localized(
-              telugu: 'Mee poster identity ela kanipinchalo select cheyyandi.',
+              telugu: 'మీ పోస్టర్ మీద మీ వివరాలు ఎలా కనిపించాలో ఎంచుకోండి.',
               english: 'Choose how your poster identity should appear.',
               hindi: 'पोस्टर पर आपकी पहचान कैसे दिखनी चाहिए, चुनें।',
               tamil:
@@ -510,7 +640,7 @@ class _PosterProfileDetailsScreenState
                     children: <Widget>[
                       Text(
                         strings.localized(
-                          telugu: 'Simple ga set cheyyandi.',
+                          telugu: 'సులభంగా సెటప్ చేయండి.',
                           english: 'Keep it simple.',
                           hindi: 'इसे सरल रखें।',
                           tamil: 'எளிமையாக வைத்துக்கொள்ளுங்கள்.',
@@ -527,7 +657,7 @@ class _PosterProfileDetailsScreenState
                       Text(
                         strings.localized(
                           telugu:
-                              'Personal ki photo, Business ki logo. Ippude preview చూసి వెంటనే మార్చుకోండి.',
+                              'వ్యక్తిగతానికి ఫోటో, వ్యాపారానికి లోగో వాడండి. ముందుగా ప్రివ్యూ చూసి మార్చుకోండి.',
                           english:
                               'Use photo for Personal and logo for Business. Preview first, then edit.',
                           hindi:
@@ -559,7 +689,7 @@ class _PosterProfileDetailsScreenState
                 value: PosterIdentityMode.personal,
                 label: Text(
                   strings.localized(
-                    telugu: 'Personal',
+                    telugu: 'వ్యక్తిగతం',
                     english: 'Personal',
                     hindi: 'पर्सनल',
                     tamil: 'பர்சனல்',
@@ -572,7 +702,7 @@ class _PosterProfileDetailsScreenState
                 value: PosterIdentityMode.business,
                 label: Text(
                   strings.localized(
-                    telugu: 'Business',
+                    telugu: 'వ్యాపారం',
                     english: 'Business',
                     hindi: 'बिजनेस',
                     tamil: 'பிஸினஸ்',
@@ -595,7 +725,7 @@ class _PosterProfileDetailsScreenState
           _IdentityPreviewCard(
             title: isBusiness
                 ? strings.localized(
-                    telugu: 'Business preview',
+                    telugu: 'వ్యాపార ప్రివ్యూ',
                     english: 'Business preview',
                     hindi: 'बिजनेस प्रीव्यू',
                     tamil: 'பிஸினஸ் முன்னோட்டம்',
@@ -603,7 +733,7 @@ class _PosterProfileDetailsScreenState
                     malayalam: 'ബിസിനസ് പ്രിവ്യൂ',
                   )
                 : strings.localized(
-                    telugu: 'Profile preview',
+                    telugu: 'ప్రొఫైల్ ప్రివ్యూ',
                     english: 'Profile preview',
                     hindi: 'प्रोफ़ाइल प्रीव्यू',
                     tamil: 'ப்ரொஃபைல் முன்னோட்டம்',
@@ -613,7 +743,7 @@ class _PosterProfileDetailsScreenState
             subtitle: isBusiness
                 ? strings.localized(
                     telugu:
-                        'Business name mariyu logo posters meedha apply avuthayi.',
+                        'వ్యాపార పేరు మరియు లోగో పోస్టర్ల మీద కనిపిస్తాయి.',
                     english:
                         'Business name and logo will be applied on posters.',
                     hindi: 'बिजनेस नाम और लोगो पोस्टरों पर लागू होंगे।',
@@ -626,7 +756,7 @@ class _PosterProfileDetailsScreenState
                   )
                 : strings.localized(
                     telugu:
-                        'User photo mariyu details posters meedha apply avuthayi.',
+                        'మీ ఫోటో మరియు వివరాలు పోస్టర్ల మీద కనిపిస్తాయి.',
                     english:
                         'User photo and details will be applied on posters.',
                     hindi: 'यूज़र फोटो और विवरण पोस्टरों पर लागू होंगे।',
@@ -644,7 +774,20 @@ class _PosterProfileDetailsScreenState
               height: 88,
               child: ClipOval(
                 child: PosterIdentityVisual(
+                  key: ValueKey<String>(
+                    [
+                      _draftProfile.identityMode.name,
+                      _draftProfile.photoPath,
+                      _draftProfile.photoUrl,
+                      _draftProfile.businessLogoPath,
+                      _draftProfile.businessLogoUrl,
+                      _draftProfile.businessLogoStyleId,
+                      _draftProfile.businessName,
+                      _draftProfile.businessTagline,
+                    ].join('|'),
+                  ),
                   profile: _draftProfile,
+                  fit: isBusiness ? BoxFit.contain : BoxFit.cover,
                   textScale: 1.05,
                 ),
               ),
@@ -654,7 +797,7 @@ class _PosterProfileDetailsScreenState
           if (!isBusiness) ...<Widget>[
             _SectionTitle(
               strings.localized(
-                telugu: 'Personal Details',
+                telugu: 'వ్యక్తిగత వివరాలు',
                 english: 'Personal Details',
                 hindi: 'पर्सनल विवरण',
                 tamil: 'பர்சனல் விவரங்கள்',
@@ -666,7 +809,7 @@ class _PosterProfileDetailsScreenState
             _CleanInputField(
               controller: _nameController,
               label: strings.localized(
-                telugu: 'Display Name',
+                telugu: 'పేరు',
                 english: 'Display Name',
                 hindi: 'डिस्प्ले नेम',
                 tamil: 'டிஸ்ப்ளே பெயர்',
@@ -674,7 +817,7 @@ class _PosterProfileDetailsScreenState
                 malayalam: 'ഡിസ്‌പ്ലേ പേര്',
               ),
               hintText: strings.localized(
-                telugu: 'Mee peru enter cheyyandi',
+                telugu: 'మీ పేరు నమోదు చేయండి',
                 english: 'Enter your name',
                 hindi: 'अपना नाम दर्ज करें',
                 tamil: 'உங்கள் பெயரை உள்ளிடவும்',
@@ -697,26 +840,25 @@ class _PosterProfileDetailsScreenState
             _CleanInputField(
               controller: _whatsappController,
               label: strings.localized(
-                telugu: 'WhatsApp Number',
-                english: 'WhatsApp Number',
+                telugu: 'హోదా',
+                english: 'Designation',
                 hindi: 'व्हाट्सऐप नंबर',
                 tamil: 'வாட்ஸ்அப் எண்',
                 kannada: 'ವಾಟ್ಸಾಪ್ ನಂಬರ್',
                 malayalam: 'വാട്ട്‌സ്ആപ്പ് നമ്പർ',
               ),
               hintText: strings.localized(
-                telugu: '10-digit number',
-                english: '10-digit number',
+                telugu: 'మీ హోదా నమోదు చేయండి',
+                english: 'Enter your designation',
                 hindi: '10 अंकों का नंबर',
                 tamil: '10 இலக்க எண்',
                 kannada: '10 ಅಂಕೆಯ ಸಂಖ್ಯೆ',
                 malayalam: '10 അക്ക നമ്പർ',
               ),
-              keyboardType: TextInputType.phone,
               onChanged: (value) {
                 setState(() {
                   _draftProfile = _draftProfile.copyWith(
-                    whatsappNumber: _onlyDigits(value),
+                    whatsappNumber: value.trim(),
                   );
                 });
               },
@@ -724,7 +866,7 @@ class _PosterProfileDetailsScreenState
           ] else ...<Widget>[
             _SectionTitle(
               strings.localized(
-                telugu: 'Business Details',
+                telugu: 'వ్యాపార వివరాలు',
                 english: 'Business Details',
                 hindi: 'बिजनेस विवरण',
                 tamil: 'பிஸினஸ் விவரங்கள்',
@@ -736,7 +878,7 @@ class _PosterProfileDetailsScreenState
             _CleanInputField(
               controller: _businessNameController,
               label: strings.localized(
-                telugu: 'Business Name',
+                telugu: 'వ్యాపార పేరు',
                 english: 'Business Name',
                 hindi: 'बिजनेस नाम',
                 tamil: 'பிஸினஸ் பெயர்',
@@ -744,7 +886,7 @@ class _PosterProfileDetailsScreenState
                 malayalam: 'ബിസിനസ് പേര്',
               ),
               hintText: strings.localized(
-                telugu: 'Business name enter cheyyandi',
+                telugu: 'వ్యాపార పేరు నమోదు చేయండి',
                 english: 'Enter business name',
                 hindi: 'बिजनेस नाम दर्ज करें',
                 tamil: 'பிஸினஸ் பெயரை உள்ளிடவும்',
@@ -763,7 +905,7 @@ class _PosterProfileDetailsScreenState
             _CleanInputField(
               controller: _businessTaglineController,
               label: strings.localized(
-                telugu: 'Business Tagline',
+                telugu: 'వ్యాపార ట్యాగ్‌లైన్',
                 english: 'Business Tagline',
                 hindi: 'बिजनेस टैगलाइन',
                 tamil: 'பிஸினஸ் டேக் லைன்',
@@ -771,7 +913,7 @@ class _PosterProfileDetailsScreenState
                 malayalam: 'ബിസിനസ് ടാഗ്‌ലൈൻ',
               ),
               hintText: strings.localized(
-                telugu: 'Optional short line',
+                telugu: 'ఐచ్ఛిక చిన్న వాక్యం',
                 english: 'Optional short line',
                 hindi: 'वैकल्पिक छोटी पंक्ति',
                 tamil: 'விருப்பமான குறும் வரி',
@@ -790,7 +932,7 @@ class _PosterProfileDetailsScreenState
             _CleanInputField(
               controller: _businessWhatsappController,
               label: strings.localized(
-                telugu: 'Business WhatsApp Number',
+                telugu: 'వ్యాపార వాట్సాప్ నంబర్',
                 english: 'Business WhatsApp Number',
                 hindi: 'बिजनेस व्हाट्सऐप नंबर',
                 tamil: 'பிஸினஸ் வாட்ஸ்அப் எண்',
@@ -798,7 +940,7 @@ class _PosterProfileDetailsScreenState
                 malayalam: 'ബിസിനസ് വാട്ട്‌സ്ആപ്പ് നമ്പർ',
               ),
               hintText: strings.localized(
-                telugu: '10-digit number',
+                telugu: '10 అంకెల నంబర్',
                 english: '10-digit number',
                 hindi: '10 अंकों का नंबर',
                 tamil: '10 இலக்க எண்',
@@ -817,7 +959,7 @@ class _PosterProfileDetailsScreenState
             const SizedBox(height: 18),
             _SectionTitle(
               strings.localized(
-                telugu: 'Generate Creative Logo',
+                telugu: 'క్రియేటివ్ లోగో తయారు చేయండి',
                 english: 'Generate Creative Logo',
                 hindi: 'क्रिएटिव लोगो बनाएं',
                 tamil: 'கிரியேட்டிவ் லோகோ உருவாக்கவும்',
@@ -829,7 +971,7 @@ class _PosterProfileDetailsScreenState
             Text(
               strings.localized(
                 telugu:
-                    'Business logo upload cheyyachu leda business name tho ready-made logo style select cheyyachu.',
+                    'వ్యాపార లోగోను అప్‌లోడ్ చేయవచ్చు లేదా వ్యాపార పేరుతో రెడీమేడ్ లోగో స్టైల్ ఎంచుకోవచ్చు.',
                 english:
                     'Upload a business logo or select a ready-made logo style from the business name.',
                 hindi:
@@ -862,7 +1004,7 @@ class _PosterProfileDetailsScreenState
                     businessLogoUrl: '',
                     businessName: _businessNameController.text.trim().isEmpty
                         ? strings.localized(
-                            telugu: 'మనా బిజినెస్',
+                            telugu: 'మన బిజినెస్',
                             english: 'Mana Business',
                             hindi: 'मना बिजनेस',
                             tamil: 'மனா பிஸினஸ்',
@@ -879,13 +1021,24 @@ class _PosterProfileDetailsScreenState
                       _draftProfile.businessLogoUrl.trim().isEmpty;
                   return GestureDetector(
                     onTap: () {
+                      final updatedProfile = _draftProfile.copyWith(
+                        identityMode: PosterIdentityMode.business,
+                        businessLogoStyleId: styleId,
+                        businessLogoPath: '',
+                        businessLogoUrl: '',
+                      );
                       setState(() {
-                        _draftProfile = _draftProfile.copyWith(
-                          businessLogoStyleId: styleId,
+                        _draftProfile = updatedProfile;
+                      });
+                      unawaited(
+                        PosterProfileService.saveBusinessLogoAssets(
                           businessLogoPath: '',
                           businessLogoUrl: '',
-                        );
-                      });
+                          businessLogoStyleId: styleId,
+                          identityMode: PosterIdentityMode.business,
+                          saveRemoteUrl: true,
+                        ),
+                      );
                     },
                     child: SizedBox(
                       width: 118,
@@ -925,7 +1078,7 @@ class _PosterProfileDetailsScreenState
                           const SizedBox(height: 10),
                           Text(
                             strings.localized(
-                              telugu: 'Style ${index + 1}',
+                              telugu: 'స్టైల్ ${index + 1}',
                               english: 'Style ${index + 1}',
                               hindi: 'स्टाइल ${index + 1}',
                               tamil: 'ஸ்டைல் ${index + 1}',
@@ -960,7 +1113,7 @@ Uint8List _optimizeProfilePhotoBytes(Uint8List bytes) {
     return bytes;
   }
 
-  const targetMaxDimension = 1280;
+  const targetMaxDimension = 720;
   final longest = decoded.width > decoded.height
       ? decoded.width
       : decoded.height;
@@ -976,7 +1129,32 @@ Uint8List _optimizeProfilePhotoBytes(Uint8List bytes) {
   if (output.hasAlpha) {
     return Uint8List.fromList(img.encodePng(output));
   }
-  return Uint8List.fromList(img.encodeJpg(output, quality: 90));
+  return Uint8List.fromList(img.encodeJpg(output, quality: 88));
+}
+
+Uint8List _prepareProfilePhotoRemovalBytes(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) {
+    return bytes;
+  }
+
+  const targetMaxDimension = 512;
+  final longest = decoded.width > decoded.height
+      ? decoded.width
+      : decoded.height;
+  img.Image output = decoded;
+
+  if (longest > targetMaxDimension) {
+    final scale = targetMaxDimension / longest;
+    final width = ((decoded.width * scale).round()).clamp(256, 768);
+    final height = ((decoded.height * scale).round()).clamp(256, 768);
+    output = img.copyResize(decoded, width: width, height: height);
+  }
+
+  if (output.hasAlpha) {
+    return Uint8List.fromList(img.encodePng(output));
+  }
+  return Uint8List.fromList(img.encodeJpg(output, quality: 82));
 }
 
 class _IdentityPreviewCard extends StatelessWidget {

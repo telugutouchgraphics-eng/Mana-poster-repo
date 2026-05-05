@@ -9,6 +9,7 @@ import 'package:mana_poster/features/prehome/screens/account_deletion_screen.dar
 import 'package:mana_poster/features/prehome/screens/about_app_screen.dart';
 import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
+import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
@@ -78,11 +79,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     unawaited(precacheImage(imageProvider, context));
   }
 
-  Future<void> _openPosterProfileScreen() async {
+  Future<void> _openPosterProfileScreen({
+    bool openPersonalPhotoPickerOnStart = false,
+  }) async {
     final PosterProfileData? result = await Navigator.of(context).push(
       MaterialPageRoute<PosterProfileData>(
-        builder: (_) =>
-            PosterProfileDetailsScreen(initialProfile: _posterProfile),
+        builder: (_) => PosterProfileDetailsScreen(
+          initialProfile: _posterProfile,
+          openPersonalPhotoPickerOnStart: openPersonalPhotoPickerOnStart,
+        ),
       ),
     );
     if (result == null || !mounted) {
@@ -90,6 +95,27 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
     setState(() => _posterProfile = result);
     _warmPosterProfileImage(result);
+  }
+
+  Future<void> _logout(_ProfileCopy copy) async {
+    try {
+      await _authService.signOut();
+      await AppFlowService.syncInitialSetupCompletion(isAuthenticated: false);
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (Route<dynamic> route) => false,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(copy.logoutFailedMessage)));
+    }
   }
 
   @override
@@ -112,17 +138,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     final email = user?.email ?? AppPublicInfo.supportEmail;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
-      ),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        top: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
           children: <Widget>[
             if (_loadingProfile) ...<Widget>[
               const ClipRRect(
@@ -132,86 +151,36 @@ class _ProfileScreenState extends State<ProfileScreen>
               const SizedBox(height: 18),
             ],
             _ProfileHeader(
-              appName: copy.appName,
               name: displayName,
               email: email,
               profile: _posterProfile,
-              helperText: copy.headerSupportText,
+              onCameraTap: () {
+                unawaited(
+                  _openPosterProfileScreen(
+                    openPersonalPhotoPickerOnStart: true,
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 28),
-            _SettingsGroup(
-              title: copy.accountTitle,
-              items: <_ProfileItemData>[
-                _ProfileItemData(
-                  icon: Icons.badge_outlined,
-                  title: copy.posterProfileTitle,
-                  subtitle: copy.posterProfileSubtitle,
-                  onTap: _openPosterProfileScreen,
-                ),
-                _ProfileItemData(
-                  icon: Icons.language_rounded,
-                  title: copy.languageTitle,
-                  subtitle: copy.languageSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const LanguageSettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
-                  icon: Icons.workspace_premium_outlined,
-                  title: copy.subscriptionTitle,
-                  subtitle: copy.subscriptionSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SubscriptionPlanScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
-                  icon: Icons.restore_rounded,
-                  title: copy.restoreSubscriptionTitle,
-                  subtitle: copy.restoreSubscriptionSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SubscriptionPlanScreen(
-                          triggerRestoreOnOpen: true,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            const SizedBox(height: 24),
+            _ProfileActionCard(
+              icon: Icons.edit_note_rounded,
+              title: copy.posterProfileTitle,
+              subtitle: copy.posterProfileSubtitle,
+              onTap: () => _openPosterProfileScreen(),
             ),
             const SizedBox(height: 24),
             _SettingsGroup(
-              title: copy.settingsTitle,
+              title: copy.quickActionsTitle,
               items: <_ProfileItemData>[
                 _ProfileItemData(
-                  icon: Icons.verified_user_outlined,
-                  title: copy.permissionsTitle,
-                  subtitle: copy.permissionsSubtitle,
+                  icon: Icons.more_horiz_rounded,
+                  title: copy.moreTitle,
+                  subtitle: copy.moreSubtitle,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const PermissionSettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
-                  icon: Icons.notifications_none_rounded,
-                  title: copy.notificationsTitle,
-                  subtitle: copy.notificationsSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const NotificationsSettingsScreen(),
+                        builder: (_) => _ProfileMoreScreen(copy: copy),
                       ),
                     );
                   },
@@ -223,21 +192,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: copy.supportTitle,
               items: <_ProfileItemData>[
                 _ProfileItemData(
-                  icon: Icons.help_outline_rounded,
-                  title: copy.helpTitle,
-                  subtitle: copy.helpSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const HelpSupportScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
                   icon: Icons.info_outline_rounded,
                   title: copy.aboutTitle,
-                  subtitle: null,
+                  subtitle: copy.aboutSubtitle,
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
@@ -251,28 +208,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   title: copy.logoutTitle,
                   subtitle: copy.logoutSubtitle,
                   isDestructive: true,
-                  onTap: () async {
-                    try {
-                      await _authService.signOut();
-                      await AppFlowService.syncInitialSetupCompletion(
-                        isAuthenticated: false,
-                      );
-                      if (!context.mounted) {
-                        return;
-                      }
-                      Navigator.of(context).pushNamedAndRemoveUntil(
-                        AppRoutes.login,
-                        (Route<dynamic> route) => false,
-                      );
-                    } catch (_) {
-                      if (!context.mounted) {
-                        return;
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(copy.logoutFailedMessage)),
-                      );
-                    }
-                  },
+                  onTap: () => _logout(copy),
                 ),
                 _ProfileItemData(
                   icon: Icons.delete_forever_outlined,
@@ -298,86 +234,198 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
-    required this.appName,
     required this.name,
     required this.email,
-    required this.helperText,
+    required this.onCameraTap,
     this.profile,
   });
 
-  final String appName;
   final String name;
   final String email;
-  final String helperText;
+  final VoidCallback onCameraTap;
   final PosterProfileData? profile;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        Container(
-          width: 116,
-          height: 116,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: <Widget>[
+          Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Container(
+                width: 132,
+                height: 132,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF1F5F9),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: profile == null
+                    ? const Icon(
+                        Icons.person_rounded,
+                        size: 54,
+                        color: Color(0xFF475569),
+                      )
+                    : PosterIdentityVisual(
+                        key: ValueKey<String>(
+                          [
+                            profile!.identityMode.name,
+                            profile!.photoPath,
+                            profile!.photoUrl,
+                            profile!.businessLogoPath,
+                            profile!.businessLogoUrl,
+                            profile!.businessLogoStyleId,
+                            profile!.businessName,
+                            profile!.businessTagline,
+                          ].join('|'),
+                        ),
+                        profile: profile!,
+                        fit: profile!.identityMode == PosterIdentityMode.business
+                            ? BoxFit.contain
+                            : BoxFit.cover,
+                        fallbackBackground: const Color(0xFFF1F5F9),
+                        fallbackIconColor: const Color(0xFF475569),
+                      ),
+              ),
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: Material(
+                  color: const Color(0xFF6D28D9),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onCameraTap,
+                    child: const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Icon(
+                        Icons.camera_alt_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            email,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionCard extends StatelessWidget {
+  const _ProfileActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: profile == null
-              ? const Icon(
-                  Icons.person_rounded,
-                  size: 48,
-                  color: Color(0xFF475569),
-                )
-              : PosterIdentityVisual(
-                  profile: profile!,
-                  fallbackBackground: const Color(0xFFF1F5F9),
-                  fallbackIconColor: const Color(0xFF475569),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F3FF),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
+                alignment: Alignment.center,
+                child: Icon(icon, color: const Color(0xFF6D28D9)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.black.withValues(alpha: 0.32),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          email,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          appName,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
 class _SettingsGroup extends StatelessWidget {
-  const _SettingsGroup({
-    required this.title,
-    required this.items,
-  });
+  const _SettingsGroup({required this.title, required this.items});
 
   final String title;
   final List<_ProfileItemData> items;
@@ -398,17 +446,24 @@ class _SettingsGroup extends StatelessWidget {
             ),
           ),
         ),
-        Column(
-          children: items
-              .asMap()
-              .entries
-              .map(
-                (entry) => _ProfileOptionTile(
-                  item: entry.value,
-                  showDivider: entry.key != items.length - 1,
-                ),
-              )
-              .toList(growable: false),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            children: items
+                .asMap()
+                .entries
+                .map(
+                  (entry) => _ProfileOptionTile(
+                    item: entry.value,
+                    showDivider: entry.key != items.length - 1,
+                  ),
+                )
+                .toList(growable: false),
+          ),
         ),
       ],
     );
@@ -416,10 +471,7 @@ class _SettingsGroup extends StatelessWidget {
 }
 
 class _ProfileOptionTile extends StatelessWidget {
-  const _ProfileOptionTile({
-    required this.item,
-    required this.showDivider,
-  });
+  const _ProfileOptionTile({required this.item, required this.showDivider});
 
   final _ProfileItemData item;
   final bool showDivider;
@@ -439,8 +491,8 @@ class _ProfileOptionTile extends StatelessWidget {
     return Column(
       children: <Widget>[
         ListTile(
-          minTileHeight: 56,
-          contentPadding: EdgeInsets.zero,
+          minTileHeight: 58,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           leading: Container(
             width: 42,
             height: 42,
@@ -465,7 +517,7 @@ class _ProfileOptionTile extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 1),
                   child: Text(
                     item.subtitle!,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Color(0xFF64748B),
@@ -484,10 +536,142 @@ class _ProfileOptionTile extends StatelessWidget {
         if (showDivider)
           const Divider(
             height: 1,
-            indent: 54,
+            indent: 70,
+            endIndent: 14,
             color: Color(0x1A0F172A),
           ),
       ],
+    );
+  }
+}
+
+class _ProfileMoreScreen extends StatelessWidget {
+  const _ProfileMoreScreen({required this.copy});
+
+  final _ProfileCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8FAFC),
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        title: Text(copy.moreTitle),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: <Widget>[
+          _SettingsGroup(
+            title: copy.moreTitle,
+            items: <_ProfileItemData>[
+              _ProfileItemData(
+                icon: Icons.language_rounded,
+                title: copy.languageTitle,
+                subtitle: copy.languageSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LanguageSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.card_membership_rounded,
+                title: copy.subscriptionTitle,
+                subtitle: copy.subscriptionSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SubscriptionPlanScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.restore_rounded,
+                title: copy.restoreSubscriptionTitle,
+                subtitle: copy.restoreSubscriptionSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SubscriptionPlanScreen(
+                        triggerRestoreOnOpen: true,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.verified_user_outlined,
+                title: copy.permissionsTitle,
+                subtitle: copy.permissionsSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PermissionSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.notifications_none_rounded,
+                title: copy.notificationsTitle,
+                subtitle: copy.notificationsSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const NotificationsSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.help_outline_rounded,
+                title: copy.helpTitle,
+                subtitle: copy.helpSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HelpSupportScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.privacy_tip_outlined,
+                title: copy.privacyPolicyTitle,
+                subtitle: copy.privacyPolicySubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LegalDocumentScreen(
+                        documentType: LegalDocumentType.privacyPolicy,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.gavel_rounded,
+                title: copy.legalNoticesTitle,
+                subtitle: copy.legalNoticesSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LegalDocumentScreen(
+                        documentType: LegalDocumentType.termsAndConditions,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -516,158 +700,73 @@ class _ProfileCopy {
 
   bool get _isTelugu => language == AppLanguage.telugu;
 
-  String get screenTitle => _isTelugu
-      ? '\u0c2a\u0c4d\u0c30\u0c4a\u0c2b\u0c48\u0c32\u0c4d \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d'
-      : strings.profileTitle;
-  String get appName => _isTelugu
-      ? '\u0c2e\u0c28 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d'
-      : strings.localized(
-          telugu: 'మన పోస్టర్',
-          english: 'Mana Poster',
-          hindi: 'मना पोस्टर',
-          tamil: 'மனா போஸ்டர்',
-          kannada: 'ಮನ ಪೋಸ್ಟರ್',
-          malayalam: 'മന പോസ്റ്റർ',
-        );
-  String get headerSupportText => strings.localized(
-    telugu: 'మీ అకౌంట్, ప్లాన్, యాప్ సెట్టింగ్స్ ఇక్కడ నిర్వహించండి',
-    english: 'Manage account, plan, and app settings here.',
-    hindi: 'अपना अकाउंट, प्लान और ऐप सेटिंग्स यहां मैनेज करें।',
-    tamil: 'உங்கள் கணக்கு, திட்டம், ஆப் அமைப்புகளை இங்கே நிர்வகிக்கவும்.',
-    kannada:
-        'ನಿಮ್ಮ ಅಕೌಂಟ್, ಪ್ಲಾನ್ ಮತ್ತು ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ಅನ್ನು ಇಲ್ಲಿ ನಿರ್ವಹಿಸಿ.',
-    malayalam:
-        'നിങ്ങളുടെ അക്കൗണ്ട്, പ്ലാൻ, ആപ്പ് സെറ്റിംഗ്സ് ഇവിടെ നിയന്ത്രിക്കുക.',
-  );
-
-  String get accountTitle => _isTelugu
-      ? '\u0c05\u0c15\u0c4c\u0c02\u0c1f\u0c4d'
-      : strings.accountSection;
-  String get settingsTitle => _isTelugu
-      ? '\u0c2f\u0c3e\u0c2a\u0c4d \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d'
-      : strings.appSettingsSection;
+  String get quickActionsTitle =>
+      _isTelugu ? 'త్వరిత ఎంపికలు' : 'Quick actions';
   String get supportTitle =>
       _isTelugu ? '\u0c38\u0c39\u0c3e\u0c2f\u0c02' : strings.supportSection;
 
-  String get posterProfileTitle => _isTelugu
-      ? '\u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c2a\u0c4d\u0c30\u0c4a\u0c2b\u0c48\u0c32\u0c4d \u0c2c\u0c3f\u0c1c\u0c3f\u0c28\u0c46\u0c38\u0c4d'
-      : 'Poster Profile & Business';
+  String get posterProfileTitle =>
+      _isTelugu ? 'Personal & Business Details' : 'Personal & Business Details';
   String get posterProfileSubtitle => _isTelugu
-      ? '\u0c2a\u0c47\u0c30\u0c41, \u0c2b\u0c4b\u0c1f\u0c4b, \u0c2c\u0c3f\u0c1c\u0c3f\u0c28\u0c46\u0c38\u0c4d \u0c35\u0c3f\u0c35\u0c30\u0c3e\u0c32\u0c41'
-      : 'Profile and business details';
+      ? 'ఫోటో, పేరు, బిజినెస్ వివరాలు అప్డేట్ చేయండి'
+      : 'Update photo, personal, and business details';
+  String get moreTitle => 'More';
+  String get moreSubtitle =>
+      _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
 
   String get languageTitle =>
       _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;
-  String? get languageSubtitle => _isTelugu
-      ? '\u0c2f\u0c3e\u0c2a\u0c4d \u0c2d\u0c3e\u0c37 \u0c2e\u0c3e\u0c30\u0c4d\u0c1a\u0c02\u0c21\u0c3f'
-      : strings.localized(
-          telugu: 'యాప్ భాష మార్చండి',
-          english: 'Change app language',
-          hindi: 'ऐप की भाषा बदलें',
-          tamil: 'ஆப் மொழியை மாற்றவும்',
-          kannada: 'ಆಪ್ ಭಾಷೆ ಬದಲಿಸಿ',
-          malayalam: 'ആപ്പ് ഭാഷ മാറ്റുക',
-        );
+  String? get languageSubtitle =>
+      _isTelugu ? 'యాప్ భాష మార్చండి' : 'Change app language';
 
-  String get subscriptionTitle => _isTelugu
-      ? '\u0c2a\u0c4d\u0c32\u0c3e\u0c28\u0c4d \u0c35\u0c3f\u0c35\u0c30\u0c3e\u0c32\u0c41'
-      : strings.subscriptionOption;
-  String get subscriptionSubtitle => _isTelugu
-      ? '\u0c38\u0c2c\u0c4d\u0c38\u0c4d\u0c15\u0c4d\u0c30\u0c3f\u0c2a\u0c4d\u0c37\u0c28\u0c4d \u0c2a\u0c4d\u0c32\u0c3e\u0c28\u0c4d \u0c1a\u0c42\u0c21\u0c02\u0c21\u0c3f'
-      : strings.localized(
-          telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి',
-          english: 'View plan details',
-          hindi: 'प्लान विवरण देखें',
-          tamil: 'பிளான் விவரங்களை பார்க்கவும்',
-          kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
-          malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
-        );
-  String get restoreSubscriptionTitle => strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
-    english: 'Restore subscriptions',
-    hindi: 'सदस्यताएँ रिस्टोर करें',
-    tamil: 'சந்தாக்களை மீட்டெடுக்கவும்',
-    kannada: 'ಸಬ್ಸ್ಕ್ರಿಪ್ಶನ್‌ಗಳನ್ನು ರಿಸ್ಟೋರ್ ಮಾಡಿ',
-    malayalam: 'സബ്സ്ക്രിപ്ഷനുകൾ റിസ്റ്റോർ ചെയ്യുക',
-  );
-  String get restoreSubscriptionSubtitle => strings.localized(
-    telugu: 'అదే అకౌంట్‌తో లాగిన్ అయితే కొనుగోళ్లు రిస్టోర్ అవుతాయి',
-    english: 'Restore purchases for the same account after phone change',
-    hindi: 'फ़ोन बदलने के बाद उसी अकाउंट की खरीदारी रिस्टोर करें',
-    tamil: 'போன் மாற்றிய பிறகு அதே கணக்கின் வாங்குதல்களை மீட்டெடுக்கவும்',
-    kannada: 'ಫೋನ್ ಬದಲಿಸಿದ ನಂತರ ಅದೇ ಖಾತೆಯ ಖರೀದಿಗಳನ್ನು ರಿಸ್ಟೋರ್ ಮಾಡಿ',
-    malayalam: 'ഫോൺ മാറ്റിയ ശേഷം അതേ അക്കൗണ്ടിലെ വാങ്ങലുകൾ റിസ്റ്റോർ ചെയ്യുക',
-  );
+  String get subscriptionTitle =>
+      _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;
+  String get subscriptionSubtitle =>
+      _isTelugu ? 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి' : 'View plan details';
+  String get restoreSubscriptionTitle => 'Restore subscriptions';
+  String get restoreSubscriptionSubtitle => _isTelugu
+      ? 'అదే అకౌంట్ కొనుగోళ్లు మళ్లీ తెచ్చుకోండి'
+      : 'Restore purchases for this account';
+
   String get permissionsTitle => _isTelugu
       ? '\u0c2a\u0c30\u0c4d\u0c2e\u0c3f\u0c37\u0c28\u0c4d\u0c38\u0c4d'
       : strings.permissionsTitle;
-  String? get permissionsSubtitle => _isTelugu
-      ? '\u0c2f\u0c3e\u0c15\u0c4d\u0c38\u0c46\u0c38\u0c4d \u0c05\u0c28\u0c41\u0c2e\u0c24\u0c41\u0c32\u0c41'
-      : strings.localized(
-          telugu: 'యాక్సెస్ అనుమతులు',
-          english: 'Access controls',
-          hindi: 'एक्सेस नियंत्रण',
-          tamil: 'அணுகல் கட்டுப்பாடுகள்',
-          kannada: 'ಪ್ರವೇಶ ನಿಯಂತ್ರಣಗಳು',
-          malayalam: 'ആക്സസ് നിയന്ത്രണങ്ങൾ',
-        );
+  String? get permissionsSubtitle =>
+      _isTelugu ? 'యాక్సెస్ అనుమతులు' : 'Access controls';
 
   String get notificationsTitle => _isTelugu
       ? '\u0c28\u0c4b\u0c1f\u0c3f\u0c2b\u0c3f\u0c15\u0c47\u0c37\u0c28\u0c4d\u0c38\u0c4d'
       : strings.notifications;
-  String? get notificationsSubtitle => _isTelugu
-      ? '\u0c05\u0c32\u0c30\u0c4d\u0c1f\u0c4d \u0c38\u0c46\u0c1f\u0c4d\u0c1f\u0c3f\u0c02\u0c17\u0c4d\u0c38\u0c4d'
-      : strings.localized(
-          telugu: 'నోటిఫికేషన్ ప్రాధాన్యతలు',
-          english: 'Notification preferences',
-          hindi: 'नोटिफिकेशन पसंद',
-          tamil: 'அறிவிப்பு விருப்பங்கள்',
-          kannada: 'ನೋಟಿಫಿಕೇಶನ್ ಆಯ್ಕೆಗಳು',
-          malayalam: 'നോട്ടിഫിക്കേഷൻ മുൻഗണനകൾ',
-        );
+  String? get notificationsSubtitle =>
+      _isTelugu ? 'అలర్ట్ సెట్టింగ్స్' : 'Notification preferences';
 
   String get helpTitle => _isTelugu
       ? '\u0c39\u0c46\u0c32\u0c4d\u0c2a\u0c4d \u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d'
       : strings.helpSupport;
-  String? get helpSubtitle => _isTelugu
-      ? '\u0c38\u0c2e\u0c38\u0c4d\u0c2f\u0c32\u0c15\u0c41 \u0c38\u0c39\u0c3e\u0c2f\u0c02'
-      : strings.localized(
-          telugu: 'సహాయం పొందండి',
-          english: 'Get help',
-          hindi: 'मदद लें',
-          tamil: 'உதவி பெறுங்கள்',
-          kannada: 'ಸಹಾಯ ಪಡೆಯಿರಿ',
-          malayalam: 'സഹായം നേടുക',
-        );
+  String? get helpSubtitle => _isTelugu ? 'సహాయం పొందండి' : 'Get help';
 
   String get aboutTitle => _isTelugu
       ? '\u0c2f\u0c3e\u0c2a\u0c4d \u0c17\u0c41\u0c30\u0c3f\u0c02\u0c1a\u0c3f'
       : strings.aboutApp;
+  String get aboutSubtitle => _isTelugu ? 'యాప్ వివరాలు' : 'About the app';
   String get logoutTitle => _isTelugu
       ? '\u0c32\u0c3e\u0c17\u0c4d \u0c05\u0c35\u0c41\u0c1f\u0c4d'
       : strings.logout;
-  String get logoutSubtitle => strings.localized(
-    telugu: 'ఈ డివైస్‌లోని మీ అకౌంట్ సెషన్ నుంచి బయటకు రండి',
-    english: 'Sign out from your account on this device',
-    hindi: 'इस डिवाइस पर अपने अकाउंट से साइन आउट करें',
-    tamil: 'இந்த சாதனத்தில் உங்கள் கணக்கிலிருந்து வெளியேறுங்கள்',
-    kannada: 'ಈ ಸಾಧನದಲ್ಲಿನ ನಿಮ್ಮ ಖಾತೆಯಿಂದ ಸೈನ್ ಔಟ್ ಮಾಡಿ',
-    malayalam: 'ഈ ഉപകരണത്തിലെ നിങ്ങളുടെ അക്കൗണ്ടിൽ നിന്ന് സൈൻ ഔട്ട് ചെയ്യുക',
-  );
-  String get logoutFailedMessage => strings.localized(
-    telugu: 'లాగౌట్ పూర్తికాలేదు. మళ్లీ ప్రయత్నించండి.',
-    english: 'Logout failed. Please try again.',
-    hindi: 'लॉगआउट पूरा नहीं हुआ। फिर से कोशिश करें।',
-    tamil: 'வெளியேற்றம் முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
-    kannada: 'ಲಾಗೌಟ್ ಪೂರ್ಣವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-    malayalam: 'ലോഗ്ഔട്ട് പൂർത്തിയായില്ല. വീണ്ടും ശ്രമിക്കുക.',
-  );
-  String get deleteAccountTitle => _isTelugu
-      ? 'అకౌంట్ డిలీట్'
-      : 'Delete account';
-  String get deleteAccountSubtitle => strings.localized(
-    telugu: 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్‌ను ప్రారంభించండి',
-    english: 'Start your account and data removal request',
-  );
+  String get logoutSubtitle => _isTelugu
+      ? 'ఈ డివైస్‌లో మీ అకౌంట్ నుంచి బయటకు రండి'
+      : 'Sign out from this device';
+  String get logoutFailedMessage => 'Logout failed. Please try again.';
+  String get deleteAccountTitle =>
+      _isTelugu ? 'అకౌంట్ డిలీట్' : 'Delete account';
+  String get deleteAccountSubtitle => _isTelugu
+      ? 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్ ప్రారంభించండి'
+      : 'Start your account and data removal request';
+  String get privacyPolicyTitle =>
+      _isTelugu ? 'ప్రైవసీ పాలసీ' : 'Privacy Policy';
+  String get privacyPolicySubtitle =>
+      _isTelugu ? 'డేటా వినియోగం చూడండి' : 'Data usage and privacy';
+  String get legalNoticesTitle =>
+      _isTelugu ? 'లీగల్ నోటీసెస్' : 'Legal Notices';
+  String get legalNoticesSubtitle =>
+      _isTelugu ? 'టెర్మ్స్ మరియు కండిషన్స్' : 'Terms and conditions';
 }
-

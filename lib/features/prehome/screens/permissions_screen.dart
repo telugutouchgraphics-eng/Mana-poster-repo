@@ -22,7 +22,8 @@ class _PermissionsScreenState extends State<PermissionsScreen>
   Future<void> _completeFlowAndGoHome() async {
     await AppFlowService.markPermissionsStepHandled();
     await AppFlowService.markInitialSetupCompleted();
-    final String nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute();
+    final String nextRoute =
+        await AppFlowService.resolveAuthenticatedEntryRoute();
     if (!mounted) {
       return;
     }

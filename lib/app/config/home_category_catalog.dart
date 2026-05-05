@@ -35,18 +35,25 @@ class HomeCategoryCatalog {
       aliases: <String>['all posters', 'everything'],
     ),
     HomeCategoryCatalogEntry(
-      id: 'good-night',
-      label: 'Good Night',
-      badge: 'PM',
-      gradient: <Color>[Color(0xFF312E81), Color(0xFF818CF8)],
-      sampleTitles: <String>['Night blessings', 'Moonlight wishes', 'Peaceful close'],
-    ),
-    HomeCategoryCatalogEntry(
       id: 'good-morning',
       label: 'Good Morning',
       badge: 'AM',
       gradient: <Color>[Color(0xFFFFB347), Color(0xFFFFE28A)],
       sampleTitles: <String>['Sunrise wishes', 'Daily good morning', 'Fresh start poster'],
+    ),
+    HomeCategoryCatalogEntry(
+      id: 'good-afternoon',
+      label: 'Good Afternoon',
+      badge: 'NOON',
+      gradient: <Color>[Color(0xFFFF8A00), Color(0xFFFFD166)],
+      sampleTitles: <String>['Afternoon greetings', 'Midday wishes', 'Bright day poster'],
+    ),
+    HomeCategoryCatalogEntry(
+      id: 'good-night',
+      label: 'Good Night',
+      badge: 'PM',
+      gradient: <Color>[Color(0xFF312E81), Color(0xFF818CF8)],
+      sampleTitles: <String>['Night blessings', 'Moonlight wishes', 'Peaceful close'],
     ),
     HomeCategoryCatalogEntry(
       id: 'motivational',

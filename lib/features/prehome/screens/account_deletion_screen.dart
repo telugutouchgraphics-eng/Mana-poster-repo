@@ -16,13 +16,23 @@ class AccountDeletionScreen extends StatefulWidget {
 
 class _AccountDeletionScreenState extends State<AccountDeletionScreen>
     with AppLanguageStateMixin {
-  final AccountDeletionService _accountDeletionService = AccountDeletionService();
+  final AccountDeletionService _accountDeletionService =
+      AccountDeletionService();
   final FirebaseAuthService _authService = FirebaseAuthService();
   bool _busy = false;
 
   Future<void> _openDeletionPolicy() async {
     final uri = Uri.parse(AppPublicInfo.accountDeletionUrl);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnackBar(
+      context.strings.localized(
+        telugu: 'లింక్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+        english: 'Could not open the link. Please try again.',
+      ),
+    );
   }
 
   Future<void> _emailSupport() async {
@@ -33,7 +43,22 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
         'subject': 'Mana Poster account deletion help',
       },
     );
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnackBar(
+      context.strings.localized(
+        telugu: 'మెయిల్ యాప్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+        english: 'Could not open the mail app. Please try again.',
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _localizedResultMessage(AccountDeletionResult result) {
@@ -89,10 +114,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
-                context.strings.localized(
-                  telugu: 'రద్దు',
-                  english: 'Cancel',
-                ),
+                context.strings.localized(telugu: 'రద్దు', english: 'Cancel'),
               ),
             ),
             FilledButton(
@@ -118,9 +140,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_localizedResultMessage(result))),
-      );
+      _showSnackBar(_localizedResultMessage(result));
       if (!result.success) {
         return;
       }
@@ -128,10 +148,9 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.login,
-        (route) => false,
-      );
+      Navigator.of(
+        context,
+      ).pushNamedAndRemoveUntil(AppRoutes.login, (route) => false);
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -154,7 +173,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
             english: 'Account deletion',
           ),
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: Color(0xFF0F172A),
           ),
         ),
@@ -181,11 +200,12 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
                 Text(
                   strings.localized(
                     telugu: 'అకౌంట్ డిలీట్ రిక్వెస్ట్‌ను ఇక్కడే పంపవచ్చు',
-                    english: 'You can submit your account deletion request here',
+                    english:
+                        'You can submit your account deletion request here',
                   ),
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF0F172A),
                   ),
                 ),
@@ -303,7 +323,7 @@ class _DeletionTile extends StatelessWidget {
                     title,
                     style: const TextStyle(
                       fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF0F172A),
                     ),
                   ),

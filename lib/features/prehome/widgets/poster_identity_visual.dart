@@ -8,6 +8,8 @@ class PosterIdentityVisual extends StatelessWidget {
     required this.profile,
     this.fit = BoxFit.cover,
     this.preferOriginalPersonalPhoto = false,
+    this.preferPersonalPhotoOverBusinessLogo = false,
+    this.allowOriginalFallbackWhenCutoutUnavailable = true,
     this.fallbackIcon = Icons.person_rounded,
     this.fallbackBackground = const Color(0xFFF1F5F9),
     this.fallbackIconColor = const Color(0xFF64748B),
@@ -17,6 +19,8 @@ class PosterIdentityVisual extends StatelessWidget {
   final PosterProfileData profile;
   final BoxFit fit;
   final bool preferOriginalPersonalPhoto;
+  final bool preferPersonalPhotoOverBusinessLogo;
+  final bool allowOriginalFallbackWhenCutoutUnavailable;
   final IconData fallbackIcon;
   final Color fallbackBackground;
   final Color fallbackIconColor;
@@ -27,6 +31,9 @@ class PosterIdentityVisual extends StatelessWidget {
     final imageProvider = PosterProfileService.resolveImageProvider(
       profile,
       preferOriginalPersonalPhoto: preferOriginalPersonalPhoto,
+      preferPersonalPhotoOverBusinessLogo: preferPersonalPhotoOverBusinessLogo,
+      allowOriginalFallbackWhenCutoutUnavailable:
+          allowOriginalFallbackWhenCutoutUnavailable,
     );
     if (imageProvider != null) {
       return Image(
@@ -83,10 +90,6 @@ class _GeneratedBusinessLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials = _initialsFromName(businessName);
     final palette = _paletteForStyle(styleId);
-    final useFullName = styleId == 'style_5' || styleId == 'style_9';
-    final hasTagline =
-        tagline.isNotEmpty &&
-        (styleId == 'style_4' || styleId == 'style_7' || styleId == 'style_10');
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -119,12 +122,8 @@ class _GeneratedBusinessLogo extends StatelessWidget {
             ),
           );
         }
-        final badgeSize = size * 0.34;
-        final initialsSize = size * 0.2 * textScale;
-        final nameSize = (useFullName ? size * 0.11 : size * 0.12)
-            .clamp(9.5, 16.0)
-            .toDouble();
-        final taglineSize = (size * 0.08).clamp(7.0, 11.0).toDouble();
+        final badgeSize = size * 0.5;
+        final initialsSize = size * 0.25 * textScale;
         final bottomBandHeight = (size * 0.18).clamp(12.0, 20.0).toDouble();
 
         return ClipOval(
@@ -219,37 +218,6 @@ class _GeneratedBusinessLogo extends StatelessWidget {
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                            SizedBox(height: size * 0.05),
-                            Text(
-                              useFullName
-                                  ? businessName
-                                  : _shortName(businessName),
-                              maxLines: useFullName ? 2 : 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: palette.foreground,
-                                fontSize: nameSize,
-                                fontWeight: FontWeight.w800,
-                                height: 1.05,
-                              ),
-                            ),
-                            if (hasTagline) ...<Widget>[
-                              SizedBox(height: size * 0.03),
-                              Text(
-                                tagline,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: palette.foreground.withValues(
-                                    alpha: 0.72,
-                                  ),
-                                  fontSize: taglineSize,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
@@ -279,10 +247,15 @@ class _GeneratedBusinessLogo extends StatelessWidget {
           ? word.substring(0, 2).toUpperCase()
           : word.toUpperCase();
     }
-    return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+    return parts
+        .take(4)
+        .map((part) => part.substring(0, 1))
+        .join()
         .toUpperCase();
   }
 
+  // Kept only for old generated logo variants that may return in future.
+  // ignore: unused_element
   String _shortName(String value) {
     final trimmed = value.trim();
     if (trimmed.length <= 14) {

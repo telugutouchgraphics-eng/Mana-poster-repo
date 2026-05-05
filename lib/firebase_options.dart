@@ -26,7 +26,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBc_SrDCjsg-DmWGP3A7Gq6dqTj7AH9q5w',
-    appId: '1:1093335255199:android:2b3e0d1f5edfb17c1bfaaa',
+    appId: '1:1093335255199:android:a4dcfd76f84fbf0c1bfaaa',
     messagingSenderId: '1093335255199',
     projectId: 'mana-poster-ap',
     storageBucket: 'mana-poster-ap.firebasestorage.app',

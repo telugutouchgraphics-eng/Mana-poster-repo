@@ -146,6 +146,7 @@ class _TextEditorFullscreenOverlayState
   late Color _strokeColor = widget.textStrokeColor;
   late double _strokeWidth = widget.textStrokeWidth.clamp(0, 8).toDouble();
   late int _strokeGradientIndex = widget.textStrokeGradientIndex;
+  bool _fillPaintChangedByUser = false;
   Timer? _legacyPreviewDebounce;
   int _legacyPreviewRevision = 0;
   String? _legacyPreviewText;
@@ -560,11 +561,13 @@ class _TextEditorFullscreenOverlayState
     final previewOpacity = text.isEmpty
         ? 0.52
         : _textOpacity.clamp(0.15, 1).toDouble();
-    final previewColor = text.isEmpty
+    final shouldLiftDefaultDarkFill =
+        !_fillPaintChangedByUser &&
+        _activeGradient == null &&
+        _selectedColor.computeLuminance() < 0.25;
+    final previewColor = text.isEmpty || shouldLiftDefaultDarkFill
         ? Colors.white
-        : (_activeGradient == null && _selectedColor.computeLuminance() < 0.25
-              ? Colors.white
-              : _selectedColor);
+        : _selectedColor;
     final previewGradient = text.isEmpty ? null : _activeGradient;
     final previewStrokeWidth = text.isEmpty ? 0.0 : _strokeWidth;
     final previewStrokeGradient = text.isEmpty
@@ -575,6 +578,7 @@ class _TextEditorFullscreenOverlayState
               : null);
     final previewNeedsLift =
         text.isNotEmpty &&
+        !shouldLiftDefaultDarkFill &&
         previewGradient == null &&
         _selectedColor.computeLuminance() < 0.18;
 
@@ -594,7 +598,9 @@ class _TextEditorFullscreenOverlayState
           textAlign: _textAlign,
           fontSize: _fontSize.clamp(18, 96).toDouble(),
           textOpacity: previewOpacity,
-          fontFamily: _resolveTextRenderFontFamily(_selectedFontFamily),
+          fontFamily: _legacyPreviewText != null
+              ? _selectedFontFamily
+              : _resolveTextRenderFontFamily(_selectedFontFamily),
           textLineHeight: _lineHeight,
           textLetterSpacing: _letterSpacing,
           textShadowOpacity: _shadowEnabled ? _shadowOpacity : 0.0,
@@ -631,9 +637,14 @@ class _TextEditorFullscreenOverlayState
         text: sampleText,
         style: TextStyle(
           fontSize: _fontSize.clamp(18, 96).toDouble(),
-          height: _lineHeight,
+          height: _effectiveTextLineHeightForRender(
+            fontFamily: _selectedFontFamily,
+            textLineHeight: _lineHeight,
+          ),
           letterSpacing: _letterSpacing,
-          fontFamily: _resolveTextRenderFontFamily(_selectedFontFamily),
+          fontFamily: _legacyPreviewText != null
+              ? _selectedFontFamily
+              : _resolveTextRenderFontFamily(_selectedFontFamily),
           fontWeight: _isTextBold ? FontWeight.w700 : FontWeight.w500,
           fontStyle: _isTextItalic ? FontStyle.italic : FontStyle.normal,
         ),
@@ -643,6 +654,13 @@ class _TextEditorFullscreenOverlayState
       maxLines: 8,
     )..layout(maxWidth: maxWidth);
     return (painter.width + 20).clamp(72.0, maxWidth).toDouble();
+  }
+
+  Color _editableCursorColor() {
+    final fillColor = _activeGradient == null ? _selectedColor : Colors.white;
+    return fillColor.computeLuminance() > 0.72
+        ? const Color(0xFF2563EB)
+        : Colors.white;
   }
 
   Widget _buildColorsTab() {
@@ -671,6 +689,7 @@ class _TextEditorFullscreenOverlayState
                 if (_paintTarget == _TextPaintTarget.fill) {
                   _selectedColor = color;
                   _selectedGradientIndex = -1;
+                  _fillPaintChangedByUser = true;
                 } else {
                   _strokeColor = color;
                   _strokeGradientIndex = -1;
@@ -719,6 +738,7 @@ class _TextEditorFullscreenOverlayState
               setState(() {
                 if (_paintTarget == _TextPaintTarget.fill) {
                   _selectedGradientIndex = index;
+                  _fillPaintChangedByUser = true;
                 } else {
                   _strokeGradientIndex = index;
                   if (_strokeWidth < 0.5) {
@@ -1010,50 +1030,63 @@ class _TextEditorFullscreenOverlayState
                                   screenSize.width * 0.9,
                                 ),
                               ),
-                              Theme(
-                                data: Theme.of(context).copyWith(
-                                  textSelectionTheme:
-                                      const TextSelectionThemeData(
-                                        selectionColor: Colors.transparent,
-                                        selectionHandleColor: Colors.white,
-                                        cursorColor: Colors.transparent,
-                                      ),
-                                ),
-                                child: SizedBox(
-                                  width: editableWidth,
-                                  child: EditableText(
-                                    controller: _controller,
-                                    focusNode: _inputFocusNode,
-                                    autofocus: true,
-                                    minLines: 1,
-                                    maxLines: 8,
-                                    keyboardType: TextInputType.multiline,
-                                    textInputAction: TextInputAction.newline,
-                                    keyboardAppearance: Brightness.dark,
-                                    textAlign: _textAlign,
-                                    enableInteractiveSelection: false,
-                                    enableSuggestions: true,
-                                    autocorrect: true,
-                                    showCursor: false,
-                                    cursorWidth: 0,
-                                    style: TextStyle(
-                                      color: Colors.transparent,
-                                      fontSize: _fontSize.clamp(18, 96),
-                                      height: _lineHeight,
-                                      letterSpacing: _letterSpacing,
-                                      fontFamily: _resolveTextRenderFontFamily(
-                                        _selectedFontFamily,
-                                      ),
-                                      fontWeight: _isTextBold
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      fontStyle: _isTextItalic
-                                          ? FontStyle.italic
-                                          : FontStyle.normal,
-                                      decoration: TextDecoration.none,
+                              GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onTap: _inputFocusNode.requestFocus,
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    textSelectionTheme: TextSelectionThemeData(
+                                      selectionColor: const Color(
+                                        0xFF60A5FA,
+                                      ).withValues(alpha: 0.32),
+                                      selectionHandleColor:
+                                          _editableCursorColor(),
+                                      cursorColor: _editableCursorColor(),
                                     ),
-                                    cursorColor: Colors.transparent,
-                                    backgroundCursorColor: Colors.transparent,
+                                  ),
+                                  child: SizedBox(
+                                    width: editableWidth,
+                                    child: EditableText(
+                                      controller: _controller,
+                                      focusNode: _inputFocusNode,
+                                      autofocus: true,
+                                      minLines: 1,
+                                      maxLines: 8,
+                                      keyboardType: TextInputType.multiline,
+                                      textInputAction: TextInputAction.newline,
+                                      keyboardAppearance: Brightness.dark,
+                                      textAlign: _textAlign,
+                                      enableInteractiveSelection: true,
+                                      enableSuggestions: true,
+                                      autocorrect: true,
+                                      showCursor: true,
+                                      cursorWidth: 2.2,
+                                      cursorRadius: const Radius.circular(999),
+                                      style: TextStyle(
+                                        color: Colors.transparent,
+                                        fontSize: _fontSize.clamp(18, 96),
+                                        height:
+                                            _effectiveTextLineHeightForRender(
+                                              fontFamily: _selectedFontFamily,
+                                              textLineHeight: _lineHeight,
+                                            ),
+                                        letterSpacing: _letterSpacing,
+                                        fontFamily: _legacyPreviewText != null
+                                            ? _selectedFontFamily
+                                            : _resolveTextRenderFontFamily(
+                                                _selectedFontFamily,
+                                              ),
+                                        fontWeight: _isTextBold
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        fontStyle: _isTextItalic
+                                            ? FontStyle.italic
+                                            : FontStyle.normal,
+                                        decoration: TextDecoration.none,
+                                      ),
+                                      cursorColor: _editableCursorColor(),
+                                      backgroundCursorColor: Colors.white24,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1061,19 +1094,6 @@ class _TextEditorFullscreenOverlayState
                           );
                         },
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Opacity(
-                  opacity: 0.96,
-                  child: Text(
-                    'Style controls are now in the text subtool panel after selecting text on canvas.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.56),
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

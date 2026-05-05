@@ -10,30 +10,55 @@ import 'package:mana_poster/features/admin/screens/admin_login_screen.dart';
 class AdminAuthGate extends StatelessWidget {
   const AdminAuthGate({super.key});
 
+  AdminPortalRole get _portalRole {
+    final String host = Uri.base.host.toLowerCase();
+    if (host == 'manager.manaposter.in') {
+      return AdminPortalRole.manager;
+    }
+    if (host == 'creator.manaposter.in') {
+      return AdminPortalRole.creator;
+    }
+    return AdminPortalRole.admin;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final AdminPortalRole role = _portalRole;
     return StreamBuilder<User?>(
       stream: FirebaseAdminAuthService.instance.authStateChanges(),
       builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _AdminAuthLoadingScreen(
-            message: 'Checking admin session...',
+          return _AdminAuthLoadingScreen(
+            message: 'Checking ${_roleLabel(role).toLowerCase()} session...',
           );
         }
         final User? user = snapshot.data;
         if (user != null) {
-          return _AdminAuthorizationGate(user: user);
+          return _AdminAuthorizationGate(user: user, role: role);
         }
-        return const AdminLoginScreen();
+        return AdminLoginScreen(
+          title: '${_roleLabel(role)} Login',
+          subtitle:
+              'Sign in to access the Mana Poster ${_roleLabel(role).toLowerCase()} dashboard.',
+          emailLabel: '${_roleLabel(role)} Email',
+          emailHint: '${_roleLabel(role).toLowerCase()}@manaposter.in',
+          buttonLabel: 'Login to ${_roleLabel(role)}',
+          footerText:
+              'Use the Firebase Authentication email/password account assigned to this ${_roleLabel(role).toLowerCase()} role.',
+          brandTitle: 'Mana Poster\n${_roleLabel(role)} Console',
+          brandSubtitle: _roleDescription(role),
+          badgeText: '${_roleLabel(role)} Access',
+        );
       },
     );
   }
 }
 
 class _AdminAuthorizationGate extends StatefulWidget {
-  const _AdminAuthorizationGate({required this.user});
+  const _AdminAuthorizationGate({required this.user, required this.role});
 
   final User user;
+  final AdminPortalRole role;
 
   @override
   State<_AdminAuthorizationGate> createState() =>
@@ -61,6 +86,7 @@ class _AdminAuthorizationGateState extends State<_AdminAuthorizationGate> {
     bool forceRefresh = false,
   }) {
     return FirebaseAdminAuthService.instance.checkAdminAuthorization(
+      role: widget.role,
       forceRefresh: forceRefresh,
     );
   }
@@ -81,8 +107,9 @@ class _AdminAuthorizationGateState extends State<_AdminAuthorizationGate> {
             AsyncSnapshot<AdminAuthorizationResult> snapshot,
           ) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const _AdminAuthLoadingScreen(
-                message: 'Checking admin access...',
+              return _AdminAuthLoadingScreen(
+                message:
+                    'Checking ${_roleLabel(widget.role).toLowerCase()} access...',
               );
             }
 
@@ -99,7 +126,7 @@ class _AdminAuthorizationGateState extends State<_AdminAuthorizationGate> {
               email: widget.user.email,
               message:
                   result?.message ??
-                  'Could not verify Mana Poster admin access for this account.',
+                  'Could not verify Mana Poster ${_roleLabel(widget.role).toLowerCase()} access for this account.',
               onRetry: _retryAuthorization,
               onLogout: FirebaseAdminAuthService.instance.signOut,
             );
@@ -131,5 +158,27 @@ class _AdminAuthLoadingScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _roleLabel(AdminPortalRole role) {
+  switch (role) {
+    case AdminPortalRole.admin:
+      return 'Admin';
+    case AdminPortalRole.manager:
+      return 'Manager';
+    case AdminPortalRole.creator:
+      return 'Creator';
+  }
+}
+
+String _roleDescription(AdminPortalRole role) {
+  switch (role) {
+    case AdminPortalRole.admin:
+      return 'Manage platform access, content controls, and administrative operations.';
+    case AdminPortalRole.manager:
+      return 'Review and manage operational work assigned to the manager dashboard.';
+    case AdminPortalRole.creator:
+      return 'Access creator-side tools and workflows assigned to the creator dashboard.';
   }
 }

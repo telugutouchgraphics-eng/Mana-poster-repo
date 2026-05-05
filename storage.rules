@@ -9,6 +9,16 @@ service firebase.storage {
       return request.auth != null && request.auth.token.admin == true;
     }
 
+    function isCreator() {
+      return request.auth != null &&
+        (request.auth.token.creator == true || request.auth.token.admin == true);
+    }
+
+    function isManager() {
+      return request.auth != null &&
+        (request.auth.token.manager == true || request.auth.token.admin == true);
+    }
+
     function isAllowedImageUpload(maxSizeBytes) {
       return request.resource != null &&
         request.resource.size < maxSizeBytes &&
@@ -20,6 +30,20 @@ service firebase.storage {
         request.resource.size < maxSizeBytes &&
         (request.resource.contentType.matches('image/.*') ||
           request.resource.contentType.matches('video/.*'));
+    }
+
+    function isAllowedPosterImageUpload() {
+      return request.resource != null &&
+        request.resource.size <= 500 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    function isAllowedPosterMediaUpload() {
+      return request.resource != null &&
+        ((request.resource.contentType.matches('image/.*') &&
+          request.resource.size <= 500 * 1024) ||
+        (request.resource.contentType.matches('video/.*') &&
+          request.resource.size <= 5 * 1024 * 1024));
     }
 
     match /users/{userId}/rembg_jobs/{allPaths=**} {
@@ -39,14 +63,29 @@ service firebase.storage {
     match /landing-media/{mediaId}/{fileName} {
       allow read: if true;
       allow create, update: if isAdmin() &&
-        isAllowedImageUpload(25 * 1024 * 1024);
+        isAllowedPosterImageUpload();
       allow delete: if isAdmin();
     }
 
     match /landing-site/{allPaths=**} {
       allow read: if true;
       allow create, update: if isAdmin() &&
-        isAllowedLandingUpload(80 * 1024 * 1024);
+        isAllowedPosterMediaUpload();
+      allow delete: if isAdmin();
+    }
+
+    match /creator-posters/{userId}/{posterId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isCreator() &&
+        request.auth.uid == userId &&
+        isAllowedPosterImageUpload();
+      allow delete: if isAdmin() || (isCreator() && request.auth.uid == userId);
+    }
+
+    match /premium-templates/{allPaths=**} {
+      allow read: if true;
+      allow create, update: if isAdmin() &&
+        isAllowedPosterImageUpload();
       allow delete: if isAdmin();
     }
 

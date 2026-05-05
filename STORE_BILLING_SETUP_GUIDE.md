@@ -1,13 +1,13 @@
 # Store Billing Setup Guide (₹20 Monthly Pro)
 
 ## 1. Product ID
-- Use same ID everywhere: `pro_monthly_20`
+- Use same ID everywhere: `mana_poster_premium_monthly_149`
 - Code reference: `PurchaseProductIds.proMonthly20`
 
 ## 2. Android (Google Play Console)
 1. Open app in Play Console
 2. Go to `Monetize > Products > Subscriptions`
-3. Create subscription with ID `pro_monthly_20`
+3. Create subscription with ID `mana_poster_premium_monthly_149`
 4. Set price: `₹20 / month`
 5. Activate subscription
 6. Add license testers (`Settings > License testing`)
@@ -16,7 +16,7 @@
 ## 3. iOS (App Store Connect)
 1. Open app in App Store Connect
 2. Go to `In-App Purchases`
-3. Create auto-renewable subscription ID `pro_monthly_20`
+3. Create auto-renewable subscription ID `mana_poster_premium_monthly_149`
 4. Set duration: monthly
 5. Set localizations + pricing
 6. Add sandbox test users

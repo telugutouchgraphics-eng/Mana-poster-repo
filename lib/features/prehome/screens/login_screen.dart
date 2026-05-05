@@ -28,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
   bool _loadingGoogle = false;
   bool _loadingEmail = false;
   bool _loadingReset = false;
+  bool _showPassword = false;
 
   bool get _isBusy => _loadingGoogle || _loadingEmail || _loadingReset;
 
@@ -97,13 +98,18 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
     if (error is AuthFailure) {
       return error.message;
     }
-    return 'Please try again.';
+    return context.strings.localized(
+      telugu: 'ఇంకోసారి ప్రయత్నించండి.',
+      english: 'Please try again.',
+    );
   }
 
   Future<void> _continueAfterAuth() async {
-    final snapshot = await AppFlowService.loadSnapshot();
+    await AppFlowService.loadSnapshot();
+    final permissionsHandled =
+        await AppFlowService.resolvePermissionsStepHandled();
     await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
-    final String nextRoute = snapshot.permissionsStepHandled
+    final String nextRoute = permissionsHandled
         ? await AppFlowService.resolveAuthenticatedEntryRoute()
         : AppRoutes.permissions;
     if (!mounted) {
@@ -220,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _passwordController,
-                            obscureText: true,
+                            obscureText: !_showPassword,
                             textInputAction: TextInputAction.done,
                             autofillHints: isLogin
                                 ? const <String>[AutofillHints.password]
@@ -230,6 +236,21 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                               hintText: strings.password,
                               prefixIcon: const Icon(
                                 Icons.lock_outline_rounded,
+                              ),
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  setState(
+                                    () => _showPassword = !_showPassword,
+                                  );
+                                },
+                                tooltip: authCopy.passwordVisibilityTooltip(
+                                  _showPassword,
+                                ),
+                                icon: Icon(
+                                  _showPassword
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                ),
                               ),
                             ),
                             validator: (v) {
@@ -424,63 +445,60 @@ class _AuthUiCopy {
   final AppLanguage language;
 
   String get passwordRequired => switch (language) {
-    AppLanguage.telugu => 'Password అవసరం',
-    AppLanguage.hindi => 'Password ज़रूरी है',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'Password is required',
+    AppLanguage.telugu => 'పాస్‌వర్డ్ అవసరం',
+    AppLanguage.hindi => 'पासवर्ड आवश्यक है',
+    AppLanguage.english => 'Password is required',
+    AppLanguage.tamil => 'கடவுச்சொல் அவசியம்',
+    AppLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್ ಅಗತ್ಯವಿದೆ',
+    AppLanguage.malayalam => 'പാസ്‌വേഡ് ആവശ്യമാണ്',
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
-    AppLanguage.telugu =>
-      isLogin
-          ? 'మీ account details తో login అయి మీ poster flow కొనసాగించండి.'
-          : 'కొత్త account create చేసి మీ poster journey ప్రారంభించండి.',
-    AppLanguage.hindi =>
-      isLogin
-          ? 'अपने account details से login करके poster flow जारी रखें.'
-          : 'नया account बनाकर अपनी poster journey शुरू करें.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam =>
-      isLogin
-          ? 'Login with your account details and continue your poster flow.'
-          : 'Create a new account and start your poster journey.',
+    AppLanguage.telugu => isLogin
+        ? 'మీ ఖాతా వివరాలతో లాగిన్ అయి పోస్టర్ ప్రయాణాన్ని కొనసాగించండి.'
+        : 'కొత్త ఖాతా సృష్టించి మీ పోస్టర్ ప్రయాణాన్ని ప్రారంభించండి.',
+    AppLanguage.hindi => isLogin
+        ? 'अपने खाते की जानकारी से लॉगिन करें और पोस्टर यात्रा जारी रखें।'
+        : 'नया खाता बनाएं और अपनी पोस्टर यात्रा शुरू करें।',
+    AppLanguage.english => isLogin
+        ? 'Login with your account details and continue your poster flow.'
+        : 'Create a new account and start your poster journey.',
+    AppLanguage.tamil => isLogin
+        ? 'உங்கள் கணக்கு விவரங்களுடன் உள்நுழைந்து போஸ்டர் பயணத்தை தொடருங்கள்.'
+        : 'புதிய கணக்கை உருவாக்கி உங்கள் போஸ்டர் பயணத்தை தொடங்குங்கள்.',
+    AppLanguage.kannada => isLogin
+        ? 'ನಿಮ್ಮ ಖಾತೆ ವಿವರಗಳಿಂದ ಲಾಗಿನ್ ಮಾಡಿ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಮುಂದುವರಿಸಿ.'
+        : 'ಹೊಸ ಖಾತೆ ಸೃಷ್ಟಿಸಿ ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಆರಂಭಿಸಿ.',
+    AppLanguage.malayalam => isLogin
+        ? 'നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങളോടെ ലോഗിൻ ചെയ്ത് പോസ്റ്റർ യാത്ര തുടരുക.'
+        : 'പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ച് നിങ്ങളുടെ പോസ്റ്റർ യാത്ര ആരംഭിക്കുക.',
   };
 
   String resetSuccess(String email) => switch (language) {
-    AppLanguage.telugu => '$email కి password reset email పంపించాం.',
-    AppLanguage.hindi => '$email पर password reset email भेज दिया गया है.',
-    AppLanguage.english ||
-    AppLanguage.tamil ||
-    AppLanguage.kannada ||
-    AppLanguage.malayalam => 'Password reset email sent to $email.',
+    AppLanguage.telugu => '$email కి పాస్‌వర్డ్ రీసెట్ మెయిల్ పంపించాం.',
+    AppLanguage.hindi => '$email पर पासवर्ड रीसेट मेल भेज दिया गया है।',
+    AppLanguage.english => 'Password reset email sent to $email.',
+    AppLanguage.tamil => '$email க்கு கடவுச்சொல் ரீசெட் மெயில் அனுப்பப்பட்டது.',
+    AppLanguage.kannada => '$email ಗೆ ಪಾಸ್‌ವರ್ಡ್ ರೀಸೆಟ್ ಮೇಲ್ ಕಳುಹಿಸಲಾಗಿದೆ.',
+    AppLanguage.malayalam => '$email ലേക്ക് പാസ്‌വേഡ് റീസെറ്റ് മെയിൽ അയച്ചു.',
   };
 
   String get legalIntro => switch (language) {
-    AppLanguage.telugu =>
-      'కొనసాగించడం ద్వారా మా ప్రైవసీ పాలసీ మరియు నిబంధనలు అంగీకరిస్తున్నారు.',
-    AppLanguage.hindi =>
-      'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम स्वीकार करते हैं।',
-    AppLanguage.english =>
-      'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
-    AppLanguage.tamil =>
-      'தொடர்வதன் மூலம் எங்கள் Privacy Policy மற்றும் Terms-ஐ ஏற்கிறீர்கள்.',
-    AppLanguage.kannada =>
-      'ಮುಂದುವರಿದರೆ ನಮ್ಮ Privacy Policy ಮತ್ತು Terms ಅನ್ನು ಒಪ್ಪುತ್ತೀರಿ.',
-    AppLanguage.malayalam =>
-      'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ Privacy Policy, Terms എന്നിവ അംഗീകരിക്കുന്നു.',
+    AppLanguage.telugu => 'కొనసాగించడం ద్వారా మీరు మా గోప్యతా విధానం మరియు నిబంధనలకు అంగీకరిస్తారు.',
+    AppLanguage.hindi => 'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम एवं शर्तों से सहमत होते हैं।',
+    AppLanguage.english => 'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
+    AppLanguage.tamil => 'தொடருவதன் மூலம் எங்கள் தனியுரிமைக் கொள்கை மற்றும் விதிமுறைகளுக்கு நீங்கள் ஒப்புக்கொள்கிறீர்கள்.',
+    AppLanguage.kannada => 'ಮುಂದುವರಿದರೆ ನಮ್ಮ ಗೌಪ್ಯತಾ ನೀತಿ ಮತ್ತು ನಿಯಮಗಳು ಹಾಗೂ ಷರತ್ತುಗಳಿಗೆ ನೀವು ಒಪ್ಪುತ್ತೀರಿ.',
+    AppLanguage.malayalam => 'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ സ്വകാര്യതാ നയംയും നിബന്ധനകളും നിങ്ങൾ അംഗീകരിക്കുന്നു.',
   };
 
   String get privacyLabel => switch (language) {
-    AppLanguage.telugu => 'ప్రైవసీ పాలసీ',
+    AppLanguage.telugu => 'గోప్యతా విధానం',
     AppLanguage.hindi => 'प्राइवेसी पॉलिसी',
     AppLanguage.english => 'Privacy Policy',
-    AppLanguage.tamil => 'Privacy Policy',
-    AppLanguage.kannada => 'Privacy Policy',
-    AppLanguage.malayalam => 'Privacy Policy',
+    AppLanguage.tamil => 'தனியுரிமைக் கொள்கை',
+    AppLanguage.kannada => 'ಗೌಪ್ಯತಾ ನೀತಿ',
+    AppLanguage.malayalam => 'സ്വകാര്യതാ നയം',
   };
 
   String get andLabel => switch (language) {
@@ -489,15 +507,24 @@ class _AuthUiCopy {
     AppLanguage.english => 'and',
     AppLanguage.tamil => 'மற்றும்',
     AppLanguage.kannada => 'ಮತ್ತು',
-    AppLanguage.malayalam => 'മറ്റും',
+    AppLanguage.malayalam => 'കൂടാതെ',
   };
 
   String get termsLabel => switch (language) {
-    AppLanguage.telugu => 'నిబంధనలు షరతులు',
-    AppLanguage.hindi => 'नियम और शर्तें',
+    AppLanguage.telugu => 'నిబంధనలు',
+    AppLanguage.hindi => 'नियम एवं शर्तें',
     AppLanguage.english => 'Terms & Conditions',
-    AppLanguage.tamil => 'Terms & Conditions',
-    AppLanguage.kannada => 'Terms & Conditions',
-    AppLanguage.malayalam => 'Terms & Conditions',
+    AppLanguage.tamil => 'விதிமுறைகள் மற்றும் நிபந்தனைகள்',
+    AppLanguage.kannada => 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು',
+    AppLanguage.malayalam => 'നിബന്ധനകളും വ്യവസ്ഥകളും',
+  };
+
+  String passwordVisibilityTooltip(bool isVisible) => switch (language) {
+    AppLanguage.telugu => isVisible ? 'పాస్‌వర్డ్ దాచు' : 'పాస్‌వర్డ్ చూపు',
+    AppLanguage.hindi => isVisible ? 'पासवर्ड छिपाएँ' : 'पासवर्ड दिखाएँ',
+    AppLanguage.english => isVisible ? 'Hide password' : 'Show password',
+    AppLanguage.tamil => isVisible ? 'கடவுச்சொல்லை மறை' : 'கடவுச்சொல்லை காட்டு',
+    AppLanguage.kannada => isVisible ? 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆಮಾಡಿ' : 'ಪಾಸ್‌ವರ್ಡ್ ತೋರಿಸಿ',
+    AppLanguage.malayalam => isVisible ? 'പാസ്‌വേഡ് മറയ്ക്കുക' : 'പാസ്‌വേഡ് കാണിക്കുക',
   };
 }

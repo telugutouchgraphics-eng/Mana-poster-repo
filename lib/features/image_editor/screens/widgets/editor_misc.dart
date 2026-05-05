@@ -168,7 +168,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
               const SizedBox(width: 8),
               Expanded(
                 child: _TextTabChip(
-                  label: strings.localized(telugu: 'ఎఫెక్ట్స్', english: 'Effects'),
+                  label: strings.localized(
+                    telugu: 'ఎఫెక్ట్స్',
+                    english: 'Effects',
+                  ),
                   selected: _activeTab == _TextToolTab.effects,
                   onTap: () =>
                       setState(() => _activeTab = _TextToolTab.effects),
@@ -425,7 +428,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'shadow-offset',
           label: strings.localized(
-            telugu: 'షాడో ఆఫ్‌సెట్ Y',
+            telugu: 'షాడో నిలువు ఆఫ్‌సెట్',
             english: 'Shadow Offset Y',
           ),
           value: layer.textShadowOffsetY.clamp(0, 20).toDouble(),
@@ -769,7 +772,10 @@ class _AdvancedLayersFullscreenOverlayState
                 if (widget.selectedLayerId != null) ...<Widget>[
                   _LayerActionButton(
                     icon: Icons.vertical_align_top_rounded,
-                    label: strings.localized(telugu: 'ఫ్రంట్', english: 'Front'),
+                    label: strings.localized(
+                      telugu: 'ఫ్రంట్',
+                      english: 'Front',
+                    ),
                     onTap: () => widget.onMoveToFront(widget.selectedLayerId!),
                   ),
                   _LayerActionButton(
@@ -779,7 +785,10 @@ class _AdvancedLayersFullscreenOverlayState
                   ),
                   _LayerActionButton(
                     icon: Icons.delete_outline_rounded,
-                    label: strings.localized(telugu: 'డిలీట్', english: 'Delete'),
+                    label: strings.localized(
+                      telugu: 'డిలీట్',
+                      english: 'Delete',
+                    ),
                     onTap: () => widget.onDeleteLayer(widget.selectedLayerId!),
                   ),
                 ],
@@ -1397,7 +1406,10 @@ class _DraftsScreenState extends State<_DraftsScreen> {
             onPressed: _saving ? null : _saveCurrentDraft,
             child: Text(
               _saving
-                  ? strings.localized(telugu: 'సేవ్ అవుతోంది...', english: 'Saving...')
+                  ? strings.localized(
+                      telugu: 'సేవ్ అవుతోంది...',
+                      english: 'Saving...',
+                    )
                   : strings.localized(
                       telugu: 'ప్రస్తుతాన్ని సేవ్ చేయి',
                       english: 'Save Current',

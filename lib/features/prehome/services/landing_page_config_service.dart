@@ -222,6 +222,15 @@ class LandingPageConfigService {
           _firstString(data, const <String>['heroHighlightLabel']) ??
               fallback['heroHighlightLabel'] as String?,
         ),
+        heroImageUrl: _safeUrl(
+          _firstString(data, const <String>[
+                'heroImageUrl',
+                'hero.imageUrl',
+                'hero.backgroundImageUrl',
+                'media.heroImageUrl',
+              ]) ??
+              fallback['heroImageUrl'] as String?,
+        ),
         previewEyebrow: _sanitizeText(
           _firstString(data, const <String>['previewEyebrow']) ??
               fallback['previewEyebrow'] as String?,
@@ -233,6 +242,15 @@ class LandingPageConfigService {
         previewSubtitle: _sanitizeText(
           _firstString(data, const <String>['previewSubtitle']) ??
               fallback['previewSubtitle'] as String?,
+        ),
+        previewImageUrl: _safeUrl(
+          _firstString(data, const <String>[
+                'previewImageUrl',
+                'preview.imageUrl',
+                'preview.mediaUrl',
+                'media.previewImageUrl',
+              ]) ??
+              fallback['previewImageUrl'] as String?,
         ),
         featuresEyebrow: _sanitizeText(
           _firstString(data, const <String>['featuresEyebrow']) ??

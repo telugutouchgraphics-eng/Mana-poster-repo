@@ -21,7 +21,7 @@ This document defines the API contract expected by the app in:
 {
   "platform": "android",
   "uid": "firebase-user-uid",
-  "productId": "pro_monthly_20",
+  "productId": "mana_poster_premium_monthly_149",
   "verificationSource": "google_play",
   "serverVerificationData": "purchase_token_or_receipt",
   "localVerificationData": "optional_local_payload",

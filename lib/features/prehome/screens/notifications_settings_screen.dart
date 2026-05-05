@@ -63,7 +63,7 @@ class _NotificationsSettingsScreenState
         title: Text(
           copy.title,
           style: const TextStyle(
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w600,
             color: Color(0xFF0F172A),
           ),
         ),
@@ -130,7 +130,7 @@ class _NotificationsSettingsScreenState
                               copy.cardTitle,
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: const Color(0xFF0F172A),
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -156,7 +156,7 @@ class _NotificationsSettingsScreenState
                                 title: Text(
                                   copy.allNotificationsTitle,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
+                                    fontWeight: FontWeight.w600,
                                     color: Color(0xFF0F172A),
                                   ),
                                 ),
@@ -190,7 +190,7 @@ class _NotificationsSettingsScreenState
                           copy.preferencesTitle,
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: const Color(0xFF0F172A),
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -227,18 +227,6 @@ class _NotificationsSettingsScreenState
                               value: _snapshot.offersUpdates,
                               onChanged: (value) => _update(
                                 _snapshot.copyWith(offersUpdates: value),
-                              ),
-                            ),
-                            const Divider(height: 1, indent: 18, endIndent: 18),
-                            _NotificationToggleTile(
-                              title: copy.subscriptionTitle,
-                              subtitle: copy.subscriptionSubtitle,
-                              enabled: _snapshot.allNotifications,
-                              value: _snapshot.subscriptionReminders,
-                              onChanged: (value) => _update(
-                                _snapshot.copyWith(
-                                  subscriptionReminders: value,
-                                ),
                               ),
                             ),
                           ],
@@ -325,7 +313,7 @@ class _NotificationToggleTile extends StatelessWidget {
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
           ),
         ),
         subtitle: Text(

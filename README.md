@@ -41,4 +41,17 @@ Firebase + app release steps:
 Real device release verification:
 - `REAL_DEVICE_QA_CHECKLIST.md`
 - `QA_STATUS_MATRIX.md`
-- `PORTAL_APP_WORKFLOW_QA_REPORT.md`
+
+## Repo Scope
+
+This repository is only for the Flutter mobile app.
+
+- Mobile app code: `lib`, `assets`, `android`, `ios`, `web`, `windows`, `macos`, `linux`
+- Firebase Functions for the app: `functions`
+- App-side docs and release notes stay here
+
+Web portal work does not belong in this repo.
+
+- Admin portal: `admin.manaposter.in`
+- Creator portal: `creator.manaposter.in`
+- Web portal repo: `C:\Users\telug\mana-poster-web-portal`

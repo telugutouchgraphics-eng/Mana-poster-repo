@@ -23,9 +23,11 @@ class LandingPageConfig {
     required this.heroPrimaryCtaLabel,
     required this.heroSecondaryCtaLabel,
     required this.heroHighlightLabel,
+    required this.heroImageUrl,
     required this.previewEyebrow,
     required this.previewTitle,
     required this.previewSubtitle,
+    required this.previewImageUrl,
     required this.featuresEyebrow,
     required this.featuresTitle,
     required this.featuresSubtitle,
@@ -87,9 +89,11 @@ class LandingPageConfig {
       heroPrimaryCtaLabel: readString('heroPrimaryCtaLabel'),
       heroSecondaryCtaLabel: readString('heroSecondaryCtaLabel'),
       heroHighlightLabel: readString('heroHighlightLabel'),
+      heroImageUrl: readString('heroImageUrl'),
       previewEyebrow: readString('previewEyebrow'),
       previewTitle: readString('previewTitle'),
       previewSubtitle: readString('previewSubtitle'),
+      previewImageUrl: readString('previewImageUrl'),
       featuresEyebrow: readString('featuresEyebrow'),
       featuresTitle: readString('featuresTitle'),
       featuresSubtitle: readString('featuresSubtitle'),
@@ -147,9 +151,11 @@ class LandingPageConfig {
   final String heroPrimaryCtaLabel;
   final String heroSecondaryCtaLabel;
   final String heroHighlightLabel;
+  final String heroImageUrl;
   final String previewEyebrow;
   final String previewTitle;
   final String previewSubtitle;
+  final String previewImageUrl;
   final String featuresEyebrow;
   final String featuresTitle;
   final String featuresSubtitle;
@@ -195,9 +201,11 @@ class LandingPageConfig {
     String? heroPrimaryCtaLabel,
     String? heroSecondaryCtaLabel,
     String? heroHighlightLabel,
+    String? heroImageUrl,
     String? previewEyebrow,
     String? previewTitle,
     String? previewSubtitle,
+    String? previewImageUrl,
     String? featuresEyebrow,
     String? featuresTitle,
     String? featuresSubtitle,
@@ -244,25 +252,25 @@ class LandingPageConfig {
       heroSecondaryCtaLabel:
           heroSecondaryCtaLabel ?? this.heroSecondaryCtaLabel,
       heroHighlightLabel: heroHighlightLabel ?? this.heroHighlightLabel,
+      heroImageUrl: heroImageUrl ?? this.heroImageUrl,
       previewEyebrow: previewEyebrow ?? this.previewEyebrow,
       previewTitle: previewTitle ?? this.previewTitle,
       previewSubtitle: previewSubtitle ?? this.previewSubtitle,
+      previewImageUrl: previewImageUrl ?? this.previewImageUrl,
       featuresEyebrow: featuresEyebrow ?? this.featuresEyebrow,
       featuresTitle: featuresTitle ?? this.featuresTitle,
       featuresSubtitle: featuresSubtitle ?? this.featuresSubtitle,
       categoriesEyebrow: categoriesEyebrow ?? this.categoriesEyebrow,
       categoriesTitle: categoriesTitle ?? this.categoriesTitle,
       categoriesSubtitle: categoriesSubtitle ?? this.categoriesSubtitle,
-      dynamicEventsEyebrow:
-          dynamicEventsEyebrow ?? this.dynamicEventsEyebrow,
+      dynamicEventsEyebrow: dynamicEventsEyebrow ?? this.dynamicEventsEyebrow,
       dynamicEventsTitle: dynamicEventsTitle ?? this.dynamicEventsTitle,
       dynamicEventsSubtitle:
           dynamicEventsSubtitle ?? this.dynamicEventsSubtitle,
       plansEyebrow: plansEyebrow ?? this.plansEyebrow,
       plansTitle: plansTitle ?? this.plansTitle,
       plansSubtitle: plansSubtitle ?? this.plansSubtitle,
-      plansPrimaryCtaLabel:
-          plansPrimaryCtaLabel ?? this.plansPrimaryCtaLabel,
+      plansPrimaryCtaLabel: plansPrimaryCtaLabel ?? this.plansPrimaryCtaLabel,
       faqEyebrow: faqEyebrow ?? this.faqEyebrow,
       faqTitle: faqTitle ?? this.faqTitle,
       faqSubtitle: faqSubtitle ?? this.faqSubtitle,
@@ -298,9 +306,11 @@ class LandingPageConfig {
       'heroPrimaryCtaLabel': heroPrimaryCtaLabel,
       'heroSecondaryCtaLabel': heroSecondaryCtaLabel,
       'heroHighlightLabel': heroHighlightLabel,
+      'heroImageUrl': heroImageUrl,
       'previewEyebrow': previewEyebrow,
       'previewTitle': previewTitle,
       'previewSubtitle': previewSubtitle,
+      'previewImageUrl': previewImageUrl,
       'featuresEyebrow': featuresEyebrow,
       'featuresTitle': featuresTitle,
       'featuresSubtitle': featuresSubtitle,
