@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
@@ -40,7 +40,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
       scheme: 'mailto',
       path: AppPublicInfo.supportEmail,
       queryParameters: <String, String>{
-        'subject': 'Mana Poster account deletion help',
+        'subject': 'Mana Poster Ai account deletion help',
       },
     );
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -345,3 +345,4 @@ class _DeletionTile extends StatelessWidget {
     );
   }
 }
+

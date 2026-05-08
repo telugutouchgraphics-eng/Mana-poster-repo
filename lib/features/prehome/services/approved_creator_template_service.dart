@@ -6,6 +6,18 @@ import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
 
+class ApprovedCreatorTemplatePage {
+  const ApprovedCreatorTemplatePage({
+    required this.templates,
+    required this.lastDocument,
+    required this.hasMore,
+  });
+
+  final List<ApprovedCreatorTemplate> templates;
+  final QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument;
+  final bool hasMore;
+}
+
 class ApprovedCreatorTemplateService {
   static const int _posterRetentionWindowMillis =
       7 * 24 * 60 * 60 * 1000;
@@ -20,48 +32,84 @@ class ApprovedCreatorTemplateService {
   final FirebaseFirestore? _firestore;
   final DynamicEventRepository _dynamicEventRepository;
 
+  void _debugLogStack(String message, StackTrace stackTrace) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(message);
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplates({
     int maxItems = 40,
   }) async {
+    final page = await fetchApprovedTemplatesPage(pageSize: maxItems);
+    return page.templates;
+  }
+
+  Future<ApprovedCreatorTemplatePage> fetchApprovedTemplatesPage({
+    int pageSize = 5,
+    QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
+    Source source = Source.serverAndCache,
+  }) async {
     try {
-      // NOTE:
-      // Firestore rules allow reads only when status == "approved".
-      // So this query must stay exactly aligned with that rule.
-      final snapshot = await firestore
+      final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
+      Query<Map<String, dynamic>> query = firestore
           .collection('creatorPosters')
           .where('status', isEqualTo: 'approved')
           .orderBy('createdAt', descending: true)
-          .limit(maxItems * 3)
-          .get();
-      return _filterPublished(_mapSnapshot(snapshot), snapshot, maxItems);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'ApprovedCreatorTemplateService.fetchApprovedTemplates failed: $error',
+          .limit(queryLimit);
+      if (startAfterDocument != null) {
+        query = query.startAfterDocument(startAfterDocument);
+      }
+      final snapshot = await query.get(GetOptions(source: source));
+      return ApprovedCreatorTemplatePage(
+        templates: _filterPublished(_mapSnapshot(snapshot), snapshot, pageSize),
+        lastDocument: snapshot.docs.isEmpty ? startAfterDocument : snapshot.docs.last,
+        hasMore: snapshot.docs.length >= queryLimit,
       );
-      debugPrintStack(stackTrace: stackTrace);
-      return const <ApprovedCreatorTemplate>[];
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService.fetchApprovedTemplatesPage failed: $error',
+        stackTrace,
+      );
+      return const ApprovedCreatorTemplatePage(
+        templates: <ApprovedCreatorTemplate>[],
+        lastDocument: null,
+        hasMore: false,
+      );
     }
   }
 
   Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplatesFromCache({
     int maxItems = 40,
   }) async {
+    final page = await fetchApprovedTemplatesPageFromCache(pageSize: maxItems);
+    return page.templates;
+  }
+
+  Future<ApprovedCreatorTemplatePage> fetchApprovedTemplatesPageFromCache({
+    int pageSize = 5,
+    QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
+  }) async {
     try {
-      final snapshot = await firestore
-          .collection('creatorPosters')
-          .where('status', isEqualTo: 'approved')
-          .orderBy('createdAt', descending: true)
-          .limit(maxItems * 3)
-          .get(const GetOptions(source: Source.cache));
-      return _filterPublished(_mapSnapshot(snapshot), snapshot, maxItems);
-    } catch (error, stackTrace) {
-      debugPrint(
-        'ApprovedCreatorTemplateService.fetchApprovedTemplatesFromCache failed: $error',
+      return fetchApprovedTemplatesPage(
+        pageSize: pageSize,
+        startAfterDocument: startAfterDocument,
+        source: Source.cache,
       );
-      debugPrintStack(stackTrace: stackTrace);
-      return const <ApprovedCreatorTemplate>[];
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService.fetchApprovedTemplatesPageFromCache failed: $error',
+        stackTrace,
+      );
+      return const ApprovedCreatorTemplatePage(
+        templates: <ApprovedCreatorTemplate>[],
+        lastDocument: null,
+        hasMore: false,
+      );
     }
   }
 
@@ -131,6 +179,10 @@ class ApprovedCreatorTemplateService {
         (data['imageUrl'] as String?)?.trim() ??
         (data['posterUrl'] as String?)?.trim() ??
         (data['previewUrl'] as String?)?.trim();
+    final thumbnailUrl =
+        (data['thumbnailUrl'] as String?)?.trim() ??
+        (data['previewUrl'] as String?)?.trim() ??
+        imageUrl;
     final videoUrl =
         (data['videoUrl'] as String?)?.trim() ??
         (data['videoPreviewUrl'] as String?)?.trim() ??
@@ -155,6 +207,7 @@ class ApprovedCreatorTemplateService {
       id: doc.id,
       title: title,
       imageUrl: imageUrl ?? '',
+      thumbnailUrl: thumbnailUrl ?? '',
       mediaType: hasVideo ? 'video' : 'image',
       videoUrl: videoUrl,
       categoryId: categoryId,

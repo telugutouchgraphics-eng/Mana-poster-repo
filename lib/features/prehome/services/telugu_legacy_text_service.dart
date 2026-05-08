@@ -62,6 +62,23 @@ class TeluguLegacyTextService {
     }
   }
 
+  static String? cachedValue(
+    String text, {
+    required String fontFamily,
+  }) {
+    final normalized = text
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll('\u200c', '')
+        .replaceAll('\u200d', '')
+        .trim();
+    if (normalized.isEmpty) {
+      return normalized;
+    }
+    final profile = _profileFor(fontFamily);
+    return _cache['$profile::$normalized'];
+  }
+
   static String _profileFor(String fontFamily) {
     switch (fontFamily) {
       case 'Pragathi':

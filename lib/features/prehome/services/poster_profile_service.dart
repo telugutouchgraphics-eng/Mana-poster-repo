@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/painting.dart';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -12,6 +14,18 @@ import 'package:mana_poster/app/localization/app_language.dart';
 enum PosterDisplayNameMode { auto, telugu, english }
 
 enum PosterIdentityMode { personal, business }
+
+class _PreparedStorageUpload {
+  const _PreparedStorageUpload({
+    required this.bytes,
+    required this.contentType,
+    required this.fileName,
+  });
+
+  final Uint8List bytes;
+  final String contentType;
+  final String fileName;
+}
 
 class PosterProfileData {
   const PosterProfileData({
@@ -654,14 +668,17 @@ class PosterProfileService {
     if (user == null) {
       return '';
     }
-    final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
-    final stamp = DateTime.now().millisecondsSinceEpoch;
-    final ref = FirebaseStorage.instance.ref(
-      'users/${user.uid}/poster_profile/${isOriginal ? 'original_photo' : 'photo'}_$stamp.$cleanExtension',
+    final upload = await _prepareOptimizedUpload(
+      file: file,
+      extension: extension,
+      assetPrefix: isOriginal ? 'original_photo' : 'photo',
     );
-    await ref.putFile(
-      file,
-      SettableMetadata(contentType: _contentTypeForExtension(cleanExtension)),
+    final ref = FirebaseStorage.instance.ref(
+      'users/${user.uid}/poster_profile/${upload.fileName}',
+    );
+    await ref.putData(
+      upload.bytes,
+      SettableMetadata(contentType: upload.contentType),
     );
     return ref.getDownloadURL();
   }
@@ -674,14 +691,17 @@ class PosterProfileService {
     if (user == null) {
       return '';
     }
-    final cleanExtension = extension.trim().isEmpty ? 'png' : extension.trim();
-    final stamp = DateTime.now().millisecondsSinceEpoch;
-    final ref = FirebaseStorage.instance.ref(
-      'users/${user.uid}/poster_profile/business_logo_$stamp.$cleanExtension',
+    final upload = await _prepareOptimizedUpload(
+      file: file,
+      extension: extension,
+      assetPrefix: 'business_logo',
     );
-    await ref.putFile(
-      file,
-      SettableMetadata(contentType: _contentTypeForExtension(cleanExtension)),
+    final ref = FirebaseStorage.instance.ref(
+      'users/${user.uid}/poster_profile/${upload.fileName}',
+    );
+    await ref.putData(
+      upload.bytes,
+      SettableMetadata(contentType: upload.contentType),
     );
     return ref.getDownloadURL();
   }
@@ -802,6 +822,69 @@ class PosterProfileService {
       'webp' => 'image/webp',
       _ => 'image/jpeg',
     };
+  }
+
+  static Future<_PreparedStorageUpload> _prepareOptimizedUpload({
+    required File file,
+    required String extension,
+    required String assetPrefix,
+  }) async {
+    final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
+    final originalBytes = await file.readAsBytes();
+    final optimizedBytes = _optimizeImageBytes(
+      originalBytes,
+      extension: cleanExtension,
+    );
+    final normalizedExtension = _normalizedUploadExtension(cleanExtension);
+    final fileHash = _stableBytesHash(optimizedBytes);
+    return _PreparedStorageUpload(
+      bytes: optimizedBytes,
+      contentType: _contentTypeForExtension(normalizedExtension),
+      fileName: '${assetPrefix}_$fileHash.$normalizedExtension',
+    );
+  }
+
+  static Uint8List _optimizeImageBytes(
+    Uint8List bytes, {
+    required String extension,
+  }) {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      return bytes;
+    }
+    final resized = decoded.width > 1080 || decoded.height > 1080
+        ? img.copyResize(
+            decoded,
+            width: decoded.width >= decoded.height ? 1080 : null,
+            height: decoded.height > decoded.width ? 1080 : null,
+            interpolation: img.Interpolation.average,
+          )
+        : decoded;
+    final normalizedExtension = _normalizedUploadExtension(extension);
+    if (normalizedExtension == 'png') {
+      return Uint8List.fromList(img.encodePng(resized, level: 6));
+    }
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 75));
+  }
+
+  static String _normalizedUploadExtension(String extension) {
+    final normalized = extension.trim().toLowerCase();
+    if (normalized == 'png') {
+      return 'png';
+    }
+    if (normalized == 'webp') {
+      return 'jpg';
+    }
+    return 'jpg';
+  }
+
+  static String _stableBytesHash(Uint8List bytes) {
+    var hash = 0x811c9dc5;
+    for (final byte in bytes) {
+      hash ^= byte;
+      hash = (hash * 0x01000193) & 0xFFFFFFFF;
+    }
+    return hash.toRadixString(16);
   }
 
   static String _sanitizeFont(String? rawFont) {

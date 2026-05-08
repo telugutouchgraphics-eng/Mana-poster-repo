@@ -38,6 +38,7 @@ class FirebaseAuthService {
       if (idToken == null || idToken.isEmpty) {
         throw const AuthFailure(
           'Google Sign-In setup is incomplete. Please verify Firebase OAuth configuration.',
+          code: 'google-sign-in-incomplete',
         );
       }
 
@@ -47,15 +48,19 @@ class FirebaseAuthService {
     } on AuthFailure {
       rethrow;
     } on FirebaseAuthException catch (error) {
-      throw AuthFailure(_mapFirebaseAuthError(error));
+      throw _mapFirebaseAuthError(error);
     } on GoogleSignInException catch (error) {
-      throw AuthFailure(_mapGoogleSignInError(error));
+      throw _mapGoogleSignInError(error);
     } on UnsupportedError {
       throw const AuthFailure(
         'Google Sign-In is not supported on this platform build.',
+        code: 'unsupported-platform',
       );
     } catch (_) {
-      throw const AuthFailure('Google Sign-In failed. Please try again.');
+      throw const AuthFailure(
+        'Google Sign-In failed. Please try again.',
+        code: 'google-sign-in-failed',
+      );
     }
   }
 
@@ -71,7 +76,7 @@ class FirebaseAuthService {
       );
       await DeviceSessionService.instance.registerCurrentDeviceSession();
     } on FirebaseAuthException catch (error) {
-      throw AuthFailure(_mapFirebaseAuthError(error));
+      throw _mapFirebaseAuthError(error);
     }
   }
 
@@ -87,7 +92,7 @@ class FirebaseAuthService {
       );
       await DeviceSessionService.instance.registerCurrentDeviceSession();
     } on FirebaseAuthException catch (error) {
-      throw AuthFailure(_mapFirebaseAuthError(error));
+      throw _mapFirebaseAuthError(error);
     }
   }
 
@@ -96,7 +101,7 @@ class FirebaseAuthService {
     try {
       await _firebaseAuth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (error) {
-      throw AuthFailure(_mapFirebaseAuthError(error));
+      throw _mapFirebaseAuthError(error);
     }
   }
 
@@ -148,58 +153,121 @@ class FirebaseAuthService {
     _googleInitialized = true;
   }
 
-  String _mapFirebaseAuthError(FirebaseAuthException error) {
+  AuthFailure _mapFirebaseAuthError(FirebaseAuthException error) {
     switch (error.code) {
       case 'invalid-email':
-        return 'Please enter a valid email address.';
+        return const AuthFailure(
+          'Please enter a valid email address.',
+          code: 'invalid-email',
+        );
       case 'user-disabled':
-        return 'This account has been disabled.';
+        return const AuthFailure(
+          'This account has been disabled.',
+          code: 'user-disabled',
+        );
       case 'user-not-found':
-        return 'No account found for this email.';
+        return const AuthFailure(
+          'No account found for this email.',
+          code: 'user-not-found',
+        );
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect email or password.';
+        return const AuthFailure(
+          'Incorrect email or password.',
+          code: 'invalid-credential',
+        );
       case 'email-already-in-use':
-        return 'An account already exists with this email.';
+        return const AuthFailure(
+          'An account already exists with this email.',
+          code: 'email-already-in-use',
+        );
       case 'weak-password':
-        return 'Password should be at least 6 characters.';
+        return const AuthFailure(
+          'Password should be at least 6 characters.',
+          code: 'weak-password',
+        );
       case 'operation-not-allowed':
-        return 'This sign-in method is not enabled in Firebase yet.';
+        return const AuthFailure(
+          'This sign-in method is not enabled in Firebase yet.',
+          code: 'operation-not-allowed',
+        );
       case 'unauthorized-domain':
-        return 'This admin domain is not authorized in Firebase Authentication. Add this domain under Authorized domains.';
+        return const AuthFailure(
+          'This admin domain is not authorized in Firebase Authentication. Add this domain under Authorized domains.',
+          code: 'unauthorized-domain',
+        );
       case 'popup-blocked':
-        return 'Google Sign-In popup was blocked. Allow popups and try again.';
+        return const AuthFailure(
+          'Google Sign-In popup was blocked. Allow popups and try again.',
+          code: 'popup-blocked',
+        );
       case 'popup-closed-by-user':
-        return 'Google Sign-In popup was closed before completing sign-in.';
+        return const AuthFailure(
+          'Google Sign-In popup was closed before completing sign-in.',
+          code: 'popup-closed-by-user',
+        );
       case 'cancelled-popup-request':
-        return 'Google Sign-In popup was interrupted. Try again once.';
+        return const AuthFailure(
+          'Google Sign-In popup was interrupted. Try again once.',
+          code: 'cancelled-popup-request',
+        );
       case 'network-request-failed':
-        return 'Network issue. Please check your internet connection.';
+        return const AuthFailure(
+          'Network issue. Please check your internet connection.',
+          code: 'network-request-failed',
+        );
       case 'too-many-requests':
-        return 'Too many attempts. Please wait and try again.';
+        return const AuthFailure(
+          'Too many attempts. Please wait and try again.',
+          code: 'too-many-requests',
+        );
       default:
-        return error.message ?? 'Authentication failed. Please try again.';
+        return AuthFailure(
+          error.message ?? 'Authentication failed. Please try again.',
+          code: error.code,
+        );
     }
   }
 
-  String _mapGoogleSignInError(GoogleSignInException error) {
+  AuthFailure _mapGoogleSignInError(GoogleSignInException error) {
     switch (error.code) {
       case GoogleSignInExceptionCode.canceled:
-        return 'Google Sign-In was canceled.';
+        return const AuthFailure(
+          'Google Sign-In was canceled.',
+          code: 'google-canceled',
+        );
       case GoogleSignInExceptionCode.interrupted:
-        return 'Google Sign-In was interrupted. Please try again.';
+        return const AuthFailure(
+          'Google Sign-In was interrupted. Please try again.',
+          code: 'google-interrupted',
+        );
       case GoogleSignInExceptionCode.clientConfigurationError:
-        return 'Google Sign-In setup is incomplete. Verify Firebase OAuth client and SHA configuration.';
+        return const AuthFailure(
+          'Google Sign-In setup is incomplete. Verify Firebase OAuth client and SHA configuration.',
+          code: 'google-client-configuration-error',
+        );
       case GoogleSignInExceptionCode.providerConfigurationError:
-        return 'Google Play services or provider configuration is not ready on this device.';
+        return const AuthFailure(
+          'Google Play services or provider configuration is not ready on this device.',
+          code: 'google-provider-configuration-error',
+        );
       case GoogleSignInExceptionCode.uiUnavailable:
-        return 'Google Sign-In is not available right now. Try again from an active screen.';
+        return const AuthFailure(
+          'Google Sign-In is not available right now. Try again from an active screen.',
+          code: 'google-ui-unavailable',
+        );
       case GoogleSignInExceptionCode.userMismatch:
-        return 'Signed-in account mismatch. Please sign out and try again.';
+        return const AuthFailure(
+          'Signed-in account mismatch. Please sign out and try again.',
+          code: 'google-user-mismatch',
+        );
       case GoogleSignInExceptionCode.unknownError:
-        return error.description?.trim().isNotEmpty == true
-            ? error.description!.trim()
-            : 'Google Sign-In failed due to an unknown error.';
+        return AuthFailure(
+          error.description?.trim().isNotEmpty == true
+              ? error.description!.trim()
+              : 'Google Sign-In failed due to an unknown error.',
+          code: 'google-unknown-error',
+        );
     }
   }
 
@@ -209,14 +277,16 @@ class FirebaseAuthService {
     }
     throw const AuthFailure(
       'Authentication is not configured on this build. Complete Firebase setup for this platform first.',
+      code: 'not-configured',
     );
   }
 }
 
 class AuthFailure implements Exception {
-  const AuthFailure(this.message);
+  const AuthFailure(this.message, {this.code});
 
   final String message;
+  final String? code;
 
   @override
   String toString() => message;

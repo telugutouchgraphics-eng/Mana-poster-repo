@@ -15,12 +15,7 @@ enum SubscriptionBackendState {
   notConfigured,
 }
 
-enum SubscriptionPlanStatus {
-  active,
-  expired,
-  inactive,
-  unknown,
-}
+enum SubscriptionPlanStatus { active, expired, inactive, unknown }
 
 class SubscriptionBackendResult {
   const SubscriptionBackendResult({
@@ -52,12 +47,12 @@ class SubscriptionBackendResult {
       state == SubscriptionBackendState.verifiedFree;
   bool get isActive => status == SubscriptionPlanStatus.active;
   bool get isExpired => status == SubscriptionPlanStatus.expired;
+  bool get hasAccess => isPro && isActive;
 }
 
 class SubscriptionBackendService {
-  SubscriptionBackendService({
-    FirebaseAuth? firebaseAuth,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+  SubscriptionBackendService({FirebaseAuth? firebaseAuth})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   static const String _verifyUrl = String.fromEnvironment(
     'MANA_POSTER_SUBSCRIPTION_VERIFY_URL',
@@ -96,7 +91,9 @@ class SubscriptionBackendService {
   Future<SubscriptionBackendResult> fetchEntitlementWithCache({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && hasFreshEntitlementCache && _cachedEntitlement != null) {
+    if (!forceRefresh &&
+        hasFreshEntitlementCache &&
+        _cachedEntitlement != null) {
       return _cachedEntitlement!;
     }
     return fetchEntitlement(forceRefresh: true);
@@ -125,7 +122,7 @@ class SubscriptionBackendService {
     Duration retryDelay = const Duration(seconds: 2),
   }) async {
     var result = await fetchFreshEntitlement();
-    if (result.isPro || retryDelay <= Duration.zero) {
+    if (result.hasAccess || retryDelay <= Duration.zero) {
       return result;
     }
     await Future<void>.delayed(retryDelay);
@@ -170,7 +167,9 @@ class SubscriptionBackendService {
       );
     }
 
-    if (!forceRefresh && hasFreshEntitlementCache && _cachedEntitlement != null) {
+    if (!forceRefresh &&
+        hasFreshEntitlementCache &&
+        _cachedEntitlement != null) {
       return _cachedEntitlement!;
     }
 
@@ -264,7 +263,8 @@ class SubscriptionBackendService {
         );
       }
 
-      final isProRaw = decoded['isPro'] ?? decoded['is_pro'] ?? decoded['active'];
+      final isProRaw =
+          decoded['isPro'] ?? decoded['is_pro'] ?? decoded['active'];
       final message = decoded['message']?.toString();
       final isPro = isProRaw == true || isProRaw?.toString() == 'true';
       final expiryTime = _parseDateTime(
@@ -295,7 +295,7 @@ class SubscriptionBackendService {
         subscriptionState: decoded['subscriptionState']?.toString(),
         lastSyncedAt: _parseDateTime(decoded['lastSyncedAt']),
       );
-      await InAppPurchaseGateway.syncBackendEntitlement(result.isPro);
+      await InAppPurchaseGateway.syncBackendEntitlement(result.hasAccess);
       _cachedEntitlement = result;
       _cachedEntitlementAt = DateTime.now();
       entitlementNotifier.value = result;
@@ -399,9 +399,6 @@ class SubscriptionBackendService {
 
     final normalizedSubscriptionState =
         subscriptionState?.toString().trim().toLowerCase() ?? '';
-    if (isPro) {
-      return SubscriptionPlanStatus.active;
-    }
     if (normalizedSubscriptionState.contains('expired') ||
         normalizedSubscriptionState.contains('canceled') ||
         normalizedSubscriptionState.contains('cancelled')) {
@@ -409,6 +406,9 @@ class SubscriptionBackendService {
     }
     if (expiryTime != null && expiryTime.isBefore(DateTime.now())) {
       return SubscriptionPlanStatus.expired;
+    }
+    if (isPro) {
+      return SubscriptionPlanStatus.active;
     }
     return SubscriptionPlanStatus.inactive;
   }

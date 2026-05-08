@@ -1,11 +1,12 @@
 # PLAY STORE RELEASE CHECKLIST
 
 ## 1. Privacy Policy URL
-- [ ] MISSING in repo
+- [x] Present in app config
+- Current value: `https://manaposter.in/legal/privacy-policy.html`
 
 ## 2. Support Email
-- [ ] MISSING in repo
-- Note: `user@manaposter.app` appears in the profile UI as a fallback user email, not a support contact.
+- [x] Present in app config
+- Current value: `manaposter2026@gmail.com`
 
 ## 3. App Category
 - [ ] MISSING in repo
@@ -18,8 +19,9 @@
 - Review carefully because the app includes political poster content
 
 ## 5. Ads Declaration
-- [x] No ads SDK detected in current dependencies or Android manifest
-- Play Console answer likely: `No`
+- [x] Ads SDK detected in current dependencies and Android manifest
+- Current app uses `google_mobile_ads` with banner/rewarded flows and `AD_ID` permission
+- Play Console answer likely: `Yes`
 
 ## 6. Login Required or Not
 - [x] Required
@@ -47,8 +49,8 @@
 - [x] `36`
 
 ## 11. Current Version Name and Version Code
-- [x] Version Name: `1.0.0`
-- [x] Version Code: `1`
+- [x] Version Name: `1.0.37`
+- [x] Version Code: `44`
 
 ## 12. Missing items before Play Store testing
 - [ ] Privacy policy URL
@@ -57,4 +59,4 @@
 - [ ] Final content rating questionnaire submission
 - [ ] Final Data Safety form submission
 - [ ] Confirm whether reviewer instructions/demo account are needed
-- [ ] Confirm release signing setup for upload build; current Gradle file falls back to debug signing locally if `android/key.properties` is absent
+- [x] Release signing setup present locally via `android/key.properties`

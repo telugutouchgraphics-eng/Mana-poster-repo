@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
@@ -119,6 +119,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   final List<String> _fallbackProductIds;
   final InAppPurchase _inAppPurchase;
 
+  void _debugLog(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
   static bool get playStoreProActive => _playStoreProActive;
 
   static Future<void> syncBackendEntitlement(bool isPro) async {
@@ -148,9 +154,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       (updates) async {
         for (final purchase in updates) {
           final isAcknowledged = _isAcknowledgedForPurchase(purchase);
-          debugPrint('purchase.status=${purchase.status.name}');
-          debugPrint('productId=${purchase.productID}');
-          debugPrint('isAcknowledged=$isAcknowledged');
+          _debugLog('purchase.status=${purchase.status.name}');
+          _debugLog('productId=${purchase.productID}');
+          _debugLog('isAcknowledged=$isAcknowledged');
           if (!_trackedSubscriptionProductIds.contains(purchase.productID)) {
             continue;
           }
@@ -278,9 +284,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
       for (final purchase in response.pastPurchases) {
         final isAcknowledged = _isAcknowledgedForPurchase(purchase);
-        debugPrint('purchase.status=${purchase.status.name}');
-        debugPrint('productId=${purchase.productID}');
-        debugPrint('isAcknowledged=$isAcknowledged');
+        _debugLog('purchase.status=${purchase.status.name}');
+        _debugLog('productId=${purchase.productID}');
+        _debugLog('isAcknowledged=$isAcknowledged');
         if (!_allProductIds.contains(purchase.productID)) {
           continue;
         }
@@ -340,17 +346,17 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   void _logSelectedProductForPurchase(ProductDetails selectedDetails) {
-    debugPrint('productId=${selectedDetails.id}');
-    debugPrint(
+    _debugLog('productId=${selectedDetails.id}');
+    _debugLog(
       'isGooglePlayProduct=${selectedDetails is GooglePlayProductDetails}',
     );
     if (!kIsWeb &&
         Platform.isAndroid &&
         selectedDetails is GooglePlayProductDetails) {
       final offers = selectedDetails.productDetails.subscriptionOfferDetails;
-      debugPrint('offersCount=${offers?.length ?? 0}');
+      _debugLog('offersCount=${offers?.length ?? 0}');
       if (offers != null && offers.isNotEmpty) {
-        debugPrint('offerToken=${offers.first.offerIdToken}');
+        _debugLog('offerToken=${offers.first.offerIdToken}');
       }
     }
   }

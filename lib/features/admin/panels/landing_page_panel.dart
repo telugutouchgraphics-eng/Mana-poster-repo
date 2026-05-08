@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/admin/models/admin_content_models.dart';
 import 'package:mana_poster/features/admin/widgets/admin_panel_card.dart';
@@ -32,7 +32,7 @@ class LandingPagePanel extends StatelessWidget {
         AdminPanelCard(
           title: 'Landing Page Management',
           subtitle:
-              'Control section visibility and order for Mana Poster landing flow. This is local draft state only.',
+              'Control section visibility and order for Mana Poster Ai landing flow. This is local draft state only.',
           child: Column(
             children: <Widget>[
               Row(
@@ -221,3 +221,4 @@ class _SummaryChip extends StatelessWidget {
     );
   }
 }
+

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -18,6 +20,8 @@ import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   static final FirebaseAuthService _authService = FirebaseAuthService();
 
   PosterProfileData _posterProfile = const PosterProfileData(
-    nameTelugu: 'Mana Poster User',
+    nameTelugu: 'Mana Poster Ai User',
     nameEnglish: '',
     whatsappNumber: '',
     nameFontFamily: 'Anek Telugu Condensed Bold',
@@ -118,6 +122,44 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _shareApp(_ProfileCopy copy) async {
+    try {
+      final user = _authService.currentUser;
+      final userName = (user?.displayName?.trim().isNotEmpty ?? false)
+          ? user!.displayName!.trim()
+          : 'User';
+      final shareText =
+          '✨ Shared by $userName using ${AppPublicInfo.appName}\n'
+          'Download the app: ${AppPublicInfo.playStoreUrl}';
+      final assetData = await rootBundle.load(
+        'assets/branding/mana_poster_logo.png',
+      );
+      final tempDirectory = await getTemporaryDirectory();
+      final iconFile = File(
+        '${tempDirectory.path}${Platform.pathSeparator}mana_poster_share_app.png',
+      );
+      await iconFile.writeAsBytes(assetData.buffer.asUint8List(), flush: true);
+      if (!mounted) {
+        return;
+      }
+      final box = context.findRenderObject() as RenderBox?;
+      await Share.shareXFiles(
+        <XFile>[XFile(iconFile.path)],
+        text: shareText,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(copy.shareAppFailedMessage)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
@@ -135,7 +177,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     .copyWith(displayName: fallbackUserName)
                     .resolvedName(language: strings.language)
               : profileResolvedName);
-    final email = user?.email ?? AppPublicInfo.supportEmail;
+    final email = user?.email?.trim().isNotEmpty == true
+        ? user!.email!.trim()
+        : copy.accountEmailFallback;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -180,10 +224,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => _ProfileMoreScreen(copy: copy),
+                        builder: (_) => _ProfileMoreScreen(
+                          copy: copy,
+                          onShareApp: () => _shareApp(copy),
+                        ),
                       ),
                     );
                   },
+                ),
+                _ProfileItemData(
+                  icon: Icons.ios_share_rounded,
+                  title: copy.shareAppTitle,
+                  subtitle: copy.shareAppSubtitle,
+                  onTap: () => _shareApp(copy),
                 ),
               ],
             ),
@@ -288,7 +341,8 @@ class _ProfileHeader extends StatelessWidget {
                           ].join('|'),
                         ),
                         profile: profile!,
-                        fit: profile!.identityMode == PosterIdentityMode.business
+                        fit:
+                            profile!.identityMode == PosterIdentityMode.business
                             ? BoxFit.contain
                             : BoxFit.cover,
                         fallbackBackground: const Color(0xFFF1F5F9),
@@ -493,16 +547,7 @@ class _ProfileOptionTile extends StatelessWidget {
         ListTile(
           minTileHeight: 58,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          leading: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: iconBackground,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Icon(item.icon, color: iconColor, size: 20),
-          ),
+          leading: _buildLeading(iconBackground, iconColor),
           title: Text(
             item.title,
             style: TextStyle(
@@ -543,12 +588,93 @@ class _ProfileOptionTile extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildLeading(Color iconBackground, Color iconColor) {
+    switch (item.badge) {
+      case _ProfileItemBadge.googlePlay:
+        return Container(
+          width: 48,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B0B0B),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Image.asset(
+                'assets/branding/google_logo.png',
+                width: 15,
+                height: 15,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 4),
+              const Flexible(
+                child: Text(
+                  'Play',
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      case _ProfileItemBadge.premium:
+        return Container(
+          width: 42,
+          height: 42,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF7CC),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.workspace_premium_rounded,
+            color: Color(0xFFB45309),
+            size: 22,
+          ),
+        );
+      case _ProfileItemBadge.bell:
+        return Container(
+          width: 42,
+          height: 42,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF7CC),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.notifications_active_rounded,
+            color: Color(0xFFEAB308),
+            size: 21,
+          ),
+        );
+      case null:
+        return Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: iconBackground,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Icon(item.icon, color: iconColor, size: 20),
+        );
+    }
+  }
 }
 
 class _ProfileMoreScreen extends StatelessWidget {
-  const _ProfileMoreScreen({required this.copy});
+  const _ProfileMoreScreen({required this.copy, required this.onShareApp});
 
   final _ProfileCopy copy;
+  final Future<void> Function() onShareApp;
 
   @override
   Widget build(BuildContext context) {
@@ -582,6 +708,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                 icon: Icons.card_membership_rounded,
                 title: copy.subscriptionTitle,
                 subtitle: copy.subscriptionSubtitle,
+                badge: _ProfileItemBadge.premium,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -620,6 +747,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                 icon: Icons.notifications_none_rounded,
                 title: copy.notificationsTitle,
                 subtitle: copy.notificationsSubtitle,
+                badge: _ProfileItemBadge.bell,
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -682,6 +810,7 @@ class _ProfileItemData {
     required this.title,
     this.subtitle,
     this.isDestructive = false,
+    this.badge,
     this.onTap,
   });
 
@@ -689,8 +818,11 @@ class _ProfileItemData {
   final String title;
   final String? subtitle;
   final bool isDestructive;
+  final _ProfileItemBadge? badge;
   final VoidCallback? onTap;
 }
+
+enum _ProfileItemBadge { googlePlay, premium, bell }
 
 class _ProfileCopy {
   const _ProfileCopy(this.language, this.strings);
@@ -705,12 +837,13 @@ class _ProfileCopy {
   String get supportTitle =>
       _isTelugu ? '\u0c38\u0c39\u0c3e\u0c2f\u0c02' : strings.supportSection;
 
-  String get posterProfileTitle =>
-      _isTelugu ? 'Personal & Business Details' : 'Personal & Business Details';
+  String get posterProfileTitle => _isTelugu
+      ? 'వ్యక్తిగత & బిజినెస్ వివరాలు'
+      : 'Personal & Business Details';
   String get posterProfileSubtitle => _isTelugu
       ? 'ఫోటో, పేరు, బిజినెస్ వివరాలు అప్డేట్ చేయండి'
       : 'Update photo, personal, and business details';
-  String get moreTitle => 'More';
+  String get moreTitle => _isTelugu ? 'మరిన్ని' : 'More';
   String get moreSubtitle =>
       _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
 
@@ -723,7 +856,8 @@ class _ProfileCopy {
       _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;
   String get subscriptionSubtitle =>
       _isTelugu ? 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి' : 'View plan details';
-  String get restoreSubscriptionTitle => 'Restore subscriptions';
+  String get restoreSubscriptionTitle =>
+      _isTelugu ? 'సబ్‌స్క్రిప్షన్ రీస్టోర్ చేయండి' : 'Restore subscriptions';
   String get restoreSubscriptionSubtitle => _isTelugu
       ? 'అదే అకౌంట్ కొనుగోళ్లు మళ్లీ తెచ్చుకోండి'
       : 'Restore purchases for this account';
@@ -740,6 +874,17 @@ class _ProfileCopy {
   String? get notificationsSubtitle =>
       _isTelugu ? 'అలర్ట్ సెట్టింగ్స్' : 'Notification preferences';
 
+  String get shareAppTitle => _isTelugu ? 'యాప్ షేర్ చేయండి' : 'Share App';
+  String get shareAppSubtitle => _isTelugu
+      ? 'యాప్ ఐకాన్, ప్లే స్టోర్ లింక్‌ను పంచుకోండి'
+      : 'Share the app icon and Play Store link';
+  String get shareAppFailedMessage => _isTelugu
+      ? 'యాప్ షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి'
+      : 'App share failed. Please try again.';
+  String get accountEmailFallback => _isTelugu
+      ? 'ఈ అకౌంట్‌కు ఇమెయిల్ అందుబాటులో లేదు'
+      : 'Email not available for this account';
+
   String get helpTitle => _isTelugu
       ? '\u0c39\u0c46\u0c32\u0c4d\u0c2a\u0c4d \u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d'
       : strings.helpSupport;
@@ -755,7 +900,9 @@ class _ProfileCopy {
   String get logoutSubtitle => _isTelugu
       ? 'ఈ డివైస్‌లో మీ అకౌంట్ నుంచి బయటకు రండి'
       : 'Sign out from this device';
-  String get logoutFailedMessage => 'Logout failed. Please try again.';
+  String get logoutFailedMessage => _isTelugu
+      ? 'లాగ్ అవుట్ కాలేదు. మళ్లీ ప్రయత్నించండి.'
+      : 'Logout failed. Please try again.';
   String get deleteAccountTitle =>
       _isTelugu ? 'అకౌంట్ డిలీట్' : 'Delete account';
   String get deleteAccountSubtitle => _isTelugu

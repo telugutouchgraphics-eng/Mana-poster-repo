@@ -4,13 +4,24 @@ import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
-class AboutAppScreen extends StatelessWidget {
+class AboutAppScreen extends StatefulWidget {
   const AboutAppScreen({super.key});
 
-  static const String _versionName = '1.0.13';
-  static const String _buildNumber = '17';
+  @override
+  State<AboutAppScreen> createState() => _AboutAppScreenState();
+}
+
+class _AboutAppScreenState extends State<AboutAppScreen> {
   static const String _supportEmail = AppPublicInfo.supportEmail;
+  Future<PackageInfo>? _packageInfoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,31 +165,44 @@ class AboutAppScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final stacked = constraints.maxWidth < 340;
-                        final cardWidth = stacked
-                            ? constraints.maxWidth
-                            : (constraints.maxWidth - 10) / 2;
-                        return Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: <Widget>[
-                            SizedBox(
-                              width: cardWidth,
-                              child: _HeroStatCard(
-                                label: copy.versionPill,
-                                value: _versionName,
-                              ),
-                            ),
-                            SizedBox(
-                              width: cardWidth,
-                              child: _HeroStatCard(
-                                label: copy.buildPill,
-                                value: _buildNumber,
-                              ),
-                            ),
-                          ],
+                    FutureBuilder<PackageInfo>(
+                      future: _packageInfoFuture,
+                      builder: (context, snapshot) {
+                        final versionName =
+                            snapshot.data?.version.trim().isNotEmpty == true
+                            ? snapshot.data!.version.trim()
+                            : 'Unknown';
+                        final buildNumber =
+                            snapshot.data?.buildNumber.trim().isNotEmpty == true
+                            ? snapshot.data!.buildNumber.trim()
+                            : 'Unknown';
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stacked = constraints.maxWidth < 340;
+                            final cardWidth = stacked
+                                ? constraints.maxWidth
+                                : (constraints.maxWidth - 10) / 2;
+                            return Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: <Widget>[
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _HeroStatCard(
+                                    label: copy.versionPill,
+                                    value: versionName,
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: cardWidth,
+                                  child: _HeroStatCard(
+                                    label: copy.buildPill,
+                                    value: buildNumber,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
                     ),
@@ -537,7 +561,7 @@ class _AboutCopy {
     malayalam: 'ആപ്പിനെക്കുറിച്ച്',
   );
 
-  String get appName => 'Mana Poster';
+  String get appName => AppPublicInfo.appName;
 
   String get heroSubtitle => strings.localized(
     telugu: 'పోస్టర్లు సులభంగా రూపొందించుకునే తెలుగునే ప్రధానంగా ఉంచిన యాప్',
@@ -551,17 +575,17 @@ class _AboutCopy {
 
   String get heroBody => strings.localized(
     telugu:
-        'Mana Poster ద్వారా శుభాకాంక్షలు, పండుగ పోస్టర్లు, వ్యాపార ప్రచార డిజైన్లు, భక్తి పోస్టర్లు, ప్రత్యేక సందర్భాల పోస్టర్లు వంటి వాటిని వేగంగా ఎంచుకుని మీ వివరాలతో వ్యక్తిగతంగా మార్చుకోవచ్చు. మొబైల్‌లోనే చూసి, ఎంపిక చేసి, సవరించి, ఇతరులతో పంచుకోవడానికి సరళమైన పని విధానం ఈ యాప్‌లో అందుబాటులో ఉంటుంది.',
+        'Mana Poster Ai ద్వారా శుభాకాంక్షలు, పండుగ పోస్టర్లు, వ్యాపార ప్రచార డిజైన్లు, భక్తి పోస్టర్లు, ప్రత్యేక సందర్భాల పోస్టర్లు వంటి వాటిని వేగంగా ఎంచుకుని మీ వివరాలతో వ్యక్తిగతంగా మార్చుకోవచ్చు. మొబైల్‌లోనే చూసి, ఎంపిక చేసి, సవరించి, ఇతరులతో పంచుకోవడానికి సరళమైన పని విధానం ఈ యాప్‌లో అందుబాటులో ఉంటుంది.',
     english:
-        'Mana Poster helps users quickly choose, personalize, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app is built around a simple mobile workflow for browsing, editing, and sharing in one place.',
+        'Mana Poster Ai helps users quickly choose, personalize, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app is built around a simple mobile workflow for browsing, editing, and sharing in one place.',
     hindi:
-        'Mana Poster की मदद से शुभकामना पोस्टर, त्योहार डिज़ाइन, बिज़नेस प्रमोशन पोस्टर, भक्ति पोस्टर और खास मौकों के पोस्टर जल्दी चुनकर अपनी जानकारी के साथ निजी रूप में तैयार किए जा सकते हैं। मोबाइल पर ही देखना, चुनना, संपादित करना और साझा करना आसान बनाया गया है।',
+        'Mana Poster Ai की मदद से शुभकामना पोस्टर, त्योहार डिज़ाइन, बिज़नेस प्रमोशन पोस्टर, भक्ति पोस्टर और खास मौकों के पोस्टर जल्दी चुनकर अपनी जानकारी के साथ निजी रूप में तैयार किए जा सकते हैं। मोबाइल पर ही देखना, चुनना, संपादित करना और साझा करना आसान बनाया गया है।',
     tamil:
-        'Mana Poster மூலம் வாழ்த்து போஸ்டர்கள், திருவிழா வடிவங்கள், வணிக விளம்பர போஸ்டர்கள், பக்தி போஸ்டர்கள் மற்றும் சிறப்பு நாள் வடிவங்களை விரைவாக தேர்வு செய்து, உங்கள் விவரங்களுடன் தனிப்பயனாக்கலாம். மொபைலில் பார்த்து, தேர்வு செய்து, திருத்தி, பகிர்வதற்கான எளிய நடைமுறை இந்த ஆப்பில் உள்ளது.',
+        'Mana Poster Ai மூலம் வாழ்த்து போஸ்டர்கள், திருவிழா வடிவங்கள், வணிக விளம்பர போஸ்டர்கள், பக்தி போஸ்டர்கள் மற்றும் சிறப்பு நாள் வடிவங்களை விரைவாக தேர்வு செய்து, உங்கள் விவரங்களுடன் தனிப்பயனாக்கலாம். மொபைலில் பார்த்து, தேர்வு செய்து, திருத்தி, பகிர்வதற்கான எளிய நடைமுறை இந்த ஆப்பில் உள்ளது.',
     kannada:
-        'Mana Poster ಮೂಲಕ ಶುಭಾಶಯ ಪೋಸ್ಟರ್‌ಗಳು, ಹಬ್ಬದ ವಿನ್ಯಾಸಗಳು, ವ್ಯವಹಾರ ಪ್ರಚಾರ ಪೋಸ್ಟರ್‌ಗಳು, ಭಕ್ತಿಪರ ಪೋಸ್ಟರ್‌ಗಳು ಮತ್ತು ವಿಶೇಷ ಸಂದರ್ಭಗಳ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ವೇಗವಾಗಿ ಆಯ್ಕೆ ಮಾಡಿ ನಿಮ್ಮ ವಿವರಗಳೊಂದಿಗೆ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು. ಮೊಬೈಲ್‌ನಲ್ಲೇ ನೋಡಲು, ಆಯ್ಕೆ ಮಾಡಲು, ತಿದ್ದುಪಡಿ ಮಾಡಲು ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಲು ಸರಳವಾದ ಕ್ರಮವನ್ನು ಈ ಆಪ್ ನೀಡುತ್ತದೆ.',
+        'Mana Poster Ai ಮೂಲಕ ಶುಭಾಶಯ ಪೋಸ್ಟರ್‌ಗಳು, ಹಬ್ಬದ ವಿನ್ಯಾಸಗಳು, ವ್ಯವಹಾರ ಪ್ರಚಾರ ಪೋಸ್ಟರ್‌ಗಳು, ಭಕ್ತಿಪರ ಪೋಸ್ಟರ್‌ಗಳು ಮತ್ತು ವಿಶೇಷ ಸಂದರ್ಭಗಳ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ವೇಗವಾಗಿ ಆಯ್ಕೆ ಮಾಡಿ ನಿಮ್ಮ ವಿವರಗಳೊಂದಿಗೆ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು. ಮೊಬೈಲ್‌ನಲ್ಲೇ ನೋಡಲು, ಆಯ್ಕೆ ಮಾಡಲು, ತಿದ್ದುಪಡಿ ಮಾಡಲು ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಲು ಸರಳವಾದ ಕ್ರಮವನ್ನು ಈ ಆಪ್ ನೀಡುತ್ತದೆ.',
     malayalam:
-        'Mana Poster ഉപയോഗിച്ച് ആശംസാ പോസ്റ്ററുകൾ, ഉത്സവ ഡിസൈനുകൾ, ബിസിനസ് പ്രമോഷൻ പോസ്റ്ററുകൾ, ഭക്തിപരമായ പോസ്റ്ററുകൾ, പ്രത്യേക ദിവസങ്ങളിലെ പോസ്റ്ററുകൾ എന്നിവ വേഗത്തിൽ തിരഞ്ഞെടുക്കി നിങ്ങളുടെ വിവരങ്ങൾ ചേർത്ത് വ്യക്തിപരമാക്കാം. മൊബൈലിൽ തന്നെ കാണുക, തിരഞ്ഞെടുക്കുക, തിരുത്തുക, പങ്കിടുക എന്ന ലളിതമായ പ്രവൃത്തി രീതിയാണ് ഈ ആപ്പിന്റെ പ്രത്യേകത.',
+        'Mana Poster Ai ഉപയോഗിച്ച് ആശംസാ പോസ്റ്ററുകൾ, ഉത്സവ ഡിസൈനുകൾ, ബിസിനസ് പ്രമോഷൻ പോസ്റ്ററുകൾ, ഭക്തിപരമായ പോസ്റ്ററുകൾ, പ്രത്യേക ദിവസങ്ങളിലെ പോസ്റ്ററുകൾ എന്നിവ വേഗത്തിൽ തിരഞ്ഞെടുക്കി നിങ്ങളുടെ വിവരങ്ങൾ ചേർത്ത് വ്യക്തിപരമാക്കാം. മൊബൈലിൽ തന്നെ കാണുക, തിരഞ്ഞെടുക്കുക, തിരുത്തുക, പങ്കിടുക എന്ന ലളിതമായ പ്രവൃത്തി രീതിയാണ് ഈ ആപ്പിന്റെ പ്രത്യേകത.',
   );
 
   String get teluguFirstPill => strings.localized(

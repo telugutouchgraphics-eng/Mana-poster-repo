@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -190,11 +190,11 @@ class FirebaseAdminAuthService implements AdminAuthRepository {
   String _unauthorizedMessage(AdminPortalRole role) {
     switch (role) {
       case AdminPortalRole.admin:
-        return 'This account is signed in, but it does not have Mana Poster admin access.';
+        return 'This account is signed in, but it does not have Mana Poster Ai admin access.';
       case AdminPortalRole.manager:
-        return 'This account is signed in, but it does not have Mana Poster manager access.';
+        return 'This account is signed in, but it does not have Mana Poster Ai manager access.';
       case AdminPortalRole.creator:
-        return 'This account is signed in, but it does not have Mana Poster creator access.';
+        return 'This account is signed in, but it does not have Mana Poster Ai creator access.';
     }
   }
 
@@ -218,3 +218,4 @@ class AdminAuthFailure implements Exception {
   @override
   String toString() => message;
 }
+

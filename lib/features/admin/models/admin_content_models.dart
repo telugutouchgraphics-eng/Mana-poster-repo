@@ -1,4 +1,4 @@
-class LandingSectionDraft {
+﻿class LandingSectionDraft {
   LandingSectionDraft({
     required this.id,
     required this.label,
@@ -308,9 +308,9 @@ class AdminLandingDraft {
       ],
       faqItems: <FaqDraft>[
         FaqDraft(
-          question: 'What is Mana Poster?',
+          question: 'What is Mana Poster Ai?',
           answer:
-              'Mana Poster is an Android app to create and customize Telugu posters quickly.',
+              'Mana Poster Ai is an Android app to create and customize Telugu posters quickly.',
         ),
         FaqDraft(
           question: 'Can I share posters directly to WhatsApp?',
@@ -325,7 +325,7 @@ class AdminLandingDraft {
       ],
       footer: FooterContentDraft(
         description:
-            'Mana Poster helps creators publish Telugu festival, devotional, birthday and event posters faster.',
+            'Mana Poster Ai helps creators publish Telugu festival, devotional, birthday and event posters faster.',
         supportEmail: 'manaposter2026@gmail.com',
         supportPhone: '',
         privacyLink: 'https://manaposter.in/legal/privacy-policy.html',
@@ -369,7 +369,7 @@ class AdminLandingDraft {
         canonicalUrl: 'https://manaposter.in',
       ),
       settings: AdminSettingsDraft(
-        brandName: 'Mana Poster',
+        brandName: 'Mana Poster Ai',
         tagline: 'Create Telugu posters faster for every event',
         accentTheme: 'saffron-pink',
         showSupportEmail: true,
@@ -381,3 +381,4 @@ class AdminLandingDraft {
     );
   }
 }
+

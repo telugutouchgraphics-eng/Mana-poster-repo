@@ -7,11 +7,12 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/app.dart';
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
-import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
@@ -38,48 +39,15 @@ Future<void> main() async {
     _attachFrameProfiler();
   }
 
-  if (_isPublicWebLandingBootstrap()) {
-    runApp(const ManaPosterApp(initialLanguage: AppLanguage.english));
-    unawaited(FirebaseBootstrap.ensureInitialized());
-    return;
-  }
-
   await FirebaseBootstrap.ensureInitialized();
   await _configureFirebaseMonitoring();
 
-  if (Firebase.apps.isNotEmpty && !kIsWeb) {
-    await NotificationService.instance.initialize();
-    unawaited(OfflineBackgroundRemovalService.warmUp());
-    unawaited(InAppPurchaseGateway().initialize());
-  }
-  if (Firebase.apps.isNotEmpty) {
-    await DeviceSessionService.instance.start();
-    unawaited(
-      SubscriptionBackendService().refreshEntitlementInBackground(
-        forceRefresh: true,
-        clearCacheFirst: true,
-      ),
-    );
-    _subscriptionLifecycleListener ??= AppLifecycleListener(
-      onResume: () {
-        unawaited(
-          SubscriptionBackendService().refreshEntitlementInBackground(
-            forceRefresh: true,
-            clearCacheFirst: true,
-          ),
-        );
-      },
-    );
-  }
-
   final snapshot = await AppFlowService.loadSnapshot();
-  if (Firebase.apps.isNotEmpty) {
-    unawaited(AppFlowService.syncStoredLanguageToRemote());
-  }
 
   runZonedGuarded(
     () {
       runApp(ManaPosterApp(initialLanguage: snapshot.language));
+      unawaited(_runPostLaunchInitialization());
     },
     (error, stackTrace) {
       if (Firebase.apps.isNotEmpty && !kIsWeb) {
@@ -95,6 +63,41 @@ Future<void> main() async {
         name: 'app.errors',
         error: error,
         stackTrace: stackTrace,
+      );
+    },
+  );
+}
+
+Future<void> _runPostLaunchInitialization() async {
+  if (Firebase.apps.isEmpty) {
+    return;
+  }
+
+  if (!kIsWeb) {
+    await NotificationService.instance.initialize();
+    unawaited(OfflineBackgroundRemovalService.warmUp());
+    unawaited(InAppPurchaseGateway().initialize());
+    if (AppPublicInfo.hasAnyAdMobConfig) {
+      unawaited(MobileAds.instance.initialize());
+    }
+  }
+
+  await DeviceSessionService.instance.start();
+  unawaited(
+    SubscriptionBackendService().refreshEntitlementInBackground(
+      forceRefresh: true,
+      clearCacheFirst: true,
+    ),
+  );
+  unawaited(AppFlowService.syncStoredLanguageToRemote());
+  _subscriptionLifecycleListener ??= AppLifecycleListener(
+    onResume: () {
+      unawaited(NotificationService.instance.syncCurrentPreferences());
+      unawaited(
+        SubscriptionBackendService().refreshEntitlementInBackground(
+          forceRefresh: true,
+          clearCacheFirst: true,
+        ),
       );
     },
   );
@@ -123,24 +126,6 @@ Future<void> _configureFirebaseMonitoring() async {
     FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
     return true;
   };
-}
-
-bool _isPublicWebLandingBootstrap() {
-  if (!kIsWeb) {
-    return false;
-  }
-  final Uri uri = Uri.base;
-  final String host = uri.host.toLowerCase();
-  final String path = uri.path.toLowerCase();
-  final bool adminHost =
-      host == 'admin.manaposter.in' ||
-      host == 'webapp.manaposter.in' ||
-      host == 'creator.manaposter.in' ||
-      host == 'manager.manaposter.in' ||
-      host == 'mana-poster-admin.web.app';
-  final bool adminPath =
-      path == '/website-admin' || path.startsWith('/website-admin/');
-  return !adminHost && !adminPath;
 }
 
 void _attachFrameProfiler() {

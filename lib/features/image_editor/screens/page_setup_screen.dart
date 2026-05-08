@@ -5,7 +5,9 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/background_presets.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/models/editor_stage_background.dart';
-import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
+import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
+    if (dart.library.io)
+        'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 
 enum _UnitMode { pixels, inches }
 

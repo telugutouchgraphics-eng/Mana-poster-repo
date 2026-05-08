@@ -3,6 +3,20 @@ part of 'image_editor_screen.dart';
 // ignore_for_file: unused_element
 
 extension _EditorExportState on _ImageEditorScreenState {
+  void _debugLog(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
+  void _debugLogStack(String message, StackTrace stackTrace) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(message);
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
   Future<ui.Image?> _loadWatermarkLogo() async {
     final existing = _watermarkLogoImage;
     if (existing != null) {
@@ -40,7 +54,7 @@ extension _EditorExportState on _ImageEditorScreenState {
 
     final watermarkText = TextPainter(
       text: const TextSpan(
-        text: 'Mana Poster',
+        text: 'Mana Poster Ai',
         style: TextStyle(
           color: Colors.white,
           fontSize: 18,
@@ -281,200 +295,6 @@ extension _EditorExportState on _ImageEditorScreenState {
     return freshDecision ?? false;
   }
 
-  /*
-  Future<bool> _handlePaywallAction({
-    required Uint8List? previewBytes,
-    required bool forExport,
-  }) async {
-    if (!mounted) {
-      return false;
-    }
-    final decision = await Navigator.of(context).push<ExportPaywallDecision>(
-      MaterialPageRoute<ExportPaywallDecision>(
-        fullscreenDialog: true,
-        builder: (BuildContext context) => ExportPaywallScreen(
-          previewBytes: previewBytes,
-          isProUser: _isProUser,
-          forExport: forExport,
-        ),
-      ),
-    );
-    if (!mounted ||
-        decision == null ||
-        decision == ExportPaywallDecision.cancel) {
-      return false;
-    }
-
-    if (decision == ExportPaywallDecision.freeWithWatermark) {
-      return forExport;
-    }
-    if (decision == ExportPaywallDecision.upgradeAndExport) {
-      final outcome = await _purchaseGateway.purchaseMonthlyPro();
-      final result = outcome.result;
-      if (!mounted) {
-        return false;
-      }
-      if (result == PurchaseFlowResult.success) {
-        final isActivated = await _verifyEntitlementAfterPurchase(
-          outcome.evidence,
-        );
-        if (!mounted) {
-          return false;
-        }
-        if (!isActivated) {
-          return false;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.strings.localized(
-                telugu: 'ప్రో విజయవంతంగా యాక్టివ్ అయింది',
-                english: 'Pro activated successfully',
-              ),
-            ),
-          ),
-        );
-        return forExport;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(switch (result) {
-            PurchaseFlowResult.cancelled => context.strings.localized(
-              telugu: 'పేమెంట్ రద్దు చేశారు',
-              english: 'Payment cancelled',
-            ),
-            PurchaseFlowResult.failed => context.strings.localized(
-              telugu: 'పేమెంట్ విఫలమైంది',
-              english: 'Payment failed',
-            ),
-            PurchaseFlowResult.billingUnavailable => context.strings.localized(
-              telugu: 'బిల్లింగ్ సర్వీస్ అందుబాటులో లేదు. కొద్దిసేపటికి మళ్లీ ప్రయత్నించండి',
-              english: 'Billing service unavailable. Please try again shortly',
-            ),
-            PurchaseFlowResult.productNotFound => context.strings.localized(
-              telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్ స్టోర్‌లో కనిపించలేదు. సపోర్ట్‌ని సంప్రదించండి',
-              english: 'Subscription plan not found in the store. Contact support',
-            ),
-            PurchaseFlowResult.timedOut => context.strings.localized(
-              telugu: 'పేమెంట్ స్పందన ఆలస్యం అయింది. కొనుగోలు చరిత్ర చూసి మళ్లీ ప్రయత్నించండి',
-              english: 'Payment response timed out. Check purchase history and try again',
-            ),
-            PurchaseFlowResult.nothingToRestore => context.strings.localized(
-              telugu: 'రిస్టోర్ చేయడానికి కొనుగోలు కనిపించలేదు',
-              english: 'No purchase found to restore',
-            ),
-            PurchaseFlowResult.success => '',
-          }),
-        ),
-      );
-      return false;
-    }
-    if (decision == ExportPaywallDecision.restorePurchase) {
-      final restoreOutcome = await _purchaseGateway.restorePurchases();
-      final restoreResult = restoreOutcome.result;
-      if (!mounted) {
-        return false;
-      }
-      if (restoreResult == PurchaseFlowResult.success) {
-        final isActivated = await _verifyEntitlementAfterPurchase(
-          restoreOutcome.evidence,
-        );
-        if (!mounted) {
-          return false;
-        }
-        if (!isActivated) {
-          return false;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.strings.localized(
-                telugu: 'కొనుగోలు రిస్టోర్ అయింది',
-                english: 'Purchase restored',
-              ),
-            ),
-          ),
-        );
-        return forExport;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(switch (restoreResult) {
-            PurchaseFlowResult.billingUnavailable => context.strings.localized(
-              telugu:
-                  'బిల్లింగ్ సేవ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
-              english: 'Billing service is unavailable. Please try again later.',
-              hindi:
-                  'बिलिंग सेवा अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर से प्रयास करें।',
-              tamil:
-                  'பில்லிங் சேவை தற்போது கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
-              kannada:
-                  'ಬಿಲ್ಲಿಂಗ್ ಸೇವೆ ಈಗ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-              malayalam:
-                  'ബില്ലിംഗ് സേവനം ഇപ്പോൾ ലഭ്യമല്ല. കുറച്ച് സമയത്തിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.',
-            ),
-            PurchaseFlowResult.failed => context.strings.localized(
-              telugu: 'రీస్టోర్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి',
-              english: 'Restore failed. Please try again.',
-              hindi: 'रिस्टोर विफल हुआ। कृपया फिर से प्रयास करें।',
-              tamil: 'ரிஸ்டோர் தோல்வியடைந்தது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.',
-              kannada: 'ರಿಸ್ಟೋರ್ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-              malayalam: 'റിസ്റ്റോർ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
-            ),
-            PurchaseFlowResult.cancelled => context.strings.localized(
-              telugu: 'రీస్టోర్ ప్రక్రియ రద్దు అయింది',
-              english: 'Restore process was cancelled',
-              hindi: 'रिस्टोर प्रक्रिया रद्द हो गई',
-              tamil: 'ரிஸ்டோர் செயல்முறை ரத்து செய்யப்பட்டது',
-              kannada: 'ರಿಸ್ಟೋರ್ ಪ್ರಕ್ರಿಯೆ ರದ್ದಾಯಿತು',
-              malayalam: 'റിസ്റ്റോർ പ്രക്രിയ റദ്ദാക്കി',
-            ),
-            PurchaseFlowResult.productNotFound => context.strings.localized(
-              telugu: 'రీస్టోర్‌కు అవసరమైన ప్రోడక్ట్ వివరాలు కనిపించలేదు',
-              english: 'Product details needed for restore were not found',
-              hindi: 'रिस्टोर के लिए जरूरी प्रोडक्ट विवरण नहीं मिले',
-              tamil: 'ரிஸ்டோருக்கு தேவையான தயாரிப்பு விவரங்கள் கிடைக்கவில்லை',
-              kannada: 'ರಿಸ್ಟೋರ್‌ಗೆ ಬೇಕಾದ ಉತ್ಪನ್ನ ವಿವರಗಳು ಸಿಗಲಿಲ್ಲ',
-              malayalam: 'റിസ്റ്റോറിന് ആവശ്യമായ പ്രൊഡക്റ്റ് വിശദാംശങ്ങൾ ലഭിച്ചില്ല',
-            ),
-            PurchaseFlowResult.timedOut => context.strings.localized(
-              telugu:
-                  'రీస్టోర్ స్పందన ఆలస్యమైంది. దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి',
-              english: 'Restore response timed out. Please try again later.',
-              hindi:
-                  'रिस्टोर प्रतिक्रिया में समय लग गया। कृपया थोड़ी देर बाद फिर से प्रयास करें।',
-              tamil:
-                  'ரிஸ்டோர் பதில் நேரம் முடிந்தது. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
-              kannada:
-                  'ರಿಸ್ಟೋರ್ ಪ್ರತಿಕ್ರಿಯೆಗೆ ಸಮಯ ಮೀರಿದೆ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-              malayalam:
-                  'റിസ്റ്റോർ പ്രതികരണം വൈകി. കുറച്ച് സമയത്തിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.',
-            ),
-            PurchaseFlowResult.nothingToRestore => context.strings.localized(
-              telugu: 'రీస్టోర్ చేయడానికి యాక్టివ్ ప్లాన్ కనిపించలేదు',
-              english: 'No active plan found to restore',
-              hindi: 'रिस्टोर करने के लिए कोई एक्टिव प्लान नहीं मिला',
-              tamil: 'ரிஸ்டோர் செய்ய எந்த செயலில் உள்ள திட்டமும் கிடைக்கவில்லை',
-              kannada: 'ರಿಸ್ಟೋರ್ ಮಾಡಲು ಯಾವುದೇ ಸಕ್ರಿಯ ಪ್ಲಾನ್ ಸಿಗಲಿಲ್ಲ',
-              malayalam: 'റിസ്റ്റോർ ചെയ്യാൻ സജീവ പ്ലാൻ കണ്ടെത്താനായില്ല',
-            ),
-            PurchaseFlowResult.success => context.strings.localized(
-              telugu: 'కొనుగోలు రీస్టోర్ అయింది',
-              english: 'Purchase restored',
-              hindi: 'खरीदारी रिस्टोर हो गई',
-              tamil: 'வாங்குதல் ரிஸ்டோர் செய்யப்பட்டது',
-              kannada: 'ಖರೀದಿ ರಿಸ್ಟೋರ್ ಆಯಿತು',
-              malayalam: 'വാങ്ങൽ റിസ്റ്റോർ ചെയ്തു',
-            ),
-          }),
-        ),
-      );
-      return false;
-    }
-    return false;
-  }
-
-  */
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
     const topInset = _canvasChromeInset;
@@ -583,6 +403,10 @@ extension _EditorExportState on _ImageEditorScreenState {
       telugu: 'ఎగుమతి ప్రాంతం సిద్ధంగా లేదు',
       english: 'Export boundary not ready',
     );
+    final exportSaveFailedMessage = context.strings.localized(
+      telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి',
+      english: 'File save failed. Please try again.',
+    );
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     try {
       final exportedBytes = await _runQueuedCommitJob<Uint8List>(
@@ -604,6 +428,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           unawaited(ScreenSecurityService.enableSecure());
         },
         operation: () async {
+          File? tempFile;
           if (format == _ExportImageFormat.pngTransparent) {
             if (mounted) {
               setState(() {
@@ -640,33 +465,55 @@ extension _EditorExportState on _ImageEditorScreenState {
           final tempDirectory = await getTemporaryDirectory();
           final tempPath =
               '${tempDirectory.path}${Platform.pathSeparator}$fileName';
-          final tempFile = File(tempPath);
-          await tempFile.writeAsBytes(exportedBytes, flush: true);
-          debugPrint('editor export bytes=${exportedBytes.length}');
-          final isSuccess = await MediaExportService.saveImageFileToGallery(
-            tempFile.path,
-            fileName: fileName,
-          );
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(_exportResultMessage(isSuccess: isSuccess)),
-                action: isSuccess
-                    ? SnackBarAction(
-                        label: context.strings.localized(
-                          telugu: _isSharing ? 'షేర్ అవుతోంది...' : 'షేర్',
-                          english: _isSharing ? 'Sharing...' : 'Share',
-                        ),
-                        onPressed: _isSharing
-                            ? () {}
-                            : () => _shareLatestPoster(
-                                exportedBytes,
-                                format: format,
-                              ),
-                      )
-                    : null,
-              ),
+          try {
+            tempFile = File(tempPath);
+            await tempFile.writeAsBytes(exportedBytes, flush: true);
+            _debugLog('editor export bytes=${exportedBytes.length}');
+            final saveResult =
+                await MediaExportService.saveImageFileToGalleryDetailed(
+                  tempFile.path,
+                  fileName: fileName,
+                );
+            _debugLog(
+              'editor export save result: success=${saveResult.success}, code=${saveResult.code}, message=${saveResult.message}',
             );
+            if (mounted) {
+              final isSuccess = saveResult.success;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _exportResultMessage(
+                      isSuccess: isSuccess,
+                      saveResult: saveResult,
+                      permissionDeniedMessage: exportPermissionMessage,
+                      captureFailedMessage: exportBoundaryMessage,
+                      saveFailedMessage: exportSaveFailedMessage,
+                    ),
+                  ),
+                  action: isSuccess
+                      ? SnackBarAction(
+                          label: context.strings.localized(
+                            telugu: _isSharing ? 'షేర్ అవుతోంది...' : 'షేర్',
+                            english: _isSharing ? 'Sharing...' : 'Share',
+                          ),
+                          onPressed: _isSharing
+                              ? () {}
+                              : () => _shareLatestPoster(
+                                  exportedBytes,
+                                  format: format,
+                                ),
+                        )
+                      : null,
+                ),
+              );
+            }
+          } catch (error, stackTrace) {
+            _debugLogStack('editor export failed: $error', stackTrace);
+            rethrow;
+          } finally {
+            if (tempFile != null) {
+              unawaited(_deleteTempFile(tempFile));
+            }
           }
           return exportedBytes;
         },
@@ -683,7 +530,8 @@ extension _EditorExportState on _ImageEditorScreenState {
           ),
         );
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _debugLogStack('editor export outer failed: $error', stackTrace);
       if (!mounted) {
         return;
       }
@@ -716,11 +564,33 @@ extension _EditorExportState on _ImageEditorScreenState {
     );
   }
 
-  String _exportResultMessage({required bool isSuccess}) {
+  String _exportResultMessage({
+    required bool isSuccess,
+    MediaExportResult? saveResult,
+    required String permissionDeniedMessage,
+    required String captureFailedMessage,
+    required String saveFailedMessage,
+  }) {
     if (isSuccess) {
       return 'Poster saved to gallery';
     }
-    return 'Export failed. Please try again.';
+    switch (saveResult?.code) {
+      case 'permission_denied':
+        return permissionDeniedMessage;
+      case 'capture_failed':
+        return captureFailedMessage;
+      case 'file_missing':
+      case 'write_failed':
+      case 'open_output_failed':
+      case 'media_insert_failed':
+      case 'directory_create_failed':
+      case 'save_failed':
+      case 'platform_exception':
+      case 'empty_result':
+        return saveFailedMessage;
+      default:
+        return 'Export failed. Please try again.';
+    }
   }
 
   double _exportPixelRatio(double devicePixelRatio) {
@@ -743,11 +613,12 @@ extension _EditorExportState on _ImageEditorScreenState {
     setState(() {
       _isSharing = true;
     });
+    File? tempShareFile;
     try {
       await ScreenSecurityService.disableSecure();
       await WidgetsBinding.instance.endOfFrame;
       await Future<void>.delayed(const Duration(milliseconds: 80));
-      debugPrint('editor share bytes=${imageBytes.length}');
+      _debugLog('editor share bytes=${imageBytes.length}');
       if (!mounted) {
         return;
       }
@@ -756,17 +627,17 @@ extension _EditorExportState on _ImageEditorScreenState {
       final filePath =
           '${directory.path}${Platform.pathSeparator}mana_poster_share.${_exportFileExtension(format)}';
       final file = File(filePath);
+      tempShareFile = file;
       await file.writeAsBytes(imageBytes, flush: true);
       await MediaExportService.shareImageFile(
         file.path,
-        text: 'Mana Poster',
+        text: 'Mana Poster Ai',
         sharePositionOrigin: box == null
             ? null
             : box.localToGlobal(Offset.zero) & box.size,
       );
     } catch (error, stackTrace) {
-      debugPrint('editor share failed: $error');
-      debugPrint('$stackTrace');
+      _debugLogStack('editor share failed: $error', stackTrace);
       if (!mounted) {
         return;
       }
@@ -786,7 +657,20 @@ extension _EditorExportState on _ImageEditorScreenState {
           _isSharing = false;
         });
       }
+      if (tempShareFile != null) {
+        unawaited(_deleteTempFile(tempShareFile));
+      }
       await ScreenSecurityService.enableSecure();
+    }
+  }
+
+  Future<void> _deleteTempFile(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (error, stackTrace) {
+      _debugLogStack('temp file cleanup failed: $error', stackTrace);
     }
   }
 

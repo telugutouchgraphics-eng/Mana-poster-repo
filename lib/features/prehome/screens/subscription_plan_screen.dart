@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -47,7 +48,14 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool _busyFree = false;
   bool _busyRestore = false;
   bool _didAutoStartPurchase = false;
+  bool _didAutoTriggerRestore = false;
   bool _didAttemptSilentStoreSync = false;
+
+  void _debugLog(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
 
   bool get _isBusy => _loading || _busyFree || _busyRestore;
   bool get _isSubscriptionActive => _backendResult?.isActive == true;
@@ -63,11 +71,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       _handleEntitlementChanged,
     );
     unawaited(_loadStatus());
-    if (widget.triggerRestoreOnOpen) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(_restoreSubscriptions());
-      });
-    }
   }
 
   @override
@@ -107,9 +110,12 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       _didAttemptSilentStoreSync = true;
       unawaited(_syncExistingSubscriptionSilently());
     }
-    if (widget.startPurchaseOnOpen &&
-        !_didAutoStartPurchase &&
-        _canSubscribe) {
+    if (widget.triggerRestoreOnOpen && !_didAutoTriggerRestore) {
+      _didAutoTriggerRestore = true;
+      unawaited(_restoreSubscriptions());
+      return;
+    }
+    if (widget.startPurchaseOnOpen && !_didAutoStartPurchase && _canSubscribe) {
       _didAutoStartPurchase = true;
       unawaited(_subscribeFreePlan());
     }
@@ -150,8 +156,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!available) {
         return null;
       }
+      const envProductId = String.fromEnvironment(
+        'MANA_POSTER_PRO_PRODUCT_ID',
+        defaultValue: '',
+      );
       final ids = <String>{
         SubscriptionPlanConfig.primaryMonthlyProductId,
+        if (envProductId.isNotEmpty) envProductId,
       };
       final response = await store.queryProductDetails(ids);
       if (response.productDetails.isEmpty) {
@@ -171,15 +182,15 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   }
 
   void _logSelectedProduct(ProductDetails selectedDetails) {
-    debugPrint('productId=${selectedDetails.id}');
-    debugPrint(
+    _debugLog('productId=${selectedDetails.id}');
+    _debugLog(
       'isGooglePlayProduct=${selectedDetails is GooglePlayProductDetails}',
     );
     if (selectedDetails is GooglePlayProductDetails) {
       final offers = selectedDetails.productDetails.subscriptionOfferDetails;
-      debugPrint('offersCount=${offers?.length ?? 0}');
+      _debugLog('offersCount=${offers?.length ?? 0}');
       if (offers != null && offers.isNotEmpty) {
-        debugPrint('offerToken=${offers.first.offerIdToken}');
+        _debugLog('offerToken=${offers.first.offerIdToken}');
       }
     }
   }
@@ -240,7 +251,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                   telugu: 'బ్యాక్‌ఎండ్ నుంచి యాక్టివ్ ప్లాన్ రిస్టోర్ అయింది',
                   english: 'An active plan was restored from the backend',
                   hindi: 'बैकएंड से सक्रिय प्लान बहाल हो गया',
-                  tamil: 'பின்தளத்திலிருந்து செயலிலுள்ள திட்டம் மீட்டெடுக்கப்பட்டது',
+                  tamil:
+                      'பின்தளத்திலிருந்து செயலிலுள்ள திட்டம் மீட்டெடுக்கப்பட்டது',
                   kannada: 'ಬ್ಯಾಕೆಂಡ್‌ನಿಂದ ಸಕ್ರಿಯ ಯೋಜನೆ ಮರುಸ್ಥಾಪನೆಯಾಯಿತು',
                   malayalam: 'ബാക്ക്എൻഡിൽ നിന്ന് സജീവ പ്ലാൻ പുനഃസ്ഥാപിച്ചു',
                 ),
@@ -325,14 +337,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         SnackBar(
           content: Text(
             verifyResult.message?.isNotEmpty == true
-                ? '${_t(
-                    telugu: 'వెరిఫికేషన్ విఫలమైంది',
-                    english: 'Verification failed',
-                    hindi: 'सत्यापन विफल हुआ',
-                    tamil: 'சரிபார்ப்பு தோல்வியடைந்தது',
-                    kannada: 'ಪರಿಶೀಲನೆ ವಿಫಲವಾಯಿತು',
-                    malayalam: 'പരിശോധന പരാജയപ്പെട്ടു',
-                  )}: ${verifyResult.message}'
+                ? '${_t(telugu: 'వెరిఫికేషన్ విఫలమైంది', english: 'Verification failed', hindi: 'सत्यापन विफल हुआ', tamil: 'சரிபார்ப்பு தோல்வியடைந்தது', kannada: 'ಪರಿಶೀಲನೆ ವಿಫಲವಾಯಿತು', malayalam: 'പരിശോധന പരാജയപ്പെട്ടു')}: ${verifyResult.message}'
                 : _t(
                     telugu: 'సబ్‌స్క్రిప్షన్ వెరిఫికేషన్ విఫలమైంది',
                     english: 'Subscription verification failed',
@@ -352,12 +357,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (!mounted) {
       return false;
     }
-    if (!refreshed.isPro) {
+    if (!refreshed.hasAccess) {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
             _t(
-              telugu: 'రీస్టోర్ అయినా ప్రో యాక్సెస్ ఇంకా అప్డేట్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+              telugu:
+                  'రీస్టోర్ అయినా ప్రో యాక్సెస్ ఇంకా అప్డేట్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
               english:
                   'Restore succeeded, but Pro access is not updated yet. Please try again.',
               hindi:
@@ -446,15 +452,18 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         telugu: 'స్టోర్ ప్రోడక్ట్ కనిపించలేదు. ప్రోడక్ట్ ఐడీ చూడండి.',
         english: 'Store product not found. Check product id.',
         hindi: 'स्टोर उत्पाद नहीं मिला। प्रोडक्ट आईडी जांचें।',
-        tamil: 'ஸ்டோர் தயாரிப்பு கிடைக்கவில்லை. தயாரிப்பு ஐடியை சரிபார்க்கவும்.',
+        tamil:
+            'ஸ்டோர் தயாரிப்பு கிடைக்கவில்லை. தயாரிப்பு ஐடியை சரிபார்க்கவும்.',
         kannada: 'ಸ್ಟೋರ್ ಉತ್ಪನ್ನ ಸಿಗಲಿಲ್ಲ. ಉತ್ಪನ್ನ ಐಡಿಯನ್ನು ಪರಿಶೀಲಿಸಿ.',
-        malayalam: 'സ്റ്റോർ ഉൽപ്പന്നം കണ്ടെത്തിയില്ല. ഉൽപ്പന്ന ഐഡി പരിശോധിക്കുക.',
+        malayalam:
+            'സ്റ്റോർ ഉൽപ്പന്നം കണ്ടെത്തിയില്ല. ഉൽപ്പന്ന ഐഡി പരിശോധിക്കുക.',
       ),
       PurchaseFlowResult.timedOut => _t(
         telugu: 'చెల్లింపు ప్రతిస్పందన టైమ్ అవుట్ అయింది. మళ్లీ ప్రయత్నించండి.',
         english: 'Payment response timed out. Please try again.',
         hindi: 'भुगतान प्रतिक्रिया समय समाप्त हो गया। फिर से प्रयास करें।',
-        tamil: 'பணம் செலுத்தும் பதில் நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்.',
+        tamil:
+            'பணம் செலுத்தும் பதில் நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்.',
         kannada: 'ಪಾವತಿ ಪ್ರತಿಕ್ರಿಯೆ ಸಮಯ ಮೀರಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
         malayalam: 'പേയ്മെന്റ് പ്രതികരണം സമയപരിധി കഴിഞ്ഞു. വീണ്ടും ശ്രമിക്കുക.',
       ),
@@ -495,23 +504,24 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
     return switch (result.state) {
       SubscriptionBackendState.verifiedPro => _subscriptionStatusLabel(),
-      SubscriptionBackendState.verifiedFree => _isSubscriptionExpired
-          ? _t(
-              telugu: 'సబ్‌స్క్రిప్షన్ గడువు ముగిసింది',
-              english: 'Subscription expired',
-              hindi: 'सब्सक्रिप्शन समाप्त हो गया',
-              tamil: 'சந்தா காலாவதியானது',
-              kannada: 'ಚಂದಾದಾರಿಕೆ ಅವಧಿ ಮುಗಿದಿದೆ',
-              malayalam: 'സബ്സ്ക്രിപ്ഷൻ കാലഹരണപ്പെട്ടു',
-            )
-          : _t(
-              telugu: 'సబ్‌స్క్రిప్షన్ యాక్టివ్‌లో లేదు',
-              english: 'Subscription is not active',
-              hindi: 'सब्सक्रिप्शन सक्रिय नहीं है',
-              tamil: 'சந்தா செயலிலில்லை',
-              kannada: 'ಚಂದಾದಾರಿಕೆ ಸಕ್ರಿಯವಾಗಿಲ್ಲ',
-              malayalam: 'സബ്സ്ക്രിപ്ഷൻ സജീവമല്ല',
-            ),
+      SubscriptionBackendState.verifiedFree =>
+        _isSubscriptionExpired
+            ? _t(
+                telugu: 'సబ్‌స్క్రిప్షన్ గడువు ముగిసింది',
+                english: 'Subscription expired',
+                hindi: 'सब्सक्रिप्शन समाप्त हो गया',
+                tamil: 'சந்தா காலாவதியானது',
+                kannada: 'ಚಂದಾದಾರಿಕೆ ಅವಧಿ ಮುಗಿದಿದೆ',
+                malayalam: 'സബ്സ്ക്രിപ്ഷൻ കാലഹരണപ്പെട്ടു',
+              )
+            : _t(
+                telugu: 'సబ్‌స్క్రిప్షన్ యాక్టివ్‌లో లేదు',
+                english: 'Subscription is not active',
+                hindi: 'सब्सक्रिप्शन सक्रिय नहीं है',
+                tamil: 'சந்தா செயலிலில்லை',
+                kannada: 'ಚಂದಾದಾರಿಕೆ ಸಕ್ರಿಯವಾಗಿಲ್ಲ',
+                malayalam: 'സബ്സ്ക്രിപ്ഷൻ സജീവമല്ല',
+              ),
       SubscriptionBackendState.notConfigured => _t(
         telugu: 'ప్లాన్ సమాచారం మోడ్',
         english: 'Plan info mode',
@@ -546,12 +556,18 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       final expiry = _backendResult?.expiryTime;
       final formatted = expiry == null ? null : _formatDate(expiry);
       return _t(
-        telugu: formatted == null ? 'గడువు ముగిసింది' : 'గడువు ముగిసిన తేదీ: $formatted',
+        telugu: formatted == null
+            ? 'గడువు ముగిసింది'
+            : 'గడువు ముగిసిన తేదీ: $formatted',
         english: formatted == null ? 'Expired' : 'Expired on: $formatted',
         hindi: formatted == null ? 'समाप्त' : 'समाप्ति तिथि: $formatted',
         tamil: formatted == null ? 'காலாவதி' : 'காலாவதியான தேதி: $formatted',
-        kannada: formatted == null ? 'ಅವಧಿ ಮುಗಿದಿದೆ' : 'ಅವಧಿ ಮುಗಿದ ದಿನಾಂಕ: $formatted',
-        malayalam: formatted == null ? 'കാലാവധി കഴിഞ്ഞു' : 'കാലാവധി കഴിഞ്ഞ തീയതി: $formatted',
+        kannada: formatted == null
+            ? 'ಅವಧಿ ಮುಗಿದಿದೆ'
+            : 'ಅವಧಿ ಮುಗಿದ ದಿನಾಂಕ: $formatted',
+        malayalam: formatted == null
+            ? 'കാലാവധി കഴിഞ്ഞു'
+            : 'കാലാവധി കഴിഞ്ഞ തീയതി: $formatted',
       );
     }
     return _t(
@@ -650,12 +666,18 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   String get _monthlyPriceLabel {
     final price = _selectedProduct?.price.trim() ?? '';
-    return price.isNotEmpty ? price : SubscriptionPlanConfig.monthlyPriceDisplay;
+    return price.isNotEmpty
+        ? price
+        : SubscriptionPlanConfig.monthlyPriceDisplay;
   }
+
+  String get _trialPriceLabel => SubscriptionPlanConfig.trialPriceDisplay;
+
+  int get _trialDays => SubscriptionPlanConfig.trialDays;
 
   String get _trialOfferTitle => _t(
     telugu: '3 రోజుల ట్రయల్ ప్లాన్',
-    english: '3-day trial plan',
+    english: '$_trialDays-day trial plan',
     hindi: '3-दिन ट्रायल प्लान',
     tamil: '3 நாள் சோதனை திட்டம்',
     kannada: '3 ದಿನಗಳ ಟ್ರಯಲ್ ಪ್ಲಾನ್',
@@ -663,9 +685,10 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   );
 
   String get _trialOfferBody => _t(
-    telugu: 'ఈ ప్లాన్ రూ.4 తో 3 రోజుల ట్రయల్‌గా ప్రారంభమవుతుంది. ఈ సమయంలో మీరు రద్దు చేయవచ్చు.',
+    telugu:
+        'ఈ ప్లాన్ రూ.4 తో 3 రోజుల ట్రయల్‌గా ప్రారంభమవుతుంది. ఈ సమయంలో మీరు రద్దు చేయవచ్చు.',
     english:
-        'The plan starts with a Rs.4 trial for 3 days. You can cancel within this period.',
+        'The plan starts with a $_trialPriceLabel trial for $_trialDays days. You can cancel within this period.',
     hindi:
         'यह प्लान 3 दिनों के लिए Rs.4 ट्रायल से शुरू होता है। इस अवधि में आप रद्द कर सकते हैं।',
     tamil:
@@ -779,7 +802,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                       telugu:
                           'రూ.4 తో 3 రోజుల ట్రయల్ ప్రారంభించి పోస్టర్ షేరింగ్ మరియు డౌన్‌లోడ్‌ను వెంటనే అన్‌లాక్ చేయండి.',
                       english:
-                          'Start with a Rs.4 trial for 3 days and instantly unlock poster sharing and downloads.',
+                          'Start with a $_trialPriceLabel trial for $_trialDays days and instantly unlock poster sharing and downloads.',
                       hindi:
                           'Rs.4 के 3-दिन ट्रायल से शुरू करें और तुरंत पोस्टर शेयर और डाउनलोड अनलॉक करें।',
                       tamil:
@@ -854,12 +877,24 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
               ),
               details: planDetails,
               buttonLabel: _t(
-                telugu: _isSubscriptionActive ? 'ఇప్పటికే యాక్టివ్' : 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
-                english: _isSubscriptionActive ? 'Already Active' : 'Subscribe now',
-                hindi: _isSubscriptionActive ? 'पहले से सक्रिय' : 'अभी सब्सक्राइब करें',
-                tamil: _isSubscriptionActive ? 'ஏற்கனவே செயலிலுள்ளது' : 'இப்போது சந்தா செய்யவும்',
-                kannada: _isSubscriptionActive ? 'ಈಗಾಗಲೇ ಸಕ್ರಿಯ' : 'ಈಗಲೇ ಚಂದಾದಾರರಾಗಿ',
-                malayalam: _isSubscriptionActive ? 'ഇതിനകം സജീവം' : 'ഇപ്പോൾ സബ്സ്ക്രൈബ് ചെയ്യൂ',
+                telugu: _isSubscriptionActive
+                    ? 'ఇప్పటికే యాక్టివ్'
+                    : 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
+                english: _isSubscriptionActive
+                    ? 'Already Active'
+                    : 'Subscribe now',
+                hindi: _isSubscriptionActive
+                    ? 'पहले से सक्रिय'
+                    : 'अभी सब्सक्राइब करें',
+                tamil: _isSubscriptionActive
+                    ? 'ஏற்கனவே செயலிலுள்ளது'
+                    : 'இப்போது சந்தா செய்யவும்',
+                kannada: _isSubscriptionActive
+                    ? 'ಈಗಾಗಲೇ ಸಕ್ರಿಯ'
+                    : 'ಈಗಲೇ ಚಂದಾದಾರರಾಗಿ',
+                malayalam: _isSubscriptionActive
+                    ? 'ഇതിനകം സജീവം'
+                    : 'ഇപ്പോൾ സബ്സ്ക്രൈബ് ചെയ്യൂ',
               ),
               onTap: _subscribeFreePlan,
               busy: _busyFree,
@@ -1040,7 +1075,10 @@ class _SubscriptionStatusCard extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: <Widget>[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.86),
                   borderRadius: BorderRadius.circular(999),

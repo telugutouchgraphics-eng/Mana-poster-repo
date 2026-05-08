@@ -75,7 +75,7 @@ service firebase.storage {
     }
 
     match /creator-posters/{userId}/{posterId}/{fileName} {
-      allow read: if true;
+      allow read: if isAdmin() || (isCreator() && request.auth.uid == userId);
       allow create, update: if isCreator() &&
         request.auth.uid == userId &&
         isAllowedPosterImageUpload();
@@ -83,7 +83,7 @@ service firebase.storage {
     }
 
     match /premium-templates/{allPaths=**} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow create, update: if isAdmin() &&
         isAllowedPosterImageUpload();
       allow delete: if isAdmin();

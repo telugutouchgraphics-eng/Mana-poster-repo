@@ -9,6 +9,14 @@ class AppHomeBannerService {
 
   final FirebaseFirestore? _firestore;
 
+  void _debugLogStack(String message, StackTrace stackTrace) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(message);
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   Future<List<AppHomeBanner>> fetchBanners({int maxItems = 8}) async {
@@ -21,8 +29,10 @@ class AppHomeBannerService {
           .get(const GetOptions(source: Source.server));
       return _mapSnapshot(snapshot);
     } catch (error, stackTrace) {
-      debugPrint('AppHomeBannerService.fetchBanners failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      _debugLogStack(
+        'AppHomeBannerService.fetchBanners failed: $error',
+        stackTrace,
+      );
       try {
         final fallbackSnapshot = await firestore
             .collection('appBanners')
@@ -47,8 +57,10 @@ class AppHomeBannerService {
           .get(const GetOptions(source: Source.cache));
       return _mapSnapshot(snapshot);
     } catch (error, stackTrace) {
-      debugPrint('AppHomeBannerService.fetchBannersFromCache failed: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      _debugLogStack(
+        'AppHomeBannerService.fetchBannersFromCache failed: $error',
+        stackTrace,
+      );
       return const <AppHomeBanner>[];
     }
   }

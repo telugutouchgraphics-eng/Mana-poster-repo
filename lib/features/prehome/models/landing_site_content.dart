@@ -1,4 +1,4 @@
-class LandingSitePoster {
+﻿class LandingSitePoster {
   const LandingSitePoster({
     required this.id,
     required this.categoryId,
@@ -93,14 +93,14 @@ class LandingSiteContent {
     this.featureTitle = 'A faster way to create share-ready posters',
     this.featureSubtitle =
         'Choose a category, select a poster, apply saved profile details and share quickly.',
-    this.installTitle = 'Install Mana Poster',
+    this.installTitle = 'Install Mana Poster Ai',
     this.installBody =
         'Browse ready-made Telugu posters, use saved profile details and share quickly every day.',
-    this.seoTitle = 'Mana Poster - Telugu Poster Maker Android App',
+    this.seoTitle = 'Mana Poster Ai - Telugu Poster Maker Android App',
     this.seoDescription =
         'Create and share Telugu posters quickly with ready-made poster collections.',
     this.seoKeywords =
-        'Mana Poster, Telugu poster maker, festival poster app, devotional poster app',
+        'Mana Poster Ai, Telugu poster maker, festival poster app, devotional poster app',
   });
 
   final String bannerImageUrl;
@@ -212,19 +212,19 @@ class LandingSiteContent {
       featureSubtitle:
           json['featureSubtitle'] as String? ??
           'Choose a category, select a poster, apply saved profile details and share quickly.',
-      installTitle: json['installTitle'] as String? ?? 'Install Mana Poster',
+      installTitle: json['installTitle'] as String? ?? 'Install Mana Poster Ai',
       installBody:
           json['installBody'] as String? ??
           'Browse ready-made Telugu posters, use saved profile details and share quickly every day.',
       seoTitle:
           json['seoTitle'] as String? ??
-          'Mana Poster - Telugu Poster Maker Android App',
+          'Mana Poster Ai - Telugu Poster Maker Android App',
       seoDescription:
           json['seoDescription'] as String? ??
           'Create and share Telugu posters quickly with ready-made poster collections.',
       seoKeywords:
           json['seoKeywords'] as String? ??
-          'Mana Poster, Telugu poster maker, festival poster app, devotional poster app',
+          'Mana Poster Ai, Telugu poster maker, festival poster app, devotional poster app',
     );
   }
 
@@ -279,3 +279,4 @@ class LandingSiteContent {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/admin/data/repositories/admin_auth_repository.dart';
@@ -39,13 +39,13 @@ class AdminAuthGate extends StatelessWidget {
         return AdminLoginScreen(
           title: '${_roleLabel(role)} Login',
           subtitle:
-              'Sign in to access the Mana Poster ${_roleLabel(role).toLowerCase()} dashboard.',
+              'Sign in to access the Mana Poster Ai ${_roleLabel(role).toLowerCase()} dashboard.',
           emailLabel: '${_roleLabel(role)} Email',
           emailHint: '${_roleLabel(role).toLowerCase()}@manaposter.in',
           buttonLabel: 'Login to ${_roleLabel(role)}',
           footerText:
               'Use the Firebase Authentication email/password account assigned to this ${_roleLabel(role).toLowerCase()} role.',
-          brandTitle: 'Mana Poster\n${_roleLabel(role)} Console',
+          brandTitle: 'Mana Poster Ai\n${_roleLabel(role)} Console',
           brandSubtitle: _roleDescription(role),
           badgeText: '${_roleLabel(role)} Access',
         );
@@ -126,7 +126,7 @@ class _AdminAuthorizationGateState extends State<_AdminAuthorizationGate> {
               email: widget.user.email,
               message:
                   result?.message ??
-                  'Could not verify Mana Poster ${_roleLabel(widget.role).toLowerCase()} access for this account.',
+                  'Could not verify Mana Poster Ai ${_roleLabel(widget.role).toLowerCase()} access for this account.',
               onRetry: _retryAuthorization,
               onLogout: FirebaseAdminAuthService.instance.signOut,
             );
@@ -182,3 +182,4 @@ String _roleDescription(AdminPortalRole role) {
       return 'Access creator-side tools and workflows assigned to the creator dashboard.';
   }
 }
+

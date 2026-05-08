@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -42,6 +43,7 @@ class _NotificationsSettingsScreenState
       _saving = true;
     });
     await NotificationPreferencesService.save(next);
+    await NotificationService.instance.syncCurrentPreferences();
     if (!mounted) {
       return;
     }
@@ -227,6 +229,18 @@ class _NotificationsSettingsScreenState
                               value: _snapshot.offersUpdates,
                               onChanged: (value) => _update(
                                 _snapshot.copyWith(offersUpdates: value),
+                              ),
+                            ),
+                            const Divider(height: 1, indent: 18, endIndent: 18),
+                            _NotificationToggleTile(
+                              title: copy.subscriptionTitle,
+                              subtitle: copy.subscriptionSubtitle,
+                              enabled: _snapshot.allNotifications,
+                              value: _snapshot.subscriptionReminders,
+                              onChanged: (value) => _update(
+                                _snapshot.copyWith(
+                                  subscriptionReminders: value,
+                                ),
                               ),
                             ),
                           ],

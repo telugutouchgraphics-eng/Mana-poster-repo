@@ -16,8 +16,8 @@
 ## Privacy / legal
 | Item name | Why it matters | Current status | Who should fill it |
 |---|---|---|---|
-| Privacy policy URL | Mandatory for Play and user transparency | `MISSING` | business |
-| Support email | Required contact point in store/reviewer context | `MISSING` | business |
+| Privacy policy URL | Mandatory for Play and user transparency | `PRESENT IN APP CONFIG` | business |
+| Support email | Required contact point in store/reviewer context | `PRESENT IN APP CONFIG` | business |
 | Account/data deletion policy confirmation | Needed for policy compliance and Data Safety accuracy | `NEEDS CONFIRMATION` | business + manual |
 | Final legal interpretation of “data shared” | Critical for correct Data Safety declaration | `NEEDS CONFIRMATION` | business + manual |
 
@@ -26,6 +26,7 @@
 |---|---|---|---|
 | Legacy storage permission strategy (`READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`) | Medium Play review risk; may trigger scrutiny | Marked `REPLACE`/`REMOVE` in audit; not implemented yet | developer |
 | Validate optional notifications UX (`POST_NOTIFICATIONS`) | Medium risk if permission ask appears mandatory/unclear | Optional flow exists, but final reviewer-safe verification pending | developer |
+| Ads declaration consistency (`google_mobile_ads`, `AD_ID`) | Play policy mismatch can cause rejection if Ads/Data Safety answers are wrong | `PENDING PLAY CONSOLE CONFIRMATION` | developer + business |
 | Release merged manifest verification | Confirms transitive permissions actually shipped | `PENDING` (`NEEDS CONFIRMATION`) | developer |
 
 ## Data Safety
@@ -39,17 +40,15 @@
 ## Technical / build / release
 | Item name | Why it matters | Current status | Who should fill it |
 |---|---|---|---|
-| Release signing readiness (`android/key.properties` path) | Unsigned/mis-signed release blocks Play upload | Checklist notes debug fallback risk locally | developer |
+| Release signing readiness (`android/key.properties` path) | Unsigned/mis-signed release blocks Play upload | `PRESENT LOCALLY` (`NEEDS TEAM SECRET HANDLING CONFIRMATION`) | developer |
 | Permission regression test pass (Android 13+/12/legacy path) | Avoids runtime failures after permission hardening | `PENDING` | developer |
 | Final reviewer instructions consistency check | Store submission must match actual app behavior | Docs exist, but final pre-submit verification pending | manual |
 
 ## Must finish before Closed Testing
-- Privacy policy URL
-- Support email
 - Final app category and content rating submission
 - Reviewer access path confirmation (self-signup vs demo credentials)
 - Final Data Safety form submission (at least closed-testing-ready accuracy)
-- Release signing readiness confirmation
+- Ads/Data Safety declaration confirmation
 - Merged release manifest verification
 
 ## Can finish before Production submission

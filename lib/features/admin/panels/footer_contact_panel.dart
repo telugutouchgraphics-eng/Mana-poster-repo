@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/admin/models/admin_content_models.dart';
 import 'package:mana_poster/features/admin/widgets/admin_panel_card.dart';
@@ -219,7 +219,7 @@ class _FooterPreview extends StatelessWidget {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  'Mana Poster',
+                  'Mana Poster Ai',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -306,3 +306,4 @@ InputDecoration _fieldDecoration(String hint) {
     ),
   );
 }
+

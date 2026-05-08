@@ -180,7 +180,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                 statusLabel: copy.statusLabel(_snapshot.photos),
                 statusColor: copy.statusColor(_snapshot.photos),
                 actionLabel: copy.actionLabel(_snapshot.photos),
-                onAction: () => _requestPermission(AppPermissionType.photos),
+                onAction: () => _handlePermissionAction(_snapshot.photos),
               ),
               const Divider(height: 1, color: Color(0xFFE2E8F0)),
               _PermissionTile(
@@ -192,7 +192,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                 statusLabel: copy.statusLabel(_snapshot.camera),
                 statusColor: copy.statusColor(_snapshot.camera),
                 actionLabel: copy.actionLabel(_snapshot.camera),
-                onAction: () => _requestPermission(AppPermissionType.camera),
+                onAction: () => _handlePermissionAction(_snapshot.camera),
               ),
               const Divider(height: 1, color: Color(0xFFE2E8F0)),
               _PermissionTile(
@@ -202,7 +202,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                 statusColor: copy.statusColor(_snapshot.notifications),
                 actionLabel: copy.actionLabel(_snapshot.notifications),
                 onAction: () =>
-                    _requestPermission(AppPermissionType.notifications),
+                    _handlePermissionAction(_snapshot.notifications),
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
@@ -221,6 +221,18 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _handlePermissionAction(AppPermissionState state) async {
+    if (state.needsSettings) {
+      await _openSettings();
+      return;
+    }
+    if (state.isGranted) {
+      await _loadSnapshot();
+      return;
+    }
+    await _requestPermission(state.type);
   }
 }
 

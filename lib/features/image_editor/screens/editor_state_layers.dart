@@ -677,6 +677,13 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
 
+    final rewardedAccessGranted = await _ensureRewardedAccessForFeature(
+      _EditorRewardGateFeature.removeBackground,
+    );
+    if (!mounted || !rewardedAccessGranted) {
+      return;
+    }
+
     try {
       final result = await _runQueuedCommitJob<BackgroundRemovalResult>(
         jobKey: 'remove_bg_$taskId',

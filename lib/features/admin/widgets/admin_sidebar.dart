@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/features/admin/data/admin_dashboard_data.dart';
 import 'package:mana_poster/features/admin/models/admin_dashboard_models.dart';
 
@@ -91,7 +92,7 @@ class _SidebarBrand extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Mana Poster',
+                  AppPublicInfo.appName,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -100,7 +101,7 @@ class _SidebarBrand extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Admin Dashboard',
+                  AppPublicInfo.appTagline,
                   style: TextStyle(fontSize: 12, color: Color(0xFF66708A)),
                 ),
               ],

@@ -1,10 +1,14 @@
-const admin = require("firebase-admin");
+﻿const admin = require("firebase-admin");
 const {onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onMessagePublished} = require("firebase-functions/v2/pubsub");
 const {logger} = require("firebase-functions");
 const crypto = require("crypto");
+const fs = require("fs");
 const {google} = require("googleapis");
+const path = require("path");
+const puppeteer = require("puppeteer-core");
+const chromium = require("@sparticuz/chromium");
 const sharp = require("sharp");
 
 // Source marker used to force runtime redeploy when firebase.json runtime changes.
@@ -433,182 +437,6 @@ async function assertPurchaseTokenOwnership({
   });
 }
 
-const defaultWebsiteAdminEmail = "manaposter2026@gmail.com";
-const websiteAdminEnvEmails = new Set(
-    String(
-        process.env.MANA_POSTER_WEBSITE_ADMIN_EMAILS ||
-        process.env.WEBSITE_ADMIN_EMAILS ||
-        defaultWebsiteAdminEmail,
-    )
-        .split(",")
-        .map((item) => normalizeText(item))
-        .filter((item) => item.length > 0),
-);
-
-async function getWebsiteAdminAccessConfig() {
-  const fallbackEmails = Array.from(websiteAdminEnvEmails);
-  try {
-    const snap = await db.collection("websiteConfig").doc("websiteAdminAccess").get();
-    const data = snap.exists ? (snap.data() || {}) : {};
-    const docEmails = [
-      ...((Array.isArray(data.allowedEmails) ? data.allowedEmails : []).map((item) => normalizeText(item))),
-      normalizeText(data.primaryEmail),
-    ].filter((item) => item.length > 0);
-    const emails = new Set(docEmails.length > 0 ? docEmails : fallbackEmails);
-    return {
-      emails,
-      primaryEmail: docEmails[0] || fallbackEmails[0] || defaultWebsiteAdminEmail,
-    };
-  } catch (error) {
-    logger.warn("getWebsiteAdminAccessConfig failed", error);
-    return {
-      emails: new Set(fallbackEmails),
-      primaryEmail: fallbackEmails[0] || defaultWebsiteAdminEmail,
-    };
-  }
-}
-
-async function websiteAdminEnabled() {
-  const config = await getWebsiteAdminAccessConfig();
-  return config.emails.size > 0;
-}
-
-function websiteAdminAuthEmail(email) {
-  const normalizedEmail = normalizeText(email);
-  const atIndex = normalizedEmail.indexOf("@");
-  if (atIndex <= 0) {
-    return normalizedEmail;
-  }
-  const local = normalizedEmail.slice(0, atIndex);
-  const domain = normalizedEmail.slice(atIndex + 1);
-  if (local.endsWith("+manaposter-landing")) {
-    return normalizedEmail;
-  }
-  return `${local}+manaposter-landing@${domain}`;
-}
-
-function websiteAdminContactEmail(email) {
-  const normalizedEmail = normalizeText(email);
-  const atIndex = normalizedEmail.indexOf("@");
-  if (atIndex <= 0) {
-    return normalizedEmail;
-  }
-  const local = normalizedEmail.slice(0, atIndex);
-  const suffixes = ["+manaposter-website", "+manaposter-landing"];
-  const suffix = suffixes.find((item) => local.endsWith(item));
-  if (!suffix) {
-    return normalizedEmail;
-  }
-  return `${local.slice(0, -suffix.length)}${normalizedEmail.slice(atIndex)}`;
-}
-
-function sanitizeFileName(fileName) {
-  const cleaned = String(fileName || "")
-      .trim()
-      .replace(/[^a-zA-Z0-9._-]+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-  return cleaned || `asset-${Date.now()}`;
-}
-
-function safeUrl(raw) {
-  const value = String(raw || "").trim();
-  if (!value) {
-    return "";
-  }
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" && url.protocol !== "http:" &&
-        url.protocol !== "mailto:") {
-      return "";
-    }
-    return value;
-  } catch (_) {
-    return "";
-  }
-}
-
-function safeText(raw, maxLength = 240) {
-  return String(raw || "")
-      .replace(/<[^>]*>/g, "")
-      .trim()
-      .slice(0, maxLength);
-}
-
-function decodeBase64Payload(base64Data) {
-  const raw = String(base64Data || "").trim();
-  if (!raw) {
-    throw new Error("base64Data is required");
-  }
-  const payload = raw.includes(",") ? raw.split(",").pop() : raw;
-  return Buffer.from(payload, "base64");
-}
-
-function buildStorageDownloadUrl(bucketName, objectPath, token) {
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
-}
-
-async function requireWebsiteAdmin(req) {
-  const accessConfig = await getWebsiteAdminAccessConfig();
-  if (accessConfig.emails.size === 0) {
-    throw new Error("Website admin email allowlist is not configured");
-  }
-  const decoded = await verifyAuth(req);
-  const email = normalizeText(decoded.email);
-  const contactEmail = websiteAdminContactEmail(email);
-  if (!email ||
-      (!accessConfig.emails.has(email) && !accessConfig.emails.has(contactEmail))) {
-    throw new Error("Website admin access denied");
-  }
-  return decoded;
-}
-
-async function grantLandingAdminAccessByEmail(email, password = "") {
-  const normalizedEmail = normalizeText(email);
-  if (!normalizedEmail || !normalizedEmail.includes("@")) {
-    throw new Error("Valid landing admin email is required");
-  }
-  const authEmail = websiteAdminAuthEmail(normalizedEmail);
-
-  let userRecord;
-  try {
-    userRecord = await admin.auth().getUserByEmail(authEmail);
-    if (password && password.length >= 6) {
-      userRecord = await admin.auth().updateUser(userRecord.uid, {
-        password,
-        emailVerified: true,
-      });
-    }
-  } catch (error) {
-    if (error && error.code === "auth/user-not-found") {
-      if (!password || password.length < 6) {
-        throw new Error(
-            `Password minimum 6 characters required to create ${normalizedEmail}`,
-        );
-      }
-      userRecord = await admin.auth().createUser({
-        email: authEmail,
-        password,
-        emailVerified: true,
-      });
-    } else {
-      throw error;
-    }
-  }
-
-  const existingClaims = userRecord.customClaims || {};
-  await admin.auth().setCustomUserClaims(userRecord.uid, {
-    ...existingClaims,
-    landingAdmin: true,
-  });
-
-  return {
-    uid: userRecord.uid,
-    email: normalizedEmail,
-    authEmail,
-  };
-}
-
 async function getPrimaryBannerImage() {
   try {
     const snap = await db
@@ -627,6 +455,10 @@ async function getPrimaryBannerImage() {
     logger.warn("getPrimaryBannerImage failed", error);
     return null;
   }
+}
+
+function buildStorageDownloadUrl(bucketName, objectPath, token) {
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
 }
 
 async function sendTopicReminder({
@@ -841,37 +673,37 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "Mana Poster కి స్వాగతం",
         body: "మీ కోసం రోజువారీ పోస్టర్లు సిద్ధంగా ఉన్నాయి. యాప్ ఓపెన్ చేసి షేర్ చేయండి.",
-        header: `${name}, మీ పోస్టర్ సిద్ధంగా ఉంది`,
+        header: `${name}, 👉 మీ పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Welcome to Mana Poster",
         body: "Daily posters are ready for you. Open and share.",
-        header: `${name}, your poster is ready`,
+        header: `${name}, your poster is ready to share`,
         footer: "Share",
       },
       hindi: {
         title: "Mana Poster में आपका स्वागत है",
-        body: "आपके लिए daily posters ready हैं. Open करके share करें.",
-        header: `${name}, आपका poster ready है`,
+        body: "आपके लिए रोज़ाना पोस्टर तैयार हैं। ऐप खोलें और शेयर करें।",
+        header: `${name}, आपका पोस्टर शेयर करने के लिए तैयार है`,
         footer: "Share",
       },
       tamil: {
-        title: "Mana Poster-க்கு வரவேற்கிறோம்",
-        body: "உங்களுக்கான தினசரி posters ready. Open செய்து share செய்யுங்கள்.",
-        header: `${name}, உங்கள் poster ready`,
+        title: "Mana Posterக்கு வரவேற்கிறோம்",
+        body: "உங்களுக்கான தினசரி போஸ்டர்கள் தயாராக உள்ளன. ஆப்பை திறந்து பகிருங்கள்.",
+        header: `${name}, உங்கள் போஸ்டர் பகிர தயாராக உள்ளது`,
         footer: "Share",
       },
       kannada: {
         title: "Mana Poster ಗೆ ಸ್ವಾಗತ",
-        body: "ನಿಮಗಾಗಿ daily posters ready ಇವೆ. Open ಮಾಡಿ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ poster ready`,
+        body: "ನಿಮಗಾಗಿ ದಿನನಿತ್ಯದ ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: `${name}, ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
         footer: "Share",
       },
       malayalam: {
         title: "Mana Poster ലേക്ക് സ്വാഗതം",
-        body: "നിങ്ങൾക്കായി daily posters ready ആണ്. Open ചെയ്ത് share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ poster ready`,
+        body: "നിങ്ങൾക്കായി ദിവസേന പോസ്റ്ററുകൾ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.",
+        header: `${name}, നിങ്ങളുടെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
         footer: "Share",
       },
     },
@@ -879,37 +711,37 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభోదయం",
         body: "మీ ఉదయపు పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, మీ ఉదయపు పోస్టర్ సిద్ధంగా ఉంది`,
+        header: `${name}, 👉 మీ ఉదయపు పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Morning",
         body: "Your good morning poster is ready. Share it now.",
-        header: `${name}, your morning poster is ready`,
+        header: `${name}, your morning poster is ready to share`,
         footer: "Share",
       },
       hindi: {
         title: "सुप्रभात",
-        body: "आपका good morning poster ready है. अभी share करें.",
-        header: `${name}, आपका morning poster ready है`,
+        body: "आपका सुबह का पोस्टर तैयार है। अभी शेयर करें।",
+        header: `${name}, आपका सुबह का पोस्टर शेयर करने के लिए तैयार है`,
         footer: "Share",
       },
       tamil: {
         title: "காலை வணக்கம்",
-        body: "உங்கள் good morning poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் morning poster ready`,
+        body: "உங்கள் காலை போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
+        header: `${name}, உங்கள் காலை போஸ்டர் பகிர தயாராக உள்ளது`,
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭೋದಯ",
-        body: "ನಿಮ್ಮ good morning poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ morning poster ready`,
+        body: "ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: `${name}, ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
         footer: "Share",
       },
       malayalam: {
         title: "സുപ്രഭാതം",
-        body: "നിങ്ങളുടെ good morning poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ morning poster ready`,
+        body: "നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
+        header: `${name}, നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
         footer: "Share",
       },
     },
@@ -917,37 +749,37 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభ మధ్యాహ్నం",
         body: "మీ మధ్యాహ్న పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, మీ మధ్యాహ్న పోస్టర్ సిద్ధంగా ఉంది`,
+        header: `${name}, 👉 మీ మధ్యాహ్న పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Afternoon",
         body: "Your good afternoon poster is ready. Share it now.",
-        header: `${name}, your afternoon poster is ready`,
+        header: `${name}, your afternoon poster is ready to share`,
         footer: "Share",
       },
       hindi: {
         title: "शुभ दोपहर",
-        body: "आपका good afternoon poster ready है. अभी share करें.",
-        header: `${name}, आपका afternoon poster ready है`,
+        body: "आपका दोपहर का पोस्टर तैयार है। अभी शेयर करें।",
+        header: `${name}, आपका दोपहर का पोस्टर शेयर करने के लिए तैयार है`,
         footer: "Share",
       },
       tamil: {
         title: "மதிய வணக்கம்",
-        body: "உங்கள் good afternoon poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் afternoon poster ready`,
+        body: "உங்கள் மதிய போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
+        header: `${name}, உங்கள் மதிய போஸ்டர் பகிர தயாராக உள்ளது`,
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭ ಮಧ್ಯಾಹ್ನ",
-        body: "ನಿಮ್ಮ good afternoon poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ afternoon poster ready`,
+        body: "ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: `${name}, ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
         footer: "Share",
       },
       malayalam: {
         title: "ശുഭ മധ്യാഹ്നം",
-        body: "നിങ്ങളുടെ good afternoon poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ afternoon poster ready`,
+        body: "നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
+        header: `${name}, നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
         footer: "Share",
       },
     },
@@ -955,37 +787,37 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభ రాత్రి",
         body: "మీ రాత్రి పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, మీ రాత్రి పోస్టర్ సిద్ధంగా ఉంది`,
+        header: `${name}, 👉 మీ రాత్రి పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Night",
         body: "Your good night poster is ready. Share it now.",
-        header: `${name}, your night poster is ready`,
+        header: `${name}, your night poster is ready to share`,
         footer: "Share",
       },
       hindi: {
         title: "शुभ रात्रि",
-        body: "आपका good night poster ready है. अभी share करें.",
-        header: `${name}, आपका night poster ready है`,
+        body: "आपका रात का पोस्टर तैयार है। अभी शेयर करें।",
+        header: `${name}, आपका रात का पोस्टर शेयर करने के लिए तैयार है`,
         footer: "Share",
       },
       tamil: {
         title: "இரவு வணக்கம்",
-        body: "உங்கள் good night poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் night poster ready`,
+        body: "உங்கள் இரவு போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
+        header: `${name}, உங்கள் இரவு போஸ்டர் பகிர தயாராக உள்ளது`,
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭ ರಾತ್ರಿ",
-        body: "ನಿಮ್ಮ good night poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ night poster ready`,
+        body: "ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: `${name}, ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
         footer: "Share",
       },
       malayalam: {
         title: "ശുഭ രാത്രി",
-        body: "നിങ്ങളുടെ good night poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ night poster ready`,
+        body: "നിങ്ങളുടെ രാത്രി പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
+        header: `${name}, നിങ്ങളുടെ രാത്രി പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
         footer: "Share",
       },
     },
@@ -1013,165 +845,292 @@ function initialsSvgDataUri(name, palette) {
 }
 
 function reminderCopyLocalized(kind, language, userName) {
-  const lang = sanitizeLanguage(language) || defaultLanguageForName(userName);
-  const name = String(userName || "").trim() || "User";
-  const map = {
-    welcome: {
-      telugu: {
-        title: "Mana Poster కి స్వాగతం",
-        body: "మీ కోసం రోజువారీ పోస్టర్లు సిద్ధంగా ఉన్నాయి. ఓపెన్ చేసి షేర్ చేయండి.",
-        header: `${name}, మీ పోస్టర్ రెడీ`,
-        footer: "షేర్ చేయండి",
-      },
-      english: {
-        title: "Welcome to Mana Poster",
-        body: "Daily posters are ready for you. Open and share.",
-        header: `${name}, your poster is ready`,
-        footer: "Share",
-      },
-      hindi: {
-        title: "Mana Poster में आपका स्वागत है",
-        body: "आपके लिए daily posters ready हैं. Open करके share करें.",
-        header: `${name}, आपका poster ready है`,
-        footer: "Share",
-      },
-      tamil: {
-        title: "Mana Poster-க்கு வரவேற்கிறோம்",
-        body: "உங்களுக்கான தினசரி posters ready. Open செய்து share செய்யுங்கள்.",
-        header: `${name}, உங்கள் poster ready`,
-        footer: "Share",
-      },
-      kannada: {
-        title: "Mana Poster ಗೆ ಸ್ವಾಗತ",
-        body: "ನಿಮಗಾಗಿ daily posters ready ಇವೆ. Open ಮಾಡಿ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ poster ready`,
-        footer: "Share",
-      },
-      malayalam: {
-        title: "Mana Posterിലേക്ക് സ്വാഗതം",
-        body: "നിങ്ങൾക്കായി daily posters ready ആണ്. Open ചെയ്ത് share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ poster ready`,
-        footer: "Share",
-      },
-    },
+  return reminderCopy(kind, language, userName);
+}
+
+function truncateSingleLineText(value, maxLength) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) {
+    return "";
+  }
+  const limit = Math.max(1, Number(maxLength) || text.length);
+  const chars = Array.from(text);
+  if (chars.length <= limit) {
+    return text;
+  }
+  return `${chars.slice(0, Math.max(0, limit - 1)).join("")}\u2026`;
+}
+
+function wrapTextLines(value, maxCharsPerLine, maxLines) {
+  const source = String(value || "").replace(/\s+/g, " ").trim();
+  if (!source) {
+    return [];
+  }
+  const limit = Math.max(6, Number(maxCharsPerLine) || 24);
+  const lines = [];
+  let current = "";
+  const words = source.split(" ");
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (Array.from(candidate).length <= limit) {
+      current = candidate;
+      continue;
+    }
+    if (current) {
+      lines.push(current);
+      current = word;
+    } else {
+      lines.push(truncateSingleLineText(word, limit));
+      current = "";
+    }
+    if (lines.length >= maxLines) {
+      break;
+    }
+  }
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+  }
+  if (lines.length > maxLines) {
+    return lines.slice(0, maxLines);
+  }
+  if (lines.length === maxLines && words.length > 0) {
+    const joined = lines.join(" ");
+    if (Array.from(joined).length < Array.from(source).length) {
+      lines[maxLines - 1] = truncateSingleLineText(lines[maxLines - 1], limit - 1);
+    }
+  }
+  return lines;
+}
+
+function renderSvgTextLines(lines, {
+  x,
+  y,
+  lineHeight,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  fill,
+  textAnchor = "start",
+}) {
+  return lines.map((line, index) => {
+    const lineY = y + (index * lineHeight);
+    return `<text x="${x}" y="${lineY}" text-anchor="${textAnchor}" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}">${xmlEscape(line.normalize("NFC"))}</text>`;
+  }).join("");
+}
+
+function reminderBadgeLabel(categoryKey, title) {
+  const normalized = reminderCategoryKey(categoryKey);
+  if (normalized === "morning") {
+    return "Good Morning";
+  }
+  if (normalized === "afternoon") {
+    return "Good Afternoon";
+  }
+  if (normalized === "night") {
+    return "Good Night";
+  }
+  return truncateSingleLineText(String(title || "Mana Poster").trim(), 16);
+}
+
+function htmlEscape(value) {
+  return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+}
+
+function whatsappGlyphDataUri() {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="32" fill="#25D366"/>
+      <path d="M20 18c2.7-2.7 6.4-4.2 10.3-4.2 8 0 14.7 6.5 14.7 14.6 0 3.9-1.5 7.6-4.3 10.4L43 46l-7.4-2.2c-1.7.7-3.5 1-5.3 1-8.1 0-14.6-6.5-14.6-14.6 0-3.9 1.5-7.6 4.3-10.4Zm10.3-1.7c-3.4 0-6.6 1.3-9 3.7a12.67 12.67 0 0 0-3.7 9c0 7 5.7 12.7 12.7 12.7 1.7 0 3.4-.3 5-.9l.7-.3 4.4 1.3-1.4-4.2.4-.7c2.1-2.8 3.2-6.4 2.4-10-1.1-5.3-5.8-9.2-11.5-9.6Z" fill="#ffffff"/>
+      <path d="M26.9 23.6c-.4-.8-.8-.8-1.1-.8h-.9c-.3 0-.8.1-1.2.5-.4.4-1.6 1.6-1.6 4 0 2.3 1.6 4.5 1.9 4.8.3.3 3.2 5.1 8 6.9 4 1.5 4.8 1.2 5.7 1.1.8-.1 2.7-1.1 3.1-2.2.4-1 .4-1.9.3-2.1-.1-.2-.4-.3-.9-.6-.5-.2-2.7-1.3-3.1-1.4-.4-.2-.8-.2-1 .2-.3.4-1.1 1.4-1.3 1.7-.2.3-.5.3-.9.1-.5-.2-2-.7-3.9-2.4-1.4-1.2-2.4-2.8-2.7-3.2-.3-.5 0-.7.2-1 .2-.2.4-.5.6-.8.2-.3.3-.5.5-.8.2-.3.1-.6 0-.8-.2-.2-1.4-3.2-1.6-3.6Z" fill="#ffffff"/>
+    </svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+function chevronUpGlyphDataUri() {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+      <path d="M11 25l9-9 9 9" fill="none" stroke="#151515" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+function headerPrefixLabel(kind, language) {
+  const category = reminderCategoryKey(kind);
+  const lang = sanitizeLanguage(language) || "english";
+  const labels = {
     morning: {
-      telugu: {
-        title: "శుభోదయం",
-        body: "Good morning పోస్టర్ సిద్ధంగా ఉంది. షేర్ చేయండి.",
-        header: `${name}, మీ morning పోస్టర్ రెడీ`,
-        footer: "షేర్ చేయండి",
-      },
-      english: {
-        title: "Good Morning",
-        body: "Your good morning poster is ready. Share it now.",
-        header: `${name}, your morning poster is ready`,
-        footer: "Share",
-      },
-      hindi: {
-        title: "सुप्रभात",
-        body: "आपका good morning poster ready है. अभी share करें.",
-        header: `${name}, आपका morning poster ready है`,
-        footer: "Share",
-      },
-      tamil: {
-        title: "காலை வணக்கம்",
-        body: "உங்கள் good morning poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் morning poster ready`,
-        footer: "Share",
-      },
-      kannada: {
-        title: "ಶುಭೋದಯ",
-        body: "ನಿಮ್ಮ good morning poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ morning poster ready`,
-        footer: "Share",
-      },
-      malayalam: {
-        title: "സുപ്രഭാതം",
-        body: "നിങ്ങളുടെ good morning poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ morning poster ready`,
-        footer: "Share",
-      },
+      telugu: "మీ ఉదయపు పోస్టర్",
+      english: "your morning poster",
+      hindi: "आपका सुबह का पोस्टर",
+      tamil: "உங்கள் காலை போஸ்டர்",
+      kannada: "ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್",
+      malayalam: "നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ",
     },
     afternoon: {
-      telugu: {
-        title: "శుభ మధ్యాహ్నం",
-        body: "Good afternoon పోస్టర్ సిద్ధంగా ఉంది. షేర్ చేయండి.",
-        header: `${name}, మీ afternoon పోస్టర్ రెడీ`,
-        footer: "షేర్ చేయండి",
-      },
-      english: {
-        title: "Good Afternoon",
-        body: "Your good afternoon poster is ready. Share it now.",
-        header: `${name}, your afternoon poster is ready`,
-        footer: "Share",
-      },
-      hindi: {
-        title: "शुभ दोपहर",
-        body: "आपका good afternoon poster ready है. अभी share करें.",
-        header: `${name}, आपका afternoon poster ready है`,
-        footer: "Share",
-      },
-      tamil: {
-        title: "மதிய வணக்கம்",
-        body: "உங்கள் good afternoon poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் afternoon poster ready`,
-        footer: "Share",
-      },
-      kannada: {
-        title: "ಶುಭ ಮಧ್ಯಾಹ್ನ",
-        body: "ನಿಮ್ಮ good afternoon poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ afternoon poster ready`,
-        footer: "Share",
-      },
-      malayalam: {
-        title: "ശുഭ മധ്യാഹ്നം",
-        body: "നിങ്ങളുടെ good afternoon poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ afternoon poster ready`,
-        footer: "Share",
-      },
+      telugu: "మీ మధ్యాహ్న పోస్టర్",
+      english: "your afternoon poster",
+      hindi: "आपका दोपहर का पोस्टर",
+      tamil: "உங்கள் மதிய போஸ்டர்",
+      kannada: "ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್",
+      malayalam: "നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ",
     },
     night: {
-      telugu: {
-        title: "శుభ రాత్రి",
-        body: "Good night పోస్టర్ సిద్ధంగా ఉంది. షేర్ చేయండి.",
-        header: `${name}, మీ night పోస్టర్ రెడీ`,
-        footer: "షేర్ చేయండి",
-      },
-      english: {
-        title: "Good Night",
-        body: "Your good night poster is ready. Share it now.",
-        header: `${name}, your night poster is ready`,
-        footer: "Share",
-      },
-      hindi: {
-        title: "शुभ रात्रि",
-        body: "आपका good night poster ready है. अभी share करें.",
-        header: `${name}, आपका night poster ready है`,
-        footer: "Share",
-      },
-      tamil: {
-        title: "இரவு வணக்கம்",
-        body: "உங்கள் good night poster ready. இப்போது share செய்யுங்கள்.",
-        header: `${name}, உங்கள் night poster ready`,
-        footer: "Share",
-      },
-      kannada: {
-        title: "ಶುಭ ರಾತ್ರಿ",
-        body: "ನಿಮ್ಮ good night poster ready ಇದೆ. ಈಗಲೇ share ಮಾಡಿ.",
-        header: `${name}, ನಿಮ್ಮ night poster ready`,
-        footer: "Share",
-      },
-      malayalam: {
-        title: "ശുഭ രാത്രി",
-        body: "നിങ്ങളുടെ good night poster ready ആണ്. ഇപ്പോൾ share ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ night poster ready`,
-        footer: "Share",
-      },
+      telugu: "మీ రాత్రి పోస్టర్",
+      english: "your night poster",
+      hindi: "आपका रात का पोस्टर",
+      tamil: "உங்கள் இரவு போஸ்டர்",
+      kannada: "ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್",
+      malayalam: "നിങ്ങളുടെ രാത്രി പോസ്റ്റർ",
+    },
+    welcome: {
+      telugu: "మీ పోస్టర్",
+      english: "your poster",
+      hindi: "आपका पोस्टर",
+      tamil: "உங்கள் போஸ்டர்",
+      kannada: "ನಿಮ್ಮ ಪೋಸ್ಟರ್",
+      malayalam: "നിങ്ങളുടെ പോസ്റ്റർ",
     },
   };
+  const group = labels[category] || labels.welcome;
+  return group[lang] || group.english;
+}
 
-  const bucket = map[kind] || map.welcome;
-  return bucket[lang] || bucket.english;
+async function loadBrandLogoDataUri() {
+  if (loadBrandLogoDataUri.cached) {
+    return loadBrandLogoDataUri.cached;
+  }
+  const logoPath = path.join(__dirname, "assets", "branding", "mana_poster_logo.png");
+  const logoBuffer = await sharp(logoPath)
+      .resize(72, 72, {fit: "contain", background: {r: 0, g: 0, b: 0, alpha: 0}})
+      .png()
+      .toBuffer();
+  loadBrandLogoDataUri.cached = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+  return loadBrandLogoDataUri.cached;
+}
+
+async function loadNotificationFontDataUri() {
+  if (loadNotificationFontDataUri.cached) {
+    return loadNotificationFontDataUri.cached;
+  }
+  const fontPath = path.join(__dirname, "assets", "fonts", "notosanstelugu_condensed_bold.ttf");
+  const fontBuffer = await fs.promises.readFile(fontPath);
+  loadNotificationFontDataUri.cached = `data:font/ttf;base64,${fontBuffer.toString("base64")}`;
+  return loadNotificationFontDataUri.cached;
+}
+
+let notificationBrowserPromise = null;
+
+async function resolveNotificationBrowserExecutablePath() {
+  if (process.platform === "win32") {
+    const candidates = [
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+      "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    ];
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+  }
+  return chromium.executablePath();
+}
+
+async function getNotificationBrowser() {
+  if (!notificationBrowserPromise) {
+    notificationBrowserPromise = (async () => {
+      const executablePath = await resolveNotificationBrowserExecutablePath();
+      return puppeteer.launch({
+        executablePath,
+        headless: true,
+        args: [
+          ...(chromium.args || []),
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--font-render-hinting=medium",
+        ],
+        defaultViewport: {
+          width: 1080,
+          height: 1160,
+          deviceScaleFactor: 1,
+        },
+      });
+    })().catch((error) => {
+      notificationBrowserPromise = null;
+      throw error;
+    });
+  }
+  return notificationBrowserPromise;
+}
+
+function notificationFontPath() {
+  return path.join(__dirname, "assets", "fonts", "notosanstelugu_condensed_bold.ttf");
+}
+
+async function renderNotificationTextBuffer(text, {
+  width,
+  fontSize,
+  color = "#1E1E1E",
+  align = "left",
+  dpi = 144,
+  lineSpacing = 0,
+} = {}) {
+  const value = String(text || "").trim().normalize("NFC");
+  if (!value) {
+    return null;
+  }
+  return sharp({
+    text: {
+      text: value,
+      font: "Noto Sans Telugu Condensed Bold",
+      fontfile: notificationFontPath(),
+      width,
+      rgba: true,
+      align,
+      dpi,
+      spacing: lineSpacing,
+    },
+  }).png().toBuffer();
+}
+
+const notificationFrameBuffers = new Map();
+const notificationFrameByCategory = {
+  welcome: "morning.png",
+  morning: "morning.png",
+  afternoon: "afternoon.png",
+  night: "night.png",
+};
+
+async function loadNotificationFrameBuffer(categoryKey) {
+  const normalized = reminderCategoryKey(categoryKey);
+  const fileName = notificationFrameByCategory[normalized] || notificationFrameByCategory.morning;
+  if (notificationFrameBuffers.has(fileName)) {
+    logger.info("loadNotificationFrameBuffer cache hit", {
+      categoryKey: normalized,
+      fileName,
+    });
+    return notificationFrameBuffers.get(fileName);
+  }
+  const framePath = path.join(__dirname, "assets", "notification_frames", fileName);
+  logger.info("loadNotificationFrameBuffer reading frame", {
+    categoryKey: normalized,
+    fileName,
+    framePath,
+  });
+  const frameBuffer = await fs.promises.readFile(framePath);
+  notificationFrameBuffers.set(fileName, frameBuffer);
+  logger.info("loadNotificationFrameBuffer loaded frame", {
+    categoryKey: normalized,
+    fileName,
+    bytes: frameBuffer.length,
+  });
+  return frameBuffer;
 }
 
 async function buildPersonalizedNotificationImage({
@@ -1185,68 +1144,254 @@ async function buildPersonalizedNotificationImage({
   categoryKey,
   seed,
 }) {
+  logger.info("buildPersonalizedNotificationImage started", {
+    categoryKey: reminderCategoryKey(categoryKey),
+    hasPosterImageUrl: Boolean(String(posterImageUrl || "").trim()),
+    hasUserPhotoUrl: Boolean(String(userPhotoUrl || "").trim()),
+    seed: String(seed || "").slice(0, 48),
+  });
   const posterBuffer = await downloadBufferFromUrl(posterImageUrl);
   if (!posterBuffer) {
+    logger.warn("buildPersonalizedNotificationImage poster download missing", {
+      categoryKey: reminderCategoryKey(categoryKey),
+      posterImageUrl: String(posterImageUrl || "").slice(0, 256),
+    });
     return null;
   }
 
   const palette = framePalette(categoryKey, seed || userName || posterImageUrl);
+  const brandLogoDataUri = await loadBrandLogoDataUri();
+  const fontDataUri = await loadNotificationFontDataUri();
+  await loadNotificationFrameBuffer(categoryKey);
   const posterResized = await sharp(posterBuffer)
-      .resize(924, 650, {fit: "cover", position: "attention"})
-      .jpeg({quality: 90})
+      .resize(980, 420, {fit: "cover", position: "attention"})
+      .png()
       .toBuffer();
-  const posterDataUri = `data:image/jpeg;base64,${posterResized.toString("base64")}`;
+  const posterDataUri = `data:image/png;base64,${posterResized.toString("base64")}`;
 
   let avatarDataUri = initialsSvgDataUri(userName, palette);
   const avatarBuffer = await downloadBufferFromUrl(userPhotoUrl);
   if (avatarBuffer) {
     try {
       const avatarResized = await sharp(avatarBuffer)
-          .resize(220, 220, {fit: "cover", position: "attention"})
-          .jpeg({quality: 90})
+          .resize(216, 216, {fit: "cover", position: "attention"})
+          .png()
           .toBuffer();
-      avatarDataUri = `data:image/jpeg;base64,${avatarResized.toString("base64")}`;
+      avatarDataUri = `data:image/png;base64,${avatarResized.toString("base64")}`;
     } catch (error) {
       logger.warn("avatar resize failed", {userPhotoUrl, error});
     }
   }
 
-  const safeHeader = xmlEscape(headerText || title).slice(0, 80);
-  const safeUserName = xmlEscape(userName || "User").slice(0, 40);
-  const safeFooter = xmlEscape(footerText || "Share").slice(0, 30);
-  const fontFamily = "Noto Sans Telugu, Noto Sans, Arial Unicode MS, DejaVu Sans, sans-serif";
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
-    <rect width="1080" height="1350" fill="${palette.shell}" />
-    <rect x="28" y="28" width="1024" height="1294" rx="46" fill="${palette.frame}" />
-    <rect x="54" y="54" width="972" height="1242" rx="34" fill="#ffffff" />
-    <rect x="78" y="78" width="924" height="132" rx="12" fill="${palette.header}" />
-    <circle cx="148" cy="144" r="48" fill="#ffffff" opacity="0.96" />
-    <clipPath id="miniAvatarClip">
-      <circle cx="148" cy="144" r="42" />
-    </clipPath>
-    <image href="${avatarDataUri}" x="106" y="102" width="84" height="84" preserveAspectRatio="xMidYMid slice" clip-path="url(#miniAvatarClip)" />
-    <text x="220" y="136" font-family="${fontFamily}" font-size="42" font-weight="700" fill="#ffffff">${safeUserName}</text>
-    <text x="220" y="180" font-family="${fontFamily}" font-size="34" font-weight="700" fill="#ffffff">${safeHeader}</text>
-    <clipPath id="posterClip">
-      <rect x="78" y="226" width="924" height="650" rx="0" ry="0" />
-    </clipPath>
-    <image href="${posterDataUri}" x="78" y="226" width="924" height="650" preserveAspectRatio="xMidYMid slice" clip-path="url(#posterClip)" />
-    <rect x="78" y="876" width="924" height="310" rx="0" fill="#ffffff" />
-    <circle cx="540" cy="886" r="118" fill="#ffffff" />
-    <circle cx="540" cy="886" r="102" fill="${palette.accent}" />
-    <clipPath id="avatarClip">
-      <circle cx="540" cy="886" r="94" />
-    </clipPath>
-    <image href="${avatarDataUri}" x="446" y="792" width="188" height="188" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatarClip)" />
-    <text x="540" y="1108" text-anchor="middle" font-family="${fontFamily}" font-size="58" font-weight="700" fill="${palette.text}">${safeUserName}</text>
-    <rect x="78" y="1200" width="924" height="86" rx="8" fill="#00C72A" />
-    <text x="540" y="1254" text-anchor="middle" font-family="${fontFamily}" font-size="38" font-weight="700" fill="#ffffff">${safeFooter}</text>
-  </svg>`;
-
-  return sharp(Buffer.from(svg))
-      .png({quality: 92})
-      .toBuffer();
+  const safeUserName = truncateSingleLineText(
+      String(userName || "").trim().normalize("NFC") || "Mana Poster User",
+      24,
+  );
+  const safeHeader = String(headerText || title || body || "")
+      .trim()
+      .normalize("NFC");
+  const safeFooter = String(footerText || "షేర్ చేయండి")
+      .trim()
+      .normalize("NFC");
+  const browser = await getNotificationBrowser();
+  const page = await browser.newPage();
+  try {
+    const html = `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          @font-face {
+            font-family: "ManaPosterTelugu";
+            src: url(${fontDataUri}) format("truetype");
+          }
+          body {
+            margin: 0;
+            background: #ffffff;
+            font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
+          }
+          .root {
+            width: 1080px;
+            height: 1020px;
+            background: ${palette.shell};
+            position: relative;
+            overflow: hidden;
+          }
+          .card-shell {
+            position: absolute;
+            left: 24px;
+            top: 24px;
+            width: 1032px;
+            height: 972px;
+            border-radius: 34px;
+            background: #ffffff;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+          }
+          .topbar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            height: 118px;
+            padding: 0 28px;
+            background: ${palette.header};
+          }
+          .brand-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            object-fit: contain;
+            background: rgba(255,255,255,0.12);
+            padding: 2px;
+            box-sizing: border-box;
+          }
+          .brand-name {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+          }
+          .time {
+            color: rgba(255, 255, 255, 0.80);
+            font-size: 20px;
+            font-weight: 600;
+            margin-left: 8px;
+          }
+          .chevron {
+            margin-left: auto;
+            width: 20px;
+            height: 20px;
+            border-top: 4px solid rgba(255, 255, 255, 0.92);
+            border-right: 4px solid rgba(255, 255, 255, 0.92);
+            transform: rotate(-45deg);
+            border-radius: 2px;
+          }
+          .header {
+            position: absolute;
+            left: 28px;
+            top: 130px;
+            width: 976px;
+            font-size: 32px;
+            line-height: 1.28;
+            font-weight: 800;
+            color: #ffffff;
+            max-height: 88px;
+            overflow: hidden;
+          }
+          .card {
+            position: absolute;
+            left: 28px;
+            top: 238px;
+            width: 976px;
+            height: 690px;
+            border-radius: 30px;
+            border: 4px solid ${palette.frame};
+            overflow: hidden;
+            background: #ffffff;
+          }
+          .poster {
+            width: 100%;
+            height: 420px;
+            object-fit: cover;
+            display: block;
+          }
+          .footer-white {
+            width: 100%;
+            height: 270px;
+            background: #ffffff;
+          }
+          .avatar-wrap {
+            position: absolute;
+            left: 50%;
+            top: 590px;
+            width: 196px;
+            height: 196px;
+            transform: translateX(-50%);
+            border-radius: 50%;
+            background: #ffffff;
+            padding: 7px;
+            box-sizing: border-box;
+            border: 5px solid ${palette.frame};
+          }
+          .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+          }
+          .name {
+            position: absolute;
+            top: 818px;
+            left: 150px;
+            width: 780px;
+            text-align: center;
+            font-size: 42px;
+            font-weight: 800;
+            color: #181818;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .share {
+            position: absolute;
+            top: 888px;
+            left: 302px;
+            width: 428px;
+            height: 78px;
+            border-radius: 39px;
+            background: ${palette.accent};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            color: #118b4a;
+            font-size: 32px;
+            font-weight: 800;
+          }
+          .share-icon {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="root">
+          <div class="card-shell">
+            <div class="topbar">
+              <img class="brand-logo" src="${brandLogoDataUri}" alt="">
+              <div class="brand-name">Mana Poster Ai</div>
+              <div class="time">• Now</div>
+              <div class="chevron"></div>
+            </div>
+            <div class="header">${htmlEscape(safeHeader)}</div>
+            <div class="card">
+              <img class="poster" src="${posterDataUri}" alt="">
+              <div class="footer-white"></div>
+            </div>
+            <div class="avatar-wrap">
+              <img class="avatar" src="${avatarDataUri}" alt="">
+            </div>
+            <div class="name">${htmlEscape(safeUserName)}</div>
+            <div class="share">
+              <img class="share-icon" src="${whatsappGlyphDataUri()}" alt="">
+              <span>${htmlEscape(safeFooter)}</span>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>`;
+    await page.setViewport({width: 1080, height: 1020, deviceScaleFactor: 1});
+    await page.setContent(html, {waitUntil: "load"});
+    const outputBuffer = await page.screenshot({type: "png"});
+    logger.info("buildPersonalizedNotificationImage completed", {
+      categoryKey: reminderCategoryKey(categoryKey),
+      outputBytes: outputBuffer.length,
+    });
+    return outputBuffer;
+  } finally {
+    await page.close().catch(() => {});
+  }
 }
 
 async function uploadNotificationImageBuffer({
@@ -1274,19 +1419,42 @@ async function sendReminderToToken({
   title,
   body,
   imageUrl = null,
+  posterBaseImageUrl = "",
   userName = "",
   userPhotoUrl = "",
+  headerText = "",
+  footerText = "",
+  categoryKey = "",
   titleKey = "",
   bodyKey = "",
 }) {
+  const normalizedTitle = String(title || "").trim();
+  const normalizedBody = String(body || "").trim();
+  const normalizedImageUrl = String(imageUrl || "").trim();
+  const androidVisibleTitle = normalizedImageUrl ? "\u200B" : normalizedTitle;
+  const androidVisibleBody = normalizedImageUrl ? "" : normalizedBody;
   const message = {
     token,
+    notification: {
+      title: normalizedTitle,
+      body: normalizedBody,
+    },
     android: {
       priority: "high",
+      notification: {
+        channelId: "mana_poster_general",
+        clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        title: androidVisibleTitle,
+        body: androidVisibleBody,
+      },
     },
     apns: {
       payload: {
         aps: {
+          alert: {
+            title: normalizedTitle,
+            body: normalizedBody,
+          },
           contentAvailable: true,
         },
       },
@@ -1294,15 +1462,23 @@ async function sendReminderToToken({
     data: {
       click_action: "FLUTTER_NOTIFICATION_CLICK",
       route: "home",
-      title: title || "",
-      body: body || "",
+      title: normalizedTitle,
+      body: normalizedBody,
       title_key: titleKey || "",
       body_key: bodyKey || "",
       userName: userName || "",
       userPhoto: userPhotoUrl || "",
-      posterImage: imageUrl || "",
+      headerText: headerText || "",
+      footerText: footerText || "",
+      categoryKey: categoryKey || "",
+      posterBaseImage: posterBaseImageUrl || "",
+      posterImage: normalizedImageUrl,
     },
   };
+  if (normalizedImageUrl) {
+    message.android.notification.imageUrl = normalizedImageUrl;
+    message.apns.fcmOptions = {image: normalizedImageUrl};
+  }
 
   return admin.messaging().send(message);
 }
@@ -1321,33 +1497,76 @@ async function sendPersonalizedReminderToToken({
 }) {
   let imageUrl = String(baseImageUrl || "").trim();
   if (imageUrl) {
-    const buffer = await buildPersonalizedNotificationImage({
-      title,
-      body,
-      headerText,
-      footerText,
-      posterImageUrl: imageUrl,
-      userName,
-      userPhotoUrl,
-      categoryKey,
-      seed,
-    });
-    if (buffer) {
-      imageUrl = await uploadNotificationImageBuffer({
-        buffer,
-        objectPath: `notifications/rendered/${categoryKey}/${Date.now()}-${stableHashNumber(seed)}.png`,
+    try {
+      logger.info("sendPersonalizedReminderToToken image generation started", {
+        tokenSuffix: String(token || "").slice(-12),
+        categoryKey: reminderCategoryKey(categoryKey),
+        hasBaseImageUrl: true,
+      });
+      const buffer = await buildPersonalizedNotificationImage({
+        title,
+        body,
+        headerText,
+        footerText,
+        posterImageUrl: imageUrl,
+        userName,
+        userPhotoUrl,
+        categoryKey,
+        seed,
+      });
+      if (buffer) {
+        imageUrl = await uploadNotificationImageBuffer({
+          buffer,
+          objectPath: `notifications/rendered/${categoryKey}/${Date.now()}-${stableHashNumber(seed)}.png`,
+        });
+        logger.info("sendPersonalizedReminderToToken image upload completed", {
+          tokenSuffix: String(token || "").slice(-12),
+          categoryKey: reminderCategoryKey(categoryKey),
+          imageUrl,
+        });
+      } else {
+        imageUrl = "";
+        logger.warn("sendPersonalizedReminderToToken using plain fallback after null image buffer", {
+          tokenSuffix: String(token || "").slice(-12),
+          categoryKey: reminderCategoryKey(categoryKey),
+        });
+      }
+    } catch (error) {
+      imageUrl = "";
+      logger.error("sendPersonalizedReminderToToken image generation failed, using plain fallback", {
+        tokenSuffix: String(token || "").slice(-12),
+        categoryKey: reminderCategoryKey(categoryKey),
+        error: messagingErrorDetails(error),
       });
     }
   }
 
-  return sendReminderToToken({
+  logger.info("sendPersonalizedReminderToToken sending notification", {
+    tokenSuffix: String(token || "").slice(-12),
+    categoryKey: reminderCategoryKey(categoryKey),
+    hasImageUrl: Boolean(String(imageUrl || "").trim()),
+  });
+  const messageId = await sendReminderToToken({
     token,
     title,
     body,
     imageUrl: imageUrl || null,
+    posterBaseImageUrl: baseImageUrl || "",
     userName,
     userPhotoUrl,
+    headerText,
+    footerText,
+    categoryKey,
+    titleKey: `${categoryKey}_title`,
+    bodyKey: `${categoryKey}_body`,
   });
+  logger.info("sendPersonalizedReminderToToken send success", {
+    tokenSuffix: String(token || "").slice(-12),
+    categoryKey: reminderCategoryKey(categoryKey),
+    hasImageUrl: Boolean(String(imageUrl || "").trim()),
+    messageId,
+  });
+  return messageId;
 }
 
 async function sendWelcomeToToken(token) {
@@ -1357,6 +1576,12 @@ async function sendWelcomeToToken(token) {
     title: "Welcome to Mana Poster",
     body: "Mee kosam daily posters ready ga untayi. Open chesi share cheyyandi.",
     imageUrl,
+    posterBaseImageUrl: imageUrl || "",
+    headerText: "Welcome to Mana Poster",
+    footerText: "Share",
+    categoryKey: "welcome",
+    titleKey: "welcome_title",
+    bodyKey: "welcome_body",
   });
 }
 
@@ -1459,19 +1684,40 @@ async function runWithConcurrency(items, limit, worker) {
 }
 
 function isMessagingTokenGoneError(error) {
-  const code = String(
-      (error && error.code) ||
-      (error && error.errorInfo && error.errorInfo.code) ||
-      "",
-  ).trim();
-  const message = String(
-      (error && error.message) ||
-      (error && error.errorInfo && error.errorInfo.message) ||
-      "",
-  ).trim();
+  const details = messagingErrorDetails(error);
+  const code = details.code;
+  const message = details.message;
   return code === "messaging/registration-token-not-registered" ||
     /Requested entity was not found/i.test(message) ||
-    /NotRegistered/i.test(message);
+    /NotRegistered/i.test(message) ||
+    /registration-token-not-registered/i.test(message);
+}
+
+function messagingErrorDetails(error) {
+  const codeCandidates = [
+    error && error.code,
+    error && error.errorInfo && error.errorInfo.code,
+    error && error.details && error.details.code,
+    error && error.status,
+    error && error.response && error.response.data &&
+      error.response.data.error && error.response.data.error.status,
+  ];
+  const messageCandidates = [
+    error && error.message,
+    error && error.errorInfo && error.errorInfo.message,
+    error && error.details && error.details.message,
+    error && error.response && error.response.data &&
+      error.response.data.error && error.response.data.error.message,
+    error && error.cause && error.cause.message,
+    error,
+  ];
+  const code = codeCandidates
+      .map((value) => String(value || "").trim())
+      .find((value) => value.length > 0) || "";
+  const message = messageCandidates
+      .map((value) => String(value || "").trim())
+      .find((value) => value.length > 0) || "";
+  return {code, message};
 }
 
 async function cleanupInvalidTokenRef(ref) {
@@ -1483,6 +1729,27 @@ async function cleanupInvalidTokenRef(ref) {
   } catch (error) {
     logger.warn("cleanupInvalidTokenRef failed", {path: ref.path, error});
   }
+}
+
+function tokenNotificationsEnabled(data) {
+  return data.allNotifications !== false;
+}
+
+function tokenAllowsCategory(data, categoryKey) {
+  if (!tokenNotificationsEnabled(data)) {
+    return false;
+  }
+  const category = reminderCategoryKey(categoryKey);
+  if (category === "morning" || category === "afternoon" || category === "night") {
+    return data.newPosters !== false;
+  }
+  if (category === "welcome") {
+    return true;
+  }
+  if (category === "subscription") {
+    return data.subscriptionReminders !== false;
+  }
+  return data.newPosters !== false;
 }
 
 async function sendDailyPersonalizedReminder({
@@ -1498,7 +1765,7 @@ async function sendDailyPersonalizedReminder({
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token)) {
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
       continue;
     }
     const userRef = doc.ref.parent && doc.ref.parent.parent;
@@ -1535,7 +1802,12 @@ async function sendDailyPersonalizedReminder({
       if (isMessagingTokenGoneError(error)) {
         await cleanupInvalidTokenRef(ref);
       }
-      logger.error("personalized daily reminder failed", {uid, token, categoryKey, error});
+      logger.error("personalized daily reminder failed", {
+        uid,
+        token,
+        categoryKey,
+        error: messagingErrorDetails(error),
+      });
     }
   });
 
@@ -1544,7 +1816,7 @@ async function sendDailyPersonalizedReminder({
   for (const doc of publicSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token)) {
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
       continue;
     }
     seenTokens.add(token);
@@ -1570,7 +1842,63 @@ async function sendDailyPersonalizedReminder({
       if (isMessagingTokenGoneError(error)) {
         await cleanupInvalidTokenRef(ref);
       }
-      logger.error("public daily reminder failed", {token, categoryKey, error});
+      logger.error("public daily reminder failed", {
+        token,
+        categoryKey,
+        error: messagingErrorDetails(error),
+      });
+    }
+  });
+}
+
+async function sendDirectReminderToEligibleTokens({
+  categoryKey,
+  title,
+  body,
+  imageUrl = "",
+}) {
+  const userTokenSnap = await db.collectionGroup("deviceTokens").get();
+  const publicSnap = await db.collection("publicDeviceTokens").get();
+  const seenTokens = new Set();
+  const jobs = [];
+
+  for (const doc of userTokenSnap.docs) {
+    const data = doc.data() || {};
+    const token = String(data.token || "").trim();
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+      continue;
+    }
+    seenTokens.add(token);
+    jobs.push({token, ref: doc.ref});
+  }
+
+  for (const doc of publicSnap.docs) {
+    const data = doc.data() || {};
+    const token = String(data.token || "").trim();
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+      continue;
+    }
+    seenTokens.add(token);
+    jobs.push({token, ref: doc.ref});
+  }
+
+  await runWithConcurrency(jobs, 4, async ({token, ref}) => {
+    try {
+      await sendReminderToToken({
+        token,
+        title,
+        body,
+        imageUrl: imageUrl || null,
+      });
+    } catch (error) {
+      if (isMessagingTokenGoneError(error)) {
+        await cleanupInvalidTokenRef(ref);
+      }
+      logger.error("direct reminder send failed", {
+        token,
+        categoryKey,
+        error: messagingErrorDetails(error),
+      });
     }
   });
 }
@@ -1628,70 +1956,6 @@ function httpStatusForError(error) {
     return nestedStatus;
   }
   return 500;
-}
-
-function websiteConfigPayload(payload) {
-  const rawCustomText = payload.customText && typeof payload.customText === "object" ?
-    payload.customText :
-    {};
-  const customText = {};
-  Object.entries(rawCustomText).forEach(([key, value]) => {
-    const safeKey = safeText(key, 80);
-    if (safeKey) {
-      customText[safeKey] = safeText(value, 500);
-    }
-  });
-  return {
-    showHero: payload.showHero !== false,
-    showPreview: payload.showPreview !== false,
-    showFeatures: payload.showFeatures !== false,
-    showCategories: payload.showCategories !== false,
-    showDynamicEvents: payload.showDynamicEvents !== false,
-    showPlans: payload.showPlans !== false,
-    showTestimonials: payload.showTestimonials === true,
-    showFaq: payload.showFaq !== false,
-    showDownloadCta: payload.showDownloadCta === true,
-    downloadUrl: safeUrl(payload.downloadUrl),
-    watchDemoUrl: safeUrl(payload.watchDemoUrl),
-    supportEmail: safeText(payload.supportEmail, 180),
-    facebookUrl: safeUrl(payload.facebookUrl),
-    instagramUrl: safeUrl(payload.instagramUrl),
-    youtubeUrl: safeUrl(payload.youtubeUrl),
-    heroEyebrow: safeText(payload.heroEyebrow, 120),
-    heroTitle: safeText(payload.heroTitle, 180),
-    heroSubtitle: safeText(payload.heroSubtitle, 420),
-    heroPrimaryCtaLabel: safeText(payload.heroPrimaryCtaLabel, 80),
-    heroSecondaryCtaLabel: safeText(payload.heroSecondaryCtaLabel, 80),
-    heroHighlightLabel: safeText(payload.heroHighlightLabel, 120),
-    heroImageUrl: safeUrl(payload.heroImageUrl),
-    previewEyebrow: safeText(payload.previewEyebrow, 120),
-    previewTitle: safeText(payload.previewTitle, 180),
-    previewSubtitle: safeText(payload.previewSubtitle, 420),
-    previewImageUrl: safeUrl(payload.previewImageUrl),
-    featuresEyebrow: safeText(payload.featuresEyebrow, 120),
-    featuresTitle: safeText(payload.featuresTitle, 180),
-    featuresSubtitle: safeText(payload.featuresSubtitle, 420),
-    categoriesEyebrow: safeText(payload.categoriesEyebrow, 120),
-    categoriesTitle: safeText(payload.categoriesTitle, 180),
-    categoriesSubtitle: safeText(payload.categoriesSubtitle, 420),
-    dynamicEventsEyebrow: safeText(payload.dynamicEventsEyebrow, 120),
-    dynamicEventsTitle: safeText(payload.dynamicEventsTitle, 180),
-    dynamicEventsSubtitle: safeText(payload.dynamicEventsSubtitle, 420),
-    plansEyebrow: safeText(payload.plansEyebrow, 120),
-    plansTitle: safeText(payload.plansTitle, 180),
-    plansSubtitle: safeText(payload.plansSubtitle, 420),
-    plansPrimaryCtaLabel: safeText(payload.plansPrimaryCtaLabel, 80),
-    faqEyebrow: safeText(payload.faqEyebrow, 120),
-    faqTitle: safeText(payload.faqTitle, 180),
-    faqSubtitle: safeText(payload.faqSubtitle, 420),
-    downloadEyebrow: safeText(payload.downloadEyebrow, 120),
-    downloadTitle: safeText(payload.downloadTitle, 180),
-    downloadSubtitle: safeText(payload.downloadSubtitle, 420),
-    downloadButtonLabel: safeText(payload.downloadButtonLabel, 80),
-    footerTagline: safeText(payload.footerTagline, 280),
-    customText,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
 }
 
 function toMillis(value) {
@@ -1756,311 +2020,6 @@ async function deletePosterStorageAssets(bucket, data) {
     }
   }));
 }
-
-function websitePosterPayload(payload) {
-  const category = safeText(payload.category, 120);
-  const imageUrl = safeUrl(payload.imageUrl);
-  const sortOrder = Number.isFinite(Number(payload.sortOrder)) ?
-    Number(payload.sortOrder) :
-    0;
-  return {
-    category,
-    imageUrl,
-    sortOrder,
-    active: payload.active !== false,
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-}
-
-exports.websiteAdminGetContent = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    await requireWebsiteAdmin(req);
-    const accessConfig = await getWebsiteAdminAccessConfig();
-    const configSnap = await db.collection("websiteConfig").doc("landingPage").get();
-    const posterSnap = await db.collection("websitePosters")
-        .orderBy("sortOrder", "asc")
-        .get();
-    const posters = posterSnap.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    res.status(200).json({
-      success: true,
-      config: configSnap.data() || {},
-      posters,
-      adminEmailsConfigured: accessConfig.emails.size,
-      adminPrimaryEmail: accessConfig.primaryEmail,
-    });
-  } catch (error) {
-    logger.error("websiteAdminGetContent error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Unauthorized",
-    });
-  }
-});
-
-exports.websiteAdminUpdateConfig = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    await requireWebsiteAdmin(req);
-    const payload = websiteConfigPayload(req.body || {});
-    await db.collection("websiteConfig").doc("landingPage").set(payload, {merge: true});
-    res.status(200).json({success: true, config: payload});
-  } catch (error) {
-    logger.error("websiteAdminUpdateConfig error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Config update failed",
-    });
-  }
-});
-
-exports.websiteAdminUpsertPoster = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    await requireWebsiteAdmin(req);
-    const payload = websitePosterPayload(req.body || {});
-    if (!payload.category || !payload.imageUrl) {
-      res.status(400).json({
-        success: false,
-        message: "category and imageUrl are required",
-      });
-      return;
-    }
-    const requestedId = safeText(req.body?.posterId || req.body?.id, 160)
-        .replace(/[^a-zA-Z0-9_-]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-|-$/g, "");
-    const posterId = requestedId || `${payload.category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
-    const ref = db.collection("websitePosters").doc(posterId);
-    await ref.set({
-      ...payload,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, {merge: true});
-    res.status(200).json({
-      success: true,
-      poster: {
-        id: posterId,
-        ...payload,
-      },
-    });
-  } catch (error) {
-    logger.error("websiteAdminUpsertPoster error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Poster save failed",
-    });
-  }
-});
-
-exports.websiteAdminDeletePoster = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    await requireWebsiteAdmin(req);
-    const posterId = safeText(req.body?.posterId || req.body?.id, 160);
-    if (!posterId) {
-      res.status(400).json({success: false, message: "posterId is required"});
-      return;
-    }
-    await db.collection("websitePosters").doc(posterId).delete();
-    res.status(200).json({success: true, posterId});
-  } catch (error) {
-    logger.error("websiteAdminDeletePoster error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Poster delete failed",
-    });
-  }
-});
-
-exports.websiteAdminUploadAsset = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    await requireWebsiteAdmin(req);
-    const assetType = safeText(req.body?.assetType, 40);
-    const fileName = sanitizeFileName(req.body?.fileName);
-    const contentType = String(req.body?.contentType || "").trim().toLowerCase();
-    const buffer = decodeBase64Payload(req.body?.base64Data);
-
-    const assetConfig = assetType === "demoVideo" ?
-      {
-        folder: "website/videos",
-        maxBytes: 25 * 1024 * 1024,
-        prefix: "video/",
-      } :
-      {
-        folder: "website/posters",
-        maxBytes: 10 * 1024 * 1024,
-        prefix: "image/",
-      };
-
-    if (!contentType.startsWith(assetConfig.prefix)) {
-      res.status(400).json({
-        success: false,
-        message: `Invalid content type for ${assetType || "asset"}`,
-      });
-      return;
-    }
-    if (buffer.length === 0 || buffer.length > assetConfig.maxBytes) {
-      res.status(400).json({
-        success: false,
-        message: `Asset size must be between 1 byte and ${assetConfig.maxBytes} bytes`,
-      });
-      return;
-    }
-
-    const bucket = admin.storage().bucket();
-    const objectPath = `${assetConfig.folder}/${Date.now()}-${fileName}`;
-    const downloadToken = crypto.randomUUID();
-    const file = bucket.file(objectPath);
-    await file.save(buffer, {
-      resumable: false,
-      metadata: {
-        contentType,
-        cacheControl: "public,max-age=3600",
-        metadata: {
-          firebaseStorageDownloadTokens: downloadToken,
-        },
-      },
-    });
-
-    const downloadUrl = buildStorageDownloadUrl(
-        bucket.name,
-        objectPath,
-        downloadToken,
-    );
-
-    res.status(200).json({
-      success: true,
-      assetType: assetType || "posterImage",
-      path: objectPath,
-      downloadUrl,
-      contentType,
-      bytes: buffer.length,
-    });
-  } catch (error) {
-    logger.error("websiteAdminUploadAsset error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Upload failed",
-    });
-  }
-});
-
-exports.websiteAdminUpdateAccess = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  if (req.method !== "POST") {
-    res.status(405).json({success: false, message: "Method not allowed"});
-    return;
-  }
-
-  try {
-    const decoded = await requireWebsiteAdmin(req);
-    const nextEmail = normalizeText(req.body?.newEmail);
-    const nextPassword = String(req.body?.newPassword || "").trim();
-    const requestedEmails = Array.isArray(req.body?.allowedEmails) ?
-      req.body.allowedEmails :
-      [];
-    const allowedEmails = Array.from(
-        new Set(
-            [
-              nextEmail,
-              ...requestedEmails.map((item) => normalizeText(item)),
-            ].filter((item) => item && item.includes("@")),
-        ),
-    );
-
-    if (!nextEmail || !nextEmail.includes("@")) {
-      throw new Error("Valid admin email is required");
-    }
-    if (nextPassword.length < 6) {
-      throw new Error("Admin password must be at least 6 characters");
-    }
-
-    const grantedAdmins = [];
-    for (const email of allowedEmails) {
-      const grant = await grantLandingAdminAccessByEmail(
-          email,
-          email === nextEmail ? nextPassword : "",
-      );
-      grantedAdmins.push(grant);
-    }
-
-    await db.collection("websiteConfig").doc("websiteAdminAccess").set({
-      primaryEmail: nextEmail,
-      allowedEmails,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedByUid: decoded.uid,
-      updatedByEmail: normalizeText(decoded.email),
-      grants: grantedAdmins,
-    }, {merge: true});
-
-    res.status(200).json({
-      success: true,
-      primaryEmail: nextEmail,
-      allowedEmails,
-      grantedAdmins,
-      message: "Landing admin access updated",
-    });
-  } catch (error) {
-    logger.error("websiteAdminUpdateAccess error", error);
-    res.status(403).json({
-      success: false,
-      message: error instanceof Error ? error.message : "Admin credentials update failed",
-    });
-  }
-});
 
 exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res) => {
   setCors(res);
@@ -2316,6 +2275,21 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
           error: error instanceof Error ? error.message : String(error),
         });
       }
+    }
+
+    status = deriveEntitlementStatus({
+      isPro,
+      subscriptionState,
+      expiryTime,
+    });
+    isPro = status === "active";
+
+    if (isPro !== (data.isPro === true) || status !== (data.status || null)) {
+      await entitlementRef.set({
+        isPro,
+        status,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
     }
 
     res.status(200).json({
@@ -2611,7 +2585,10 @@ exports.processWelcomeNotifications = onSchedule(
             await cleanupInvalidTokenRef(doc.ref);
             continue;
           }
-          logger.error("public welcome send failed", error);
+          logger.error("public welcome send failed", {
+            token,
+            error: messagingErrorDetails(error),
+          });
         }
       }
 
@@ -2657,7 +2634,11 @@ exports.processWelcomeNotifications = onSchedule(
             await cleanupInvalidTokenRef(doc.ref);
             continue;
           }
-          logger.error("user welcome send failed", error);
+          logger.error("user welcome send failed", {
+            uid,
+            token,
+            error: messagingErrorDetails(error),
+          });
         }
       }
     },
@@ -2753,7 +2734,8 @@ exports.dailyDynamicEventReminder = onSchedule(
           "repu" :
           "ee roju";
 
-        await sendTopicReminder({
+        await sendDirectReminderToEligibleTokens({
+          categoryKey: "dynamic_event",
           title: `${event.title} reminder`,
           body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
           imageUrl,
@@ -2949,3 +2931,4 @@ exports.handlePlayBillingRtdn = onMessagePublished(
       }
     },
 );
+

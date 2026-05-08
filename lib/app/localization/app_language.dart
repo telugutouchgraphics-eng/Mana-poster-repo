@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
 
 enum AppLanguage { telugu, hindi, english, tamil, kannada, malayalam }
 
@@ -122,7 +124,7 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
   'More templates': '\u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938',
   'Unlimited customization': '\u0905\u0928\u0932\u093f\u092e\u093f\u091f\u0947\u0921 \u0915\u0938\u094d\u091f\u092e\u093e\u0907\u091c\u093c\u0947\u0936\u0928',
   'HD export': 'HD \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f',
-  'Is Mana Poster AI free?': 'क्या Mana Poster AI फ्री है?',
+  'Is Mana Poster Ai AI free?': 'क्या Mana Poster Ai AI फ्री है?',
   'Posters are available with stronger templates and deeper editing inside the app.':
       '\u092b\u094d\u0930\u0940 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0902\u0964 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u090f\u0915\u094d\u0938\u0947\u0938 \u0938\u0947 \u092c\u0947\u0939\u0924\u0930 templates \u0914\u0930 deeper editing \u092e\u093f\u0932\u0924\u0940 \u0939\u0948\u0964',
   'Can I add photo and name?': 'क्या मैं फोटो और नाम जोड़ सकता हूँ?',
@@ -141,8 +143,8 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
   'Contact': '\u0938\u0902\u092a\u0930\u094d\u0915',
   'Telugu-first poster creation': '\u0924\u0947\u0932\u0941\u0917\u0941-\u092b\u0930\u094d\u0938\u094d\u091f \u092a\u094b\u0938\u094d\u091f\u0930 \u0915\u094d\u0930\u093f\u090f\u0936\u0928',
   'Create Telugu Posters in Seconds': '\u0938\u0947\u0915\u0902\u0921\u094b\u0902 \u092e\u0947\u0902 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u090f\u0902',
-  'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster \u092f\u0942\u091c\u093c\u0930\u094d\u0938 \u0915\u094b simple \u0914\u0930 fast workflow \u0915\u0947 \u0938\u093e\u0925 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0924\u0941\u0930\u0902\u0924 create, customize \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
+  'Mana Poster Ai lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
+      'Mana Poster Ai \u092f\u0942\u091c\u093c\u0930\u094d\u0938 \u0915\u094b simple \u0914\u0930 fast workflow \u0915\u0947 \u0938\u093e\u0925 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0924\u0941\u0930\u0902\u0924 create, customize \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0926\u0947\u0924\u093e \u0939\u0948\u0964',
   'Watch Demo': '\u0921\u0947\u092e\u094b \u0926\u0947\u0916\u0947\u0902',
   'Poster Collections Available': '\u092b\u094d\u0930\u0940 \u0914\u0930 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0909\u092a\u0932\u092c\u094d\u0927',
   'App Preview': '\u0910\u092a \u092a\u094d\u0930\u0940\u0935\u094d\u092f\u0942',
@@ -159,8 +161,8 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
       '\u0939\u0930 category poster wall \u0915\u0940 \u0924\u0930\u0939 \u0916\u0941\u0932\u0924\u0940 \u0939\u0948, \u0907\u0938\u0932\u093f\u090f landing page rich, bold \u0914\u0930 creative marketplace \u091c\u0948\u0938\u093e \u0932\u0917\u0924\u093e \u0939\u0948\u0964',
   'Today\'s Special Posters': '\u0906\u091c \u0915\u0947 \u0938\u094d\u092a\u0947\u0936\u0932 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938',
   'Every Day New Posters Automatically': '\u0939\u0930 \u0926\u093f\u0928 \u0928\u090f \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0905\u092a\u0928\u0947 \u0906\u092a',
-  'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      'Mana Poster \u091a\u0941\u0928\u0940 \u0939\u0941\u0908 \u0924\u093e\u0930\u0940\u0916\u093c \u0915\u0947 \u0906\u0927\u093e\u0930 \u092a\u0930 Festivals, Jayanthi, Vardhanthi, National Days \u0914\u0930 Telugu State Events \u0915\u0947 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0905\u092a\u0928\u0947 \u0906\u092a \u0926\u093f\u0916\u093e\u0924\u093e \u0939\u0948\u0964',
+  'Mana Poster Ai automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
+      'Mana Poster Ai \u091a\u0941\u0928\u0940 \u0939\u0941\u0908 \u0924\u093e\u0930\u0940\u0916\u093c \u0915\u0947 \u0906\u0927\u093e\u0930 \u092a\u0930 Festivals, Jayanthi, Vardhanthi, National Days \u0914\u0930 Telugu State Events \u0915\u0947 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0905\u092a\u0928\u0947 \u0906\u092a \u0926\u093f\u0916\u093e\u0924\u093e \u0939\u0948\u0964',
   'Poster Options': '\u092b\u094d\u0930\u0940 \u092c\u0928\u093e\u092e \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e',
   'Choose the plan that fits your poster workflow':
       '\u0905\u092a\u0928\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 workflow \u0915\u0947 \u0932\u093f\u090f \u0938\u0939\u0940 \u092a\u094d\u0932\u093e\u0928 \u091a\u0941\u0928\u0947\u0902',
@@ -174,8 +176,8 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
       '\u0906\u091c \u0939\u0940 \u0938\u0941\u0902\u0926\u0930 \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930 \u092c\u0928\u093e\u0928\u093e \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
       'Ready templates, Telugu-friendly typing, photo placement \u0914\u0930 fast sharing \u090f\u0915 \u0939\u0940 app \u092e\u0947\u0902 \u092e\u093f\u0932\u0924\u0947 \u0939\u0948\u0902\u0964',
-  'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster \u0930\u094b\u091c\u093c \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 create \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0915\u093e \u0906\u0938\u093e\u0928 \u0924\u0930\u0940\u0915\u093e \u0939\u0948\u0964',
+  'Mana Poster Ai is a simple way to create and share Telugu posters every day.':
+      'Mana Poster Ai \u0930\u094b\u091c\u093c \u0924\u0947\u0932\u0941\u0917\u0941 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 create \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0915\u093e \u0906\u0938\u093e\u0928 \u0924\u0930\u0940\u0915\u093e \u0939\u0948\u0964',
 };
 
 const Map<String, String> _landingTamilFallbacks = <String, String>{
@@ -218,7 +220,7 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
   'More templates': '\u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd \u0b9f\u0bc6\u0bae\u0bcd\u0baa\u0bcd\u0bb3\u0bc7\u0b9f\u0bcd\u0b9f\u0bc1\u0b95\u0bb3\u0bcd',
   'Unlimited customization': '\u0bb5\u0bb0\u0bae\u0bcd\u0baa\u0bb1\u0bcd\u0bb1 customization',
   'HD export': 'HD export',
-  'Is Mana Poster AI free?': 'Mana Poster AI இலவசமா?',
+  'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI இலவசமா?',
   'Posters are available with stronger templates and deeper editing inside the app.':
       '\u0b87\u0bb2\u0bb5\u0b9a \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd. Premium access \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0bae\u0bc7\u0bae\u0bcd\u0baa\u0b9f\u0bcd\u0b9f templates \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd deeper editing \u0ba4\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
   'Can I add photo and name?': 'நான் புகைப்படம் மற்றும் பெயரை சேர்க்கலாமா?',
@@ -238,8 +240,8 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
   'Telugu-first poster creation': '\u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1-\u0bae\u0bc1\u0ba4\u0ba9\u0bcd\u0bae\u0bc8 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bae\u0bcd',
   'Create Telugu Posters in Seconds':
       '\u0bb5\u0bbf\u0ba8\u0bbe\u0b9f\u0bbf\u0b95\u0bb3\u0bbf\u0bb2\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
-  'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster \u0b8e\u0bb3\u0bbf\u0baf, \u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 workflow \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0b9f\u0ba9\u0bc7 create, customize \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd share \u0b9a\u0bc6\u0baf\u0bcd\u0baf \u0b89\u0ba4\u0bb5\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.',
+  'Mana Poster Ai lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
+      'Mana Poster Ai \u0b8e\u0bb3\u0bbf\u0baf, \u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 workflow \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0b9f\u0ba9\u0bc7 create, customize \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd share \u0b9a\u0bc6\u0baf\u0bcd\u0baf \u0b89\u0ba4\u0bb5\u0bc1\u0b95\u0bbf\u0bb1\u0ba4\u0bc1.',
   'Watch Demo': '\u0b9f\u0bc6\u0bae\u0bcb \u0baa\u0bbe\u0bb0\u0bcd\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
   'Poster Collections Available':
       '\u0b87\u0bb2\u0bb5\u0b9a \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd',
@@ -258,8 +260,8 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
   'Today\'s Special Posters': '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd',
   'Every Day New Posters Automatically':
       '\u0b92\u0bb5\u0bcd\u0bb5\u0bca\u0bb0\u0bc1 \u0ba8\u0bbe\u0bb3\u0bc1\u0bae\u0bcd \u0baa\u0bc1\u0ba4\u0bbf\u0baf \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0ba4\u0bbe\u0ba9\u0bbe\u0b95',
-  'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      '\u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0ba4\u0bc7\u0ba4\u0bbf\u0baf\u0bbf\u0ba9\u0bcd \u0b85\u0b9f\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bc8\u0baf\u0bbf\u0bb2\u0bcd Festivals, Jayanthi, Vardhanthi, National Days \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd Telugu State Events \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 Mana Poster \u0ba4\u0bbe\u0ba9\u0bbe\u0b95 \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
+  'Mana Poster Ai automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
+      '\u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0ba4\u0bcd\u0ba4 \u0ba4\u0bc7\u0ba4\u0bbf\u0baf\u0bbf\u0ba9\u0bcd \u0b85\u0b9f\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bc8\u0baf\u0bbf\u0bb2\u0bcd Festivals, Jayanthi, Vardhanthi, National Days \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd Telugu State Events \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 Mana Poster Ai \u0ba4\u0bbe\u0ba9\u0bbe\u0b95 \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
   'Poster Options': '\u0b87\u0bb2\u0bb5\u0b9a\u0bae\u0bcd vs \u0baa\u0bbf\u0bb0\u0bc0\u0bae\u0bbf\u0baf\u0bae\u0bcd',
   'Choose the plan that fits your poster workflow':
       '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd poster workflow-\u0b95\u0bcd\u0b95\u0bc1 \u0baa\u0bca\u0bb0\u0bc1\u0ba4\u0bcd\u0ba4\u0bae\u0bbe\u0ba9 \u0ba4\u0bbf\u0b9f\u0bcd\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8\u0ba4\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
@@ -273,8 +275,8 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
       '\u0b87\u0ba9\u0bcd\u0bb1\u0bc7 \u0b85\u0bb4\u0b95\u0bbe\u0ba9 \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0ba4\u0bcd \u0ba4\u0bca\u0b9f\u0b99\u0bcd\u0b95\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
       'Ready templates, Telugu-friendly typing, photo placement \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd fast sharing \u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1\u0bae\u0bcd \u0b92\u0bb0\u0bc7 app-\u0bb2\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bbf\u0ba9\u0bcd\u0bb1\u0ba9.',
-  'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster \u0ba4\u0bbf\u0ba9\u0bae\u0bc1\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd \u0baa\u0b95\u0bbf\u0bb0\u0bb5\u0bc1\u0bae\u0bcd \u0b8e\u0bb3\u0bbf\u0baf \u0bb5\u0bb4\u0bbf.',
+  'Mana Poster Ai is a simple way to create and share Telugu posters every day.':
+      'Mana Poster Ai \u0ba4\u0bbf\u0ba9\u0bae\u0bc1\u0bae\u0bcd \u0ba4\u0bc6\u0bb2\u0bc1\u0b99\u0bcd\u0b95\u0bc1 \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bc8 \u0b89\u0bb0\u0bc1\u0bb5\u0bbe\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd \u0baa\u0b95\u0bbf\u0bb0\u0bb5\u0bc1\u0bae\u0bcd \u0b8e\u0bb3\u0bbf\u0baf \u0bb5\u0bb4\u0bbf.',
 };
 
 const Map<String, String> _landingKannadaFallbacks = <String, String>{
@@ -317,7 +319,7 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
   'More templates': '\u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82 \u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Unlimited customization': '\u0c85\u0ca8\u0cbf\u0caf\u0cae\u0cbf\u0ca4 customization',
   'HD export': 'HD export',
-  'Is Mana Poster AI free?': 'Mana Poster AI ಉಚಿತವೇ?',
+  'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI ಉಚಿತವೇ?',
   'Posters are available with stronger templates and deeper editing inside the app.':
       '\u0c89\u0c9a\u0cbf\u0ca4 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb2\u0cad\u0ccd\u0caf. Premium access \u0cae\u0cc2\u0cb2\u0c95 \u0c89\u0ca4\u0ccd\u0ca4\u0cae templates \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 deeper editing \u0ca6\u0cca\u0cb0\u0cc6\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
   'Can I add photo and name?': 'ನಾನು ಫೋಟೋ ಮತ್ತು ಹೆಸರು ಸೇರಿಸಬಹುದೇ?',
@@ -337,8 +339,8 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
   'Telugu-first poster creation': '\u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1-\u0cae\u0cca\u0ca6\u0cb2 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd \u0ca8\u0cbf\u0cb0\u0ccd\u0cae\u0cbe\u0ca3',
   'Create Telugu Posters in Seconds':
       '\u0cb8\u0cc6\u0c95\u0cc6\u0c82\u0ca1\u0cc1\u0c97\u0cb3\u0cb2\u0ccd\u0cb2\u0cbf \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cbf',
-  'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      'Mana Poster \u0cb8\u0cb0\u0cb3 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 workflow \u0c9c\u0cca\u0ca4\u0cc6 \u0cac\u0cb3\u0c95\u0cc6\u0ca6\u0cbe\u0cb0\u0cb0\u0cbf\u0c97\u0cc6 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca4\u0c95\u0ccd\u0cb7\u0ca3 create, customize \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 \u0cb8\u0cb9\u0cbe\u0caf \u0cae\u0cbe\u0ca1\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Mana Poster Ai lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
+      'Mana Poster Ai \u0cb8\u0cb0\u0cb3 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 workflow \u0c9c\u0cca\u0ca4\u0cc6 \u0cac\u0cb3\u0c95\u0cc6\u0ca6\u0cbe\u0cb0\u0cb0\u0cbf\u0c97\u0cc6 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca4\u0c95\u0ccd\u0cb7\u0ca3 create, customize \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 \u0cb8\u0cb9\u0cbe\u0caf \u0cae\u0cbe\u0ca1\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
   'Watch Demo': '\u0ca1\u0cc6\u0cae\u0ccb \u0ca8\u0ccb\u0ca1\u0cbf',
   'Poster Collections Available': '\u0c89\u0c9a\u0cbf\u0ca4 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb2\u0cad\u0ccd\u0caf',
   'App Preview': '\u0c86\u0caa\u0ccd \u0caa\u0cc2\u0cb0\u0ccd\u0cb5\u0cb5\u0cc0\u0c95\u0ccd\u0cb7\u0ca3\u0cc6',
@@ -356,8 +358,8 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
   'Today\'s Special Posters': '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1',
   'Every Day New Posters Automatically':
       '\u0caa\u0ccd\u0cb0\u0ca4\u0cbf \u0ca6\u0cbf\u0ca8 \u0cb9\u0cca\u0cb8 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb8\u0ccd\u0cb5\u0caf\u0c82\u0c9a\u0cbe\u0cb2\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf',
-  'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      '\u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0cbe\u0ca1\u0cbf\u0ca6 \u0ca6\u0cbf\u0ca8\u0cbe\u0c82\u0c95\u0ca6 \u0c86\u0ca7\u0cbe\u0cb0\u0ca6 \u0cae\u0cc7\u0cb2\u0cc6 Festivals, Jayanthi, Vardhanthi, National Days \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 Telugu State Events \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 Mana Poster \u0cb8\u0ccd\u0cb5\u0caf\u0c82\u0c9a\u0cbe\u0cb2\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+  'Mana Poster Ai automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
+      '\u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0cbe\u0ca1\u0cbf\u0ca6 \u0ca6\u0cbf\u0ca8\u0cbe\u0c82\u0c95\u0ca6 \u0c86\u0ca7\u0cbe\u0cb0\u0ca6 \u0cae\u0cc7\u0cb2\u0cc6 Festivals, Jayanthi, Vardhanthi, National Days \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 Telugu State Events \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 Mana Poster Ai \u0cb8\u0ccd\u0cb5\u0caf\u0c82\u0c9a\u0cbe\u0cb2\u0cbf\u0ca4\u0cb5\u0cbe\u0c97\u0cbf \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
   'Poster Options': '\u0c89\u0c9a\u0cbf\u0ca4 vs \u0caa\u0ccd\u0cb0\u0cc0\u0cae\u0cbf\u0caf\u0c82',
   'Choose the plan that fits your poster workflow':
       '\u0ca8\u0cbf\u0cae\u0ccd\u0cae poster workflow \u0c97\u0cc6 \u0cb8\u0cb0\u0cbf\u0cb9\u0cca\u0c82\u0ca6\u0cc1\u0cb5 \u0caf\u0ccb\u0c9c\u0ca8\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0cbe\u0ca1\u0cbf',
@@ -371,8 +373,8 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
       '\u0c87\u0c82\u0ca6\u0cc7 \u0cb8\u0cc1\u0c82\u0ca6\u0cb0 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cb2\u0cc1 \u0c86\u0cb0\u0c82\u0cad\u0cbf\u0cb8\u0cbf',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
       'Ready templates, Telugu-friendly typing, photo placement \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 fast sharing \u0c8e\u0cb2\u0ccd\u0cb2\u0cb5\u0cc2 \u0c92\u0c82\u0ca6\u0cc7 app \u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0ca6\u0cca\u0cb0\u0cc6\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
-  'Mana Poster is a simple way to create and share Telugu posters every day.':
-      'Mana Poster \u0caa\u0ccd\u0cb0\u0ca4\u0cbf\u0ca6\u0cbf\u0ca8 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cbf share \u0cae\u0cbe\u0ca1\u0cc1\u0cb5 \u0cb8\u0cb0\u0cb3 \u0cae\u0cbe\u0cb0\u0ccd\u0c97.',
+  'Mana Poster Ai is a simple way to create and share Telugu posters every day.':
+      'Mana Poster Ai \u0caa\u0ccd\u0cb0\u0ca4\u0cbf\u0ca6\u0cbf\u0ca8 \u0ca4\u0cc6\u0cb2\u0cc1\u0c97\u0cc1 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0cb0\u0c9a\u0cbf\u0cb8\u0cbf share \u0cae\u0cbe\u0ca1\u0cc1\u0cb5 \u0cb8\u0cb0\u0cb3 \u0cae\u0cbe\u0cb0\u0ccd\u0c97.',
 };
 
 const Map<String, String> _landingMalayalamFallbacks = <String, String>{
@@ -415,7 +417,7 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
   'More templates': '\u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02 \u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e',
   'Unlimited customization': '\u0d05\u0d7a\u0d32\u0d3f\u0d2e\u0d3f\u0d31\u0d4d\u0d31\u0d21\u0d4d customization',
   'HD export': 'HD export',
-  'Is Mana Poster AI free?': 'Mana Poster AI ഫ്രീ ആണോ?',
+  'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI ഫ്രീ ആണോ?',
   'Posters are available with stronger templates and deeper editing inside the app.':
       '\u0d2b\u0d4d\u0d30\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d. Premium access \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d2e\u0d46\u0d1a\u0d4d\u0d1a\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d4d\u0d1f templates \u0d09\u0d02 deeper editing \u0d09\u0d02 \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Can I add photo and name?': 'ഫോട്ടോയും പേരും ചേർക്കാനാകുമോ?',
@@ -435,8 +437,8 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
   'Telugu-first poster creation': '\u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d-\u0d2b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d7c \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f',
   'Create Telugu Posters in Seconds':
       '\u0d38\u0d46\u0d15\u0d4d\u0d15\u0d7b\u0d21\u0d41\u0d15\u0d7e\u0d15\u0d4d\u0d15\u0d15\u0d02 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d42',
-  'Mana Poster lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
-      '\u0d38\u0d30\u0d33\u0d35\u0d41\u0d02 \u0d35\u0d47\u0d17\u0d2e\u0d41\u0d33\u0d4d\u0d33 workflow \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d09\u0d1f\u0d7b create, customize, share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d7b Mana Poster \u0d38\u0d39\u0d3e\u0d2f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
+  'Mana Poster Ai lets users create, customize, and share Telugu posters instantly with a simple, fast workflow.':
+      '\u0d38\u0d30\u0d33\u0d35\u0d41\u0d02 \u0d35\u0d47\u0d17\u0d2e\u0d41\u0d33\u0d4d\u0d33 workflow \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d09\u0d1f\u0d7b create, customize, share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d7b Mana Poster Ai \u0d38\u0d39\u0d3e\u0d2f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
   'Watch Demo': '\u0d21\u0d46\u0d2e\u0d4b \u0d15\u0d3e\u0d23\u0d42',
   'Poster Collections Available':
       '\u0d2b\u0d4d\u0d30\u0d40\u0d2f\u0d41\u0d02 \u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d35\u0d41\u0d02 \u0d09\u0d33\u0d4d\u0d33 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d',
@@ -454,8 +456,8 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
       '\u0d13\u0d30\u0d4b category-\u0d2f\u0d41\u0d02 poster wall \u0d2a\u0d4b\u0d32\u0d46 \u0d24\u0d41\u0d31\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d24\u0d3f\u0d28\u0d3e\u0d7d landing page \u0d38\u0d2e\u0d4d\u0d2a\u0d28\u0d4d\u0d28\u0d35\u0d41\u0d02 bold-\u0d09\u0d02 creative marketplace \u0d2a\u0d4b\u0d32\u0d46 \u0d05\u0d28\u0d41\u0d2d\u0d35\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d41\u0d02.',
   'Today\'s Special Posters': '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d38\u0d4d\u0d2a\u0d46\u0d37\u0d4d\u0d2f\u0d7d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e',
   'Every Day New Posters Automatically': '\u0d2a\u0d4d\u0d30\u0d24\u0d3f\u0d26\u0d3f\u0d28\u0d02 \u0d2a\u0d41\u0d24\u0d3f\u0d2f \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d4d\u0d35\u0d2f\u0d02',
-  'Mana Poster automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
-      '\u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d\u0d24 \u0d24\u0d40\u0d2f\u0d24\u0d3f\u0d2f\u0d41\u0d1f\u0d46 \u0d05\u0d1f\u0d3f\u0d38\u0d4d\u0d25\u0d3e\u0d28\u0d24\u0d4d\u0d24\u0d3f\u0d7d Festivals, Jayanthi, Vardhanthi, National Days, Telugu State Events \u0d0e\u0d28\u0d4d\u0d28\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e Mana Poster \u0d38\u0d4d\u0d35\u0d2e\u0d47\u0d27\u0d2f\u0d3e \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+  'Mana Poster Ai automatically shows posters for Festivals, Jayanthi, Vardhanthi, National Days and Telugu State Events based on the selected date.':
+      '\u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d\u0d24 \u0d24\u0d40\u0d2f\u0d24\u0d3f\u0d2f\u0d41\u0d1f\u0d46 \u0d05\u0d1f\u0d3f\u0d38\u0d4d\u0d25\u0d3e\u0d28\u0d24\u0d4d\u0d24\u0d3f\u0d7d Festivals, Jayanthi, Vardhanthi, National Days, Telugu State Events \u0d0e\u0d28\u0d4d\u0d28\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e Mana Poster Ai \u0d38\u0d4d\u0d35\u0d2e\u0d47\u0d27\u0d2f\u0d3e \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Poster Options': '\u0d2b\u0d4d\u0d30\u0d40 vs \u0d2a\u0d4d\u0d30\u0d40\u0d2e\u0d3f\u0d2f\u0d02',
   'Choose the plan that fits your poster workflow':
       '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 poster workflow-\u0d2f\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d1a\u0d47\u0d30\u0d41\u0d28\u0d4d\u0d28 \u0d2a\u0d4d\u0d32\u0d3e\u0d7b \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
@@ -469,8 +471,8 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
       '\u0d07\u0d28\u0d4d\u0d28\u0d41\u0d24\u0d28\u0d4d\u0d28\u0d46 \u0d2e\u0d28\u0d4b\u0d39\u0d30\u0d2e\u0d3e\u0d2f \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d7b \u0d24\u0d41\u0d1f\u0d19\u0d4d\u0d19\u0d42',
   'Ready templates, Telugu-friendly typing, photo placement, and fast sharing come together in one app.':
       'Ready templates, Telugu-friendly typing, photo placement, fast sharing \u0d0e\u0d28\u0d4d\u0d28\u0d3f\u0d35 \u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02 \u0d12\u0d30\u0d4a\u0d31\u0d4d\u0d31 app-\u0d7d \u0d12\u0d28\u0d4d\u0d28\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d28\u0d4d\u0d28\u0d41.',
-  'Mana Poster is a simple way to create and share Telugu posters every day.':
-      '\u0d2a\u0d4d\u0d30\u0d24\u0d3f\u0d26\u0d3f\u0d28\u0d02 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d28\u0d41\u0d02 share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 Mana Poster \u0d12\u0d30\u0d41 \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f \u0d2e\u0d3e\u0d7c\u0d17\u0d2e\u0d3e\u0d23\u0d4d.',
+  'Mana Poster Ai is a simple way to create and share Telugu posters every day.':
+      '\u0d2a\u0d4d\u0d30\u0d24\u0d3f\u0d26\u0d3f\u0d28\u0d02 \u0d24\u0d46\u0d32\u0d41\u0d19\u0d4d\u0d15\u0d4d \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d28\u0d41\u0d02 share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 Mana Poster Ai \u0d12\u0d30\u0d41 \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f \u0d2e\u0d3e\u0d7c\u0d17\u0d2e\u0d3e\u0d23\u0d4d.',
 };
 
 class AppStrings {
@@ -510,7 +512,7 @@ class AppStrings {
   }
 
   String _sanitizeDisplayText(String value, {String? fallback}) {
-    final normalized = value
+    final normalized = _decodeMojibake(value)
         .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u201e\u00a2", "'")
         .replaceAll("\u00e2\u20ac\u02dc", "'")
         .replaceAll("\u00c3\u00a2\u00e2\u201a\u00ac\u00c5\u201c", '"')
@@ -531,13 +533,49 @@ class AppStrings {
     return normalized;
   }
 
+  String _decodeMojibake(String value) {
+    if (!_looksCorrupted(value) && !_containsPlainMojibakeLeadBytes(value)) {
+      return value;
+    }
+    try {
+      final decoded = utf8.decode(latin1.encode(value), allowMalformed: true);
+      return decoded.trim().isEmpty ? value : decoded;
+    } catch (_) {
+      return value;
+    }
+  }
+
+  bool _containsPlainMojibakeLeadBytes(String value) {
+    return value.contains('à°') ||
+        value.contains('à¤') ||
+        value.contains('à®') ||
+        value.contains('à²') ||
+        value.contains('à´');
+  }
+
   bool _looksCorrupted(String value) {
+    if (value.contains('à°') ||
+        value.contains('à¤') ||
+        value.contains('à®') ||
+        value.contains('à²') ||
+        value.contains('à´')) {
+      return true;
+    }
     return value.contains("\u00c3\u00a0") ||
         value.contains("\u00c3\u00a2\u00e2\u201a\u00ac") ||
         value.contains("\u00c3\u00a2\u00c5\u201c") ||
         value.contains("\u00c3\u00b0\u00c5\u00b8") ||
         value.contains("\u00c3\u00af\u00c2\u00b8") ||
-        value.contains("\u00c3\u00a2\u00c2\u009d");
+        value.contains("\u00c3\u00a2\u00c2\u009d") ||
+        value.contains('à°') ||
+        value.contains('à¤') ||
+        value.contains('à®') ||
+        value.contains('à²') ||
+        value.contains('à´') ||
+        value.contains('â€') ||
+        value.contains('â€™') ||
+        value.contains('â€œ') ||
+        value.contains('â€');
   }
 
   String? _commonLocalizedFallback(String english) {
@@ -1031,9 +1069,9 @@ class AppStrings {
   };
 
   String get loginWelcome => switch (language) {
-    AppLanguage.telugu => 'Mana Poster \u0c15\u0c3f \u0c38\u0c4d\u0c35\u0c3e\u0c17\u0c24\u0c02',
-    AppLanguage.hindi => 'Mana Poster \u092e\u0947\u0902 \u0906\u092a\u0915\u093e \u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948',
-    AppLanguage.english => 'Welcome to Mana Poster',
+    AppLanguage.telugu => 'Mana Poster Ai \u0c15\u0c3f \u0c38\u0c4d\u0c35\u0c3e\u0c17\u0c24\u0c02',
+    AppLanguage.hindi => 'Mana Poster Ai \u092e\u0947\u0902 \u0906\u092a\u0915\u093e \u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948',
+    AppLanguage.english => 'Welcome to Mana Poster Ai',
     AppLanguage.tamil =>
       '\u0bae\u0ba9\u0bbe \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd \u0b86\u0baa\u0bcd\u0baa\u0bc1\u00b95\u0bcd\u0b95\u0bc1 \u0bb5\u0bb0\u0bb5\u0bc7\u0bb1\u0bcd\u0baa\u0bc1',
     AppLanguage.kannada =>
@@ -1311,12 +1349,12 @@ class AppStrings {
   String get bannerTitle => switch (language) {
     AppLanguage.telugu => '\u0c2e\u0c28\u0c3e \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c2b\u0c40\u0c1a\u0c30\u0c4d\u0c21\u0c4d \u0c2c\u0c4d\u0c2f\u0c3e\u0c28\u0c30\u0c4d',
     AppLanguage.hindi => '\u092e\u0928\u093e \u092a\u094b\u0938\u094d\u091f\u0930 \u092b\u0940\u091a\u0930\u094d\u0921 \u092c\u0948\u0928\u0930',
-    AppLanguage.english => 'Mana Poster Featured Banner',
+    AppLanguage.english => 'Mana Poster Ai Featured Banner',
     AppLanguage.tamil =>
-      'Mana Poster \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 banner',
-    AppLanguage.kannada => 'Mana Poster \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 banner',
+      'Mana Poster Ai \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1 banner',
+    AppLanguage.kannada => 'Mana Poster Ai \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 banner',
     AppLanguage.malayalam =>
-      'Mana Poster \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15 banner',
+      'Mana Poster Ai \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15 banner',
   };
 
   String get freeTab => switch (language) {
@@ -1696,5 +1734,6 @@ class AppStrings {
 
   List<String> homeCategories() => localizedHomeCategories();
 }
+
 
 

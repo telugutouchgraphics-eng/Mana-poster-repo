@@ -52,6 +52,20 @@ class MediaExportService {
     'mana_poster/media_export',
   );
 
+  static void _debugLog(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
+
+  static void _debugLogStack(String message, StackTrace stackTrace) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint(message);
+    debugPrintStack(stackTrace: stackTrace);
+  }
+
   static Future<bool> needsGalleryPermission() async {
     if (kIsWeb || !Platform.isAndroid) {
       return !kIsWeb && Platform.isIOS;
@@ -88,8 +102,7 @@ class MediaExportService {
         );
         return MediaExportResult.fromMap(saved);
       } catch (error, stackTrace) {
-        debugPrint('saveImageFileToGallery native error: $error');
-        debugPrint('$stackTrace');
+        _debugLogStack('saveImageFileToGallery native error: $error', stackTrace);
         return MediaExportResult(
           success: false,
           code: 'platform_exception',
@@ -131,15 +144,14 @@ class MediaExportService {
       );
       result = true;
     } catch (error, stackTrace) {
-      debugPrint('shareImageFile error: $error');
-      debugPrint('$stackTrace');
+      _debugLogStack('shareImageFile error: $error', stackTrace);
       result = false;
       throw MediaShareException(
         code: 'share_failed',
         message: error.toString(),
       );
     } finally {
-      debugPrint('shareImageFile result=$result');
+      _debugLog('shareImageFile result=$result');
     }
   }
 }

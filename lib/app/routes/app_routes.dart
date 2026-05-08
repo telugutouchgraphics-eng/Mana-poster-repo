@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
+import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
+    if (dart.library.io)
+        'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/admin/screens/admin_auth_gate.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
@@ -11,8 +13,7 @@ import 'package:mana_poster/features/prehome/screens/onboarding_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
-import 'package:mana_poster/features/prehome/screens/web_landing_screen.dart';
-import 'package:mana_poster/features/prehome/screens/website_admin_screen.dart';
+import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 
 class AppRoutes {
   static const splash = '/';
@@ -24,27 +25,7 @@ class AppRoutes {
   static const home = '/home';
   static const pageSetup = '/page-setup';
   static const imageEditor = '/image-editor';
-  static const websiteAdmin = '/website-admin';
   static const adminLogin = '/admin-login';
-
-  static bool get isWebLandingHost {
-    if (!kIsWeb) {
-      return false;
-    }
-    final host = Uri.base.host.toLowerCase();
-    return host == 'manaposter.in' ||
-        host == 'www.manaposter.in' ||
-        host == 'mana-poster.web.app';
-  }
-
-  static bool get isWebsiteAdminHost {
-    if (!kIsWeb) {
-      return false;
-    }
-    final host = Uri.base.host.toLowerCase();
-    return host == 'webapp.manaposter.in' ||
-        host == 'mana-poster-admin.web.app';
-  }
 
   static bool get isRoleDashboardHost {
     if (!kIsWeb) {
@@ -56,35 +37,16 @@ class AppRoutes {
         host == 'manager.manaposter.in';
   }
 
-  static bool get isWebsiteAdminPath {
-    if (!kIsWeb) {
-      return false;
-    }
-    final path = Uri.base.path.toLowerCase();
-    return path == websiteAdmin || path.startsWith('$websiteAdmin/');
-  }
-
-  static String get initialRoute {
-    if (kIsWeb && (isWebsiteAdminHost || isWebsiteAdminPath)) {
-      return websiteAdmin;
-    }
-    return splash;
-  }
+  static String get initialRoute => splash;
 
   static Widget _webEntry(Widget mobileScreen) {
     if (!kIsWeb) {
       return mobileScreen;
     }
-    if (isWebsiteAdminHost || isWebsiteAdminPath) {
-      return const WebsiteAdminScreen();
-    }
     if (isRoleDashboardHost) {
       return const AdminAuthGate();
     }
-    if (isWebLandingHost) {
-      return const WebLandingScreen();
-    }
-    return mobileScreen;
+    return const WebResetScreen();
   }
 
   static final Map<String, WidgetBuilder> map = <String, WidgetBuilder>{
@@ -97,7 +59,6 @@ class AppRoutes {
     home: (_) => _webEntry(const HomeScreen()),
     pageSetup: (_) => _webEntry(const PageSetupScreen()),
     imageEditor: (_) => _webEntry(const ImageEditorScreen()),
-    websiteAdmin: (_) => const WebsiteAdminScreen(),
     adminLogin: (_) => const AdminAuthGate(),
   };
 }

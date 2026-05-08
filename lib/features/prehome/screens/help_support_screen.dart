@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
@@ -50,6 +51,16 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
         builder: (_) => LegalDocumentScreen(documentType: type),
       ),
     );
+  }
+
+  Future<void> _copySupportEmail(_HelpSupportCopy copy) async {
+    await Clipboard.setData(const ClipboardData(text: _supportEmail));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(copy.emailCopied)));
   }
 
   @override
@@ -338,6 +349,15 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                           label: Text(copy.contactButton),
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _copySupportEmail(copy),
+                          icon: const Icon(Icons.copy_rounded),
+                          label: Text(copy.copyEmailButton),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -532,14 +552,18 @@ class _HelpSupportCopy {
       : 'Email us with the issue details. If you opened a question above, that context will also be added to the draft email.';
   String get contactButton =>
       _isTelugu ? 'సపోర్ట్‌కు ఇమెయిల్ పంపండి' : 'Email support';
-  String get defaultSubject => 'Mana Poster Support Request';
+  String get copyEmailButton =>
+      _isTelugu ? 'సపోర్ట్ ఇమెయిల్ కాపీ చేయండి' : 'Copy support email';
+  String get defaultSubject => 'Mana Poster Ai Support Request';
   String get defaultBody => _isTelugu
-      ? 'నమస్కారం Mana Poster టీమ్,\n\nనా సమస్య వివరాలు:\n-'
-      : 'Hello Mana Poster team,\n\nIssue details:\n-';
+      ? 'నమస్కారం Mana Poster Ai టీమ్,\n\nనా సమస్య వివరాలు:\n-'
+      : 'Hello Mana Poster Ai team,\n\nIssue details:\n-';
   String get contextLabel => _isTelugu ? 'ఎంచుకున్న విషయం' : 'Selected topic';
   String get emailOpenFailed => _isTelugu
       ? 'ఇమెయిల్ యాప్ ఓపెన్ కాలేదు. దయచేసి సపోర్ట్ ఇమెయిల్‌ను మాన్యువల్‌గా ఉపయోగించండి.'
       : 'Could not open the email app. Please use the support email manually.';
+  String get emailCopied =>
+      _isTelugu ? 'సపోర్ట్ ఇమెయిల్ కాపీ అయింది.' : 'Support email copied.';
 
   List<_HelpFaqItem> get faqs => _isTelugu
       ? const <_HelpFaqItem>[

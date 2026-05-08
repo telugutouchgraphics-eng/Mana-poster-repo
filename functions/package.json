@@ -10,13 +10,14 @@
     "lint": "echo \"No lint configured\"",
     "serve": "firebase emulators:start --only functions,firestore",
     "deploy": "firebase deploy --only functions,firestore",
-    "logs": "firebase functions:log",
-    "seed:website": "node ../tool/seed_website_content.js"
+    "logs": "firebase functions:log"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^148.0.0",
     "firebase-admin": "^13.8.0",
     "firebase-functions": "^7.2.5",
     "googleapis": "^150.0.1",
+    "puppeteer-core": "^24.43.0",
     "sharp": "^0.34.5"
   }
 }

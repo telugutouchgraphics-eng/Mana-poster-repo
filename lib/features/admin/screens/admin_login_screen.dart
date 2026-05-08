@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/admin/data/services/firebase_admin_auth_service.dart';
 
@@ -7,13 +7,13 @@ class AdminLoginScreen extends StatefulWidget {
     super.key,
     this.title = 'Admin Login',
     this.subtitle =
-        'Sign in to access the Mana Poster admin dashboard, preview workflow, and future backend publishing tools.',
+        'Sign in to access the Mana Poster Ai admin dashboard, preview workflow, and future backend publishing tools.',
     this.emailLabel = 'Admin Email',
     this.emailHint = 'admin@manaposter.in',
     this.buttonLabel = 'Login to Admin',
     this.footerText =
         'Use a Firebase Authentication email/password admin account. Draft editing remains local until content save integration is added.',
-    this.brandTitle = 'Mana Poster\nAdmin Console',
+    this.brandTitle = 'Mana Poster Ai\nAdmin Console',
     this.brandSubtitle =
         'Access the landing page editor, live preview, media references, app links, and future publish workflow from one controlled admin entry point.',
     this.badgeText = 'Admin Access',
@@ -565,3 +565,4 @@ InputDecoration _inputDecoration({
     ),
   );
 }
+

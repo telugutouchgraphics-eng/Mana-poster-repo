@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/app.dart';
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 
 void main() {
@@ -15,8 +16,8 @@ void main() {
 
     await tester.pumpWidget(const ManaPosterApp());
 
-    expect(find.text('Mana Poster'), findsOneWidget);
-    expect(find.text('Loading...'), findsOneWidget);
+    expect(find.text(AppPublicInfo.appName), findsOneWidget);
+    expect(find.text('లోడ్ అవుతోంది...'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();

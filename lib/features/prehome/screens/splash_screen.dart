@@ -19,15 +19,18 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin, AppLanguageStateMixin {
+  static const Duration _minimumSplashDuration = Duration(seconds: 3);
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
+  late final DateTime _startedAt;
   Timer? _navigationTimer;
   String _nextRoute = AppRoutes.language;
 
   @override
   void initState() {
     super.initState();
+    _startedAt = DateTime.now();
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -92,9 +95,8 @@ class _SplashScreenState extends State<SplashScreen>
         isAuthenticated: isAuthenticated,
       ).timeout(const Duration(seconds: 2));
       if (nextRoute == AppRoutes.home) {
-        nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute().timeout(
-          const Duration(seconds: 2),
-        );
+        nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute()
+            .timeout(const Duration(seconds: 2));
       }
       _nextRoute = nextRoute;
     } catch (error, stackTrace) {
@@ -107,7 +109,11 @@ class _SplashScreenState extends State<SplashScreen>
       _nextRoute = AppRoutes.language;
     } finally {
       _navigationTimer?.cancel();
-      _navigationTimer = Timer(const Duration(seconds: 3), _goToNextScreen);
+      final elapsed = DateTime.now().difference(_startedAt);
+      final remaining = elapsed >= _minimumSplashDuration
+          ? Duration.zero
+          : _minimumSplashDuration - elapsed;
+      _navigationTimer = Timer(remaining, _goToNextScreen);
     }
   }
 
@@ -206,7 +212,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               const SizedBox(height: 14),
                               const Text(
-                                'Mana Poster',
+                                AppPublicInfo.appName,
                                 style: TextStyle(
                                   fontSize: 31,
                                   fontWeight: FontWeight.w800,
@@ -239,7 +245,14 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Loading...',
+                            context.strings.localized(
+                              telugu: 'లోడ్ అవుతోంది...',
+                              english: 'Loading...',
+                              hindi: 'लोड हो रहा है...',
+                              tamil: 'ஏற்றப்படுகிறது...',
+                              kannada: 'ಲೋಡ್ ಆಗುತ್ತಿದೆ...',
+                              malayalam: 'ലോഡ് ചെയ്യുന്നു...',
+                            ),
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: const Color(0xFF64748B),

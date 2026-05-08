@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -163,7 +163,7 @@ class LandingSiteContentService {
       storagePath: upload.storagePath,
       sortOrder: nextSortOrder,
       createdAt: DateTime.now().toUtc(),
-      altText: title.trim().isEmpty ? 'Mana Poster artwork' : title.trim(),
+      altText: title.trim().isEmpty ? 'Mana Poster Ai artwork' : title.trim(),
     );
     final LandingSiteContent next = current.copyWith(
       posters: <LandingSitePoster>[...current.posters, poster],
@@ -416,3 +416,4 @@ class LandingSiteContentException implements Exception {
   @override
   String toString() => message;
 }
+

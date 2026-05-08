@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class AdminAccessDeniedScreen extends StatelessWidget {
   const AdminAccessDeniedScreen({
@@ -73,7 +73,7 @@ class AdminAccessDeniedScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       message ??
-                          'Your account is signed in but is not authorized to manage Mana Poster content.',
+                          'Your account is signed in but is not authorized to manage Mana Poster Ai content.',
                       style: const TextStyle(
                         fontSize: 15,
                         height: 1.5,
@@ -161,3 +161,4 @@ class AdminAccessDeniedScreen extends StatelessWidget {
     );
   }
 }
+

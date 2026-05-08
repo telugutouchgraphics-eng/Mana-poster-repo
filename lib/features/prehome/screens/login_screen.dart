@@ -96,12 +96,120 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
 
   String _messageForError(Object error) {
     if (error is AuthFailure) {
-      return error.message;
+      return _localizedAuthError(error);
     }
     return context.strings.localized(
       telugu: 'ఇంకోసారి ప్రయత్నించండి.',
       english: 'Please try again.',
     );
+  }
+
+  String _localizedAuthError(AuthFailure error) {
+    final strings = context.strings;
+    switch (error.code) {
+      case 'invalid-email':
+        return strings.validEmailError;
+      case 'user-disabled':
+        return strings.localized(
+          telugu: 'ఈ ఖాతా నిలిపివేయబడింది.',
+          english: 'This account has been disabled.',
+        );
+      case 'user-not-found':
+        return strings.localized(
+          telugu: 'ఈ ఇమెయిల్‌కు ఖాతా కనిపించలేదు.',
+          english: 'No account found for this email.',
+        );
+      case 'wrong-password':
+      case 'invalid-credential':
+        return strings.localized(
+          telugu: 'ఇమెయిల్ లేదా పాస్‌వర్డ్ సరైనది కాదు.',
+          english: 'Incorrect email or password.',
+        );
+      case 'email-already-in-use':
+        return strings.localized(
+          telugu: 'ఈ ఇమెయిల్‌తో ఇప్పటికే ఖాతా ఉంది.',
+          english: 'An account already exists with this email.',
+        );
+      case 'weak-password':
+        return strings.passwordError;
+      case 'operation-not-allowed':
+        return strings.localized(
+          telugu: 'ఈ లాగిన్ విధానం ఇంకా అందుబాటులో లేదు.',
+          english: 'This sign-in method is not enabled yet.',
+        );
+      case 'unauthorized-domain':
+        return strings.localized(
+          telugu: 'ఈ డొమైన్ Firebase Authentication లో అనుమతించబడలేదు.',
+          english: 'This domain is not authorized in Firebase Authentication.',
+        );
+      case 'popup-blocked':
+        return strings.localized(
+          telugu:
+              'Google login popup block అయింది. Popups allow చేసి మళ్లీ ప్రయత్నించండి.',
+          english:
+              'Google Sign-In popup was blocked. Allow popups and try again.',
+        );
+      case 'popup-closed-by-user':
+      case 'google-canceled':
+        return strings.localized(
+          telugu: 'Google login పూర్తయ్యే ముందే మూసేశారు.',
+          english: 'Google Sign-In was canceled before completing sign-in.',
+        );
+      case 'cancelled-popup-request':
+      case 'google-interrupted':
+        return strings.localized(
+          telugu: 'Google login మధ్యలో ఆగింది. మళ్లీ ప్రయత్నించండి.',
+          english: 'Google Sign-In was interrupted. Please try again.',
+        );
+      case 'network-request-failed':
+        return strings.localized(
+          telugu:
+              'ఇంటర్నెట్ సమస్య ఉంది. కనెక్షన్ చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
+          english: 'Network issue. Please check your internet connection.',
+        );
+      case 'too-many-requests':
+        return strings.localized(
+          telugu: 'చాలా ప్రయత్నాలు అయ్యాయి. కొంచెం తర్వాత మళ్లీ ప్రయత్నించండి.',
+          english: 'Too many attempts. Please wait and try again.',
+        );
+      case 'google-sign-in-incomplete':
+      case 'google-client-configuration-error':
+        return strings.localized(
+          telugu:
+              'Google login setup పూర్తిగా లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+          english:
+              'Google Sign-In setup is incomplete. Please try again later.',
+        );
+      case 'google-provider-configuration-error':
+      case 'google-ui-unavailable':
+        return strings.localized(
+          telugu: 'ఈ డివైస్‌లో Google login ప్రస్తుతం అందుబాటులో లేదు.',
+          english: 'Google Sign-In is not available on this device right now.',
+        );
+      case 'google-user-mismatch':
+        return strings.localized(
+          telugu: 'Google account mismatch వచ్చింది. మళ్లీ sign in చేయండి.',
+          english: 'Signed-in account mismatch. Please sign in again.',
+        );
+      case 'unsupported-platform':
+        return strings.localized(
+          telugu: 'ఈ build లో Google login support లేదు.',
+          english: 'Google Sign-In is not supported on this build.',
+        );
+      case 'not-configured':
+        return strings.localized(
+          telugu: 'ఈ build లో authentication setup పూర్తి కాలేదు.',
+          english: 'Authentication is not configured on this build.',
+        );
+      case 'google-sign-in-failed':
+      case 'google-unknown-error':
+        return strings.localized(
+          telugu: 'Google login విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+          english: 'Google Sign-In failed. Please try again.',
+        );
+      default:
+        return error.message;
+    }
   }
 
   Future<void> _continueAfterAuth() async {
@@ -320,7 +428,12 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Icon(Icons.g_mobiledata_rounded),
+                                : Image.asset(
+                                    'assets/branding/google_logo.png',
+                                    width: 20,
+                                    height: 20,
+                                    fit: BoxFit.contain,
+                                  ),
                             label: Text(strings.googleContinue),
                           ),
                           const SizedBox(height: 12),
@@ -454,24 +567,30 @@ class _AuthUiCopy {
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
-    AppLanguage.telugu => isLogin
-        ? 'మీ ఖాతా వివరాలతో లాగిన్ అయి పోస్టర్ ప్రయాణాన్ని కొనసాగించండి.'
-        : 'కొత్త ఖాతా సృష్టించి మీ పోస్టర్ ప్రయాణాన్ని ప్రారంభించండి.',
-    AppLanguage.hindi => isLogin
-        ? 'अपने खाते की जानकारी से लॉगिन करें और पोस्टर यात्रा जारी रखें।'
-        : 'नया खाता बनाएं और अपनी पोस्टर यात्रा शुरू करें।',
-    AppLanguage.english => isLogin
-        ? 'Login with your account details and continue your poster flow.'
-        : 'Create a new account and start your poster journey.',
-    AppLanguage.tamil => isLogin
-        ? 'உங்கள் கணக்கு விவரங்களுடன் உள்நுழைந்து போஸ்டர் பயணத்தை தொடருங்கள்.'
-        : 'புதிய கணக்கை உருவாக்கி உங்கள் போஸ்டர் பயணத்தை தொடங்குங்கள்.',
-    AppLanguage.kannada => isLogin
-        ? 'ನಿಮ್ಮ ಖಾತೆ ವಿವರಗಳಿಂದ ಲಾಗಿನ್ ಮಾಡಿ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಮುಂದುವರಿಸಿ.'
-        : 'ಹೊಸ ಖಾತೆ ಸೃಷ್ಟಿಸಿ ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಆರಂಭಿಸಿ.',
-    AppLanguage.malayalam => isLogin
-        ? 'നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങളോടെ ലോഗിൻ ചെയ്ത് പോസ്റ്റർ യാത്ര തുടരുക.'
-        : 'പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ച് നിങ്ങളുടെ പോസ്റ്റർ യാത്ര ആരംഭിക്കുക.',
+    AppLanguage.telugu =>
+      isLogin
+          ? 'మీ ఖాతా వివరాలతో లాగిన్ అయి పోస్టర్ ప్రయాణాన్ని కొనసాగించండి.'
+          : 'కొత్త ఖాతా సృష్టించి మీ పోస్టర్ ప్రయాణాన్ని ప్రారంభించండి.',
+    AppLanguage.hindi =>
+      isLogin
+          ? 'अपने खाते की जानकारी से लॉगिन करें और पोस्टर यात्रा जारी रखें।'
+          : 'नया खाता बनाएं और अपनी पोस्टर यात्रा शुरू करें।',
+    AppLanguage.english =>
+      isLogin
+          ? 'Login with your account details and continue your poster flow.'
+          : 'Create a new account and start your poster journey.',
+    AppLanguage.tamil =>
+      isLogin
+          ? 'உங்கள் கணக்கு விவரங்களுடன் உள்நுழைந்து போஸ்டர் பயணத்தை தொடருங்கள்.'
+          : 'புதிய கணக்கை உருவாக்கி உங்கள் போஸ்டர் பயணத்தை தொடங்குங்கள்.',
+    AppLanguage.kannada =>
+      isLogin
+          ? 'ನಿಮ್ಮ ಖಾತೆ ವಿವರಗಳಿಂದ ಲಾಗಿನ್ ಮಾಡಿ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಮುಂದುವರಿಸಿ.'
+          : 'ಹೊಸ ಖಾತೆ ಸೃಷ್ಟಿಸಿ ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಆರಂಭಿಸಿ.',
+    AppLanguage.malayalam =>
+      isLogin
+          ? 'നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങളോടെ ലോഗിൻ ചെയ്ത് പോസ്റ്റർ യാത്ര തുടരുക.'
+          : 'പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ച് നിങ്ങളുടെ പോസ്റ്റർ യാത്ര ആരംഭിക്കുക.',
   };
 
   String resetSuccess(String email) => switch (language) {
@@ -484,12 +603,18 @@ class _AuthUiCopy {
   };
 
   String get legalIntro => switch (language) {
-    AppLanguage.telugu => 'కొనసాగించడం ద్వారా మీరు మా గోప్యతా విధానం మరియు నిబంధనలకు అంగీకరిస్తారు.',
-    AppLanguage.hindi => 'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम एवं शर्तों से सहमत होते हैं।',
-    AppLanguage.english => 'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
-    AppLanguage.tamil => 'தொடருவதன் மூலம் எங்கள் தனியுரிமைக் கொள்கை மற்றும் விதிமுறைகளுக்கு நீங்கள் ஒப்புக்கொள்கிறீர்கள்.',
-    AppLanguage.kannada => 'ಮುಂದುವರಿದರೆ ನಮ್ಮ ಗೌಪ್ಯತಾ ನೀತಿ ಮತ್ತು ನಿಯಮಗಳು ಹಾಗೂ ಷರತ್ತುಗಳಿಗೆ ನೀವು ಒಪ್ಪುತ್ತೀರಿ.',
-    AppLanguage.malayalam => 'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ സ്വകാര്യതാ നയംയും നിബന്ധനകളും നിങ്ങൾ അംഗീകരിക്കുന്നു.',
+    AppLanguage.telugu =>
+      'కొనసాగించడం ద్వారా మీరు మా గోప్యతా విధానం మరియు నిబంధనలకు అంగీకరిస్తారు.',
+    AppLanguage.hindi =>
+      'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम एवं शर्तों से सहमत होते हैं।',
+    AppLanguage.english =>
+      'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
+    AppLanguage.tamil =>
+      'தொடருவதன் மூலம் எங்கள் தனியுரிமைக் கொள்கை மற்றும் விதிமுறைகளுக்கு நீங்கள் ஒப்புக்கொள்கிறீர்கள்.',
+    AppLanguage.kannada =>
+      'ಮುಂದುವರಿದರೆ ನಮ್ಮ ಗೌಪ್ಯತಾ ನೀತಿ ಮತ್ತು ನಿಯಮಗಳು ಹಾಗೂ ಷರತ್ತುಗಳಿಗೆ ನೀವು ಒಪ್ಪುತ್ತೀರಿ.',
+    AppLanguage.malayalam =>
+      'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ സ്വകാര്യതാ നയംയും നിബന്ധനകളും നിങ്ങൾ അംഗീകരിക്കുന്നു.',
   };
 
   String get privacyLabel => switch (language) {
@@ -524,7 +649,9 @@ class _AuthUiCopy {
     AppLanguage.hindi => isVisible ? 'पासवर्ड छिपाएँ' : 'पासवर्ड दिखाएँ',
     AppLanguage.english => isVisible ? 'Hide password' : 'Show password',
     AppLanguage.tamil => isVisible ? 'கடவுச்சொல்லை மறை' : 'கடவுச்சொல்லை காட்டு',
-    AppLanguage.kannada => isVisible ? 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆಮಾಡಿ' : 'ಪಾಸ್‌ವರ್ಡ್ ತೋರಿಸಿ',
-    AppLanguage.malayalam => isVisible ? 'പാസ്‌വേഡ് മറയ്ക്കുക' : 'പാസ്‌വേഡ് കാണിക്കുക',
+    AppLanguage.kannada =>
+      isVisible ? 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆಮಾಡಿ' : 'ಪಾಸ್‌ವರ್ಡ್ ತೋರಿಸಿ',
+    AppLanguage.malayalam =>
+      isVisible ? 'പാസ്‌വേഡ് മറയ്ക്കുക' : 'പാസ്‌വേഡ് കാണിക്കുക',
   };
 }

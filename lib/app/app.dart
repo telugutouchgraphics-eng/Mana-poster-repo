@@ -1,4 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
@@ -34,7 +35,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   );
 
   late final AppLanguageController _languageController;
-  late final FirebaseAnalyticsObserver _analyticsObserver;
+  FirebaseAnalyticsObserver? _analyticsObserver;
 
   @override
   void initState() {
@@ -42,9 +43,11 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     _languageController = AppLanguageController(
       initialLanguage: widget.initialLanguage,
     );
-    _analyticsObserver = FirebaseAnalyticsObserver(
-      analytics: FirebaseAnalytics.instance,
-    );
+    if (Firebase.apps.isNotEmpty) {
+      _analyticsObserver = FirebaseAnalyticsObserver(
+        analytics: FirebaseAnalytics.instance,
+      );
+    }
   }
 
   @override
@@ -52,6 +55,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     return AnimatedBuilder(
       animation: _languageController,
       builder: (context, _) {
+        final analyticsObserver = _analyticsObserver;
         return AppLanguageScope(
           language: _languageController.language,
           controller: _languageController,
@@ -64,14 +68,14 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             theme: AppTheme.light(),
             navigatorObservers: <NavigatorObserver>[
               AppNavigator.routeObserver,
-              _analyticsObserver,
+              ?analyticsObserver,
             ],
             home: widget.forceSingleRoute ? null : widget.forcedHome,
             initialRoute: widget.forcedHome == null
                 ? AppRoutes.initialRoute
                 : null,
-            onGenerateInitialRoutes: widget.forceSingleRoute &&
-                    widget.forcedHome != null
+            onGenerateInitialRoutes:
+                widget.forceSingleRoute && widget.forcedHome != null
                 ? (String _) => <Route<dynamic>>[
                     MaterialPageRoute<void>(
                       builder: (_) => widget.forcedHome!,

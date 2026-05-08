@@ -79,6 +79,7 @@ class ApprovedCreatorTemplate {
     required this.id,
     required this.title,
     required this.imageUrl,
+    this.thumbnailUrl = '',
     this.mediaType = 'image',
     this.videoUrl = '',
     required this.categoryId,
@@ -91,6 +92,7 @@ class ApprovedCreatorTemplate {
   final String id;
   final String title;
   final String imageUrl;
+  final String thumbnailUrl;
   final String mediaType;
   final String videoUrl;
   final String categoryId;

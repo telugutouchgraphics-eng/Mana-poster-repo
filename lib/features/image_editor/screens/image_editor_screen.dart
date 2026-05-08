@@ -17,8 +17,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
+import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -74,6 +77,8 @@ class ImageEditorScreen extends StatefulWidget {
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
 }
 
+enum _EditorRewardGateFeature { teluguFonts, removeBackground }
+
 class _ImageEditorScreenState extends State<ImageEditorScreen>
     with
         SingleTickerProviderStateMixin,
@@ -90,6 +95,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       const EditorDraftStorageService();
   final OfflineBackgroundRemovalService _backgroundRemovalService =
       const OfflineBackgroundRemovalService();
+  final RewardedAccessService _rewardedAccessService =
+      const RewardedAccessService();
+  final SubscriptionBackendService _editorEntitlementService =
+      SubscriptionBackendService();
 
   final List<_CanvasLayer> _layers = <_CanvasLayer>[];
   final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
@@ -124,6 +133,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isAdjustMode = false;
   bool _isLayerInteracting = false;
   bool _isCreatingTextLayer = false;
+  bool _isRewardedGateBusy = false;
+  bool _teluguFontsRewardUnlocked = false;
   int _removeBackgroundTaskId = 0;
   String? _activeCommitJobKey;
   Future<void> _commitJobTail = Future<void>.value();
@@ -411,6 +422,75 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
   }
 
+  bool get _hasRewardedEditorProAccess =>
+      SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
+      _editorEntitlementService.cachedEntitlement?.hasAccess == true;
+
+  bool _isPremiumTeluguFontFamily(String family) =>
+      _textFontFamilies.contains(family);
+
+  Future<bool> _ensureRewardedAccessForFeature(
+    _EditorRewardGateFeature feature,
+  ) async {
+    if (_hasRewardedEditorProAccess) {
+      return true;
+    }
+    if (feature == _EditorRewardGateFeature.teluguFonts &&
+        _teluguFontsRewardUnlocked) {
+      return true;
+    }
+    if (_isRewardedGateBusy) {
+      return false;
+    }
+
+    final strings = context.strings;
+    final label = switch (feature) {
+      _EditorRewardGateFeature.teluguFonts => 'telugu_fonts',
+      _EditorRewardGateFeature.removeBackground => 'remove_background',
+    };
+    final failureMessage = switch (feature) {
+      _EditorRewardGateFeature.teluguFonts => strings.localized(
+        telugu: 'తెలుగు ఫాంట్స్ అన్‌లాక్ చేయడానికి ad పూర్తిగా చూడాలి',
+        english: 'Watch the full ad to unlock Telugu fonts',
+      ),
+      _EditorRewardGateFeature.removeBackground => strings.localized(
+        telugu: 'Background remove ఉపయోగించడానికి ad పూర్తిగా చూడాలి',
+        english: 'Watch the full ad to use Remove BG',
+      ),
+    };
+
+    setState(() {
+      _isRewardedGateBusy = true;
+    });
+    try {
+      final granted = await _rewardedAccessService.showRewardedAccessAd(
+        adUnitId: AppPublicInfo.adMobEditorRewardedAdUnitId,
+        debugLabel: label,
+      );
+      if (!mounted) {
+        return false;
+      }
+      if (!granted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failureMessage)));
+        return false;
+      }
+      if (feature == _EditorRewardGateFeature.teluguFonts) {
+        _teluguFontsRewardUnlocked = true;
+      }
+      return true;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRewardedGateBusy = false;
+        });
+      } else {
+        _isRewardedGateBusy = false;
+      }
+    }
+  }
+
   Color get _activeModeAccent {
     if (_isCropMode) {
       return const Color(0xFF2563EB);
@@ -590,6 +670,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     );
     if (!mounted || selected == null || selected.isEmpty) {
       return;
+    }
+    if (selected != layer.fontFamily && _isPremiumTeluguFontFamily(selected)) {
+      final granted = await _ensureRewardedAccessForFeature(
+        _EditorRewardGateFeature.teluguFonts,
+      );
+      if (!mounted || !granted) {
+        return;
+      }
     }
     unawaited(_setSelectedTextFontFamily(selected));
   }
@@ -1628,10 +1716,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         try {
           bytes = await _loadTemplateLayerBytes(templateLayer.assetPath);
         } catch (error, stackTrace) {
-          debugPrint(
-            'Template layer load failed for ${templateLayer.assetPath}: $error',
-          );
-          debugPrintStack(stackTrace: stackTrace);
+          if (kDebugMode) {
+            debugPrint(
+              'Template layer load failed for ${templateLayer.assetPath}: $error',
+            );
+            debugPrintStack(stackTrace: stackTrace);
+          }
           continue;
         }
         final aspectRatio = templateLayer.width / templateLayer.height;
