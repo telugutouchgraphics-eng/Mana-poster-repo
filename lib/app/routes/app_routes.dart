@@ -9,6 +9,7 @@ import 'package:mana_poster/features/admin/screens/admin_auth_gate.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
+import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
 import 'package:mana_poster/features/prehome/screens/onboarding_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
@@ -26,6 +27,13 @@ class AppRoutes {
   static const pageSetup = '/page-setup';
   static const imageEditor = '/image-editor';
   static const adminLogin = '/admin-login';
+  static const notificationUnavailable = '/notification-unavailable';
+
+  static String poster(String id) => '/poster/$id';
+  static String category(String id) => '/category/$id';
+  static String editor(String id) => '/editor/$id';
+  static String offer(String id) => '/offer/$id';
+  static String event(String id) => '/event/$id';
 
   static bool get isRoleDashboardHost {
     if (!kIsWeb) {
@@ -60,5 +68,66 @@ class AppRoutes {
     pageSetup: (_) => _webEntry(const PageSetupScreen()),
     imageEditor: (_) => _webEntry(const ImageEditorScreen()),
     adminLogin: (_) => const AdminAuthGate(),
+    notificationUnavailable: (_) => _webEntry(const NotificationUnavailableScreen()),
   };
+
+  static Route<dynamic>? resolveDynamicRoute(RouteSettings settings) {
+    final name = settings.name ?? '';
+    final uri = Uri.tryParse(name);
+    if (uri == null) {
+      return null;
+    }
+    final segments = uri.pathSegments;
+    if (segments.length != 2) {
+      return null;
+    }
+    final kind = segments[0].trim().toLowerCase();
+    final id = segments[1].trim();
+    final rawArgs = settings.arguments;
+    final payload = rawArgs is Map<String, dynamic>
+        ? Map<String, dynamic>.from(rawArgs)
+        : <String, dynamic>{};
+
+    Widget? screen;
+    switch (kind) {
+      case 'category':
+        screen = _webEntry(
+          HomeScreen(
+            initialCategorySlug: id,
+            initialNotificationPayload: payload,
+          ),
+        );
+        break;
+      case 'event':
+        screen = _webEntry(
+          HomeScreen(
+            initialCategorySlug: id,
+            initialNotificationPayload: payload,
+          ),
+        );
+        break;
+      case 'offer':
+      case 'poster':
+        screen = _webEntry(
+          HomeScreen(
+            initialNotificationPayload: payload..putIfAbsent('id', () => id),
+          ),
+        );
+        break;
+      case 'editor':
+        if (id.isEmpty) {
+          screen = _webEntry(const NotificationUnavailableScreen());
+        } else {
+          screen = _webEntry(ImageEditorScreen(templateDocumentSource: id));
+        }
+        break;
+      default:
+        screen = _webEntry(const NotificationUnavailableScreen());
+    }
+
+    return MaterialPageRoute<void>(
+      builder: (_) => screen!,
+      settings: settings,
+    );
+  }
 }

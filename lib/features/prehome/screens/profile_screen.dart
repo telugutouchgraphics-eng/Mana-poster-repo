@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -80,7 +81,23 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (imageProvider == null || !mounted) {
       return;
     }
-    unawaited(precacheImage(imageProvider, context));
+    unawaited(_safePrecacheImage(imageProvider));
+  }
+
+  Future<void> _safePrecacheImage(ImageProvider<Object> imageProvider) async {
+    if (!mounted) {
+      return;
+    }
+    try {
+      await precacheImage(imageProvider, context);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Profile image warmup skipped: $error',
+        name: 'profile.screen',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _openPosterProfileScreen({

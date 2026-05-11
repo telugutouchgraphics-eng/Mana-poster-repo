@@ -5,6 +5,7 @@ import 'package:mana_poster/features/prehome/models/approved_creator_template.da
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -19,8 +20,7 @@ class ApprovedCreatorTemplatePage {
 }
 
 class ApprovedCreatorTemplateService {
-  static const int _posterRetentionWindowMillis =
-      7 * 24 * 60 * 60 * 1000;
+  static const int _posterRetentionWindowMillis = 7 * 24 * 60 * 60 * 1000;
 
   ApprovedCreatorTemplateService({
     FirebaseFirestore? firestore,
@@ -67,7 +67,9 @@ class ApprovedCreatorTemplateService {
       final snapshot = await query.get(GetOptions(source: source));
       return ApprovedCreatorTemplatePage(
         templates: _filterPublished(_mapSnapshot(snapshot), snapshot, pageSize),
-        lastDocument: snapshot.docs.isEmpty ? startAfterDocument : snapshot.docs.last,
+        lastDocument: snapshot.docs.isEmpty
+            ? startAfterDocument
+            : snapshot.docs.last,
         hasMore: snapshot.docs.length >= queryLimit,
       );
     } catch (error, stackTrace) {
@@ -141,7 +143,9 @@ class ApprovedCreatorTemplateService {
     final filtered = templates
         .where((template) {
           final publishAt = publishMap[template.id] ?? 0;
-          final visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
+          final visibleFrom = publishAt > 0
+              ? publishAt
+              : template.createdAtMillis;
           if (visibleFrom > now) {
             return false;
           }
@@ -152,6 +156,7 @@ class ApprovedCreatorTemplateService {
             template.categoryId,
             activeDynamicTags,
             knownDynamicTags,
+            nowDate,
           );
         })
         .toList(growable: false);
@@ -338,12 +343,40 @@ class ApprovedCreatorTemplateService {
     String categoryId,
     Set<String> activeDynamicTags,
     Set<String> knownDynamicTags,
+    DateTime now,
   ) {
     final normalized = _normalizeTag(categoryId);
     if (normalized.isEmpty || !knownDynamicTags.contains(normalized)) {
       return true;
     }
+    final visibleUntil = _dynamicCategoryVisibleUntil(normalized, now);
+    if (visibleUntil != null) {
+      return !now.isAfter(visibleUntil);
+    }
     return activeDynamicTags.contains(normalized);
+  }
+
+  DateTime? _dynamicCategoryVisibleUntil(
+    String normalizedCategoryId,
+    DateTime now,
+  ) {
+    final scheduleService = DynamicEventScheduleService(
+      repository: _dynamicEventRepository,
+    );
+    final schedules = scheduleService.schedulesForYear(now.year);
+    for (final schedule in schedules) {
+      final event = schedule.event;
+      final candidateTags = <String>{
+        _normalizeTag(event.id),
+        _normalizeTag(event.slug),
+        ...event.tags.map(_normalizeTag),
+        ..._dynamicTypeFilterTags(event.type).map(_normalizeTag),
+      };
+      if (candidateTags.contains(normalizedCategoryId)) {
+        return schedule.endDate;
+      }
+    }
+    return null;
   }
 
   Set<String> _activeDynamicTagsForDate(DateTime now) {

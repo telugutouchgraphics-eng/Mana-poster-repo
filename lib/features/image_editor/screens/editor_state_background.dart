@@ -104,30 +104,40 @@ extension _EditorBackgroundState on _ImageEditorScreenState {
   }
 
   Future<bool> _setCanvasBackgroundImage() async {
-    final selected = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (selected == null) {
+    if (_isPickingMedia) {
       return false;
     }
-
-    final bytes = await selected.readAsBytes();
-    final optimized = _optimizeEditorPhotoPayload(bytes);
-    _pushCanvasBackgroundHistoryEntry(
-      beforeColor: _canvasBackgroundColor,
-      beforeGradientIndex: _canvasBackgroundGradientIndex,
-      beforeImageBytes: _stageBackgroundImageBytes,
-      beforeBlurAmount: _backgroundBlurAmount,
-      afterColor: _canvasBackgroundColor,
-      afterGradientIndex: -1,
-      afterImageBytes: optimized.bytes,
-      afterBlurAmount: _backgroundBlurAmount.clamp(0, 40).toDouble(),
-    );
-    setState(() {
-      _stageBackgroundImageBytes = optimized.bytes;
-      _canvasBackgroundGradientIndex = -1;
-      if (_backgroundBlurAmount > 40) {
-        _backgroundBlurAmount = 40;
+    _isPickingMedia = true;
+    try {
+      final selected = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+      if (selected == null) {
+        return false;
       }
-    });
-    return true;
+
+      final bytes = await selected.readAsBytes();
+      final optimized = _optimizeEditorPhotoPayload(bytes);
+      _pushCanvasBackgroundHistoryEntry(
+        beforeColor: _canvasBackgroundColor,
+        beforeGradientIndex: _canvasBackgroundGradientIndex,
+        beforeImageBytes: _stageBackgroundImageBytes,
+        beforeBlurAmount: _backgroundBlurAmount,
+        afterColor: _canvasBackgroundColor,
+        afterGradientIndex: -1,
+        afterImageBytes: optimized.bytes,
+        afterBlurAmount: _backgroundBlurAmount.clamp(0, 40).toDouble(),
+      );
+      setState(() {
+        _stageBackgroundImageBytes = optimized.bytes;
+        _canvasBackgroundGradientIndex = -1;
+        if (_backgroundBlurAmount > 40) {
+          _backgroundBlurAmount = 40;
+        }
+      });
+      return true;
+    } finally {
+      _isPickingMedia = false;
+    }
   }
 }

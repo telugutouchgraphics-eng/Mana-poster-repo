@@ -58,6 +58,7 @@ class _PosterProfileDetailsScreenState
   bool _saving = false;
   bool _personalPhotoBusy = false;
   bool _businessLogoBusy = false;
+  bool _pickerBusy = false;
   Future<void>? _backgroundRemoverInitialization;
   AppLanguageController? _languageController;
 
@@ -125,11 +126,14 @@ class _PosterProfileDetailsScreenState
   }
 
   Future<void> _pickPersonalPhoto() async {
-    if (_personalPhotoBusy) {
+    if (_personalPhotoBusy || _pickerBusy) {
       return;
     }
     final strings = context.strings;
-    setState(() => _personalPhotoBusy = true);
+    setState(() {
+      _personalPhotoBusy = true;
+      _pickerBusy = true;
+    });
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -251,7 +255,10 @@ class _PosterProfileDetailsScreenState
       );
     } finally {
       if (mounted) {
-        setState(() => _personalPhotoBusy = false);
+        setState(() {
+          _personalPhotoBusy = false;
+          _pickerBusy = false;
+        });
       }
     }
   }
@@ -338,11 +345,14 @@ class _PosterProfileDetailsScreenState
   }
 
   Future<void> _pickBusinessLogo() async {
-    if (_businessLogoBusy) {
+    if (_businessLogoBusy || _pickerBusy) {
       return;
     }
     final strings = context.strings;
-    setState(() => _businessLogoBusy = true);
+    setState(() {
+      _businessLogoBusy = true;
+      _pickerBusy = true;
+    });
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -429,7 +439,10 @@ class _PosterProfileDetailsScreenState
       );
     } finally {
       if (mounted) {
-        setState(() => _businessLogoBusy = false);
+        setState(() {
+          _businessLogoBusy = false;
+          _pickerBusy = false;
+        });
       }
     }
   }

@@ -10,11 +10,64 @@ class AppNavigator {
   static final RouteObserver<ModalRoute<void>> routeObserver =
       RouteObserver<ModalRoute<void>>();
 
+  static const Set<String> _supportedRoutes = <String>{
+    AppRoutes.home,
+    AppRoutes.pageSetup,
+    AppRoutes.imageEditor,
+    AppRoutes.login,
+    AppRoutes.permissions,
+    AppRoutes.profileSetup,
+    AppRoutes.onboarding,
+    AppRoutes.language,
+    AppRoutes.notificationUnavailable,
+  };
+
   static void openHome() {
     final NavigatorState? state = navigatorKey.currentState;
     if (state == null) {
       return;
     }
-    state.pushNamedAndRemoveUntil(AppRoutes.home, (Route<dynamic> route) => false);
+    state.pushNamedAndRemoveUntil(
+      AppRoutes.home,
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  static void openNotificationRoute(
+    String route, {
+    Object? arguments,
+    String fallbackRoute = AppRoutes.home,
+  }) {
+    final NavigatorState? state = navigatorKey.currentState;
+    if (state == null) {
+      return;
+    }
+    final String normalized = route.trim();
+    final bool isDynamicNotificationRoute = _looksLikeDynamicNotificationRoute(
+      normalized,
+    );
+    final String targetRoute =
+        _supportedRoutes.contains(normalized) || isDynamicNotificationRoute
+        ? normalized
+        : fallbackRoute;
+    state.pushNamedAndRemoveUntil(
+      targetRoute,
+      (Route<dynamic> existing) => false,
+      arguments: arguments,
+    );
+  }
+
+  static bool _looksLikeDynamicNotificationRoute(String route) {
+    final uri = Uri.tryParse(route);
+    if (uri == null) {
+      return false;
+    }
+    final segments = uri.pathSegments;
+    if (segments.length != 2) {
+      return false;
+    }
+    return <String>{'poster', 'category', 'editor', 'offer', 'event'}.contains(
+      segments.first.trim().toLowerCase(),
+    );
   }
 }

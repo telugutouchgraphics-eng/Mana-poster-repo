@@ -893,41 +893,52 @@ extension _EditorLayersState on _ImageEditorScreenState {
   }
 
   Future<void> _handleAddPhotoFromSource(ImageSource source) async {
-    final XFile? pickedFile = await _imagePicker.pickImage(
-      source: source,
-      maxWidth: 2048,
-      maxHeight: 2048,
-      imageQuality: 95,
-    );
-    if (!mounted || pickedFile == null) {
+    if (_isPickingMedia) {
       return;
     }
-
-    final rawBytes = await pickedFile.readAsBytes();
-    final optimizedPhoto = await compute(_optimizeEditorPhotoPayload, rawBytes);
-    final bytes = optimizedPhoto.bytes;
-    if (!mounted) {
-      return;
-    }
-
-    final layer = _CanvasLayer(
-      id: 'layer_${_layerSeed++}',
-      type: _CanvasLayerType.photo,
-      bytes: bytes,
-      originalPhotoBytes: bytes,
-      photoAspectRatio: optimizedPhoto.aspectRatio,
-      transform: Matrix4.identity(),
-    );
-
-    _pushUndoSnapshot();
-    _transformationController.value = Matrix4.identity();
-    setState(() {
-      if (_pageAspectRatio == null && optimizedPhoto.aspectRatio != null) {
-        _pageAspectRatio = optimizedPhoto.aspectRatio;
-        _pageAspectRatioAutoFromImage = widget.pageConfig == null;
+    _isPickingMedia = true;
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 95,
+      );
+      if (!mounted || pickedFile == null) {
+        return;
       }
-      _layers.add(layer);
-      _selectedLayerId = layer.id;
-    });
+
+      final rawBytes = await pickedFile.readAsBytes();
+      final optimizedPhoto = await compute(
+        _optimizeEditorPhotoPayload,
+        rawBytes,
+      );
+      final bytes = optimizedPhoto.bytes;
+      if (!mounted) {
+        return;
+      }
+
+      final layer = _CanvasLayer(
+        id: 'layer_${_layerSeed++}',
+        type: _CanvasLayerType.photo,
+        bytes: bytes,
+        originalPhotoBytes: bytes,
+        photoAspectRatio: optimizedPhoto.aspectRatio,
+        transform: Matrix4.identity(),
+      );
+
+      _pushUndoSnapshot();
+      _transformationController.value = Matrix4.identity();
+      setState(() {
+        if (_pageAspectRatio == null && optimizedPhoto.aspectRatio != null) {
+          _pageAspectRatio = optimizedPhoto.aspectRatio;
+          _pageAspectRatioAutoFromImage = widget.pageConfig == null;
+        }
+        _layers.add(layer);
+        _selectedLayerId = layer.id;
+      });
+    } finally {
+      _isPickingMedia = false;
+    }
   }
 }

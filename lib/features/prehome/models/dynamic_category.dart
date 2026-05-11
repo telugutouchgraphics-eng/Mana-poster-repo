@@ -34,7 +34,10 @@ class DynamicLocalizedTitle {
     return switch (language) {
       AppLanguage.telugu => telugu,
       AppLanguage.hindi => hindi,
-      AppLanguage.english || AppLanguage.tamil || AppLanguage.kannada || AppLanguage.malayalam => english,
+      AppLanguage.english ||
+      AppLanguage.tamil ||
+      AppLanguage.kannada ||
+      AppLanguage.malayalam => english,
     };
   }
 }
@@ -73,6 +76,8 @@ class DynamicCalendarEvent {
     required this.title,
     this.startMonth,
     this.startDay,
+    this.weekOfMonth,
+    this.weekdayOfMonth,
     this.endMonth,
     this.endDay,
     this.durationDays = 1,
@@ -91,6 +96,8 @@ class DynamicCalendarEvent {
   final DynamicLocalizedTitle title;
   final int? startMonth;
   final int? startDay;
+  final int? weekOfMonth;
+  final int? weekdayOfMonth;
   final int? endMonth;
   final int? endDay;
   final int durationDays;
@@ -100,6 +107,3 @@ class DynamicCalendarEvent {
   final bool enabled;
   final int sortOrder;
 }
-
-
-

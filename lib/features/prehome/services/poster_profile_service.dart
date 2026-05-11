@@ -282,7 +282,8 @@ class PosterProfileService {
   static Future<PosterProfileData> load() async {
     final localProfile = await loadLocal();
     final remoteProfile = await refreshFromRemote(localProfile: localProfile);
-    return remoteProfile ?? localProfile;
+    final profile = remoteProfile ?? localProfile;
+    return _ensureRemotePersonalPhotoSynced(profile);
   }
 
   static Future<PosterProfileData> loadLocal() async {
@@ -595,6 +596,66 @@ class PosterProfileService {
         .collection('posterProfile')
         .doc('main')
         .set(payload, SetOptions(merge: true));
+  }
+
+  static Future<PosterProfileData> _ensureRemotePersonalPhotoSynced(
+    PosterProfileData profile,
+  ) async {
+    final bool needsCutoutUpload =
+        profile.photoUrl.trim().isEmpty && profile.photoPath.trim().isNotEmpty;
+    final bool needsOriginalUpload =
+        profile.originalPhotoUrl.trim().isEmpty &&
+        profile.originalPhotoPath.trim().isNotEmpty;
+    if (!needsCutoutUpload && !needsOriginalUpload) {
+      return profile;
+    }
+
+    String nextPhotoUrl = profile.photoUrl.trim();
+    String nextOriginalPhotoUrl = profile.originalPhotoUrl.trim();
+
+    try {
+      if (needsOriginalUpload) {
+        final File originalFile = File(profile.originalPhotoPath.trim());
+        if (originalFile.existsSync()) {
+          nextOriginalPhotoUrl = await uploadProfilePhoto(
+            file: originalFile,
+            extension: 'png',
+            isOriginal: true,
+          );
+        }
+      }
+
+      if (needsCutoutUpload) {
+        final File cutoutFile = File(profile.photoPath.trim());
+        if (cutoutFile.existsSync()) {
+          nextPhotoUrl = await uploadProfilePhoto(
+            file: cutoutFile,
+            extension: 'png',
+          );
+        }
+      }
+
+      if (nextPhotoUrl == profile.photoUrl.trim() &&
+          nextOriginalPhotoUrl == profile.originalPhotoUrl.trim()) {
+        return profile;
+      }
+
+      final PosterProfileData updated = profile.copyWith(
+        photoUrl: nextPhotoUrl,
+        originalPhotoUrl: nextOriginalPhotoUrl,
+      );
+      await savePersonalPhotoAssets(
+        photoPath: updated.photoPath,
+        originalPhotoPath: updated.originalPhotoPath,
+        photoUrl: updated.photoUrl,
+        originalPhotoUrl: updated.originalPhotoUrl,
+        saveRemoteUrls: true,
+      );
+      await _saveLocal(updated);
+      return updated;
+    } catch (_) {
+      return profile;
+    }
   }
 
   static Future<void> saveBusinessLogoAssets({

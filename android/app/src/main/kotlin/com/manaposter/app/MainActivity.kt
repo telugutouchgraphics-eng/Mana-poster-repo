@@ -59,9 +59,26 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(saveImageFileToGallery(filePath, fileName, mimeType))
                     }
+                    "saveImageBytesToGallery" -> {
+                        val bytes = call.argument<ByteArray>("bytes")
+                        val fileName = call.argument<String>("fileName")
+                        val mimeType = call.argument<String>("mimeType") ?: "image/png"
+                        if (bytes == null || bytes.isEmpty() || fileName.isNullOrBlank()) {
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "code" to "invalid_args",
+                                    "message" to "bytes or fileName is missing",
+                                )
+                            )
+                            return@setMethodCallHandler
+                        }
+                        result.success(saveImageBytesToGallery(bytes, fileName, mimeType))
+                    }
                     else -> result.notImplemented()
                 }
             }
+
     }
 
     private fun saveImageFileToGallery(filePath: String, fileName: String, mimeType: String): Map<String, Any?> {
@@ -136,6 +153,75 @@ class MainActivity : FlutterActivity() {
             }
         } catch (t: Throwable) {
             Log.e("ManaPosterSave", "saveImageFileToGallery failed", t)
+            mapOf(
+                "success" to false,
+                "code" to "save_failed",
+                "message" to (t.message ?: t.javaClass.simpleName),
+            )
+        }
+    }
+
+    private fun saveImageBytesToGallery(bytes: ByteArray, fileName: String, mimeType: String): Map<String, Any?> {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = applicationContext.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Mana Poster")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: return mapOf(
+                        "success" to false,
+                        "code" to "media_insert_failed",
+                        "message" to "MediaStore insert returned null",
+                    )
+                resolver.openOutputStream(uri)?.use { output ->
+                    output.write(bytes)
+                    output.flush()
+                } ?: return mapOf(
+                    "success" to false,
+                    "code" to "open_output_failed",
+                    "message" to "Unable to open MediaStore output stream",
+                )
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved image bytes to gallery successfully",
+                )
+            } else {
+                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val appDir = File(picturesDir, "Mana Poster")
+                if (!appDir.exists() && !appDir.mkdirs()) {
+                    return mapOf(
+                        "success" to false,
+                        "code" to "directory_create_failed",
+                        "message" to "Unable to create gallery directory: ${appDir.absolutePath}",
+                    )
+                }
+                val targetFile = File(appDir, fileName)
+                FileOutputStream(targetFile).use { output ->
+                    output.write(bytes)
+                    output.flush()
+                }
+                MediaScannerConnection.scanFile(
+                    applicationContext,
+                    arrayOf(targetFile.absolutePath),
+                    arrayOf(mimeType),
+                    null,
+                )
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved image bytes to gallery successfully",
+                )
+            }
+        } catch (t: Throwable) {
+            Log.e("ManaPosterSave", "saveImageBytesToGallery failed", t)
             mapOf(
                 "success" to false,
                 "code" to "save_failed",

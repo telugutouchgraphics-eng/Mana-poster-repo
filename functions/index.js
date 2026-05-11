@@ -1416,6 +1416,7 @@ async function uploadNotificationImageBuffer({
 
 async function sendReminderToToken({
   token,
+  platform = "",
   title,
   body,
   imageUrl = null,
@@ -1431,22 +1432,12 @@ async function sendReminderToToken({
   const normalizedTitle = String(title || "").trim();
   const normalizedBody = String(body || "").trim();
   const normalizedImageUrl = String(imageUrl || "").trim();
-  const androidVisibleTitle = normalizedImageUrl ? "\u200B" : normalizedTitle;
-  const androidVisibleBody = normalizedImageUrl ? "" : normalizedBody;
+  const normalizedPlatform = String(platform || "").trim().toLowerCase();
+  const isAndroidTarget = normalizedPlatform === "android";
   const message = {
     token,
-    notification: {
-      title: normalizedTitle,
-      body: normalizedBody,
-    },
     android: {
       priority: "high",
-      notification: {
-        channelId: "mana_poster_general",
-        clickAction: "FLUTTER_NOTIFICATION_CLICK",
-        title: androidVisibleTitle,
-        body: androidVisibleBody,
-      },
     },
     apns: {
       payload: {
@@ -1475,7 +1466,21 @@ async function sendReminderToToken({
       posterImage: normalizedImageUrl,
     },
   };
-  if (normalizedImageUrl) {
+
+  if (!isAndroidTarget) {
+    message.notification = {
+      title: normalizedTitle,
+      body: normalizedBody,
+    };
+    message.android.notification = {
+      channelId: "mana_poster_general",
+      clickAction: "FLUTTER_NOTIFICATION_CLICK",
+      title: normalizedImageUrl ? "\u200B" : normalizedTitle,
+      body: normalizedImageUrl ? "" : normalizedBody,
+    };
+  }
+
+  if (normalizedImageUrl && !isAndroidTarget) {
     message.android.notification.imageUrl = normalizedImageUrl;
     message.apns.fcmOptions = {image: normalizedImageUrl};
   }
@@ -1485,6 +1490,7 @@ async function sendReminderToToken({
 
 async function sendPersonalizedReminderToToken({
   token,
+  platform = "",
   title,
   body,
   headerText,
@@ -1548,6 +1554,7 @@ async function sendPersonalizedReminderToToken({
   });
   const messageId = await sendReminderToToken({
     token,
+    platform,
     title,
     body,
     imageUrl: imageUrl || null,
@@ -1569,10 +1576,11 @@ async function sendPersonalizedReminderToToken({
   return messageId;
 }
 
-async function sendWelcomeToToken(token) {
+async function sendWelcomeToToken(token, platform = "") {
   const imageUrl = await getPrimaryBannerImage();
   await sendReminderToToken({
     token,
+    platform,
     title: "Welcome to Mana Poster",
     body: "Mee kosam daily posters ready ga untayi. Open chesi share cheyyandi.",
     imageUrl,
@@ -1587,6 +1595,7 @@ async function sendWelcomeToToken(token) {
 
 async function sendPersonalizedWelcomeToToken({
   token,
+  platform = "",
   userName,
   userPhotoUrl,
   seed,
@@ -1605,6 +1614,7 @@ async function sendPersonalizedWelcomeToToken({
   const imageUrl = await getPrimaryBannerImage();
   await sendPersonalizedReminderToToken({
     token,
+    platform,
     title: copy.title,
     body: copy.body,
     headerText: copy.header,
@@ -1771,10 +1781,15 @@ async function sendDailyPersonalizedReminder({
     const userRef = doc.ref.parent && doc.ref.parent.parent;
     const uid = userRef ? userRef.id : "";
     seenTokens.add(token);
-    userJobs.push({token, uid, ref: doc.ref});
+    userJobs.push({
+      token,
+      uid,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
   }
 
-  await runWithConcurrency(userJobs, 2, async ({token, uid, ref}) => {
+  await runWithConcurrency(userJobs, 2, async ({token, uid, ref, platform}) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
@@ -1788,6 +1803,7 @@ async function sendDailyPersonalizedReminder({
       );
       await sendPersonalizedReminderToToken({
         token,
+        platform,
         title: copy.title,
         body: copy.body,
         headerText: copy.header,
@@ -1820,14 +1836,19 @@ async function sendDailyPersonalizedReminder({
       continue;
     }
     seenTokens.add(token);
-    publicJobs.push({token, ref: doc.ref});
+    publicJobs.push({
+      token,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
   }
 
-  await runWithConcurrency(publicJobs, 2, async ({token, ref}) => {
+  await runWithConcurrency(publicJobs, 2, async ({token, ref, platform}) => {
     try {
       const copy = reminderCopyLocalized(categoryKey, "english", "Mana Poster User");
       await sendPersonalizedReminderToToken({
         token,
+        platform,
         title: copy.title,
         body: copy.body,
         headerText: copy.header,
@@ -1869,7 +1890,11 @@ async function sendDirectReminderToEligibleTokens({
       continue;
     }
     seenTokens.add(token);
-    jobs.push({token, ref: doc.ref});
+    jobs.push({
+      token,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
   }
 
   for (const doc of publicSnap.docs) {
@@ -1879,13 +1904,18 @@ async function sendDirectReminderToEligibleTokens({
       continue;
     }
     seenTokens.add(token);
-    jobs.push({token, ref: doc.ref});
+    jobs.push({
+      token,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
   }
 
-  await runWithConcurrency(jobs, 4, async ({token, ref}) => {
+  await runWithConcurrency(jobs, 4, async ({token, ref, platform}) => {
     try {
       await sendReminderToToken({
         token,
+        platform,
         title,
         body,
         imageUrl: imageUrl || null,
@@ -2575,7 +2605,7 @@ exports.processWelcomeNotifications = onSchedule(
           continue;
         }
         try {
-          await sendWelcomeToToken(token);
+          await sendWelcomeToToken(token, String(data.platform || "").trim());
           await doc.ref.set({
             welcomeSent: true,
             welcomeSentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -2616,6 +2646,7 @@ exports.processWelcomeNotifications = onSchedule(
           );
           await sendPersonalizedWelcomeToToken({
             token,
+            platform: String(data.platform || "").trim(),
             userName: profile.name,
             userPhotoUrl: profile.photoUrl,
             seed: `${uid}-${token}-welcome`,

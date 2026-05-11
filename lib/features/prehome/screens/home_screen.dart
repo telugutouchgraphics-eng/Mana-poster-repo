@@ -2,18 +2,20 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -164,7 +166,14 @@ class _HomeFeedEntry {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.initialCategorySlug,
+    this.initialNotificationPayload,
+  });
+
+  final String? initialCategorySlug;
+  final Map<String, dynamic>? initialNotificationPayload;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -268,6 +277,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    final initialCategory = widget.initialCategorySlug?.trim();
+    if (initialCategory != null && initialCategory.isNotEmpty) {
+      _selectedCategorySlug = initialCategory;
+    }
     WidgetsBinding.instance.addObserver(this);
     _posterScrollController.addListener(_onPosterScroll);
     unawaited(_hidePhoneNavigationButtons());
@@ -389,16 +402,21 @@ class _HomeScreenState extends State<HomeScreen>
       now,
       language: language,
     );
-    return generated
-        .map(
-          (item) => _CategoryChipData(
-            slug: item.slug,
-            label: item.label,
-            matchTags: item.tags,
-            isDynamic: true,
-          ),
-        )
-        .toList();
+    final visibleTemplateDynamicCategories = _dynamicCategoryService
+        .categoriesForSlugs(
+          _remoteApprovedTemplates.expand((item) => item.categoryTags),
+          language: language,
+        );
+    final merged = <String, _CategoryChipData>{};
+    for (final item in [...generated, ...visibleTemplateDynamicCategories]) {
+      merged[item.slug] = _CategoryChipData(
+        slug: item.slug,
+        label: item.label,
+        matchTags: item.tags,
+        isDynamic: true,
+      );
+    }
+    return merged.values.toList(growable: false);
   }
 
   List<_CategoryChipData> _buildStaticCategories() {
@@ -876,7 +894,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     try {
       await precacheImage(imageProvider, context);
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('profile image warmup skipped: $error', stackTrace);
+    }
   }
 
   void _warmTemplateImages(List<_TemplateItem> items) {
@@ -894,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (warmUrl.isEmpty || !seen.add(warmUrl)) {
         continue;
       }
-      unawaited(precacheImage(CachedNetworkImageProvider(warmUrl), context));
+      unawaited(_safePrecacheNetworkImage(warmUrl));
     }
   }
 
@@ -908,7 +928,19 @@ class _HomeScreenState extends State<HomeScreen>
       if (imageUrl.isEmpty || !seen.add(imageUrl)) {
         continue;
       }
-      unawaited(precacheImage(CachedNetworkImageProvider(imageUrl), context));
+      unawaited(_safePrecacheNetworkImage(imageUrl));
+    }
+  }
+
+  Future<void> _safePrecacheNetworkImage(String imageUrl) async {
+    if (!mounted || imageUrl.trim().isEmpty) {
+      return;
+    }
+    try {
+      await precacheImage(CachedNetworkImageProvider(imageUrl), context);
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('network image warmup skipped: $imageUrl', stackTrace);
+      _homeDebugLog('network image warmup error: $error');
     }
   }
 
@@ -2367,7 +2399,9 @@ class _TemplateFeedItem extends StatelessWidget {
     'Reshma',
     'Tejafont',
   ];
-  final GlobalKey _posterRepaintKey = GlobalKey();
+  final GlobalKey _posterCaptureKey = GlobalKey();
+  final ScreenshotController _posterScreenshotController =
+      ScreenshotController();
   final ValueNotifier<bool> _showPosterPhotoNotifier = ValueNotifier<bool>(
     true,
   );
@@ -2380,6 +2414,8 @@ class _TemplateFeedItem extends StatelessWidget {
   String? _preparedPosterFilePath;
   Future<void>? _preparePosterFuture;
   Future<Uint8List?>? _posterCaptureFuture;
+  bool _posterWarmupQueued = false;
+  String? _queuedPosterWarmupSignature;
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
   static final ProPurchaseGateway _subscriptionRestoreGateway =
@@ -2447,6 +2483,7 @@ class _TemplateFeedItem extends StatelessWidget {
     _preparedPosterBytes = null;
     _preparedPosterSignature = null;
     _preparedPosterFilePath = null;
+    _queuedPosterWarmupSignature = null;
     if (existingPath != null) {
       unawaited(
         File(existingPath).delete().catchError((_) => File(existingPath)),
@@ -2458,8 +2495,32 @@ class _TemplateFeedItem extends StatelessWidget {
     if (item.isVideo || !_posterReadyNotifier.value) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_preparePosterExport(force: force));
+    final signature = _posterSignature(
+      isPhotoVisible: _showPosterPhotoNotifier.value,
+    );
+    if (!force) {
+      if (_preparedPosterSignature == signature &&
+          _preparedPosterBytes != null) {
+        return;
+      }
+      if (_preparePosterFuture != null || _posterWarmupQueued) {
+        return;
+      }
+      if (_queuedPosterWarmupSignature == signature) {
+        return;
+      }
+    }
+    _posterWarmupQueued = true;
+    _queuedPosterWarmupSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await _preparePosterExport(force: force);
+      } finally {
+        _posterWarmupQueued = false;
+        if (_queuedPosterWarmupSignature == signature) {
+          _queuedPosterWarmupSignature = null;
+        }
+      }
     });
   }
 
@@ -2544,11 +2605,8 @@ class _TemplateFeedItem extends StatelessWidget {
   Future<void> _doPreparePosterExport(String signature) async {
     try {
       await ScreenSecurityService.disableSecure();
+      await _ensurePosterCaptureResourcesReady();
       await _prepareLegacyTextForExport();
-      await WidgetsBinding.instance.endOfFrame;
-      await Future<void>.delayed(const Duration(milliseconds: 32));
-      await WidgetsBinding.instance.endOfFrame;
-      await Future<void>.delayed(const Duration(milliseconds: 16));
       final bytes = await _capturePosterBytes();
       if (bytes == null) {
         return;
@@ -2603,7 +2661,6 @@ class _TemplateFeedItem extends StatelessWidget {
     if (!_posterReadyNotifier.value) {
       _posterReadyNotifier.value = true;
     }
-    _schedulePosterWarmup();
   }
 
   Future<Uint8List?> _capturePosterBytes() async {
@@ -2623,42 +2680,236 @@ class _TemplateFeedItem extends StatelessWidget {
   }
 
   Future<Uint8List?> _capturePosterBytesInternal() async {
-    final binding = WidgetsBinding.instance;
-    for (var attempt = 0; attempt < 3; attempt++) {
-      await binding.endOfFrame;
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      final boundary =
-          _posterRepaintKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-      if (boundary == null) {
-        _homeDebugLog('capture boundary unavailable on attempt=$attempt');
-        continue;
-      }
-      if (boundary.debugNeedsPaint) {
-        _homeDebugLog('capture boundary pending paint on attempt=$attempt');
-        continue;
-      }
-      try {
-        final image = await boundary.toImage(pixelRatio: 3);
-        try {
-          final data = await image.toByteData(format: ui.ImageByteFormat.png);
-          if (data != null) {
-            return data.buffer.asUint8List();
-          }
-        } finally {
-          image.dispose();
-        }
-      } catch (error, stackTrace) {
-        if (attempt == 2) {
-          _homeDebugLogStack('capture attempt failed: $error', stackTrace);
-          rethrow;
-        }
-        _homeDebugLog('capture attempt deferred after failure: $error');
-        await binding.endOfFrame;
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-      }
+    final captureContext = _posterCaptureKey.currentContext;
+    if (captureContext == null) {
+      final error = StateError('poster capture context unavailable');
+      await _recordPosterCaptureFailure(
+        message: 'poster capture context unavailable',
+        error: error,
+      );
+      return null;
     }
-    return null;
+
+    final renderBox = captureContext.findRenderObject() as RenderBox?;
+    final logicalSize =
+        renderBox != null && renderBox.hasSize && !renderBox.size.isEmpty
+        ? renderBox.size
+        : MediaQuery.sizeOf(captureContext);
+    final pixelRatio = _capturePosterPixelRatio(captureContext);
+    final targetSize = Size(
+      logicalSize.width * pixelRatio,
+      logicalSize.height * pixelRatio,
+    );
+    final captureContextMounted = captureContext.mounted;
+
+    _recordPosterCaptureTrace(
+      'capture start',
+      details: <String, Object?>{
+        'method': 'screenshot.captureFromWidget',
+        'logicalSize': logicalSize.toString(),
+        'pixelRatio': pixelRatio,
+        'targetSize': targetSize.toString(),
+      },
+    );
+
+    try {
+      final bytes = await _posterScreenshotController.captureFromWidget(
+        _buildPosterPreview(
+          isPhotoVisible: _showPosterPhotoNotifier.value,
+          onPosterReady: null,
+        ),
+        context: captureContext,
+        pixelRatio: pixelRatio,
+        targetSize: targetSize,
+        delay: const Duration(milliseconds: 80),
+      );
+      _recordPosterCaptureTrace(
+        'capture success',
+        details: <String, Object?>{
+          'method': 'screenshot.captureFromWidget',
+          'byteLength': bytes.length,
+          'logicalSize': logicalSize.toString(),
+          'pixelRatio': pixelRatio,
+        },
+      );
+      return bytes;
+    } catch (error, stackTrace) {
+      await _recordPosterCaptureFailure(
+        message: 'poster capture failed',
+        error: error,
+        stackTrace: stackTrace,
+        captureContextMounted: captureContextMounted,
+        logicalSize: logicalSize,
+        pixelRatio: pixelRatio,
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _ensurePosterCaptureResourcesReady() async {
+    await _precacheCurrentPosterImage();
+    await _precacheCurrentPosterProfileImage();
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  Future<void> _precacheCurrentPosterImage() async {
+    if (item.isVideo) {
+      return;
+    }
+    final posterContext = _posterCaptureKey.currentContext;
+    if (posterContext == null) {
+      return;
+    }
+    try {
+      final assetPath = item.imageAssetPath?.trim() ?? '';
+      if (assetPath.isNotEmpty) {
+        await precacheImage(AssetImage(assetPath), posterContext);
+        return;
+      }
+      final imageUrl = item.imageUrl?.trim() ?? '';
+      final thumbnailUrl = item.thumbnailUrl?.trim() ?? '';
+      final resolvedUrl = imageUrl.isNotEmpty ? imageUrl : thumbnailUrl;
+      if (resolvedUrl.isEmpty) {
+        return;
+      }
+      await precacheImage(
+        CachedNetworkImageProvider(resolvedUrl),
+        posterContext,
+      );
+    } catch (error, stackTrace) {
+      _recordPosterCaptureTrace(
+        'poster image precache skipped',
+        details: <String, Object?>{'error': error.toString()},
+      );
+      _homeDebugLogStack('poster image precache skipped: $error', stackTrace);
+    }
+  }
+
+  Future<void> _precacheCurrentPosterProfileImage() async {
+    if (item.personalizationConfig == null ||
+        !_showPosterPhotoNotifier.value) {
+      return;
+    }
+    final posterContext = _posterCaptureKey.currentContext;
+    if (posterContext == null) {
+      return;
+    }
+    final imageProvider = PosterProfileService.resolveImageProvider(
+      viewerPosterProfile,
+      preferOriginalPersonalPhoto:
+          item.personalizationConfig?.photoRenderMode == 'original',
+      allowOriginalFallbackWhenCutoutUnavailable:
+          item.personalizationConfig?.photoRenderMode == 'original',
+    );
+    if (imageProvider == null) {
+      return;
+    }
+    try {
+      await precacheImage(imageProvider, posterContext);
+    } catch (error, stackTrace) {
+      _recordPosterCaptureTrace(
+        'poster profile image precache skipped',
+        details: <String, Object?>{'error': error.toString()},
+      );
+      _homeDebugLogStack(
+        'poster profile image precache skipped: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  double _capturePosterPixelRatio(BuildContext context) {
+    final view =
+        View.maybeOf(context) ??
+        WidgetsBinding.instance.platformDispatcher.implicitView;
+    final devicePixelRatio = view?.devicePixelRatio ?? 1.0;
+    return devicePixelRatio.clamp(1.0, 3.0);
+  }
+
+  void _recordPosterCaptureTrace(
+    String message, {
+    Map<String, Object?> details = const <String, Object?>{},
+  }) {
+    final detailText = details.entries
+        .map((entry) => '${entry.key}=${entry.value}')
+        .join(' ');
+    final output = detailText.isEmpty ? message : '$message $detailText';
+    developer.log(output, name: 'home.poster.capture');
+    _homeDebugLog(output);
+  }
+
+  Future<void> _recordPosterCaptureFailure({
+    required String message,
+    Object? error,
+    StackTrace? stackTrace,
+    bool? captureContextMounted,
+    Size? logicalSize,
+    double? pixelRatio,
+  }) async {
+    final diagnostic = <String, Object?>{
+      'captureMethod': 'screenshot.captureFromWidget',
+      'itemTitle': item.titleEn,
+      'isVideo': item.isVideo,
+      'hasPersonalization': item.personalizationConfig != null,
+      'showProfilePhoto': _showPosterPhotoNotifier.value,
+      'captureContextMounted': captureContextMounted,
+      'logicalSize': logicalSize?.toString(),
+      'pixelRatio': pixelRatio,
+      'templateImageUrl': item.imageUrl,
+      'templateThumbnailUrl': item.thumbnailUrl,
+      'templateAssetPath': item.imageAssetPath,
+      'profileIdentityMode': viewerPosterProfile.identityMode.name,
+      'profilePhotoUrl': viewerPosterProfile.photoUrl,
+      'profilePhotoPath': viewerPosterProfile.photoPath,
+      'businessLogoUrl': viewerPosterProfile.businessLogoUrl,
+    };
+    _recordPosterCaptureTrace(message, details: diagnostic);
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        error ?? Exception(message),
+        stackTrace ?? StackTrace.current,
+        reason: '$message | ${jsonEncode(diagnostic)}',
+        fatal: false,
+      );
+    } catch (_) {}
+  }
+
+  Widget _buildPosterPreview({
+    required bool isPhotoVisible,
+    VoidCallback? onPosterReady,
+  }) {
+    final personalizationConfig = item.personalizationConfig;
+    return KeyedSubtree(
+      key: ValueKey<String>(
+        '${item.titleEn}-${item.imageUrl ?? item.thumbnailUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
+      ),
+      child: item.isVideo
+          ? _TemplateVideoPlayer(
+              videoUrl: item.videoUrl!,
+              onReady: onPosterReady,
+            )
+          : personalizationConfig != null
+          ? _CreatorPosterPreview(
+              key: ValueKey<String>(
+                '${item.titleEn}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
+              ),
+              imageAssetPath: item.imageAssetPath,
+              imageUrl: item.imageUrl,
+              thumbnailUrl: item.thumbnailUrl,
+              personalizationConfig: personalizationConfig,
+              viewerPosterProfile: viewerPosterProfile,
+              language: language,
+              showProfilePhoto: isPhotoVisible,
+              posterRenderCycle: posterRenderCycle,
+              onPosterReady: onPosterReady,
+            )
+          : _TemplatePosterImage(
+              imageAssetPath: item.imageAssetPath,
+              imageUrl: item.imageUrl,
+              thumbnailUrl: item.thumbnailUrl,
+              onFirstFrameReady: onPosterReady,
+            ),
+    );
   }
 
   Future<bool> _ensureGallerySavePermission() async {
@@ -3079,47 +3330,20 @@ class _TemplateFeedItem extends StatelessWidget {
       child: ValueListenableBuilder<bool>(
         valueListenable: _posterReadyNotifier,
         builder: (context, isPosterReady, _) {
-          if (isPosterReady) {
-            _schedulePosterWarmup();
-          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               ValueListenableBuilder<bool>(
                 valueListenable: _showPosterPhotoNotifier,
                 builder: (context, isPhotoVisible, _) {
-                  return RepaintBoundary(
-                    key: _posterRepaintKey,
-                    child: KeyedSubtree(
-                      key: ValueKey<String>(
-                        '${item.titleEn}-${item.imageUrl ?? item.thumbnailUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
+                  return KeyedSubtree(
+                    key: _posterCaptureKey,
+                    child: Screenshot(
+                      controller: _posterScreenshotController,
+                      child: _buildPosterPreview(
+                        isPhotoVisible: isPhotoVisible,
+                        onPosterReady: _handlePosterReady,
                       ),
-                      child: item.isVideo
-                          ? _TemplateVideoPlayer(
-                              videoUrl: item.videoUrl!,
-                              onReady: _handlePosterReady,
-                            )
-                          : personalizationConfig != null
-                          ? _CreatorPosterPreview(
-                              key: ValueKey<String>(
-                                '${item.titleEn}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
-                              ),
-                              imageAssetPath: item.imageAssetPath,
-                              imageUrl: item.imageUrl,
-                              thumbnailUrl: item.thumbnailUrl,
-                              personalizationConfig: personalizationConfig,
-                              viewerPosterProfile: viewerPosterProfile,
-                              language: language,
-                              showProfilePhoto: isPhotoVisible,
-                              posterRenderCycle: posterRenderCycle,
-                              onPosterReady: _handlePosterReady,
-                            )
-                          : _TemplatePosterImage(
-                              imageAssetPath: item.imageAssetPath,
-                              imageUrl: item.imageUrl,
-                              thumbnailUrl: item.thumbnailUrl,
-                              onFirstFrameReady: _handlePosterReady,
-                            ),
                     ),
                   );
                 },
@@ -3405,103 +3629,105 @@ class _TemplatePosterImage extends StatelessWidget {
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.sizeOf(context).width;
-        final pixelRatio = MediaQuery.devicePixelRatioOf(
-          context,
-        ).clamp(1.0, 3.0);
-        final cacheWidth = (width * pixelRatio).round().clamp(360, 1080);
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          final pixelRatio = MediaQuery.devicePixelRatioOf(
+            context,
+          ).clamp(1.0, 3.0);
+          final cacheWidth = (width * pixelRatio).round().clamp(360, 1080);
 
-        final placeholderUrl = thumbnailUrl?.trim() ?? '';
-        final imageWidget = imageAssetPath != null
-            ? Image.asset(
-                imageAssetPath!,
-                width: double.infinity,
-                fit: BoxFit.contain,
-                alignment: Alignment.topCenter,
-                filterQuality: FilterQuality.low,
-                cacheWidth: cacheWidth,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded || frame != null) {
-                    if (onFirstFrameReady != null) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        onFirstFrameReady!.call();
-                      });
-                    }
-                    return child;
-                  }
-                  return const _ImageLoadingState();
-                },
-                errorBuilder: (_, _, _) => _ImageErrorState(
-                  title: context.strings.localized(
-                    telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                    english: 'Template image unavailable',
+          final placeholderUrl = thumbnailUrl?.trim() ?? '';
+          final imageWidget = imageAssetPath != null
+              ? Image.asset(
+                  imageAssetPath!,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.low,
+                  cacheWidth: cacheWidth,
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded || frame != null) {
+                          if (onFirstFrameReady != null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              onFirstFrameReady!.call();
+                            });
+                          }
+                          return child;
+                        }
+                        return const _ImageLoadingState();
+                      },
+                  errorBuilder: (_, _, _) => _ImageErrorState(
+                    title: context.strings.localized(
+                      telugu:
+                          'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                      english: 'Template image unavailable',
+                    ),
+                    subtitle: context.strings.localized(
+                      telugu:
+                          'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                      english: 'Please refresh or try another template.',
+                    ),
                   ),
-                  subtitle: context.strings.localized(
-                    telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                    english: 'Please refresh or try another template.',
+                )
+              : Image(
+                  image: ResizeImage.resizeIfNeeded(
+                    cacheWidth,
+                    null,
+                    CachedNetworkImageProvider(imageUrl ?? ''),
                   ),
-                ),
-              )
-            : Image(
-                image: ResizeImage.resizeIfNeeded(
-                  cacheWidth,
-                  null,
-                  CachedNetworkImageProvider(imageUrl ?? ''),
-                ),
-                width: double.infinity,
-                fit: BoxFit.contain,
-                alignment: Alignment.topCenter,
-                filterQuality: FilterQuality.low,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded || frame != null) {
-                    if (onFirstFrameReady != null) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        onFirstFrameReady!.call();
-                      });
-                    }
-                    return child;
-                  }
-                  if (placeholderUrl.isNotEmpty &&
-                      placeholderUrl != (imageUrl ?? '').trim()) {
-                    return Image(
-                      image: ResizeImage.resizeIfNeeded(
-                        cacheWidth.clamp(240, 540),
-                        null,
-                        CachedNetworkImageProvider(placeholderUrl),
-                      ),
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                      alignment: Alignment.topCenter,
-                      filterQuality: FilterQuality.low,
-                    );
-                  }
-                  return const _ImageLoadingState();
-                },
-                errorBuilder:
-                    (
-                      BuildContext context,
-                      Object error,
-                      StackTrace? stackTrace,
-                    ) {
-                      final strings = context.strings;
-                      return _ImageErrorState(
-                        title: strings.localized(
-                          telugu:
-                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                          english: 'Template image unavailable',
-                        ),
-                        subtitle: strings.localized(
-                          telugu:
-                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                          english: 'Please refresh or try another template.',
-                        ),
-                      );
-                    },
-              );
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.low,
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded || frame != null) {
+                          if (onFirstFrameReady != null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              onFirstFrameReady!.call();
+                            });
+                          }
+                          return child;
+                        }
+                        if (placeholderUrl.isNotEmpty &&
+                            placeholderUrl != (imageUrl ?? '').trim()) {
+                          return Image(
+                            image: ResizeImage.resizeIfNeeded(
+                              cacheWidth.clamp(240, 540),
+                              null,
+                              CachedNetworkImageProvider(placeholderUrl),
+                            ),
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.topCenter,
+                            filterQuality: FilterQuality.low,
+                          );
+                        }
+                        return const _ImageLoadingState();
+                      },
+                  errorBuilder:
+                      (
+                        BuildContext context,
+                        Object error,
+                        StackTrace? stackTrace,
+                      ) {
+                        final strings = context.strings;
+                        return _ImageErrorState(
+                          title: strings.localized(
+                            telugu:
+                                'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                            english: 'Template image unavailable',
+                          ),
+                          subtitle: strings.localized(
+                            telugu:
+                                'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                            english: 'Please refresh or try another template.',
+                          ),
+                        );
+                      },
+                );
 
           return Align(alignment: Alignment.topCenter, child: imageWidget);
         },
@@ -4053,7 +4279,8 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   }
 
   String? _legacyOverrideFor(String text, String? fontFamily) {
-    if (!_shouldConvertForLegacyTelugu(text, fontFamily) || fontFamily == null) {
+    if (!_shouldConvertForLegacyTelugu(text, fontFamily) ||
+        fontFamily == null) {
       return null;
     }
     final key = _legacyTextCacheKey(text, fontFamily);
@@ -4061,10 +4288,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         TeluguLegacyTextService.cachedValue(text, fontFamily: fontFamily);
   }
 
-  Future<void> _primeLegacyTextValue(
-    String text,
-    String? fontFamily,
-  ) async {
+  Future<void> _primeLegacyTextValue(String text, String? fontFamily) async {
     if (!_shouldConvertForLegacyTelugu(text, fontFamily) ||
         fontFamily == null ||
         text.trim().isEmpty) {
@@ -4198,269 +4422,274 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       child: SizedBox(
         width: double.infinity,
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Stack(
-            clipBehavior: Clip.hardEdge,
-            children: <Widget>[
-              _TemplatePosterImage(
-                imageAssetPath: widget.imageAssetPath,
-                imageUrl: widget.imageUrl,
-                thumbnailUrl: widget.thumbnailUrl,
-                onFirstFrameReady: _handleBasePosterReady,
-              ),
-              if (_basePosterReady &&
-                  widget.showProfilePhoto &&
-                  shouldShowIdentityVisual)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: LayoutBuilder(
-                    builder:
-                        (BuildContext context, BoxConstraints constraints) {
-                          final photoScale =
-                              widget.personalizationConfig.photoScale / 100;
-                          final visualScale = isBusinessProfile
-                              ? photoScale * 0.72
-                              : photoScale;
-                          final maskAspectRatio = _photoMaskAspectRatio(
-                            widget.personalizationConfig.photoShape,
-                          );
-                          final width = constraints.maxWidth * visualScale;
-                          final height = width / maskAspectRatio;
-                          final left =
-                              (constraints.maxWidth *
-                                  (widget.personalizationConfig.photoX / 100)) -
-                              (width / 2);
-                          final top =
-                              (constraints.maxHeight *
-                                  (widget.personalizationConfig.photoY / 100)) -
-                              (height / 2);
-                          return Stack(
-                            clipBehavior: Clip.hardEdge,
-                            children: <Widget>[
-                              Positioned(
-                                left: left,
-                                top: top,
-                                width: width,
-                                height: height,
-                                child: _PhotoShapeFrame(
-                                  shape:
-                                      widget.personalizationConfig.photoShape,
-                                  edgeStyle:
-                                      widget.personalizationConfig.edgeStyle,
-                                  photoRenderMode: widget
-                                      .personalizationConfig
-                                      .photoRenderMode,
-                                  isBusinessLogo: isBusinessProfile,
-                                  child: PosterIdentityVisual(
-                                    profile: widget.viewerPosterProfile,
-                                    fit:
-                                        widget
-                                                .personalizationConfig
-                                                .photoRenderMode ==
-                                            'cutout'
-                                        ? BoxFit.contain
-                                        : BoxFit.cover,
-                                    preferOriginalPersonalPhoto:
-                                        widget
-                                            .personalizationConfig
-                                            .photoRenderMode ==
-                                        'original',
-                                    allowOriginalFallbackWhenCutoutUnavailable:
-                                        widget
-                                            .personalizationConfig
-                                            .photoRenderMode ==
-                                        'original',
-                                    textScale:
-                                        widget
-                                                .viewerPosterProfile
-                                                .identityMode ==
-                                            PosterIdentityMode.business
-                                        ? 0.84
-                                        : 1.0,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Stack(
+              clipBehavior: Clip.hardEdge,
+              children: <Widget>[
+                _TemplatePosterImage(
+                  imageAssetPath: widget.imageAssetPath,
+                  imageUrl: widget.imageUrl,
+                  thumbnailUrl: widget.thumbnailUrl,
+                  onFirstFrameReady: _handleBasePosterReady,
+                ),
+                if (_basePosterReady &&
+                    widget.showProfilePhoto &&
+                    shouldShowIdentityVisual)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: LayoutBuilder(
+                      builder:
+                          (BuildContext context, BoxConstraints constraints) {
+                            final photoScale =
+                                widget.personalizationConfig.photoScale / 100;
+                            final visualScale = isBusinessProfile
+                                ? photoScale * 0.72
+                                : photoScale;
+                            final maskAspectRatio = _photoMaskAspectRatio(
+                              widget.personalizationConfig.photoShape,
+                            );
+                            final width = constraints.maxWidth * visualScale;
+                            final height = width / maskAspectRatio;
+                            final left =
+                                (constraints.maxWidth *
+                                    (widget.personalizationConfig.photoX /
+                                        100)) -
+                                (width / 2);
+                            final top =
+                                (constraints.maxHeight *
+                                    (widget.personalizationConfig.photoY /
+                                        100)) -
+                                (height / 2);
+                            return Stack(
+                              clipBehavior: Clip.hardEdge,
+                              children: <Widget>[
+                                Positioned(
+                                  left: left,
+                                  top: top,
+                                  width: width,
+                                  height: height,
+                                  child: _PhotoShapeFrame(
+                                    shape:
+                                        widget.personalizationConfig.photoShape,
+                                    edgeStyle:
+                                        widget.personalizationConfig.edgeStyle,
+                                    photoRenderMode: widget
+                                        .personalizationConfig
+                                        .photoRenderMode,
+                                    isBusinessLogo: isBusinessProfile,
+                                    child: PosterIdentityVisual(
+                                      profile: widget.viewerPosterProfile,
+                                      fit:
+                                          widget
+                                                  .personalizationConfig
+                                                  .photoRenderMode ==
+                                              'cutout'
+                                          ? BoxFit.contain
+                                          : BoxFit.cover,
+                                      preferOriginalPersonalPhoto:
+                                          widget
+                                              .personalizationConfig
+                                              .photoRenderMode ==
+                                          'original',
+                                      allowOriginalFallbackWhenCutoutUnavailable:
+                                          widget
+                                              .personalizationConfig
+                                              .photoRenderMode ==
+                                          'original',
+                                      textScale:
+                                          widget
+                                                  .viewerPosterProfile
+                                                  .identityMode ==
+                                              PosterIdentityMode.business
+                                          ? 0.84
+                                          : 1.0,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (!widget.personalizationConfig.showBottomStrip)
-                                Positioned(
-                                  left:
-                                      constraints.maxWidth *
-                                      (widget.personalizationConfig.nameX /
-                                          100),
-                                  top:
-                                      constraints.maxHeight *
-                                      (widget.personalizationConfig.nameY /
-                                          100),
-                                  child: Transform.translate(
-                                    offset: const Offset(-80, -16),
-                                    child: SizedBox(
-                                      width: 160,
-                                      child: _legacyAwareText(
-                                        text: resolvedName,
-                                        fontFamily: displayNameFontFamily,
-                                        maxLines: 1,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 18,
-                                          shadows: const <Shadow>[
-                                            Shadow(
-                                              color: Color(0xCC000000),
-                                              blurRadius: 4,
-                                              offset: Offset(0, 1),
-                                            ),
-                                          ],
+                                if (!widget
+                                    .personalizationConfig
+                                    .showBottomStrip)
+                                  Positioned(
+                                    left:
+                                        constraints.maxWidth *
+                                        (widget.personalizationConfig.nameX /
+                                            100),
+                                    top:
+                                        constraints.maxHeight *
+                                        (widget.personalizationConfig.nameY /
+                                            100),
+                                    child: Transform.translate(
+                                      offset: const Offset(-80, -16),
+                                      child: SizedBox(
+                                        width: 160,
+                                        child: _legacyAwareText(
+                                          text: resolvedName,
+                                          fontFamily: displayNameFontFamily,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 18,
+                                            shadows: const <Shadow>[
+                                              Shadow(
+                                                color: Color(0xCC000000),
+                                                blurRadius: 4,
+                                                offset: Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          );
-                        },
+                              ],
+                            );
+                          },
+                    ),
+                  ),
+              ],
+            ),
+            if (_basePosterReady &&
+                widget.personalizationConfig.showBottomStrip)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: bottomStripPadding,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: stripGradient,
                   ),
                 ),
-            ],
-          ),
-          if (_basePosterReady && widget.personalizationConfig.showBottomStrip)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: bottomStripPadding,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: stripGradient,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  if (isBusinessProfile)
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          flex: 5,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              _legacyAwareText(
-                                text: resolvedName,
-                                fontFamily: displayNameFontFamily,
-                                maxLines: 1,
-                                textAlign: TextAlign.left,
-                                fitToWidth: true,
-                                style: TextStyle(
-                                  color: stripTextColor,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: businessNameFontSize,
-                                  height: isTeluguName ? 0.98 : 1.0,
-                                ),
-                              ),
-                              if (resolvedDesignation.isNotEmpty) ...<Widget>[
-                                const SizedBox(height: 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (isBusinessProfile)
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
                                 _legacyAwareText(
-                                  text: resolvedDesignation,
-                                  fontFamily: designationFontFamily,
+                                  text: resolvedName,
+                                  fontFamily: displayNameFontFamily,
                                   maxLines: 1,
                                   textAlign: TextAlign.left,
                                   fitToWidth: true,
                                   style: TextStyle(
-                                    color: mutedStripTextColor,
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 18,
-                                    height: 0.98,
+                                    color: stripTextColor,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: businessNameFontSize,
+                                    height: isTeluguName ? 0.98 : 1.0,
                                   ),
                                 ),
+                                if (resolvedDesignation.isNotEmpty) ...<Widget>[
+                                  const SizedBox(height: 0),
+                                  _legacyAwareText(
+                                    text: resolvedDesignation,
+                                    fontFamily: designationFontFamily,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.left,
+                                    fitToWidth: true,
+                                    style: TextStyle(
+                                      color: mutedStripTextColor,
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 18,
+                                      height: 0.98,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                        ),
-                        if (showPhoneInStrip) ...<Widget>[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 2,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: mutedStripTextColor,
-                              borderRadius: BorderRadius.circular(999),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            flex: 0,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 82),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  resolvedPhone,
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: mutedStripTextColor,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 15,
-                                    height: 1.0,
+                          if (showPhoneInStrip) ...<Widget>[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 2,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: mutedStripTextColor,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              flex: 0,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 82),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    resolvedPhone,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: mutedStripTextColor,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                      height: 1.0,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
-                    )
-                  else ...<Widget>[
-                    SizedBox(
-                      height: personalNameBoxHeight,
-                      child: _legacyAwareText(
-                        text: resolvedName,
-                        fontFamily: displayNameFontFamily,
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                        fitToWidth: true,
-                        style: TextStyle(
-                          color: stripTextColor,
-                          fontWeight: FontWeight.w500,
-                          fontSize: personalNameFontSize,
-                          height: personalNameLineHeight,
+                      )
+                    else ...<Widget>[
+                      SizedBox(
+                        height: personalNameBoxHeight,
+                        child: _legacyAwareText(
+                          text: resolvedName,
+                          fontFamily: displayNameFontFamily,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          fitToWidth: true,
+                          style: TextStyle(
+                            color: stripTextColor,
+                            fontWeight: FontWeight.w500,
+                            fontSize: personalNameFontSize,
+                            height: personalNameLineHeight,
+                          ),
                         ),
                       ),
-                    ),
-                    if (resolvedDesignation.isNotEmpty)
-                      SizedBox(
-                        height: 18,
-                        child: Transform.translate(
-                          offset: const Offset(0, -3),
-                          child: _legacyAwareText(
-                            text: resolvedDesignation,
-                            fontFamily: designationFontFamily,
-                            maxLines: 1,
-                            textAlign: TextAlign.center,
-                            fitToWidth: true,
-                            style: TextStyle(
-                              color: mutedStripTextColor,
-                              fontWeight: FontWeight.w400,
-                              fontSize: 20,
-                              height: 0.82,
+                      if (resolvedDesignation.isNotEmpty)
+                        SizedBox(
+                          height: 18,
+                          child: Transform.translate(
+                            offset: const Offset(0, -3),
+                            child: _legacyAwareText(
+                              text: resolvedDesignation,
+                              fontFamily: designationFontFamily,
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              fitToWidth: true,
+                              style: TextStyle(
+                                color: mutedStripTextColor,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 20,
+                                height: 0.82,
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -4752,10 +4981,7 @@ class _PhotoShapeFrame extends StatelessWidget {
       child: _isTransparentRoundShape(shape)
           ? _clipPhotoShape(_resolvedShape(shape), imageWidget)
           : _isTransparentPhotoShape(shape)
-          ? ClipRect(
-              clipBehavior: Clip.antiAlias,
-              child: imageWidget,
-            )
+          ? ClipRect(clipBehavior: Clip.antiAlias, child: imageWidget)
           : _clipPhotoShape(shape, imageWidget),
     );
     final framedChild = Stack(

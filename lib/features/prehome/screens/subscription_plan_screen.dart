@@ -701,6 +701,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   @override
   Widget build(BuildContext context) {
+    final String? subscriptionStartLine = _subscriptionStartLine();
+    final String? subscriptionExpiryLine = _subscriptionExpiryLine();
     final List<String> planDetails = <String>[
       _trialOfferBody,
       _t(
@@ -717,9 +719,11 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         malayalam:
             '3 ദിവസങ്ങൾക്ക് ശേഷം പ്ലാൻ $_monthlyPriceLabel മാസംതോറും ഓട്ടോ റിന്യൂവാകും',
       ),
-      if (_subscriptionStartLine() != null) _subscriptionStartLine()!,
-      if (_subscriptionExpiryLine() != null) _subscriptionExpiryLine()!,
     ];
+    planDetails.addAll(
+      <String?>[subscriptionStartLine, subscriptionExpiryLine]
+          .whereType<String>(),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -1102,10 +1106,10 @@ class _SubscriptionStatusCard extends StatelessWidget {
               ),
             ],
           ),
-          if (startLine != null) ...<Widget>[
+          if (startLine case final line?) ...<Widget>[
             const SizedBox(height: 14),
             Text(
-              startLine!,
+              line,
               style: const TextStyle(
                 color: Color(0xFF475569),
                 fontSize: 14,
@@ -1113,10 +1117,10 @@ class _SubscriptionStatusCard extends StatelessWidget {
               ),
             ),
           ],
-          if (expiryLine != null) ...<Widget>[
+          if (expiryLine case final line?) ...<Widget>[
             const SizedBox(height: 6),
             Text(
-              expiryLine!,
+              line,
               style: const TextStyle(
                 color: Color(0xFF475569),
                 fontSize: 14,

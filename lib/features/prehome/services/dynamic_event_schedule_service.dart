@@ -68,12 +68,10 @@ class DynamicEventScheduleService {
   ) {
     switch (event.calendarType) {
       case DynamicCalendarType.gregorian:
-        final startMonth = event.startMonth;
-        final startDay = event.startDay;
-        if (startMonth == null || startDay == null) {
+        final startDate = _resolveGregorianStartDate(event, year);
+        if (startDate == null) {
           return null;
         }
-        final startDate = DateTime(year, startMonth, startDay);
         final endDate = switch ((event.endMonth, event.endDay)) {
           (final int endMonth, final int endDay) => DateTime(
             year,
@@ -109,5 +107,25 @@ class DynamicEventScheduleService {
           visibleStart: startDate.subtract(Duration(days: daysBeforeEvent)),
         );
     }
+  }
+
+  DateTime? _resolveGregorianStartDate(DynamicCalendarEvent event, int year) {
+    final startMonth = event.startMonth;
+    final startDay = event.startDay;
+    if (startMonth != null && startDay != null) {
+      return DateTime(year, startMonth, startDay);
+    }
+
+    final weekOfMonth = event.weekOfMonth;
+    final weekdayOfMonth = event.weekdayOfMonth;
+    if (startMonth == null || weekOfMonth == null || weekdayOfMonth == null) {
+      return null;
+    }
+
+    final firstDay = DateTime(year, startMonth, 1);
+    final offset = (weekdayOfMonth - firstDay.weekday + 7) % 7;
+    final day = 1 + offset + ((weekOfMonth - 1) * 7);
+    final resolved = DateTime(year, startMonth, day);
+    return resolved.month == startMonth ? resolved : null;
   }
 }

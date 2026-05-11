@@ -116,6 +116,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isExporting = false;
   bool _isSharing = false;
   bool _isRemovingBackground = false;
+  bool _isPickingMedia = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
   bool _isCropMode = false;

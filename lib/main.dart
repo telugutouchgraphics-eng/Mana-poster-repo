@@ -28,24 +28,24 @@ const bool _profileFrames = bool.fromEnvironment(
 AppLifecycleListener? _subscriptionLifecycleListener;
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    NotificationService.registerBackgroundHandler();
-  }
-  if (kIsWeb) {
-    configureWebUrlStrategy();
-  }
-  if (_profileFrames) {
-    _attachFrameProfiler();
-  }
-
-  await FirebaseBootstrap.ensureInitialized();
-  await _configureFirebaseMonitoring();
-
-  final snapshot = await AppFlowService.loadSnapshot();
-
   runZonedGuarded(
-    () {
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      if (!kIsWeb) {
+        NotificationService.registerBackgroundHandler();
+      }
+      if (kIsWeb) {
+        configureWebUrlStrategy();
+      }
+      if (_profileFrames) {
+        _attachFrameProfiler();
+      }
+
+      await FirebaseBootstrap.ensureInitialized();
+      await _configureFirebaseMonitoring();
+
+      final snapshot = await AppFlowService.loadSnapshot();
+
       runApp(ManaPosterApp(initialLanguage: snapshot.language));
       unawaited(_runPostLaunchInitialization());
     },
@@ -108,24 +108,45 @@ Future<void> _configureFirebaseMonitoring() async {
     return;
   }
 
-  await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(!kDebugMode);
+  try {
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(!kDebugMode);
+  } catch (error, stackTrace) {
+    developer.log(
+      'Analytics monitoring setup skipped: $error',
+      name: 'app.monitoring',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
 
   if (kIsWeb) {
     return;
   }
 
-  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
-    !kDebugMode,
-  );
+  try {
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+      !kDebugMode,
+    );
 
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-  };
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    };
 
-  PlatformDispatcher.instance.onError = (Object error, StackTrace stackTrace) {
-    FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
-    return true;
-  };
+    PlatformDispatcher.instance.onError = (
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+      return true;
+    };
+  } catch (error, stackTrace) {
+    developer.log(
+      'Crashlytics monitoring setup skipped: $error',
+      name: 'app.monitoring',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
 }
 
 void _attachFrameProfiler() {

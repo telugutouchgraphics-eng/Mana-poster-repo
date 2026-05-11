@@ -1,6 +1,13 @@
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.Properties
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 import org.gradle.api.GradleException
+
+val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a")
+val unsupportedBundleAbis = listOf("x86", "x86_64")
 
 plugins {
     id("com.android.application")
@@ -70,13 +77,15 @@ android {
         versionName = flutter.versionName
         manifestPlaceholders["admobAppId"] = adMobAppIdProvider.get()
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            abiFilters += supportedReleaseAbis
         }
     }
 
     packaging {
         jniLibs {
-            keepDebugSymbols += listOf("**/libonnxruntime.so")
+            // The app ships ONNX Runtime only for ARM ABIs. Excluding x86/x86_64
+            // prevents Play delivery from generating unsupported native splits.
+            excludes += unsupportedBundleAbis.map { "**/$it/*.so" }
         }
     }
 
@@ -129,4 +138,89 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+    implementation("com.google.firebase:firebase-messaging")
+}
+
+val releaseBundlePath =
+    layout.buildDirectory.file("outputs/bundle/release/app-release.aab")
+
+fun shouldStripBundleEntry(path: String): Boolean =
+    unsupportedBundleAbis.any { abi ->
+        path.startsWith("base/lib/$abi/") ||
+            path.startsWith("BUNDLE-METADATA/com.android.tools.build.debugsymbols/$abi/")
+    }
+
+val sanitizeReleaseBundleAbis by tasks.registering {
+    dependsOn("bundleRelease")
+    doLast {
+        val bundleFile = releaseBundlePath.get().asFile
+        if (!bundleFile.exists()) {
+            throw GradleException("Release AAB not found: ${bundleFile.absolutePath}")
+        }
+
+        val tempFile = File(bundleFile.parentFile, "${bundleFile.name}.tmp")
+        if (tempFile.exists()) {
+            tempFile.delete()
+        }
+
+        ZipFile(bundleFile).use { source ->
+            ZipOutputStream(FileOutputStream(tempFile)).use { output ->
+                source.entries().asSequence().forEach { entry ->
+                    if (shouldStripBundleEntry(entry.name)) {
+                        return@forEach
+                    }
+                    val copy = ZipEntry(entry.name).apply {
+                        method = entry.method
+                        comment = entry.comment
+                        extra = entry.extra
+                        time = entry.time
+                        if (entry.method == ZipEntry.STORED) {
+                            size = entry.size
+                            compressedSize = entry.compressedSize
+                            crc = entry.crc
+                        }
+                    }
+                    output.putNextEntry(copy)
+                    if (!entry.isDirectory) {
+                        source.getInputStream(entry).use { input ->
+                            input.copyTo(output)
+                        }
+                    }
+                    output.closeEntry()
+                }
+            }
+        }
+
+        if (!bundleFile.delete() || !tempFile.renameTo(bundleFile)) {
+            throw GradleException("Failed to replace sanitized AAB at ${bundleFile.absolutePath}")
+        }
+    }
+}
+
+val verifyReleaseBundleAbis by tasks.registering {
+    dependsOn(sanitizeReleaseBundleAbis)
+    doLast {
+        val bundleFile = releaseBundlePath.get().asFile
+        val bundledLibs = mutableListOf<String>()
+        ZipFile(bundleFile).use { bundle ->
+            bundle.entries().asSequence().forEach { entry ->
+                if (entry.name.startsWith("base/lib/")) {
+                    bundledLibs += entry.name
+                }
+                if (shouldStripBundleEntry(entry.name)) {
+                    throw GradleException(
+                        "Unsupported ABI entry still present in release AAB: ${entry.name}",
+                    )
+                }
+            }
+        }
+        logger.lifecycle("Verified release AAB native libs: ${bundledLibs.joinToString()}")
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "bundleRelease") {
+        finalizedBy(verifyReleaseBundleAbis)
+    }
 }

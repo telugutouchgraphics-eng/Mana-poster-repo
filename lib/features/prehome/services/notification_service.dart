@@ -17,10 +17,14 @@ import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (Platform.isAndroid) {
+    return;
+  }
   if (message.notification != null) {
     return;
   }
@@ -95,6 +99,9 @@ class NotificationService {
     }
 
     FirebaseMessaging.onMessage.listen((message) async {
+      if (Platform.isAndroid) {
+        return;
+      }
       await showRemoteMessage(message);
     });
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
@@ -116,6 +123,9 @@ class NotificationService {
   }
 
   static Future<void> showRemoteMessage(RemoteMessage message) async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return;
+    }
     final plugin = _backgroundNotifications;
     await _initializeLocalNotifications(plugin);
 
@@ -259,8 +269,17 @@ class NotificationService {
       payload['welcomeSent'] = false;
     }
 
-    await ref.set(payload, SetOptions(merge: true));
-    await prefs.setBool(syncedKey, true);
+    try {
+      await ref.set(payload, SetOptions(merge: true));
+      await prefs.setBool(syncedKey, true);
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Public notification token sync skipped: ${error.code}',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _syncUserToken(User currentUser, String token) async {
@@ -292,12 +311,21 @@ class NotificationService {
       payload['welcomeSent'] = false;
     }
 
-    await ref.set(payload, SetOptions(merge: true));
-    await FirebaseFirestore.instance
-        .collection('publicDeviceTokens')
-        .doc(tokenId)
-        .delete()
-        .catchError((_) {});
+    try {
+      await ref.set(payload, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('publicDeviceTokens')
+          .doc(tokenId)
+          .delete()
+          .catchError((_) {});
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'User notification token sync skipped: ${error.code}',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> syncCurrentPreferences() async {
@@ -326,6 +354,12 @@ class NotificationService {
     FirebaseMessaging messaging,
   ) async {
     try {
+      if (Platform.isAndroid) {
+        final PermissionStatus status = await Permission.notification.status;
+        if (!status.isGranted && !status.isLimited) {
+          await Permission.notification.request();
+        }
+      }
       await messaging.requestPermission(
         alert: true,
         badge: true,

@@ -61,11 +61,15 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Poster personalization and save కోసం gallery access అవసరం.</string>
+	<string>Gallery access is needed to choose photos for poster personalization.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Created posters ని మీ Photos లో save చేయడానికి access అవసరం.</string>
+	<string>Photo library access is needed to save created posters to your device.</string>
 	<key>NSUserNotificationUsageDescription</key>
-	<string>New templates and event reminders కోసం notifications అవసరం.</string>
+	<string>Notifications are used for new poster updates and event reminders.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

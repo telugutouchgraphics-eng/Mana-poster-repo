@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -91,6 +90,7 @@ class MediaExportService {
       );
     }
     if (Platform.isAndroid) {
+      final Uint8List fileBytes = await File(filePath).readAsBytes();
       try {
         final saved = await _channel.invokeMapMethod<dynamic, dynamic>(
           'saveImageFileToGallery',
@@ -100,14 +100,46 @@ class MediaExportService {
             'mimeType': mimeType,
           },
         );
-        return MediaExportResult.fromMap(saved);
+        final primaryResult = MediaExportResult.fromMap(saved);
+        if (primaryResult.success) {
+          return primaryResult;
+        }
+        _debugLog(
+          'saveImageFileToGallery primary failed, trying bytes fallback: '
+          'code=${primaryResult.code}, message=${primaryResult.message}',
+        );
+        final fallbackSaved = await _channel.invokeMapMethod<dynamic, dynamic>(
+          'saveImageBytesToGallery',
+          <String, dynamic>{
+            'bytes': fileBytes,
+            'fileName': fileName,
+            'mimeType': mimeType,
+          },
+        );
+        return MediaExportResult.fromMap(fallbackSaved);
       } catch (error, stackTrace) {
         _debugLogStack('saveImageFileToGallery native error: $error', stackTrace);
-        return MediaExportResult(
-          success: false,
-          code: 'platform_exception',
-          message: error.toString(),
-        );
+        try {
+          final fallbackSaved = await _channel.invokeMapMethod<dynamic, dynamic>(
+            'saveImageBytesToGallery',
+            <String, dynamic>{
+              'bytes': fileBytes,
+              'fileName': fileName,
+              'mimeType': mimeType,
+            },
+          );
+          return MediaExportResult.fromMap(fallbackSaved);
+        } catch (fallbackError, fallbackStackTrace) {
+          _debugLogStack(
+            'saveImageBytesToGallery fallback error: $fallbackError',
+            fallbackStackTrace,
+          );
+          return MediaExportResult(
+            success: false,
+            code: 'platform_exception',
+            message: fallbackError.toString(),
+          );
+        }
       }
     }
     return const MediaExportResult(
@@ -145,11 +177,31 @@ class MediaExportService {
       result = true;
     } catch (error, stackTrace) {
       _debugLogStack('shareImageFile error: $error', stackTrace);
-      result = false;
-      throw MediaShareException(
-        code: 'share_failed',
-        message: error.toString(),
-      );
+      try {
+        final Uint8List bytes = await File(filePath).readAsBytes();
+        await Share.shareXFiles(
+          <XFile>[
+            XFile.fromData(
+              bytes,
+              mimeType: 'image/png',
+              name: filePath.split(Platform.pathSeparator).last,
+            ),
+          ],
+          text: text,
+          sharePositionOrigin: sharePositionOrigin,
+        );
+        result = true;
+      } catch (fallbackError, fallbackStackTrace) {
+        _debugLogStack(
+          'shareImageFile fallback error: $fallbackError',
+          fallbackStackTrace,
+        );
+        result = false;
+        throw MediaShareException(
+          code: 'share_failed',
+          message: fallbackError.toString(),
+        );
+      }
     } finally {
       _debugLog('shareImageFile result=$result');
     }

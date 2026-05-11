@@ -41,6 +41,35 @@ class DynamicCategoryService {
     return output;
   }
 
+  List<DynamicCategory> categoriesForSlugs(
+    Iterable<String> slugs, {
+    AppLanguage language = AppLanguage.telugu,
+  }) {
+    final normalizedSlugs = slugs
+        .map(_normalizeToken)
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    if (normalizedSlugs.isEmpty) {
+      return const <DynamicCategory>[];
+    }
+
+    final seenSlugs = <String>{};
+    final output = <DynamicCategory>[];
+    for (final event in _repository.loadEvents()) {
+      final eventKeys = <String>{
+        _normalizeToken(event.id),
+        _normalizeToken(event.slug),
+        ...event.tags.map(_normalizeToken),
+      };
+      if (eventKeys.any(normalizedSlugs.contains)) {
+        _addUnique(output, seenSlugs, _toCategory(event, language));
+      }
+    }
+
+    output.sort(_compareCategories);
+    return output;
+  }
+
   bool _isEventActive(DynamicCalendarEvent event, DateTime today) {
     if (!event.enabled) {
       return false;
@@ -74,13 +103,10 @@ class DynamicCategoryService {
   }
 
   bool _isGregorianEventActive(DynamicCalendarEvent event, DateTime today) {
-    final startMonth = event.startMonth;
-    final startDay = event.startDay;
-    if (startMonth == null || startDay == null) {
+    final eventStart = _resolveGregorianStartDate(event, today.year);
+    if (eventStart == null) {
       return false;
     }
-
-    final eventStart = DateTime(today.year, startMonth, startDay);
     final visibleStart = eventStart.subtract(Duration(days: daysBeforeEvent));
     final eventEnd = switch ((event.endMonth, event.endDay)) {
       (final int endMonth, final int endDay) => DateTime(
@@ -99,6 +125,25 @@ class DynamicCategoryService {
     }
 
     return !today.isBefore(visibleStart) && !today.isAfter(eventEnd);
+  }
+
+  DateTime? _resolveGregorianStartDate(DynamicCalendarEvent event, int year) {
+    if (event.startMonth != null && event.startDay != null) {
+      return DateTime(year, event.startMonth!, event.startDay!);
+    }
+
+    final weekOfMonth = event.weekOfMonth;
+    final weekdayOfMonth = event.weekdayOfMonth;
+    final startMonth = event.startMonth;
+    if (startMonth == null || weekOfMonth == null || weekdayOfMonth == null) {
+      return null;
+    }
+
+    final firstDay = DateTime(year, startMonth, 1);
+    final offset = (weekdayOfMonth - firstDay.weekday + 7) % 7;
+    final day = 1 + offset + ((weekOfMonth - 1) * 7);
+    final resolved = DateTime(year, startMonth, day);
+    return resolved.month == startMonth ? resolved : null;
   }
 
   int _compareEvents(DynamicCalendarEvent a, DynamicCalendarEvent b) {

@@ -84,6 +84,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
                   ]
                 : null,
             routes: AppRoutes.map,
+            onGenerateRoute: AppRoutes.resolveDynamicRoute,
           ),
         );
       },

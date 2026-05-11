@@ -75,39 +75,67 @@ service cloud.firestore {
         "updatedAt",
         "welcomeSent",
         "welcomeSentAt",
+        "allNotifications",
+        "newPosters",
+        "offersUpdates",
+        "subscriptionReminders",
       ]);
     }
 
-    function validUserTokenWrite(userId) {
-      return tokenKeysAllowed() &&
-        request.resource.data.token is string &&
-        request.resource.data.token.size() > 40 &&
-        validPlatform(request.resource.data.platform) &&
-        request.resource.data.uid == userId &&
-        (
-          !("welcomeSent" in request.resource.data) ||
-          request.resource.data.welcomeSent == false
-        ) &&
-        !("welcomeSentAt" in request.resource.data);
+    function validNotificationPreferenceFlags() {
+      return (!("allNotifications" in request.resource.data) ||
+          request.resource.data.allNotifications is bool) &&
+        (!("newPosters" in request.resource.data) ||
+          request.resource.data.newPosters is bool) &&
+        (!("offersUpdates" in request.resource.data) ||
+          request.resource.data.offersUpdates is bool) &&
+        (!("subscriptionReminders" in request.resource.data) ||
+          request.resource.data.subscriptionReminders is bool);
     }
 
-    function validPublicTokenWrite() {
-      return request.resource.data.keys().hasOnly([
+    function validUserTokenWrite(userId, tokenId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "token",
           "platform",
+          "uid",
           "createdAt",
           "updatedAt",
           "welcomeSent",
           "welcomeSentAt",
+          "allNotifications",
+          "newPosters",
+          "offersUpdates",
+          "subscriptionReminders",
         ]) &&
         request.resource.data.token is string &&
         request.resource.data.token.size() > 40 &&
         validPlatform(request.resource.data.platform) &&
-        (
-          !("welcomeSent" in request.resource.data) ||
-          request.resource.data.welcomeSent == false
-        ) &&
-        !("welcomeSentAt" in request.resource.data);
+        request.resource.data.uid == userId &&
+        validNotificationPreferenceFlags();
+    }
+
+    function validPublicTokenWrite(tokenId) {
+      return request.resource.data.token is string &&
+        request.resource.data.token.size() > 40 &&
+        validPlatform(request.resource.data.platform) &&
+        validNotificationPreferenceFlags();
+    }
+
+    function validUserRootWrite(userId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "preferredLanguage",
+          "updatedAt",
+        ]) &&
+        (!("preferredLanguage" in request.resource.data) ||
+          (request.resource.data.preferredLanguage is string &&
+            request.resource.data.preferredLanguage in [
+              "telugu",
+              "english",
+              "hindi",
+              "tamil",
+              "kannada",
+              "malayalam",
+            ]));
     }
 
     function validActiveSessionWrite(userId) {
@@ -148,10 +176,19 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
+    // User root document stores lightweight app-owned preferences like language.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && validUserRootWrite(userId);
+      allow delete: if false;
+    }
+
     // User-owned device FCM tokens for push notification delivery.
     match /users/{userId}/deviceTokens/{tokenId} {
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && validUserTokenWrite(userId);
+      // Keep owner-only write access, but avoid over-strict shape checks that
+      // can block token sync on real devices and break push delivery.
+      allow create, update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
@@ -164,7 +201,7 @@ service cloud.firestore {
 
     // App-open token capture before login to send welcome push.
     match /publicDeviceTokens/{tokenId} {
-      allow create, update: if validPublicTokenWrite();
+      allow create, update: if validPublicTokenWrite(tokenId);
       allow read, delete: if false;
     }
 
