@@ -10,6 +10,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 
 class SubscriptionPlanScreen extends StatefulWidget {
   const SubscriptionPlanScreen({
@@ -219,6 +220,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!mounted || !activated) {
         return;
       }
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
       AppNavigator.openHome();
     } finally {
       if (mounted) {
@@ -259,6 +261,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
               ),
             ),
           );
+          await showSubscriptionThanksVideoPromptIfAvailable(context);
           AppNavigator.openHome();
           return;
         }
@@ -277,6 +280,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!mounted || !restored) {
         return;
       }
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
       AppNavigator.openHome();
     } finally {
       if (mounted) {

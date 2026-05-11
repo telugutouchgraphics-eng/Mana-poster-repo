@@ -72,12 +72,14 @@ class OfflineBackgroundRemovalService {
       await ensureReady();
       ui.Image? resultImage;
       try {
-        resultImage = await BackgroundRemover.instance.removeBg(imageBytes);
-      } catch (error, stackTrace) {
-        _debugLogStack(
-          'BackgroundRemover.removeBg failed: $error',
-          stackTrace,
+        resultImage = await BackgroundRemover.instance.removeBg(
+          imageBytes,
+          threshold: 0.52,
+          smoothMask: true,
+          enhanceEdges: true,
         );
+      } catch (error, stackTrace) {
+        _debugLogStack('BackgroundRemover.removeBg failed: $error', stackTrace);
         rethrow;
       }
       try {
@@ -150,9 +152,14 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
   }
 
   const neighborOffsets = <List<int>>[
-    [-1, -1], [0, -1], [1, -1],
-    [-1, 0], [1, 0],
-    [-1, 1], [0, 1], [1, 1],
+    [-1, -1],
+    [0, -1],
+    [1, -1],
+    [-1, 0],
+    [1, 0],
+    [-1, 1],
+    [0, 1],
+    [1, 1],
   ];
 
   for (var y = 0; y < height; y++) {
@@ -196,8 +203,8 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
 
       final pixel = output.getPixel(x, y);
       final alphaFraction = alpha / 255.0;
-      final fringeStrength = ((transparentNeighbors / 8.0) * (1 - alphaFraction))
-          .clamp(0.0, 1.0);
+      final fringeStrength =
+          ((transparentNeighbors / 8.0) * (1 - alphaFraction)).clamp(0.0, 1.0);
 
       int unmatte(int channel) {
         final corrected =
@@ -213,7 +220,7 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
       final correctedRed = unmatte(red);
       final correctedGreen = unmatte(green);
       final correctedBlue = unmatte(blue);
-      final decontaminateBlend = (0.55 + (fringeStrength * 0.35)).clamp(
+      final decontaminateBlend = (0.68 + (fringeStrength * 0.24)).clamp(
         0.0,
         0.92,
       );
@@ -226,7 +233,7 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
         final avgRed = (strongRed / strongNeighborCount).round();
         final avgGreen = (strongGreen / strongNeighborCount).round();
         final avgBlue = (strongBlue / strongNeighborCount).round();
-        final inwardBlend = (0.12 + (fringeStrength * 0.28)).clamp(0.0, 0.4);
+        final inwardBlend = (0.28 + (fringeStrength * 0.36)).clamp(0.0, 0.64);
         red = _blendChannel(red, avgRed, inwardBlend);
         green = _blendChannel(green, avgGreen, inwardBlend);
         blue = _blendChannel(blue, avgBlue, inwardBlend);
@@ -235,26 +242,48 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
       var nextAlpha = alpha;
       if (transparentNeighbors > 0) {
         final contractAmount =
-            (fringeStrength * 22).round() +
-            (alpha < 160 ? 6 : 0) +
-            (alpha < 96 ? 6 : 0);
+            (fringeStrength * 10).round() + (alpha < 72 ? 4 : 0);
         nextAlpha = (alpha - contractAmount).clamp(0, 255);
       }
 
-      // White or near-white edge mattes become visible on posters when the
-      // source photo background is bright. Trim those edge pixels a bit more
-      // so the subject stays clean without a light halo.
+      // Bright/dark edge mattes become visible on posters. Pull their color
+      // inward and trim alpha only at the edge, so the cutout stays soft.
       if (transparentNeighbors > 0) {
         final brightness = (red + green + blue) / 3.0;
-        final spread = _channelMax3(red, green, blue) - _channelMin3(red, green, blue);
+        final spread =
+            _channelMax3(red, green, blue) - _channelMin3(red, green, blue);
         final looksLikeWhiteMatte = brightness > 214 && spread < 44;
         final looksLikeVeryBrightFringe = brightness > 235 && spread < 64;
+        final looksLikeBlackMatte = brightness < 48 && spread < 48;
+        final looksLikeVeryDarkFringe = brightness < 26 && spread < 68;
 
-        if (looksLikeWhiteMatte || looksLikeVeryBrightFringe) {
+        final hasMatte =
+            looksLikeWhiteMatte ||
+            looksLikeVeryBrightFringe ||
+            looksLikeBlackMatte ||
+            looksLikeVeryDarkFringe;
+        if (hasMatte) {
+          if (strongNeighborCount > 0) {
+            final avgRed = (strongRed / strongNeighborCount).round();
+            final avgGreen = (strongGreen / strongNeighborCount).round();
+            final avgBlue = (strongBlue / strongNeighborCount).round();
+            final matteBlend = (0.5 + (fringeStrength * 0.28)).clamp(0.0, 0.78);
+            red = _blendChannel(red, avgRed, matteBlend);
+            green = _blendChannel(green, avgGreen, matteBlend);
+            blue = _blendChannel(blue, avgBlue, matteBlend);
+          }
+
+          final whiteTrim = looksLikeWhiteMatte || looksLikeVeryBrightFringe
+              ? ((brightness - 210) * 0.32).round()
+              : 0;
+          final blackTrim = looksLikeBlackMatte || looksLikeVeryDarkFringe
+              ? ((54 - brightness) * 0.36).round()
+              : 0;
           final extraTrim =
-              ((brightness - 210) * 0.55).round() +
-              (fringeStrength * 26).round() +
-              (looksLikeWhiteMatte ? 12 : 0);
+              whiteTrim +
+              blackTrim +
+              (fringeStrength * 14).round() +
+              (hasMatte ? 5 : 0);
           nextAlpha = (nextAlpha - extraTrim).clamp(0, 255);
         }
       }
@@ -263,5 +292,153 @@ Uint8List _decontaminateRemovedImageBytes(Uint8List pngBytes) {
     }
   }
 
+  _softenCutoutEdges(output);
   return Uint8List.fromList(img.encodePng(output));
+}
+
+void _softenCutoutEdges(img.Image output) {
+  final width = output.width;
+  final height = output.height;
+  final alphaMap = List<int>.filled(width * height, 0);
+
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      alphaMap[(y * width) + x] = output.getPixel(x, y).a.toInt();
+    }
+  }
+
+  bool hasTransparentNeighbor(int x, int y) {
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        if (dx == 0 && dy == 0) {
+          continue;
+        }
+        final nx = x + dx;
+        final ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+          return true;
+        }
+        if (alphaMap[(ny * width) + nx] < 24) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  ({int red, int green, int blue})? nearestSolidColor(int x, int y) {
+    var totalWeight = 0.0;
+    var red = 0.0;
+    var green = 0.0;
+    var blue = 0.0;
+    for (var dy = -5; dy <= 5; dy++) {
+      for (var dx = -5; dx <= 5; dx++) {
+        final nx = x + dx;
+        final ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+          continue;
+        }
+        final neighborAlpha = alphaMap[(ny * width) + nx];
+        if (neighborAlpha < 210) {
+          continue;
+        }
+        final distance = math.sqrt((dx * dx) + (dy * dy));
+        if (distance > 5) {
+          continue;
+        }
+        final weight = (1 / (1 + distance)) * (neighborAlpha / 255.0);
+        final pixel = output.getPixel(nx, ny);
+        red += pixel.r * weight;
+        green += pixel.g * weight;
+        blue += pixel.b * weight;
+        totalWeight += weight;
+      }
+    }
+    if (totalWeight <= 0) {
+      return null;
+    }
+    return (
+      red: (red / totalWeight).round().clamp(0, 255),
+      green: (green / totalWeight).round().clamp(0, 255),
+      blue: (blue / totalWeight).round().clamp(0, 255),
+    );
+  }
+
+  final updates = <({int x, int y, int red, int green, int blue, int alpha})>[];
+
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      final index = (y * width) + x;
+      final alpha = alphaMap[index];
+      final edge = alpha > 0 && (alpha < 250 || hasTransparentNeighbor(x, y));
+      final outsideEdge =
+          alpha == 0 && _hasOpaqueNeighbor(alphaMap, width, height, x, y);
+      if (!edge && !outsideEdge) {
+        continue;
+      }
+      final solid = nearestSolidColor(x, y);
+      if (solid == null) {
+        continue;
+      }
+      final pixel = output.getPixel(x, y);
+
+      if (outsideEdge) {
+        updates.add((
+          x: x,
+          y: y,
+          red: solid.red,
+          green: solid.green,
+          blue: solid.blue,
+          alpha: 22,
+        ));
+        continue;
+      }
+
+      final blend = alpha < 190 ? 0.84 : 0.58;
+      final nextAlpha = hasTransparentNeighbor(x, y)
+          ? math.min(alpha, alpha > 225 ? 218 : alpha)
+          : alpha;
+      updates.add((
+        x: x,
+        y: y,
+        red: _blendChannel(pixel.r.toInt(), solid.red, blend),
+        green: _blendChannel(pixel.g.toInt(), solid.green, blend),
+        blue: _blendChannel(pixel.b.toInt(), solid.blue, blend),
+        alpha: nextAlpha,
+      ));
+    }
+  }
+
+  for (final update in updates) {
+    output.setPixelRgba(
+      update.x,
+      update.y,
+      update.red,
+      update.green,
+      update.blue,
+      update.alpha,
+    );
+  }
+}
+
+bool _hasOpaqueNeighbor(
+  List<int> alphaMap,
+  int width,
+  int height,
+  int x,
+  int y,
+) {
+  for (var dy = -2; dy <= 2; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      final nx = x + dx;
+      final ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height) {
+        continue;
+      }
+      if (alphaMap[(ny * width) + nx] > 210) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

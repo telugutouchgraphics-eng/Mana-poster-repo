@@ -47,14 +47,14 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
       body: Stack(
         children: <Widget>[
           Positioned(
-            top: -110,
-            right: -40,
-            child: _BlurOrb(size: 220, color: const Color(0x3322C55E)),
+            top: -90,
+            right: -36,
+            child: _BlurOrb(size: 180, color: const Color(0x1822C55E)),
           ),
           Positioned(
-            top: 120,
-            left: -70,
-            child: _BlurOrb(size: 180, color: const Color(0x332563EB)),
+            top: 130,
+            left: -56,
+            child: _BlurOrb(size: 140, color: const Color(0x182563EB)),
           ),
           ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -67,16 +67,15 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: <Color>[
-                      Color(0xFFE6F8EC),
-                      Color(0xFFEAF1FF),
+                      Color(0xFFE8F4EE),
                       Color(0xFFFFFFFF),
                     ],
                   ),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x120F172A),
-                      blurRadius: 30,
-                      offset: Offset(0, 18),
+                      color: Color(0x100F172A),
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
                     ),
                   ],
                   border: Border.all(color: const Color(0xD9E5EEF7)),
@@ -96,9 +95,9 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                             borderRadius: BorderRadius.circular(22),
                             boxShadow: const <BoxShadow>[
                               BoxShadow(
-                                color: Color(0x140F172A),
-                                blurRadius: 16,
-                                offset: Offset(0, 8),
+                                color: Color(0x100F172A),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
                               ),
                             ],
                           ),
@@ -398,9 +397,9 @@ class _DetailSection extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4EAF3)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x0C0F172A),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -438,9 +437,9 @@ class _ChecklistSection extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4EAF3)),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x0C0F172A),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -513,9 +512,9 @@ class _LegalActionButton extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE1E8F2)),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x0D0F172A),
-              blurRadius: 14,
-              offset: Offset(0, 8),
+              color: Color(0x0A0F172A),
+              blurRadius: 8,
+              offset: Offset(0, 3),
             ),
           ],
         ),

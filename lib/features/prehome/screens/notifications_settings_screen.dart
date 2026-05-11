@@ -73,14 +73,14 @@ class _NotificationsSettingsScreenState
       body: Stack(
         children: <Widget>[
           const Positioned(
-            top: -90,
-            right: -40,
-            child: _NotificationOrb(size: 210, color: Color(0x3322C55E)),
+            top: -78,
+            right: -34,
+            child: _NotificationOrb(size: 165, color: Color(0x1822C55E)),
           ),
           const Positioned(
-            top: 160,
-            left: -60,
-            child: _NotificationOrb(size: 170, color: Color(0x332563EB)),
+            top: 145,
+            left: -52,
+            child: _NotificationOrb(size: 130, color: Color(0x182563EB)),
           ),
           SafeArea(
             top: false,
@@ -97,17 +97,16 @@ class _NotificationsSettingsScreenState
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: <Color>[
-                              Color(0xFFEAF5FF),
-                              Color(0xFFF1FBF4),
+                              Color(0xFFEAF2FF),
                               Color(0xFFFFFFFF),
                             ],
                           ),
                           border: Border.all(color: const Color(0xD9E3EDF6)),
                           boxShadow: const <BoxShadow>[
                             BoxShadow(
-                              color: Color(0x120F172A),
-                              blurRadius: 28,
-                              offset: Offset(0, 16),
+                              color: Color(0x100F172A),
+                              blurRadius: 12,
+                              offset: Offset(0, 6),
                             ),
                           ],
                         ),
@@ -204,9 +203,9 @@ class _NotificationsSettingsScreenState
                           border: Border.all(color: const Color(0xFFE3EAF3)),
                           boxShadow: const <BoxShadow>[
                             BoxShadow(
-                              color: Color(0x0F0F172A),
-                              blurRadius: 18,
-                              offset: Offset(0, 10),
+                              color: Color(0x0C0F172A),
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),

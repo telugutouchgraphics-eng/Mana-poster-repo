@@ -226,6 +226,8 @@ class _EditorSubToolsStrip extends StatelessWidget {
     required this.onPhotoGalleryTap,
     required this.onPhotoCameraTap,
     required this.onPhotoRemoveBgTap,
+    required this.onPhotoMagicWandTap,
+    required this.onPhotoEraserTap,
     required this.onPhotoCropTap,
     required this.onPhotoAdjustTap,
     required this.onTextAddTap,
@@ -252,6 +254,8 @@ class _EditorSubToolsStrip extends StatelessWidget {
   final Future<void> Function() onPhotoGalleryTap;
   final Future<void> Function() onPhotoCameraTap;
   final Future<void> Function() onPhotoRemoveBgTap;
+  final void Function() onPhotoMagicWandTap;
+  final void Function() onPhotoEraserTap;
   final Future<void> Function() onPhotoCropTap;
   final void Function() onPhotoAdjustTap;
   final void Function() onTextAddTap;
@@ -299,6 +303,18 @@ class _EditorSubToolsStrip extends StatelessWidget {
           onTap: () => unawaited(onPhotoRemoveBgTap()),
         ),
         _ToolItem(
+          label: strings.localized(telugu: 'మ్యాజిక్', english: 'Magic'),
+          icon: Icons.auto_fix_normal_rounded,
+          compact: compact,
+          onTap: onPhotoMagicWandTap,
+        ),
+        _ToolItem(
+          label: strings.localized(telugu: 'ఎరేస్', english: 'Erase'),
+          icon: Icons.cleaning_services_outlined,
+          compact: compact,
+          onTap: onPhotoEraserTap,
+        ),
+        _ToolItem(
           label: strings.localized(telugu: 'క్రాప్', english: 'Crop'),
           icon: Icons.crop_rounded,
           compact: compact,
@@ -313,7 +329,10 @@ class _EditorSubToolsStrip extends StatelessWidget {
       ],
       _BottomPrimaryTool.text => <Widget>[
         _ToolItem(
-          label: strings.localized(telugu: 'టెక్స్ట్ జోడించు', english: 'Add Text'),
+          label: strings.localized(
+            telugu: 'టెక్స్ట్ జోడించు',
+            english: 'Add Text',
+          ),
           icon: Icons.add_comment_outlined,
           compact: compact,
           onTap: onTextAddTap,
@@ -447,6 +466,194 @@ class _EditorSubToolsStrip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PhotoEraserInlineStrip extends StatelessWidget {
+  const _PhotoEraserInlineStrip({
+    required this.height,
+    required this.brushSize,
+    required this.hardness,
+    required this.isBusy,
+    required this.onBack,
+    required this.onBrushSizeChanged,
+    required this.onHardnessChanged,
+  });
+
+  final double height;
+  final double brushSize;
+  final double hardness;
+  final bool isBusy;
+  final VoidCallback onBack;
+  final ValueChanged<double> onBrushSizeChanged;
+  final ValueChanged<double> onHardnessChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final compact = MediaQuery.sizeOf(context).width < 370;
+    return Container(
+      height: height,
+      padding: EdgeInsets.fromLTRB(compact ? 8 : 10, 8, compact ? 8 : 10, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xCC0F172A),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+      ),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              _EditorIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                tooltip: strings.localized(telugu: 'వెనక్కి', english: 'Back'),
+                compact: compact,
+                onTap: isBusy ? null : onBack,
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: (brushSize / 4).clamp(8, 24).toDouble(),
+                    height: (brushSize / 4).clamp(8, 24).toDouble(),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(
+                        alpha: 0.22 + (hardness.clamp(0, 1) * 0.34),
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  strings.localized(
+                    telugu: 'ఫోటోపై డ్రాగ్ చేస్తే erase అవుతుంది',
+                    english: 'Drag on the photo to erase',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (isBusy)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _EraserSliderRow(
+            label: strings.localized(telugu: 'సైజు', english: 'Size'),
+            valueLabel: brushSize.round().toString(),
+            value: brushSize,
+            min: 8,
+            max: 160,
+            onChanged: isBusy ? null : onBrushSizeChanged,
+          ),
+          _EraserSliderRow(
+            label: strings.localized(
+              telugu: 'హార్డ్‌నెస్',
+              english: 'Hardness',
+            ),
+            valueLabel: '${(hardness * 100).round()}%',
+            value: hardness,
+            min: 0,
+            max: 1,
+            onChanged: isBusy ? null : onHardnessChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EraserSliderRow extends StatelessWidget {
+  const _EraserSliderRow({
+    required this.label,
+    required this.valueLabel,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String valueLabel;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 78,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            ),
+            child: Slider(
+              value: value.clamp(min, max).toDouble(),
+              min: min,
+              max: max,
+              activeColor: const Color(0xFFF8FAFC),
+              inactiveColor: Colors.white.withValues(alpha: 0.18),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 48,
+          child: Text(
+            valueLabel,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -847,10 +1054,7 @@ class _BorderInlineStrip extends StatelessWidget {
         _BorderStyle.rounded,
         strings.localized(telugu: 'రౌండెడ్', english: 'Rounded'),
       ),
-      (
-        _BorderStyle.glow,
-        strings.localized(telugu: 'గ్లో', english: 'Glow'),
-      ),
+      (_BorderStyle.glow, strings.localized(telugu: 'గ్లో', english: 'Glow')),
     ];
     return Container(
       height: height,

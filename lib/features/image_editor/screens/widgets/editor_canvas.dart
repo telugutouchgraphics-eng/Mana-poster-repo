@@ -198,6 +198,10 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onSelectedTextPointerDown,
     required this.onSelectedTextPointerMove,
     required this.onSelectedTextPointerCancel,
+    required this.isPhotoEraserMode,
+    required this.onPhotoEraserStart,
+    required this.onPhotoEraserUpdate,
+    required this.onPhotoEraserEnd,
     required this.onCanvasTapDown,
     required this.onCanvasTap,
     required this.showCanvasBackground,
@@ -210,6 +214,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.snapGuideListenable,
     required this.snapGuidesEnabled,
     required this.selectedPhotoRenderListenable,
+    required this.eraserPreviewListenable,
   });
 
   final List<_CanvasLayer> layers;
@@ -240,6 +245,10 @@ class _CanvasWorkspace extends StatelessWidget {
   final ValueChanged<PointerDownEvent> onSelectedTextPointerDown;
   final ValueChanged<PointerMoveEvent> onSelectedTextPointerMove;
   final VoidCallback onSelectedTextPointerCancel;
+  final bool isPhotoEraserMode;
+  final void Function(Offset localPosition, Size layerSize) onPhotoEraserStart;
+  final void Function(Offset localPosition, Size layerSize) onPhotoEraserUpdate;
+  final VoidCallback onPhotoEraserEnd;
   final void Function(Offset localPosition, Rect pageRect, Size pageSize)
   onCanvasTapDown;
   final VoidCallback onCanvasTap;
@@ -254,6 +263,7 @@ class _CanvasWorkspace extends StatelessWidget {
   final bool snapGuidesEnabled;
   final ValueListenable<_SelectedPhotoRenderState?>
   selectedPhotoRenderListenable;
+  final ValueListenable<_PhotoEraserPreviewState?> eraserPreviewListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -765,15 +775,55 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                   HitTestBehavior
                                                                       .translucent,
                                                               onDoubleTap:
-                                                                  onSelectedLayerDoubleTap,
+                                                                  isPhotoEraserMode
+                                                                  ? null
+                                                                  : onSelectedLayerDoubleTap,
+                                                              onPanStart:
+                                                                  isPhotoEraserMode
+                                                                  ? (
+                                                                      details,
+                                                                    ) => onPhotoEraserStart(
+                                                                      details
+                                                                          .localPosition,
+                                                                      transformLayerSize,
+                                                                    )
+                                                                  : null,
+                                                              onPanUpdate:
+                                                                  isPhotoEraserMode
+                                                                  ? (
+                                                                      details,
+                                                                    ) => onPhotoEraserUpdate(
+                                                                      details
+                                                                          .localPosition,
+                                                                      transformLayerSize,
+                                                                    )
+                                                                  : null,
+                                                              onPanEnd:
+                                                                  isPhotoEraserMode
+                                                                  ? (_) =>
+                                                                        onPhotoEraserEnd()
+                                                                  : null,
                                                               onScaleStart:
-                                                                  onSelectedLayerInteractionStart,
+                                                                  isPhotoEraserMode
+                                                                  ? null
+                                                                  : onSelectedLayerInteractionStart,
                                                               onScaleUpdate:
-                                                                  onSelectedLayerScaleUpdate,
-                                                              onScaleEnd: (_) =>
-                                                                  onSelectedLayerInteractionEnd(),
-                                                              child:
-                                                                  decoratedChild,
+                                                                  isPhotoEraserMode
+                                                                  ? null
+                                                                  : onSelectedLayerScaleUpdate,
+                                                              onScaleEnd:
+                                                                  isPhotoEraserMode
+                                                                  ? null
+                                                                  : (_) =>
+                                                                        onSelectedLayerInteractionEnd(),
+                                                              child: _EraserPreviewLayer(
+                                                                layerId:
+                                                                    layer.id,
+                                                                previewListenable:
+                                                                    eraserPreviewListenable,
+                                                                child:
+                                                                    decoratedChild,
+                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -1095,6 +1145,98 @@ class _CanvasWorkspace extends StatelessWidget {
   }
 }
 
+class _EraserPreviewLayer extends StatelessWidget {
+  const _EraserPreviewLayer({
+    required this.layerId,
+    required this.previewListenable,
+    required this.child,
+  });
+
+  final String layerId;
+  final ValueListenable<_PhotoEraserPreviewState?> previewListenable;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<_PhotoEraserPreviewState?>(
+      valueListenable: previewListenable,
+      child: child,
+      builder: (context, preview, child) {
+        return CustomPaint(
+          foregroundPainter: preview == null || preview.layerId != layerId
+              ? null
+              : _PhotoEraserPreviewPainter(preview),
+          child: child,
+        );
+      },
+    );
+  }
+}
+
+class _PhotoEraserPreviewPainter extends CustomPainter {
+  const _PhotoEraserPreviewPainter(this.preview);
+
+  final _PhotoEraserPreviewState preview;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (preview.points.isEmpty || size.isEmpty) {
+      return;
+    }
+    final radius = (preview.brushSize / 2).clamp(2.0, 160.0).toDouble();
+    final hardness = preview.hardness.clamp(0.0, 1.0).toDouble();
+
+    void drawDab(Offset normalizedPoint) {
+      final center = Offset(
+        normalizedPoint.dx * size.width,
+        normalizedPoint.dy * size.height,
+      );
+      final hardStop = hardness.clamp(0.001, 0.98);
+      final paint = Paint()
+        ..blendMode = BlendMode.dstOut
+        ..shader = ui.Gradient.radial(
+          center,
+          radius,
+          <Color>[
+            Colors.white,
+            Colors.white.withValues(alpha: hardness > 0.98 ? 1 : 0.88),
+            Colors.white.withValues(alpha: 0),
+          ],
+          <double>[0, hardStop, 1],
+        )
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    for (var i = 0; i < preview.points.length; i++) {
+      final point = preview.points[i];
+      drawDab(point);
+      if (i == 0) {
+        continue;
+      }
+      final previous = preview.points[i - 1];
+      final dx = (point.dx - previous.dx) * size.width;
+      final dy = (point.dy - previous.dy) * size.height;
+      final distance = math.sqrt((dx * dx) + (dy * dy));
+      final steps = math.max(1, (distance / (radius * 0.45)).ceil());
+      for (var step = 1; step < steps; step++) {
+        final t = step / steps;
+        drawDab(
+          Offset(
+            previous.dx + ((point.dx - previous.dx) * t),
+            previous.dy + ((point.dy - previous.dy) * t),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PhotoEraserPreviewPainter oldDelegate) {
+    return oldDelegate.preview != preview;
+  }
+}
+
 Size _fitPageSize({required Size workspaceSize, required double aspectRatio}) {
   if (workspaceSize.width <= 0 || workspaceSize.height <= 0) {
     return Size.zero;
@@ -1167,8 +1309,7 @@ Path _buildEditorRadialMaskPath(
 
   for (int index = 0; index < totalPoints; index += 1) {
     final currentRadius =
-        radius *
-        (index.isEven ? outerRadiusFactor : innerRadiusFactor);
+        radius * (index.isEven ? outerRadiusFactor : innerRadiusFactor);
     final angle = rotationRadians + ((math.pi * 2) / totalPoints) * index;
     final point = Offset(
       center.dx + math.cos(angle) * currentRadius,
@@ -1199,8 +1340,7 @@ Path _buildEditorSmoothRadialMaskPath(
 
   for (int index = 0; index < totalPoints; index += 1) {
     final currentRadius =
-        radius *
-        (index.isEven ? outerRadiusFactor : innerRadiusFactor);
+        radius * (index.isEven ? outerRadiusFactor : innerRadiusFactor);
     final angle = rotationRadians + ((math.pi * 2) / totalPoints) * index;
     vertices.add(
       Offset(
@@ -1364,39 +1504,23 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
   _EditorShapeFramePreset _presetForShape(String currentShape) {
     switch (currentShape) {
       case 'circle':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'scallop_circle':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'soft_burst':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'square':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'badge':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'rounded':
       case 'rounded_square':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'vertical_rectangle':
       case 'custom_frame_fit':
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
       default:
-        return const _EditorShapeFramePreset(
-          photoInset: EdgeInsets.zero,
-        );
+        return const _EditorShapeFramePreset(photoInset: EdgeInsets.zero);
     }
   }
 
@@ -1404,10 +1528,7 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final preset = _presetForShape(shape);
     final normalizedEdgeStyle = _resolvedEdgeStyle(shape);
-    Widget buildImageLayer({
-      required double scale,
-      required bool isBlurLayer,
-    }) {
+    Widget buildImageLayer({required double scale, required bool isBlurLayer}) {
       Widget layer = DecoratedBox(
         decoration: const BoxDecoration(color: Colors.transparent),
         child: FittedBox(
@@ -1582,9 +1703,7 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
 }
 
 class _EditorShapeFramePreset {
-  const _EditorShapeFramePreset({
-    required this.photoInset,
-  });
+  const _EditorShapeFramePreset({required this.photoInset});
 
   final EdgeInsets photoInset;
 }
@@ -1593,10 +1712,7 @@ Widget _editorClipPhotoShape(String shape, Widget child) {
   switch (shape) {
     case 'circle':
     case 'oval':
-      return ClipOval(
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: child,
-      );
+      return ClipOval(clipBehavior: Clip.antiAliasWithSaveLayer, child: child);
     case 'rounded':
     case 'rounded_square':
       return ClipRRect(
@@ -1649,10 +1765,7 @@ Widget _editorClipPhotoShape(String shape, Widget child) {
       );
     case 'square':
     default:
-      return ClipRect(
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        child: child,
-      );
+      return ClipRect(clipBehavior: Clip.antiAliasWithSaveLayer, child: child);
   }
 }
 

@@ -149,7 +149,13 @@ class ApprovedCreatorTemplateService {
           if (visibleFrom > now) {
             return false;
           }
-          if (visibleFrom + _posterRetentionWindowMillis <= now) {
+          final normalized = _normalizeTag(template.categoryId);
+          final usesRollingRetention = normalized.isNotEmpty &&
+              knownDynamicTags.contains(normalized);
+          final retentionMs = usesRollingRetention
+              ? _posterRetentionWindowMillis
+              : 365 * 24 * 60 * 60 * 1000;
+          if (visibleFrom + retentionMs <= now) {
             return false;
           }
           return _isTemplateDynamicCategoryVisible(
@@ -351,7 +357,15 @@ class ApprovedCreatorTemplateService {
     }
     final visibleUntil = _dynamicCategoryVisibleUntil(normalized, now);
     if (visibleUntil != null) {
-      return !now.isAfter(visibleUntil);
+      // schedule.endDate is midnight at the start of the last calendar day;
+      // comparing full DateTime hid every poster after 00:00 on that day.
+      final today = DateTime(now.year, now.month, now.day);
+      final lastDay = DateTime(
+        visibleUntil.year,
+        visibleUntil.month,
+        visibleUntil.day,
+      );
+      return !today.isAfter(lastDay);
     }
     return activeDynamicTags.contains(normalized);
   }

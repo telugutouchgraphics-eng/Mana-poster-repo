@@ -162,11 +162,7 @@ class _SplashScreenState extends State<SplashScreen>
             const Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[Color(0xFFFFFFFF), Color(0xFFF8FAFF)],
-                  ),
+                  color: Color(0xFFF8FAFF),
                 ),
               ),
             ),
@@ -195,9 +191,9 @@ class _SplashScreenState extends State<SplashScreen>
                                   borderRadius: BorderRadius.circular(24),
                                   boxShadow: const <BoxShadow>[
                                     BoxShadow(
-                                      color: Color(0x120F172A),
-                                      blurRadius: 16,
-                                      offset: Offset(0, 8),
+                                      color: Color(0x0E0F172A),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
                                     ),
                                   ],
                                 ),

@@ -116,6 +116,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isExporting = false;
   bool _isSharing = false;
   bool _isRemovingBackground = false;
+  bool _isMagicWandMode = false;
+  bool _isPhotoEraserMode = false;
   bool _isPickingMedia = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
@@ -175,10 +177,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double _adjustInitialContrast = 1;
   double _adjustInitialSaturation = 1;
   double _adjustInitialBlur = 0;
+  double _eraserBrushSize = 42;
+  double _eraserHardness = 0.28;
+  final List<Offset> _eraserStrokePoints = <Offset>[];
+  String? _eraserStrokeLayerId;
+  Size _eraserStrokeLayerSize = Size.zero;
   final ValueNotifier<_SnapGuideState> _snapGuideNotifier =
       ValueNotifier<_SnapGuideState>(const _SnapGuideState.none());
   final ValueNotifier<_SelectedPhotoRenderState?> _selectedPhotoRenderNotifier =
       ValueNotifier<_SelectedPhotoRenderState?>(null);
+  final ValueNotifier<_PhotoEraserPreviewState?> _eraserPreviewNotifier =
+      ValueNotifier<_PhotoEraserPreviewState?>(null);
   final ValueNotifier<_AdjustSessionState?> _adjustSessionNotifier =
       ValueNotifier<_AdjustSessionState?>(null);
   final ValueNotifier<_EditorCommitState?> _commitStateNotifier =
@@ -254,6 +263,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_isAdjustMode) {
       return 'Adjust mode';
     }
+    if (_isMagicWandMode) {
+      return 'Magic wand';
+    }
+    if (_isPhotoEraserMode) {
+      return 'Eraser';
+    }
     if (_hasSelectedTextLayer) {
       return _showTextControls ? 'Text styling' : 'Text selected';
     }
@@ -288,6 +303,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         return strings.localized(telugu: 'క్రాప్', english: 'Crop');
       case 'Remove BG':
         return strings.localized(telugu: 'బీజీ తొలగింపు', english: 'Remove BG');
+      case 'Magic wand':
+        return strings.localized(
+          telugu: 'మ్యాజిక్ వాండ్',
+          english: 'Magic wand',
+        );
+      case 'Eraser':
+        return strings.localized(telugu: 'ఎరేసర్', english: 'Eraser');
       case 'Removing...':
         return strings.localized(
           telugu: 'తొలగిస్తోంది...',
@@ -513,6 +535,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   void _openBottomPrimaryTool(_BottomPrimaryTool tool, String label) {
     setState(() {
+      _isPhotoEraserMode = false;
+      _eraserStrokePoints.clear();
+      _eraserStrokeLayerId = null;
       _activeBottomPrimaryTool = tool;
       _activeMainToolLabel = label;
     });
@@ -572,6 +597,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   void _openInlineMode(_BottomInlineMode mode) {
     setState(() {
+      if (mode != _BottomInlineMode.photoEraser) {
+        _isPhotoEraserMode = false;
+      }
       _activeInlineMode = mode;
       if (mode != _BottomInlineMode.stickerItems) {
         _activeStickerCategory = 'Emojis';
@@ -581,6 +609,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   void _closeInlineMode() {
     setState(() {
+      _isPhotoEraserMode = false;
+      _eraserStrokePoints.clear();
+      _eraserStrokeLayerId = null;
       _activeInlineMode = _BottomInlineMode.none;
     });
   }
@@ -1600,6 +1631,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _watermarkLogoImage = null;
     _snapGuideNotifier.dispose();
     _selectedPhotoRenderNotifier.dispose();
+    _eraserPreviewNotifier.dispose();
     _adjustSessionNotifier.dispose();
     _commitStateNotifier.dispose();
     _selectedTextController.dispose();
@@ -2086,6 +2118,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ? _cropBarHeight
                 : _isAdjustMode
                 ? _adjustBarHeight
+                : _isPhotoEraserMode
+                ? _eraserBarHeight
                 : _bottomBarHeight;
             const reservedTopInset = _canvasChromeInset;
             const reservedBottomInset = _canvasChromeInset;
@@ -2172,6 +2206,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       onSelectedTextPointerDown: _startSelectedTextLongPress,
                       onSelectedTextPointerMove: _updateSelectedTextLongPress,
                       onSelectedTextPointerCancel: _cancelSelectedTextLongPress,
+                      isPhotoEraserMode: _isPhotoEraserMode,
+                      onPhotoEraserStart: _handlePhotoEraserStart,
+                      onPhotoEraserUpdate: _handlePhotoEraserUpdate,
+                      onPhotoEraserEnd: _handlePhotoEraserEnd,
                       onCanvasTapDown: _isCropMode
                           ? (
                               Offset _,
@@ -2186,12 +2224,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       photoSaturationForLayer: _effectivePhotoSaturation,
                       photoBlurForLayer: _effectivePhotoBlur,
                       showSelectionDecorations:
-                          !_isCropMode && !_isExporting && !_isCapturingStage,
+                          !_isCropMode &&
+                          !_isPhotoEraserMode &&
+                          !_isExporting &&
+                          !_isCapturingStage,
                       showPageFramePreview: !_isExporting && !_isCapturingStage,
                       snapGuideListenable: _snapGuideNotifier,
                       snapGuidesEnabled: !_isCropMode && !_isCapturingStage,
                       selectedPhotoRenderListenable:
                           _selectedPhotoRenderNotifier,
+                      eraserPreviewListenable: _eraserPreviewNotifier,
                     ),
                   ),
                 ),
@@ -2288,6 +2330,29 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 onApply: _applyAdjustSession,
                               ),
                             )
+                          : _isPhotoEraserMode
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>(
+                                'photo-eraser-inline-strip',
+                              ),
+                              child: _PhotoEraserInlineStrip(
+                                height: bottomToolsHeight,
+                                brushSize: _eraserBrushSize,
+                                hardness: _eraserHardness,
+                                isBusy: _isCommitWorkerBusy,
+                                onBack: _closePhotoEraserMode,
+                                onBrushSizeChanged: (value) {
+                                  setState(() {
+                                    _eraserBrushSize = value;
+                                  });
+                                },
+                                onHardnessChanged: (value) {
+                                  setState(() {
+                                    _eraserHardness = value;
+                                  });
+                                },
+                              ),
+                            )
                           : _activeInlineMode == _BottomInlineMode.layers
                           ? KeyedSubtree(
                               key: const ValueKey<String>(
@@ -2369,6 +2434,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 onPhotoGalleryTap: _handleAddPhoto,
                                 onPhotoCameraTap: _handleAddPhotoFromCamera,
                                 onPhotoRemoveBgTap: _handleRemoveBackgroundTap,
+                                onPhotoMagicWandTap: _activateMagicWandMode,
+                                onPhotoEraserTap: _activatePhotoEraserMode,
                                 onPhotoCropTap: _handleCropPhotoTap,
                                 onPhotoAdjustTap: _openAdjustPanel,
                                 onTextAddTap: _handleTextAddQuickTap,

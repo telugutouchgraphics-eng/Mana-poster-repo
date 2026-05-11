@@ -12,14 +12,8 @@ class GradientShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[Color(0xFFEAF2FF), Color(0xFFF4F7FC)],
-        ),
-      ),
+    return ColoredBox(
+      color: const Color(0xFFF4F7FC),
       child: SafeArea(
         child: Padding(padding: padding, child: child),
       ),

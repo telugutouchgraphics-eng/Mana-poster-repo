@@ -45,6 +45,13 @@ extension _EditorLayersState on _ImageEditorScreenState {
         _isAdjustMode = false;
         _adjustSessionLayerId = null;
       }
+      if (!layer.isPhoto) {
+        _isPhotoEraserMode = false;
+        _eraserStrokePoints.clear();
+        _eraserStrokeLayerId = null;
+        _eraserStrokeLayerSize = Size.zero;
+        _eraserPreviewNotifier.value = null;
+      }
     });
     _syncSelectedTextEditor();
   }
@@ -59,6 +66,17 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
     if (_suppressCanvasTapDown) {
       _suppressCanvasTapDown = false;
+      return;
+    }
+    if (_isMagicWandMode) {
+      _canvasTapResolvedLayer = true;
+      unawaited(
+        _handleMagicWandTap(
+          localPosition: localPosition,
+          pageRect: pageRect,
+          pageSize: pageSize,
+        ),
+      );
       return;
     }
     final resolvedId = _resolveTopLayerAtPoint(
@@ -81,6 +99,319 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
     _clearSelection();
+  }
+
+  void _activateMagicWandMode() {
+    if (_isCommitWorkerBusy) {
+      return;
+    }
+    if (!_hasSelectedPhotoLayer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _isMagicWandMode = true;
+      _isPhotoEraserMode = false;
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'తొలగించాల్సిన రంగుపై ఒకసారి టాప్ చేయండి',
+            english: 'Tap the color you want to remove',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleMagicWandTap({
+    required Offset localPosition,
+    required Rect pageRect,
+    required Size pageSize,
+  }) async {
+    if (_isCommitWorkerBusy) {
+      return;
+    }
+    final selectedId = _selectedLayerId;
+    final layerIndex = _selectedLayerIndex;
+    if (selectedId == null ||
+        layerIndex == -1 ||
+        !_layers[layerIndex].isPhoto) {
+      setState(() => _isMagicWandMode = false);
+      return;
+    }
+
+    final layer = _layers[layerIndex];
+    final sourceBytes = layer.bytes;
+    if (sourceBytes == null) {
+      setState(() => _isMagicWandMode = false);
+      return;
+    }
+
+    final layerSize = _layerVisualSize(layer, pageSize);
+    final inverse = Matrix4.inverted(Matrix4.copy(layer.transform));
+    final localToLayer = MatrixUtils.transformPoint(
+      inverse,
+      localPosition - pageRect.center,
+    );
+    final normalizedX =
+        (localToLayer.dx + (layerSize.width / 2)) / layerSize.width;
+    final normalizedY =
+        (localToLayer.dy + (layerSize.height / 2)) / layerSize.height;
+    if (normalizedX < 0 ||
+        normalizedX > 1 ||
+        normalizedY < 0 ||
+        normalizedY > 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ఫోటో లోపల రంగుపై టాప్ చేయండి',
+              english: 'Tap inside the selected photo',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) {
+      setState(() => _isMagicWandMode = false);
+      return;
+    }
+    final sampleX =
+        ((layer.flipPhotoHorizontally ? 1 - normalizedX : normalizedX) *
+                (decoded.width - 1))
+            .round()
+            .clamp(0, decoded.width - 1);
+    final sampleY =
+        ((layer.flipPhotoVertically ? 1 - normalizedY : normalizedY) *
+                (decoded.height - 1))
+            .round()
+            .clamp(0, decoded.height - 1);
+
+    final resultBytes = await _runQueuedCommitJob<Uint8List>(
+      jobKey: 'magic_wand_$selectedId',
+      label: context.strings.localized(
+        telugu: 'మ్యాజిక్ వాండ్ పని చేస్తోంది',
+        english: 'Applying magic wand',
+      ),
+      detail: context.strings.localized(
+        telugu: 'ఎంచుకున్న రంగు ప్రాంతాన్ని తొలగిస్తోంది',
+        english: 'Removing the selected color region',
+      ),
+      operation: () => compute(_magicWandRemoveColorBytes, <String, Object?>{
+        'bytes': sourceBytes,
+        'x': sampleX,
+        'y': sampleY,
+        'tolerance': 42,
+        'featherRadius': 3,
+      }),
+    );
+    if (resultBytes == null || !mounted) {
+      return;
+    }
+    final currentIndex = _layers.indexWhere((item) => item.id == selectedId);
+    if (currentIndex == -1) {
+      return;
+    }
+    final beforeLayer = _layers[currentIndex];
+    final afterLayer = beforeLayer.copyWith(bytes: resultBytes);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[currentIndex] = afterLayer;
+      _isMagicWandMode = false;
+    });
+    _selectedPhotoRenderNotifier.value = null;
+  }
+
+  void _activatePhotoEraserMode() {
+    if (_isCommitWorkerBusy) {
+      return;
+    }
+    if (!_hasSelectedPhotoLayer) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
+              english: 'Select a photo first',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _isPhotoEraserMode = true;
+      _isMagicWandMode = false;
+      _isAdjustMode = false;
+      _adjustSessionLayerId = null;
+      _activeBottomPrimaryTool = _BottomPrimaryTool.none;
+      _activeInlineMode = _BottomInlineMode.photoEraser;
+      _activeMainToolLabel = 'Eraser';
+    });
+  }
+
+  void _closePhotoEraserMode() {
+    setState(() {
+      _isPhotoEraserMode = false;
+      _activeInlineMode = _BottomInlineMode.none;
+      _eraserStrokePoints.clear();
+      _eraserStrokeLayerId = null;
+      _eraserStrokeLayerSize = Size.zero;
+      _eraserPreviewNotifier.value = null;
+    });
+  }
+
+  void _handlePhotoEraserStart(Offset localPosition, Size layerSize) {
+    if (!_isPhotoEraserMode || _isCommitWorkerBusy || layerSize.isEmpty) {
+      return;
+    }
+    final selectedId = _selectedLayerId;
+    if (selectedId == null || !_hasSelectedPhotoLayer) {
+      return;
+    }
+    _eraserStrokeLayerId = selectedId;
+    _eraserStrokeLayerSize = layerSize;
+    _eraserStrokePoints
+      ..clear()
+      ..add(_normalizeEraserPoint(localPosition, layerSize));
+    _publishEraserPreview();
+  }
+
+  void _handlePhotoEraserUpdate(Offset localPosition, Size layerSize) {
+    if (!_isPhotoEraserMode ||
+        _isCommitWorkerBusy ||
+        _eraserStrokeLayerId == null ||
+        layerSize.isEmpty) {
+      return;
+    }
+    final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    final previousPoint = _eraserStrokePoints.isEmpty
+        ? null
+        : _eraserStrokePoints.last;
+    if (previousPoint != null) {
+      final minStep =
+          (_eraserBrushSize / math.max(layerSize.width, layerSize.height)) *
+          0.18;
+      if ((nextPoint - previousPoint).distance < minStep.clamp(0.002, 0.02)) {
+        return;
+      }
+    }
+    _eraserStrokePoints.add(nextPoint);
+    _publishEraserPreview();
+  }
+
+  Future<void> _handlePhotoEraserEnd() async {
+    if (!_isPhotoEraserMode || _isCommitWorkerBusy) {
+      _eraserStrokePoints.clear();
+      _eraserStrokeLayerId = null;
+      _eraserStrokeLayerSize = Size.zero;
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final layerId = _eraserStrokeLayerId;
+    final strokePoints = List<Offset>.of(_eraserStrokePoints);
+    final strokeLayerSize = _eraserStrokeLayerSize;
+    _eraserStrokePoints.clear();
+    _eraserStrokeLayerId = null;
+    _eraserStrokeLayerSize = Size.zero;
+    if (layerId == null || strokePoints.isEmpty) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final layerIndex = _layers.indexWhere((item) => item.id == layerId);
+    if (layerIndex == -1 || !_layers[layerIndex].isPhoto) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final layer = _layers[layerIndex];
+    final sourceBytes = layer.bytes;
+    if (sourceBytes == null) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final flatPoints = <double>[];
+    for (final point in strokePoints) {
+      flatPoints
+        ..add(point.dx.clamp(0.0, 1.0).toDouble())
+        ..add(point.dy.clamp(0.0, 1.0).toDouble());
+    }
+    final resultBytes = await _runQueuedCommitJob<Uint8List>(
+      jobKey: 'photo_eraser_$layerId',
+      label: context.strings.localized(
+        telugu: 'ఎరేసర్ అప్లై అవుతోంది',
+        english: 'Applying eraser',
+      ),
+      detail: context.strings.localized(
+        telugu: 'ఫోటోలో ఎంచుకున్న భాగాన్ని softగా తొలగిస్తోంది',
+        english: 'Softly removing the brushed photo area',
+      ),
+      operation: () => compute(_erasePhotoBrushBytes, <String, Object?>{
+        'bytes': sourceBytes,
+        'points': flatPoints,
+        'brushSize': _eraserBrushSize,
+        'brushRadiusNormalized': strokeLayerSize.shortestSide <= 0
+            ? null
+            : (_eraserBrushSize / 2) / strokeLayerSize.shortestSide,
+        'hardness': _eraserHardness,
+        'flipX': layer.flipPhotoHorizontally,
+        'flipY': layer.flipPhotoVertically,
+      }),
+    );
+    if (resultBytes == null || !mounted) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final currentIndex = _layers.indexWhere((item) => item.id == layerId);
+    if (currentIndex == -1) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    final beforeLayer = _layers[currentIndex];
+    final afterLayer = beforeLayer.copyWith(bytes: resultBytes);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[currentIndex] = afterLayer;
+    });
+    _eraserPreviewNotifier.value = null;
+    _selectedPhotoRenderNotifier.value = null;
+  }
+
+  void _publishEraserPreview() {
+    final layerId = _eraserStrokeLayerId;
+    if (layerId == null || _eraserStrokePoints.isEmpty) {
+      _eraserPreviewNotifier.value = null;
+      return;
+    }
+    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
+      layerId: layerId,
+      points: List<Offset>.of(_eraserStrokePoints),
+      brushSize: _eraserBrushSize,
+      hardness: _eraserHardness,
+    );
+  }
+
+  Offset _normalizeEraserPoint(Offset localPosition, Size layerSize) {
+    final dx = layerSize.width <= 0 ? 0.0 : localPosition.dx / layerSize.width;
+    final dy = layerSize.height <= 0
+        ? 0.0
+        : localPosition.dy / layerSize.height;
+    return Offset(dx.clamp(0.0, 1.0), dy.clamp(0.0, 1.0));
   }
 
   void _handleSelectedTransformHandlePointerDown() {
@@ -202,6 +533,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
     _lastSelectedTextTapLayerId = null;
     if (_selectedLayerId == null &&
         !_isAdjustMode &&
+        !_isPhotoEraserMode &&
         _activeBottomPrimaryTool == _BottomPrimaryTool.none &&
         !_snapGuides.isVisible) {
       return;
@@ -212,8 +544,14 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _selectedLayerId = null;
       _showTextControls = false;
       _isAdjustMode = false;
+      _isPhotoEraserMode = false;
       _adjustSessionLayerId = null;
+      _eraserStrokePoints.clear();
+      _eraserStrokeLayerId = null;
+      _eraserStrokeLayerSize = Size.zero;
+      _eraserPreviewNotifier.value = null;
       _activeBottomPrimaryTool = _BottomPrimaryTool.none;
+      _activeInlineMode = _BottomInlineMode.none;
     });
     _syncSelectedTextEditor();
   }

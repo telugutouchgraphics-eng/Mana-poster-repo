@@ -241,9 +241,9 @@ class _TemplatePlacementVisual extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
-                        color: Color(0x220F172A),
-                        blurRadius: 14,
-                        offset: Offset(0, 8),
+                        color: Color(0x180F172A),
+                        blurRadius: 9,
+                        offset: Offset(0, 5),
                       ),
                     ],
                   ),
@@ -410,9 +410,9 @@ class _ShareVisual extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: const <BoxShadow>[
                 BoxShadow(
-                  color: Color(0x160F172A),
-                  blurRadius: 18,
-                  offset: Offset(0, 10),
+                  color: Color(0x120F172A),
+                  blurRadius: 10,
+                  offset: Offset(0, 5),
                 ),
               ],
             ),
@@ -540,9 +540,9 @@ class _PhoneMockup extends StatelessWidget {
         borderRadius: BorderRadius.circular(34),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x220F172A),
-            blurRadius: 24,
-            offset: Offset(0, 14),
+            color: Color(0x180F172A),
+            blurRadius: 14,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -586,9 +586,9 @@ class _PosterMiniCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: elevated ? const Color(0x220F172A) : const Color(0x140F172A),
-            blurRadius: elevated ? 20 : 14,
-            offset: Offset(0, elevated ? 10 : 6),
+            color: elevated ? const Color(0x180F172A) : const Color(0x100F172A),
+            blurRadius: elevated ? 12 : 9,
+            offset: Offset(0, elevated ? 6 : 4),
           ),
         ],
       ),
@@ -640,9 +640,9 @@ class _FloatingBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x190F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
+            color: Color(0x140F172A),
+            blurRadius: 10,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -680,9 +680,9 @@ class _MiniPhotoChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x180F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
+            color: Color(0x120F172A),
+            blurRadius: 9,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -712,8 +712,8 @@ class _GlowOrb extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: RadialGradient(
           colors: <Color>[
-            colors.first.withValues(alpha: 0.34),
-            colors.last.withValues(alpha: 0.08),
+            colors.first.withValues(alpha: 0.22),
+            colors.last.withValues(alpha: 0.05),
           ],
         ),
         shape: BoxShape.circle,
@@ -738,9 +738,9 @@ class _ActionBubble extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x180F172A),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Color(0x120F172A),
+            blurRadius: 6,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -766,9 +766,9 @@ class _ShareOrbit extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x150F172A),
-            blurRadius: 14,
-            offset: Offset(0, 8),
+            color: Color(0x100F172A),
+            blurRadius: 9,
+            offset: Offset(0, 4),
           ),
         ],
       ),

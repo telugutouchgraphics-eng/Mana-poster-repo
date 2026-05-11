@@ -38,6 +38,7 @@ import 'package:mana_poster/features/prehome/services/dynamic_category_service.d
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
+import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -91,6 +92,7 @@ class _TemplateItem {
     this.fallbackProductIds = const <String>[],
     this.pageConfig,
     this.categoryTags = const <String>[],
+    this.categoryDisplayLabel,
     this.personalizationConfig,
   });
 
@@ -109,6 +111,8 @@ class _TemplateItem {
   final List<String> fallbackProductIds;
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
+  /// Firestore manual / admin category label for home chip + matching.
+  final String? categoryDisplayLabel;
   final CreatorPosterPersonalization? personalizationConfig;
 
   bool get isVideo =>
@@ -416,7 +420,79 @@ class _HomeScreenState extends State<HomeScreen>
         isDynamic: true,
       );
     }
+
+    // Admin manual Firestore categories (manualEventCategories) are not in the
+    // local calendar JSON — add chips from loaded templates so filters match.
+    final covered = <String>{
+      for (final chip in merged.values) ...chip.matchTags.map(_normalizeTag),
+      for (final chip in merged.values) _normalizeTag(chip.slug),
+    };
+    final labelByCategoryId = <String, String>{};
+    for (final template in _remoteApprovedTemplates) {
+      if (template.categoryTags.isEmpty) {
+        continue;
+      }
+      final rawId = template.categoryTags.first.trim();
+      if (rawId.isEmpty) {
+        continue;
+      }
+      final lbl = template.categoryDisplayLabel?.trim() ?? '';
+      if (lbl.isNotEmpty && !labelByCategoryId.containsKey(rawId)) {
+        labelByCategoryId[rawId] = lbl;
+      }
+    }
+    for (final template in _remoteApprovedTemplates) {
+      if (template.categoryTags.isEmpty) {
+        continue;
+      }
+      final rawId = template.categoryTags.first.trim();
+      if (rawId.isEmpty) {
+        continue;
+      }
+      if (merged.containsKey(rawId)) {
+        continue;
+      }
+      final norm = _normalizeTag(rawId);
+      if (norm.isEmpty || covered.contains(norm)) {
+        continue;
+      }
+      if (_staticCategorySlugs.contains(rawId)) {
+        continue;
+      }
+      final label = labelByCategoryId[rawId]?.trim().isNotEmpty == true
+          ? labelByCategoryId[rawId]!.trim()
+          : rawId.replaceAll(RegExp(r'[_-]+'), ' ').trim();
+      final matchTags = <String>{
+        rawId,
+        if (norm.isNotEmpty) norm,
+        ..._categoryLabelTokenTags(labelByCategoryId[rawId]),
+      }.where((t) => t.trim().isNotEmpty).toList(growable: false);
+      merged[rawId] = _CategoryChipData(
+        slug: rawId,
+        label: label.isNotEmpty ? label : rawId,
+        matchTags: matchTags,
+        isDynamic: true,
+      );
+      covered.add(norm);
+    }
+
     return merged.values.toList(growable: false);
+  }
+
+  Iterable<String> _categoryLabelTokenTags(String? label) sync* {
+    if (label == null || label.trim().isEmpty) {
+      return;
+    }
+    final norm = _normalizeTag(label);
+    if (norm.isNotEmpty) {
+      yield norm;
+    }
+    for (final word in label.toLowerCase().split(RegExp(r'\s+'))) {
+      final w = _normalizeTag(word);
+      if (w.length > 2) {
+        yield w;
+      }
+    }
   }
 
   List<_CategoryChipData> _buildStaticCategories() {
@@ -819,8 +895,15 @@ class _HomeScreenState extends State<HomeScreen>
     final creatorId = template.creatorPublicId.trim();
     final displayTitle = creatorId.isNotEmpty ? creatorId : template.title;
     final rawCategoryId = template.categoryId.trim();
+    final categoryLabel = template.categoryLabel.trim();
     final categoryTags = rawCategoryId.isNotEmpty
-        ? <String>[rawCategoryId]
+        ? <String>{
+            rawCategoryId,
+            _normalizeTag(rawCategoryId),
+            ..._categoryLabelTokenTags(
+              categoryLabel.isNotEmpty ? categoryLabel : null,
+            ),
+          }.where((t) => t.isNotEmpty).toList(growable: false)
         : _inferTemplateCategoryTags(
             seedTags: const <String>[],
             sources: <String?>[
@@ -839,6 +922,7 @@ class _HomeScreenState extends State<HomeScreen>
       mediaType: template.mediaType,
       videoUrl: template.videoUrl,
       categoryTags: categoryTags,
+      categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
       personalizationConfig: template.personalizationConfig,
     );
   }
@@ -1179,8 +1263,26 @@ class _HomeScreenState extends State<HomeScreen>
     if (opened || !mounted) {
       return;
     }
+    await _openSubscriptionPlan();
+  }
+
+  Future<void> _openSubscriptionPlan({bool startPurchaseOnOpen = false}) async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SubscriptionPlanScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            SubscriptionPlanScreen(startPurchaseOnOpen: startPurchaseOnOpen),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    final result = await SubscriptionBackendService().fetchFreshEntitlement();
+    if (!mounted || result.hasAccess) {
+      return;
+    }
+    await showSubscriptionExitVideoPromptIfAvailable(
+      context,
+      onSubscribe: (_) => _openSubscriptionPlan(startPurchaseOnOpen: true),
     );
   }
 
@@ -1190,12 +1292,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (!mounted) {
           return;
         }
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                const SubscriptionPlanScreen(startPurchaseOnOpen: true),
-          ),
-        );
+        await _openSubscriptionPlan(startPurchaseOnOpen: true);
         return;
       case _HomePromoCardType.renewalReminder:
         await _openManageSubscription();
@@ -1678,9 +1775,9 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
         ),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x220F172A),
-            blurRadius: 22,
-            offset: Offset(0, 12),
+            color: Color(0x180F172A),
+            blurRadius: 12,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -2416,6 +2513,8 @@ class _TemplateFeedItem extends StatelessWidget {
   Future<Uint8List?>? _posterCaptureFuture;
   bool _posterWarmupQueued = false;
   String? _queuedPosterWarmupSignature;
+  static bool _globalAutoPosterWarmupActive = false;
+  static final Set<String> _globalPosterWarmupSignatures = <String>{};
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
   static final ProPurchaseGateway _subscriptionRestoreGateway =
@@ -2498,6 +2597,12 @@ class _TemplateFeedItem extends StatelessWidget {
     final signature = _posterSignature(
       isPhotoVisible: _showPosterPhotoNotifier.value,
     );
+    if (!force && _globalAutoPosterWarmupActive) {
+      return;
+    }
+    if (_globalPosterWarmupSignatures.contains(signature)) {
+      return;
+    }
     if (!force) {
       if (_preparedPosterSignature == signature &&
           _preparedPosterBytes != null) {
@@ -2512,10 +2617,18 @@ class _TemplateFeedItem extends StatelessWidget {
     }
     _posterWarmupQueued = true;
     _queuedPosterWarmupSignature = signature;
+    if (!force) {
+      _globalAutoPosterWarmupActive = true;
+    }
+    _globalPosterWarmupSignatures.add(signature);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await _preparePosterExport(force: force);
       } finally {
+        _globalPosterWarmupSignatures.remove(signature);
+        if (!force) {
+          _globalAutoPosterWarmupActive = false;
+        }
         _posterWarmupQueued = false;
         if (_queuedPosterWarmupSignature == signature) {
           _queuedPosterWarmupSignature = null;
@@ -2660,6 +2773,7 @@ class _TemplateFeedItem extends StatelessWidget {
   void _handlePosterReady() {
     if (!_posterReadyNotifier.value) {
       _posterReadyNotifier.value = true;
+      _schedulePosterWarmup();
     }
   }
 
@@ -2696,10 +2810,7 @@ class _TemplateFeedItem extends StatelessWidget {
         ? renderBox.size
         : MediaQuery.sizeOf(captureContext);
     final pixelRatio = _capturePosterPixelRatio(captureContext);
-    final targetSize = Size(
-      logicalSize.width * pixelRatio,
-      logicalSize.height * pixelRatio,
-    );
+    final targetSize = logicalSize;
     final captureContextMounted = captureContext.mounted;
 
     _recordPosterCaptureTrace(
@@ -2786,8 +2897,7 @@ class _TemplateFeedItem extends StatelessWidget {
   }
 
   Future<void> _precacheCurrentPosterProfileImage() async {
-    if (item.personalizationConfig == null ||
-        !_showPosterPhotoNotifier.value) {
+    if (item.personalizationConfig == null || !_showPosterPhotoNotifier.value) {
       return;
     }
     final posterContext = _posterCaptureKey.currentContext;
@@ -3155,7 +3265,22 @@ class _TemplateFeedItem extends StatelessWidget {
     if (!context.mounted) {
       return false;
     }
-    return _resolveLatestSubscriptionAccess();
+    final hasAccess = await _resolveLatestSubscriptionAccess();
+    if (!context.mounted || hasAccess) {
+      return hasAccess;
+    }
+    await showSubscriptionExitVideoPromptIfAvailable(
+      context,
+      onSubscribe: (_) async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const SubscriptionPlanScreen(startPurchaseOnOpen: true),
+          ),
+        );
+      },
+    );
+    return false;
   }
 
   Future<void> _onDownloadTap(BuildContext context) async {
@@ -3824,9 +3949,9 @@ class _SubscriptionAccessDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x1F0F172A),
-            blurRadius: 28,
-            offset: Offset(0, 18),
+            color: Color(0x140F172A),
+            blurRadius: 14,
+            offset: Offset(0, 8),
           ),
         ],
       ),
@@ -4433,9 +4558,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                   thumbnailUrl: widget.thumbnailUrl,
                   onFirstFrameReady: _handleBasePosterReady,
                 ),
-                if (_basePosterReady &&
-                    widget.showProfilePhoto &&
-                    shouldShowIdentityVisual)
+                if (widget.showProfilePhoto && shouldShowIdentityVisual)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -4554,8 +4677,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                   ),
               ],
             ),
-            if (_basePosterReady &&
-                widget.personalizationConfig.showBottomStrip)
+            if (widget.personalizationConfig.showBottomStrip)
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(

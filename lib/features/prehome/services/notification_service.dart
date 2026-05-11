@@ -22,9 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  if (Platform.isAndroid) {
-    return;
-  }
   if (message.notification != null) {
     return;
   }
@@ -99,9 +96,6 @@ class NotificationService {
     }
 
     FirebaseMessaging.onMessage.listen((message) async {
-      if (Platform.isAndroid) {
-        return;
-      }
       await showRemoteMessage(message);
     });
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
@@ -123,9 +117,6 @@ class NotificationService {
   }
 
   static Future<void> showRemoteMessage(RemoteMessage message) async {
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return;
-    }
     final plugin = _backgroundNotifications;
     await _initializeLocalNotifications(plugin);
 
@@ -135,7 +126,15 @@ class NotificationService {
     final footerText = _readDataValue(message.data, 'footerText');
     final categoryKey = _readDataValue(message.data, 'categoryKey');
     final userName = _readDataValue(message.data, 'userName');
-    final resolved = await _resolveMessageText(message.data);
+    final dataResolved = await _resolveMessageText(message.data);
+    final resolved = _ResolvedNotificationText(
+      title: dataResolved.title.isNotEmpty
+          ? dataResolved.title
+          : _sanitizeNotificationText(message.notification?.title ?? ''),
+      body: dataResolved.body.isNotEmpty
+          ? dataResolved.body
+          : _sanitizeNotificationText(message.notification?.body ?? ''),
+    );
     if (resolved.title.isEmpty &&
         resolved.body.isEmpty &&
         posterImageUrl.isEmpty) {

@@ -17,10 +17,11 @@ import 'package:mana_poster/features/prehome/screens/notifications_settings_scre
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
+import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
-import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -100,24 +101,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _openPosterProfileScreen({
-    bool openPersonalPhotoPickerOnStart = false,
-  }) async {
-    final PosterProfileData? result = await Navigator.of(context).push(
-      MaterialPageRoute<PosterProfileData>(
-        builder: (_) => PosterProfileDetailsScreen(
-          initialProfile: _posterProfile,
-          openPersonalPhotoPickerOnStart: openPersonalPhotoPickerOnStart,
-        ),
-      ),
-    );
-    if (result == null || !mounted) {
-      return;
-    }
-    setState(() => _posterProfile = result);
-    _warmPosterProfileImage(result);
-  }
-
   Future<void> _logout(_ProfileCopy copy) async {
     try {
       await _authService.signOut();
@@ -181,316 +164,43 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     final strings = context.strings;
     final copy = _ProfileCopy(context.currentLanguage, strings);
-    final user = _authService.currentUser;
 
-    final profileResolvedName = _posterProfile.resolvedName(
-      language: strings.language,
-    );
-    final fallbackUserName = user?.displayName?.trim() ?? '';
-    final displayName = _posterProfile.activeName.trim().isNotEmpty
-        ? profileResolvedName
-        : (fallbackUserName.isNotEmpty
-              ? _posterProfile
-                    .copyWith(displayName: fallbackUserName)
-                    .resolvedName(language: strings.language)
-              : profileResolvedName);
-    final email = user?.email?.trim().isNotEmpty == true
-        ? user!.email!.trim()
-        : copy.accountEmailFallback;
+    if (_loadingProfile) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF8FAFC),
+        body: SafeArea(child: Center(child: CircularProgressIndicator())),
+      );
+    }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: <Widget>[
-            if (_loadingProfile) ...<Widget>[
-              const ClipRRect(
-                borderRadius: BorderRadius.all(Radius.circular(999)),
-                child: LinearProgressIndicator(minHeight: 3),
+    return PosterProfileDetailsScreen(
+      initialProfile: _posterProfile,
+      embeddedInProfileScreen: true,
+      onSaved: (profile) {
+        setState(() => _posterProfile = profile);
+        _warmPosterProfileImage(profile);
+      },
+      appBarActions: <Widget>[
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: copy.settingsTitle,
+          icon: const Icon(
+            Icons.settings_rounded,
+            size: 22,
+            color: Color(0xFF0F172A),
+          ),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _ProfileMoreScreen(
+                  copy: copy,
+                  onShareApp: () => _shareApp(copy),
+                  onLogout: () => _logout(copy),
+                ),
               ),
-              const SizedBox(height: 18),
-            ],
-            _ProfileHeader(
-              name: displayName,
-              email: email,
-              profile: _posterProfile,
-              onCameraTap: () {
-                unawaited(
-                  _openPosterProfileScreen(
-                    openPersonalPhotoPickerOnStart: true,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            _ProfileActionCard(
-              icon: Icons.edit_note_rounded,
-              title: copy.posterProfileTitle,
-              subtitle: copy.posterProfileSubtitle,
-              onTap: () => _openPosterProfileScreen(),
-            ),
-            const SizedBox(height: 24),
-            _SettingsGroup(
-              title: copy.quickActionsTitle,
-              items: <_ProfileItemData>[
-                _ProfileItemData(
-                  icon: Icons.more_horiz_rounded,
-                  title: copy.moreTitle,
-                  subtitle: copy.moreSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => _ProfileMoreScreen(
-                          copy: copy,
-                          onShareApp: () => _shareApp(copy),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
-                  icon: Icons.ios_share_rounded,
-                  title: copy.shareAppTitle,
-                  subtitle: copy.shareAppSubtitle,
-                  onTap: () => _shareApp(copy),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _SettingsGroup(
-              title: copy.supportTitle,
-              items: <_ProfileItemData>[
-                _ProfileItemData(
-                  icon: Icons.info_outline_rounded,
-                  title: copy.aboutTitle,
-                  subtitle: copy.aboutSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AboutAppScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
-                  icon: Icons.logout_rounded,
-                  title: copy.logoutTitle,
-                  subtitle: copy.logoutSubtitle,
-                  isDestructive: true,
-                  onTap: () => _logout(copy),
-                ),
-                _ProfileItemData(
-                  icon: Icons.delete_forever_outlined,
-                  title: copy.deleteAccountTitle,
-                  subtitle: copy.deleteAccountSubtitle,
-                  isDestructive: true,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AccountDeletionScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
+            );
+          },
         ),
-      ),
-    );
-  }
-}
-
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({
-    required this.name,
-    required this.email,
-    required this.onCameraTap,
-    this.profile,
-  });
-
-  final String name;
-  final String email;
-  final VoidCallback onCameraTap;
-  final PosterProfileData? profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: <Widget>[
-          Stack(
-            clipBehavior: Clip.none,
-            children: <Widget>[
-              Container(
-                width: 132,
-                height: 132,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFF1F5F9),
-                  border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: profile == null
-                    ? const Icon(
-                        Icons.person_rounded,
-                        size: 54,
-                        color: Color(0xFF475569),
-                      )
-                    : PosterIdentityVisual(
-                        key: ValueKey<String>(
-                          [
-                            profile!.identityMode.name,
-                            profile!.photoPath,
-                            profile!.photoUrl,
-                            profile!.businessLogoPath,
-                            profile!.businessLogoUrl,
-                            profile!.businessLogoStyleId,
-                            profile!.businessName,
-                            profile!.businessTagline,
-                          ].join('|'),
-                        ),
-                        profile: profile!,
-                        fit:
-                            profile!.identityMode == PosterIdentityMode.business
-                            ? BoxFit.contain
-                            : BoxFit.cover,
-                        fallbackBackground: const Color(0xFFF1F5F9),
-                        fallbackIconColor: const Color(0xFF475569),
-                      ),
-              ),
-              Positioned(
-                right: 2,
-                bottom: 2,
-                child: Material(
-                  color: const Color(0xFF6D28D9),
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: onCameraTap,
-                    child: const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: Icon(
-                        Icons.camera_alt_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            email,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileActionCard extends StatelessWidget {
-  const _ProfileActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F3FF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                alignment: Alignment.center,
-                child: Icon(icon, color: const Color(0xFF6D28D9)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.black.withValues(alpha: 0.32),
-              ),
-            ],
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
@@ -520,7 +230,7 @@ class _SettingsGroup extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Column(
@@ -562,7 +272,7 @@ class _ProfileOptionTile extends StatelessWidget {
     return Column(
       children: <Widget>[
         ListTile(
-          minTileHeight: 58,
+          minTileHeight: 52,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14),
           leading: _buildLeading(iconBackground, iconColor),
           title: Text(
@@ -573,21 +283,7 @@ class _ProfileOptionTile extends StatelessWidget {
               fontSize: 15,
             ),
           ),
-          subtitle: item.subtitle == null
-              ? null
-              : Padding(
-                  padding: const EdgeInsets.only(top: 1),
-                  child: Text(
-                    item.subtitle!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
+          subtitle: null,
           trailing: Icon(
             Icons.chevron_right_rounded,
             color: Colors.black.withValues(alpha: 0.32),
@@ -598,7 +294,7 @@ class _ProfileOptionTile extends StatelessWidget {
         if (showDivider)
           const Divider(
             height: 1,
-            indent: 70,
+            indent: 62,
             endIndent: 14,
             color: Color(0x1A0F172A),
           ),
@@ -644,8 +340,8 @@ class _ProfileOptionTile extends StatelessWidget {
         );
       case _ProfileItemBadge.premium:
         return Container(
-          width: 42,
-          height: 42,
+          width: 36,
+          height: 36,
           decoration: const BoxDecoration(
             color: Color(0xFFFFF7CC),
             shape: BoxShape.circle,
@@ -659,8 +355,8 @@ class _ProfileOptionTile extends StatelessWidget {
         );
       case _ProfileItemBadge.bell:
         return Container(
-          width: 42,
-          height: 42,
+          width: 36,
+          height: 36,
           decoration: const BoxDecoration(
             color: Color(0xFFFFF7CC),
             shape: BoxShape.circle,
@@ -674,8 +370,8 @@ class _ProfileOptionTile extends StatelessWidget {
         );
       case null:
         return Container(
-          width: 42,
-          height: 42,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: iconBackground,
             shape: BoxShape.circle,
@@ -688,10 +384,42 @@ class _ProfileOptionTile extends StatelessWidget {
 }
 
 class _ProfileMoreScreen extends StatelessWidget {
-  const _ProfileMoreScreen({required this.copy, required this.onShareApp});
+  const _ProfileMoreScreen({
+    required this.copy,
+    required this.onShareApp,
+    required this.onLogout,
+  });
 
   final _ProfileCopy copy;
   final Future<void> Function() onShareApp;
+  final Future<void> Function() onLogout;
+
+  Future<void> _openSubscriptionPlan(
+    BuildContext context, {
+    bool triggerRestoreOnOpen = false,
+  }) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SubscriptionPlanScreen(
+          triggerRestoreOnOpen: triggerRestoreOnOpen,
+        ),
+      ),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    final result = await SubscriptionBackendService().fetchFreshEntitlement();
+    if (!context.mounted || result.hasAccess) {
+      return;
+    }
+    await showSubscriptionExitVideoPromptIfAvailable(
+      context,
+      onSubscribe: (_) => _openSubscriptionPlan(
+        context,
+        triggerRestoreOnOpen: false,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -701,14 +429,20 @@ class _ProfileMoreScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: Text(copy.moreTitle),
+        title: Text(copy.settingsTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: <Widget>[
           _SettingsGroup(
-            title: copy.moreTitle,
+            title: copy.quickActionsTitle,
             items: <_ProfileItemData>[
+              _ProfileItemData(
+                icon: Icons.ios_share_rounded,
+                title: copy.shareAppTitle,
+                subtitle: copy.shareAppSubtitle,
+                onTap: () => unawaited(onShareApp()),
+              ),
               _ProfileItemData(
                 icon: Icons.language_rounded,
                 title: copy.languageTitle,
@@ -726,27 +460,15 @@ class _ProfileMoreScreen extends StatelessWidget {
                 title: copy.subscriptionTitle,
                 subtitle: copy.subscriptionSubtitle,
                 badge: _ProfileItemBadge.premium,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SubscriptionPlanScreen(),
-                    ),
-                  );
-                },
+                onTap: () => unawaited(_openSubscriptionPlan(context)),
               ),
               _ProfileItemData(
                 icon: Icons.restore_rounded,
                 title: copy.restoreSubscriptionTitle,
                 subtitle: copy.restoreSubscriptionSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SubscriptionPlanScreen(
-                        triggerRestoreOnOpen: true,
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => unawaited(
+                  _openSubscriptionPlan(context, triggerRestoreOnOpen: true),
+                ),
               ),
               _ProfileItemData(
                 icon: Icons.verified_user_outlined,
@@ -815,6 +537,44 @@ class _ProfileMoreScreen extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 18),
+          _SettingsGroup(
+            title: copy.supportTitle,
+            items: <_ProfileItemData>[
+              _ProfileItemData(
+                icon: Icons.info_outline_rounded,
+                title: copy.aboutTitle,
+                subtitle: copy.aboutSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AboutAppScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.logout_rounded,
+                title: copy.logoutTitle,
+                subtitle: copy.logoutSubtitle,
+                isDestructive: true,
+                onTap: () => unawaited(onLogout()),
+              ),
+              _ProfileItemData(
+                icon: Icons.delete_forever_outlined,
+                title: copy.deleteAccountTitle,
+                subtitle: copy.deleteAccountSubtitle,
+                isDestructive: true,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AccountDeletionScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -863,6 +623,7 @@ class _ProfileCopy {
   String get moreTitle => _isTelugu ? 'మరిన్ని' : 'More';
   String get moreSubtitle =>
       _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
+  String get settingsTitle => _isTelugu ? 'సెట్టింగ్స్' : 'Settings';
 
   String get languageTitle =>
       _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;

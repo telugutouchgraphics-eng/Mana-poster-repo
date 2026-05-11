@@ -95,8 +95,10 @@ class BackgroundRemover {
       if (outputTensor is List) {
         final mask = outputTensor[0][0];
         final resizedMask = smoothMask
-            ? resizeMaskBilinear(mask, originalImage.width, originalImage.height)
-            : resizeMaskNearest(mask, originalImage.width, originalImage.height);
+            ? resizeMaskBilinear(
+                mask, originalImage.width, originalImage.height)
+            : resizeMaskNearest(
+                mask, originalImage.width, originalImage.height);
         final finalMask = enhanceEdges
             ? await _enhanceMaskEdges(originalImage, resizedMask)
             : resizedMask;
@@ -273,7 +275,11 @@ class BackgroundRemover {
     List smoothedMask = mask;
     if (smooth) {
       smoothedMask = _smoothMask(mask, 3);
+      smoothedMask = _smoothMask(smoothedMask, 3);
     }
+
+    const double featherIn = 0.05;
+    const double featherOut = 0.28;
 
     for (int y = 0; y < image.height; y++) {
       for (int x = 0; x < image.width; x++) {
@@ -281,14 +287,16 @@ class BackgroundRemover {
         final maskValue = smoothedMask[y][x] as double;
         final int alpha;
 
-        if (maskValue > threshold + 0.05) {
-          alpha = 255;
-        } else if (maskValue < threshold - 0.05) {
+        final low = threshold - featherIn;
+        final high = threshold + featherOut;
+        if (maskValue <= low) {
           alpha = 0;
+        } else if (maskValue >= high) {
+          alpha = 255;
         } else {
-          alpha = ((maskValue - (threshold - 0.05)) / 0.1 * 255)
-              .round()
-              .clamp(0, 255);
+          final t = ((maskValue - low) / (high - low)).clamp(0.0, 1.0);
+          final eased = t * t * (3.0 - 2.0 * t);
+          alpha = (eased * 255.0).round().clamp(0, 255);
         }
 
         outRgbaBytes[i * 4] = rgbaBytes[i * 4];

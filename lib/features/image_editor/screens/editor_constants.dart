@@ -15,6 +15,7 @@ enum _BottomInlineMode {
   stickerItems,
   border,
   backgroundBlur,
+  photoEraser,
 }
 
 enum _BorderStyle { none, thinWhite, thinBlack, rounded, glow }
@@ -23,6 +24,7 @@ const double _topBarHeight = 68;
 const double _bottomBarHeight = 92;
 const double _cropBarHeight = 132;
 const double _adjustBarHeight = 196;
+const double _eraserBarHeight = 178;
 const double _textStyleBarHeight = 252;
 const double _canvasChromeInset = 18;
 

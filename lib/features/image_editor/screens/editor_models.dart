@@ -134,6 +134,21 @@ class _SelectedPhotoRenderState {
   );
 }
 
+@immutable
+class _PhotoEraserPreviewState {
+  const _PhotoEraserPreviewState({
+    required this.layerId,
+    required this.points,
+    required this.brushSize,
+    required this.hardness,
+  });
+
+  final String layerId;
+  final List<Offset> points;
+  final double brushSize;
+  final double hardness;
+}
+
 class _CanvasLayer {
   const _CanvasLayer({
     required this.id,

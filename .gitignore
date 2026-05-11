@@ -68,3 +68,8 @@ app.*.map.json
 /picker_window.xml
 /tmp_ref_frames/
 /tmp_ref_pdf/
+
+# Local IDE / junk
+.vs/
+CppProperties.json
+flutter_01.png
