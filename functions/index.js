@@ -43,6 +43,7 @@ let androidPublisherClientPromise = null;
 const playRtdnTopic =
     String(process.env.MANA_POSTER_PLAY_RTDN_TOPIC || "play-billing-rtdn")
         .trim();
+const manaReminderToolKey = String(process.env.MANA_REMINDER_TOOL_KEY || "").trim();
 
 const dynamicEventCatalog = [
   {
@@ -590,8 +591,9 @@ function notificationProfileFromData(data) {
   if (identityMode === "business") {
     const businessName = String(data.businessName || "").trim();
     const businessLogoUrl = String(data.businessLogoUrl || "").trim();
+    const displayName = String(data.displayName || "").trim();
     return {
-      name: businessName || String(data.displayName || "").trim() || "User",
+      name: pickFirstUsablePosterName(businessName, displayName) || "",
       photoUrl: businessLogoUrl,
     };
   }
@@ -603,7 +605,7 @@ function notificationProfileFromData(data) {
   const photoUrl = String(data.photoUrl || "").trim();
 
   return {
-    name: nameTelugu || nameEnglish || displayName || "User",
+    name: pickFirstUsablePosterName(nameTelugu, nameEnglish, displayName),
     photoUrl: originalPhotoUrl || photoUrl,
   };
 }
@@ -615,9 +617,55 @@ function sanitizeLanguage(value) {
     "";
 }
 
+function looksLikeEmailAddress(value) {
+  const t = String(value || "").trim();
+  if (!t.includes("@")) {
+    return false;
+  }
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
+
+function isCorruptedPlaceholderName(value) {
+  const t = String(value || "").trim();
+  if (!t) {
+    return true;
+  }
+  const condensed = t.replace(/\s+/g, "");
+  if (/^[\?]+$/.test(condensed)) {
+    return true;
+  }
+  if (/^\uFFFD+$/.test(condensed)) {
+    return true;
+  }
+  return false;
+}
+
+function pickFirstUsablePosterName(...candidates) {
+  for (const candidate of candidates) {
+    const t = String(candidate || "").trim();
+    if (!t || looksLikeEmailAddress(t)) {
+      continue;
+    }
+    if (isCorruptedPlaceholderName(t)) {
+      continue;
+    }
+    return t;
+  }
+  return "";
+}
+
+function reminderGreetingPrefix(displayName, bodySentence) {
+  const body = String(bodySentence || "").trim();
+  const n = pickFirstUsablePosterName(displayName);
+  if (!n || !body) {
+    return body;
+  }
+  return `${n}, ${body}`;
+}
+
 async function loadNotificationProfileForUid(uid) {
   if (!uid) {
-    return {name: "User", photoUrl: "", preferredLanguage: "english"};
+    return {name: "", photoUrl: "", preferredLanguage: "english"};
   }
   try {
     let authUser = null;
@@ -628,20 +676,22 @@ async function loadNotificationProfileForUid(uid) {
         .collection("posterProfile").doc("main").get();
     const userSnap = await db.collection("users").doc(uid).get();
     if (!snap.exists) {
-      const fallbackName = String(authUser?.displayName || "").trim() || "User";
       const preferredLanguage = sanitizeLanguage(
           userSnap.exists ? (userSnap.data() || {}).preferredLanguage : "",
-      ) || defaultLanguageForName(fallbackName);
+      ) || defaultLanguageForName(
+          pickFirstUsablePosterName(authUser?.displayName),
+      );
       return {
-        name: fallbackName,
+        name: pickFirstUsablePosterName(authUser?.displayName),
         photoUrl: String(authUser?.photoURL || "").trim(),
         preferredLanguage,
       };
     }
     const baseProfile = notificationProfileFromData(snap.data() || {});
-    const resolvedName = String(baseProfile.name || "").trim() ||
-        String(authUser?.displayName || "").trim() ||
-        "User";
+    const resolvedName = pickFirstUsablePosterName(
+        baseProfile.name,
+        authUser?.displayName,
+    );
     const preferredLanguage = sanitizeLanguage(
         userSnap.exists ? (userSnap.data() || {}).preferredLanguage : "",
     ) || defaultLanguageForName(resolvedName);
@@ -657,7 +707,7 @@ async function loadNotificationProfileForUid(uid) {
     };
   } catch (error) {
     logger.warn("loadNotificationProfileForUid failed", {uid, error});
-    return {name: "User", photoUrl: "", preferredLanguage: "english"};
+    return {name: "", photoUrl: "", preferredLanguage: "english"};
   }
 }
 
@@ -666,44 +716,50 @@ function defaultLanguageForName(name) {
 }
 
 function reminderCopy(kind, language, userName) {
-  const lang = sanitizeLanguage(language) || defaultLanguageForName(userName);
-  const name = String(userName || "").trim() || "User";
+  const displayName = pickFirstUsablePosterName(userName);
+  const lang =
+      sanitizeLanguage(language) ||
+      (displayName ? defaultLanguageForName(displayName) : "english");
+  const name = displayName;
   const map = {
     welcome: {
       telugu: {
         title: "Mana Poster కి స్వాగతం",
         body: "మీ కోసం రోజువారీ పోస్టర్లు సిద్ధంగా ఉన్నాయి. యాప్ ఓపెన్ చేసి షేర్ చేయండి.",
-        header: `${name}, 👉 మీ పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
+        header: reminderGreetingPrefix(
+            name,
+            "మీ పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Welcome to Mana Poster",
         body: "Daily posters are ready for you. Open and share.",
-        header: `${name}, your poster is ready to share`,
+        header: reminderGreetingPrefix(name, "your poster is ready to share"),
         footer: "Share",
       },
       hindi: {
         title: "Mana Poster में आपका स्वागत है",
         body: "आपके लिए रोज़ाना पोस्टर तैयार हैं। ऐप खोलें और शेयर करें।",
-        header: `${name}, आपका पोस्टर शेयर करने के लिए तैयार है`,
+        header: reminderGreetingPrefix(name, "आपका पोस्टर शेयर करने के लिए तैयार है"),
         footer: "Share",
       },
       tamil: {
         title: "Mana Posterக்கு வரவேற்கிறோம்",
         body: "உங்களுக்கான தினசரி போஸ்டர்கள் தயாராக உள்ளன. ஆப்பை திறந்து பகிருங்கள்.",
-        header: `${name}, உங்கள் போஸ்டர் பகிர தயாராக உள்ளது`,
+        header: reminderGreetingPrefix(name, "உங்கள் போஸ்டர் பகிர தயாராக உள்ளது"),
         footer: "Share",
       },
       kannada: {
         title: "Mana Poster ಗೆ ಸ್ವಾಗತ",
         body: "ನಿಮಗಾಗಿ ದಿನನಿತ್ಯದ ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.",
-        header: `${name}, ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
+        header: reminderGreetingPrefix(name, "ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ"),
         footer: "Share",
       },
       malayalam: {
         title: "Mana Poster ലേക്ക് സ്വാഗതം",
         body: "നിങ്ങൾക്കായി ദിവസേന പോസ്റ്ററുകൾ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
+        header: reminderGreetingPrefix(name, "നിങ്ങളുടെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്"),
         footer: "Share",
       },
     },
@@ -711,37 +767,52 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభోదయం",
         body: "మీ ఉదయపు పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, 👉 మీ ఉదయపు పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
+        header: reminderGreetingPrefix(
+            name,
+            "మీ ఉదయపు పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Morning",
         body: "Your good morning poster is ready. Share it now.",
-        header: `${name}, your morning poster is ready to share`,
+        header: reminderGreetingPrefix(name, "your morning poster is ready to share"),
         footer: "Share",
       },
       hindi: {
         title: "सुप्रभात",
         body: "आपका सुबह का पोस्टर तैयार है। अभी शेयर करें।",
-        header: `${name}, आपका सुबह का पोस्टर शेयर करने के लिए तैयार है`,
+        header: reminderGreetingPrefix(
+            name,
+            "आपका सुबह का पोस्टर शेयर करने के लिए तैयार है",
+        ),
         footer: "Share",
       },
       tamil: {
         title: "காலை வணக்கம்",
         body: "உங்கள் காலை போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
-        header: `${name}, உங்கள் காலை போஸ்டர் பகிர தயாராக உள்ளது`,
+        header: reminderGreetingPrefix(
+            name,
+            "உங்கள் காலை போஸ்டர் பகிர தயாராக உள்ளது",
+        ),
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭೋದಯ",
         body: "ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
-        header: `${name}, ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
+        header: reminderGreetingPrefix(
+            name,
+            "ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ",
+        ),
         footer: "Share",
       },
       malayalam: {
         title: "സുപ്രഭാതം",
         body: "നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
+        header: reminderGreetingPrefix(
+            name,
+            "നിങ്ങളുടെ രാവിലെ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്",
+        ),
         footer: "Share",
       },
     },
@@ -749,37 +820,55 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభ మధ్యాహ్నం",
         body: "మీ మధ్యాహ్న పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, 👉 మీ మధ్యాహ్న పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
+        header: reminderGreetingPrefix(
+            name,
+            "మీ మధ్యాహ్న పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Afternoon",
         body: "Your good afternoon poster is ready. Share it now.",
-        header: `${name}, your afternoon poster is ready to share`,
+        header: reminderGreetingPrefix(
+            name,
+            "your afternoon poster is ready to share",
+        ),
         footer: "Share",
       },
       hindi: {
         title: "शुभ दोपहर",
         body: "आपका दोपहर का पोस्टर तैयार है। अभी शेयर करें।",
-        header: `${name}, आपका दोपहर का पोस्टर शेयर करने के लिए तैयार है`,
+        header: reminderGreetingPrefix(
+            name,
+            "आपका दोपहर का पोस्टर शेयर करने के लिए तैयार है",
+        ),
         footer: "Share",
       },
       tamil: {
         title: "மதிய வணக்கம்",
         body: "உங்கள் மதிய போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
-        header: `${name}, உங்கள் மதிய போஸ்டர் பகிர தயாராக உள்ளது`,
+        header: reminderGreetingPrefix(
+            name,
+            "உங்கள் மதிய போஸ்டர் பகிர தயாராக உள்ளது",
+        ),
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭ ಮಧ್ಯಾಹ್ನ",
         body: "ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
-        header: `${name}, ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
+        header: reminderGreetingPrefix(
+            name,
+            "ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ",
+        ),
         footer: "Share",
       },
       malayalam: {
         title: "ശുഭ മധ്യാഹ്നം",
         body: "നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
+        header: reminderGreetingPrefix(
+            name,
+            "നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്",
+        ),
         footer: "Share",
       },
     },
@@ -787,37 +876,52 @@ function reminderCopy(kind, language, userName) {
       telugu: {
         title: "శుభ రాత్రి",
         body: "మీ రాత్రి పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.",
-        header: `${name}, 👉 మీ రాత్రి పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది`,
+        header: reminderGreetingPrefix(
+            name,
+            "మీ రాత్రి పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
         footer: "షేర్ చేయండి",
       },
       english: {
         title: "Good Night",
         body: "Your good night poster is ready. Share it now.",
-        header: `${name}, your night poster is ready to share`,
+        header: reminderGreetingPrefix(name, "your night poster is ready to share"),
         footer: "Share",
       },
       hindi: {
         title: "शुभ रात्रि",
         body: "आपका रात का पोस्टर तैयार है। अभी शेयर करें।",
-        header: `${name}, आपका रात का पोस्टर शेयर करने के लिए तैयार है`,
+        header: reminderGreetingPrefix(
+            name,
+            "आपका रात का पोस्टर शेयर करने के लिए तैयार है",
+        ),
         footer: "Share",
       },
       tamil: {
         title: "இரவு வணக்கம்",
         body: "உங்கள் இரவு போஸ்டர் தயாராக உள்ளது. இப்போதே பகிருங்கள்.",
-        header: `${name}, உங்கள் இரவு போஸ்டர் பகிர தயாராக உள்ளது`,
+        header: reminderGreetingPrefix(
+            name,
+            "உங்கள் இரவு போஸ்டர் பகிர தயாராக உள்ளது",
+        ),
         footer: "Share",
       },
       kannada: {
         title: "ಶುಭ ರಾತ್ರಿ",
         body: "ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ.",
-        header: `${name}, ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ`,
+        header: reminderGreetingPrefix(
+            name,
+            "ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ",
+        ),
         footer: "Share",
       },
       malayalam: {
         title: "ശുഭ രാത്രി",
         body: "നിങ്ങളുടെ രാത്രി പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.",
-        header: `${name}, നിങ്ങളുടെ രാത്രി പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്`,
+        header: reminderGreetingPrefix(
+            name,
+            "നിങ്ങളുടെ രാത്രി പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്",
+        ),
         footer: "Share",
       },
     },
@@ -1159,12 +1263,18 @@ async function buildPersonalizedNotificationImage({
     return null;
   }
 
-  const palette = framePalette(categoryKey, seed || userName || posterImageUrl);
-  const brandLogoDataUri = await loadBrandLogoDataUri();
+  const palette = {
+    shell: "#ffffff",
+    frame: "#0A9F16",
+    header: "#15930E",
+    footer: "#03B92B",
+    accent: "#03B92B",
+    text: "#1F7D1F",
+  };
   const fontDataUri = await loadNotificationFontDataUri();
   await loadNotificationFrameBuffer(categoryKey);
   const posterResized = await sharp(posterBuffer)
-      .resize(980, 420, {fit: "cover", position: "attention"})
+      .resize(980, 390, {fit: "cover", position: "attention"})
       .png()
       .toBuffer();
   const posterDataUri = `data:image/png;base64,${posterResized.toString("base64")}`;
@@ -1183,16 +1293,16 @@ async function buildPersonalizedNotificationImage({
     }
   }
 
-  const safeUserName = truncateSingleLineText(
-      String(userName || "").trim().normalize("NFC") || "Mana Poster User",
-      24,
-  );
   const safeHeader = String(headerText || title || body || "")
       .trim()
       .normalize("NFC");
   const safeFooter = String(footerText || "షేర్ చేయండి")
       .trim()
       .normalize("NFC");
+  const safeDisplayName = String(userName || "")
+      .trim()
+      .normalize("NFC")
+      .slice(0, 80);
   const browser = await getNotificationBrowser();
   const page = await browser.newPage();
   try {
@@ -1209,108 +1319,95 @@ async function buildPersonalizedNotificationImage({
             margin: 0;
             background: #ffffff;
             font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
+            -webkit-font-smoothing: antialiased;
           }
           .root {
             width: 1080px;
-            height: 1020px;
-            background: ${palette.shell};
+            height: 900px;
+            background: #ffffff;
             position: relative;
             overflow: hidden;
           }
           .card-shell {
             position: absolute;
-            left: 24px;
-            top: 24px;
-            width: 1032px;
-            height: 972px;
-            border-radius: 34px;
+            inset: 0;
             background: #ffffff;
+            border: 10px solid ${palette.frame};
+            box-sizing: border-box;
             overflow: hidden;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
           }
-          .topbar {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            height: 118px;
-            padding: 0 28px;
+          .notification-header {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 232px;
             background: ${palette.header};
           }
-          .brand-logo {
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
-            object-fit: contain;
-            background: rgba(255,255,255,0.12);
-            padding: 2px;
+          .header-avatar {
+            position: absolute;
+            left: 34px;
+            top: 62px;
+            width: 106px;
+            height: 106px;
+            border-radius: 53px;
+            object-fit: cover;
+            border: 4px solid rgba(255,255,255,0.82);
             box-sizing: border-box;
           }
-          .brand-name {
-            font-size: 22px;
-            font-weight: 800;
-            color: #ffffff;
-          }
-          .time {
-            color: rgba(255, 255, 255, 0.80);
+          .header-brand {
+            position: absolute;
+            left: 168px;
+            top: 28px;
             font-size: 20px;
-            font-weight: 600;
-            margin-left: 8px;
-          }
-          .chevron {
-            margin-left: auto;
-            width: 20px;
-            height: 20px;
-            border-top: 4px solid rgba(255, 255, 255, 0.92);
-            border-right: 4px solid rgba(255, 255, 255, 0.92);
-            transform: rotate(-45deg);
-            border-radius: 2px;
+            line-height: 1.1;
+            font-weight: 900;
+            color: #ffffff;
+            font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
           }
           .header {
             position: absolute;
-            left: 28px;
-            top: 130px;
-            width: 976px;
-            font-size: 32px;
-            line-height: 1.28;
-            font-weight: 800;
+            left: 168px;
+            top: 52px;
+            width: 868px;
+            font-size: 54px;
+            line-height: 1.12;
+            font-weight: 900;
             color: #ffffff;
-            max-height: 88px;
+            max-height: 168px;
             overflow: hidden;
-          }
-          .card {
-            position: absolute;
-            left: 28px;
-            top: 238px;
-            width: 976px;
-            height: 690px;
-            border-radius: 30px;
-            border: 4px solid ${palette.frame};
-            overflow: hidden;
-            background: #ffffff;
+            font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
+            word-break: normal;
           }
           .poster {
-            width: 100%;
-            height: 420px;
+            position: absolute;
+            left: 36px;
+            top: 246px;
+            width: 1008px;
+            height: 390px;
             object-fit: cover;
             display: block;
           }
           .footer-white {
-            width: 100%;
-            height: 270px;
+            position: absolute;
+            left: 36px;
+            top: 636px;
+            width: 1008px;
+            height: 190px;
             background: #ffffff;
           }
           .avatar-wrap {
             position: absolute;
             left: 50%;
-            top: 590px;
-            width: 196px;
-            height: 196px;
+            top: 562px;
+            width: 172px;
+            height: 172px;
             transform: translateX(-50%);
             border-radius: 50%;
             background: #ffffff;
-            padding: 7px;
+            padding: 6px;
             box-sizing: border-box;
-            border: 5px solid ${palette.frame};
+            border: 4px solid ${palette.frame};
           }
           .avatar {
             width: 100%;
@@ -1319,38 +1416,41 @@ async function buildPersonalizedNotificationImage({
             object-fit: cover;
             display: block;
           }
-          .name {
+          .name-under {
             position: absolute;
-            top: 818px;
-            left: 150px;
-            width: 780px;
+            left: 50%;
+            top: 742px;
+            transform: translateX(-50%);
+            width: 920px;
             text-align: center;
-            font-size: 42px;
+            font-size: 30px;
+            line-height: 1.25;
             font-weight: 800;
-            color: #181818;
-            white-space: nowrap;
+            color: ${palette.text};
+            font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
+            max-height: 88px;
             overflow: hidden;
-            text-overflow: ellipsis;
           }
           .share {
             position: absolute;
-            top: 888px;
-            left: 302px;
-            width: 428px;
-            height: 78px;
-            border-radius: 39px;
-            background: ${palette.accent};
+            left: 36px;
+            bottom: 34px;
+            width: 1008px;
+            height: 72px;
+            border-radius: 0;
+            background: ${palette.footer};
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 14px;
-            color: #118b4a;
-            font-size: 32px;
+            color: #ffffff;
+            font-size: 28px;
             font-weight: 800;
+            font-family: "ManaPosterTelugu", "Nirmala UI", "Gautami", sans-serif;
           }
           .share-icon {
-            width: 38px;
-            height: 38px;
+            width: 34px;
+            height: 34px;
             object-fit: contain;
           }
         </style>
@@ -1358,21 +1458,16 @@ async function buildPersonalizedNotificationImage({
       <body>
         <div class="root">
           <div class="card-shell">
-            <div class="topbar">
-              <img class="brand-logo" src="${brandLogoDataUri}" alt="">
-              <div class="brand-name">Mana Poster Ai</div>
-              <div class="time">• Now</div>
-              <div class="chevron"></div>
-            </div>
+            <div class="notification-header"></div>
+            <img class="header-avatar" src="${avatarDataUri}" alt="">
+            <div class="header-brand">Mana Poster Ai</div>
             <div class="header">${htmlEscape(safeHeader)}</div>
-            <div class="card">
-              <img class="poster" src="${posterDataUri}" alt="">
-              <div class="footer-white"></div>
-            </div>
+            <img class="poster" src="${posterDataUri}" alt="">
+            <div class="footer-white"></div>
             <div class="avatar-wrap">
               <img class="avatar" src="${avatarDataUri}" alt="">
             </div>
-            <div class="name">${htmlEscape(safeUserName)}</div>
+            ${safeDisplayName ? `<div class="name-under">${htmlEscape(safeDisplayName)}</div>` : ""}
             <div class="share">
               <img class="share-icon" src="${whatsappGlyphDataUri()}" alt="">
               <span>${htmlEscape(safeFooter)}</span>
@@ -1381,8 +1476,13 @@ async function buildPersonalizedNotificationImage({
         </div>
       </body>
     </html>`;
-    await page.setViewport({width: 1080, height: 1020, deviceScaleFactor: 1});
+    await page.setViewport({width: 1080, height: 900, deviceScaleFactor: 1});
     await page.setContent(html, {waitUntil: "load"});
+    await page.evaluate(async () => {
+      try {
+        await document.fonts.ready;
+      } catch (_) {}
+    });
     const outputBuffer = await page.screenshot({type: "png"});
     logger.info("buildPersonalizedNotificationImage completed", {
       categoryKey: reminderCategoryKey(categoryKey),
@@ -1453,10 +1553,10 @@ async function sendReminderToToken({
     data: {
       click_action: "FLUTTER_NOTIFICATION_CLICK",
       route: "home",
-      title: normalizedTitle,
-      body: normalizedBody,
-      title_key: titleKey || "",
-      body_key: bodyKey || "",
+      title: isAndroidTarget && normalizedImageUrl ? "" : normalizedTitle,
+      body: isAndroidTarget && normalizedImageUrl ? "" : normalizedBody,
+      title_key: isAndroidTarget && normalizedImageUrl ? "" : titleKey || "",
+      body_key: isAndroidTarget && normalizedImageUrl ? "" : bodyKey || "",
       userName: userName || "",
       userPhoto: userPhotoUrl || "",
       headerText: headerText || "",
@@ -1739,6 +1839,73 @@ async function cleanupInvalidTokenRef(ref) {
   } catch (error) {
     logger.warn("cleanupInvalidTokenRef failed", {path: ref.path, error});
   }
+}
+
+async function sendThreeKindsToFcmToken(fcmToken, uidHint = "") {
+  const morningKeywords = [
+    "good morning",
+    "morning",
+    "suprabhatam",
+  ];
+  const afternoonKeywords = [
+    "good afternoon",
+    "afternoon",
+    "madhyahna",
+  ];
+  const nightKeywords = [
+    "good night",
+    "night",
+    "ratri",
+  ];
+
+  let uid = String(uidHint || "").trim();
+  let platform = "android";
+  if (uid && fcmToken) {
+    const snap = await db.collection("users").doc(uid).collection("deviceTokens")
+        .where("token", "==", fcmToken)
+        .limit(1)
+        .get();
+    if (!snap.empty) {
+      const data = snap.docs[0].data() || {};
+      platform = String(data.platform || "android").trim() || "android";
+    }
+  }
+
+  const profile = await loadNotificationProfileForUid(uid);
+  const jobs = [
+    {categoryKey: "morning", keywords: morningKeywords},
+    {categoryKey: "afternoon", keywords: afternoonKeywords},
+    {categoryKey: "night", keywords: nightKeywords},
+  ];
+  const results = [];
+  for (const job of jobs) {
+    const imageUrl = await pickImageForReminder(job.keywords);
+    const copy = reminderCopyLocalized(
+        job.categoryKey,
+        profile.preferredLanguage,
+        profile.name,
+    );
+    const messageId = await sendPersonalizedReminderToToken({
+      token: fcmToken,
+      platform,
+      title: copy.title,
+      body: copy.body,
+      headerText: copy.header,
+      footerText: copy.footer,
+      baseImageUrl: imageUrl || "",
+      categoryKey: job.categoryKey,
+      userName: profile.name,
+      userPhotoUrl: profile.photoUrl,
+      seed:
+        `${uid || "public"}-${fcmToken}-${job.categoryKey}-manual-${Date.now()}-${crypto.randomUUID()}`,
+    });
+    results.push({
+      categoryKey: job.categoryKey,
+      messageId,
+      hasBaseImageUrl: Boolean(String(imageUrl || "").trim()),
+    });
+  }
+  return results;
 }
 
 function tokenNotificationsEnabled(data) {
@@ -2582,6 +2749,48 @@ exports.requestAccountDeletion = onRequest({region: "asia-south1"}, async (req, 
   }
 });
 
+exports.reminderToolSendTriple = onRequest(
+    {
+      region: "asia-south1",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async (req, res) => {
+      if (!manaReminderToolKey) {
+        res.status(503).json({success: false, message: "Tool disabled"});
+        return;
+      }
+      if (req.method !== "POST") {
+        res.status(405).json({success: false, message: "Method not allowed"});
+        return;
+      }
+      const keyHeader = String(req.get("x-mana-reminder-tool-key") || "").trim();
+      if (keyHeader !== manaReminderToolKey) {
+        res.status(404).json({success: false, message: "Not found"});
+        return;
+      }
+      try {
+        const rawBody = typeof req.body === "string" ?
+            JSON.parse(String(req.body || "{}")) :
+            req.body || {};
+        const fcmTok = String(rawBody.token || "").trim();
+        const uidParam = String(rawBody.uid || "").trim();
+        if (!fcmTok || !uidParam) {
+          res.status(400).json({success: false, message: "token and uid required"});
+          return;
+        }
+        const results = await sendThreeKindsToFcmToken(fcmTok, uidParam);
+        res.status(200).json({success: true, results});
+      } catch (error) {
+        logger.error("reminderToolSendTriple failed", error);
+        res.status(500).json({
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    },
+);
+
 exports.processWelcomeNotifications = onSchedule(
     {
       region: "asia-south1",
@@ -2962,4 +3171,3 @@ exports.handlePlayBillingRtdn = onMessagePublished(
       }
     },
 );
-

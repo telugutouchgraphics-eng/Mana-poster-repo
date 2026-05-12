@@ -11,6 +11,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:image/image.dart' as img;
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
@@ -43,7 +44,8 @@ class NotificationService {
   );
   static const String _publicTokenSyncedPrefix = 'public_push_token_synced_';
   static const String _topicAllUsers = 'all_users';
-  static const String _suppressedExpandedText = '\u2060';
+  /// Word joiner — non-empty so Android does not substitute app name for title.
+  static const String _collapsedImageTitle = '\u2060';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -127,14 +129,24 @@ class NotificationService {
     final categoryKey = _readDataValue(message.data, 'categoryKey');
     final userName = _readDataValue(message.data, 'userName');
     final dataResolved = await _resolveMessageText(message.data);
-    final resolved = _ResolvedNotificationText(
-      title: dataResolved.title.isNotEmpty
-          ? dataResolved.title
-          : _sanitizeNotificationText(message.notification?.title ?? ''),
-      body: dataResolved.body.isNotEmpty
-          ? dataResolved.body
-          : _sanitizeNotificationText(message.notification?.body ?? ''),
-    );
+    final bool imageNotification = posterImageUrl.trim().isNotEmpty;
+    late final _ResolvedNotificationText resolved;
+    if (imageNotification) {
+      // Collapsed tray: omit duplicate title/subtitle lines; wording lives in the PNG header stripe.
+      resolved = const _ResolvedNotificationText(
+        title: _collapsedImageTitle,
+        body: _collapsedImageTitle,
+      );
+    } else {
+      resolved = _ResolvedNotificationText(
+        title: dataResolved.title.isNotEmpty
+            ? dataResolved.title
+            : _sanitizeNotificationText(message.notification?.title ?? ''),
+        body: dataResolved.body.isNotEmpty
+            ? dataResolved.body
+            : _sanitizeNotificationText(message.notification?.body ?? ''),
+      );
+    }
     if (resolved.title.isEmpty &&
         resolved.body.isEmpty &&
         posterImageUrl.isEmpty) {
@@ -157,11 +169,10 @@ class NotificationService {
         ? 'home'
         : '';
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-    final bool suppressExpandedText = posterImageUrl.trim().isNotEmpty;
     await plugin.show(
       id,
-      suppressExpandedText ? _suppressedExpandedText : resolved.title,
-      suppressExpandedText ? _suppressedExpandedText : resolved.body,
+      resolved.title,
+      resolved.body,
       details,
       payload: payload,
     );
@@ -552,6 +563,9 @@ class NotificationService {
     final downloadedPosterPath = await _downloadImageForNotification(
       posterImageUrl,
     );
+    final String? collapsedHeaderPath = downloadedPosterPath != null
+        ? await _extractCollapsedHeaderStrip(downloadedPosterPath)
+        : null;
     final posterPath = await _prepareExpandedPosterImage(downloadedPosterPath);
     final userPhotoPath = await _downloadImageForNotification(userPhotoUrl);
 
@@ -565,10 +579,13 @@ class NotificationService {
         priority: Priority.high,
         styleInformation: BigPictureStyleInformation(
           FilePathAndroidBitmap(posterPath),
-          contentTitle: '',
-          summaryText: '',
+          contentTitle: _collapsedImageTitle,
+          summaryText: _collapsedImageTitle,
           htmlFormatContentTitle: false,
           htmlFormatSummaryText: false,
+          largeIcon: collapsedHeaderPath != null
+              ? FilePathAndroidBitmap(collapsedHeaderPath)
+              : null,
           hideExpandedLargeIcon: true,
         ),
         subText: '',
@@ -635,6 +652,53 @@ class NotificationService {
     }
   }
 
+  /// Top band of the rendered card (matches Cloud Function header height 232/900).
+  static Future<String?> _extractCollapsedHeaderStrip(String imagePath) async {
+    final String trimmed = imagePath.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    try {
+      final File sourceFile = File(trimmed);
+      if (!await sourceFile.exists()) {
+        return null;
+      }
+      final Uint8List bytes = await sourceFile.readAsBytes();
+      if (bytes.isEmpty) {
+        return null;
+      }
+      final img.Image? decoded = img.decodeImage(bytes);
+      if (decoded == null) {
+        return null;
+      }
+      const double stripRatio = 232 / 900;
+      final int stripHeight = (decoded.height * stripRatio)
+          .round()
+          .clamp(1, decoded.height);
+      final img.Image cropped = img.copyCrop(
+        decoded,
+        x: 0,
+        y: 0,
+        width: decoded.width,
+        height: stripHeight,
+      );
+      final Directory directory = await getTemporaryDirectory();
+      final File out = File(
+        '${directory.path}/notif_strip_${DateTime.now().microsecondsSinceEpoch}.png',
+      );
+      await out.writeAsBytes(img.encodePng(cropped), flush: true);
+      return out.path;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification collapsed header crop failed: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
   static Future<String?> _prepareExpandedPosterImage(String? imagePath) async {
     if (imagePath == null || imagePath.trim().isEmpty) {
       return null;
@@ -670,8 +734,9 @@ class NotificationService {
           canvasWidth = sourceHeight * targetAspectRatio;
         }
 
-        final double padding =
-            (canvasHeight * 0.035).clamp(18.0, 42.0).toDouble();
+        final double padding = (canvasHeight * 0.035)
+            .clamp(18.0, 42.0)
+            .toDouble();
         final Rect outputBounds = Rect.fromLTWH(
           padding,
           padding,

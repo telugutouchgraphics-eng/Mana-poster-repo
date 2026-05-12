@@ -477,6 +477,12 @@ extension _EditorExportState on _ImageEditorScreenState {
             _debugLog(
               'editor export save result: success=${saveResult.success}, code=${saveResult.code}, message=${saveResult.message}',
             );
+            if (saveResult.success && !kIsWeb) {
+              await PosterDownloadsService.recordCopyFromFile(
+                tempFile.path,
+                suggestedFileName: fileName,
+              );
+            }
             if (mounted) {
               final isSuccess = saveResult.success;
               ScaffoldMessenger.of(context).showSnackBar(

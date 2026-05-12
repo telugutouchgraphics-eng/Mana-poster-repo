@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
+import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 
@@ -647,41 +648,80 @@ class _PosterProfileDetailsScreenState
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton(
-            onPressed: _saving || !hasUnsavedChanges ? null : _saveProfile,
-            style: FilledButton.styleFrom(
-              backgroundColor: hasUnsavedChanges
-                  ? const Color(0xFF6D28D9)
-                  : const Color(0xFFE2E8F0),
-              foregroundColor: hasUnsavedChanges
-                  ? Colors.white
-                  : const Color(0xFF64748B),
-              disabledBackgroundColor: const Color(0xFFE2E8F0),
-              disabledForegroundColor: const Color(0xFF64748B),
-              padding: const EdgeInsets.symmetric(vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: Text(
-              _saving
-                  ? strings.localized(
-                      telugu: 'సేవ్ అవుతోంది...',
-                      english: 'Saving...',
-                      hindi: 'सेव हो रहा है...',
-                      tamil: 'சேமிக்கப்படுகிறது...',
-                      kannada: 'ಸೇವ್ ಆಗುತ್ತಿದೆ...',
-                      malayalam: 'സേവ് ചെയ്യുന്നു...',
-                    )
-                  : strings.localized(
-                      telugu: 'మార్పులు సేవ్ చేయండి',
-                      english: 'Save Changes',
-                      hindi: 'बदलाव सेव करें',
-                      tamil: 'மாற்றங்களை சேமிக்கவும்',
-                      kannada: 'ಬದಲಾವಣೆಗಳನ್ನು ಸೇವ್ ಮಾಡಿ',
-                      malayalam: 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (widget.embeddedInProfileScreen) ...<Widget>[
+                OutlinedButton(
+                  onPressed: _saving
+                      ? null
+                      : () {
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MyDownloadsScreen(),
+                            ),
+                          );
+                        },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6D28D9),
+                    side: const BorderSide(color: Color(0xFFC4B5FD)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-            ),
+                  ),
+                  child: Text(
+                    strings.localized(
+                      telugu: 'నా డౌన్‌లోడ్లు',
+                      english: 'My Downloads',
+                      hindi: 'मेरे डाउनलोड',
+                      tamil: 'எனது பதிவிறக்கங்கள்',
+                      kannada: 'ನನ್ನ ಡೌನ್‌ಲೋಡ್‌ಗಳು',
+                      malayalam: 'എന്റെ ഡൗൺലോഡുകൾ',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              FilledButton(
+                onPressed:
+                    _saving || !hasUnsavedChanges ? null : _saveProfile,
+                style: FilledButton.styleFrom(
+                  backgroundColor: hasUnsavedChanges
+                      ? const Color(0xFF6D28D9)
+                      : const Color(0xFFE2E8F0),
+                  foregroundColor: hasUnsavedChanges
+                      ? Colors.white
+                      : const Color(0xFF64748B),
+                  disabledBackgroundColor: const Color(0xFFE2E8F0),
+                  disabledForegroundColor: const Color(0xFF64748B),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  _saving
+                      ? strings.localized(
+                          telugu: 'సేవ్ అవుతోంది...',
+                          english: 'Saving...',
+                          hindi: 'सेव हो रहा है...',
+                          tamil: 'சேமிக்கப்படுகிறது...',
+                          kannada: 'ಸೇವ್ ಆಗುತ್ತಿದೆ...',
+                          malayalam: 'സേവ് ചെയ്യുന്നു...',
+                        )
+                      : strings.localized(
+                          telugu: 'మార్పులు సేవ్ చేయండి',
+                          english: 'Save Changes',
+                          hindi: 'बदलाव सेव करें',
+                          tamil: 'மாற்றங்களை சேமிக்கவும்',
+                          kannada: 'ಬದಲಾವಣೆಗಳನ್ನು ಸೇವ್ ಮಾಡಿ',
+                          malayalam: 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക',
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

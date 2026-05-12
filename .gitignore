@@ -49,6 +49,10 @@ app.*.map.json
 # Local backend/install artifacts
 /functions/node_modules/
 
+# Cloud Functions env files (may contain secrets)
+/functions/.env
+/functions/.env.*
+
 # Local debugging captures
 /live_*.png
 /step_*.png

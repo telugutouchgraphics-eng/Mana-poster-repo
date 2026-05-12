@@ -74,33 +74,95 @@ Future<void> _runPostLaunchInitialization() async {
   }
 
   if (!kIsWeb) {
-    await NotificationService.instance.initialize();
-    unawaited(OfflineBackgroundRemovalService.warmUp());
-    unawaited(InAppPurchaseGateway().initialize());
+    await _runStartupTask(
+      'notification_initialize',
+      NotificationService.instance.initialize,
+    );
+    unawaited(
+      _runStartupTask(
+        'background_removal_warmup',
+        OfflineBackgroundRemovalService.warmUp,
+      ),
+    );
+    unawaited(
+      _runStartupTask(
+        'purchase_gateway_initialize',
+        InAppPurchaseGateway().initialize,
+      ),
+    );
     if (AppPublicInfo.hasAnyAdMobConfig) {
-      unawaited(MobileAds.instance.initialize());
+      unawaited(
+        _runStartupTask('admob_initialize', () async {
+          await MobileAds.instance.initialize();
+        }),
+      );
     }
   }
 
-  await DeviceSessionService.instance.start();
+  await _runStartupTask(
+    'device_session_start',
+    DeviceSessionService.instance.start,
+  );
   unawaited(
-    SubscriptionBackendService().refreshEntitlementInBackground(
-      forceRefresh: true,
-      clearCacheFirst: true,
+    _runStartupTask(
+      'subscription_refresh_post_launch',
+      () => SubscriptionBackendService().refreshEntitlementInBackground(
+        forceRefresh: true,
+        clearCacheFirst: true,
+      ),
     ),
   );
-  unawaited(AppFlowService.syncStoredLanguageToRemote());
+  unawaited(
+    _runStartupTask(
+      'sync_stored_language',
+      AppFlowService.syncStoredLanguageToRemote,
+    ),
+  );
   _subscriptionLifecycleListener ??= AppLifecycleListener(
     onResume: () {
-      unawaited(NotificationService.instance.syncCurrentPreferences());
       unawaited(
-        SubscriptionBackendService().refreshEntitlementInBackground(
-          forceRefresh: true,
-          clearCacheFirst: true,
+        _runStartupTask(
+          'notification_preferences_resume_sync',
+          NotificationService.instance.syncCurrentPreferences,
+        ),
+      );
+      unawaited(
+        _runStartupTask(
+          'subscription_refresh_resume',
+          () => SubscriptionBackendService().refreshEntitlementInBackground(
+            forceRefresh: true,
+            clearCacheFirst: true,
+          ),
         ),
       );
     },
   );
+}
+
+Future<void> _runStartupTask(
+  String taskName,
+  Future<void> Function() task,
+) async {
+  try {
+    await task();
+  } catch (error, stackTrace) {
+    developer.log(
+      'Startup task skipped: $taskName: $error',
+      name: 'app.startup',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    if (Firebase.apps.isNotEmpty && !kIsWeb) {
+      try {
+        await FirebaseCrashlytics.instance.recordError(
+          error,
+          stackTrace,
+          reason: 'nonfatal_startup_task:$taskName',
+          fatal: false,
+        );
+      } catch (_) {}
+    }
+  }
 }
 
 Future<void> _configureFirebaseMonitoring() async {
@@ -129,6 +191,11 @@ Future<void> _configureFirebaseMonitoring() async {
     );
 
     FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      if (_isRecoverableFlutterError(details)) {
+        FirebaseCrashlytics.instance.recordFlutterError(details, fatal: false);
+        return;
+      }
       FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     };
 
@@ -136,7 +203,11 @@ Future<void> _configureFirebaseMonitoring() async {
       Object error,
       StackTrace stackTrace,
     ) {
-      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+      FirebaseCrashlytics.instance.recordError(
+        error,
+        stackTrace,
+        fatal: !_isRecoverableError(error),
+      );
       return true;
     };
   } catch (error, stackTrace) {
@@ -147,6 +218,30 @@ Future<void> _configureFirebaseMonitoring() async {
       stackTrace: stackTrace,
     );
   }
+}
+
+bool _isRecoverableFlutterError(FlutterErrorDetails details) {
+  return _isRecoverableError(details.exception) ||
+      _containsRecoverableSignal(details.exceptionAsString()) ||
+      _containsRecoverableSignal(details.stack?.toString() ?? '');
+}
+
+bool _isRecoverableError(Object error) {
+  return _containsRecoverableSignal(error.toString());
+}
+
+bool _containsRecoverableSignal(String value) {
+  final normalized = value.toLowerCase();
+  return normalized.contains('httpexception: invalid statuscode') ||
+      normalized.contains('imagecodec') ||
+      normalized.contains('failed host lookup') ||
+      normalized.contains('permission-denied') ||
+      normalized.contains('already_active') ||
+      normalized.contains('zone mismatch') ||
+      normalized.contains('connection closed') ||
+      normalized.contains('connection reset') ||
+      normalized.contains('connection timed out') ||
+      normalized.contains('socketexception');
 }
 
 void _attachFrameProfiler() {

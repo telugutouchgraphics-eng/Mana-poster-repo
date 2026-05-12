@@ -32,6 +32,7 @@ import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
+import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -3385,6 +3386,14 @@ class _TemplateFeedItem extends StatelessWidget {
           );
       result = saveResult.success;
       if (result) {
+        if (!kIsWeb) {
+          unawaited(
+            PosterDownloadsService.recordCopyFromFile(
+              preparedPath,
+              suggestedFileName: fileName,
+            ),
+          );
+        }
         _showSnack(messenger, posterSavedMessage);
         return;
       }

@@ -22,6 +22,7 @@ import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/app/localization/app_language.dart';

@@ -42,10 +42,11 @@ class DeviceSessionService {
   }
 
   Future<void> registerCurrentDeviceSession() async {
-    if (_auth.currentUser == null) {
+    final user = _auth.currentUser;
+    if (user == null) {
       return;
     }
-    await _pushSessionOwnership(_auth.currentUser!);
+    await _pushSessionOwnership(user);
   }
 
   Future<void> stop() async {
@@ -72,7 +73,7 @@ class DeviceSessionService {
         .snapshots()
         .listen((snapshot) {
           unawaited(_enforceSingleDevice(snapshot));
-        });
+        }, onError: (Object _) {});
   }
 
   Future<void> _pushSessionOwnership(User user) async {
