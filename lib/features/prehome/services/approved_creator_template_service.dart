@@ -136,17 +136,24 @@ class ApprovedCreatorTemplateService {
     final activeDynamicTags = _activeDynamicTagsForDate(nowDate);
     final knownDynamicTags = _knownDynamicTags();
     final publishMap = <String, int>{};
+    final eventEndMap = <String, int>{};
     for (final doc in snapshot.docs) {
-      final raw = doc.data()['publishAt'];
+      final data = doc.data();
+      final raw = data['publishAt'];
       publishMap[doc.id] = _toMillis(raw) ?? 0;
+      eventEndMap[doc.id] = _toMillis(data['eventEndAt']) ?? 0;
     }
     final filtered = templates
         .where((template) {
           final publishAt = publishMap[template.id] ?? 0;
+          final eventEndAt = eventEndMap[template.id] ?? 0;
           final visibleFrom = publishAt > 0
               ? publishAt
               : template.createdAtMillis;
           if (visibleFrom > now) {
+            return false;
+          }
+          if (eventEndAt > 0 && now > eventEndAt) {
             return false;
           }
           final normalized = _normalizeTag(template.categoryId);
@@ -155,7 +162,7 @@ class ApprovedCreatorTemplateService {
           final retentionMs = usesRollingRetention
               ? _posterRetentionWindowMillis
               : 365 * 24 * 60 * 60 * 1000;
-          if (visibleFrom + retentionMs <= now) {
+          if (eventEndAt <= 0 && visibleFrom + retentionMs <= now) {
             return false;
           }
           return _isTemplateDynamicCategoryVisible(
