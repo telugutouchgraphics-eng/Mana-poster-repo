@@ -402,23 +402,44 @@ class _HomeScreenState extends State<HomeScreen>
     DateTime now,
     AppLanguage language,
   ) {
-    final generated = _dynamicCategoryService.categoriesForDate(
-      now,
-      language: language,
-    );
+    final templateCategorySlugs =
+        _remoteApprovedTemplates.expand((item) => item.categoryTags);
     final visibleTemplateDynamicCategories = _dynamicCategoryService
         .categoriesForSlugs(
-          _remoteApprovedTemplates.expand((item) => item.categoryTags),
+          templateCategorySlugs,
           language: language,
         );
     final merged = <String, _CategoryChipData>{};
-    for (final item in [...generated, ...visibleTemplateDynamicCategories]) {
-      merged[item.slug] = _CategoryChipData(
-        slug: item.slug,
-        label: item.label,
-        matchTags: item.tags,
-        isDynamic: true,
+    // When there are approved templates (admin app posters or creators), show
+    // only dynamic chips for categories those templates use — not the full
+    // calendar list (which made every dynamic event visible after one upload).
+    final restrictDynamicToTemplateCategories =
+        _remoteApprovedTemplates.isNotEmpty;
+    if (restrictDynamicToTemplateCategories) {
+      for (final item in visibleTemplateDynamicCategories) {
+        merged[item.slug] = _CategoryChipData(
+          slug: item.slug,
+          label: item.label,
+          matchTags: item.tags,
+          isDynamic: true,
+        );
+      }
+    } else {
+      final fromCalendar = _dynamicCategoryService.categoriesForDate(
+        now,
+        language: language,
       );
+      for (final item in [
+        ...fromCalendar,
+        ...visibleTemplateDynamicCategories,
+      ]) {
+        merged[item.slug] = _CategoryChipData(
+          slug: item.slug,
+          label: item.label,
+          matchTags: item.tags,
+          isDynamic: true,
+        );
+      }
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
