@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -36,6 +41,8 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
 
   late final AppLanguageController _languageController;
   FirebaseAnalyticsObserver? _analyticsObserver;
+  StreamSubscription<User?>? _authUidSubscription;
+  String? _lastSeenAuthUid;
 
   @override
   void initState() {
@@ -47,7 +54,37 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
       _analyticsObserver = FirebaseAnalyticsObserver(
         analytics: FirebaseAnalytics.instance,
       );
+      _attachSubscriptionEntitlementToAuth();
     }
+  }
+
+  void _attachSubscriptionEntitlementToAuth() {
+    final auth = FirebaseAuth.instance;
+    _lastSeenAuthUid = auth.currentUser?.uid;
+    _authUidSubscription = auth.authStateChanges().listen((User? user) async {
+      final nextUid = user?.uid;
+      if (nextUid == _lastSeenAuthUid) {
+        return;
+      }
+      _lastSeenAuthUid = nextUid;
+      try {
+        await SubscriptionBackendService.resetLocalClientStateForAuthChange();
+      } catch (_) {}
+      if (nextUid != null) {
+        unawaited(
+          SubscriptionBackendService().refreshEntitlementInBackground(
+            forceRefresh: true,
+            clearCacheFirst: false,
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authUidSubscription?.cancel();
+    super.dispose();
   }
 
   @override

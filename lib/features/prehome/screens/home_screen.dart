@@ -2565,9 +2565,8 @@ class _TemplateFeedItem extends StatelessWidget {
   static final ProPurchaseGateway _subscriptionRestoreGateway =
       InAppPurchaseGateway(
         productId: SubscriptionPlanConfig.primaryMonthlyProductId,
-        fallbackProductIds: <String>[
-          SubscriptionPlanConfig.primaryMonthlyProductId,
-        ],
+        fallbackProductIds:
+            SubscriptionPlanConfig.resolvedPremiumProductIds().toList(),
       );
 
   static SubscriptionBackendService get subscriptionBackendService =>

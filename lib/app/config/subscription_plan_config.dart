@@ -10,8 +10,23 @@ class SubscriptionPlanConfig {
   static const int trialDays = 3;
   static const String monthlyPriceDisplay = '₹149';
   static const Duration entitlementCacheTtl = Duration(minutes: 10);
-  static const Duration paywallTimeout = Duration(milliseconds: 2000);
+  /// Must cover cold billing + Firebase entitlement fetch on slower networks.
+  static const Duration paywallTimeout = Duration(seconds: 28);
   static const String playPackageName = 'com.manaposter.app';
+
+  /// Every SKU we query Billling / restore / verify against (compile-time IDs).
+  static Set<String> resolvedPremiumProductIds() {
+    const legacyAlias = String.fromEnvironment(
+      'MANA_POSTER_PRO_PRODUCT_ID',
+      defaultValue: '',
+    );
+    final ids = <String>{
+      primaryMonthlyProductId,
+      if (legacyAlias.isNotEmpty) legacyAlias,
+    };
+    ids.removeWhere((id) => id.trim().isEmpty);
+    return ids;
+  }
 
   static String get trialValueDisplay => '$trialPriceDisplay / $trialDays days';
 

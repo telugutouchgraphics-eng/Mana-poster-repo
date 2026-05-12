@@ -30,18 +30,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     with AppLanguageStateMixin {
   final SubscriptionBackendService _backendService =
       SubscriptionBackendService();
-  final ProPurchaseGateway _freePlanGateway = InAppPurchaseGateway(
-    productId: SubscriptionPlanConfig.primaryMonthlyProductId,
-    fallbackProductIds: const <String>[
-      SubscriptionPlanConfig.primaryMonthlyProductId,
-    ],
-  );
-  final ProPurchaseGateway _restoreGateway = InAppPurchaseGateway(
-    productId: SubscriptionPlanConfig.primaryMonthlyProductId,
-    fallbackProductIds: <String>[
-      SubscriptionPlanConfig.primaryMonthlyProductId,
-    ],
-  );
+  final ProPurchaseGateway _purchaseGateway = InAppPurchaseGateway();
 
   SubscriptionBackendResult? _backendResult;
   ProductDetails? _selectedProduct;
@@ -59,15 +48,14 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   }
 
   bool get _isBusy => _loading || _busyFree || _busyRestore;
-  bool get _isSubscriptionActive => _backendResult?.isActive == true;
+  bool get _isSubscriptionActive => _backendResult?.hasAccess == true;
   bool get _isSubscriptionExpired => _backendResult?.isExpired == true;
   bool get _canSubscribe => !_isSubscriptionActive;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_freePlanGateway.initialize());
-    unawaited(_restoreGateway.initialize());
+    unawaited(_purchaseGateway.initialize());
     SubscriptionBackendService.entitlementNotifier.addListener(
       _handleEntitlementChanged,
     );
@@ -123,7 +111,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   }
 
   Future<void> _syncExistingSubscriptionSilently() async {
-    final outcome = await _restoreGateway.restorePurchases();
+    final outcome = await _purchaseGateway.restorePurchases();
     if (!mounted) {
       return;
     }
@@ -157,15 +145,17 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!available) {
         return null;
       }
-      const envProductId = String.fromEnvironment(
-        'MANA_POSTER_PRO_PRODUCT_ID',
-        defaultValue: '',
-      );
-      final ids = <String>{
-        SubscriptionPlanConfig.primaryMonthlyProductId,
-        if (envProductId.isNotEmpty) envProductId,
-      };
-      final response = await store.queryProductDetails(ids);
+      final ids = SubscriptionPlanConfig.resolvedPremiumProductIds();
+      var response = await store.queryProductDetails(ids);
+      if (response.productDetails.isEmpty) {
+        for (final id in ids) {
+          final retry = await store.queryProductDetails(<String>{id});
+          if (retry.productDetails.isNotEmpty) {
+            response = retry;
+            break;
+          }
+        }
+      }
       if (response.productDetails.isEmpty) {
         return null;
       }
@@ -202,7 +192,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
     setState(() => _busyFree = true);
     try {
-      final outcome = await _freePlanGateway.purchaseMonthlyPro();
+      final outcome = await _purchaseGateway.purchaseMonthlyPro();
       if (outcome.result != PurchaseFlowResult.success) {
         await _syncExistingSubscriptionSilently();
       }
@@ -235,13 +225,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
     setState(() => _busyRestore = true);
     try {
-      final outcome = await _restoreGateway.restorePurchases();
+      final outcome = await _purchaseGateway.restorePurchases();
       if (outcome.result == PurchaseFlowResult.nothingToRestore) {
         final fallback = await _backendService.fetchFreshEntitlementWithRetry();
         if (!mounted) {
           return;
         }
-        if (fallback.isActive) {
+        if (fallback.hasAccess) {
           await _refreshEntitlementAfterRestore();
           if (!mounted) {
             return;

@@ -88,6 +88,15 @@ class SubscriptionBackendService {
     entitlementNotifier.value = null;
   }
 
+  /// Call when auth uid changes or user signs out so another account never
+  /// inherits entitlement UI / cached Pro flags.
+  static Future<void> resetLocalClientStateForAuthChange() async {
+    _cachedEntitlement = null;
+    _cachedEntitlementAt = null;
+    entitlementNotifier.value = null;
+    await InAppPurchaseGateway.syncBackendEntitlement(false);
+  }
+
   Future<SubscriptionBackendResult> fetchEntitlementWithCache({
     bool forceRefresh = false,
   }) async {

@@ -100,7 +100,7 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     InAppPurchase? inAppPurchase,
   }) : _fallbackProductIds =
            fallbackProductIds ??
-           const <String>[SubscriptionPlanConfig.primaryMonthlyProductId],
+           SubscriptionPlanConfig.resolvedPremiumProductIds().toList(),
        _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
 
   static StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -110,9 +110,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   static const String _playStoreProActiveKey =
       'mana_poster_play_store_pro_active_v1';
   static PurchaseVerificationEvidence? _lastObservedEvidence;
-  static final Set<String> _trackedSubscriptionProductIds = <String>{
-    SubscriptionPlanConfig.primaryMonthlyProductId,
-  };
+  static Set<String> get _trackedSubscriptionProductIds =>
+      SubscriptionPlanConfig.resolvedPremiumProductIds();
   static bool _playStoreProActive = false;
 
   final String productId;
@@ -132,15 +131,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   Set<String> get _allProductIds {
-    const envProductId = String.fromEnvironment(
-      'MANA_POSTER_PRO_PRODUCT_ID',
-      defaultValue: '',
-    );
     final ids = <String>{
+      ...SubscriptionPlanConfig.resolvedPremiumProductIds(),
       productId,
       ..._fallbackProductIds,
-      if (envProductId.isNotEmpty) envProductId,
     };
+    ids.removeWhere((id) => id.trim().isEmpty);
     return ids;
   }
 
@@ -184,9 +180,18 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     }
 
     final targetProductIds = _allProductIds;
-    final query = await _inAppPurchase.queryProductDetails(targetProductIds);
+    var query = await _inAppPurchase.queryProductDetails(targetProductIds);
     if (query.error != null) {
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    }
+    if (query.productDetails.isEmpty) {
+      for (final id in targetProductIds) {
+        final retry = await _inAppPurchase.queryProductDetails(<String>{id});
+        if (retry.error == null && retry.productDetails.isNotEmpty) {
+          query = retry;
+          break;
+        }
+      }
     }
     if (query.productDetails.isEmpty) {
       return const PurchaseFlowOutcome(
@@ -209,7 +214,7 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
 
     return _waitForPurchaseResult(
       acceptedProductIds: targetProductIds,
-      timeout: const Duration(minutes: 2),
+      timeout: const Duration(minutes: 5),
       timeoutResult: const PurchaseFlowOutcome(
         result: PurchaseFlowResult.timedOut,
       ),
@@ -242,7 +247,7 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     await _inAppPurchase.restorePurchases();
     try {
       final matchedEvidence = await matchingEvidenceFuture.timeout(
-        const Duration(seconds: 45),
+        const Duration(seconds: 90),
       );
       return PurchaseFlowOutcome(
         result: PurchaseFlowResult.success,

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:mana_poster/firebase_options.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 
 class FirebaseAuthService {
@@ -106,6 +107,9 @@ class FirebaseAuthService {
   }
 
   Future<void> signOut() async {
+    try {
+      await SubscriptionBackendService.resetLocalClientStateForAuthChange();
+    } catch (_) {}
     if (Firebase.apps.isEmpty) {
       try {
         await _googleSignIn.signOut();
