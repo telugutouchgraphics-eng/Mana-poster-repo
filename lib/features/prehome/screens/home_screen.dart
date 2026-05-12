@@ -92,6 +92,7 @@ class _TemplateItem {
     this.fallbackProductIds = const <String>[],
     this.pageConfig,
     this.categoryTags = const <String>[],
+    this.primaryFirestoreCategoryId,
     this.categoryDisplayLabel,
     this.personalizationConfig,
   });
@@ -111,6 +112,8 @@ class _TemplateItem {
   final List<String> fallbackProductIds;
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
+  /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
+  final String? primaryFirestoreCategoryId;
   /// Firestore manual / admin category label for home chip + matching.
   final String? categoryDisplayLabel;
   final CreatorPosterPersonalization? personalizationConfig;
@@ -398,15 +401,39 @@ class _HomeScreenState extends State<HomeScreen>
     return fallbackNeedle.isNotEmpty && searchable.contains(fallbackNeedle);
   }
 
+  /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
+  String _primaryCategoryIdForHomeChip(_TemplateItem template) {
+    final primary = (template.primaryFirestoreCategoryId ?? '').trim();
+    if (primary.isNotEmpty) {
+      return primary;
+    }
+    if (template.categoryTags.isEmpty) {
+      return '';
+    }
+    return template.categoryTags.first.trim();
+  }
+
   List<_CategoryChipData> _buildDynamicCategories(
     DateTime now,
     AppLanguage language,
   ) {
-    final templateCategorySlugs =
-        _remoteApprovedTemplates.expand((item) => item.categoryTags);
+    final slugsFromPrimaryIds = <String>{};
+    for (final item in _remoteApprovedTemplates) {
+      final id = (item.primaryFirestoreCategoryId ?? '').trim();
+      if (id.isNotEmpty) {
+        slugsFromPrimaryIds.add(id);
+        final n = _normalizeTag(id);
+        if (n.isNotEmpty) {
+          slugsFromPrimaryIds.add(n);
+        }
+      }
+    }
+    final templateCategorySlugsForCalendar = slugsFromPrimaryIds.isNotEmpty
+        ? slugsFromPrimaryIds
+        : _remoteApprovedTemplates.expand((item) => item.categoryTags);
     final visibleTemplateDynamicCategories = _dynamicCategoryService
         .categoriesForSlugs(
-          templateCategorySlugs,
+          templateCategorySlugsForCalendar,
           language: language,
         );
     final merged = <String, _CategoryChipData>{};
@@ -450,10 +477,7 @@ class _HomeScreenState extends State<HomeScreen>
     };
     final labelByCategoryId = <String, String>{};
     for (final template in _remoteApprovedTemplates) {
-      if (template.categoryTags.isEmpty) {
-        continue;
-      }
-      final rawId = template.categoryTags.first.trim();
+      final rawId = _primaryCategoryIdForHomeChip(template);
       if (rawId.isEmpty) {
         continue;
       }
@@ -463,10 +487,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     for (final template in _remoteApprovedTemplates) {
-      if (template.categoryTags.isEmpty) {
-        continue;
-      }
-      final rawId = template.categoryTags.first.trim();
+      final rawId = _primaryCategoryIdForHomeChip(template);
       if (rawId.isEmpty) {
         continue;
       }
@@ -943,6 +964,8 @@ class _HomeScreenState extends State<HomeScreen>
       mediaType: template.mediaType,
       videoUrl: template.videoUrl,
       categoryTags: categoryTags,
+      primaryFirestoreCategoryId:
+          rawCategoryId.isNotEmpty ? rawCategoryId : null,
       categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
       personalizationConfig: template.personalizationConfig,
     );
