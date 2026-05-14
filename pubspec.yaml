@@ -90,9 +90,6 @@ flutter:
     - assets/branding/google_logo.png
     - assets/branding/whatsapp_icon.png
     - assets/elements/political/logos/
-    - assets/templates/premium/political/previews/
-    - assets/templates/premium/political/documents/
-    - assets/templates/premium/political/layers/
 
   fonts:
     - family: Anek Telugu Condensed Bold
