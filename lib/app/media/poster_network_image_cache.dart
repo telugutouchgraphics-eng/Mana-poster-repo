@@ -22,7 +22,7 @@ class _PosterImageCacheManager extends CacheManager with ImageCacheManager {
         Config(
           'mana_poster_network_images',
           stalePeriod: const Duration(days: 2),
-          maxNrOfCacheObjects: 10,
+          maxNrOfCacheObjects: 80,
         ),
       );
 }

@@ -32,11 +32,18 @@ class AppLanguageScope extends InheritedWidget {
   final AppLanguage language;
   final AppLanguageController _controller;
 
+  static final AppLanguageController _fallbackController =
+      AppLanguageController();
+
   static AppLanguageScope of(BuildContext context) {
     final scope = context
         .dependOnInheritedWidgetOfExactType<AppLanguageScope>();
     assert(scope != null, 'AppLanguageScope not found in widget tree.');
     return scope!;
+  }
+
+  static AppLanguageScope? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AppLanguageScope>();
   }
 
   AppLanguageController get controller => _controller;
@@ -50,8 +57,10 @@ class AppLanguageScope extends InheritedWidget {
 
 extension AppLanguageContextX on BuildContext {
   AppLanguageController get languageController =>
-      AppLanguageScope.of(this).controller;
-  AppLanguage get currentLanguage => AppLanguageScope.of(this).language;
+      AppLanguageScope.maybeOf(this)?.controller ??
+      AppLanguageScope._fallbackController;
+  AppLanguage get currentLanguage =>
+      AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.telugu;
   AppStrings get strings => AppStrings(currentLanguage);
 }
 

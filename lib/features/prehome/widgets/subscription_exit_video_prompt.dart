@@ -12,7 +12,7 @@ Future<void> showSubscriptionExitVideoPromptIfAvailable(
   required Future<void> Function(BuildContext context) onSubscribe,
 }) async {
   final config = await service.fetchConfig();
-  if (!context.mounted || config?.canPlay != true) {
+  if (!context.mounted) {
     return;
   }
   await showDialog<void>(
@@ -20,12 +20,25 @@ Future<void> showSubscriptionExitVideoPromptIfAvailable(
     barrierDismissible: false,
     builder: (_) => _SubscriptionExitVideoDialog(
       parentContext: context,
-      videoUrl: config!.url,
+      videoUrl: config?.canPlay == true ? config!.url : null,
       primaryLabel: context.strings.localized(
         telugu: 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
         english: 'Subscribe Now',
       ),
-      secondaryLabel: context.strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+      secondaryLabel: context.strings.localized(
+        telugu: 'స్కిప్',
+        english: 'Skip',
+      ),
+      fallbackTitle: context.strings.localized(
+        telugu: 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
+        english: 'Subscribe Now',
+      ),
+      fallbackMessage: context.strings.localized(
+        telugu:
+            'అన్‌లిమిటెడ్ పోస్టర్లు క్రియేట్ చేసి షేర్ చేయడానికి సబ్‌స్క్రిప్షన్ తీసుకోండి.',
+        english:
+            'Subscribe now to create and share unlimited posters in the app.',
+      ),
       onPrimaryTap: onSubscribe,
     ),
   );
@@ -36,7 +49,7 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
   SubscriptionExitVideoService service = const SubscriptionExitVideoService(),
 }) async {
   final config = await service.fetchThanksConfig();
-  if (!context.mounted || config?.canPlay != true) {
+  if (!context.mounted) {
     return;
   }
   await showDialog<void>(
@@ -44,9 +57,25 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
     barrierDismissible: true,
     builder: (_) => _SubscriptionExitVideoDialog(
       parentContext: context,
-      videoUrl: config!.url,
-      primaryLabel: context.strings.localized(telugu: 'ధన్యవాదాలు', english: 'Thanks'),
-      secondaryLabel: context.strings.localized(telugu: 'మూసివేయి', english: 'Close'),
+      videoUrl: config?.canPlay == true ? config!.url : null,
+      primaryLabel: context.strings.localized(
+        telugu: 'ధన్యవాదాలు',
+        english: 'Thanks',
+      ),
+      secondaryLabel: context.strings.localized(
+        telugu: 'మూసివేయి',
+        english: 'Close',
+      ),
+      fallbackTitle: context.strings.localized(
+        telugu: 'ధన్యవాదాలు',
+        english: 'Thank You',
+      ),
+      fallbackMessage: context.strings.localized(
+        telugu:
+            'మీ సబ్‌స్క్రిప్షన్ కన్ఫర్మ్ అయింది. ఇప్పుడు మీ పోస్టర్లను నమ్మకంగా క్రియేట్ చేయండి.',
+        english:
+            'Your subscription is confirmed. You can now create your posters with confidence.',
+      ),
     ),
   );
 }
@@ -54,16 +83,20 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
 class _SubscriptionExitVideoDialog extends StatefulWidget {
   const _SubscriptionExitVideoDialog({
     required this.parentContext,
-    required this.videoUrl,
     required this.primaryLabel,
     required this.secondaryLabel,
+    required this.fallbackTitle,
+    required this.fallbackMessage,
+    this.videoUrl,
     this.onPrimaryTap,
   });
 
   final BuildContext parentContext;
-  final String videoUrl;
+  final String? videoUrl;
   final String primaryLabel;
   final String secondaryLabel;
+  final String fallbackTitle;
+  final String fallbackMessage;
   final Future<void> Function(BuildContext context)? onPrimaryTap;
 
   @override
@@ -89,7 +122,11 @@ class _SubscriptionExitVideoDialogState
   }
 
   Future<void> _initialize() async {
-    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    final rawUrl = widget.videoUrl?.trim() ?? '';
+    if (rawUrl.isEmpty) {
+      return;
+    }
+    final controller = VideoPlayerController.networkUrl(Uri.parse(rawUrl));
     _controller = controller;
     try {
       await controller.initialize();
@@ -121,9 +158,11 @@ class _SubscriptionExitVideoDialogState
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.strings;
     final controller = _controller;
+    final hasVideo = (widget.videoUrl?.trim().isNotEmpty ?? false);
     final ready = controller != null && controller.value.isInitialized;
+    final showFallbackNote = !hasVideo || _hasError;
+
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -134,27 +173,55 @@ class _SubscriptionExitVideoDialogState
           children: <Widget>[
             ClipRRect(
               borderRadius: BorderRadius.circular(22),
-              child: AspectRatio(
-                aspectRatio: ready ? controller.value.aspectRatio : 9 / 16,
-                child: ColoredBox(
-                  color: const Color(0xFF0F172A),
-                  child: _hasError
-                      ? Center(
-                          child: Text(
-                            strings.localized(
-                              telugu: 'వీడియో లోడ్ కాలేదు',
-                              english: 'Video could not load',
+              child: SizedBox(
+                width: double.infinity,
+                child: AspectRatio(
+                  aspectRatio: showFallbackNote
+                      ? 9 / 12
+                      : (ready ? controller.value.aspectRatio : 9 / 16),
+                  child: ColoredBox(
+                    color: const Color(0xFF0F172A),
+                    child: showFallbackNote
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 22,
+                              vertical: 26,
                             ),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        )
-                      : ready
-                          ? VideoPlayer(controller)
-                          : const Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Text(
+                                  widget.fallbackTitle,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                Text(
+                                  widget.fallbackMessage,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFE2E8F0),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ready
+                            ? VideoPlayer(controller)
+                            : const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
+                  ),
                 ),
               ),
             ),
@@ -171,9 +238,7 @@ class _SubscriptionExitVideoDialogState
                     borderRadius: BorderRadius.circular(18),
                   ),
                 ),
-                child: Text(
-                  widget.primaryLabel,
-                ),
+                child: Text(widget.primaryLabel),
               ),
             ),
             TextButton(

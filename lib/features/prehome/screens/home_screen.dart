@@ -1414,11 +1414,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openSubscriptionPlan({bool startPurchaseOnOpen = false}) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            SubscriptionPlanScreen(startPurchaseOnOpen: startPurchaseOnOpen),
-      ),
+    await _pushSubscriptionPlanRoute(
+      startPurchaseOnOpen: startPurchaseOnOpen,
     );
     if (!mounted) {
       return;
@@ -1431,17 +1428,21 @@ class _HomeScreenState extends State<HomeScreen>
     }
     await showSubscriptionExitVideoPromptIfAvailable(
       context,
-      onSubscribe: (dialogParentContext) async {
-        if (!dialogParentContext.mounted) {
-          return;
-        }
-        await Navigator.of(dialogParentContext).push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                const SubscriptionPlanScreen(startPurchaseOnOpen: true),
-          ),
-        );
-      },
+      onSubscribe: (_) => _pushSubscriptionPlanRoute(startPurchaseOnOpen: true),
+    );
+  }
+
+  Future<void> _pushSubscriptionPlanRoute({
+    bool startPurchaseOnOpen = false,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            SubscriptionPlanScreen(startPurchaseOnOpen: startPurchaseOnOpen),
+      ),
     );
   }
 
@@ -1688,10 +1689,14 @@ class _HomeScreenState extends State<HomeScreen>
                             final item = entry.template!;
                             return _TemplateFeedItem(
                               key: ValueKey<String>(
-                                '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${language.name}-${_viewerPosterProfile.identityMode.name}-${_viewerPosterProfile.activeName}-${_viewerPosterProfile.activeWhatsappNumber}-${_viewerPosterProfile.photoPath}-${_viewerPosterProfile.photoUrl}-${_viewerPosterProfile.businessLogoPath}-${_viewerPosterProfile.businessLogoUrl}-$_posterRenderCycle',
+                                item.templateId?.trim().isNotEmpty == true
+                                    ? item.templateId!.trim()
+                                    : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
                               ),
                               item: item,
+                              hostContext: context,
                               language: language,
+                              onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
                               viewerPosterProfile: _viewerPosterProfile,
                               posterRenderCycle: _posterRenderCycle,
                             );
@@ -2649,13 +2654,17 @@ class _TemplateFeedItem extends StatelessWidget {
   _TemplateFeedItem({
     super.key,
     required this.item,
+    required this.hostContext,
     required this.language,
+    required this.onOpenSubscriptionPlan,
     required this.viewerPosterProfile,
     required this.posterRenderCycle,
   });
 
   final _TemplateItem item;
+  final BuildContext hostContext;
   final AppLanguage language;
+  final Future<void> Function({bool startPurchaseOnOpen}) onOpenSubscriptionPlan;
   final PosterProfileData viewerPosterProfile;
   final int posterRenderCycle;
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
@@ -3171,46 +3180,38 @@ class _TemplateFeedItem extends StatelessWidget {
     ValueChanged<bool>? onPosterReadyChanged,
   }) {
     final personalizationConfig = item.personalizationConfig;
-    return KeyedSubtree(
-      key: ValueKey<String>(
-        '${item.titleEn}-${item.imageUrl ?? item.thumbnailUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
-      ),
-      child: item.isVideo
-          ? _FeedTapToPlayVideoPoster(
-              videoUrl: item.videoUrl!,
-              imageAssetPath: item.imageAssetPath,
-              imageUrl: item.imageUrl,
-              imageStoragePath: item.imageStoragePath,
-              thumbnailStoragePath: item.thumbnailStoragePath,
-              thumbnailUrl: item.thumbnailUrl,
-              onReady: () => onPosterReadyChanged?.call(true),
-            )
-          : personalizationConfig != null
-          ? _CreatorPosterPreview(
-              key: ValueKey<String>(
-                '${item.titleEn}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
-              ),
-              imageAssetPath: item.imageAssetPath,
-              imageUrl: item.imageUrl,
-              imageStoragePath: item.imageStoragePath,
-              thumbnailStoragePath: item.thumbnailStoragePath,
-              thumbnailUrl: item.thumbnailUrl,
-              personalizationConfig: personalizationConfig,
-              viewerPosterProfile: viewerPosterProfile,
-              language: language,
-              showProfilePhoto: isPhotoVisible,
-              posterRenderCycle: posterRenderCycle,
-              onPosterReadyChanged: onPosterReadyChanged,
-            )
-          : _ResolvedTemplatePosterImage(
-              imageAssetPath: item.imageAssetPath,
-              imageUrl: item.imageUrl ?? '',
-              imageStoragePath: item.imageStoragePath,
-              thumbnailStoragePath: item.thumbnailStoragePath,
-              thumbnailUrl: item.thumbnailUrl,
-              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
-            ),
-    );
+    return item.isVideo
+        ? _FeedTapToPlayVideoPoster(
+            videoUrl: item.videoUrl!,
+            imageAssetPath: item.imageAssetPath,
+            imageUrl: item.imageUrl,
+            imageStoragePath: item.imageStoragePath,
+            thumbnailStoragePath: item.thumbnailStoragePath,
+            thumbnailUrl: item.thumbnailUrl,
+            onReady: () => onPosterReadyChanged?.call(true),
+          )
+        : personalizationConfig != null
+        ? _CreatorPosterPreview(
+            imageAssetPath: item.imageAssetPath,
+            imageUrl: item.imageUrl,
+            imageStoragePath: item.imageStoragePath,
+            thumbnailStoragePath: item.thumbnailStoragePath,
+            thumbnailUrl: item.thumbnailUrl,
+            personalizationConfig: personalizationConfig,
+            viewerPosterProfile: viewerPosterProfile,
+            language: language,
+            showProfilePhoto: isPhotoVisible,
+            posterRenderCycle: posterRenderCycle,
+            onPosterReadyChanged: onPosterReadyChanged,
+          )
+        : _ResolvedTemplatePosterImage(
+            imageAssetPath: item.imageAssetPath,
+            imageUrl: item.imageUrl ?? '',
+            imageStoragePath: item.imageStoragePath,
+            thumbnailStoragePath: item.thumbnailStoragePath,
+            thumbnailUrl: item.thumbnailUrl,
+            onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+          );
   }
 
   Future<bool> _ensureGallerySavePermission() async {
@@ -3304,6 +3305,7 @@ class _TemplateFeedItem extends StatelessWidget {
   }
 
   Future<bool> _ensureSubscriptionAccess(BuildContext context) async {
+    final BuildContext screenContext = hostContext;
     if (_hasImmediateSubscriptionAccess()) {
       unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
       return true;
@@ -3313,7 +3315,7 @@ class _TemplateFeedItem extends StatelessWidget {
         SubscriptionPlanConfig.paywallTimeout,
         onTimeout: () async => false,
       );
-      if (!context.mounted) {
+      if (!screenContext.mounted) {
         return false;
       }
       if (hasLatestAccess) {
@@ -3326,7 +3328,7 @@ class _TemplateFeedItem extends StatelessWidget {
       var loadingDialogDismissed = false;
       unawaited(
         showDialog<void>(
-          context: context,
+          context: screenContext,
           barrierDismissible: false,
           useRootNavigator: true,
           barrierColor: Colors.black54,
@@ -3349,7 +3351,7 @@ class _TemplateFeedItem extends StatelessWidget {
                     const SizedBox(width: 18),
                     Expanded(
                       child: Text(
-                        context.strings.localized(
+                        screenContext.strings.localized(
                           telugu:
                               'సబ్‌స్క్రిప్షన్ స్టేటస్ తనిఖీ చేస్తున్నాం...',
                           english: 'Checking subscription status...',
@@ -3374,7 +3376,7 @@ class _TemplateFeedItem extends StatelessWidget {
                       Navigator.of(dialogContext).pop();
                     },
                     child: Text(
-                      context.strings.localized(
+                      screenContext.strings.localized(
                         telugu: 'రద్దు',
                         english: 'Cancel',
                         hindi: 'रद्द करें',
@@ -3400,24 +3402,26 @@ class _TemplateFeedItem extends StatelessWidget {
               SubscriptionPlanConfig.paywallTimeout,
               onTimeout: () async => false,
             );
-        if (!context.mounted || loadingDialogDismissed) {
+        if (!screenContext.mounted || loadingDialogDismissed) {
           return false;
         }
         if (hasLatestAccess) {
           return true;
         }
       } finally {
-        if (!loadingDialogDismissed && context.mounted && navigator.canPop()) {
+        if (!loadingDialogDismissed &&
+            screenContext.mounted &&
+            navigator.canPop()) {
           navigator.pop();
         }
       }
     }
     _homeDebugLog('subscription access check: backendResponse.isPro=false');
-    if (!context.mounted) {
+    if (!screenContext.mounted) {
       return false;
     }
     final openPlan = await showModalBottomSheet<bool>(
-      context: context,
+      context: screenContext,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -3431,16 +3435,16 @@ class _TemplateFeedItem extends StatelessWidget {
             vertical: 24,
           ),
           child: _SubscriptionAccessDialog(
-            title: _subscriptionDialogTitleLocalized(context),
-            message: _subscriptionPromptCopyLocalized(context),
-            trialTitle: _subscriptionTrialTitleLocalized(context),
-            trialValue: _subscriptionTrialValueLocalized(context),
-            monthlyTitle: _subscriptionMonthlyTitleLocalized(context),
-            monthlyValue: _subscriptionMonthlyValueLocalized(context),
-            renewalCopy: _subscriptionRenewalCopyLocalized(context),
-            termsLabel: _subscriptionTermsLabelLocalized(context),
-            skipLabel: _subscriptionSkipLabelLocalized(context),
-            actionLabel: _subscriptionButtonLabelLocalized(context),
+            title: _subscriptionDialogTitleLocalized(screenContext),
+            message: _subscriptionPromptCopyLocalized(screenContext),
+            trialTitle: _subscriptionTrialTitleLocalized(screenContext),
+            trialValue: _subscriptionTrialValueLocalized(screenContext),
+            monthlyTitle: _subscriptionMonthlyTitleLocalized(screenContext),
+            monthlyValue: _subscriptionMonthlyValueLocalized(screenContext),
+            renewalCopy: _subscriptionRenewalCopyLocalized(screenContext),
+            termsLabel: _subscriptionTermsLabelLocalized(screenContext),
+            skipLabel: _subscriptionSkipLabelLocalized(screenContext),
+            actionLabel: _subscriptionButtonLabelLocalized(screenContext),
             onTermsTap: () => Navigator.of(dialogContext).push(
               MaterialPageRoute<void>(
                 builder: (_) => const LegalDocumentScreen(
@@ -3455,34 +3459,20 @@ class _TemplateFeedItem extends StatelessWidget {
       },
     );
 
-    if (openPlan != true || !context.mounted) {
+    if (openPlan != true || !screenContext.mounted) {
       return false;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const SubscriptionPlanScreen(startPurchaseOnOpen: true),
-      ),
-    );
-    if (!context.mounted) {
+    await onOpenSubscriptionPlan(startPurchaseOnOpen: true);
+    if (!screenContext.mounted) {
       return false;
     }
     final hasAccess = await _resolveLatestSubscriptionAccess();
-    if (!context.mounted || hasAccess) {
+    if (!screenContext.mounted || hasAccess) {
       return hasAccess;
     }
     await showSubscriptionExitVideoPromptIfAvailable(
-      context,
-      onSubscribe: (dialogParentContext) async {
-        if (!dialogParentContext.mounted) {
-          return;
-        }
-        await Navigator.of(dialogParentContext).push(
-          MaterialPageRoute<void>(
-            builder: (_) =>
-                const SubscriptionPlanScreen(startPurchaseOnOpen: true),
-          ),
-        );
-      },
+      screenContext,
+      onSubscribe: (_) => onOpenSubscriptionPlan(startPurchaseOnOpen: true),
     );
     return false;
   }

@@ -91,6 +91,10 @@ class BillingPurchaseCoordinator {
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   Future<void>? _initializeFuture;
   bool _purchaseFlowActive = false;
+  Completer<PurchaseFlowOutcome>? _activeFlowCompleter;
+  StreamSubscription<BillingPurchaseEvent>? _activeFlowSubscription;
+
+  bool get isPurchaseFlowActive => _purchaseFlowActive;
 
   Future<void> initialize() async {
     final existing = _initializeFuture;
@@ -146,6 +150,7 @@ class BillingPurchaseCoordinator {
     _purchaseFlowActive = true;
     final completer = Completer<PurchaseFlowOutcome>();
     late final StreamSubscription<BillingPurchaseEvent> subscription;
+    _activeFlowCompleter = completer;
 
     void completeIfPending(PurchaseFlowOutcome result) {
       if (!completer.isCompleted) {
@@ -197,6 +202,7 @@ class BillingPurchaseCoordinator {
             const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
           ),
         );
+    _activeFlowSubscription = subscription;
 
     try {
       await trigger();
@@ -208,7 +214,31 @@ class BillingPurchaseCoordinator {
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     } finally {
       await subscription.cancel();
+      if (identical(_activeFlowSubscription, subscription)) {
+        _activeFlowSubscription = null;
+      }
+      if (identical(_activeFlowCompleter, completer)) {
+        _activeFlowCompleter = null;
+      }
       _purchaseFlowActive = false;
+    }
+  }
+
+  Future<void> abandonActivePurchaseFlow({
+    PurchaseFlowResult result = PurchaseFlowResult.cancelled,
+  }) async {
+    final completer = _activeFlowCompleter;
+    final subscription = _activeFlowSubscription;
+
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(PurchaseFlowOutcome(result: result));
+    }
+    _activeFlowCompleter = null;
+    _activeFlowSubscription = null;
+    _purchaseFlowActive = false;
+
+    if (subscription != null) {
+      await subscription.cancel();
     }
   }
 
@@ -271,6 +301,8 @@ abstract class ProPurchaseGateway {
   Future<void> initialize();
   Future<PurchaseFlowOutcome> purchaseMonthlyPro();
   Future<PurchaseFlowOutcome> restorePurchases();
+  Future<void> abandonPendingPurchaseFlow();
+  bool get isPurchaseFlowActive;
 }
 
 class MockProPurchaseGateway extends ProPurchaseGateway {
@@ -296,6 +328,12 @@ class MockProPurchaseGateway extends ProPurchaseGateway {
       result: PurchaseFlowResult.nothingToRestore,
     );
   }
+
+  @override
+  Future<void> abandonPendingPurchaseFlow() async {}
+
+  @override
+  bool get isPurchaseFlowActive => false;
 }
 
 class InAppPurchaseGateway extends ProPurchaseGateway {
@@ -343,6 +381,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     await _restoreCachedPlayStoreProState();
     await BillingPurchaseCoordinator.instance.initialize();
   }
+
+  @override
+  bool get isPurchaseFlowActive =>
+      BillingPurchaseCoordinator.instance.isPurchaseFlowActive;
 
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
@@ -721,5 +763,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       return DateTime.fromMillisecondsSinceEpoch(millis);
     }
     return DateTime.tryParse(raw);
+  }
+
+  @override
+  Future<void> abandonPendingPurchaseFlow() async {
+    await BillingPurchaseCoordinator.instance.abandonActivePurchaseFlow();
   }
 }

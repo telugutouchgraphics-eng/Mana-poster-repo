@@ -32,6 +32,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       SubscriptionBackendService();
   final ProPurchaseGateway _purchaseGateway = InAppPurchaseGateway();
 
+  AppLanguage _languageSnapshot = AppLanguage.telugu;
   SubscriptionBackendResult? _backendResult;
   ProductDetails? _selectedProduct;
   bool _loading = true;
@@ -50,6 +51,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool get _isSubscriptionActive => _backendResult?.hasAccess == true;
   bool get _isSubscriptionExpired => _backendResult?.isExpired == true;
   bool get _canSubscribe => !_isSubscriptionActive;
+  AppStrings get _strings => AppStrings(_languageSnapshot);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _languageSnapshot = context.currentLanguage;
+  }
 
   @override
   void initState() {
@@ -63,6 +71,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   @override
   void dispose() {
+    if (_purchaseGateway.isPurchaseFlowActive) {
+      unawaited(_purchaseGateway.abandonPendingPurchaseFlow());
+    }
     SubscriptionBackendService.entitlementNotifier.removeListener(
       _handleEntitlementChanged,
     );
@@ -161,9 +172,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (_isBusy || !_canSubscribe) {
       return;
     }
+    var shouldShowThanksPrompt = false;
     setState(() => _busyFree = true);
     try {
       final outcome = await _purchaseGateway.purchaseMonthlyPro();
+      if (!mounted) {
+        return;
+      }
       final activated = await _finalizeOutcome(
         outcome,
         successMessage: _t(
@@ -175,15 +190,26 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
           malayalam: 'സബ്സ്ക്രിപ്ഷൻ സജീവമായി',
         ),
       );
-      if (!mounted || !activated) {
+      if (!mounted) {
         return;
       }
-      await showSubscriptionThanksVideoPromptIfAvailable(context);
-      AppNavigator.openHome();
+      if (activated) {
+        shouldShowThanksPrompt = true;
+      }
     } finally {
       if (mounted) {
         setState(() => _busyFree = false);
       }
+    }
+    if (!mounted) {
+      return;
+    }
+    if (shouldShowThanksPrompt) {
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      if (!mounted) {
+        return;
+      }
+      AppNavigator.openHome();
     }
   }
 
@@ -194,6 +220,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     setState(() => _busyRestore = true);
     try {
       final outcome = await _purchaseGateway.restorePurchases();
+      if (!mounted) {
+        return;
+      }
       if (outcome.result == PurchaseFlowResult.nothingToRestore) {
         final fallback = await _backendService.fetchFreshEntitlementWithRetry();
         if (!mounted) {
@@ -655,7 +684,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     String? kannada,
     String? malayalam,
   }) {
-    return context.strings.localized(
+    return _strings.localized(
       telugu: telugu,
       english: english,
       hindi: hindi,
@@ -1013,10 +1042,10 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _t(
-                        telugu:
-                            '3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
-                        english:
+                        _t(
+                          telugu:
+                            '1st month trial plan రూ.4. అది ముగిసిన తర్వాత ప్లాన్ నెలకు రూ.149 తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
+                          english:
                             'After the 3-day trial, the plan auto-renews at $_monthlyPriceLabel per month unless you unsubscribe or cancel. If you cancel within 3 days, the monthly charge does not apply. Benefits continue until the current plan expires.',
                         hindi:
                             '3-दिन ट्रायल के बाद, यदि आप अनसब्सक्राइब या रद्द नहीं करते हैं तो प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा। 3 दिनों के भीतर रद्द करने पर मासिक शुल्क लागू नहीं होगा। वर्तमान प्लान समाप्त होने तक लाभ जारी रहेंगे।',
