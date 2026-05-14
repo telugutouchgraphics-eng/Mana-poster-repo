@@ -1469,6 +1469,44 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _selectCategory(String slug) {
+    if (slug == _selectedCategorySlug) {
+      return;
+    }
+    setState(() => _selectedCategorySlug = slug);
+    _schedulePosterFeedResetToTop();
+  }
+
+  void _schedulePosterFeedResetToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_posterScrollController.hasClients) {
+        return;
+      }
+      final position = _posterScrollController.position;
+      if (position.pixels <= 0) {
+        return;
+      }
+      final target = position.minScrollExtent;
+      if (!position.hasContentDimensions ||
+          !target.isFinite ||
+          !position.pixels.isFinite) {
+        _posterScrollController.jumpTo(0);
+        return;
+      }
+      unawaited(
+        _posterScrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        ).catchError((_) {
+          if (_posterScrollController.hasClients) {
+            _posterScrollController.jumpTo(0);
+          }
+        }),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final language = context.currentLanguage;
@@ -1565,12 +1603,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   categories[index].slug == activeCategorySlug,
                               onTap: () {
                                 final nextSlug = categories[index].slug;
-                                if (nextSlug == activeCategorySlug) {
-                                  return;
-                                }
-                                setState(
-                                  () => _selectedCategorySlug = nextSlug,
-                                );
+                                _selectCategory(nextSlug);
                               },
                             ),
                           ),
