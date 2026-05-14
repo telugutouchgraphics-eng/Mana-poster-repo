@@ -12,8 +12,9 @@ class GradientShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color bg = Theme.of(context).colorScheme.surface;
     return ColoredBox(
-      color: const Color(0xFFF4F7FC),
+      color: bg,
       child: SafeArea(
         child: Padding(padding: padding, child: child),
       ),

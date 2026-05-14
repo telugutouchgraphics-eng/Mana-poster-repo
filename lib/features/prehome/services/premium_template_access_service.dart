@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PremiumTemplateAccessService {
@@ -9,7 +10,7 @@ class PremiumTemplateAccessService {
 
   Future<Set<String>> loadUnlockedTemplateIds() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_storageKey)?.toSet() ?? <String>{};
+    return prefs.getStringList(_scopedKey(_storageKey))?.toSet() ?? <String>{};
   }
 
   Future<bool> isTemplateUnlocked(String templateId) async {
@@ -19,9 +20,13 @@ class PremiumTemplateAccessService {
 
   Future<Set<String>> unlockTemplate(String templateId) async {
     final prefs = await SharedPreferences.getInstance();
-    final unlocked = prefs.getStringList(_storageKey)?.toSet() ?? <String>{};
+    final unlocked =
+        prefs.getStringList(_scopedKey(_storageKey))?.toSet() ?? <String>{};
     unlocked.add(templateId);
-    await prefs.setStringList(_storageKey, unlocked.toList()..sort());
+    await prefs.setStringList(
+      _scopedKey(_storageKey),
+      unlocked.toList()..sort(),
+    );
     return unlocked;
   }
 
@@ -31,19 +36,21 @@ class PremiumTemplateAccessService {
   }) async {
     final unlocked = await unlockTemplate(templateId);
     final prefs = await SharedPreferences.getInstance();
-    final productMap = prefs.getStringList(_productMapStorageKey) ?? <String>[];
+    final productMap =
+        prefs.getStringList(_scopedKey(_productMapStorageKey)) ?? <String>[];
     final normalized = '$productId::$templateId';
     if (!productMap.contains(normalized)) {
       productMap.add(normalized);
       productMap.sort();
-      await prefs.setStringList(_productMapStorageKey, productMap);
+      await prefs.setStringList(_scopedKey(_productMapStorageKey), productMap);
     }
     return unlocked;
   }
 
   Future<Map<String, String>> loadProductToTemplateMap() async {
     final prefs = await SharedPreferences.getInstance();
-    final values = prefs.getStringList(_productMapStorageKey) ?? <String>[];
+    final values =
+        prefs.getStringList(_scopedKey(_productMapStorageKey)) ?? <String>[];
     final result = <String, String>{};
     for (final entry in values) {
       final parts = entry.split('::');
@@ -60,9 +67,27 @@ class PremiumTemplateAccessService {
       return loadUnlockedTemplateIds();
     }
     final prefs = await SharedPreferences.getInstance();
-    final unlocked = prefs.getStringList(_storageKey)?.toSet() ?? <String>{};
+    final unlocked =
+        prefs.getStringList(_scopedKey(_storageKey))?.toSet() ?? <String>{};
     unlocked.addAll(templateIds);
-    await prefs.setStringList(_storageKey, unlocked.toList()..sort());
+    await prefs.setStringList(
+      _scopedKey(_storageKey),
+      unlocked.toList()..sort(),
+    );
     return unlocked;
+  }
+
+  static Future<void> clearLegacyLocalPremiumState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+    await prefs.remove(_productMapStorageKey);
+    await prefs.remove('$_storageKey::signed_out');
+    await prefs.remove('$_productMapStorageKey::signed_out');
+  }
+
+  static String _scopedKey(String baseKey) {
+    final uid = FirebaseAuth.instance.currentUser?.uid.trim();
+    final scope = (uid != null && uid.isNotEmpty) ? uid : 'signed_out';
+    return '$baseKey::$scope';
   }
 }

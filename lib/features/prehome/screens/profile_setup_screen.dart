@@ -17,8 +17,9 @@ class ProfileSetupScreen extends StatelessWidget {
             completeToHomeOnSave: true,
           );
         }
-        return const Scaffold(
-          body: Center(
+        return Scaffold(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          body: const Center(
             child: CircularProgressIndicator(),
           ),
         );

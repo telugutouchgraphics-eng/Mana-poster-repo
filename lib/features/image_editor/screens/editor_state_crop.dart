@@ -35,19 +35,20 @@ extension _EditorCropState on _ImageEditorScreenState {
       return;
     }
 
+    File? cropSourceTempFile;
     try {
       setState(() {
         _isCropApplying = true;
       });
 
       final tempDir = await getTemporaryDirectory();
-      final sourceFile = File(
+      cropSourceTempFile = File(
         '${tempDir.path}${Platform.pathSeparator}editor_crop_${beforeLayer.id}.png',
       );
-      await sourceFile.writeAsBytes(sourceBytes, flush: true);
+      await cropSourceTempFile.writeAsBytes(sourceBytes, flush: true);
 
       final croppedFile = await ImageCropper().cropImage(
-        sourcePath: sourceFile.path,
+        sourcePath: cropSourceTempFile.path,
         compressFormat: ImageCompressFormat.png,
         compressQuality: 100,
         uiSettings: <PlatformUiSettings>[
@@ -119,6 +120,16 @@ extension _EditorCropState on _ImageEditorScreenState {
         });
       } else {
         _cropTransformationController.value = Matrix4.identity();
+      }
+      final File? toRemove = cropSourceTempFile;
+      if (toRemove != null) {
+        unawaited(() async {
+          try {
+            if (await toRemove.exists()) {
+              await toRemove.delete();
+            }
+          } catch (_) {}
+        }());
       }
     }
   }

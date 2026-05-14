@@ -50,6 +50,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: GradientShell(
@@ -72,7 +73,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                       icon: Icons.photo_library_outlined,
                       title: strings.photosGallery,
                     ),
-                    const Divider(height: 18, color: Color(0xFFE2E8F0)),
+                    Divider(height: 18, color: cs.outlineVariant),
                     _PermissionRow(
                       icon: Icons.photo_camera_outlined,
                       title: strings.localized(
@@ -80,7 +81,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                         english: 'Camera',
                       ),
                     ),
-                    const Divider(height: 18, color: Color(0xFFE2E8F0)),
+                    Divider(height: 18, color: cs.outlineVariant),
                     _PermissionRow(
                       icon: Icons.notifications_none_rounded,
                       title: strings.notifications,
@@ -92,9 +93,9 @@ class _PermissionsScreenState extends State<PermissionsScreen>
             const SizedBox(height: 12),
             Text(
               strings.enableLaterHint,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF64748B),
+                color: cs.onSurfaceVariant,
                 height: 1.45,
                 fontWeight: FontWeight.w500,
               ),
@@ -125,26 +126,27 @@ class _PermissionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Row(
       children: <Widget>[
         Container(
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
+            color: cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(14),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: const Color(0xFF1E3A8A)),
+          child: Icon(icon, color: cs.primary),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
+              color: cs.onSurface,
             ),
           ),
         ),

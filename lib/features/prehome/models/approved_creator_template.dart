@@ -79,6 +79,8 @@ class ApprovedCreatorTemplate {
     required this.id,
     required this.title,
     required this.imageUrl,
+    this.imageStoragePath = '',
+    this.thumbnailStoragePath = '',
     this.thumbnailUrl = '',
     this.mediaType = 'image',
     this.videoUrl = '',
@@ -92,6 +94,8 @@ class ApprovedCreatorTemplate {
   final String id;
   final String title;
   final String imageUrl;
+  final String imageStoragePath;
+  final String thumbnailStoragePath;
   final String thumbnailUrl;
   final String mediaType;
   final String videoUrl;

@@ -4,7 +4,6 @@ class AppTheme {
   static ThemeData light() {
     const primary = Color(0xFF0F766E);
     const accent = Color(0xFFF97316);
-    const scaffold = Color(0xFFFFFBF5);
     const surface = Colors.white;
     const text = Color(0xFF172033);
     const muted = Color(0xFF52607A);
@@ -17,7 +16,6 @@ class AppTheme {
         secondary: accent,
         brightness: Brightness.light,
       ),
-      scaffoldBackgroundColor: scaffold,
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontFamily: 'Montserrat',

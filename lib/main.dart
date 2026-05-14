@@ -13,6 +13,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:mana_poster/app/app.dart';
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/app_temporary_cleanup_service.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
@@ -80,6 +81,12 @@ Future<void> _runPostLaunchInitialization() async {
     );
     unawaited(
       _runStartupTask(
+        'temp_directory_cleanup',
+        AppTemporaryCleanup.runAfterColdStart,
+      ),
+    );
+    unawaited(
+      _runStartupTask(
         'background_removal_warmup',
         OfflineBackgroundRemovalService.warmUp,
       ),
@@ -104,13 +111,14 @@ Future<void> _runPostLaunchInitialization() async {
     DeviceSessionService.instance.start,
   );
   unawaited(
-    _runStartupTask(
-      'subscription_refresh_post_launch',
-      () => SubscriptionBackendService().refreshEntitlementInBackground(
+    _runStartupTask('subscription_refresh_post_launch', () async {
+      final service = SubscriptionBackendService();
+      await service.refreshEntitlementInBackground(
         forceRefresh: true,
         clearCacheFirst: true,
-      ),
-    ),
+      );
+      await service.recoverPendingPurchaseInBackground();
+    }),
   );
   unawaited(
     _runStartupTask(
@@ -122,18 +130,25 @@ Future<void> _runPostLaunchInitialization() async {
     onResume: () {
       unawaited(
         _runStartupTask(
+          'temp_directory_cleanup_resume',
+          AppTemporaryCleanup.sweepEligibleTemporaryFiles,
+        ),
+      );
+      unawaited(
+        _runStartupTask(
           'notification_preferences_resume_sync',
           NotificationService.instance.syncCurrentPreferences,
         ),
       );
       unawaited(
-        _runStartupTask(
-          'subscription_refresh_resume',
-          () => SubscriptionBackendService().refreshEntitlementInBackground(
+        _runStartupTask('subscription_refresh_resume', () async {
+          final service = SubscriptionBackendService();
+          await service.refreshEntitlementInBackground(
             forceRefresh: true,
             clearCacheFirst: true,
-          ),
-        ),
+          );
+          await service.recoverPendingPurchaseInBackground();
+        }),
       );
     },
   );
@@ -199,17 +214,15 @@ Future<void> _configureFirebaseMonitoring() async {
       FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     };
 
-    PlatformDispatcher.instance.onError = (
-      Object error,
-      StackTrace stackTrace,
-    ) {
-      FirebaseCrashlytics.instance.recordError(
-        error,
-        stackTrace,
-        fatal: !_isRecoverableError(error),
-      );
-      return true;
-    };
+    PlatformDispatcher.instance.onError =
+        (Object error, StackTrace stackTrace) {
+          FirebaseCrashlytics.instance.recordError(
+            error,
+            stackTrace,
+            fatal: !_isRecoverableError(error),
+          );
+          return true;
+        };
   } catch (error, stackTrace) {
     developer.log(
       'Crashlytics monitoring setup skipped: $error',

@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 class ScreenSecurityService {
   ScreenSecurityService._();
 
+  static const bool _screenProtectionEnabled = false;
+
   static const MethodChannel _channel = MethodChannel(
     'mana_poster/screen_security',
   );
 
   static Future<void> enableSecure() async {
-    if (kIsWeb) {
+    if (kIsWeb || !_screenProtectionEnabled) {
       return;
     }
     try {
@@ -18,7 +20,7 @@ class ScreenSecurityService {
   }
 
   static Future<void> disableSecure() async {
-    if (kIsWeb) {
+    if (kIsWeb || !_screenProtectionEnabled) {
       return;
     }
     try {

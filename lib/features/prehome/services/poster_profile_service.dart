@@ -10,6 +10,7 @@ import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 
 enum PosterDisplayNameMode { auto, telugu, english }
 
@@ -412,7 +413,12 @@ class PosterProfileService {
         }
         final remoteOriginalUrl = profile.originalPhotoUrl.trim();
         if (remoteOriginalUrl.isNotEmpty) {
-          return CachedNetworkImageProvider(remoteOriginalUrl);
+          return CachedNetworkImageProvider(
+            remoteOriginalUrl,
+            cacheManager: PosterNetworkImageCache.instance,
+            maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+            maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+          );
         }
       }
 
@@ -425,7 +431,12 @@ class PosterProfileService {
       }
       final remoteCutoutUrl = profile.photoUrl.trim();
       if (remoteCutoutUrl.isNotEmpty) {
-        return CachedNetworkImageProvider(remoteCutoutUrl);
+        return CachedNetworkImageProvider(
+          remoteCutoutUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+        );
       }
 
       if (!preferOriginalPersonalPhoto &&
@@ -439,7 +450,12 @@ class PosterProfileService {
         }
         final remoteOriginalUrl = profile.originalPhotoUrl.trim();
         if (remoteOriginalUrl.isNotEmpty) {
-          return CachedNetworkImageProvider(remoteOriginalUrl);
+          return CachedNetworkImageProvider(
+            remoteOriginalUrl,
+            cacheManager: PosterNetworkImageCache.instance,
+            maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+            maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+          );
         }
       }
     }
@@ -454,7 +470,12 @@ class PosterProfileService {
       }
       final remoteLogoUrl = profile.businessLogoUrl.trim();
       if (remoteLogoUrl.isNotEmpty) {
-        return CachedNetworkImageProvider(remoteLogoUrl);
+        return CachedNetworkImageProvider(
+          remoteLogoUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+        );
       }
       return null;
     }
@@ -469,7 +490,12 @@ class PosterProfileService {
       }
       final remoteOriginalUrl = profile.originalPhotoUrl.trim();
       if (remoteOriginalUrl.isNotEmpty) {
-        return CachedNetworkImageProvider(remoteOriginalUrl);
+        return CachedNetworkImageProvider(
+          remoteOriginalUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+        );
       }
     }
 
@@ -482,7 +508,12 @@ class PosterProfileService {
     }
     final remoteCutoutUrl = profile.photoUrl.trim();
     if (remoteCutoutUrl.isNotEmpty) {
-      return CachedNetworkImageProvider(remoteCutoutUrl);
+      return CachedNetworkImageProvider(
+        remoteCutoutUrl,
+        cacheManager: PosterNetworkImageCache.instance,
+        maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+        maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+      );
     }
 
     if (!preferOriginalPersonalPhoto &&
@@ -496,7 +527,12 @@ class PosterProfileService {
       }
       final remoteOriginalUrl = profile.originalPhotoUrl.trim();
       if (remoteOriginalUrl.isNotEmpty) {
-        return CachedNetworkImageProvider(remoteOriginalUrl);
+        return CachedNetworkImageProvider(
+          remoteOriginalUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+        );
       }
     }
 

@@ -146,7 +146,7 @@ extension _EditorExportState on _ImageEditorScreenState {
             bytes: byteData.buffer,
             order: img.ChannelOrder.rgba,
           );
-          return Uint8List.fromList(img.encodeJpg(encoded, quality: 95));
+          return Uint8List.fromList(img.encodeJpg(encoded, quality: 98));
       }
     } finally {
       image.dispose();
@@ -600,12 +600,23 @@ extension _EditorExportState on _ImageEditorScreenState {
   }
 
   double _exportPixelRatio(double devicePixelRatio) {
-    final shortestSide = MediaQuery.of(context).size.shortestSide;
-    // Keep quality high on regular devices, and only slightly cap on very large surfaces.
-    if (shortestSide >= 720) {
-      return devicePixelRatio.clamp(1.0, 2.7);
+    final Rect stageRect = _currentStageLogicalRect();
+    final double logicalW = stageRect.width;
+    final double logicalH = stageRect.height;
+    if (logicalW <= 0 || logicalH <= 0) {
+      return devicePixelRatio.clamp(1.0, 4.5);
     }
-    return devicePixelRatio.clamp(1.0, 3.0);
+
+    final EditorPageConfig? config = widget.pageConfig;
+    double ratio = devicePixelRatio;
+    if (config != null) {
+      final double neededW = config.widthPx / logicalW;
+      final double neededH = config.heightPx / logicalH;
+      ratio = math.max(ratio, math.max(neededW, neededH));
+    }
+
+    const double maxExportPixelRatio = 8.0;
+    return ratio.clamp(1.0, maxExportPixelRatio);
   }
 
   Future<void> _shareLatestPoster(

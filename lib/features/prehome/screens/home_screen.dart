@@ -8,8 +8,11 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+
+import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/services.dart';
@@ -40,7 +43,6 @@ import 'package:mana_poster/features/prehome/services/poster_profile_service.dar
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
-import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,6 +60,90 @@ void _homeDebugLogStack(String message, StackTrace stackTrace) {
   }
   debugPrint(message);
   debugPrintStack(stackTrace: stackTrace);
+}
+
+/// Firebase Storage URLs (https with token or gs://). Use [Reference.refFromURL]
+/// to mint a fresh download URL when tokens expire.
+bool _posterStringLooksFirebaseResolvable(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) {
+    return false;
+  }
+  final lower = s.toLowerCase();
+  return lower.startsWith('gs://') ||
+      lower.contains('firebasestorage.googleapis.com') ||
+      lower.contains('firebasestorage.app');
+}
+
+/// Looks like a Storage object path for [FirebaseStorage.ref], not http(s).
+bool _posterStringLooksFirebaseStorageRelativePath(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty || s.contains('://')) {
+    return false;
+  }
+  return true;
+}
+
+class _PosterFirebaseCandidate {
+  const _PosterFirebaseCandidate.path(this.value) : urlMode = false;
+  const _PosterFirebaseCandidate.url(this.value) : urlMode = true;
+
+  final String value;
+  final bool urlMode;
+}
+
+List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
+  required String imageStoragePath,
+  required String thumbnailStoragePath,
+  required String imageUrl,
+  required String thumbnailUrl,
+}) {
+  final seen = <String>{};
+  final List<_PosterFirebaseCandidate> out = <_PosterFirebaseCandidate>[];
+
+  void addPath(String p) {
+    final t = p.trim();
+    if (t.isEmpty) {
+      return;
+    }
+    final key = 'p:$t';
+    if (!seen.add(key)) {
+      return;
+    }
+    out.add(_PosterFirebaseCandidate.path(t));
+  }
+
+  void addUrl(String u) {
+    final t = u.trim();
+    if (t.isEmpty) {
+      return;
+    }
+    final key = 'u:$t';
+    if (!seen.add(key)) {
+      return;
+    }
+    out.add(_PosterFirebaseCandidate.url(t));
+  }
+
+  addPath(imageStoragePath);
+  if (_posterStringLooksFirebaseResolvable(imageUrl)) {
+    addUrl(imageUrl);
+  } else if (_posterStringLooksFirebaseStorageRelativePath(imageUrl)) {
+    addPath(imageUrl);
+  }
+
+  addPath(thumbnailStoragePath);
+
+  final tTrim = thumbnailUrl.trim();
+  final iTrim = imageUrl.trim();
+  if (tTrim.isNotEmpty && tTrim != iTrim) {
+    if (_posterStringLooksFirebaseResolvable(thumbnailUrl)) {
+      addUrl(thumbnailUrl);
+    } else if (_posterStringLooksFirebaseStorageRelativePath(thumbnailUrl)) {
+      addPath(thumbnailUrl);
+    }
+  }
+  return out;
 }
 
 String _repairLegacyUiText(String value) {
@@ -82,6 +168,8 @@ class _TemplateItem {
     required this.titleHi,
     required this.titleEn,
     this.imageUrl,
+    this.imageStoragePath,
+    this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.mediaType = 'image',
     this.videoUrl,
@@ -102,6 +190,8 @@ class _TemplateItem {
   final String titleHi;
   final String titleEn;
   final String? imageUrl;
+  final String? imageStoragePath;
+  final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final String mediaType;
   final String? videoUrl;
@@ -113,8 +203,10 @@ class _TemplateItem {
   final List<String> fallbackProductIds;
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
+
   /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
+
   /// Firestore manual / admin category label for home chip + matching.
   final String? categoryDisplayLabel;
   final CreatorPosterPersonalization? personalizationConfig;
@@ -192,7 +284,6 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _allCategorySlug = 'all';
   static const int _templatesPageSize = 5;
   static const int _promoSlidesLimit = 5;
-  static const int _templateWarmCount = 4;
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
   static const List<String> _staticCategorySlugs = <String>[
     'all',
@@ -392,8 +483,28 @@ class _HomeScreenState extends State<HomeScreen>
       return true;
     }
 
-    final itemTags = item.categoryTags.map(_normalizeTag).toSet();
-    final categoryTags = selectedCategory.matchTags.map(_normalizeTag).toSet();
+    final chipSlug = _normalizeTag(selectedCategory.slug);
+    final primaryFirestore = item.primaryFirestoreCategoryId?.trim() ?? '';
+    if (chipSlug.isNotEmpty &&
+        primaryFirestore.isNotEmpty &&
+        _normalizeTag(primaryFirestore) == chipSlug) {
+      return true;
+    }
+
+    final itemTags = <String>{};
+    for (final t in item.categoryTags) {
+      final n = _normalizeTag(t);
+      if (n.isNotEmpty) {
+        itemTags.addAll(_expandCategoryAliases(n));
+      }
+    }
+    final categoryTags = <String>{};
+    for (final t in selectedCategory.matchTags) {
+      final n = _normalizeTag(t);
+      if (n.isNotEmpty) {
+        categoryTags.addAll(_expandCategoryAliases(n));
+      }
+    }
     if (itemTags.intersection(categoryTags).isNotEmpty) {
       return true;
     }
@@ -416,8 +527,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<_CategoryChipData> _buildDynamicCategories(
     DateTime now,
-    AppLanguage language,
-  ) {
+    AppLanguage language, {
+    required bool templatesLoading,
+  }) {
+    if (templatesLoading && _remoteApprovedTemplates.isEmpty) {
+      return const <_CategoryChipData>[];
+    }
+
     final slugsFromPrimaryIds = <String>{};
     for (final item in _remoteApprovedTemplates) {
       final id = (item.primaryFirestoreCategoryId ?? '').trim();
@@ -614,8 +730,25 @@ class _HomeScreenState extends State<HomeScreen>
     };
   }
 
+  /// Same token shaping as [DynamicCategoryService] (_normalizeToken): camelCase
+  /// splits to snake case before stripping punctuation so `goodMorning` and
+  /// `good_morning` classify as one category token (fixes related-category filtering).
   String _normalizeTag(String value) {
-    return value
+    var scratch = value.trim();
+    if (scratch.isEmpty) {
+      return '';
+    }
+    for (var round = 0; round < 8; round++) {
+      final next = scratch.replaceAllMapped(
+        RegExp(r'([a-z0-9])([A-Z])'),
+        (Match match) => '${match.group(1)}_${match.group(2)}',
+      );
+      if (next == scratch) {
+        break;
+      }
+      scratch = next;
+    }
+    return scratch
         .toLowerCase()
         .replaceAll(RegExp(r'[^\w]+'), '_')
         .replaceAll(RegExp(r'_+'), '_')
@@ -814,7 +947,6 @@ class _HomeScreenState extends State<HomeScreen>
     final cached = await _appHomeBannerService.fetchBannersFromCache();
     if (mounted && cached.isNotEmpty) {
       setState(() => _homeBanners = cached);
-      _warmBannerImages(cached);
     }
 
     final remote = await _appHomeBannerService.fetchBanners();
@@ -822,7 +954,6 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     setState(() => _homeBanners = remote);
-    _warmBannerImages(remote);
   }
 
   Future<void> _loadApprovedCreatorTemplates() async {
@@ -862,7 +993,6 @@ class _HomeScreenState extends State<HomeScreen>
         _templatesHasMore = cachedPage.hasMore;
         _templatesLastDocument = cachedPage.lastDocument;
       });
-      _warmTemplateImages(mapped);
     }
 
     final remotePage = await _approvedCreatorTemplateService
@@ -879,7 +1009,6 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesHasMore = remotePage.hasMore;
       _templatesLastDocument = remotePage.lastDocument;
     });
-    _warmTemplateImages(mapped);
   }
 
   Future<void> _loadMoreApprovedCreatorTemplates() async {
@@ -921,7 +1050,6 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesHasMore = page.hasMore;
       _templatesLastDocument = page.lastDocument;
     });
-    _warmTemplateImages(fresh);
   }
 
   void _onPosterScroll() {
@@ -939,34 +1067,53 @@ class _HomeScreenState extends State<HomeScreen>
     final displayTitle = creatorId.isNotEmpty ? creatorId : template.title;
     final rawCategoryId = template.categoryId.trim();
     final categoryLabel = template.categoryLabel.trim();
-    final categoryTags = rawCategoryId.isNotEmpty
-        ? <String>{
-            rawCategoryId,
-            _normalizeTag(rawCategoryId),
-            ..._categoryLabelTokenTags(
-              categoryLabel.isNotEmpty ? categoryLabel : null,
-            ),
-          }.where((t) => t.isNotEmpty).toList(growable: false)
-        : _inferTemplateCategoryTags(
-            seedTags: const <String>[],
-            sources: <String?>[
-              template.categoryLabel,
-              template.categoryId,
-              template.title,
-            ],
-          );
+
+    // Always derive inferred tags from label/title/copy (morning→good_morning, etc.).
+    // When categoryId alone is present (Firestore doc id without slug), omitting inference
+    // left templates matching only All — not static chips like good_morning.
+    final inferredTags = _inferTemplateCategoryTags(
+      seedTags: rawCategoryId.isNotEmpty
+          ? <String>[rawCategoryId]
+          : const <String>[],
+      sources: <String?>[
+        categoryLabel.isNotEmpty ? categoryLabel : null,
+        rawCategoryId.isNotEmpty ? rawCategoryId : null,
+        template.title,
+      ],
+    );
+
+    final tagSet = <String>{...inferredTags};
+    if (rawCategoryId.isNotEmpty) {
+      tagSet.add(rawCategoryId);
+      tagSet.add(_normalizeTag(rawCategoryId));
+      tagSet.addAll(
+        _categoryLabelTokenTags(
+          categoryLabel.isNotEmpty ? categoryLabel : null,
+        ),
+      );
+    }
+    final categoryTags = tagSet
+        .where((t) => t.trim().isNotEmpty)
+        .toList(growable: false);
 
     return _TemplateItem(
       titleTe: displayTitle,
       titleHi: displayTitle,
       titleEn: displayTitle,
       imageUrl: template.imageUrl,
+      imageStoragePath: template.imageStoragePath.trim().isNotEmpty
+          ? template.imageStoragePath
+          : null,
+      thumbnailStoragePath: template.thumbnailStoragePath.trim().isNotEmpty
+          ? template.thumbnailStoragePath
+          : null,
       thumbnailUrl: template.thumbnailUrl,
       mediaType: template.mediaType,
       videoUrl: template.videoUrl,
       categoryTags: categoryTags,
-      primaryFirestoreCategoryId:
-          rawCategoryId.isNotEmpty ? rawCategoryId : null,
+      primaryFirestoreCategoryId: rawCategoryId.isNotEmpty
+          ? rawCategoryId
+          : null,
       categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
       personalizationConfig: template.personalizationConfig,
     );
@@ -1025,51 +1172,6 @@ class _HomeScreenState extends State<HomeScreen>
       await precacheImage(imageProvider, context);
     } catch (error, stackTrace) {
       _homeDebugLogStack('profile image warmup skipped: $error', stackTrace);
-    }
-  }
-
-  void _warmTemplateImages(List<_TemplateItem> items) {
-    if (!mounted) {
-      return;
-    }
-    final seen = <String>{};
-    for (final item in items.take(_templateWarmCount)) {
-      if (item.isVideo) {
-        continue;
-      }
-      final thumbnailUrl = item.thumbnailUrl?.trim() ?? '';
-      final imageUrl = item.imageUrl?.trim() ?? '';
-      final warmUrl = thumbnailUrl.isNotEmpty ? thumbnailUrl : imageUrl;
-      if (warmUrl.isEmpty || !seen.add(warmUrl)) {
-        continue;
-      }
-      unawaited(_safePrecacheNetworkImage(warmUrl));
-    }
-  }
-
-  void _warmBannerImages(List<AppHomeBanner> banners) {
-    if (!mounted) {
-      return;
-    }
-    final seen = <String>{};
-    for (final banner in banners.take(4)) {
-      final imageUrl = banner.imageUrl.trim();
-      if (imageUrl.isEmpty || !seen.add(imageUrl)) {
-        continue;
-      }
-      unawaited(_safePrecacheNetworkImage(imageUrl));
-    }
-  }
-
-  Future<void> _safePrecacheNetworkImage(String imageUrl) async {
-    if (!mounted || imageUrl.trim().isEmpty) {
-      return;
-    }
-    try {
-      await precacheImage(CachedNetworkImageProvider(imageUrl), context);
-    } catch (error, stackTrace) {
-      _homeDebugLogStack('network image warmup skipped: $imageUrl', stackTrace);
-      _homeDebugLog('network image warmup error: $error');
     }
   }
 
@@ -1321,13 +1423,25 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    final result = await SubscriptionBackendService().fetchFreshEntitlement();
+    final result = await SubscriptionBackendService().fetchEntitlement(
+      forceRefresh: true,
+    );
     if (!mounted || result.hasAccess) {
       return;
     }
     await showSubscriptionExitVideoPromptIfAvailable(
       context,
-      onSubscribe: (_) => _openSubscriptionPlan(startPurchaseOnOpen: true),
+      onSubscribe: (dialogParentContext) async {
+        if (!dialogParentContext.mounted) {
+          return;
+        }
+        await Navigator.of(dialogParentContext).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const SubscriptionPlanScreen(startPurchaseOnOpen: true),
+          ),
+        );
+      },
     );
   }
 
@@ -1358,7 +1472,11 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final language = context.currentLanguage;
     final staticCategories = _buildStaticCategories();
-    final dynamicCategories = _buildDynamicCategories(DateTime.now(), language);
+    final dynamicCategories = _buildDynamicCategories(
+      DateTime.now(),
+      language,
+      templatesLoading: _templatesLoading,
+    );
     final categories = _mergeCategories(staticCategories, dynamicCategories);
     final activeCategorySlug =
         categories.any((chip) => chip.slug == _selectedCategorySlug)
@@ -1853,6 +1971,11 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                             children: <Widget>[
                               CachedNetworkImage(
                                 imageUrl: _slideUrls[index],
+                                cacheManager: PosterNetworkImageCache.instance,
+                                maxWidthDiskCache:
+                                    PosterNetworkImageLimits.diskFeedMaxWidth,
+                                maxHeightDiskCache:
+                                    PosterNetworkImageLimits.diskFeedMaxHeight,
                                 fit: BoxFit.cover,
                               ),
                               DecoratedBox(
@@ -2215,6 +2338,9 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                   : 1080;
               return CachedNetworkImage(
                 imageUrl: _slides[index].imageUrl,
+                cacheManager: PosterNetworkImageCache.instance,
+                maxWidthDiskCache: PosterNetworkImageLimits.diskFeedMaxWidth,
+                maxHeightDiskCache: PosterNetworkImageLimits.diskFeedMaxHeight,
                 fit: BoxFit.cover,
                 memCacheWidth: memWidth,
                 filterQuality: FilterQuality.low,
@@ -2562,12 +2688,6 @@ class _TemplateFeedItem extends StatelessWidget {
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
-  static final ProPurchaseGateway _subscriptionRestoreGateway =
-      InAppPurchaseGateway(
-        productId: SubscriptionPlanConfig.primaryMonthlyProductId,
-        fallbackProductIds:
-            SubscriptionPlanConfig.resolvedPremiumProductIds().toList(),
-      );
 
   static SubscriptionBackendService get subscriptionBackendService =>
       _subscriptionBackendService;
@@ -2808,15 +2928,28 @@ class _TemplateFeedItem extends StatelessWidget {
         cachedEntitlement?.hasAccess == true) {
       return true;
     }
-    return _hasRecentCachedProFallback(
-      cachedEntitlement: cachedEntitlement,
-      cachedEntitlementAt: _subscriptionBackendService.cachedEntitlementAt,
-    );
+    return false;
   }
 
-  void _handlePosterReady() {
-    if (!_posterReadyNotifier.value) {
-      _posterReadyNotifier.value = true;
+  bool _shouldRunBlockingSubscriptionStatusCheck() {
+    if (!_subscriptionBackendService.isConfigured) {
+      return false;
+    }
+    if (_hasImmediateSubscriptionAccess()) {
+      return true;
+    }
+    final cachedEntitlement = _subscriptionBackendService.cachedEntitlement;
+    return cachedEntitlement?.hasAccess == true;
+  }
+
+  bool get _legacySubscriptionStatusPopupEnabled => false;
+
+  void _handlePosterReadyState(bool ready) {
+    if (_posterReadyNotifier.value == ready) {
+      return;
+    }
+    _posterReadyNotifier.value = ready;
+    if (ready) {
       _schedulePosterWarmup();
     }
   }
@@ -2871,7 +3004,7 @@ class _TemplateFeedItem extends StatelessWidget {
       final bytes = await _posterScreenshotController.captureFromWidget(
         _buildPosterPreview(
           isPhotoVisible: _showPosterPhotoNotifier.value,
-          onPosterReady: null,
+          onPosterReadyChanged: null,
         ),
         context: captureContext,
         pixelRatio: pixelRatio,
@@ -2928,7 +3061,12 @@ class _TemplateFeedItem extends StatelessWidget {
         return;
       }
       await precacheImage(
-        CachedNetworkImageProvider(resolvedUrl),
+        CachedNetworkImageProvider(
+          resolvedUrl,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+        ),
         posterContext,
       );
     } catch (error, stackTrace) {
@@ -3030,7 +3168,7 @@ class _TemplateFeedItem extends StatelessWidget {
 
   Widget _buildPosterPreview({
     required bool isPhotoVisible,
-    VoidCallback? onPosterReady,
+    ValueChanged<bool>? onPosterReadyChanged,
   }) {
     final personalizationConfig = item.personalizationConfig;
     return KeyedSubtree(
@@ -3038,9 +3176,14 @@ class _TemplateFeedItem extends StatelessWidget {
         '${item.titleEn}-${item.imageUrl ?? item.thumbnailUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle',
       ),
       child: item.isVideo
-          ? _TemplateVideoPlayer(
+          ? _FeedTapToPlayVideoPoster(
               videoUrl: item.videoUrl!,
-              onReady: onPosterReady,
+              imageAssetPath: item.imageAssetPath,
+              imageUrl: item.imageUrl,
+              imageStoragePath: item.imageStoragePath,
+              thumbnailStoragePath: item.thumbnailStoragePath,
+              thumbnailUrl: item.thumbnailUrl,
+              onReady: () => onPosterReadyChanged?.call(true),
             )
           : personalizationConfig != null
           ? _CreatorPosterPreview(
@@ -3049,19 +3192,23 @@ class _TemplateFeedItem extends StatelessWidget {
               ),
               imageAssetPath: item.imageAssetPath,
               imageUrl: item.imageUrl,
+              imageStoragePath: item.imageStoragePath,
+              thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
               personalizationConfig: personalizationConfig,
               viewerPosterProfile: viewerPosterProfile,
               language: language,
               showProfilePhoto: isPhotoVisible,
               posterRenderCycle: posterRenderCycle,
-              onPosterReady: onPosterReady,
+              onPosterReadyChanged: onPosterReadyChanged,
             )
-          : _TemplatePosterImage(
+          : _ResolvedTemplatePosterImage(
               imageAssetPath: item.imageAssetPath,
-              imageUrl: item.imageUrl,
+              imageUrl: item.imageUrl ?? '',
+              imageStoragePath: item.imageStoragePath,
+              thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
-              onFirstFrameReady: onPosterReady,
+              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
             ),
     );
   }
@@ -3091,108 +3238,26 @@ class _TemplateFeedItem extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<SubscriptionBackendResult> _verifyPurchaseWithRetry(
-    PurchaseVerificationEvidence evidence,
-  ) async {
-    const delays = <Duration>[
-      Duration.zero,
-      Duration(seconds: 2),
-      Duration(seconds: 4),
-      Duration(seconds: 6),
-    ];
-
-    SubscriptionBackendResult? lastResult;
-    for (final delay in delays) {
-      if (delay > Duration.zero) {
-        await Future<void>.delayed(delay);
-      }
-      lastResult = await _subscriptionBackendService.verifyPurchase(
-        evidence: evidence,
-      );
-      if (lastResult.isSuccess) {
-        return lastResult;
-      }
-    }
-    return lastResult ??
-        const SubscriptionBackendResult(
-          state: SubscriptionBackendState.failed,
-          message: 'Subscription verification failed',
-        );
-  }
-
-  Future<void> _syncPlayStorePurchaseToBackend(
-    PurchaseVerificationEvidence evidence,
-  ) async {
-    final verifyResult = await _verifyPurchaseWithRetry(evidence);
-    if (verifyResult.isSuccess) {
-      await evidence.completeStorePurchase();
-    }
-    final refreshed = await _subscriptionBackendService
-        .fetchFreshEntitlementWithRetry();
-    _homeDebugLog(
-      'subscription sync: backendResponse.isPro=${refreshed.isPro}',
-    );
-  }
-
-  Future<bool> _tryRestoreSubscriptionSilently() async {
-    final outcome = await _subscriptionRestoreGateway.restorePurchases();
-    final evidence = outcome.evidence;
-    final playStorePurchaseFound =
-        outcome.result == PurchaseFlowResult.success && evidence != null;
-    _homeDebugLog(
-      'subscription restore check: playStorePurchaseFound=$playStorePurchaseFound',
-    );
-    if (playStorePurchaseFound) {
-      await _syncPlayStorePurchaseToBackend(evidence);
-      final refreshed = await _subscriptionBackendService
-          .fetchFreshEntitlementWithRetry();
-      _homeDebugLog(
-        'subscription restore verify: backendResponse.isPro=${refreshed.isPro}',
-      );
-      return refreshed.hasAccess;
-    }
-
-    final fallback = await _subscriptionBackendService
-        .fetchFreshEntitlementWithRetry();
-    _homeDebugLog(
-      'subscription restore fallback: backendResponse.isPro=${fallback.isPro}',
-    );
-    return fallback.hasAccess;
-  }
-
-  bool _hasRecentCachedProFallback({
-    required SubscriptionBackendResult? cachedEntitlement,
-    required DateTime? cachedEntitlementAt,
-  }) {
-    if (cachedEntitlement?.hasAccess != true || cachedEntitlementAt == null) {
-      return false;
-    }
-    const offlineGraceWindow = Duration(hours: 1);
-    return DateTime.now().difference(cachedEntitlementAt) <= offlineGraceWindow;
-  }
-
   Future<bool> _resolveLatestSubscriptionAccess() async {
-    final cachedEntitlement = _subscriptionBackendService.cachedEntitlement;
-    final cachedEntitlementAt = _subscriptionBackendService.cachedEntitlementAt;
-    final backend = await _subscriptionBackendService.fetchFreshEntitlement();
+    final cachedHint = await _subscriptionBackendService
+        .fetchEntitlementWithCache(forceRefresh: false);
+    if (cachedHint.hasAccess) {
+      unawaited(
+        _subscriptionBackendService.refreshEntitlementInBackground(
+          forceRefresh: true,
+        ),
+      );
+      return true;
+    }
+
+    final backend = await _subscriptionBackendService.fetchEntitlement(
+      forceRefresh: true,
+    );
     final effectiveIsPro = backend.hasAccess;
     _homeDebugLog(
       'subscription access resolve: backendResponse.isPro=$effectiveIsPro',
     );
     if (effectiveIsPro) {
-      return true;
-    }
-    if (backend.state == SubscriptionBackendState.failed &&
-        _hasRecentCachedProFallback(
-          cachedEntitlement: cachedEntitlement,
-          cachedEntitlementAt: cachedEntitlementAt,
-        )) {
-      _homeDebugLog('subscription access resolve: using cached Pro fallback');
-      return true;
-    }
-
-    final restoredSilently = await _tryRestoreSubscriptionSilently();
-    if (restoredSilently) {
       return true;
     }
 
@@ -3202,15 +3267,6 @@ class _TemplateFeedItem extends StatelessWidget {
     _homeDebugLog(
       'subscription access retry: backendResponse.isPro=$refreshedEffectiveIsPro',
     );
-    if (!refreshedEffectiveIsPro &&
-        refreshed.state == SubscriptionBackendState.failed &&
-        _hasRecentCachedProFallback(
-          cachedEntitlement: cachedEntitlement,
-          cachedEntitlementAt: cachedEntitlementAt,
-        )) {
-      _homeDebugLog('subscription access retry: using cached Pro fallback');
-      return true;
-    }
     return refreshedEffectiveIsPro;
   }
 
@@ -3252,19 +3308,120 @@ class _TemplateFeedItem extends StatelessWidget {
       unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
       return true;
     }
-    final hasLatestAccess = await _resolveLatestSubscriptionAccess().timeout(
-      SubscriptionPlanConfig.paywallTimeout,
-      onTimeout: () async => false,
-    );
-    if (hasLatestAccess) {
-      return true;
+    if (_shouldRunBlockingSubscriptionStatusCheck()) {
+      final hasLatestAccess = await _resolveLatestSubscriptionAccess().timeout(
+        SubscriptionPlanConfig.paywallTimeout,
+        onTimeout: () async => false,
+      );
+      if (!context.mounted) {
+        return false;
+      }
+      if (hasLatestAccess) {
+        return true;
+      }
+    }
+    if (_legacySubscriptionStatusPopupEnabled &&
+        _shouldRunBlockingSubscriptionStatusCheck()) {
+      final navigator = Navigator.of(context, rootNavigator: true);
+      var loadingDialogDismissed = false;
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          useRootNavigator: true,
+          barrierColor: Colors.black54,
+          builder: (BuildContext dialogContext) {
+            return PopScope(
+              canPop: false,
+              child: AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
+                actionsPadding: const EdgeInsets.fromLTRB(16, 0, 12, 12),
+                content: Row(
+                  children: <Widget>[
+                    const SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: CircularProgressIndicator(strokeWidth: 2.6),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Text(
+                        context.strings.localized(
+                          telugu:
+                              'సబ్‌స్క్రిప్షన్ స్టేటస్ తనిఖీ చేస్తున్నాం...',
+                          english: 'Checking subscription status...',
+                          hindi: 'सब्सक्रिप्शन स्थिति जांच रहे हैं...',
+                          tamil: 'சந்தா நிலை சரிபார்க்கிறோம்...',
+                          kannada: 'ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...',
+                          malayalam: 'സബ്സ്ക്രിപ്ഷൻ നില പരിശോധിക്കുന്നു...',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      loadingDialogDismissed = true;
+                      Navigator.of(dialogContext).pop();
+                    },
+                    child: Text(
+                      context.strings.localized(
+                        telugu: 'రద్దు',
+                        english: 'Cancel',
+                        hindi: 'रद्द करें',
+                        tamil: 'ரத்துசெய்',
+                        kannada: 'ರದ್ದುಮಾಡಿ',
+                        malayalam: 'റദ്ദാക്കുക',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+      await WidgetsBinding.instance.endOfFrame;
+      try {
+        if (loadingDialogDismissed) {
+          return false;
+        }
+        final hasLatestAccess = await _resolveLatestSubscriptionAccess()
+            .timeout(
+              SubscriptionPlanConfig.paywallTimeout,
+              onTimeout: () async => false,
+            );
+        if (!context.mounted || loadingDialogDismissed) {
+          return false;
+        }
+        if (hasLatestAccess) {
+          return true;
+        }
+      } finally {
+        if (!loadingDialogDismissed && context.mounted && navigator.canPop()) {
+          navigator.pop();
+        }
+      }
     }
     _homeDebugLog('subscription access check: backendResponse.isPro=false');
     if (!context.mounted) {
       return false;
     }
-    final openPlan = await showDialog<bool>(
+    final openPlan = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.34),
       builder: (dialogContext) {
         return Dialog(
           elevation: 0,
@@ -3315,8 +3472,11 @@ class _TemplateFeedItem extends StatelessWidget {
     }
     await showSubscriptionExitVideoPromptIfAvailable(
       context,
-      onSubscribe: (_) async {
-        await Navigator.of(context).push(
+      onSubscribe: (dialogParentContext) async {
+        if (!dialogParentContext.mounted) {
+          return;
+        }
+        await Navigator.of(dialogParentContext).push(
           MaterialPageRoute<void>(
             builder: (_) =>
                 const SubscriptionPlanScreen(startPurchaseOnOpen: true),
@@ -3519,7 +3679,7 @@ class _TemplateFeedItem extends StatelessWidget {
                       controller: _posterScreenshotController,
                       child: _buildPosterPreview(
                         isPhotoVisible: isPhotoVisible,
-                        onPosterReady: _handlePosterReady,
+                        onPosterReadyChanged: _handlePosterReadyState,
                       ),
                     ),
                   );
@@ -3806,6 +3966,13 @@ class _TemplatePosterImage extends StatelessWidget {
     return RepaintBoundary(
       child: LayoutBuilder(
         builder: (context, constraints) {
+          void schedulePosterReady() {
+            final VoidCallback? cb = onFirstFrameReady;
+            if (cb != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => cb());
+            }
+          }
+
           final width = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : MediaQuery.sizeOf(context).width;
@@ -3813,8 +3980,122 @@ class _TemplatePosterImage extends StatelessWidget {
             context,
           ).clamp(1.0, 3.0);
           final cacheWidth = (width * pixelRatio).round().clamp(360, 1080);
+          final posterPlaceholderHeight = width.isFinite && width >= 48
+              ? math.max(width * 1.25, 260.0)
+              : 260.0;
 
           final placeholderUrl = thumbnailUrl?.trim() ?? '';
+          final mainUrlTrim = (imageUrl ?? '').trim();
+          final primaryNetworkUrl = mainUrlTrim.isNotEmpty
+              ? mainUrlTrim
+              : placeholderUrl;
+
+          Widget buildNetworkPosterImage({
+            required String resolvedUrl,
+            required int decodeWidth,
+            required bool notifyWhenLoaded,
+          }) {
+            return Image(
+              image: ResizeImage.resizeIfNeeded(
+                decodeWidth,
+                null,
+                CachedNetworkImageProvider(
+                  resolvedUrl,
+                  cacheManager: PosterNetworkImageCache.instance,
+                  maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+                  maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+                ),
+              ),
+              width: double.infinity,
+              fit: BoxFit.contain,
+              alignment: Alignment.topCenter,
+              filterQuality: FilterQuality.low,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (wasSynchronouslyLoaded || frame != null) {
+                  if (notifyWhenLoaded && onFirstFrameReady != null) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      onFirstFrameReady!.call();
+                    });
+                  }
+                  return child;
+                }
+                final loadingThumb = placeholderUrl;
+                if (loadingThumb.isNotEmpty && loadingThumb != resolvedUrl) {
+                  return Image(
+                    image: ResizeImage.resizeIfNeeded(
+                      decodeWidth.clamp(240, 540),
+                      null,
+                      CachedNetworkImageProvider(
+                        loadingThumb,
+                        cacheManager: PosterNetworkImageCache.instance,
+                        maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+                        maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+                      ),
+                    ),
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.topCenter,
+                    filterQuality: FilterQuality.low,
+                  );
+                }
+                return SizedBox(
+                  width: double.infinity,
+                  height: posterPlaceholderHeight,
+                  child: const _ImageLoadingState(),
+                );
+              },
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? stackTrace) {
+                    final strings = context.strings;
+                    final failed = resolvedUrl.trim();
+                    final thumb = placeholderUrl;
+                    if (thumb.isNotEmpty && thumb != failed) {
+                      return buildNetworkPosterImage(
+                        resolvedUrl: thumb,
+                        decodeWidth: decodeWidth.clamp(360, 1080),
+                        notifyWhenLoaded: true,
+                      );
+                    }
+                    schedulePosterReady();
+                    return _ImageErrorState(
+                      title: strings.localized(
+                        telugu:
+                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        english: 'Template image unavailable',
+                      ),
+                      subtitle: strings.localized(
+                        telugu:
+                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        english: 'Please refresh or try another template.',
+                      ),
+                    );
+                  },
+            );
+          }
+
+          if (imageAssetPath == null && primaryNetworkUrl.isEmpty) {
+            schedulePosterReady();
+            final strings = context.strings;
+            return Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: math.max(width, 1)),
+                child: _ImageErrorState(
+                  title: strings.localized(
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    english: 'Template image unavailable',
+                  ),
+                  subtitle: strings.localized(
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    english: 'Please refresh or try another template.',
+                  ),
+                ),
+              ),
+            );
+          }
+
           final imageWidget = imageAssetPath != null
               ? Image.asset(
                   imageAssetPath!,
@@ -3833,82 +4114,196 @@ class _TemplatePosterImage extends StatelessWidget {
                           }
                           return child;
                         }
-                        return const _ImageLoadingState();
-                      },
-                  errorBuilder: (_, _, _) => _ImageErrorState(
-                    title: context.strings.localized(
-                      telugu:
-                          'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                      english: 'Template image unavailable',
-                    ),
-                    subtitle: context.strings.localized(
-                      telugu:
-                          'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                      english: 'Please refresh or try another template.',
-                    ),
-                  ),
-                )
-              : Image(
-                  image: ResizeImage.resizeIfNeeded(
-                    cacheWidth,
-                    null,
-                    CachedNetworkImageProvider(imageUrl ?? ''),
-                  ),
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                  alignment: Alignment.topCenter,
-                  filterQuality: FilterQuality.low,
-                  frameBuilder:
-                      (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded || frame != null) {
-                          if (onFirstFrameReady != null) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              onFirstFrameReady!.call();
-                            });
-                          }
-                          return child;
-                        }
-                        if (placeholderUrl.isNotEmpty &&
-                            placeholderUrl != (imageUrl ?? '').trim()) {
-                          return Image(
-                            image: ResizeImage.resizeIfNeeded(
-                              cacheWidth.clamp(240, 540),
-                              null,
-                              CachedNetworkImageProvider(placeholderUrl),
-                            ),
-                            width: double.infinity,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.topCenter,
-                            filterQuality: FilterQuality.low,
-                          );
-                        }
-                        return const _ImageLoadingState();
-                      },
-                  errorBuilder:
-                      (
-                        BuildContext context,
-                        Object error,
-                        StackTrace? stackTrace,
-                      ) {
-                        final strings = context.strings;
-                        return _ImageErrorState(
-                          title: strings.localized(
-                            telugu:
-                                'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                            english: 'Template image unavailable',
-                          ),
-                          subtitle: strings.localized(
-                            telugu:
-                                'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                            english: 'Please refresh or try another template.',
-                          ),
+                        return SizedBox(
+                          width: double.infinity,
+                          height: posterPlaceholderHeight,
+                          child: const _ImageLoadingState(),
                         );
                       },
+                  errorBuilder: (_, _, _) {
+                    schedulePosterReady();
+                    return _ImageErrorState(
+                      title: context.strings.localized(
+                        telugu:
+                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        english: 'Template image unavailable',
+                      ),
+                      subtitle: context.strings.localized(
+                        telugu:
+                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        english: 'Please refresh or try another template.',
+                      ),
+                    );
+                  },
+                )
+              : buildNetworkPosterImage(
+                  resolvedUrl: primaryNetworkUrl,
+                  decodeWidth: cacheWidth,
+                  notifyWhenLoaded: true,
                 );
 
-          return Align(alignment: Alignment.topCenter, child: imageWidget);
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: math.max(width, 1)),
+              child: imageWidget,
+            ),
+          );
         },
       ),
+    );
+  }
+}
+
+class _ResolvedTemplatePosterImage extends StatefulWidget {
+  const _ResolvedTemplatePosterImage({
+    required this.imageAssetPath,
+    required this.imageUrl,
+    this.imageStoragePath,
+    this.thumbnailStoragePath,
+    this.thumbnailUrl,
+    this.onFirstFrameReady,
+  });
+
+  final String? imageAssetPath;
+  final String? imageUrl;
+  final String? imageStoragePath;
+  final String? thumbnailStoragePath;
+  final String? thumbnailUrl;
+  final VoidCallback? onFirstFrameReady;
+
+  @override
+  State<_ResolvedTemplatePosterImage> createState() =>
+      _ResolvedTemplatePosterImageState();
+}
+
+class _ResolvedTemplatePosterImageState
+    extends State<_ResolvedTemplatePosterImage> {
+  String? _resolvedImageUrl;
+  int _resolveGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetResolvedImageUrl();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ResolvedTemplatePosterImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.imageStoragePath != widget.imageStoragePath ||
+        oldWidget.thumbnailStoragePath != widget.thumbnailStoragePath ||
+        oldWidget.thumbnailUrl != widget.thumbnailUrl) {
+      _resetResolvedImageUrl();
+    }
+  }
+
+  void _resetResolvedImageUrl() {
+    _resolveGeneration++;
+    final generation = _resolveGeneration;
+    final path = widget.imageStoragePath?.trim() ?? '';
+    final thumbPath = widget.thumbnailStoragePath?.trim() ?? '';
+    final direct = widget.imageUrl?.trim() ?? '';
+    final thumb = widget.thumbnailUrl?.trim() ?? '';
+
+    final candidates = List<_PosterFirebaseCandidate>.from(
+      _posterFirebaseResolveCandidates(
+        imageStoragePath: path,
+        thumbnailStoragePath: thumbPath,
+        imageUrl: direct,
+        thumbnailUrl: thumb,
+      ),
+    );
+
+    if (candidates.isNotEmpty) {
+      _resolvedImageUrl = null;
+      unawaited(
+        _resolvePosterFirebaseDownloads(
+          candidates: candidates,
+          generation: generation,
+        ),
+      );
+    } else {
+      _resolvedImageUrl = direct.isEmpty ? null : direct;
+    }
+  }
+
+  Future<void> _resolvePosterFirebaseDownloads({
+    required List<_PosterFirebaseCandidate> candidates,
+    required int generation,
+  }) async {
+    if (!mounted || generation != _resolveGeneration || candidates.isEmpty) {
+      return;
+    }
+
+    Object? lastError;
+    StackTrace? lastTrace;
+
+    for (final _PosterFirebaseCandidate cand in candidates) {
+      if (!mounted || generation != _resolveGeneration) {
+        return;
+      }
+      try {
+        final ref = cand.urlMode
+            ? FirebaseStorage.instance.refFromURL(cand.value)
+            : FirebaseStorage.instance.ref(cand.value);
+        final fresh = await ref.getDownloadURL();
+        if (!mounted || generation != _resolveGeneration) {
+          return;
+        }
+        setState(() {
+          _resolvedImageUrl = fresh.trim();
+        });
+        return;
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastTrace = stackTrace;
+      }
+    }
+
+    if (!mounted || generation != _resolveGeneration) {
+      return;
+    }
+    if (lastError != null && lastTrace != null) {
+      _homeDebugLogStack(
+        'All Firebase poster download URL resolves failed (${candidates.length} attempts): $lastError',
+        lastTrace,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = widget.imageStoragePath?.trim() ?? '';
+    final thumbPath = widget.thumbnailStoragePath?.trim() ?? '';
+    final thumb = widget.thumbnailUrl?.trim() ?? '';
+    final direct = widget.imageUrl?.trim() ?? '';
+    final resolved = _resolvedImageUrl?.trim() ?? '';
+
+    final hasFirebaseCandidates = _posterFirebaseResolveCandidates(
+      imageStoragePath: path,
+      thumbnailStoragePath: thumbPath,
+      imageUrl: direct,
+      thumbnailUrl: thumb,
+    ).isNotEmpty;
+
+    final String displayUrl;
+    if (resolved.isNotEmpty) {
+      displayUrl = resolved;
+    } else if ((hasFirebaseCandidates ||
+            _posterStringLooksFirebaseResolvable(direct)) &&
+        thumb.isNotEmpty) {
+      displayUrl = thumb;
+    } else {
+      displayUrl = direct.isNotEmpty ? direct : thumb;
+    }
+
+    return _TemplatePosterImage(
+      imageAssetPath: widget.imageAssetPath,
+      imageUrl: displayUrl.isEmpty ? null : displayUrl,
+      thumbnailUrl: widget.thumbnailUrl,
+      onFirstFrameReady: widget.onFirstFrameReady,
     );
   }
 }
@@ -4172,6 +4567,94 @@ class _SubscriptionAccessDialog extends StatelessWidget {
   }
 }
 
+class _FeedTapToPlayVideoPoster extends StatefulWidget {
+  const _FeedTapToPlayVideoPoster({
+    required this.videoUrl,
+    this.imageAssetPath,
+    this.imageUrl,
+    this.imageStoragePath,
+    this.thumbnailStoragePath,
+    this.thumbnailUrl,
+    this.onReady,
+  });
+
+  final String videoUrl;
+  final String? imageAssetPath;
+  final String? imageUrl;
+  final String? imageStoragePath;
+  final String? thumbnailStoragePath;
+  final String? thumbnailUrl;
+  final VoidCallback? onReady;
+
+  @override
+  State<_FeedTapToPlayVideoPoster> createState() =>
+      _FeedTapToPlayVideoPosterState();
+}
+
+class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
+  bool _playing = false;
+
+  bool get _hasStillFrame =>
+      (widget.imageAssetPath?.trim().isNotEmpty ?? false) ||
+      (widget.imageUrl?.trim().isNotEmpty ?? false) ||
+      (widget.thumbnailUrl?.trim().isNotEmpty ?? false) ||
+      (widget.imageStoragePath?.trim().isNotEmpty ?? false) ||
+      (widget.thumbnailStoragePath?.trim().isNotEmpty ?? false);
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_hasStillFrame) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onReady?.call();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_playing) {
+      return _TemplateVideoPlayer(
+        videoUrl: widget.videoUrl,
+        onReady: widget.onReady,
+      );
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _playing = true),
+      child: Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: <Widget>[
+          if (_hasStillFrame)
+            _ResolvedTemplatePosterImage(
+              imageAssetPath: widget.imageAssetPath,
+              imageUrl: widget.imageUrl ?? '',
+              imageStoragePath: widget.imageStoragePath,
+              thumbnailStoragePath: widget.thumbnailStoragePath,
+              thumbnailUrl: widget.thumbnailUrl,
+              onFirstFrameReady: widget.onReady,
+            )
+          else
+            const ColoredBox(color: Color(0xFFEFF3F8)),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.26),
+              ),
+            ),
+          ),
+          Icon(
+            Icons.play_circle_rounded,
+            size: 56,
+            color: Colors.white.withValues(alpha: 0.94),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TemplateVideoPlayer extends StatefulWidget {
   const _TemplateVideoPlayer({required this.videoUrl, this.onReady});
 
@@ -4320,24 +4803,28 @@ class _CreatorPosterPreview extends StatefulWidget {
     super.key,
     required this.imageAssetPath,
     required this.imageUrl,
+    this.imageStoragePath,
+    this.thumbnailStoragePath,
     this.thumbnailUrl,
     required this.personalizationConfig,
     required this.viewerPosterProfile,
     required this.language,
     required this.showProfilePhoto,
     required this.posterRenderCycle,
-    this.onPosterReady,
+    this.onPosterReadyChanged,
   });
 
   final String? imageAssetPath;
   final String? imageUrl;
+  final String? imageStoragePath;
+  final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final CreatorPosterPersonalization personalizationConfig;
   final PosterProfileData viewerPosterProfile;
   final AppLanguage language;
   final bool showProfilePhoto;
   final int posterRenderCycle;
-  final VoidCallback? onPosterReady;
+  final ValueChanged<bool>? onPosterReadyChanged;
 
   @override
   State<_CreatorPosterPreview> createState() => _CreatorPosterPreviewState();
@@ -4364,13 +4851,34 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   ];
 
   bool _basePosterReady = false;
+  bool _legacyOverlayReady = false;
+  int _legacyPrimeGeneration = 0;
   final Map<String, String> _legacyTextOverrides = <String, String>{};
   final Set<String> _legacyTextRequestsInFlight = <String>{};
+  Timer? _baseImageReadyFallbackTimer;
+
+  void _scheduleBaseImageReadyFallback() {
+    _baseImageReadyFallbackTimer?.cancel();
+    _baseImageReadyFallbackTimer = Timer(const Duration(seconds: 12), () {
+      _baseImageReadyFallbackTimer = null;
+      if (!mounted || _basePosterReady) {
+        return;
+      }
+      _handleBasePosterReady();
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _primeLegacyTextCacheForCurrentState();
+    _scheduleLegacyPrime();
+    _scheduleBaseImageReadyFallback();
+  }
+
+  @override
+  void dispose() {
+    _baseImageReadyFallbackTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -4378,23 +4886,58 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl ||
         oldWidget.imageAssetPath != widget.imageAssetPath ||
+        oldWidget.imageStoragePath != widget.imageStoragePath ||
+        oldWidget.thumbnailStoragePath != widget.thumbnailStoragePath ||
+        oldWidget.thumbnailUrl != widget.thumbnailUrl ||
         oldWidget.posterRenderCycle != widget.posterRenderCycle) {
       _basePosterReady = false;
+      _scheduleBaseImageReadyFallback();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _emitPosterReadyChanged();
+        }
+      });
     }
     if (oldWidget.viewerPosterProfile != widget.viewerPosterProfile ||
         oldWidget.language != widget.language ||
         oldWidget.personalizationConfig != widget.personalizationConfig ||
         oldWidget.posterRenderCycle != widget.posterRenderCycle) {
-      _primeLegacyTextCacheForCurrentState();
+      _scheduleLegacyPrime();
     }
+  }
+
+  void _scheduleLegacyPrime() {
+    final generation = ++_legacyPrimeGeneration;
+    setState(() => _legacyOverlayReady = false);
+    _emitPosterReadyChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await _primeLegacyTextCacheForCurrentState().timeout(
+          const Duration(seconds: 15),
+        );
+      } catch (_) {
+        // Still reveal overlays — raw glyphs preferable to an infinite skeleton.
+      }
+      if (!mounted || generation != _legacyPrimeGeneration) {
+        return;
+      }
+      setState(() => _legacyOverlayReady = true);
+      _emitPosterReadyChanged();
+    });
+  }
+
+  void _emitPosterReadyChanged() {
+    widget.onPosterReadyChanged?.call(_basePosterReady && _legacyOverlayReady);
   }
 
   void _handleBasePosterReady() {
     if (_basePosterReady || !mounted) {
       return;
     }
+    _baseImageReadyFallbackTimer?.cancel();
+    _baseImageReadyFallbackTimer = null;
     setState(() => _basePosterReady = true);
-    widget.onPosterReady?.call();
+    _emitPosterReadyChanged();
   }
 
   String _resolvePosterNameFontFamily(String resolvedName) {
@@ -4584,7 +5127,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       _resolvePosterNameFontFamily(resolvedName),
     );
     final personalNameFontSize = isTeluguName ? 42.0 : 36.0;
-    final personalNameBoxHeight = isTeluguName ? 38.0 : 40.0;
     final personalNameLineHeight = isTeluguName ? 0.82 : 0.95;
     final businessNameFontSize = isTeluguName ? 34.0 : 28.0;
     const designationFontFamily = 'Pallavi Medium';
@@ -4594,278 +5136,368 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
     final bottomStripPadding = (widget.personalizationConfig.stripHeight * 0.3)
         .clamp(4.0, 8.0);
+    final stripOverflowAllowance = widget.personalizationConfig.showBottomStrip
+        ? (isBusinessProfile ? 56.0 : 60.0)
+        : 0.0;
+
+    final showPersonalizationPaint = _basePosterReady && _legacyOverlayReady;
 
     return RepaintBoundary(
       child: SizedBox(
         width: double.infinity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
           children: <Widget>[
-            Stack(
-              clipBehavior: Clip.hardEdge,
+            Column(
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                _TemplatePosterImage(
-                  imageAssetPath: widget.imageAssetPath,
-                  imageUrl: widget.imageUrl,
-                  thumbnailUrl: widget.thumbnailUrl,
-                  onFirstFrameReady: _handleBasePosterReady,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    _ResolvedTemplatePosterImage(
+                      imageAssetPath: widget.imageAssetPath,
+                      imageUrl: widget.imageUrl ?? '',
+                      imageStoragePath: widget.imageStoragePath,
+                      thumbnailStoragePath: widget.thumbnailStoragePath,
+                      thumbnailUrl: widget.thumbnailUrl,
+                      onFirstFrameReady: _handleBasePosterReady,
+                    ),
+                    if (widget.showProfilePhoto && shouldShowIdentityVisual)
+                      Positioned.fill(
+                        bottom: -stripOverflowAllowance,
+                        child: Offstage(
+                          offstage: !showPersonalizationPaint,
+                          child: IgnorePointer(
+                            ignoring: !showPersonalizationPaint,
+                            child: LayoutBuilder(
+                              builder:
+                                  (
+                                    BuildContext context,
+                                    BoxConstraints constraints,
+                                  ) {
+                                    final photoScale =
+                                        widget
+                                            .personalizationConfig
+                                            .photoScale /
+                                        100;
+                                    final baseImageHeight = math.max(
+                                      1.0,
+                                      constraints.maxHeight -
+                                          stripOverflowAllowance,
+                                    );
+                                    final visualScale = isBusinessProfile
+                                        ? photoScale * 0.72
+                                        : photoScale;
+                                    final maskAspectRatio =
+                                        _photoMaskAspectRatio(
+                                          widget
+                                              .personalizationConfig
+                                              .photoShape,
+                                        );
+                                    final width =
+                                        constraints.maxWidth * visualScale;
+                                    final height = width / maskAspectRatio;
+                                    final left =
+                                        (constraints.maxWidth *
+                                            (widget
+                                                    .personalizationConfig
+                                                    .photoX /
+                                                100)) -
+                                        (width / 2);
+                                    final top =
+                                        (baseImageHeight *
+                                            (widget
+                                                    .personalizationConfig
+                                                    .photoY /
+                                                100)) -
+                                        (height / 2);
+                                    return Stack(
+                                      clipBehavior: Clip.none,
+                                      children: <Widget>[
+                                        Positioned(
+                                          left: left,
+                                          top: top,
+                                          width: width,
+                                          height: height,
+                                          child: _PhotoShapeFrame(
+                                            shape: widget
+                                                .personalizationConfig
+                                                .photoShape,
+                                            edgeStyle: widget
+                                                .personalizationConfig
+                                                .edgeStyle,
+                                            photoRenderMode: widget
+                                                .personalizationConfig
+                                                .photoRenderMode,
+                                            isBusinessLogo: isBusinessProfile,
+                                            child: PosterIdentityVisual(
+                                              profile:
+                                                  widget.viewerPosterProfile,
+                                              fit:
+                                                  widget
+                                                          .personalizationConfig
+                                                          .photoRenderMode ==
+                                                      'cutout'
+                                                  ? BoxFit.contain
+                                                  : BoxFit.cover,
+                                              preferOriginalPersonalPhoto:
+                                                  widget
+                                                      .personalizationConfig
+                                                      .photoRenderMode ==
+                                                  'original',
+                                              allowOriginalFallbackWhenCutoutUnavailable:
+                                                  widget
+                                                      .personalizationConfig
+                                                      .photoRenderMode ==
+                                                  'original',
+                                              textScale:
+                                                  widget
+                                                          .viewerPosterProfile
+                                                          .identityMode ==
+                                                      PosterIdentityMode
+                                                          .business
+                                                  ? 0.84
+                                                  : 1.0,
+                                            ),
+                                          ),
+                                        ),
+                                        if (!widget
+                                            .personalizationConfig
+                                            .showBottomStrip)
+                                          Positioned(
+                                            left:
+                                                constraints.maxWidth *
+                                                (widget
+                                                        .personalizationConfig
+                                                        .nameX /
+                                                    100),
+                                            top:
+                                                constraints.maxHeight *
+                                                (widget
+                                                        .personalizationConfig
+                                                        .nameY /
+                                                    100),
+                                            child: Transform.translate(
+                                              offset: const Offset(-80, -16),
+                                              child: SizedBox(
+                                                width: 160,
+                                                child: _legacyAwareText(
+                                                  text: resolvedName,
+                                                  fontFamily:
+                                                      displayNameFontFamily,
+                                                  maxLines: 1,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontSize: 18,
+                                                    shadows: const <Shadow>[
+                                                      Shadow(
+                                                        color: Color(
+                                                          0xCC000000,
+                                                        ),
+                                                        blurRadius: 4,
+                                                        offset: Offset(0, 1),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                if (widget.showProfilePhoto && shouldShowIdentityVisual)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: LayoutBuilder(
-                      builder:
-                          (BuildContext context, BoxConstraints constraints) {
-                            final photoScale =
-                                widget.personalizationConfig.photoScale / 100;
-                            final visualScale = isBusinessProfile
-                                ? photoScale * 0.72
-                                : photoScale;
-                            final maskAspectRatio = _photoMaskAspectRatio(
-                              widget.personalizationConfig.photoShape,
-                            );
-                            final width = constraints.maxWidth * visualScale;
-                            final height = width / maskAspectRatio;
-                            final left =
-                                (constraints.maxWidth *
-                                    (widget.personalizationConfig.photoX /
-                                        100)) -
-                                (width / 2);
-                            final top =
-                                (constraints.maxHeight *
-                                    (widget.personalizationConfig.photoY /
-                                        100)) -
-                                (height / 2);
-                            return Stack(
-                              clipBehavior: Clip.hardEdge,
-                              children: <Widget>[
-                                Positioned(
-                                  left: left,
-                                  top: top,
-                                  width: width,
-                                  height: height,
-                                  child: _PhotoShapeFrame(
-                                    shape:
-                                        widget.personalizationConfig.photoShape,
-                                    edgeStyle:
-                                        widget.personalizationConfig.edgeStyle,
-                                    photoRenderMode: widget
-                                        .personalizationConfig
-                                        .photoRenderMode,
-                                    isBusinessLogo: isBusinessProfile,
-                                    child: PosterIdentityVisual(
-                                      profile: widget.viewerPosterProfile,
-                                      fit:
-                                          widget
-                                                  .personalizationConfig
-                                                  .photoRenderMode ==
-                                              'cutout'
-                                          ? BoxFit.contain
-                                          : BoxFit.cover,
-                                      preferOriginalPersonalPhoto:
-                                          widget
-                                              .personalizationConfig
-                                              .photoRenderMode ==
-                                          'original',
-                                      allowOriginalFallbackWhenCutoutUnavailable:
-                                          widget
-                                              .personalizationConfig
-                                              .photoRenderMode ==
-                                          'original',
-                                      textScale:
-                                          widget
-                                                  .viewerPosterProfile
-                                                  .identityMode ==
-                                              PosterIdentityMode.business
-                                          ? 0.84
-                                          : 1.0,
-                                    ),
-                                  ),
-                                ),
-                                if (!widget
-                                    .personalizationConfig
-                                    .showBottomStrip)
-                                  Positioned(
-                                    left:
-                                        constraints.maxWidth *
-                                        (widget.personalizationConfig.nameX /
-                                            100),
-                                    top:
-                                        constraints.maxHeight *
-                                        (widget.personalizationConfig.nameY /
-                                            100),
-                                    child: Transform.translate(
-                                      offset: const Offset(-80, -16),
-                                      child: SizedBox(
-                                        width: 160,
-                                        child: _legacyAwareText(
+                if (widget.personalizationConfig.showBottomStrip)
+                  Offstage(
+                    offstage: !showPersonalizationPaint,
+                    child: IgnorePointer(
+                      ignoring: !showPersonalizationPaint,
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: bottomStripPadding,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: stripGradient,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            if (isBusinessProfile)
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    flex: 5,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        _legacyAwareText(
                                           text: resolvedName,
                                           fontFamily: displayNameFontFamily,
                                           maxLines: 1,
-                                          textAlign: TextAlign.center,
+                                          textAlign: TextAlign.left,
+                                          fitToWidth: true,
                                           style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 18,
-                                            shadows: const <Shadow>[
-                                              Shadow(
-                                                color: Color(0xCC000000),
-                                                blurRadius: 4,
-                                                offset: Offset(0, 1),
-                                              ),
-                                            ],
+                                            color: stripTextColor,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: businessNameFontSize,
+                                            height: isTeluguName ? 0.98 : 1.0,
+                                          ),
+                                        ),
+                                        if (resolvedDesignation
+                                            .isNotEmpty) ...<Widget>[
+                                          const SizedBox(height: 0),
+                                          _legacyAwareText(
+                                            text: resolvedDesignation,
+                                            fontFamily: designationFontFamily,
+                                            maxLines: 1,
+                                            textAlign: TextAlign.left,
+                                            fitToWidth: true,
+                                            style: TextStyle(
+                                              color: mutedStripTextColor,
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 18,
+                                              height: 0.98,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  if (showPhoneInStrip) ...<Widget>[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      width: 2,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        color: mutedStripTextColor,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      flex: 0,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 82,
+                                        ),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerRight,
+                                          child: Text(
+                                            resolvedPhone,
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            textAlign: TextAlign.right,
+                                            style: TextStyle(
+                                              color: mutedStripTextColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 15,
+                                              height: 1.0,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            );
-                          },
-                    ),
-                  ),
-              ],
-            ),
-            if (widget.personalizationConfig.showBottomStrip)
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: bottomStripPadding,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: stripGradient,
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    if (isBusinessProfile)
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            flex: 5,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                _legacyAwareText(
-                                  text: resolvedName,
-                                  fontFamily: displayNameFontFamily,
-                                  maxLines: 1,
-                                  textAlign: TextAlign.left,
-                                  fitToWidth: true,
-                                  style: TextStyle(
-                                    color: stripTextColor,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: businessNameFontSize,
-                                    height: isTeluguName ? 0.98 : 1.0,
-                                  ),
+                                  ],
+                                ],
+                              )
+                            else ...<Widget>[
+                              _legacyAwareText(
+                                text: resolvedName,
+                                fontFamily: displayNameFontFamily,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                fitToWidth: true,
+                                style: TextStyle(
+                                  color: stripTextColor,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: personalNameFontSize,
+                                  height: personalNameLineHeight,
                                 ),
-                                if (resolvedDesignation.isNotEmpty) ...<Widget>[
-                                  const SizedBox(height: 0),
-                                  _legacyAwareText(
+                              ),
+                              if (resolvedDesignation.isNotEmpty)
+                                Transform.translate(
+                                  offset: const Offset(0, -5),
+                                  child: _legacyAwareText(
                                     text: resolvedDesignation,
                                     fontFamily: designationFontFamily,
                                     maxLines: 1,
-                                    textAlign: TextAlign.left,
+                                    textAlign: TextAlign.center,
                                     fitToWidth: true,
                                     style: TextStyle(
                                       color: mutedStripTextColor,
                                       fontWeight: FontWeight.w400,
-                                      fontSize: 18,
-                                      height: 0.98,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                          if (showPhoneInStrip) ...<Widget>[
-                            const SizedBox(width: 8),
-                            Container(
-                              width: 2,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: mutedStripTextColor,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              flex: 0,
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 82),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    resolvedPhone,
-                                    maxLines: 1,
-                                    softWrap: false,
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      color: mutedStripTextColor,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 15,
-                                      height: 1.0,
+                                      fontSize: 20,
+                                      height: 0.82,
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
+                            ],
                           ],
-                        ],
-                      )
-                    else ...<Widget>[
-                      SizedBox(
-                        height: personalNameBoxHeight,
-                        child: _legacyAwareText(
-                          text: resolvedName,
-                          fontFamily: displayNameFontFamily,
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          fitToWidth: true,
-                          style: TextStyle(
-                            color: stripTextColor,
-                            fontWeight: FontWeight.w500,
-                            fontSize: personalNameFontSize,
-                            height: personalNameLineHeight,
-                          ),
                         ),
                       ),
-                      if (resolvedDesignation.isNotEmpty)
-                        SizedBox(
-                          height: 18,
-                          child: Transform.translate(
-                            offset: const Offset(0, -3),
-                            child: _legacyAwareText(
-                              text: resolvedDesignation,
-                              fontFamily: designationFontFamily,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
-                              fitToWidth: true,
-                              style: TextStyle(
-                                color: mutedStripTextColor,
-                                fontWeight: FontWeight.w400,
-                                fontSize: 20,
-                                height: 0.82,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ],
+                    ),
+                  ),
+              ],
+            ),
+            if (!showPersonalizationPaint)
+              Positioned.fill(
+                child: _PosterCanvasSkeletonPlaceholder(
+                  showBottomStrip: widget.personalizationConfig.showBottomStrip,
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PosterCanvasSkeletonPlaceholder extends StatelessWidget {
+  const _PosterCanvasSkeletonPlaceholder({required this.showBottomStrip});
+
+  final bool showBottomStrip;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFFEFF3F8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: _SkeletonBox(
+                    height: math.max(1, constraints.maxHeight),
+                    radius: 18,
+                  ),
+                );
+              },
+            ),
+          ),
+          if (showBottomStrip) const _SkeletonBox(height: 52, radius: 12),
+        ],
       ),
     );
   }

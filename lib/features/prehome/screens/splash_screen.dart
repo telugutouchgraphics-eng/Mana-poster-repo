@@ -155,15 +155,15 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: cs.surface,
       body: SizedBox.expand(
         child: Stack(
           children: <Widget>[
-            const Positioned.fill(
+            Positioned.fill(
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color(0xFFF8FAFF),
-                ),
+                decoration: BoxDecoration(color: cs.surface),
               ),
             ),
             SafeArea(
@@ -187,15 +187,8 @@ class _SplashScreenState extends State<SplashScreen>
                                 width: 84,
                                 height: 84,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFF),
+                                  color: cs.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(24),
-                                  boxShadow: const <BoxShadow>[
-                                    BoxShadow(
-                                      color: Color(0x0E0F172A),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                                 padding: const EdgeInsets.all(9),
                                 child: ClipRRect(
@@ -207,21 +200,21 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              const Text(
+                              Text(
                                 AppPublicInfo.appName,
                                 style: TextStyle(
                                   fontSize: 31,
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
+                                  color: cs.onSurface,
                                   letterSpacing: -0.2,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 AppPublicInfo.appTagline,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12.5,
-                                  color: Color(0xFF475569),
+                                  color: cs.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                   height: 1.35,
                                 ),
@@ -251,7 +244,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: const Color(0xFF64748B),
+                                  color: cs.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.2,
                                 ),

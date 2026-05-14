@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui show Image, ImageByteFormat;
 
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_background_remover/image_background_remover.dart';
-import 'package:path_provider/path_provider.dart';
 
 class BackgroundRemovalResult {
   const BackgroundRemovalResult({
@@ -92,12 +90,11 @@ class OfflineBackgroundRemovalService {
         final pngBytes = await _decontaminateRemovedImage(
           byteData.buffer.asUint8List(),
         );
-        final tempFile = await _persistTempPng(pngBytes);
         return BackgroundRemovalResult(
           pngBytes: pngBytes,
           engineLabel: 'image_background_remover',
           didRemoveBackground: true,
-          outputFilePath: tempFile.path,
+          outputFilePath: null,
         );
       } finally {
         resultImage.dispose();
@@ -107,15 +104,6 @@ class OfflineBackgroundRemovalService {
 
   Future<Uint8List> finalizeCutout(Uint8List pngBytes) async {
     return compute(_decontaminateRemovedImageBytes, pngBytes);
-  }
-
-  Future<File> _persistTempPng(Uint8List pngBytes) async {
-    final tempDir = await getTemporaryDirectory();
-    final file = File(
-      '${tempDir.path}${Platform.pathSeparator}bg_removed_${DateTime.now().microsecondsSinceEpoch}.png',
-    );
-    await file.writeAsBytes(pngBytes, flush: true);
-    return file;
   }
 
   Future<Uint8List> _decontaminateRemovedImage(Uint8List pngBytes) async {

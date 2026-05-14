@@ -15,19 +15,14 @@ class LegalDocumentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final copy = _LegalCopy(context.strings, documentType);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFFF3F6FB),
-        surfaceTintColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
         title: Text(
           copy.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       body: GradientShell(
@@ -38,11 +33,8 @@ class LegalDocumentScreen extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: copy.heroGradient,
-                ),
+                color: cs.surfaceContainerHighest,
+                border: Border.all(color: cs.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,13 +45,13 @@ class LegalDocumentScreen extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
+                      color: cs.secondaryContainer,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       copy.badge,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: cs.onSecondaryContainer,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                       ),
@@ -68,19 +60,17 @@ class LegalDocumentScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     copy.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       height: 1.12,
                       fontWeight: FontWeight.w900,
+                      color: cs.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     copy.summary,
-                    style: const TextStyle(
-                      color: Color(0xFFE2E8F0),
-                      fontSize: 14,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
                       height: 1.45,
                       fontWeight: FontWeight.w500,
                     ),
@@ -88,8 +78,8 @@ class LegalDocumentScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     copy.lastUpdated,
-                    style: const TextStyle(
-                      color: Color(0xFFBFDBFE),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.primary,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -102,8 +92,8 @@ class LegalDocumentScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               copy.footer,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
                 fontSize: 12.5,
                 height: 1.45,
                 fontWeight: FontWeight.w500,
@@ -123,21 +113,22 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.94),
+        color: cs.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: cs.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             section.title,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
+            style: TextStyle(
+              color: cs.onSurface,
               fontSize: 16.5,
               fontWeight: FontWeight.w800,
             ),
@@ -145,8 +136,8 @@ class _SectionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             section.body,
-            style: const TextStyle(
-              color: Color(0xFF475569),
+            style: TextStyle(
+              color: cs.onSurfaceVariant,
               fontSize: 13.5,
               height: 1.5,
               fontWeight: FontWeight.w500,
@@ -172,10 +163,6 @@ class _LegalCopy {
   final LegalDocumentType documentType;
 
   bool get _isPrivacy => documentType == LegalDocumentType.privacyPolicy;
-
-  List<Color> get heroGradient => _isPrivacy
-      ? const <Color>[Color(0xFFB45309), Color(0xFFD97706), Color(0xFFF59E0B)]
-      : const <Color>[Color(0xFF9A3412), Color(0xFFC2410C), Color(0xFFEA580C)];
 
   String get title => _isPrivacy
       ? strings.localized(

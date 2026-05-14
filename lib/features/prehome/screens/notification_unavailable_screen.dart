@@ -30,7 +30,10 @@ class NotificationUnavailableScreen extends StatelessWidget {
               'This content was removed or is no longer available. Open Home to see the latest posters.',
         );
 
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: AppBar(title: Text(strings.localized(telugu: 'నోటిఫికేషన్', english: 'Notification'))),
       body: SafeArea(
         child: Center(
@@ -39,29 +42,29 @@ class NotificationUnavailableScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                const Icon(
+                Icon(
                   Icons.notifications_off_rounded,
                   size: 68,
-                  color: Color(0xFF64748B),
+                  color: cs.onSurfaceVariant,
                 ),
                 const SizedBox(height: 18),
                 Text(
                   resolvedTitle,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    color: cs.onSurface,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   resolvedMessage,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.5,
-                    color: Color(0xFF475569),
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 22),

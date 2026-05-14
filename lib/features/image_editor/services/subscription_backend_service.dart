@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier, kIsWeb;
 
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
+import 'package:mana_poster/features/image_editor/services/play_billing_account_binding_service.dart';
+import 'package:mana_poster/features/prehome/services/premium_template_access_service.dart';
 import 'pro_purchase_gateway.dart';
 
 enum SubscriptionBackendState {
@@ -94,18 +96,49 @@ class SubscriptionBackendService {
     _cachedEntitlement = null;
     _cachedEntitlementAt = null;
     entitlementNotifier.value = null;
+    await PlayBillingAccountBindingService.instance
+        .clearPendingSubscriptionBindingIfOwnedByDifferentUid(
+          nextUid: FirebaseAuth.instance.currentUser?.uid,
+          reason: 'auth_change',
+        );
+    await PremiumTemplateAccessService.clearLegacyLocalPremiumState();
     await InAppPurchaseGateway.syncBackendEntitlement(false);
   }
 
   Future<SubscriptionBackendResult> fetchEntitlementWithCache({
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh &&
-        hasFreshEntitlementCache &&
-        _cachedEntitlement != null) {
+    final cached = _cachedEntitlement;
+    if (!forceRefresh && hasFreshEntitlementCache && cached != null) {
+      return cached;
+    }
+    return _fetchEntitlementFromBackend();
+  }
+
+  Future<SubscriptionBackendResult> _fetchEntitlementFromBackend() async {
+    if (!isConfigured) {
+      return const SubscriptionBackendResult(
+        state: SubscriptionBackendState.notConfigured,
+      );
+    }
+
+    return _postJson(
+      url: _statusUrl,
+      payload: <String, dynamic>{
+        'platform': _platformLabel,
+        'uid': _firebaseAuth.currentUser?.uid,
+      },
+    );
+  }
+
+  Future<SubscriptionBackendResult> fetchEntitlement({
+    bool forceRefresh = false,
+  }) async {
+    final cached = _cachedEntitlement;
+    if (!forceRefresh && hasFreshEntitlementCache && cached != null) {
       return _cachedEntitlement!;
     }
-    return fetchEntitlement(forceRefresh: true);
+    return _fetchEntitlementFromBackend();
   }
 
   Future<void> refreshEntitlementInBackground({
@@ -116,7 +149,15 @@ class SubscriptionBackendService {
       if (clearCacheFirst) {
         clearEntitlementCache();
       }
-      await fetchEntitlement(forceRefresh: forceRefresh);
+      final previousCached = _cachedEntitlement;
+      final previousCachedAt = _cachedEntitlementAt;
+      final result = await fetchEntitlement(forceRefresh: forceRefresh);
+      if (result.state == SubscriptionBackendState.failed &&
+          previousCached != null) {
+        _cachedEntitlement = previousCached;
+        _cachedEntitlementAt = previousCachedAt;
+        entitlementNotifier.value = previousCached;
+      }
     } catch (_) {
       // Ignore background refresh failures and preserve the last known cache.
     }
@@ -130,13 +171,35 @@ class SubscriptionBackendService {
   Future<SubscriptionBackendResult> fetchFreshEntitlementWithRetry({
     Duration retryDelay = const Duration(seconds: 2),
   }) async {
-    var result = await fetchFreshEntitlement();
+    // Avoid clearing entitlement twice — keeps UI/cache stable during retries.
+    var result = await fetchEntitlement(forceRefresh: true);
     if (result.hasAccess || retryDelay <= Duration.zero) {
       return result;
     }
     await Future<void>.delayed(retryDelay);
-    result = await fetchFreshEntitlement();
+    result = await fetchEntitlement(forceRefresh: true);
     return result;
+  }
+
+  Future<void> recoverPendingPurchaseInBackground() async {
+    try {
+      final evidence = await InAppPurchaseGateway().recoverUnfinishedPurchase();
+      if (evidence == null) {
+        return;
+      }
+      final verification = await verifyPurchase(evidence: evidence);
+      if (!verification.hasAccess) {
+        return;
+      }
+      await evidence.completeStorePurchase();
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'pending_purchase_recovered',
+      );
+      await fetchFreshEntitlementWithRetry();
+    } catch (_) {
+      // Keep recovery best-effort; Play will continue surfacing unfinished
+      // purchases until they are verified and completed.
+    }
   }
 
   Future<SubscriptionBackendResult> verifyPurchase({
@@ -145,6 +208,18 @@ class SubscriptionBackendService {
     if (!isConfigured) {
       return const SubscriptionBackendResult(
         state: SubscriptionBackendState.notConfigured,
+      );
+    }
+    final bindingCheck = await PlayBillingAccountBindingService.instance
+        .ensureCurrentUserCanClaimPendingSubscription(
+          productId: evidence.productId,
+          trigger: 'verify_purchase_request',
+        );
+    if (!bindingCheck.isAllowed) {
+      return SubscriptionBackendResult(
+        state: SubscriptionBackendState.failed,
+        message:
+            'Purchase verification blocked for current account (${bindingCheck.decision.name})',
       );
     }
 
@@ -164,30 +239,6 @@ class SubscriptionBackendService {
       url: _verifyUrl,
       payload: payload,
       requireFreshToken: true,
-    );
-  }
-
-  Future<SubscriptionBackendResult> fetchEntitlement({
-    bool forceRefresh = false,
-  }) async {
-    if (!isConfigured) {
-      return const SubscriptionBackendResult(
-        state: SubscriptionBackendState.notConfigured,
-      );
-    }
-
-    if (!forceRefresh &&
-        hasFreshEntitlementCache &&
-        _cachedEntitlement != null) {
-      return _cachedEntitlement!;
-    }
-
-    return _postJson(
-      url: _statusUrl,
-      payload: <String, dynamic>{
-        'platform': _platformLabel,
-        'uid': _firebaseAuth.currentUser?.uid,
-      },
     );
   }
 
@@ -294,7 +345,6 @@ class SubscriptionBackendService {
         status: _parsePlanStatus(
           rawStatus: decoded['status'],
           isPro: isPro,
-          expiryTime: expiryTime,
           subscriptionState: decoded['subscriptionState'],
         ),
         startDate: startDate,
@@ -308,6 +358,12 @@ class SubscriptionBackendService {
       _cachedEntitlement = result;
       _cachedEntitlementAt = DateTime.now();
       entitlementNotifier.value = result;
+      if (result.hasAccess) {
+        await PlayBillingAccountBindingService.instance
+            .clearPendingSubscriptionBinding(
+              reason: 'backend_verification_success',
+            );
+      }
       return result;
     } catch (error) {
       return SubscriptionBackendResult(
@@ -390,7 +446,6 @@ class SubscriptionBackendService {
   SubscriptionPlanStatus _parsePlanStatus({
     required dynamic rawStatus,
     required bool isPro,
-    required DateTime? expiryTime,
     required dynamic subscriptionState,
   }) {
     final normalizedStatus = rawStatus?.toString().trim().toLowerCase();
@@ -401,9 +456,7 @@ class SubscriptionBackendService {
       return SubscriptionPlanStatus.expired;
     }
     if (normalizedStatus == 'inactive') {
-      return expiryTime != null && expiryTime.isBefore(DateTime.now())
-          ? SubscriptionPlanStatus.expired
-          : SubscriptionPlanStatus.inactive;
+      return SubscriptionPlanStatus.inactive;
     }
 
     final normalizedSubscriptionState =
@@ -411,9 +464,6 @@ class SubscriptionBackendService {
     if (normalizedSubscriptionState.contains('expired') ||
         normalizedSubscriptionState.contains('canceled') ||
         normalizedSubscriptionState.contains('cancelled')) {
-      return SubscriptionPlanStatus.expired;
-    }
-    if (expiryTime != null && expiryTime.isBefore(DateTime.now())) {
       return SubscriptionPlanStatus.expired;
     }
     if (isPro) {

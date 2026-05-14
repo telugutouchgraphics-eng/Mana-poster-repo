@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
+import 'package:mana_poster/features/image_editor/services/play_billing_account_binding_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PurchaseProductIds {
@@ -16,12 +20,14 @@ class PurchaseProductIds {
 
 enum PurchaseFlowResult {
   success,
+  pending,
   cancelled,
   failed,
   billingUnavailable,
   productNotFound,
   timedOut,
   nothingToRestore,
+  purchaseInProgress,
 }
 
 class PurchaseVerificationEvidence {
@@ -58,6 +64,205 @@ class PurchaseFlowOutcome {
 
   final PurchaseFlowResult result;
   final PurchaseVerificationEvidence? evidence;
+}
+
+class BillingPurchaseEvent {
+  const BillingPurchaseEvent({
+    required this.productId,
+    required this.status,
+    required this.evidence,
+  });
+
+  final String productId;
+  final PurchaseStatus status;
+  final PurchaseVerificationEvidence evidence;
+}
+
+class BillingPurchaseCoordinator {
+  BillingPurchaseCoordinator._();
+
+  static final BillingPurchaseCoordinator instance =
+      BillingPurchaseCoordinator._();
+
+  final InAppPurchase _inAppPurchase = InAppPurchase.instance;
+  final StreamController<BillingPurchaseEvent> _events =
+      StreamController<BillingPurchaseEvent>.broadcast();
+
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  Future<void>? _initializeFuture;
+  bool _purchaseFlowActive = false;
+
+  Future<void> initialize() async {
+    final existing = _initializeFuture;
+    if (existing != null) {
+      return existing;
+    }
+    final future = _initializeOnce();
+    _initializeFuture = future;
+    try {
+      await future;
+    } catch (_) {
+      _initializeFuture = null;
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeOnce() async {
+    if (_purchaseSubscription != null) {
+      return;
+    }
+    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
+      (updates) {
+        for (final purchase in updates) {
+          _events.add(
+            BillingPurchaseEvent(
+              productId: purchase.productID,
+              status: purchase.status,
+              evidence: _buildEvidenceForPurchase(purchase),
+            ),
+          );
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('purchaseStream error: $error');
+      },
+    );
+  }
+
+  Future<PurchaseFlowOutcome> runPurchaseFlow({
+    required Future<void> Function() trigger,
+    required Set<String> acceptedProductIds,
+    required Duration timeout,
+    required PurchaseFlowOutcome timeoutResult,
+    bool acceptRestored = false,
+  }) async {
+    await initialize();
+    if (_purchaseFlowActive) {
+      return const PurchaseFlowOutcome(
+        result: PurchaseFlowResult.purchaseInProgress,
+      );
+    }
+
+    _purchaseFlowActive = true;
+    final completer = Completer<PurchaseFlowOutcome>();
+    late final StreamSubscription<BillingPurchaseEvent> subscription;
+
+    void completeIfPending(PurchaseFlowOutcome result) {
+      if (!completer.isCompleted) {
+        completer.complete(result);
+      }
+    }
+
+    subscription = _events.stream
+        .where((event) => acceptedProductIds.contains(event.productId))
+        .listen(
+          (event) {
+            switch (event.status) {
+              case PurchaseStatus.purchased:
+                completeIfPending(
+                  PurchaseFlowOutcome(
+                    result: PurchaseFlowResult.success,
+                    evidence: event.evidence,
+                  ),
+                );
+              case PurchaseStatus.restored:
+                if (acceptRestored) {
+                  completeIfPending(
+                    PurchaseFlowOutcome(
+                      result: PurchaseFlowResult.success,
+                      evidence: event.evidence,
+                    ),
+                  );
+                }
+              case PurchaseStatus.pending:
+                completeIfPending(
+                  PurchaseFlowOutcome(
+                    result: PurchaseFlowResult.pending,
+                    evidence: event.evidence,
+                  ),
+                );
+              case PurchaseStatus.canceled:
+                completeIfPending(
+                  const PurchaseFlowOutcome(
+                    result: PurchaseFlowResult.cancelled,
+                  ),
+                );
+              case PurchaseStatus.error:
+                completeIfPending(
+                  const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
+                );
+            }
+          },
+          onError: (_) => completeIfPending(
+            const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
+          ),
+        );
+
+    try {
+      await trigger();
+      return await completer.future.timeout(
+        timeout,
+        onTimeout: () => timeoutResult,
+      );
+    } catch (_) {
+      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    } finally {
+      await subscription.cancel();
+      _purchaseFlowActive = false;
+    }
+  }
+
+  Future<Set<String>> collectRestoredProductIds({
+    required Future<void> Function() trigger,
+    required Set<String> acceptedProductIds,
+    required Duration timeout,
+  }) async {
+    await initialize();
+    if (_purchaseFlowActive) {
+      return <String>{};
+    }
+
+    _purchaseFlowActive = true;
+    final restored = <String>{};
+    late final StreamSubscription<BillingPurchaseEvent> subscription;
+
+    subscription = _events.stream
+        .where((event) => acceptedProductIds.contains(event.productId))
+        .listen((event) {
+          if (event.status == PurchaseStatus.purchased ||
+              event.status == PurchaseStatus.restored) {
+            restored.add(event.productId);
+          }
+        });
+
+    try {
+      await trigger();
+      await Future<void>.delayed(timeout);
+      return restored;
+    } catch (_) {
+      return restored;
+    } finally {
+      await subscription.cancel();
+      _purchaseFlowActive = false;
+    }
+  }
+
+  static PurchaseVerificationEvidence _buildEvidenceForPurchase(
+    PurchaseDetails purchase,
+  ) {
+    return PurchaseVerificationEvidence(
+      productId: purchase.productID,
+      source: purchase.verificationData.source,
+      serverVerificationData: purchase.verificationData.serverVerificationData,
+      localVerificationData: purchase.verificationData.localVerificationData,
+      transactionId: purchase.purchaseID,
+      transactionDate: purchase.transactionDate,
+      status: purchase.status.name,
+      completePurchase: purchase.pendingCompletePurchase
+          ? () => InAppPurchase.instance.completePurchase(purchase)
+          : null,
+    );
+  }
 }
 
 abstract class ProPurchaseGateway {
@@ -103,15 +308,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
            SubscriptionPlanConfig.resolvedPremiumProductIds().toList(),
        _inAppPurchase = inAppPurchase ?? InAppPurchase.instance;
 
-  static StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
-  static final StreamController<PurchaseVerificationEvidence>
-  _purchaseEvidenceController =
-      StreamController<PurchaseVerificationEvidence>.broadcast();
   static const String _playStoreProActiveKey =
       'mana_poster_play_store_pro_active_v1';
-  static PurchaseVerificationEvidence? _lastObservedEvidence;
-  static Set<String> get _trackedSubscriptionProductIds =>
-      SubscriptionPlanConfig.resolvedPremiumProductIds();
   static bool _playStoreProActive = false;
 
   final String productId;
@@ -143,37 +341,22 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   @override
   Future<void> initialize() async {
     await _restoreCachedPlayStoreProState();
-    if (_purchaseSubscription != null) {
-      return;
-    }
-    _purchaseSubscription = _inAppPurchase.purchaseStream.listen(
-      (updates) async {
-        for (final purchase in updates) {
-          final isAcknowledged = _isAcknowledgedForPurchase(purchase);
-          _debugLog('purchase.status=${purchase.status.name}');
-          _debugLog('productId=${purchase.productID}');
-          _debugLog('isAcknowledged=$isAcknowledged');
-          if (!_trackedSubscriptionProductIds.contains(purchase.productID)) {
-            continue;
-          }
-          if (purchase.status != PurchaseStatus.purchased &&
-              purchase.status != PurchaseStatus.restored) {
-            continue;
-          }
-          final evidence = _buildEvidenceForPurchase(purchase);
-          _lastObservedEvidence = evidence;
-          _purchaseEvidenceController.add(evidence);
-          await evidence.completeStorePurchase();
-        }
-      },
-    );
+    await BillingPurchaseCoordinator.instance.initialize();
   }
 
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
     await initialize();
+    final binding = await PlayBillingAccountBindingService.instance
+        .bindSubscriptionPurchaseToUid(productId: productId);
+    if (binding == null) {
+      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    }
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'billing_unavailable',
+      );
       return const PurchaseFlowOutcome(
         result: PurchaseFlowResult.billingUnavailable,
       );
@@ -182,6 +365,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     final targetProductIds = _allProductIds;
     var query = await _inAppPurchase.queryProductDetails(targetProductIds);
     if (query.error != null) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'product_query_failed',
+      );
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     }
     if (query.productDetails.isEmpty) {
@@ -194,6 +380,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
     }
     if (query.productDetails.isEmpty) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'product_not_found',
+      );
       return const PurchaseFlowOutcome(
         result: PurchaseFlowResult.productNotFound,
       );
@@ -212,16 +401,25 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     _logSelectedProductForPurchase(selectedDetails);
     final purchaseParam = _buildPurchaseParam(selectedDetails);
 
-    return _waitForPurchaseResult(
+    final outcome = await _waitForPurchaseResult(
       acceptedProductIds: targetProductIds,
       timeout: const Duration(minutes: 5),
       timeoutResult: const PurchaseFlowOutcome(
         result: PurchaseFlowResult.timedOut,
       ),
-      trigger: () => _inAppPurchase.buyNonConsumable(
-        purchaseParam: purchaseParam,
-      ),
+      trigger: () =>
+          _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam),
+      acceptRestored: false,
     );
+    if (outcome.result == PurchaseFlowResult.cancelled ||
+        outcome.result == PurchaseFlowResult.failed ||
+        outcome.result == PurchaseFlowResult.productNotFound ||
+        outcome.result == PurchaseFlowResult.billingUnavailable) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'purchase_flow_${outcome.result.name}',
+      );
+    }
+    return outcome;
   }
 
   @override
@@ -235,54 +433,101 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     }
 
     final localActivePurchase = await _findExistingPurchaseLocally();
-    if (localActivePurchase != null) {
+    if (localActivePurchase != null &&
+        await _canCurrentUserClaimUnverifiedPurchase(
+          localActivePurchase,
+          trigger: 'local_query_past_purchases',
+        )) {
       return PurchaseFlowOutcome(
         result: PurchaseFlowResult.success,
         evidence: localActivePurchase,
       );
     }
 
-    final matchingEvidenceFuture = _purchaseEvidenceController.stream
-        .firstWhere((evidence) => _allProductIds.contains(evidence.productId));
-    await _inAppPurchase.restorePurchases();
-    try {
-      final matchedEvidence = await matchingEvidenceFuture.timeout(
-        const Duration(seconds: 90),
-      );
-      return PurchaseFlowOutcome(
-        result: PurchaseFlowResult.success,
-        evidence: matchedEvidence,
-      );
-    } on TimeoutException {
-      final lastObservedEvidence = _lastObservedEvidence;
-      if (lastObservedEvidence != null &&
-          _allProductIds.contains(lastObservedEvidence.productId)) {
-        return PurchaseFlowOutcome(
-          result: PurchaseFlowResult.success,
-          evidence: lastObservedEvidence,
-        );
-      }
+    final restoreResult = await _waitForPurchaseResult(
+      acceptedProductIds: _allProductIds,
+      timeout: const Duration(seconds: 90),
+      timeoutResult: const PurchaseFlowOutcome(
+        result: PurchaseFlowResult.nothingToRestore,
+      ),
+      trigger: _inAppPurchase.restorePurchases,
+      acceptRestored: true,
+    );
+    if (restoreResult.result == PurchaseFlowResult.success &&
+        restoreResult.evidence != null &&
+        await _canCurrentUserClaimUnverifiedPurchase(
+          restoreResult.evidence!,
+          trigger: 'restore_purchases',
+        )) {
+      return restoreResult;
     }
 
     final fallbackPurchase = await _findExistingPurchaseLocally();
-    if (fallbackPurchase != null) {
+    if (fallbackPurchase != null &&
+        await _canCurrentUserClaimUnverifiedPurchase(
+          fallbackPurchase,
+          trigger: 'restore_query_past_purchases',
+        )) {
       return PurchaseFlowOutcome(
         result: PurchaseFlowResult.success,
         evidence: fallbackPurchase,
       );
     }
 
-    return const PurchaseFlowOutcome(result: PurchaseFlowResult.nothingToRestore);
+    return const PurchaseFlowOutcome(
+      result: PurchaseFlowResult.nothingToRestore,
+    );
+  }
+
+  Future<PurchaseVerificationEvidence?> recoverUnfinishedPurchase() async {
+    await initialize();
+    final evidence = await _findExistingPurchaseLocallyInternal(
+      onlyPendingCompletion: true,
+    );
+    if (evidence == null) {
+      return null;
+    }
+    final canClaim = await _canCurrentUserClaimUnverifiedPurchase(
+      evidence,
+      trigger: 'recover_pending_purchase',
+    );
+    return canClaim ? evidence : null;
   }
 
   Future<PurchaseVerificationEvidence?> _findExistingPurchaseLocally() async {
-    if (kIsWeb || !Platform.isAndroid) {
+    return _findExistingPurchaseLocallyInternal(onlyPendingCompletion: false);
+  }
+
+  Future<PurchaseVerificationEvidence?> _findExistingPurchaseLocallyInternal({
+    required bool onlyPendingCompletion,
+  }) async {
+    if (kIsWeb) {
       return null;
     }
     try {
-      final addition =
-          _inAppPurchase
-              .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+      if (Platform.isIOS || Platform.isMacOS) {
+        if (onlyPendingCompletion) {
+          return null;
+        }
+        final addition = _inAppPurchase
+            .getPlatformAddition<InAppPurchaseStoreKitPlatformAddition>();
+        final receipt = await addition.refreshPurchaseVerificationData();
+        if (receipt == null || receipt.serverVerificationData.trim().isEmpty) {
+          return null;
+        }
+        return PurchaseVerificationEvidence(
+          productId: productId,
+          source: receipt.source,
+          serverVerificationData: receipt.serverVerificationData,
+          localVerificationData: receipt.localVerificationData,
+          status: PurchaseStatus.restored.name,
+        );
+      }
+      if (!Platform.isAndroid) {
+        return null;
+      }
+      final addition = _inAppPurchase
+          .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
       final response = await addition.queryPastPurchases();
       if (response.error != null) {
         return null;
@@ -299,9 +544,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
             purchase.status != PurchaseStatus.restored) {
           continue;
         }
-        final evidence = _buildEvidenceForPurchase(purchase);
-        await evidence.completeStorePurchase();
-        return evidence;
+        if (onlyPendingCompletion && !purchase.pendingCompletePurchase) {
+          continue;
+        }
+        return _buildEvidenceForPurchase(purchase);
       }
     } catch (_) {
       return null;
@@ -334,12 +580,14 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   PurchaseParam _buildPurchaseParam(ProductDetails productDetails) {
-    if (!kIsWeb && Platform.isAndroid && productDetails is GooglePlayProductDetails) {
-      final subscriptionOffers = productDetails.productDetails.subscriptionOfferDetails;
+    if (!kIsWeb &&
+        Platform.isAndroid &&
+        productDetails is GooglePlayProductDetails) {
+      final subscriptionOffers =
+          productDetails.productDetails.subscriptionOfferDetails;
+      final selectedOffer = _selectSubscriptionOffer(subscriptionOffers);
       final offerToken =
-          subscriptionOffers != null && subscriptionOffers.isNotEmpty
-          ? subscriptionOffers.first.offerIdToken
-          : productDetails.offerToken;
+          selectedOffer?.offerIdToken ?? productDetails.offerToken;
       if (offerToken != null && offerToken.isNotEmpty) {
         return GooglePlayPurchaseParam(
           productDetails: productDetails,
@@ -348,6 +596,29 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
     }
     return PurchaseParam(productDetails: productDetails);
+  }
+
+  SubscriptionOfferDetailsWrapper? _selectSubscriptionOffer(
+    List<SubscriptionOfferDetailsWrapper>? offers,
+  ) {
+    if (offers == null || offers.isEmpty) {
+      return null;
+    }
+    final preferredBasePlanId = SubscriptionPlanConfig.primaryMonthlyBasePlanId;
+    final preferredOfferId = SubscriptionPlanConfig.primaryTrialOfferId;
+
+    for (final offer in offers) {
+      if (offer.basePlanId == preferredBasePlanId &&
+          offer.offerId == preferredOfferId) {
+        return offer;
+      }
+    }
+    for (final offer in offers) {
+      if (offer.basePlanId == preferredBasePlanId && offer.offerId == null) {
+        return offer;
+      }
+    }
+    return offers.first;
   }
 
   void _logSelectedProductForPurchase(ProductDetails selectedDetails) {
@@ -361,7 +632,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       final offers = selectedDetails.productDetails.subscriptionOfferDetails;
       _debugLog('offersCount=${offers?.length ?? 0}');
       if (offers != null && offers.isNotEmpty) {
-        _debugLog('offerToken=${offers.first.offerIdToken}');
+        final selectedOffer = _selectSubscriptionOffer(offers);
+        _debugLog('basePlanId=${selectedOffer?.basePlanId}');
+        _debugLog('offerId=${selectedOffer?.offerId}');
+        _debugLog('offerToken=${selectedOffer?.offerIdToken}');
       }
     }
   }
@@ -385,72 +659,67 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     required Set<String> acceptedProductIds,
     required Duration timeout,
     required PurchaseFlowOutcome timeoutResult,
+    bool acceptRestored = false,
   }) async {
-    final completer = Completer<PurchaseFlowOutcome>();
-    late final StreamSubscription<List<PurchaseDetails>> subscription;
-
-    void completeIfPending(PurchaseFlowOutcome result) {
-      if (!completer.isCompleted) {
-        completer.complete(result);
-      }
-    }
-
-    subscription = _inAppPurchase.purchaseStream.listen(
-      (updates) async {
-        for (final purchase in updates) {
-          if (!acceptedProductIds.contains(purchase.productID)) {
-            continue;
-          }
-          switch (purchase.status) {
-            case PurchaseStatus.purchased:
-            case PurchaseStatus.restored:
-              completeIfPending(
-                PurchaseFlowOutcome(
-                  result: PurchaseFlowResult.success,
-                  evidence: PurchaseVerificationEvidence(
-                    productId: purchase.productID,
-                    source: purchase.verificationData.source,
-                    serverVerificationData:
-                        purchase.verificationData.serverVerificationData,
-                    localVerificationData:
-                        purchase.verificationData.localVerificationData,
-                    transactionId: purchase.purchaseID,
-                    transactionDate: purchase.transactionDate,
-                    status: purchase.status.name,
-                    completePurchase: purchase.pendingCompletePurchase
-                        ? () => _inAppPurchase.completePurchase(purchase)
-                        : null,
-                  ),
-                ),
-              );
-            case PurchaseStatus.canceled:
-              completeIfPending(
-                const PurchaseFlowOutcome(result: PurchaseFlowResult.cancelled),
-              );
-            case PurchaseStatus.error:
-              completeIfPending(
-                const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
-              );
-            case PurchaseStatus.pending:
-              break;
-          }
-        }
-      },
-      onError: (_) => completeIfPending(
-        const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
-      ),
+    return BillingPurchaseCoordinator.instance.runPurchaseFlow(
+      trigger: trigger,
+      acceptedProductIds: acceptedProductIds,
+      timeout: timeout,
+      timeoutResult: timeoutResult,
+      acceptRestored: acceptRestored,
     );
+  }
 
-    try {
-      await trigger();
-      return await completer.future.timeout(
-        timeout,
-        onTimeout: () => timeoutResult,
-      );
-    } catch (_) {
-      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
-    } finally {
-      await subscription.cancel();
+  Future<bool> _canCurrentUserClaimUnverifiedPurchase(
+    PurchaseVerificationEvidence evidence, {
+    required String trigger,
+  }) async {
+    final check = await PlayBillingAccountBindingService.instance
+        .ensureCurrentUserCanClaimPendingSubscription(
+          productId: evidence.productId,
+          trigger: trigger,
+        );
+    if (check.isAllowed) {
+      final binding = check.binding;
+      if (binding != null) {
+        final purchaseTime = _parsePurchaseTime(evidence.transactionDate);
+        final earliestAllowedTime = binding.startedAt.subtract(
+          const Duration(minutes: 5),
+        );
+        if (purchaseTime == null || purchaseTime.isBefore(earliestAllowedTime)) {
+          _debugLog(
+            'Blocked stale Play purchase claim'
+            ' trigger=$trigger'
+            ' currentUid=${FirebaseAuth.instance.currentUser?.uid}'
+            ' productId=${evidence.productId}'
+            ' sessionId=${binding.sessionId}'
+            ' purchaseTime=${evidence.transactionDate}'
+            ' bindingStartedAt=${binding.startedAt.toIso8601String()}',
+          );
+          return false;
+        }
+      }
+      return true;
     }
+    _debugLog(
+      'Blocked unverified Play purchase claim'
+      ' trigger=$trigger'
+      ' currentUid=${FirebaseAuth.instance.currentUser?.uid}'
+      ' productId=${evidence.productId}'
+      ' decision=${check.decision.name}',
+    );
+    return false;
+  }
+
+  DateTime? _parsePurchaseTime(String? rawValue) {
+    final raw = rawValue?.trim() ?? '';
+    if (raw.isEmpty) {
+      return null;
+    }
+    final millis = int.tryParse(raw);
+    if (millis != null) {
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    }
+    return DateTime.tryParse(raw);
   }
 }

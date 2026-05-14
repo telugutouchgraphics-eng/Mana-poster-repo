@@ -153,7 +153,8 @@ class NotificationService {
       return;
     }
 
-    final NotificationDetails details = await _buildNotificationDetails(
+    final _NotificationArtifactBundle bundle =
+        await _buildNotificationArtifactBundle(
       posterImageUrl: posterImageUrl,
       posterBaseImageUrl: posterBaseImageUrl,
       userPhotoUrl: _readDataValue(message.data, 'userPhoto'),
@@ -173,9 +174,10 @@ class NotificationService {
       id,
       resolved.title,
       resolved.body,
-      details,
+      bundle.details,
       payload: payload,
     );
+    _scheduleDeleteNotificationTempFiles(bundle.disposablePaths);
   }
 
   static Future<void> _initializeLocalNotifications(
@@ -549,7 +551,7 @@ class NotificationService {
         value.contains('à´');
   }
 
-  static Future<NotificationDetails> _buildNotificationDetails({
+  static Future<_NotificationArtifactBundle> _buildNotificationArtifactBundle({
     required String posterImageUrl,
     required String posterBaseImageUrl,
     required String userPhotoUrl,
@@ -560,14 +562,29 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    final downloadedPosterPath = await _downloadImageForNotification(
+    final Set<String> disposablePaths = <String>{};
+    final String? downloadedPosterPath = await _downloadImageForNotification(
       posterImageUrl,
     );
+    if (downloadedPosterPath != null) {
+      disposablePaths.add(downloadedPosterPath);
+    }
     final String? collapsedHeaderPath = downloadedPosterPath != null
         ? await _extractCollapsedHeaderStrip(downloadedPosterPath)
         : null;
-    final posterPath = await _prepareExpandedPosterImage(downloadedPosterPath);
-    final userPhotoPath = await _downloadImageForNotification(userPhotoUrl);
+    if (collapsedHeaderPath != null) {
+      disposablePaths.add(collapsedHeaderPath);
+    }
+    final String? posterPath =
+        await _prepareExpandedPosterImage(downloadedPosterPath);
+    if (posterPath != null && posterPath.trim().isNotEmpty) {
+      disposablePaths.add(posterPath.trim());
+    }
+    final String? userPhotoPath =
+        await _downloadImageForNotification(userPhotoUrl);
+    if (userPhotoPath != null) {
+      disposablePaths.add(userPhotoPath);
+    }
 
     final AndroidNotificationDetails androidDetails;
     if (posterPath != null) {
@@ -604,10 +621,34 @@ class NotificationService {
       );
     }
 
-    return NotificationDetails(
-      android: androidDetails,
-      iOS: const DarwinNotificationDetails(),
+    return _NotificationArtifactBundle(
+      details: NotificationDetails(
+        android: androidDetails,
+        iOS: const DarwinNotificationDetails(),
+      ),
+      disposablePaths: disposablePaths.toList(growable: false),
     );
+  }
+
+  static void _scheduleDeleteNotificationTempFiles(List<String> paths) {
+    final List<String> unique = paths
+        .map((String p) => p.trim())
+        .where((String p) => p.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (unique.isEmpty) {
+      return;
+    }
+    Future<void>.delayed(const Duration(minutes: 2), () async {
+      for (final String path in unique) {
+        try {
+          final File file = File(path);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {}
+      }
+    });
   }
 
   static Future<String?> _downloadImageForNotification(String imageUrl) async {
@@ -811,6 +852,16 @@ class NotificationService {
     }
     return 'png';
   }
+}
+
+class _NotificationArtifactBundle {
+  const _NotificationArtifactBundle({
+    required this.details,
+    required this.disposablePaths,
+  });
+
+  final NotificationDetails details;
+  final List<String> disposablePaths;
 }
 
 class _ResolvedNotificationText {

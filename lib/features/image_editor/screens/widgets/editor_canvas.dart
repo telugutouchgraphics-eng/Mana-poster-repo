@@ -132,7 +132,7 @@ Uint8List _optimizeEditorPhotoBytes(Uint8List bytes) {
     return bytes;
   }
 
-  const targetMaxDimension = 1920;
+  const targetMaxDimension = 4096;
   final longest = math.max(decoded.width, decoded.height);
   if (longest <= targetMaxDimension) {
     return bytes;

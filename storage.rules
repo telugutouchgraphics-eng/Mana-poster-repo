@@ -74,8 +74,11 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+    // Public read: creatorPosters docs store storage paths served on the anonymous
+    // home feed — without this, clients cannot mint fresh download URLs for other
+    // users' uploads. Writes stay creator-scoped via create/update/delete below.
     match /creator-posters/{userId}/{posterId}/{fileName} {
-      allow read: if isAdmin() || (isCreator() && request.auth.uid == userId);
+      allow read: if true;
       allow create, update: if isCreator() &&
         request.auth.uid == userId &&
         isAllowedPosterImageUpload();

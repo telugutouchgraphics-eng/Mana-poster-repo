@@ -5,6 +5,14 @@ class SubscriptionPlanConfig {
     'MANA_POSTER_PREMIUM_PLAN_PRODUCT_ID',
     defaultValue: 'mana_poster_premium_monthly_149',
   );
+  static const String primaryMonthlyBasePlanId = String.fromEnvironment(
+    'MANA_POSTER_PREMIUM_PLAN_BASE_PLAN_ID',
+    defaultValue: 'monthly-149',
+  );
+  static const String primaryTrialOfferId = String.fromEnvironment(
+    'MANA_POSTER_PREMIUM_PLAN_OFFER_ID',
+    defaultValue: 'intro-4rs-3days',
+  );
 
   static const String trialPriceDisplay = '₹4';
   static const int trialDays = 3;

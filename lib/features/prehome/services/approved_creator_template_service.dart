@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -65,8 +67,23 @@ class ApprovedCreatorTemplateService {
         query = query.startAfterDocument(startAfterDocument);
       }
       final snapshot = await query.get(GetOptions(source: source));
+
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs =
+          snapshot.docs.toList(growable: false);
+      if (startAfterDocument == null) {
+        mergedDocs = await _mergePosterDocsWithFallback(
+          primary: mergedDocs,
+          limit: math.min(math.max(queryLimit * 6, 80), 300),
+          source: source,
+        );
+      }
+
       return ApprovedCreatorTemplatePage(
-        templates: _filterPublished(_mapSnapshot(snapshot), snapshot, pageSize),
+        templates: _filterPublished(
+          _mapSortedTemplates(mergedDocs),
+          mergedDocs,
+          pageSize,
+        ),
         lastDocument: snapshot.docs.isEmpty
             ? startAfterDocument
             : snapshot.docs.last,
@@ -115,20 +132,43 @@ class ApprovedCreatorTemplateService {
     }
   }
 
-  List<ApprovedCreatorTemplate> _mapSnapshot(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _mergePosterDocsWithFallback({
+    required List<QueryDocumentSnapshot<Map<String, dynamic>>> primary,
+    required int limit,
+    required Source source,
+  }) async {
+    try {
+      final unordered = await firestore
+          .collection('creatorPosters')
+          .where('status', isEqualTo: 'approved')
+          .limit(limit)
+          .get(GetOptions(source: source));
+      final known = primary.map((d) => d.id).toSet();
+      final extra = unordered.docs.where((d) => !known.contains(d.id)).toList();
+      if (extra.isEmpty) {
+        return primary;
+      }
+      return <QueryDocumentSnapshot<Map<String, dynamic>>>[
+        ...primary,
+        ...extra,
+      ];
+    } catch (_) {
+      return primary;
+    }
+  }
+
+  List<ApprovedCreatorTemplate> _mapSortedTemplates(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
-    final templates = snapshot.docs
-        .map(_mapDoc)
-        .whereType<ApprovedCreatorTemplate>()
-        .toList(growable: false);
+    final templates =
+        docs.map(_mapDoc).whereType<ApprovedCreatorTemplate>().toList(growable: false);
     templates.sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
     return templates;
   }
 
   List<ApprovedCreatorTemplate> _filterPublished(
     List<ApprovedCreatorTemplate> templates,
-    QuerySnapshot<Map<String, dynamic>> snapshot,
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     int maxItems,
   ) {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -137,19 +177,20 @@ class ApprovedCreatorTemplateService {
     final knownDynamicTags = _knownDynamicTags();
     final publishMap = <String, int>{};
     final eventEndMap = <String, int>{};
-    for (final doc in snapshot.docs) {
+    for (final doc in docs) {
       final data = doc.data();
-      final raw = data['publishAt'];
-      publishMap[doc.id] = _toMillis(raw) ?? 0;
+      final rawPublish = data['publishAt'];
+      publishMap[doc.id] = _toMillis(rawPublish) ?? 0;
       eventEndMap[doc.id] = _toMillis(data['eventEndAt']) ?? 0;
     }
     final filtered = templates
         .where((template) {
           final publishAt = publishMap[template.id] ?? 0;
           final eventEndAt = eventEndMap[template.id] ?? 0;
-          final visibleFrom = publishAt > 0
-              ? publishAt
-              : template.createdAtMillis;
+          var visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
+          if (visibleFrom <= 0) {
+            visibleFrom = now;
+          }
           if (visibleFrom > now) {
             return false;
           }
@@ -157,8 +198,8 @@ class ApprovedCreatorTemplateService {
             return false;
           }
           final normalized = _normalizeTag(template.categoryId);
-          final usesRollingRetention = normalized.isNotEmpty &&
-              knownDynamicTags.contains(normalized);
+          final usesRollingRetention =
+              normalized.isNotEmpty && knownDynamicTags.contains(normalized);
           final retentionMs = usesRollingRetention
               ? _posterRetentionWindowMillis
               : 365 * 24 * 60 * 60 * 1000;
@@ -176,8 +217,14 @@ class ApprovedCreatorTemplateService {
     filtered.sort((a, b) {
       final publishA = publishMap[a.id] ?? 0;
       final publishB = publishMap[b.id] ?? 0;
-      final left = publishA > 0 ? publishA : a.createdAtMillis;
-      final right = publishB > 0 ? publishB : b.createdAtMillis;
+      var left = publishA > 0 ? publishA : a.createdAtMillis;
+      var right = publishB > 0 ? publishB : b.createdAtMillis;
+      if (left <= 0) {
+        left = now;
+      }
+      if (right <= 0) {
+        right = now;
+      }
       return right.compareTo(left);
     });
     if (filtered.length <= maxItems) {
@@ -186,27 +233,114 @@ class ApprovedCreatorTemplateService {
     return filtered.take(maxItems).toList(growable: false);
   }
 
+  String _firstNonEmptyTrimmed(
+    Map<String, dynamic> data,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final raw = data[key];
+      if (raw is String) {
+        final trimmed = raw.trim();
+        if (trimmed.isNotEmpty) {
+          return trimmed;
+        }
+      }
+    }
+    return '';
+  }
+
+  String? _firstTrimmedUrlField(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final raw = data[key];
+      if (raw is String) {
+        final trimmed = raw.trim();
+        if (trimmed.isNotEmpty) {
+          return trimmed;
+        }
+      }
+    }
+    return null;
+  }
+
+  int _effectiveCreationMillis(Map<String, dynamic> data) {
+    return _toMillis(data['createdAt']) ??
+        _toMillis(data['created_at']) ??
+        _toMillis(data['updatedAt']) ??
+        _toMillis(data['updated_at']) ??
+        _toMillis(data['postedAt']) ??
+        _toMillis(data['posted_at']) ??
+        _toMillis(data['publishedAt']) ??
+        _toMillis(data['uploadedAt']) ??
+        _toMillis(data['uploadTimestamp']) ??
+        0;
+  }
+
   ApprovedCreatorTemplate? _mapDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
+
+    final bool mutedByActiveFlag =
+        data['active'] is bool && !(data['active'] as bool);
+    if (mutedByActiveFlag) {
+      return null;
+    }
+
     final mediaType = (data['mediaType'] as String? ?? 'image')
         .trim()
         .toLowerCase();
     final imageUrl =
-        (data['imageUrl'] as String?)?.trim() ??
-        (data['posterUrl'] as String?)?.trim() ??
-        (data['previewUrl'] as String?)?.trim();
+        (_firstTrimmedUrlField(data, const <String>[
+              'imageUrl',
+              'imageURL',
+              'posterUrl',
+              'previewUrl',
+              'posterImageUrl',
+              'posterImageURL',
+              'downloadUrl',
+              'downloadURL',
+              'publicUrl',
+              'url',
+              'firebaseUrl',
+            ]) ??
+            '')
+        .trim();
+    final imageStoragePath = _firstNonEmptyTrimmed(data, const <String>[
+      'imagePath',
+      'imageStoragePath',
+      'posterImagePath',
+      'posterStoragePath',
+      'storagePath',
+      'posterStorageRef',
+      'firebaseStoragePath',
+    ]);
+    final thumbnailStoragePath = _firstNonEmptyTrimmed(data, const <String>[
+      'thumbnailPath',
+      'thumbnailStoragePath',
+      'posterThumbnailPath',
+      'thumbPath',
+      'thumbnailRef',
+    ]);
     final thumbnailUrl =
-        (data['thumbnailUrl'] as String?)?.trim() ??
-        (data['previewUrl'] as String?)?.trim() ??
-        imageUrl;
+        (_firstTrimmedUrlField(data, const <String>[
+              'thumbnailUrl',
+              'thumbUrl',
+              'thumbnailImageUrl',
+              'previewUrl',
+            ]) ??
+            imageUrl)
+        .trim();
+    final thumbnailUrlResolved = thumbnailUrl;
     final videoUrl =
         (data['videoUrl'] as String?)?.trim() ??
         (data['videoPreviewUrl'] as String?)?.trim() ??
         '';
     final hasVideo = mediaType == 'video' && videoUrl.isNotEmpty;
-    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final hasImageByUrl = imageUrl.isNotEmpty;
+    final hasImage = hasImageByUrl ||
+        thumbnailUrlResolved.isNotEmpty ||
+        imageStoragePath.isNotEmpty ||
+        thumbnailStoragePath.isNotEmpty;
     if (!hasVideo && !hasImage) {
       return null;
     }
@@ -216,16 +350,15 @@ class ApprovedCreatorTemplateService {
         : 'Creator Poster';
     final categoryId = (data['categoryId'] as String?)?.trim() ?? '';
     final categoryLabel = (data['categoryLabel'] as String?)?.trim() ?? '';
-    final createdAtRaw = data['createdAt'];
-    final updatedAtRaw = data['updatedAt'];
-    final createdAtMillis =
-        _toMillis(createdAtRaw) ?? _toMillis(updatedAtRaw) ?? 0;
+    final createdAtMillis = _effectiveCreationMillis(data);
 
     return ApprovedCreatorTemplate(
       id: doc.id,
       title: title,
-      imageUrl: imageUrl ?? '',
-      thumbnailUrl: thumbnailUrl ?? '',
+      imageUrl: imageUrl,
+      imageStoragePath: imageStoragePath,
+      thumbnailStoragePath: thumbnailStoragePath,
+      thumbnailUrl: thumbnailUrl,
       mediaType: hasVideo ? 'video' : 'image',
       videoUrl: videoUrl,
       categoryId: categoryId,

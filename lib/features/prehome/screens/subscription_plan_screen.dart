@@ -39,7 +39,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool _busyRestore = false;
   bool _didAutoStartPurchase = false;
   bool _didAutoTriggerRestore = false;
-  bool _didAttemptSilentStoreSync = false;
 
   void _debugLog(String message) {
     if (kDebugMode) {
@@ -82,8 +81,12 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   Future<void> _loadStatus() async {
     setState(() => _loading = true);
-    final product = await _loadStoreProduct();
-    final result = await _backendService.fetchFreshEntitlement();
+    final wait = await Future.wait<Object?>(<Future<Object?>>[
+      _loadStoreProduct(),
+      _backendService.fetchEntitlement(forceRefresh: true),
+    ]);
+    final product = wait[0] as ProductDetails?;
+    final result = wait[1] as SubscriptionBackendResult;
     if (!mounted) {
       return;
     }
@@ -95,10 +98,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (product != null) {
       _logSelectedProduct(product);
     }
-    if (!_isSubscriptionActive && !_didAttemptSilentStoreSync) {
-      _didAttemptSilentStoreSync = true;
-      unawaited(_syncExistingSubscriptionSilently());
-    }
     if (widget.triggerRestoreOnOpen && !_didAutoTriggerRestore) {
       _didAutoTriggerRestore = true;
       unawaited(_restoreSubscriptions());
@@ -107,34 +106,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (widget.startPurchaseOnOpen && !_didAutoStartPurchase && _canSubscribe) {
       _didAutoStartPurchase = true;
       unawaited(_subscribeFreePlan());
-    }
-  }
-
-  Future<void> _syncExistingSubscriptionSilently() async {
-    final outcome = await _purchaseGateway.restorePurchases();
-    if (!mounted) {
-      return;
-    }
-    final evidence = outcome.evidence;
-    if (outcome.result == PurchaseFlowResult.success && evidence != null) {
-      final verifyResult = await _verifyPurchaseWithRetry(evidence);
-      if (!mounted) {
-        return;
-      }
-      if (verifyResult.isSuccess) {
-        await evidence.completeStorePurchase();
-        await _refreshEntitlementAfterRestore();
-      }
-      return;
-    }
-    if (outcome.result == PurchaseFlowResult.nothingToRestore) {
-      final fallback = await _backendService.fetchFreshEntitlement();
-      if (!mounted) {
-        return;
-      }
-      if (fallback.isSuccess) {
-        setState(() => _backendResult = fallback);
-      }
     }
   }
 
@@ -193,9 +164,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     setState(() => _busyFree = true);
     try {
       final outcome = await _purchaseGateway.purchaseMonthlyPro();
-      if (outcome.result != PurchaseFlowResult.success) {
-        await _syncExistingSubscriptionSilently();
-      }
       final activated = await _finalizeOutcome(
         outcome,
         successMessage: _t(
@@ -296,10 +264,27 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
 
     if (!_backendService.isConfigured) {
-      await outcome.evidence?.completeStorePurchase();
-      messenger.showSnackBar(SnackBar(content: Text(successMessage)));
-      await _refreshEntitlementAfterRestore();
-      return true;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              telugu:
+                  'సబ్‌స్క్రిప్షన్ వెరిఫికేషన్ సర్వర్ అందుబాటులో లేదు. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి.',
+              english:
+                  'Subscription verification is unavailable. Please try again later.',
+              hindi:
+                  'सदस्यता सत्यापन उपलब्ध नहीं है। कृपया बाद में फिर प्रयास करें।',
+              tamil:
+                  'சந்தா சரிபார்ப்பு கிடைக்கவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.',
+              kannada:
+                  'ಚಂದಾದಾರಿಕೆ ಪರಿಶೀಲನೆ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam:
+                  'സബ്സ്ക്രിപ്ഷൻ സ്ഥിരീകരണം ലഭ്യമല്ല. പിന്നീട് വീണ്ടും ശ്രമിക്കുക.',
+            ),
+          ),
+        ),
+      );
+      return false;
     }
 
     final evidence = outcome.evidence;
@@ -326,7 +311,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       return false;
     }
 
-    if (!verifyResult.isSuccess) {
+    if (!verifyResult.hasAccess) {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -405,7 +390,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         await Future<void>.delayed(delay);
       }
       lastResult = await _backendService.verifyPurchase(evidence: evidence);
-      if (lastResult.isSuccess) {
+      if (lastResult.hasAccess) {
         return lastResult;
       }
     }
@@ -425,6 +410,28 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         tamil: 'பணம் செலுத்தல் ரத்து செய்யப்பட்டது',
         kannada: 'ಪಾವತಿ ರದ್ದುಗೊಂಡಿತು',
         malayalam: 'പേയ്മെന്റ് റദ്ദാക്കി',
+      ),
+      PurchaseFlowResult.pending => _t(
+        telugu:
+            'చెల్లింపు పెండింగ్‌లో ఉంది. Google Play నిర్ధారించిన తర్వాత ప్రో యాక్సెస్ యాక్టివ్ అవుతుంది.',
+        english:
+            'Payment is pending. Pro access will unlock after Google Play confirms it.',
+        hindi:
+            'भुगतान लंबित है। Google Play पुष्टि के बाद Pro access सक्रिय होगा।',
+        tamil:
+            'பணம் நிலுவையில் உள்ளது. Google Play உறுதிப்படுத்திய பிறகு Pro அணுகல் திறக்கும்.',
+        kannada:
+            'ಪಾವತಿ ಬಾಕಿಯಿದೆ. Google Play ದೃಢೀಕರಿಸಿದ ನಂತರ Pro ಪ್ರವೇಶ ಸಕ್ರಿಯವಾಗುತ್ತದೆ.',
+        malayalam:
+            'പേയ്മെന്റ് പെൻഡിംഗിലാണ്. Google Play സ്ഥിരീകരിച്ചതിന് ശേഷം Pro ആക്സസ് തുറക്കും.',
+      ),
+      PurchaseFlowResult.purchaseInProgress => _t(
+        telugu: 'మరొక చెల్లింపు ఇప్పటికే కొనసాగుతోంది.',
+        english: 'Another payment is already in progress.',
+        hindi: 'एक और भुगतान पहले से चल रहा है।',
+        tamil: 'மற்றொரு பணம் செலுத்தல் ஏற்கனவே நடைபெறுகிறது.',
+        kannada: 'ಇನ್ನೊಂದು ಪಾವತಿ ಈಗಾಗಲೇ ನಡೆಯುತ್ತಿದೆ.',
+        malayalam: 'മറ്റൊരു പേയ്മെന്റ് ഇതിനകം നടക്കുന്നു.',
       ),
       PurchaseFlowResult.failed => _t(
         telugu: 'చెల్లింపు విఫలమైంది',
@@ -715,8 +722,10 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       ),
     ];
     planDetails.addAll(
-      <String?>[subscriptionStartLine, subscriptionExpiryLine]
-          .whereType<String>(),
+      <String?>[
+        subscriptionStartLine,
+        subscriptionExpiryLine,
+      ].whereType<String>(),
     );
 
     return Scaffold(

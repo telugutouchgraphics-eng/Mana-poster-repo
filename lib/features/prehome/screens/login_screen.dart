@@ -273,6 +273,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
     final strings = context.strings;
     final isLogin = _mode == _AuthMode.login;
     final authCopy = _AuthUiCopy(context.currentLanguage);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: GradientShell(
@@ -305,8 +306,8 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           const SizedBox(height: 6),
                           Text(
                             authCopy.formSubtitle(isLogin),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -440,10 +441,10 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           Container(
                             padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
+                              color: cs.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFE2E8F0),
+                                color: cs.outlineVariant,
                               ),
                             ),
                             child: Column(
@@ -451,8 +452,8 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                 Text(
                                   authCopy.legalIntro,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF64748B),
+                                  style: TextStyle(
+                                    color: cs.onSurfaceVariant,
                                     fontSize: 12.5,
                                     height: 1.45,
                                     fontWeight: FontWeight.w500,
@@ -481,8 +482,8 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                     ),
                                     Text(
                                       authCopy.andLabel,
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
+                                      style: TextStyle(
+                                        color: cs.onSurfaceVariant,
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -515,8 +516,8 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                 isLogin
                                     ? strings.noAccount
                                     : strings.alreadyHaveAccount,
-                                style: const TextStyle(
-                                  color: Color(0xFF64748B),
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
                               TextButton(

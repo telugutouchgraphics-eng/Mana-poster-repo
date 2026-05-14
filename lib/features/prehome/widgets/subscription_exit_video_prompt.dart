@@ -19,6 +19,7 @@ Future<void> showSubscriptionExitVideoPromptIfAvailable(
     context: context,
     barrierDismissible: false,
     builder: (_) => _SubscriptionExitVideoDialog(
+      parentContext: context,
       videoUrl: config!.url,
       primaryLabel: context.strings.localized(
         telugu: 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
@@ -42,6 +43,7 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
     context: context,
     barrierDismissible: true,
     builder: (_) => _SubscriptionExitVideoDialog(
+      parentContext: context,
       videoUrl: config!.url,
       primaryLabel: context.strings.localized(telugu: 'ధన్యవాదాలు', english: 'Thanks'),
       secondaryLabel: context.strings.localized(telugu: 'మూసివేయి', english: 'Close'),
@@ -51,12 +53,14 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
 
 class _SubscriptionExitVideoDialog extends StatefulWidget {
   const _SubscriptionExitVideoDialog({
+    required this.parentContext,
     required this.videoUrl,
     required this.primaryLabel,
     required this.secondaryLabel,
     this.onPrimaryTap,
   });
 
+  final BuildContext parentContext;
   final String videoUrl;
   final String primaryLabel;
   final String secondaryLabel;
@@ -108,7 +112,11 @@ class _SubscriptionExitVideoDialogState
     }
     final navigator = Navigator.of(context);
     navigator.pop();
-    await widget.onPrimaryTap!(context);
+    await Future<void>.delayed(Duration.zero);
+    if (!widget.parentContext.mounted) {
+      return;
+    }
+    await widget.onPrimaryTap!(widget.parentContext);
   }
 
   @override

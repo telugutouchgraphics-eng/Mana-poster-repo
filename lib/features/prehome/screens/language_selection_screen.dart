@@ -22,6 +22,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final strings = context.strings;
     final languageController = context.languageController;
     final languages = AppLanguage.values;
@@ -62,13 +63,11 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: selected
-                                ? const Color(0xFFE8EEFF)
-                                : Colors.white,
+                                ? cs.primaryContainer
+                                : cs.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: selected
-                                  ? const Color(0xFF1E3A8A)
-                                  : const Color(0xFFE2E8F0),
+                              color: selected ? cs.primary : cs.outlineVariant,
                               width: selected ? 1.4 : 1,
                             ),
                           ),
@@ -79,8 +78,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                                 height: 42,
                                 decoration: BoxDecoration(
                                   color: selected
-                                      ? const Color(0xFF1E3A8A)
-                                      : const Color(0xFFEFF6FF),
+                                      ? cs.primary
+                                      : cs.surfaceContainerHigh,
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                                 alignment: Alignment.center,
@@ -90,8 +89,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                                     fontSize: 18,
                                     fontWeight: FontWeight.w800,
                                     color: selected
-                                        ? Colors.white
-                                        : const Color(0xFF1E3A8A),
+                                        ? cs.onPrimary
+                                        : cs.primary,
                                   ),
                                 ),
                               ),
@@ -108,9 +107,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                               AnimatedOpacity(
                                 opacity: selected ? 1 : 0,
                                 duration: const Duration(milliseconds: 180),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.check_circle_rounded,
-                                  color: Color(0xFF1E3A8A),
+                                  color: cs.primary,
                                 ),
                               ),
                             ],

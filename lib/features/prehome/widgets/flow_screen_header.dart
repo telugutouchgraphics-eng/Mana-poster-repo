@@ -21,15 +21,15 @@ class FlowScreenHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFE0E7FF),
+              color: Theme.of(context).colorScheme.secondaryContainer,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
               badge!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1E3A8A),
+                color: Theme.of(context).colorScheme.onSecondaryContainer,
               ),
             ),
           ),
@@ -45,7 +45,7 @@ class FlowScreenHeader extends StatelessWidget {
         Text(
           subtitle,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFF64748B),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             height: 1.45,
             fontWeight: FontWeight.w500,
           ),

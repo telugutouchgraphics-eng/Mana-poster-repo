@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
@@ -52,6 +50,7 @@ class TemplatePurchaseGateway {
       trigger: () => _inAppPurchase.buyNonConsumable(
         purchaseParam: PurchaseParam(productDetails: selectedDetails),
       ),
+      acceptRestored: false,
     );
   }
 
@@ -61,44 +60,11 @@ class TemplatePurchaseGateway {
       return <String>{};
     }
 
-    final restored = <String>{};
-    final completer = Completer<void>();
-    late final StreamSubscription<List<PurchaseDetails>> subscription;
-
-    subscription = _inAppPurchase.purchaseStream.listen(
-      (updates) async {
-        for (final purchase in updates) {
-          if (!productIds.contains(purchase.productID)) {
-            continue;
-          }
-          if (purchase.status == PurchaseStatus.purchased ||
-              purchase.status == PurchaseStatus.restored) {
-            restored.add(purchase.productID);
-            if (purchase.pendingCompletePurchase) {
-              await _inAppPurchase.completePurchase(purchase);
-            }
-          }
-        }
-      },
-      onError: (_) {},
-      onDone: () {
-        if (!completer.isCompleted) {
-          completer.complete();
-        }
-      },
+    return BillingPurchaseCoordinator.instance.collectRestoredProductIds(
+      trigger: _inAppPurchase.restorePurchases,
+      acceptedProductIds: productIds,
+      timeout: const Duration(seconds: 4),
     );
-
-    try {
-      await _inAppPurchase.restorePurchases();
-      await Future<void>.delayed(const Duration(seconds: 4));
-    } finally {
-      if (!completer.isCompleted) {
-        completer.complete();
-      }
-      await subscription.cancel();
-    }
-
-    return restored;
   }
 
   Future<PurchaseFlowOutcome> _waitForPurchaseResult({
@@ -106,72 +72,14 @@ class TemplatePurchaseGateway {
     required Set<String> acceptedProductIds,
     required Duration timeout,
     required PurchaseFlowOutcome timeoutResult,
+    required bool acceptRestored,
   }) async {
-    final completer = Completer<PurchaseFlowOutcome>();
-    late final StreamSubscription<List<PurchaseDetails>> subscription;
-
-    void completeIfPending(PurchaseFlowOutcome result) {
-      if (!completer.isCompleted) {
-        completer.complete(result);
-      }
-    }
-
-    subscription = _inAppPurchase.purchaseStream.listen(
-      (updates) async {
-        for (final purchase in updates) {
-          if (!acceptedProductIds.contains(purchase.productID)) {
-            continue;
-          }
-          switch (purchase.status) {
-            case PurchaseStatus.purchased:
-            case PurchaseStatus.restored:
-              completeIfPending(
-                PurchaseFlowOutcome(
-                  result: PurchaseFlowResult.success,
-                  evidence: PurchaseVerificationEvidence(
-                    productId: purchase.productID,
-                    source: purchase.verificationData.source,
-                    serverVerificationData:
-                        purchase.verificationData.serverVerificationData,
-                    localVerificationData:
-                        purchase.verificationData.localVerificationData,
-                    transactionId: purchase.purchaseID,
-                    transactionDate: purchase.transactionDate,
-                    status: purchase.status.name,
-                    completePurchase: purchase.pendingCompletePurchase
-                        ? () => _inAppPurchase.completePurchase(purchase)
-                        : null,
-                  ),
-                ),
-              );
-            case PurchaseStatus.canceled:
-              completeIfPending(
-                const PurchaseFlowOutcome(result: PurchaseFlowResult.cancelled),
-              );
-            case PurchaseStatus.error:
-              completeIfPending(
-                const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
-              );
-            case PurchaseStatus.pending:
-              break;
-          }
-        }
-      },
-      onError: (_) => completeIfPending(
-        const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
-      ),
+    return BillingPurchaseCoordinator.instance.runPurchaseFlow(
+      trigger: trigger,
+      acceptedProductIds: acceptedProductIds,
+      timeout: timeout,
+      timeoutResult: timeoutResult,
+      acceptRestored: acceptRestored,
     );
-
-    try {
-      await trigger();
-      return await completer.future.timeout(
-        timeout,
-        onTimeout: () => timeoutResult,
-      );
-    } catch (_) {
-      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
-    } finally {
-      await subscription.cancel();
-    }
   }
 }

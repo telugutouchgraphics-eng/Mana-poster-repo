@@ -53,6 +53,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget build(BuildContext context) {
     final strings = context.strings;
     final items = strings.onboardingItems;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: GradientShell(
@@ -91,9 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: _index == i ? 22 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _index == i
-                        ? const Color(0xFF1E3A8A)
-                        : const Color(0xFFBFDBFE),
+                    color: _index == i ? cs.primary : cs.outlineVariant,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -133,45 +132,18 @@ class _OnboardingIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: 290,
       height: 250,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            colors.first.withValues(alpha: 0.16),
-            colors.last.withValues(alpha: 0.08),
-          ],
-        ),
+        color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(34),
       ),
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: <Widget>[
-          Positioned(
-            top: 20,
-            left: 20,
-            child: _GlowOrb(size: 64, colors: colors),
-          ),
-          Positioned(
-            right: 18,
-            top: 28,
-            child: _GlowOrb(
-              size: 28,
-              colors: <Color>[colors.last, colors.first],
-            ),
-          ),
-          Positioned(
-            left: 26,
-            bottom: 18,
-            child: _GlowOrb(
-              size: 18,
-              colors: <Color>[colors.first, colors.last],
-            ),
-          ),
           if (index == 0) _TemplatePlacementVisual(colors: colors),
           if (index == 1) _PosterLibraryVisual(colors: colors),
           if (index == 2) _ShareVisual(colors: colors),
@@ -693,30 +665,6 @@ class _MiniPhotoChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.person_rounded, color: Colors.white),
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  const _GlowOrb({required this.size, required this.colors});
-
-  final double size;
-  final List<Color> colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          colors: <Color>[
-            colors.first.withValues(alpha: 0.22),
-            colors.last.withValues(alpha: 0.05),
-          ],
-        ),
-        shape: BoxShape.circle,
       ),
     );
   }

@@ -134,6 +134,25 @@ class _PosterProfileDetailsScreenState
         .ensureReady();
   }
 
+  Future<void> _deleteLocalAssetUnlessKept(
+    String? path,
+    Set<String> keep,
+  ) async {
+    final trimmed = path?.trim() ?? '';
+    if (trimmed.isEmpty || keep.contains(trimmed)) {
+      return;
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return;
+    }
+    try {
+      final file = File(trimmed);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
   Future<void> _pickPersonalPhoto() async {
     if (_personalPhotoBusy || _pickerBusy) {
       return;
@@ -212,6 +231,15 @@ class _PosterProfileDetailsScreenState
         localFile = File(targetPath);
         await localFile.writeAsBytes(finalPhotoBytes, flush: true);
       }
+      final Set<String> keepNewPersonalAssets = <String>{
+        originalTargetPath,
+        if (targetPath.isNotEmpty) targetPath,
+      };
+      await _deleteLocalAssetUnlessKept(_draftProfile.photoPath, keepNewPersonalAssets);
+      await _deleteLocalAssetUnlessKept(
+        _draftProfile.originalPhotoPath,
+        keepNewPersonalAssets,
+      );
       setState(() {
         _draftProfile = _draftProfile.copyWith(
           photoPath: targetPath,
@@ -416,6 +444,10 @@ class _PosterProfileDetailsScreenState
           '${dir.path}${Platform.pathSeparator}poster_business_logo_$stamp.png';
       final File localFile = File(targetPath);
       await localFile.writeAsBytes(logoBytes, flush: true);
+      await _deleteLocalAssetUnlessKept(
+        _draftProfile.businessLogoPath,
+        <String>{targetPath},
+      );
       setState(() {
         _draftProfile = _draftProfile.copyWith(
           identityMode: PosterIdentityMode.business,
@@ -619,15 +651,21 @@ class _PosterProfileDetailsScreenState
         _draftProfile.identityMode == PosterIdentityMode.business;
     final strings = context.strings;
     final hasUnsavedChanges = _hasUnsavedChanges;
+    final cs = Theme.of(context).colorScheme;
+    final minimalSetup =
+        widget.completeToHomeOnSave && !widget.embeddedInProfileScreen;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: minimalSetup ? cs.surface : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF3F6FB),
+        backgroundColor:
+            minimalSetup ? cs.surfaceContainerLow : const Color(0xFFF3F6FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: !widget.embeddedInProfileScreen,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+        iconTheme: IconThemeData(
+          color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),
+        ),
         title: Text(
           strings.localized(
             telugu: 'పోస్టర్ ప్రొఫైల్',
@@ -637,9 +675,9 @@ class _PosterProfileDetailsScreenState
             kannada: 'ಪೋಸ್ಟರ್ ಪ್ರೊಫೈಲ್',
             malayalam: 'പോസ്റ്റർ പ്രൊഫൈൽ',
           ),
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
+            color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),
           ),
         ),
         actions: widget.appBarActions,
@@ -1072,6 +1110,14 @@ class _PosterProfileDetailsScreenState
                               _draftProfile.businessLogoUrl.trim().isEmpty;
                           return GestureDetector(
                             onTap: () {
+                              final previousLogoPath =
+                                  _draftProfile.businessLogoPath;
+                              unawaited(
+                                _deleteLocalAssetUnlessKept(
+                                  previousLogoPath,
+                                  <String>{},
+                                ),
+                              );
                               final updatedProfile = _draftProfile.copyWith(
                                 identityMode: PosterIdentityMode.business,
                                 businessLogoStyleId: styleId,

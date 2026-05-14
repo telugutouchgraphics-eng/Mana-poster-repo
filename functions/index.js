@@ -124,8 +124,6 @@ async function getAndroidPublisherClient() {
 function isActiveSubscriptionState(state) {
   return new Set([
     "SUBSCRIPTION_STATE_ACTIVE",
-    "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
-    "SUBSCRIPTION_STATE_ON_HOLD",
   ]).has(String(state || ""));
 }
 
@@ -425,7 +423,19 @@ async function assertPurchaseTokenOwnership({
       const data = snap.data() || {};
       const existingUid = String(data.uid || "").trim();
       if (existingUid && existingUid !== uid) {
-        throw new Error("Purchase token is already linked to another account");
+        logger.warn("subscription token ownership conflict", {
+          tokenHash,
+          existingUid,
+          attemptedUid: uid,
+          kind,
+          ...metadata,
+        });
+        const error = new Error(
+            "This Play Store subscription is already linked to another Mana Poster account. Sign in with that account or use a different Play Store account to subscribe.",
+        );
+        error.code = 409;
+        error.reason = "SUBSCRIPTION_LINKED_TO_ANOTHER_ACCOUNT";
+        throw error;
       }
     }
     tx.set(ref, {
@@ -2517,6 +2527,16 @@ async function syncSubscriptionEntitlementFromToken({
   productIdHint = "",
 }) {
   const tokenHash = sha256(purchaseToken);
+  await assertPurchaseTokenOwnership({
+    tokenHash,
+    uid,
+    kind: "subscription",
+    metadata: {
+      productId: productIdHint || null,
+      trigger,
+      source: "internal_sync",
+    },
+  });
   const verification = await verifySubscriptionPurchaseWithGoogle({
     purchaseToken,
   });
