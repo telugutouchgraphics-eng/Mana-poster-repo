@@ -249,6 +249,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
             ),
           );
           await showSubscriptionThanksVideoPromptIfAvailable(context);
+          if (!mounted) {
+            return;
+          }
           AppNavigator.openHome();
           return;
         }
@@ -268,6 +271,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         return;
       }
       await showSubscriptionThanksVideoPromptIfAvailable(context);
+      if (!mounted) {
+        return;
+      }
       AppNavigator.openHome();
     } finally {
       if (mounted) {

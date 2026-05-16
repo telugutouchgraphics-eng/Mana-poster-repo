@@ -240,6 +240,9 @@ class _PosterProfileDetailsScreenState
         _draftProfile.originalPhotoPath,
         keepNewPersonalAssets,
       );
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _draftProfile = _draftProfile.copyWith(
           photoPath: targetPath,
@@ -448,6 +451,9 @@ class _PosterProfileDetailsScreenState
         _draftProfile.businessLogoPath,
         <String>{targetPath},
       );
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _draftProfile = _draftProfile.copyWith(
           identityMode: PosterIdentityMode.business,

@@ -112,12 +112,6 @@ class DeviceSessionService {
       return;
     }
 
-    final navigator = AppNavigator.navigatorKey.currentState;
-    final currentContext = AppNavigator.navigatorKey.currentContext;
-    final messenger = currentContext == null
-        ? null
-        : ScaffoldMessenger.maybeOf(currentContext);
-
     final localInstallationId = await _installationId();
     if (activeDeviceId == localInstallationId) {
       return;
@@ -130,12 +124,17 @@ class DeviceSessionService {
       } catch (_) {}
       await _auth.signOut();
 
+      final navigator = AppNavigator.navigatorKey.currentState;
       if (navigator != null) {
         navigator.pushNamedAndRemoveUntil(
           AppRoutes.login,
           (Route<dynamic> route) => false,
         );
       }
+      final currentContext = AppNavigator.navigatorKey.currentContext;
+      final messenger = currentContext == null || !currentContext.mounted
+          ? null
+          : ScaffoldMessenger.maybeOf(currentContext);
       messenger?.showSnackBar(
         const SnackBar(
           content: Text(

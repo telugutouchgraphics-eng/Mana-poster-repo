@@ -51,6 +51,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  Future<void>? _initializationFuture;
 
   static FlutterLocalNotificationsPlugin get _backgroundNotifications =>
       FlutterLocalNotificationsPlugin();
@@ -68,6 +69,26 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
+    if (_initialized) {
+      return;
+    }
+    final existingInitialization = _initializationFuture;
+    if (existingInitialization != null) {
+      return existingInitialization;
+    }
+    final initialization = _initializeOnce();
+    _initializationFuture = initialization;
+    try {
+      await initialization;
+    } catch (_) {
+      if (!_initialized) {
+        _initializationFuture = null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeOnce() async {
     if (_initialized) {
       return;
     }
@@ -97,14 +118,11 @@ class NotificationService {
       );
     }
 
+    _initialized = true;
     FirebaseMessaging.onMessage.listen((message) async {
       await showRemoteMessage(message);
     });
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-    final RemoteMessage? initialMessage = await messaging.getInitialMessage();
-    if (initialMessage != null) {
-      _handleNotificationTap(initialMessage);
-    }
 
     messaging.onTokenRefresh.listen((String token) {
       unawaited(_guardedSyncToken(token));
@@ -114,8 +132,12 @@ class NotificationService {
       unawaited(_guardedRegisterCurrentToken());
     });
 
+    final RemoteMessage? initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
+    }
+
     await _guardedRegisterCurrentToken();
-    _initialized = true;
   }
 
   static Future<void> showRemoteMessage(RemoteMessage message) async {

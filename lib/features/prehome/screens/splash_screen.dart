@@ -98,6 +98,9 @@ class _SplashScreenState extends State<SplashScreen>
         nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute()
             .timeout(const Duration(seconds: 2));
       }
+      if (!mounted) {
+        return;
+      }
       _nextRoute = nextRoute;
     } catch (error, stackTrace) {
       developer.log(
@@ -106,14 +109,19 @@ class _SplashScreenState extends State<SplashScreen>
         error: error,
         stackTrace: stackTrace,
       );
+      if (!mounted) {
+        return;
+      }
       _nextRoute = AppRoutes.language;
     } finally {
-      _navigationTimer?.cancel();
-      final elapsed = DateTime.now().difference(_startedAt);
-      final remaining = elapsed >= _minimumSplashDuration
-          ? Duration.zero
-          : _minimumSplashDuration - elapsed;
-      _navigationTimer = Timer(remaining, _goToNextScreen);
+      if (mounted) {
+        _navigationTimer?.cancel();
+        final elapsed = DateTime.now().difference(_startedAt);
+        final remaining = elapsed >= _minimumSplashDuration
+            ? Duration.zero
+            : _minimumSplashDuration - elapsed;
+        _navigationTimer = Timer(remaining, _goToNextScreen);
+      }
     }
   }
 

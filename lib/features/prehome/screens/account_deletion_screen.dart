@@ -133,6 +133,9 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
     if (confirmed != true) {
       return;
     }
+    if (!mounted) {
+      return;
+    }
 
     setState(() => _busy = true);
     try {

@@ -282,7 +282,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with AppLanguageStateMixin, RouteAware, WidgetsBindingObserver {
   static const String _allCategorySlug = 'all';
-  static const int _templatesPageSize = 5;
+  static const int _templatesPageSize = 12;
   static const int _promoSlidesLimit = 5;
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
   static const List<String> _staticCategorySlugs = <String>[
@@ -1480,7 +1480,7 @@ class _HomeScreenState extends State<HomeScreen>
     final generation = ++_categoryLoadGeneration;
     setState(() {
       _selectedCategorySlug = slug;
-      _categoryLoadingSlug = null;
+      _categoryLoadingSlug = slug == _allCategorySlug ? null : slug;
     });
     _schedulePosterFeedResetToTop();
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
@@ -1510,7 +1510,9 @@ class _HomeScreenState extends State<HomeScreen>
         await Future<void>.delayed(const Duration(milliseconds: 80));
         continue;
       }
-      setState(() => _categoryLoadingSlug = slug);
+      if (_categoryLoadingSlug != slug) {
+        setState(() => _categoryLoadingSlug = slug);
+      }
       attempts += 1;
       final loadedMore = await _loadMoreApprovedCreatorTemplates();
       if (!loadedMore) {
@@ -2749,9 +2751,8 @@ String _subscriptionButtonLabelLocalized(BuildContext context) {
   );
 }
 
-// ignore: must_be_immutable
-class _TemplateFeedItem extends StatelessWidget {
-  _TemplateFeedItem({
+class _TemplateFeedItem extends StatefulWidget {
+  const _TemplateFeedItem({
     super.key,
     required this.item,
     required this.hostContext,
@@ -2767,6 +2768,17 @@ class _TemplateFeedItem extends StatelessWidget {
   final Future<void> Function({bool startPurchaseOnOpen}) onOpenSubscriptionPlan;
   final PosterProfileData viewerPosterProfile;
   final int posterRenderCycle;
+  static final SubscriptionBackendService _subscriptionBackendService =
+      SubscriptionBackendService();
+
+  static SubscriptionBackendService get subscriptionBackendService =>
+      _subscriptionBackendService;
+
+  @override
+  State<_TemplateFeedItem> createState() => _TemplateFeedItemState();
+}
+
+class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
   static const List<String> _randomPosterNameFonts = <String>[
@@ -2795,11 +2807,25 @@ class _TemplateFeedItem extends StatelessWidget {
   String? _queuedPosterWarmupSignature;
   static bool _globalAutoPosterWarmupActive = false;
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
-  static final SubscriptionBackendService _subscriptionBackendService =
-      SubscriptionBackendService();
 
-  static SubscriptionBackendService get subscriptionBackendService =>
-      _subscriptionBackendService;
+  _TemplateItem get item => widget.item;
+  BuildContext get hostContext => widget.hostContext;
+  AppLanguage get language => widget.language;
+  Future<void> Function({bool startPurchaseOnOpen})
+  get onOpenSubscriptionPlan => widget.onOpenSubscriptionPlan;
+  PosterProfileData get viewerPosterProfile => widget.viewerPosterProfile;
+  int get posterRenderCycle => widget.posterRenderCycle;
+  SubscriptionBackendService get _subscriptionBackendService =>
+      _TemplateFeedItem.subscriptionBackendService;
+
+  @override
+  void dispose() {
+    _invalidatePreparedPosterCache();
+    _showPosterPhotoNotifier.dispose();
+    _posterReadyNotifier.dispose();
+    _activeActionNotifier.dispose();
+    super.dispose();
+  }
 
   String _resolvePosterNameFontFamily(String resolvedName) {
     final personalizationConfig = item.personalizationConfig;
