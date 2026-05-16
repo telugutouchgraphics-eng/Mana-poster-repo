@@ -134,7 +134,7 @@ class BillingPurchaseCoordinator {
   }
 
   Future<PurchaseFlowOutcome> runPurchaseFlow({
-    required Future<void> Function() trigger,
+    required Future<bool> Function() trigger,
     required Set<String> acceptedProductIds,
     required Duration timeout,
     required PurchaseFlowOutcome timeoutResult,
@@ -205,7 +205,12 @@ class BillingPurchaseCoordinator {
     _activeFlowSubscription = subscription;
 
     try {
-      await trigger();
+      final launched = await trigger();
+      if (!launched) {
+        completeIfPending(
+          const PurchaseFlowOutcome(result: PurchaseFlowResult.failed),
+        );
+      }
       return await completer.future.timeout(
         timeout,
         onTimeout: () => timeoutResult,
@@ -243,7 +248,7 @@ class BillingPurchaseCoordinator {
   }
 
   Future<Set<String>> collectRestoredProductIds({
-    required Future<void> Function() trigger,
+    required Future<bool> Function() trigger,
     required Set<String> acceptedProductIds,
     required Duration timeout,
   }) async {
@@ -266,7 +271,10 @@ class BillingPurchaseCoordinator {
         });
 
     try {
-      await trigger();
+      final launched = await trigger();
+      if (!launched) {
+        return restored;
+      }
       await Future<void>.delayed(timeout);
       return restored;
     } catch (_) {
@@ -442,6 +450,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     final selectedDetails = details ?? query.productDetails.first;
     _logSelectedProductForPurchase(selectedDetails);
     final purchaseParam = _buildPurchaseParam(selectedDetails);
+    if (purchaseParam == null) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'invalid_subscription_offer_token',
+      );
+      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    }
 
     final outcome = await _waitForPurchaseResult(
       acceptedProductIds: targetProductIds,
@@ -449,8 +463,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       timeoutResult: const PurchaseFlowOutcome(
         result: PurchaseFlowResult.timedOut,
       ),
-      trigger: () =>
-          _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam),
+      trigger: () => _inAppPurchase.buyNonConsumable(
+        purchaseParam: purchaseParam,
+      ),
       acceptRestored: false,
     );
     if (outcome.result == PurchaseFlowResult.cancelled ||
@@ -492,7 +507,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       timeoutResult: const PurchaseFlowOutcome(
         result: PurchaseFlowResult.nothingToRestore,
       ),
-      trigger: _inAppPurchase.restorePurchases,
+      trigger: () async {
+        await _inAppPurchase.restorePurchases();
+        return true;
+      },
       acceptRestored: true,
     );
     if (restoreResult.result == PurchaseFlowResult.success &&
@@ -621,12 +639,20 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     );
   }
 
-  PurchaseParam _buildPurchaseParam(ProductDetails productDetails) {
+  PurchaseParam? _buildPurchaseParam(ProductDetails productDetails) {
     if (!kIsWeb &&
         Platform.isAndroid &&
         productDetails is GooglePlayProductDetails) {
+      final productType = productDetails.productDetails.productType;
       final subscriptionOffers =
           productDetails.productDetails.subscriptionOfferDetails;
+      if (productType == ProductType.subs &&
+          (subscriptionOffers == null || subscriptionOffers.isEmpty)) {
+        _debugLog(
+          'Blocked subscription purchase: no subscription offers returned.',
+        );
+        return null;
+      }
       final selectedOffer = _selectSubscriptionOffer(subscriptionOffers);
       final offerToken =
           selectedOffer?.offerIdToken ?? productDetails.offerToken;
@@ -635,6 +661,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
           productDetails: productDetails,
           offerToken: offerToken,
         );
+      }
+      if (productType == ProductType.subs) {
+        _debugLog(
+          'Blocked subscription purchase: selected offer token is empty.',
+        );
+        return null;
       }
     }
     return PurchaseParam(productDetails: productDetails);
@@ -697,7 +729,7 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   Future<PurchaseFlowOutcome> _waitForPurchaseResult({
-    required Future<void> Function() trigger,
+    required Future<bool> Function() trigger,
     required Set<String> acceptedProductIds,
     required Duration timeout,
     required PurchaseFlowOutcome timeoutResult,

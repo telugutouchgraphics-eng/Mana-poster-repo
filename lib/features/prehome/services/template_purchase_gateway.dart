@@ -61,14 +61,17 @@ class TemplatePurchaseGateway {
     }
 
     return BillingPurchaseCoordinator.instance.collectRestoredProductIds(
-      trigger: _inAppPurchase.restorePurchases,
+      trigger: () async {
+        await _inAppPurchase.restorePurchases();
+        return true;
+      },
       acceptedProductIds: productIds,
       timeout: const Duration(seconds: 4),
     );
   }
 
   Future<PurchaseFlowOutcome> _waitForPurchaseResult({
-    required Future<void> Function() trigger,
+    required Future<bool> Function() trigger,
     required Set<String> acceptedProductIds,
     required Duration timeout,
     required PurchaseFlowOutcome timeoutResult,

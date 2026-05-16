@@ -330,6 +330,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _templatesLoading = true;
   bool _templatesLoadingMore = false;
   bool _templatesHasMore = true;
+  String? _categoryLoadingSlug;
+  int _categoryLoadGeneration = 0;
   bool _viewerProfileLoading = true;
   bool _hasRatedApp = false;
   String _installedAppVersion = '';
@@ -1011,12 +1013,12 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _loadMoreApprovedCreatorTemplates() async {
+  Future<bool> _loadMoreApprovedCreatorTemplates() async {
     if (_templatesLoading ||
         _templatesLoadingMore ||
         !_templatesHasMore ||
         _templatesLastDocument == null) {
-      return;
+      return false;
     }
     setState(() => _templatesLoadingMore = true);
     final page = await _approvedCreatorTemplateService
@@ -1025,7 +1027,7 @@ class _HomeScreenState extends State<HomeScreen>
           startAfterDocument: _templatesLastDocument,
         );
     if (!mounted) {
-      return;
+      return false;
     }
     final mapped = page.templates
         .map(_mapApprovedCreatorTemplate)
@@ -1050,6 +1052,7 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesHasMore = page.hasMore;
       _templatesLastDocument = page.lastDocument;
     });
+    return fresh.isNotEmpty || page.hasMore;
   }
 
   void _onPosterScroll() {
@@ -1473,8 +1476,70 @@ class _HomeScreenState extends State<HomeScreen>
     if (slug == _selectedCategorySlug) {
       return;
     }
-    setState(() => _selectedCategorySlug = slug);
+    final language = context.currentLanguage;
+    final generation = ++_categoryLoadGeneration;
+    setState(() {
+      _selectedCategorySlug = slug;
+      _categoryLoadingSlug = null;
+    });
     _schedulePosterFeedResetToTop();
+    unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
+  }
+
+  Future<void> _loadSelectedCategoryUntilVisible(
+    String slug,
+    int generation,
+    AppLanguage language,
+  ) async {
+    if (slug == _allCategorySlug) {
+      return;
+    }
+    var attempts = 0;
+    while (mounted &&
+        generation == _categoryLoadGeneration &&
+        attempts < 8 &&
+        _templatesHasMore) {
+      final category = _categoryForSlug(slug, language);
+      final hasMatch = _remoteApprovedTemplates.any(
+        (item) => _matchesTemplate(item, language, category),
+      );
+      if (hasMatch) {
+        break;
+      }
+      if (_templatesLoading || _templatesLoadingMore) {
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        continue;
+      }
+      setState(() => _categoryLoadingSlug = slug);
+      attempts += 1;
+      final loadedMore = await _loadMoreApprovedCreatorTemplates();
+      if (!loadedMore) {
+        break;
+      }
+    }
+    if (mounted &&
+        generation == _categoryLoadGeneration &&
+        _categoryLoadingSlug == slug) {
+      setState(() => _categoryLoadingSlug = null);
+    }
+  }
+
+  _CategoryChipData _categoryForSlug(String slug, AppLanguage language) {
+    final staticCategories = _buildStaticCategories();
+    final dynamicCategories = _buildDynamicCategories(
+      DateTime.now(),
+      language,
+      templatesLoading: _templatesLoading,
+    );
+    final categories = _mergeCategories(staticCategories, dynamicCategories);
+    return categories.firstWhere(
+      (chip) => chip.slug == slug,
+      orElse: () => _CategoryChipData(
+        slug: slug,
+        label: slug.replaceAll(RegExp(r'[_-]+'), ' ').trim(),
+        matchTags: <String>[slug],
+      ),
+    );
   }
 
   void _schedulePosterFeedResetToTop() {
@@ -1553,6 +1618,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
     final hidePosterFeed =
         _templatesLoading || _homeRefreshing || _viewerProfileLoading;
+    final loadingSelectedCategory =
+        _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
@@ -1582,7 +1649,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                cacheExtent: 120,
+                cacheExtent: 900,
                 slivers: <Widget>[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -1658,7 +1725,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   if (_homeRefreshing)
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  if (hidePosterFeed)
+                  if (hidePosterFeed || loadingSelectedCategory)
                     const SliverPadding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
                       sliver: _PosterFeedSkeletonSliver(),
@@ -1735,8 +1802,8 @@ class _HomeScreenState extends State<HomeScreen>
                             );
                           },
                           childCount: feedEntries.length,
-                          addAutomaticKeepAlives: false,
-                          addRepaintBoundaries: false,
+                          addAutomaticKeepAlives: true,
+                          addRepaintBoundaries: true,
                           addSemanticIndexes: false,
                         ),
                       ),
@@ -2829,6 +2896,16 @@ class _TemplateFeedItem extends StatelessWidget {
     _globalPosterWarmupSignatures.add(signature);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
+        if (_posterCaptureKey.currentContext == null) {
+          _recordPosterCaptureTrace(
+            'poster export warmup skipped: capture context unavailable',
+            details: <String, Object?>{
+              'itemTitle': item.titleEn,
+              'signature': signature,
+            },
+          );
+          return;
+        }
         await _preparePosterExport(force: force);
       } finally {
         _globalPosterWarmupSignatures.remove(signature);
@@ -3015,10 +3092,9 @@ class _TemplateFeedItem extends StatelessWidget {
   Future<Uint8List?> _capturePosterBytesInternal() async {
     final captureContext = _posterCaptureKey.currentContext;
     if (captureContext == null) {
-      final error = StateError('poster capture context unavailable');
-      await _recordPosterCaptureFailure(
-        message: 'poster capture context unavailable',
-        error: error,
+      _recordPosterCaptureTrace(
+        'poster capture skipped: context unavailable',
+        details: _posterCaptureDiagnostics(),
       );
       return null;
     }
@@ -3035,7 +3111,7 @@ class _TemplateFeedItem extends StatelessWidget {
     _recordPosterCaptureTrace(
       'capture start',
       details: <String, Object?>{
-        'method': 'screenshot.captureFromWidget',
+        'method': 'screenshot.capture',
         'logicalSize': logicalSize.toString(),
         'pixelRatio': pixelRatio,
         'targetSize': targetSize.toString(),
@@ -3043,20 +3119,25 @@ class _TemplateFeedItem extends StatelessWidget {
     );
 
     try {
-      final bytes = await _posterScreenshotController.captureFromWidget(
-        _buildPosterPreview(
-          isPhotoVisible: _showPosterPhotoNotifier.value,
-          onPosterReadyChanged: null,
-        ),
-        context: captureContext,
+      final bytes = await _posterScreenshotController.capture(
         pixelRatio: pixelRatio,
-        targetSize: targetSize,
-        delay: const Duration(milliseconds: 80),
+        delay: const Duration(milliseconds: 60),
       );
+      if (bytes == null || bytes.isEmpty) {
+        _recordPosterCaptureTrace(
+          'poster capture skipped: empty live boundary',
+          details: _posterCaptureDiagnostics(
+            captureContextMounted: captureContextMounted,
+            logicalSize: logicalSize,
+            pixelRatio: pixelRatio,
+          ),
+        );
+        return null;
+      }
       _recordPosterCaptureTrace(
         'capture success',
         details: <String, Object?>{
-          'method': 'screenshot.captureFromWidget',
+          'method': 'screenshot.capture',
           'byteLength': bytes.length,
           'logicalSize': logicalSize.toString(),
           'pixelRatio': pixelRatio,
@@ -3180,8 +3261,29 @@ class _TemplateFeedItem extends StatelessWidget {
     Size? logicalSize,
     double? pixelRatio,
   }) async {
-    final diagnostic = <String, Object?>{
-      'captureMethod': 'screenshot.captureFromWidget',
+    final diagnostic = _posterCaptureDiagnostics(
+      captureContextMounted: captureContextMounted,
+      logicalSize: logicalSize,
+      pixelRatio: pixelRatio,
+    );
+    _recordPosterCaptureTrace(message, details: diagnostic);
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        error ?? Exception(message),
+        stackTrace ?? StackTrace.current,
+        reason: '$message | ${jsonEncode(diagnostic)}',
+        fatal: false,
+      );
+    } catch (_) {}
+  }
+
+  Map<String, Object?> _posterCaptureDiagnostics({
+    bool? captureContextMounted,
+    Size? logicalSize,
+    double? pixelRatio,
+  }) {
+    return <String, Object?>{
+      'captureMethod': 'screenshot.capture',
       'itemTitle': item.titleEn,
       'isVideo': item.isVideo,
       'hasPersonalization': item.personalizationConfig != null,
@@ -3197,15 +3299,6 @@ class _TemplateFeedItem extends StatelessWidget {
       'profilePhotoPath': viewerPosterProfile.photoPath,
       'businessLogoUrl': viewerPosterProfile.businessLogoUrl,
     };
-    _recordPosterCaptureTrace(message, details: diagnostic);
-    try {
-      await FirebaseCrashlytics.instance.recordError(
-        error ?? Exception(message),
-        stackTrace ?? StackTrace.current,
-        reason: '$message | ${jsonEncode(diagnostic)}',
-        fatal: false,
-      );
-    } catch (_) {}
   }
 
   Widget _buildPosterPreview({
@@ -3492,7 +3585,14 @@ class _TemplateFeedItem extends StatelessWidget {
       },
     );
 
-    if (openPlan != true || !screenContext.mounted) {
+    if (!screenContext.mounted) {
+      return false;
+    }
+    if (openPlan != true) {
+      await showSubscriptionExitVideoPromptIfAvailable(
+        screenContext,
+        onSubscribe: (_) => onOpenSubscriptionPlan(startPurchaseOnOpen: true),
+      );
       return false;
     }
     await onOpenSubscriptionPlan(startPurchaseOnOpen: true);
@@ -4032,6 +4132,7 @@ class _TemplatePosterImage extends StatelessWidget {
               width: double.infinity,
               fit: BoxFit.contain,
               alignment: Alignment.topCenter,
+              gaplessPlayback: true,
               filterQuality: FilterQuality.low,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                 if (wasSynchronouslyLoaded || frame != null) {
@@ -4058,6 +4159,7 @@ class _TemplatePosterImage extends StatelessWidget {
                     width: double.infinity,
                     fit: BoxFit.contain,
                     alignment: Alignment.topCenter,
+                    gaplessPlayback: true,
                     filterQuality: FilterQuality.low,
                   );
                 }
@@ -4125,6 +4227,7 @@ class _TemplatePosterImage extends StatelessWidget {
                   width: double.infinity,
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,
+                  gaplessPlayback: true,
                   filterQuality: FilterQuality.low,
                   cacheWidth: cacheWidth,
                   frameBuilder:
@@ -4202,6 +4305,9 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
 
 class _ResolvedTemplatePosterImageState
     extends State<_ResolvedTemplatePosterImage> {
+  static final Map<String, String> _resolvedDownloadUrlCache =
+      <String, String>{};
+
   String? _resolvedImageUrl;
   int _resolveGeneration = 0;
 
@@ -4240,7 +4346,7 @@ class _ResolvedTemplatePosterImageState
     );
 
     if (candidates.isNotEmpty) {
-      _resolvedImageUrl = null;
+      _resolvedImageUrl = _resolvedDownloadUrlCache[_cacheKeyFor(candidates)];
       unawaited(
         _resolvePosterFirebaseDownloads(
           candidates: candidates,
@@ -4275,8 +4381,13 @@ class _ResolvedTemplatePosterImageState
         if (!mounted || generation != _resolveGeneration) {
           return;
         }
+        final trimmedFresh = fresh.trim();
+        _resolvedDownloadUrlCache[_cacheKeyFor(candidates)] = trimmedFresh;
+        if (_resolvedImageUrl == trimmedFresh) {
+          return;
+        }
         setState(() {
-          _resolvedImageUrl = fresh.trim();
+          _resolvedImageUrl = trimmedFresh;
         });
         return;
       } catch (error, stackTrace) {
@@ -4294,6 +4405,15 @@ class _ResolvedTemplatePosterImageState
         lastTrace,
       );
     }
+  }
+
+  String _cacheKeyFor(List<_PosterFirebaseCandidate> candidates) {
+    return candidates
+        .map((candidate) {
+          final mode = candidate.urlMode ? 'url' : 'path';
+          return '$mode:${candidate.value.trim()}';
+        })
+        .join('|');
   }
 
   @override

@@ -225,7 +225,7 @@ service cloud.firestore {
 
     // Public website config drives the landing page links and section toggles.
     match /websiteConfig/{docId} {
-      allow read: if docId == "landingPage";
+      allow read: if docId in ["landingPage", "portalSettings"];
       allow create, update, delete: if false;
     }
 
