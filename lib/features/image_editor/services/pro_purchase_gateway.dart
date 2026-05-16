@@ -397,11 +397,6 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
     await initialize();
-    final binding = await PlayBillingAccountBindingService.instance
-        .bindSubscriptionPurchaseToUid(productId: productId);
-    if (binding == null) {
-      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
-    }
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
       await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
@@ -449,6 +444,11 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     }
     final selectedDetails = details ?? query.productDetails.first;
     _logSelectedProductForPurchase(selectedDetails);
+    final binding = await PlayBillingAccountBindingService.instance
+        .bindSubscriptionPurchaseToUid(productId: selectedDetails.id);
+    if (binding == null) {
+      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    }
     final purchaseParam = _buildPurchaseParam(selectedDetails);
     if (purchaseParam == null) {
       await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
