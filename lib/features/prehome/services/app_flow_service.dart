@@ -12,23 +12,18 @@ class AppFlowSnapshot {
   const AppFlowSnapshot({
     required this.language,
     required this.languageSelected,
-    required this.onboardingCompleted,
     required this.permissionsStepHandled,
     required this.initialSetupCompleted,
   });
 
   final AppLanguage language;
   final bool languageSelected;
-  final bool onboardingCompleted;
   final bool permissionsStepHandled;
   final bool initialSetupCompleted;
 
   String nextRoute({required bool isAuthenticated}) {
     if (!languageSelected) {
       return AppRoutes.language;
-    }
-    if (!onboardingCompleted) {
-      return AppRoutes.onboarding;
     }
     if (!isAuthenticated) {
       return AppRoutes.login;
@@ -45,7 +40,6 @@ class AppFlowService {
 
   static const String _selectedLanguageKey = 'selected_language';
   static const String _languageSelectedKey = 'language_selected';
-  static const String _onboardingCompletedKey = 'onboarding_completed';
   static const String _permissionsHandledKey = 'permissions_step_handled';
   static const String _initialSetupCompletedKey = 'initial_setup_completed';
 
@@ -58,7 +52,6 @@ class AppFlowService {
     return AppFlowSnapshot(
       language: language,
       languageSelected: prefs.getBool(_languageSelectedKey) ?? false,
-      onboardingCompleted: prefs.getBool(_onboardingCompletedKey) ?? false,
       permissionsStepHandled: prefs.getBool(_permissionsHandledKey) ?? false,
       initialSetupCompleted: prefs.getBool(_initialSetupCompletedKey) ?? false,
     );
@@ -69,11 +62,6 @@ class AppFlowService {
     await prefs.setString(_selectedLanguageKey, language.name);
     await prefs.setBool(_languageSelectedKey, true);
     await _syncLanguageToRemote(language);
-  }
-
-  static Future<void> markOnboardingCompleted() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_onboardingCompletedKey, true);
   }
 
   static Future<void> markPermissionsStepHandled() async {
@@ -99,7 +87,6 @@ class AppFlowService {
     final bool permissionsHandled = await resolvePermissionsStepHandled();
     final bool completed =
         (prefs.getBool(_languageSelectedKey) ?? false) &&
-        (prefs.getBool(_onboardingCompletedKey) ?? false) &&
         isAuthenticated &&
         permissionsHandled;
     await prefs.setBool(_initialSetupCompletedKey, completed);

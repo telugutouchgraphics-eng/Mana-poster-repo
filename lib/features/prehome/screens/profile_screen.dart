@@ -22,6 +22,7 @@ import 'package:mana_poster/features/image_editor/services/subscription_backend_
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -128,9 +129,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       final userName = (user?.displayName?.trim().isNotEmpty ?? false)
           ? user!.displayName!.trim()
           : 'User';
-      final shareText =
-          '✨ Shared by $userName using ${AppPublicInfo.appName}\n'
+      var shareText =
+          'Shared by $userName using ${AppPublicInfo.appName}\n'
           'Download the app: ${AppPublicInfo.playStoreUrl}';
+      try {
+        final referralStatus = await ReferralRewardService().fetchStatus();
+        shareText = ReferralRewardService().buildShareText(
+          status: referralStatus,
+          userName: userName,
+        );
+      } catch (_) {
+        // Keep normal sharing available even if referral status is unavailable.
+      }
       final assetData = await rootBundle.load(
         'assets/branding/mana_poster_logo.png',
       );
@@ -400,9 +410,8 @@ class _ProfileMoreScreen extends StatelessWidget {
   }) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => SubscriptionPlanScreen(
-          triggerRestoreOnOpen: triggerRestoreOnOpen,
-        ),
+        builder: (_) =>
+            SubscriptionPlanScreen(triggerRestoreOnOpen: triggerRestoreOnOpen),
       ),
     );
     if (!context.mounted) {
@@ -414,10 +423,15 @@ class _ProfileMoreScreen extends StatelessWidget {
     }
     await showSubscriptionExitVideoPromptIfAvailable(
       context,
-      onSubscribe: (_) => _openSubscriptionPlan(
-        context,
-        triggerRestoreOnOpen: false,
-      ),
+      onSubscribe: (_) =>
+          _openSubscriptionPlan(context, triggerRestoreOnOpen: false),
+    );
+  }
+
+  Future<void> _openReferralRewards(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ReferralRewardsDialog(copy: copy),
     );
   }
 
@@ -461,6 +475,12 @@ class _ProfileMoreScreen extends StatelessWidget {
                 subtitle: copy.subscriptionSubtitle,
                 badge: _ProfileItemBadge.premium,
                 onTap: () => unawaited(_openSubscriptionPlan(context)),
+              ),
+              _ProfileItemData(
+                icon: Icons.group_add_rounded,
+                title: copy.referralRewardsTitle,
+                subtitle: copy.referralRewardsSubtitle,
+                onTap: () => unawaited(_openReferralRewards(context)),
               ),
               _ProfileItemData(
                 icon: Icons.restore_rounded,
@@ -581,6 +601,228 @@ class _ProfileMoreScreen extends StatelessWidget {
   }
 }
 
+class _ReferralRewardsDialog extends StatefulWidget {
+  const _ReferralRewardsDialog({required this.copy});
+
+  final _ProfileCopy copy;
+
+  @override
+  State<_ReferralRewardsDialog> createState() => _ReferralRewardsDialogState();
+}
+
+class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
+  final ReferralRewardService _service = ReferralRewardService();
+  final TextEditingController _codeController = TextEditingController();
+  Future<ReferralRewardStatus>? _statusFuture;
+  bool _applying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusFuture = _service.fetchStatus();
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _share(ReferralRewardStatus status) async {
+    final user = FirebaseAuthService().currentUser;
+    final userName = (user?.displayName?.trim().isNotEmpty ?? false)
+        ? user!.displayName!.trim()
+        : 'User';
+    await Share.share(
+      _service.buildShareText(status: status, userName: userName),
+    );
+  }
+
+  Future<void> _copyCode(ReferralRewardStatus status) async {
+    await Clipboard.setData(ClipboardData(text: status.code));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(widget.copy.referralCodeCopiedMessage)),
+    );
+  }
+
+  Future<void> _applyCode() async {
+    if (_applying) {
+      return;
+    }
+    setState(() => _applying = true);
+    try {
+      final result = await _service.applyCode(_codeController.text);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _applying = false;
+        _statusFuture = _service.fetchStatus();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.accepted
+                ? widget.copy.referralCodeAppliedMessage
+                : (result.message.isEmpty
+                      ? widget.copy.referralCodeAlreadyAppliedMessage
+                      : result.message),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _applying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.copy.referralCodeApplyFailedMessage)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = widget.copy;
+    final mediaQuery = MediaQuery.of(context);
+    final maxDialogContentHeight =
+        mediaQuery.size.height -
+        mediaQuery.viewInsets.bottom -
+        mediaQuery.padding.vertical -
+        220;
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      title: Text(copy.referralRewardsTitle),
+      content: FutureBuilder<ReferralRewardStatus>(
+        future: _statusFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 112,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (!snapshot.hasData) {
+            return SizedBox(
+              width: 320,
+              child: Text(copy.referralLoadFailedMessage),
+            );
+          }
+          final status = snapshot.data!;
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 360,
+              maxHeight: maxDialogContentHeight.clamp(220, 520).toDouble(),
+            ),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SelectableText(
+                    status.code,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    copy.referralProgressText(
+                      status.currentCyclePaidCount,
+                      status.requiredPaidReferrals,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => unawaited(_copyCode(status)),
+                          icon: const Icon(Icons.copy_rounded, size: 18),
+                          label: Text(copy.copyReferralCodeAction),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => unawaited(_share(status)),
+                          icon: const Icon(Icons.ios_share_rounded, size: 18),
+                          label: Text(copy.shareReferralAction),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 28),
+                  TextField(
+                    controller: _codeController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: copy.applyReferralCodeLabel,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _applying
+                          ? null
+                          : () => unawaited(_applyCode()),
+                      child: _applying
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(copy.applyReferralCodeAction),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LegalDocumentScreen(
+                              documentType:
+                                  LegalDocumentType.termsAndConditions,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(copy.referralTermsAction),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(copy.closeAction),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProfileItemData {
   const _ProfileItemData({
     required this.icon,
@@ -634,6 +876,37 @@ class _ProfileCopy {
       _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;
   String get subscriptionSubtitle =>
       _isTelugu ? 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి' : 'View plan details';
+  String get referralRewardsTitle =>
+      _isTelugu ? 'రిఫరల్ బహుమతులు' : 'Referral rewards';
+  String get referralRewardsSubtitle => _isTelugu
+      ? 'రిఫరల్ కోడ్ మరియు ప్రస్తుత చక్రం చూడండి'
+      : 'View referral code and current cycle';
+  String referralProgressText(int current, int required) {
+    return _isTelugu
+        ? 'ప్రస్తుత చక్రం: $current / $required'
+        : 'Current cycle: $current / $required';
+  }
+
+  String get copyReferralCodeAction => _isTelugu ? 'కోడ్ కాపీ' : 'Copy code';
+  String get shareReferralAction => _isTelugu ? 'షేర్' : 'Share';
+  String get referralTermsAction =>
+      _isTelugu ? 'నిబంధనలు మరియు షరతులు చూడండి' : 'View Terms & Conditions';
+  String get applyReferralCodeLabel =>
+      _isTelugu ? 'రిఫరల్ కోడ్ నమోదు చేయండి' : 'Enter referral code';
+  String get applyReferralCodeAction => _isTelugu ? 'అప్లై' : 'Apply';
+  String get referralCodeCopiedMessage =>
+      _isTelugu ? 'రిఫరల్ కోడ్ కాపీ అయింది' : 'Referral code copied';
+  String get referralCodeAppliedMessage =>
+      _isTelugu ? 'రిఫరల్ కోడ్ అప్లై అయింది' : 'Referral code applied';
+  String get referralCodeAlreadyAppliedMessage =>
+      _isTelugu ? 'రిఫరల్ ఇప్పటికే అప్లై అయింది' : 'Referral already applied';
+  String get referralCodeApplyFailedMessage => _isTelugu
+      ? 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి'
+      : 'Referral code apply failed. Please try again.';
+  String get referralLoadFailedMessage => _isTelugu
+      ? 'రిఫరల్ వివరాలు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి'
+      : 'Referral details could not load. Please try again.';
+  String get closeAction => _isTelugu ? 'మూసివేయండి' : 'Close';
   String get restoreSubscriptionTitle =>
       _isTelugu ? 'సబ్‌స్క్రిప్షన్ రీస్టోర్ చేయండి' : 'Restore subscriptions';
   String get restoreSubscriptionSubtitle => _isTelugu

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -100,11 +102,16 @@ class _GeneratedBusinessLogo extends StatelessWidget {
           return ClipOval(
             child: Container(
               decoration: BoxDecoration(
-                color: palette.background,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[palette.background, palette.accent],
+                ),
                 shape: BoxShape.circle,
-                border: palette.border == null
-                    ? null
-                    : Border.all(color: palette.border!),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  width: 1,
+                ),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -113,10 +120,13 @@ class _GeneratedBusinessLogo extends StatelessWidget {
                 overflow: TextOverflow.fade,
                 softWrap: false,
                 style: TextStyle(
-                  color: palette.accent,
+                  color: palette.onAccent,
                   fontSize: (size * 0.34 * textScale).clamp(10.0, 16.0),
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.1,
+                  shadows: const <Shadow>[
+                    Shadow(color: Color(0x66000000), blurRadius: 3),
+                  ],
                 ),
               ),
             ),
@@ -129,14 +139,31 @@ class _GeneratedBusinessLogo extends StatelessWidget {
         return ClipOval(
           child: Container(
             decoration: BoxDecoration(
-              color: palette.background,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[palette.background, palette.accent],
+              ),
               shape: BoxShape.circle,
-              border: palette.border == null
-                  ? null
-                  : Border.all(color: palette.border!),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.82),
+                width: math.max(1, size * 0.014),
+              ),
             ),
             child: Stack(
               children: <Widget>[
+                Positioned(
+                  left: size * 0.08,
+                  top: size * 0.08,
+                  child: Container(
+                    width: size * 0.28,
+                    height: size * 0.28,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
                 if (styleId == 'style_2' || styleId == 'style_6')
                   Positioned(
                     right: -size * 0.08,
@@ -186,8 +213,12 @@ class _GeneratedBusinessLogo extends StatelessWidget {
                                 width: badgeSize,
                                 height: badgeSize,
                                 decoration: BoxDecoration(
-                                  color: palette.accent,
+                                  color: Colors.white.withValues(alpha: 0.14),
                                   shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.28),
+                                    width: math.max(0.8, size * 0.006),
+                                  ),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -200,6 +231,12 @@ class _GeneratedBusinessLogo extends StatelessWidget {
                                     fontSize: initialsSize,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.2,
+                                    shadows: const <Shadow>[
+                                      Shadow(
+                                        color: Color(0x66000000),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -210,12 +247,18 @@ class _GeneratedBusinessLogo extends StatelessWidget {
                                 overflow: TextOverflow.fade,
                                 softWrap: false,
                                 style: TextStyle(
-                                  color: palette.accent,
+                                  color: palette.onAccent,
                                   fontSize: (size * 0.24 * textScale)
                                       .clamp(16.0, 28.0)
                                       .toDouble(),
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 0.3,
+                                  shadows: const <Shadow>[
+                                    Shadow(
+                                      color: Color(0x66000000),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
                                 ),
                               ),
                           ],
@@ -267,68 +310,54 @@ class _GeneratedBusinessLogo extends StatelessWidget {
   _LogoPalette _paletteForStyle(String id) {
     return switch (id) {
       'style_2' => const _LogoPalette(
-        background: Color(0xFFF8FAFC),
-        foreground: Color(0xFF0F172A),
+        background: Color(0xFF0F766E),
         accent: Color(0xFF2563EB),
         onAccent: Colors.white,
-        border: Color(0xFFDCE7F8),
       ),
       'style_3' => const _LogoPalette(
         background: Color(0xFF0F172A),
-        foreground: Colors.white,
         accent: Color(0xFFF59E0B),
-        onAccent: Color(0xFF0F172A),
+        onAccent: Colors.white,
       ),
       'style_4' => const _LogoPalette(
-        background: Color(0xFFECFDF5),
-        foreground: Color(0xFF14532D),
+        background: Color(0xFF14532D),
         accent: Color(0xFF22C55E),
         onAccent: Colors.white,
       ),
       'style_5' => const _LogoPalette(
-        background: Color(0xFFFEF2F2),
-        foreground: Color(0xFF991B1B),
+        background: Color(0xFF991B1B),
         accent: Color(0xFFEF4444),
         onAccent: Colors.white,
-        border: Color(0xFFFECACA),
       ),
       'style_6' => const _LogoPalette(
-        background: Color(0xFFF5F3FF),
-        foreground: Color(0xFF5B21B6),
+        background: Color(0xFF5B21B6),
         accent: Color(0xFF7C3AED),
         onAccent: Colors.white,
       ),
       'style_7' => const _LogoPalette(
-        background: Color(0xFFFFFBEB),
-        foreground: Color(0xFF92400E),
+        background: Color(0xFF92400E),
         accent: Color(0xFFF59E0B),
         onAccent: Colors.white,
       ),
       'style_8' => const _LogoPalette(
-        background: Colors.white,
-        foreground: Color(0xFF111827),
+        background: Color(0xFF065F46),
         accent: Color(0xFF10B981),
         onAccent: Colors.white,
-        border: Color(0xFFE5E7EB),
       ),
       'style_9' => const _LogoPalette(
         background: Color(0xFF111827),
-        foreground: Colors.white,
         accent: Color(0xFF38BDF8),
-        onAccent: Color(0xFF082F49),
+        onAccent: Colors.white,
       ),
       'style_10' => const _LogoPalette(
-        background: Color(0xFFFFF1F2),
-        foreground: Color(0xFF9F1239),
+        background: Color(0xFF9F1239),
         accent: Color(0xFFE11D48),
         onAccent: Colors.white,
       ),
       _ => const _LogoPalette(
-        background: Colors.white,
-        foreground: Color(0xFF0F172A),
+        background: Color(0xFF4C1D95),
         accent: Color(0xFF6D28D9),
         onAccent: Colors.white,
-        border: Color(0xFFE2E8F0),
       ),
     };
   }
@@ -337,15 +366,11 @@ class _GeneratedBusinessLogo extends StatelessWidget {
 class _LogoPalette {
   const _LogoPalette({
     required this.background,
-    required this.foreground,
     required this.accent,
     required this.onAccent,
-    this.border,
   });
 
   final Color background;
-  final Color foreground;
   final Color accent;
   final Color onAccent;
-  final Color? border;
 }

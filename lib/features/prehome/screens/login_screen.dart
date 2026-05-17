@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
@@ -254,6 +256,19 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
   }
 
   Future<void> _openLegalDocument(LegalDocumentType type) async {
+    final url = type == LegalDocumentType.privacyPolicy
+        ? AppPublicInfo.privacyPolicyUrl
+        : AppPublicInfo.termsUrl;
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened) {
+        return;
+      }
+    }
+    if (!mounted) {
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => LegalDocumentScreen(documentType: type),
@@ -443,9 +458,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                             decoration: BoxDecoration(
                               color: cs.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: cs.outlineVariant,
-                              ),
+                              border: Border.all(color: cs.outlineVariant),
                             ),
                             child: Column(
                               children: <Widget>[
@@ -516,9 +529,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                 isLogin
                                     ? strings.noAccount
                                     : strings.alreadyHaveAccount,
-                                style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                ),
+                                style: TextStyle(color: cs.onSurfaceVariant),
                               ),
                               TextButton(
                                 onPressed: _isBusy

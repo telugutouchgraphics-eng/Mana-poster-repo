@@ -88,9 +88,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w800,
-                                    color: selected
-                                        ? cs.onPrimary
-                                        : cs.primary,
+                                    color: selected ? cs.onPrimary : cs.primary,
                                   ),
                                 ),
                               ),
@@ -131,10 +129,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                         return;
                       }
                       languageController.setLanguage(_selected);
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.onboarding,
-                      );
+                      Navigator.pushReplacementNamed(context, AppRoutes.login);
                     }
                   : null,
             ),

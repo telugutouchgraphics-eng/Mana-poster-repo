@@ -3,8 +3,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 /// Resize caps before bytes hit disk ([CachedNetworkImage] / [CachedNetworkImageProvider]).
 abstract final class PosterNetworkImageLimits {
   /// Feed banners + templates + poster CDN URLs.
-  static const int diskFeedMaxWidth = 1280;
-  static const int diskFeedMaxHeight = 1920;
+  static const int diskFeedMaxWidth = 1080;
+  static const int diskFeedMaxHeight = 1620;
 
   /// Remote profile photo / logo — enough for on-poster placement without huge PNGs.
   static const int diskIdentityMaxWidth = 1200;
@@ -21,8 +21,8 @@ class _PosterImageCacheManager extends CacheManager with ImageCacheManager {
     : super(
         Config(
           'mana_poster_network_images',
-          stalePeriod: const Duration(days: 2),
-          maxNrOfCacheObjects: 80,
+          stalePeriod: const Duration(days: 1),
+          maxNrOfCacheObjects: 48,
         ),
       );
 }

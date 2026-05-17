@@ -63,6 +63,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   void initState() {
     super.initState();
     unawaited(_purchaseGateway.initialize());
+    unawaited(prewarmSubscriptionVideoPrompts());
     SubscriptionBackendService.entitlementNotifier.addListener(
       _handleEntitlementChanged,
     );
@@ -1048,10 +1049,10 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                        _t(
-                          telugu:
+                      _t(
+                        telugu:
                             '1st month trial plan రూ.4. అది ముగిసిన తర్వాత ప్లాన్ నెలకు రూ.149 తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
-                          english:
+                        english:
                             'After the 3-day trial, the plan auto-renews at $_monthlyPriceLabel per month unless you unsubscribe or cancel. If you cancel within 3 days, the monthly charge does not apply. Benefits continue until the current plan expires.',
                         hindi:
                             '3-दिन ट्रायल के बाद, यदि आप अनसब्सक्राइब या रद्द नहीं करते हैं तो प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा। 3 दिनों के भीतर रद्द करने पर मासिक शुल्क लागू नहीं होगा। वर्तमान प्लान समाप्त होने तक लाभ जारी रहेंगे।',

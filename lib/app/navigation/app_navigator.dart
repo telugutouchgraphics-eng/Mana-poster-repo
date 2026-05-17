@@ -17,7 +17,6 @@ class AppNavigator {
     AppRoutes.login,
     AppRoutes.permissions,
     AppRoutes.profileSetup,
-    AppRoutes.onboarding,
     AppRoutes.language,
     AppRoutes.notificationUnavailable,
   };
@@ -66,8 +65,12 @@ class AppNavigator {
     if (segments.length != 2) {
       return false;
     }
-    return <String>{'poster', 'category', 'editor', 'offer', 'event'}.contains(
-      segments.first.trim().toLowerCase(),
-    );
+    return <String>{
+      'poster',
+      'category',
+      'editor',
+      'offer',
+      'event',
+    }.contains(segments.first.trim().toLowerCase());
   }
 }

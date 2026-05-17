@@ -6,21 +6,42 @@ import 'package:video_player/video_player.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/subscription_exit_video_service.dart';
 
+Future<void> prewarmSubscriptionVideoPrompts({
+  SubscriptionExitVideoService service = const SubscriptionExitVideoService(),
+}) {
+  return Future.wait<void>(<Future<void>>[
+    _SubscriptionVideoPromptPreloadCache.prepare(
+      fieldName: _SubscriptionVideoPromptPreloadCache.exitFieldName,
+      service: service,
+    ).then((_) {}),
+    _SubscriptionVideoPromptPreloadCache.prepare(
+      fieldName: _SubscriptionVideoPromptPreloadCache.thanksFieldName,
+      service: service,
+    ).then((_) {}),
+  ]);
+}
+
 Future<void> showSubscriptionExitVideoPromptIfAvailable(
   BuildContext context, {
   SubscriptionExitVideoService service = const SubscriptionExitVideoService(),
   required Future<void> Function(BuildContext context) onSubscribe,
 }) async {
-  final config = await service.fetchConfig();
+  final prepared = await _SubscriptionVideoPromptPreloadCache.take(
+    fieldName: _SubscriptionVideoPromptPreloadCache.exitFieldName,
+    service: service,
+  );
   if (!context.mounted) {
+    await prepared?.controller?.dispose();
     return;
   }
+  final config = prepared?.config;
   await showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => _SubscriptionExitVideoDialog(
       parentContext: context,
       videoUrl: config?.canPlay == true ? config!.url : null,
+      preloadedController: prepared?.controller,
       primaryLabel: context.strings.localized(
         telugu: 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
         english: 'Subscribe Now',
@@ -48,16 +69,22 @@ Future<void> showSubscriptionThanksVideoPromptIfAvailable(
   BuildContext context, {
   SubscriptionExitVideoService service = const SubscriptionExitVideoService(),
 }) async {
-  final config = await service.fetchThanksConfig();
+  final prepared = await _SubscriptionVideoPromptPreloadCache.take(
+    fieldName: _SubscriptionVideoPromptPreloadCache.thanksFieldName,
+    service: service,
+  );
   if (!context.mounted) {
+    await prepared?.controller?.dispose();
     return;
   }
+  final config = prepared?.config;
   await showDialog<void>(
     context: context,
     barrierDismissible: true,
     builder: (_) => _SubscriptionExitVideoDialog(
       parentContext: context,
       videoUrl: config?.canPlay == true ? config!.url : null,
+      preloadedController: prepared?.controller,
       primaryLabel: context.strings.localized(
         telugu: 'ధన్యవాదాలు',
         english: 'Thanks',
@@ -89,6 +116,7 @@ class _SubscriptionExitVideoDialog extends StatefulWidget {
     required this.fallbackMessage,
     this.videoUrl,
     this.onPrimaryTap,
+    this.preloadedController,
   });
 
   final BuildContext parentContext;
@@ -98,6 +126,7 @@ class _SubscriptionExitVideoDialog extends StatefulWidget {
   final String fallbackTitle;
   final String fallbackMessage;
   final Future<void> Function(BuildContext context)? onPrimaryTap;
+  final VideoPlayerController? preloadedController;
 
   @override
   State<_SubscriptionExitVideoDialog> createState() =>
@@ -112,7 +141,13 @@ class _SubscriptionExitVideoDialogState
   @override
   void initState() {
     super.initState();
-    unawaited(_initialize());
+    final preloadedController = widget.preloadedController;
+    if (preloadedController != null) {
+      _controller = preloadedController;
+      unawaited(_playPreloadedController(preloadedController));
+    } else {
+      unawaited(_initialize());
+    }
   }
 
   @override
@@ -131,6 +166,25 @@ class _SubscriptionExitVideoDialogState
     try {
       await controller.initialize();
       await controller.setLooping(false);
+      await controller.play();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _hasError = true);
+      }
+    }
+  }
+
+  Future<void> _playPreloadedController(
+    VideoPlayerController controller,
+  ) async {
+    try {
+      if (!controller.value.isInitialized) {
+        await controller.initialize();
+      }
+      await controller.seekTo(Duration.zero);
       await controller.play();
       if (mounted) {
         setState(() {});
@@ -215,12 +269,12 @@ class _SubscriptionExitVideoDialogState
                             ),
                           )
                         : ready
-                            ? VideoPlayer(controller)
-                            : const Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              ),
+                        ? VideoPlayer(controller)
+                        : const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -249,5 +303,58 @@ class _SubscriptionExitVideoDialogState
         ),
       ),
     );
+  }
+}
+
+class _PreparedSubscriptionVideo {
+  const _PreparedSubscriptionVideo({required this.config, this.controller});
+
+  final SubscriptionExitVideoConfig? config;
+  final VideoPlayerController? controller;
+}
+
+class _SubscriptionVideoPromptPreloadCache {
+  static const String exitFieldName = 'subscriptionExitVideo';
+  static const String thanksFieldName = 'subscriptionThanksVideo';
+  static final Map<String, Future<_PreparedSubscriptionVideo?>> _pending =
+      <String, Future<_PreparedSubscriptionVideo?>>{};
+
+  static Future<_PreparedSubscriptionVideo?> prepare({
+    required String fieldName,
+    required SubscriptionExitVideoService service,
+  }) {
+    return _pending[fieldName] ??= _load(
+      fieldName: fieldName,
+      service: service,
+    );
+  }
+
+  static Future<_PreparedSubscriptionVideo?> take({
+    required String fieldName,
+    required SubscriptionExitVideoService service,
+  }) async {
+    final prepared = await prepare(fieldName: fieldName, service: service);
+    _pending.remove(fieldName);
+    return prepared;
+  }
+
+  static Future<_PreparedSubscriptionVideo?> _load({
+    required String fieldName,
+    required SubscriptionExitVideoService service,
+  }) async {
+    final config = await service.fetchConfig(fieldName: fieldName);
+    if (config?.canPlay != true) {
+      return _PreparedSubscriptionVideo(config: config);
+    }
+
+    final controller = VideoPlayerController.networkUrl(Uri.parse(config!.url));
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      return _PreparedSubscriptionVideo(config: config, controller: controller);
+    } catch (_) {
+      await controller.dispose();
+      return _PreparedSubscriptionVideo(config: config);
+    }
   }
 }

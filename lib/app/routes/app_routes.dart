@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
-    if (dart.library.io)
-        'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
+    if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
-import 'package:mana_poster/features/prehome/screens/onboarding_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
@@ -18,7 +16,6 @@ import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 class AppRoutes {
   static const splash = '/';
   static const language = '/language';
-  static const onboarding = '/onboarding';
   static const login = '/login';
   static const permissions = '/permissions';
   static const profileSetup = '/profile-setup';
@@ -45,14 +42,14 @@ class AppRoutes {
   static final Map<String, WidgetBuilder> map = <String, WidgetBuilder>{
     splash: (_) => _webEntry(const SplashScreen()),
     language: (_) => _webEntry(const LanguageSelectionScreen()),
-    onboarding: (_) => _webEntry(const OnboardingScreen()),
     login: (_) => _webEntry(const LoginScreen()),
     permissions: (_) => _webEntry(const PermissionsScreen()),
     profileSetup: (_) => _webEntry(const ProfileSetupScreen()),
     home: (_) => _webEntry(const HomeScreen()),
     pageSetup: (_) => _webEntry(const PageSetupScreen()),
     imageEditor: (_) => _webEntry(const ImageEditorScreen()),
-    notificationUnavailable: (_) => _webEntry(const NotificationUnavailableScreen()),
+    notificationUnavailable: (_) =>
+        _webEntry(const NotificationUnavailableScreen()),
   };
 
   static Route<dynamic>? resolveDynamicRoute(RouteSettings settings) {
@@ -109,9 +106,6 @@ class AppRoutes {
         screen = _webEntry(const NotificationUnavailableScreen());
     }
 
-    return MaterialPageRoute<void>(
-      builder: (_) => screen!,
-      settings: settings,
-    );
+    return MaterialPageRoute<void>(builder: (_) => screen!, settings: settings);
   }
 }

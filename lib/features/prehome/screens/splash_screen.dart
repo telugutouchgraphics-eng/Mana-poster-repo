@@ -82,8 +82,6 @@ class _SplashScreenState extends State<SplashScreen>
       String nextRoute;
       if (!snapshot.languageSelected) {
         nextRoute = AppRoutes.language;
-      } else if (!snapshot.onboardingCompleted) {
-        nextRoute = AppRoutes.onboarding;
       } else if (!isAuthenticated) {
         nextRoute = AppRoutes.login;
       } else if (!permissionsHandled) {
@@ -170,9 +168,7 @@ class _SplashScreenState extends State<SplashScreen>
         child: Stack(
           children: <Widget>[
             Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: cs.surface),
-              ),
+              child: DecoratedBox(decoration: BoxDecoration(color: cs.surface)),
             ),
             SafeArea(
               child: SizedBox.expand(

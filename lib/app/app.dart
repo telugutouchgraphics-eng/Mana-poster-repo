@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -55,6 +56,9 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
         analytics: FirebaseAnalytics.instance,
       );
       _attachSubscriptionEntitlementToAuth();
+      if (FirebaseAuth.instance.currentUser != null) {
+        unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());
+      }
     }
   }
 
@@ -71,6 +75,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
         await SubscriptionBackendService.resetLocalClientStateForAuthChange();
       } catch (_) {}
       if (nextUid != null) {
+        unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());
         unawaited(
           SubscriptionBackendService().refreshEntitlementInBackground(
             forceRefresh: true,

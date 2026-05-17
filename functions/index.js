@@ -29,6 +29,18 @@ const subscriptionPlanConfig = {
   trialPrice: 4,
   monthlyPrice: 149,
 };
+const referralRewardConfig = {
+  requiredPaidReferrals: 15,
+  rewardDays: 30,
+  codePrefix: "MP",
+  codeHashLength: 10,
+  purchaseAttributionGraceMillis: 10 * 60 * 1000,
+};
+const referralCollections = {
+  codes: "referralCodes",
+  claims: "referralClaims",
+  events: "referralEvents",
+};
 const supportedProductIds = new Set([
   subscriptionPlanConfig.primaryMonthlyProductId,
 ]);
@@ -247,6 +259,238 @@ function firestoreValueToIsoString(value) {
     return null;
   }
   return date.toISOString();
+}
+
+function firestoreValueToDate(value) {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof admin.firestore.Timestamp) {
+    return value.toDate();
+  }
+  if (typeof value.toDate === "function") {
+    try {
+      return value.toDate();
+    } catch (_) {
+      return null;
+    }
+  }
+  const candidate = new Date(value);
+  return Number.isNaN(candidate.getTime()) ? null : candidate;
+}
+
+function normalizeReferralCode(value) {
+  return String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 24);
+}
+
+function buildReferralCodeForUid(uid, hashLength = referralRewardConfig.codeHashLength) {
+  const hash = sha256(`referral:${uid}`)
+      .slice(0, hashLength)
+      .toUpperCase();
+  return `${referralRewardConfig.codePrefix}${hash}`;
+}
+
+function buildReferralLink(code) {
+  const normalizedCode = normalizeReferralCode(code);
+  const referrer = encodeURIComponent(`mp_ref=${normalizedCode}`);
+  return `https://play.google.com/store/apps/details?id=${encodeURIComponent(playPackageName)}&referrer=${referrer}`;
+}
+
+async function ensureReferralCodeForUid(uid) {
+  for (const hashLength of [10, 16, 22]) {
+    const code = buildReferralCodeForUid(uid, hashLength);
+    const ref = db.collection(referralCollections.codes).doc(code);
+    const snap = await ref.get();
+    const existingUid = String((snap.data() || {}).uid || "").trim();
+    if (snap.exists && existingUid && existingUid !== uid) {
+      continue;
+    }
+    const payload = {
+      code,
+      uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (!snap.exists) {
+      payload.createdAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+    await ref.set(payload, {merge: true});
+    return code;
+  }
+  throw new Error("Unable to allocate referral code");
+}
+
+function referralRewardWindow(entitlementData) {
+  const startsAt = firestoreValueToDate(entitlementData.referralRewardStartsAt);
+  const expiresAt = firestoreValueToDate(entitlementData.referralRewardExpiresAt);
+  const nowMillis = Date.now();
+  const startsMillis = startsAt ? startsAt.getTime() : 0;
+  const expiresMillis = expiresAt ? expiresAt.getTime() : 0;
+  return {
+    startsAt,
+    expiresAt,
+    active:
+      expiresMillis > nowMillis &&
+      (startsMillis === 0 || startsMillis <= nowMillis),
+  };
+}
+
+async function recordPaidReferralForSubscriber({
+  subscriberUid,
+  productId,
+  tokenHash,
+  latestOrderId,
+  purchaseStartTime,
+}) {
+  const sourceRef = db.doc(`users/${subscriberUid}/referral/source`);
+  const sourceSnap = await sourceRef.get();
+  if (!sourceSnap.exists) {
+    return {counted: false, reason: "no_referral_source"};
+  }
+  const sourceData = sourceSnap.data() || {};
+  const referrerUid = String(sourceData.referrerUid || "").trim();
+  const referralCode = normalizeReferralCode(sourceData.referralCode);
+  if (!referrerUid || referrerUid === subscriberUid) {
+    return {counted: false, reason: "invalid_referrer"};
+  }
+  const appliedAt = firestoreValueToDate(sourceData.appliedAt);
+  const purchaseStartedAt = firestoreValueToDate(purchaseStartTime);
+  if (
+    appliedAt &&
+    purchaseStartedAt &&
+    appliedAt.getTime() >
+      purchaseStartedAt.getTime() +
+        referralRewardConfig.purchaseAttributionGraceMillis
+  ) {
+    return {counted: false, reason: "purchase_started_before_referral"};
+  }
+
+  const claimRef = db.collection(referralCollections.claims).doc(subscriberUid);
+  const summaryRef = db.doc(`users/${referrerUid}/referralRewards/summary`);
+  const entitlementRef = db.doc(`users/${referrerUid}/entitlements/pro`);
+  const eventRef = db.collection(referralCollections.events).doc();
+  const nowDate = new Date();
+  const nowTimestamp = admin.firestore.Timestamp.fromDate(nowDate);
+  const rewardMillis = referralRewardConfig.rewardDays * 24 * 60 * 60 * 1000;
+  let result = {counted: false, reason: "transaction_not_run"};
+
+  await db.runTransaction(async (tx) => {
+    const [claimSnap, summarySnap, entitlementSnap] = await Promise.all([
+      tx.get(claimRef),
+      tx.get(summaryRef),
+      tx.get(entitlementRef),
+    ]);
+    if (claimSnap.exists) {
+      result = {counted: false, reason: "subscriber_already_counted"};
+      return;
+    }
+
+    const summary = summarySnap.data() || {};
+    const entitlement = entitlementSnap.data() || {};
+    const currentCycleNumber = Math.max(
+        1,
+        Number(summary.currentCycleNumber || 1) || 1,
+    );
+    const currentCyclePaidCount = Math.max(
+        0,
+        Number(summary.currentCyclePaidCount || 0) || 0,
+    );
+    const nextPaidCount = currentCyclePaidCount + 1;
+    const shouldGrant =
+      nextPaidCount >= referralRewardConfig.requiredPaidReferrals;
+
+    const summaryPatch = {
+      currentCycleNumber,
+      currentCyclePaidCount: nextPaidCount,
+      requiredPaidReferrals: referralRewardConfig.requiredPaidReferrals,
+      rewardDays: referralRewardConfig.rewardDays,
+      totalPaidReferralCount: admin.firestore.FieldValue.increment(1),
+      updatedAt: nowTimestamp,
+    };
+
+    tx.set(claimRef, {
+      subscriberUid,
+      referrerUid,
+      referralCode,
+      productId: productId || null,
+      tokenHash: tokenHash || null,
+      latestOrderId: latestOrderId || null,
+      countedAt: nowTimestamp,
+    });
+    tx.set(sourceRef, {
+      status: "paid_counted",
+      countedAt: nowTimestamp,
+      referrerUid,
+      referralCode,
+    }, {merge: true});
+
+    if (shouldGrant) {
+      const currentRewardExpiry = firestoreValueToDate(
+          entitlement.referralRewardExpiresAt,
+      );
+      const paidExpiry = firestoreValueToDate(entitlement.expiryTime);
+      const baseMillis = Math.max(
+          nowDate.getTime(),
+          currentRewardExpiry ? currentRewardExpiry.getTime() : 0,
+          paidExpiry ? paidExpiry.getTime() : 0,
+      );
+      const rewardStartsAt = admin.firestore.Timestamp.fromMillis(baseMillis);
+      const rewardExpiresAt =
+        admin.firestore.Timestamp.fromMillis(baseMillis + rewardMillis);
+      summaryPatch.currentCycleNumber = currentCycleNumber + 1;
+      summaryPatch.currentCyclePaidCount = 0;
+      summaryPatch.rewardGrantCount = admin.firestore.FieldValue.increment(1);
+      summaryPatch.lastRewardStartsAt = rewardStartsAt;
+      summaryPatch.lastRewardExpiresAt = rewardExpiresAt;
+
+      tx.set(entitlementRef, {
+        isPro: true,
+        status: "active",
+        source: "referral_reward",
+        referralRewardActive: true,
+        referralRewardStartsAt: rewardStartsAt,
+        referralRewardExpiresAt: rewardExpiresAt,
+        referralRewardCycleNumber: currentCycleNumber,
+        referralRewardRequiredPaidReferrals:
+          referralRewardConfig.requiredPaidReferrals,
+        referralRewardDays: referralRewardConfig.rewardDays,
+        updatedAt: nowTimestamp,
+      }, {merge: true});
+      tx.set(eventRef, {
+        type: "referral_reward_granted",
+        referrerUid,
+        subscriberUid,
+        referralCode,
+        cycleNumber: currentCycleNumber,
+        rewardStartsAt,
+        rewardExpiresAt,
+        createdAt: nowTimestamp,
+      });
+      result = {counted: true, rewardGranted: true};
+    } else {
+      tx.set(eventRef, {
+        type: "paid_referral_counted",
+        referrerUid,
+        subscriberUid,
+        referralCode,
+        cycleNumber: currentCycleNumber,
+        currentCyclePaidCount: nextPaidCount,
+        requiredPaidReferrals: referralRewardConfig.requiredPaidReferrals,
+        createdAt: nowTimestamp,
+      });
+      result = {
+        counted: true,
+        rewardGranted: false,
+        currentCyclePaidCount: nextPaidCount,
+      };
+    }
+    tx.set(summaryRef, summaryPatch, {merge: true});
+  });
+
+  return result;
 }
 
 function buildSubscriptionMetadataPatch(verification) {
@@ -2228,6 +2472,133 @@ async function deletePosterStorageAssets(bucket, data) {
   }));
 }
 
+exports.referralStatus = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({message: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const decoded = await verifyAuth(req);
+    const uid = decoded.uid;
+    const code = await ensureReferralCodeForUid(uid);
+    const [summarySnap, entitlementSnap, sourceSnap] = await Promise.all([
+      db.doc(`users/${uid}/referralRewards/summary`).get(),
+      db.doc(`users/${uid}/entitlements/pro`).get(),
+      db.doc(`users/${uid}/referral/source`).get(),
+    ]);
+    const summary = summarySnap.data() || {};
+    const entitlement = entitlementSnap.data() || {};
+    const source = sourceSnap.data() || {};
+    const reward = referralRewardWindow(entitlement);
+
+    res.status(200).json({
+      code,
+      link: buildReferralLink(code),
+      requiredPaidReferrals: referralRewardConfig.requiredPaidReferrals,
+      rewardDays: referralRewardConfig.rewardDays,
+      currentCycleNumber: Math.max(
+          1,
+          Number(summary.currentCycleNumber || 1) || 1,
+      ),
+      currentCyclePaidCount: Math.max(
+          0,
+          Number(summary.currentCyclePaidCount || 0) || 0,
+      ),
+      totalPaidReferralCount: Math.max(
+          0,
+          Number(summary.totalPaidReferralCount || 0) || 0,
+      ),
+      rewardActive: reward.active,
+      rewardStartsAt: reward.startsAt ? reward.startsAt.toISOString() : null,
+      rewardExpiresAt: reward.expiresAt ? reward.expiresAt.toISOString() : null,
+      appliedReferralStatus: source.status || null,
+      appliedReferralCode: source.referralCode || null,
+    });
+  } catch (error) {
+    logger.error("referralStatus error", error);
+    res.status(httpStatusForError(error)).json({
+      message: error instanceof Error ? error.message : "Unauthorized",
+    });
+  }
+});
+
+exports.applyReferralCode = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({accepted: false, message: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const decoded = await verifyAuth(req);
+    const uid = decoded.uid;
+    const payload = req.body || {};
+    const referralCode = normalizeReferralCode(payload.referralCode || payload.code);
+    if (!referralCode) {
+      res.status(400).json({accepted: false, message: "Referral code is required"});
+      return;
+    }
+
+    const codeSnap = await db.collection(referralCollections.codes)
+        .doc(referralCode)
+        .get();
+    if (!codeSnap.exists) {
+      res.status(404).json({accepted: false, message: "Referral code not found"});
+      return;
+    }
+    const referrerUid = String((codeSnap.data() || {}).uid || "").trim();
+    if (!referrerUid || referrerUid === uid) {
+      res.status(400).json({accepted: false, message: "Referral code cannot be used"});
+      return;
+    }
+
+    const sourceRef = db.doc(`users/${uid}/referral/source`);
+    const eventRef = db.collection(referralCollections.events).doc();
+    let accepted = false;
+    let message = "Referral already applied";
+    await db.runTransaction(async (tx) => {
+      const sourceSnap = await tx.get(sourceRef);
+      if (sourceSnap.exists) {
+        return;
+      }
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      tx.set(sourceRef, {
+        referralCode,
+        referrerUid,
+        status: "pending_paid_subscription",
+        appliedAt: now,
+      });
+      tx.set(eventRef, {
+        type: "referral_code_applied",
+        subscriberUid: uid,
+        referrerUid,
+        referralCode,
+        createdAt: now,
+      });
+      accepted = true;
+      message = "Referral applied";
+    });
+
+    res.status(200).json({accepted, message, referralCode});
+  } catch (error) {
+    logger.error("applyReferralCode error", error);
+    res.status(httpStatusForError(error)).json({
+      accepted: false,
+      message: error instanceof Error ? error.message : "Unauthorized",
+    });
+  }
+});
+
 exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res) => {
   setCors(res);
   if (req.method === "OPTIONS") {
@@ -2348,6 +2719,25 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       ackAttempts: 0,
     });
 
+    let referralReward = null;
+    if (isValid) {
+      try {
+        referralReward = await recordPaidReferralForSubscriber({
+          subscriberUid: uid,
+          productId: verification.primaryProductId || productId || null,
+          tokenHash,
+          latestOrderId: verification.latestOrderId || transactionId || null,
+          purchaseStartTime: verification.startTime || transactionDate || null,
+        });
+      } catch (error) {
+        logger.warn("Paid referral count skipped", {
+          uid,
+          tokenHash,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     if (verification.linkedPurchaseToken) {
       const previousTokenHash = sha256(verification.linkedPurchaseToken);
       const linkedTokenRef = db.collection(subscriptionCollections.tokenOwnership)
@@ -2404,6 +2794,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       latestOrderId: verification.latestOrderId || null,
       lastSyncedAt: new Date().toISOString(),
       ackPending: !ackSucceeded,
+      referralReward,
     });
   } catch (error) {
     logger.error("verifySubscription error", error);
@@ -2432,6 +2823,7 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
     const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
     const snap = await entitlementRef.get();
     const data = snap.data() || {};
+    const reward = referralRewardWindow(data);
     const storedToken = await resolveStoredSubscriptionToken({
       uid,
       entitlementRef,
@@ -2446,6 +2838,10 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
     let expiryTime = data.expiryTime || null;
     let autoRenewing = data.autoRenewing ?? null;
     let latestOrderId = data.latestOrderId || null;
+    if (!token && String(data.source || "") === "referral_reward") {
+      isPro = false;
+      status = "inactive";
+    }
 
     if (token) {
       try {
@@ -2490,11 +2886,25 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
       expiryTime,
     });
     isPro = status === "active";
+    if (!isPro && reward.active) {
+      isPro = true;
+      status = "active";
+      productId = productId || "referral_reward";
+      subscriptionState = subscriptionState || "REFERRAL_REWARD";
+      startTime = reward.startsAt || startTime;
+      expiryTime = reward.expiresAt || expiryTime;
+      autoRenewing = false;
+    }
 
-    if (isPro !== (data.isPro === true) || status !== (data.status || null)) {
+    if (
+      isPro !== (data.isPro === true) ||
+      status !== (data.status || null) ||
+      reward.active !== (data.referralRewardActive === true)
+    ) {
       await entitlementRef.set({
         isPro,
         status,
+        referralRewardActive: reward.active,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, {merge: true});
     }
@@ -2509,6 +2919,9 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
       expiryTime: firestoreValueToIsoString(expiryTime),
       autoRenewing: autoRenewing === true,
       latestOrderId: latestOrderId || null,
+      referralRewardActive: reward.active,
+      referralRewardStartsAt: reward.startsAt ? reward.startsAt.toISOString() : null,
+      referralRewardExpiresAt: reward.expiresAt ? reward.expiresAt.toISOString() : null,
       lastSyncedAt: new Date().toISOString(),
     });
   } catch (error) {

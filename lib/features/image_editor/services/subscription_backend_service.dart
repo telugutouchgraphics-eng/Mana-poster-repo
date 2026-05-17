@@ -192,9 +192,10 @@ class SubscriptionBackendService {
         return;
       }
       await evidence.completeStorePurchase();
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'pending_purchase_recovered',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(
+            reason: 'pending_purchase_recovered',
+          );
       await fetchFreshEntitlementWithRetry();
     } catch (_) {
       // Keep recovery best-effort; Play will continue surfacing unfinished

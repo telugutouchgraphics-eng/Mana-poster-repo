@@ -11,6 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ import 'package:mana_poster/features/prehome/services/approved_creator_template_
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
@@ -285,6 +287,8 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _templatesPageSize = 12;
   static const int _promoSlidesLimit = 5;
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
+  static const String _homeReferralPromptKeyPrefix =
+      'mana_poster_home_referral_prompt_dismissed_';
   static const List<String> _staticCategorySlugs = <String>[
     'all',
     'good_morning',
@@ -303,6 +307,7 @@ class _HomeScreenState extends State<HomeScreen>
     'good_thoughts',
     'bible',
     'islam',
+    'jokes',
     'new',
   ];
 
@@ -341,6 +346,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _viewerProfileLoadFuture;
+  bool _referralPromptShowing = false;
 
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
@@ -391,6 +397,9 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_loadViewerPosterProfile());
     unawaited(_loadInstalledAppVersion());
     unawaited(_loadPromoCardPreferences());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_showReferralPromptIfNeeded());
+    });
   }
 
   @override
@@ -727,7 +736,8 @@ class _HomeScreenState extends State<HomeScreen>
       'good_thoughts' => const <String>['good_thoughts', 'motivational'],
       'bible' => const <String>['bible', 'devotional'],
       'islam' => const <String>['islam', 'devotional'],
-      'new' => const <String>['new', 'today_special'],
+      'jokes' => const <String>['jokes', 'funny', 'humor', 'comedy'],
+      'new' => const <String>['new', 'more', 'latest', 'today_special'],
       _ => <String>[slug],
     };
   }
@@ -927,6 +937,32 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
+  }
+
+  Future<void> _showReferralPromptIfNeeded() async {
+    if (!mounted || _referralPromptShowing) {
+      return;
+    }
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_homeReferralPromptKeyPrefix$uid';
+    if (prefs.getBool(key) == true || !mounted) {
+      return;
+    }
+
+    _referralPromptShowing = true;
+    final applied = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => const _HomeReferralCodeDialog(),
+    );
+    _referralPromptShowing = false;
+    if (applied == true || applied == false) {
+      await prefs.setBool(key, true);
+    }
   }
 
   Future<void> _loadHomeBanners() async {
@@ -1417,9 +1453,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openSubscriptionPlan({bool startPurchaseOnOpen = false}) async {
-    await _pushSubscriptionPlanRoute(
-      startPurchaseOnOpen: startPurchaseOnOpen,
-    );
+    await _pushSubscriptionPlanRoute(startPurchaseOnOpen: startPurchaseOnOpen);
     if (!mounted) {
       return;
     }
@@ -1561,15 +1595,17 @@ class _HomeScreenState extends State<HomeScreen>
         return;
       }
       unawaited(
-        _posterScrollController.animateTo(
-          target,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-        ).catchError((_) {
-          if (_posterScrollController.hasClients) {
-            _posterScrollController.jumpTo(0);
-          }
-        }),
+        _posterScrollController
+            .animateTo(
+              target,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+            )
+            .catchError((_) {
+              if (_posterScrollController.hasClients) {
+                _posterScrollController.jumpTo(0);
+              }
+            }),
       );
     });
   }
@@ -1651,7 +1687,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                cacheExtent: 900,
+                cacheExtent: 720,
                 slivers: <Widget>[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -1798,7 +1834,8 @@ class _HomeScreenState extends State<HomeScreen>
                               item: item,
                               hostContext: context,
                               language: language,
-                              onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
+                              onOpenSubscriptionPlan:
+                                  _pushSubscriptionPlanRoute,
                               viewerPosterProfile: _viewerPosterProfile,
                               posterRenderCycle: _posterRenderCycle,
                             );
@@ -1830,6 +1867,156 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HomeReferralCodeDialog extends StatefulWidget {
+  const _HomeReferralCodeDialog();
+
+  @override
+  State<_HomeReferralCodeDialog> createState() =>
+      _HomeReferralCodeDialogState();
+}
+
+class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
+  final ReferralRewardService _service = ReferralRewardService();
+  final TextEditingController _controller = TextEditingController();
+  bool _applying = false;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _apply() async {
+    if (_applying) {
+      return;
+    }
+    final code = _controller.text.trim();
+    if (code.isEmpty) {
+      setState(() {
+        _errorText = context.strings.localized(
+          telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
+          english: 'Enter referral code',
+        );
+      });
+      return;
+    }
+    setState(() {
+      _applying = true;
+      _errorText = null;
+    });
+    try {
+      final result = await _service.applyCode(code);
+      if (!mounted) {
+        return;
+      }
+      final alreadyApplied = result.message.toLowerCase().contains(
+        'already applied',
+      );
+      if (result.accepted || alreadyApplied) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+      setState(() {
+        _applying = false;
+        _errorText = result.message.isEmpty
+            ? context.strings.localized(
+                telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు',
+                english: 'Referral code could not be applied',
+              )
+            : result.message;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _applying = false;
+        _errorText = context.strings.localized(
+          telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి',
+          english: 'Referral code apply failed. Please try again.',
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    return AlertDialog(
+      insetPadding: EdgeInsets.fromLTRB(24, 24, 24, keyboardInset + 24),
+      title: Text(
+        strings.localized(telugu: 'రిఫరల్ కోడ్', english: 'Referral code'),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              strings.localized(
+                telugu: 'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
+                english: 'Enter a referral code if you have one.',
+              ),
+              style: const TextStyle(fontSize: 13.5, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controller,
+              textCapitalization: TextCapitalization.characters,
+              decoration: InputDecoration(
+                labelText: strings.localized(
+                  telugu: 'రిఫరల్ కోడ్',
+                  english: 'Referral code',
+                ),
+                errorText: _errorText,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (_) => unawaited(_apply()),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const LegalDocumentScreen(
+                      documentType: LegalDocumentType.termsAndConditions,
+                    ),
+                  ),
+                );
+              },
+              child: Text(
+                strings.localized(
+                  telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+                  english: 'View Terms & Conditions',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: _applying ? null : () => Navigator.of(context).pop(false),
+          child: Text(strings.localized(telugu: 'స్కిప్', english: 'Skip')),
+        ),
+        FilledButton(
+          onPressed: _applying ? null : () => unawaited(_apply()),
+          child: _applying
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(strings.localized(telugu: 'అప్లై', english: 'Apply')),
+        ),
+      ],
     );
   }
 }
@@ -2441,7 +2628,7 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                   ? (constraints.maxWidth *
                             MediaQuery.devicePixelRatioOf(context))
                         .round()
-                        .clamp(480, 1600)
+                        .clamp(360, 1080)
                   : 1080;
               return CachedNetworkImage(
                 imageUrl: _slides[index].imageUrl,
@@ -2765,7 +2952,8 @@ class _TemplateFeedItem extends StatefulWidget {
   final _TemplateItem item;
   final BuildContext hostContext;
   final AppLanguage language;
-  final Future<void> Function({bool startPurchaseOnOpen}) onOpenSubscriptionPlan;
+  final Future<void> Function({bool startPurchaseOnOpen})
+  onOpenSubscriptionPlan;
   final PosterProfileData viewerPosterProfile;
   final int posterRenderCycle;
   static final SubscriptionBackendService _subscriptionBackendService =
@@ -3094,9 +3282,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
       return;
     }
     _posterReadyNotifier.value = ready;
-    if (ready) {
-      _schedulePosterWarmup();
-    }
   }
 
   Future<Uint8List?> _capturePosterBytes() async {
@@ -3813,285 +3998,283 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _posterReadyNotifier,
-        builder: (context, isPosterReady, _) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ValueListenableBuilder<bool>(
-                valueListenable: _showPosterPhotoNotifier,
-                builder: (context, isPhotoVisible, _) {
-                  return KeyedSubtree(
-                    key: _posterCaptureKey,
-                    child: Screenshot(
-                      controller: _posterScreenshotController,
-                      child: _buildPosterPreview(
-                        isPhotoVisible: isPhotoVisible,
-                        onPosterReadyChanged: _handlePosterReadyState,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              if (!isPosterReady)
-                const Padding(
-                  padding: EdgeInsets.only(top: 10),
-                  child: _PosterCardMetaLoadingState(),
-                )
-              else ...<Widget>[
-                const SizedBox.shrink(),
-                const SizedBox.shrink(),
-                if (canTogglePhoto && item.titleEn.trim().isEmpty) ...<Widget>[
-                  const SizedBox(height: 4),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: _showPosterPhotoNotifier,
-                    builder: (context, isPhotoVisible, _) {
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () {
-                              _invalidatePreparedPosterCache();
-                              _showPosterPhotoNotifier.value = !isPhotoVisible;
-                              _schedulePosterWarmup(force: true);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 2,
-                                vertical: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          ValueListenableBuilder<bool>(
+            valueListenable: _showPosterPhotoNotifier,
+            builder: (context, isPhotoVisible, _) {
+              return KeyedSubtree(
+                key: _posterCaptureKey,
+                child: Screenshot(
+                  controller: _posterScreenshotController,
+                  child: _buildPosterPreview(
+                    isPhotoVisible: isPhotoVisible,
+                    onPosterReadyChanged: _handlePosterReadyState,
+                  ),
+                ),
+              );
+            },
+          ),
+          if (canTogglePhoto && item.titleEn.trim().isEmpty) ...<Widget>[
+            const SizedBox(height: 4),
+            ValueListenableBuilder<bool>(
+              valueListenable: _showPosterPhotoNotifier,
+              builder: (context, isPhotoVisible, _) {
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () {
+                        _invalidatePreparedPosterCache();
+                        _showPosterPhotoNotifier.value = !isPhotoVisible;
+                        _schedulePosterWarmup(force: true);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 1,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              isPhotoVisible
+                                  ? Icons.visibility_rounded
+                                  : Icons.visibility_off_rounded,
+                              size: 14,
+                              color: isPhotoVisible
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              strings.localized(
+                                telugu: 'à°«à±‹à°Ÿà±‹',
+                                english: 'Photo',
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    isPhotoVisible
-                                        ? Icons.visibility_rounded
-                                        : Icons.visibility_off_rounded,
-                                    size: 14,
-                                    color: isPhotoVisible
-                                        ? const Color(0xFF16A34A)
-                                        : const Color(0xFF64748B),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    strings.localized(
-                                      telugu: 'à°«à±‹à°Ÿà±‹',
-                                      english: 'Photo',
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: isPhotoVisible
-                                          ? const Color(0xFF166534)
-                                          : const Color(0xFF475569),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Transform.scale(
-                                    scale: 0.68,
-                                    child: Switch.adaptive(
-                                      value: isPhotoVisible,
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                      activeTrackColor: const Color(0xFF25D366),
-                                      activeThumbColor: Colors.white,
-                                      onChanged: (bool value) {
-                                        _invalidatePreparedPosterCache();
-                                        _showPosterPhotoNotifier.value = value;
-                                        _schedulePosterWarmup(force: true);
-                                      },
-                                    ),
-                                  ),
-                                ],
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isPhotoVisible
+                                    ? const Color(0xFF166534)
+                                    : const Color(0xFF475569),
                               ),
                             ),
+                            const SizedBox(width: 4),
+                            Transform.scale(
+                              scale: 0.68,
+                              child: Switch.adaptive(
+                                value: isPhotoVisible,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                activeTrackColor: const Color(0xFF25D366),
+                                activeThumbColor: Colors.white,
+                                onChanged: (bool value) {
+                                  _invalidatePreparedPosterCache();
+                                  _showPosterPhotoNotifier.value = value;
+                                  _schedulePosterWarmup(force: true);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+          const SizedBox(height: 2),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: _activeActionNotifier,
+                  builder: (context, activeAction, _) {
+                    final isBusy = activeAction == 'share';
+                    return OutlinedButton.icon(
+                      onPressed: item.isVideo || activeAction != null
+                          ? null
+                          : () => unawaited(_onShareTap(context)),
+                      icon: isBusy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Image.asset(
+                              'assets/branding/whatsapp_icon.png',
+                              width: 24,
+                              height: 24,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) =>
+                                  const Icon(Icons.whatshot_rounded, size: 18),
+                            ),
+                      label: Text(
+                        isBusy
+                            ? strings.localized(
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                english: 'Preparing...',
+                              )
+                            : strings.localized(
+                                telugu: 'à°·à±‡à°°à±',
+                                english: 'Share',
+                              ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFF25D366),
+                        side: const BorderSide(color: Color(0xFF25D366)),
+                        minimumSize: const Size.fromHeight(40),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 7,
+                          horizontal: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (canTogglePhoto) ...<Widget>[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _showPosterPhotoNotifier,
+                    builder: (context, isPhotoVisible, _) {
+                      return OutlinedButton.icon(
+                        onPressed: () {
+                          _invalidatePreparedPosterCache();
+                          _showPosterPhotoNotifier.value = !isPhotoVisible;
+                          _schedulePosterWarmup(force: true);
+                        },
+                        icon: Icon(
+                          isPhotoVisible
+                              ? Icons.visibility_rounded
+                              : Icons.visibility_off_rounded,
+                          size: 16,
+                          color: isPhotoVisible
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF64748B),
+                        ),
+                        label: Text(
+                          strings.localized(
+                            telugu: 'à°«à±‹à°Ÿà±‹',
+                            english: 'Photo',
+                          ),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isPhotoVisible
+                                ? const Color(0xFF166534)
+                                : const Color(0xFF475569),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF334155),
+                          side: BorderSide(
+                            color: isPhotoVisible
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFFD8E2F0),
+                          ),
+                          backgroundColor: isPhotoVisible
+                              ? const Color(0xFFF0FDF4)
+                              : Colors.white,
+                          minimumSize: const Size.fromHeight(40),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       );
                     },
                   ),
-                ],
-                const SizedBox(height: 2),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: ValueListenableBuilder<String?>(
-                        valueListenable: _activeActionNotifier,
-                        builder: (context, activeAction, _) {
-                          final isBusy = activeAction == 'share';
-                          return OutlinedButton.icon(
-                            onPressed: item.isVideo || activeAction != null
-                                ? null
-                                : () => unawaited(_onShareTap(context)),
-                            icon: isBusy
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : Image.asset(
-                                    'assets/branding/whatsapp_icon.png',
-                                    width: 30,
-                                    height: 30,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, _, _) => const Icon(
-                                      Icons.whatshot_rounded,
-                                      size: 22,
-                                    ),
-                                  ),
-                            label: Text(
-                              isBusy
-                                  ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
-                                      english: 'Preparing...',
-                                    )
-                                  : strings.localized(
-                                      telugu: 'à°·à±‡à°°à±',
-                                      english: 'Share',
-                                    ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              backgroundColor: const Color(0xFF25D366),
-                              side: const BorderSide(color: Color(0xFF25D366)),
-                              minimumSize: const Size.fromHeight(48),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 10,
-                                horizontal: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    if (canTogglePhoto) ...<Widget>[
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ValueListenableBuilder<bool>(
-                          valueListenable: _showPosterPhotoNotifier,
-                          builder: (context, isPhotoVisible, _) {
-                            return OutlinedButton.icon(
-                              onPressed: () {
-                                _invalidatePreparedPosterCache();
-                                _showPosterPhotoNotifier.value =
-                                    !isPhotoVisible;
-                                _schedulePosterWarmup(force: true);
-                              },
-                              icon: Icon(
-                                isPhotoVisible
-                                    ? Icons.visibility_rounded
-                                    : Icons.visibility_off_rounded,
-                                size: 18,
-                                color: isPhotoVisible
-                                    ? const Color(0xFF16A34A)
-                                    : const Color(0xFF64748B),
-                              ),
-                              label: Text(
-                                strings.localized(
-                                  telugu: 'à°«à±‹à°Ÿà±‹',
-                                  english: 'Photo',
-                                ),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: isPhotoVisible
-                                      ? const Color(0xFF166534)
-                                      : const Color(0xFF475569),
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF334155),
-                                side: BorderSide(
-                                  color: isPhotoVisible
-                                      ? const Color(0xFF86EFAC)
-                                      : const Color(0xFFD8E2F0),
-                                ),
-                                backgroundColor: isPhotoVisible
-                                    ? const Color(0xFFF0FDF4)
-                                    : Colors.white,
-                                minimumSize: const Size.fromHeight(48),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                  horizontal: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ValueListenableBuilder<String?>(
-                        valueListenable: _activeActionNotifier,
-                        builder: (context, activeAction, _) {
-                          final isBusy = activeAction == 'download';
-                          return FilledButton.icon(
-                            onPressed: item.isVideo || activeAction != null
-                                ? null
-                                : () => unawaited(_onDownloadTap(context)),
-                            icon: isBusy
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : const Icon(Icons.download_rounded),
-                            label: Text(
-                              isBusy
-                                  ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
-                                      english: 'Preparing...',
-                                    )
-                                  : strings.downloadLabel,
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF1D4ED8),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(48),
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              elevation: 0,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.titleFor(language),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
-                  ),
                 ),
               ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: _activeActionNotifier,
+                  builder: (context, activeAction, _) {
+                    final isBusy = activeAction == 'download';
+                    return FilledButton.icon(
+                      onPressed: item.isVideo || activeAction != null
+                          ? null
+                          : () => unawaited(_onDownloadTap(context)),
+                      icon: isBusy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.download_rounded, size: 18),
+                      label: Text(
+                        isBusy
+                            ? strings.localized(
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                english: 'Preparing...',
+                              )
+                            : strings.downloadLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1D4ED8),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(40),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.titleFor(language),
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -4128,7 +4311,7 @@ class _TemplatePosterImage extends StatelessWidget {
           final pixelRatio = MediaQuery.devicePixelRatioOf(
             context,
           ).clamp(1.0, 3.0);
-          final cacheWidth = (width * pixelRatio).round().clamp(360, 1080);
+          final cacheWidth = (width * pixelRatio).round().clamp(360, 960);
           final posterPlaceholderHeight = width.isFinite && width >= 48
               ? math.max(width * 1.25, 260.0)
               : 260.0;
@@ -4173,7 +4356,7 @@ class _TemplatePosterImage extends StatelessWidget {
                 if (loadingThumb.isNotEmpty && loadingThumb != resolvedUrl) {
                   return Image(
                     image: ResizeImage.resizeIfNeeded(
-                      decodeWidth.clamp(240, 540),
+                      decodeWidth.clamp(240, 480),
                       null,
                       CachedNetworkImageProvider(
                         loadingThumb,
@@ -4203,7 +4386,7 @@ class _TemplatePosterImage extends StatelessWidget {
                     if (thumb.isNotEmpty && thumb != failed) {
                       return buildNetworkPosterImage(
                         resolvedUrl: thumb,
-                        decodeWidth: decodeWidth.clamp(360, 1080),
+                        decodeWidth: decodeWidth.clamp(360, 960),
                         notifyWhenLoaded: true,
                       );
                     }
@@ -5358,11 +5541,15 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                     final visualScale = isBusinessProfile
                                         ? photoScale * 0.72
                                         : photoScale;
+                                    final effectivePhotoShape =
+                                        isBusinessProfile
+                                        ? 'circle'
+                                        : widget
+                                              .personalizationConfig
+                                              .photoShape;
                                     final maskAspectRatio =
                                         _photoMaskAspectRatio(
-                                          widget
-                                              .personalizationConfig
-                                              .photoShape,
+                                          effectivePhotoShape,
                                         );
                                     final width =
                                         constraints.maxWidth * visualScale;
@@ -5390,9 +5577,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                           width: width,
                                           height: height,
                                           child: _PhotoShapeFrame(
-                                            shape: widget
-                                                .personalizationConfig
-                                                .photoShape,
+                                            shape: effectivePhotoShape,
                                             edgeStyle: widget
                                                 .personalizationConfig
                                                 .edgeStyle,
@@ -5403,11 +5588,12 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                             child: PosterIdentityVisual(
                                               profile:
                                                   widget.viewerPosterProfile,
-                                              fit:
-                                                  widget
-                                                          .personalizationConfig
-                                                          .photoRenderMode ==
-                                                      'cutout'
+                                              fit: isBusinessProfile
+                                                  ? BoxFit.contain
+                                                  : widget
+                                                            .personalizationConfig
+                                                            .photoRenderMode ==
+                                                        'cutout'
                                                   ? BoxFit.contain
                                                   : BoxFit.cover,
                                               preferOriginalPersonalPhoto:
@@ -5948,6 +6134,26 @@ class _PhotoShapeFrame extends StatelessWidget {
       }
     } else {
       imageWidget = buildImageLayer(scale: 1.0, isBlurLayer: false);
+    }
+
+    if (isBusinessLogo) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.86),
+            width: 1.4,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipOval(clipBehavior: Clip.antiAlias, child: imageWidget),
+      );
     }
 
     final preset = _presetForShape(shape);
@@ -6494,28 +6700,6 @@ class _PosterSkeletonCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _PosterCardMetaLoadingState extends StatelessWidget {
-  const _PosterCardMetaLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const <Widget>[
-        _SkeletonBox(width: 110, height: 12, radius: 999),
-        SizedBox(height: 10),
-        Row(
-          children: <Widget>[
-            Expanded(child: _SkeletonBox(height: 44, radius: 14)),
-            SizedBox(width: 10),
-            Expanded(child: _SkeletonBox(height: 44, radius: 14)),
-          ],
-        ),
-      ],
     );
   }
 }

@@ -8,14 +8,22 @@ class AppTheme {
     const text = Color(0xFF172033);
     const muted = Color(0xFF52607A);
 
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: primary,
+          primary: primary,
+          secondary: accent,
+          brightness: Brightness.light,
+        ).copyWith(
+          surface: surface,
+          surfaceBright: surface,
+          surfaceContainerLowest: surface,
+        );
+
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        primary: primary,
-        secondary: accent,
-        brightness: Brightness.light,
-      ),
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: surface,
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontFamily: 'Montserrat',
