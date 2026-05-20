@@ -799,7 +799,7 @@ class _AdvancedLayersFullscreenOverlayState
             child: ReorderableListView.builder(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               itemCount: widget.layers.length,
-              onReorder: widget.onReorderLayers,
+              onReorderItem: widget.onReorderLayers,
               buildDefaultDragHandles: false,
               itemBuilder: (BuildContext context, int index) {
                 final layer = widget.layers[index];

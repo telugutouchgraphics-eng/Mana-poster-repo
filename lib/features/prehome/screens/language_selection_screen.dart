@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/widgets/flow_screen_header.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
@@ -19,17 +20,66 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
     with AppLanguageStateMixin {
   AppLanguage _selected = AppLanguage.telugu;
   bool _hasSelectedManually = false;
+  bool _isContinuing = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasSelectedManually) {
+      _selected = context.languageController.language;
+    }
+  }
+
+  void _showSaveError() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'భాష సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            english: 'Could not save language. Please try again.',
+            hindi: 'भाषा सेव नहीं हो सकी। कृपया पुनः प्रयास करें।',
+            tamil: 'மொழியை சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+            kannada: 'ಭಾಷೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+            malayalam: 'ഭാഷ സേവ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openLoginScreen() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        settings: const RouteSettings(name: AppRoutes.login),
+        builder: (_) => const LoginScreen(),
+      ),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  Future<void> _continueToLogin() async {
+    if (_isContinuing) {
+      return;
+    }
+    setState(() => _isContinuing = true);
+    final saved = await AppFlowService.persistLanguageSelection(_selected);
+    if (!mounted) {
+      return;
+    }
+    if (!saved) {
+      _showSaveError();
+      setState(() => _isContinuing = false);
+      return;
+    }
+    context.languageController.setLanguage(_selected);
+    _openLoginScreen();
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final strings = context.strings;
-    final languageController = context.languageController;
     final languages = AppLanguage.values;
-
-    if (!_hasSelectedManually) {
-      _selected = languageController.language;
-    }
 
     return Scaffold(
       body: GradientShell(
@@ -122,16 +172,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
             const SizedBox(height: 10),
             PrimaryButton(
               label: strings.continueLabel,
-              onPressed: _hasSelectedManually
-                  ? () async {
-                      await AppFlowService.persistLanguageSelection(_selected);
-                      if (!context.mounted) {
-                        return;
-                      }
-                      languageController.setLanguage(_selected);
-                      Navigator.pushReplacementNamed(context, AppRoutes.login);
-                    }
-                  : null,
+              loading: _isContinuing,
+              onPressed: _isContinuing ? null : _continueToLogin,
             ),
           ],
         ),

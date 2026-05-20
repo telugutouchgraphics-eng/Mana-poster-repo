@@ -24,6 +24,7 @@ import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -227,6 +228,36 @@ class _TemplateItem {
       });
 }
 
+class _PosterPhotoPreset {
+  const _PosterPhotoPreset({
+    required this.shape,
+    required this.photoRenderMode,
+  });
+
+  final String shape;
+  final String photoRenderMode;
+}
+
+class _PosterPhotoUserAdjustment {
+  const _PosterPhotoUserAdjustment({
+    required this.xOffsetPercent,
+    required this.yOffsetPercent,
+    this.preset,
+  });
+
+  final double xOffsetPercent;
+  final double yOffsetPercent;
+  final _PosterPhotoPreset? preset;
+
+  static const _PosterPhotoUserAdjustment none = _PosterPhotoUserAdjustment(
+    xOffsetPercent: 0,
+    yOffsetPercent: 0,
+  );
+
+  String get effectiveShape => preset?.shape ?? '';
+  String get effectivePhotoRenderMode => preset?.photoRenderMode ?? '';
+}
+
 class _CategoryChipData {
   const _CategoryChipData({
     required this.slug,
@@ -300,7 +331,6 @@ class _HomeScreenState extends State<HomeScreen>
     'birthdays',
     'life_advice',
     'gita_wisdom',
-    'news',
     'devotional',
     'mahabharata',
     'anniversary',
@@ -340,6 +370,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _viewerProfileLoading = true;
   bool _hasRatedApp = false;
   String _installedAppVersion = '';
+  bool _posterPhotoDragInProgress = false;
   List<_TemplateItem> _remoteApprovedTemplates = const <_TemplateItem>[];
   List<AppHomeBanner> _homeBanners = const <AppHomeBanner>[];
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
@@ -729,7 +760,6 @@ class _HomeScreenState extends State<HomeScreen>
       'birthdays' => const <String>['birthdays', 'birthday', 'celebration'],
       'life_advice' => const <String>['life_advice', 'good_thoughts'],
       'gita_wisdom' => const <String>['gita_wisdom', 'devotional'],
-      'news' => const <String>['news', 'important_day'],
       'devotional' => const <String>['devotional', 'festival'],
       'mahabharata' => const <String>['mahabharata', 'devotional'],
       'anniversary' => const <String>['anniversary', 'celebration'],
@@ -779,7 +809,6 @@ class _HomeScreenState extends State<HomeScreen>
       'birthdays': <String>['birthdays', 'birthday', 'celebration'],
       'life_advice': <String>['life_advice', 'good_thoughts'],
       'gita_wisdom': <String>['gita_wisdom', 'devotional'],
-      'news': <String>['news', 'important_day'],
       'devotional': <String>['devotional', 'festival'],
       'mahabharata': <String>['mahabharata', 'devotional'],
       'anniversary': <String>['anniversary', 'celebration'],
@@ -937,6 +966,15 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
+  }
+
+  void _setPosterPhotoDragInProgress(bool value) {
+    if (_posterPhotoDragInProgress == value || !mounted) {
+      return;
+    }
+    setState(() {
+      _posterPhotoDragInProgress = value;
+    });
   }
 
   Future<void> _showReferralPromptIfNeeded() async {
@@ -1324,9 +1362,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           subtitle: strings.localized(
             telugu:
-                'ప్రీమియం పోస్టర్లు, వేగమైన షేర్, డౌన్‌లోడ్ మరియు అదనపు సౌకర్యాలకు సబ్‌స్క్రైబ్ చేయండి.',
+                'డౌన్‌లోడ్, షేరింగ్ మరియు మెంబర్‌షిప్ సౌకర్యాల కోసం సబ్‌స్క్రైబ్ చేయండి.',
             english:
-                'Subscribe for premium posters, faster sharing, downloads, and extra features.',
+                'Subscribe for downloads, sharing, and membership benefits.',
           ),
           buttonLabel: strings.localized(
             telugu: 'Purchase Membership',
@@ -1678,16 +1716,19 @@ class _HomeScreenState extends State<HomeScreen>
               onRefresh: _refreshHomeFeed,
               color: const Color(0xFF0F172A),
               child: CustomScrollView(
+                // ignore: deprecated_member_use
+                cacheExtent: 720.0,
                 controller: _posterScrollController,
                 key: ValueKey<String>(
                   hidePosterFeed ? 'home-loading-feed' : 'home-loaded-feed',
                 ),
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
+                physics: _posterPhotoDragInProgress
+                    ? const NeverScrollableScrollPhysics()
+                    : const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
-                cacheExtent: 720,
                 slivers: <Widget>[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -1838,6 +1879,8 @@ class _HomeScreenState extends State<HomeScreen>
                                   _pushSubscriptionPlanRoute,
                               viewerPosterProfile: _viewerPosterProfile,
                               posterRenderCycle: _posterRenderCycle,
+                              onPosterPhotoDragStateChanged:
+                                  _setPosterPhotoDragInProgress,
                             );
                           },
                           childCount: feedEntries.length,
@@ -2688,7 +2731,16 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     if (kIsWeb || !Platform.isAndroid || !AppPublicInfo.hasHomeBannerAdUnitId) {
       return;
     }
+    if (!mounted) {
+      return;
+    }
     final availableWidth = MediaQuery.sizeOf(context).width - 32;
+    if (!await AdMobConsentService.instance.canRequestAds()) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
     final adaptiveSize =
         await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
           availableWidth.truncate(),
@@ -2947,6 +2999,7 @@ class _TemplateFeedItem extends StatefulWidget {
     required this.onOpenSubscriptionPlan,
     required this.viewerPosterProfile,
     required this.posterRenderCycle,
+    required this.onPosterPhotoDragStateChanged,
   });
 
   final _TemplateItem item;
@@ -2956,6 +3009,7 @@ class _TemplateFeedItem extends StatefulWidget {
   onOpenSubscriptionPlan;
   final PosterProfileData viewerPosterProfile;
   final int posterRenderCycle;
+  final ValueChanged<bool> onPosterPhotoDragStateChanged;
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
 
@@ -2995,6 +3049,28 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   String? _queuedPosterWarmupSignature;
   static bool _globalAutoPosterWarmupActive = false;
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
+  static const List<_PosterPhotoPreset> _posterPhotoPresets =
+      <_PosterPhotoPreset>[
+        _PosterPhotoPreset(shape: 'circle', photoRenderMode: 'original'),
+        _PosterPhotoPreset(shape: 'square', photoRenderMode: 'original'),
+        _PosterPhotoPreset(shape: 'flower', photoRenderMode: 'cutout'),
+        _PosterPhotoPreset(shape: 'blob', photoRenderMode: 'cutout'),
+        _PosterPhotoPreset(shape: 'transparent_clean', photoRenderMode: 'cutout'),
+        _PosterPhotoPreset(
+          shape: 'transparent_bottom_fade',
+          photoRenderMode: 'cutout',
+        ),
+        _PosterPhotoPreset(shape: 'arch', photoRenderMode: 'original'),
+        _PosterPhotoPreset(
+          shape: 'scallop_circle',
+          photoRenderMode: 'original',
+        ),
+        _PosterPhotoPreset(shape: 'shield', photoRenderMode: 'original'),
+      ];
+
+  _PosterPhotoUserAdjustment _photoUserAdjustment =
+      _PosterPhotoUserAdjustment.none;
+  bool _photoDragInProgress = false;
 
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
@@ -3008,6 +3084,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
 
   @override
   void dispose() {
+    if (_photoDragInProgress) {
+      widget.onPosterPhotoDragStateChanged(false);
+    }
     _invalidatePreparedPosterCache();
     _showPosterPhotoNotifier.dispose();
     _posterReadyNotifier.dispose();
@@ -3049,7 +3128,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   }
 
   String _posterSignature({required bool isPhotoVisible}) {
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-$posterRenderCycle-$isPhotoVisible';
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-$posterRenderCycle-$isPhotoVisible';
   }
 
   bool _beginAction(String action) {
@@ -3075,6 +3154,108 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
         File(existingPath).delete().catchError((_) => File(existingPath)),
       );
     }
+  }
+
+  bool get _canInteractWithPosterPhoto {
+    final personalizationConfig = item.personalizationConfig;
+    if (item.isVideo ||
+        personalizationConfig == null ||
+        !_showPosterPhotoNotifier.value) {
+      return false;
+    }
+    if (viewerPosterProfile.identityMode == PosterIdentityMode.business) {
+      return false;
+    }
+    return viewerPosterProfile.photoPath.trim().isNotEmpty ||
+        viewerPosterProfile.photoUrl.trim().isNotEmpty ||
+        viewerPosterProfile.originalPhotoPath.trim().isNotEmpty ||
+        viewerPosterProfile.originalPhotoUrl.trim().isNotEmpty;
+  }
+
+  _PosterPhotoPreset? _pickNextPosterPhotoPreset() {
+    final personalizationConfig = item.personalizationConfig;
+    if (_posterPhotoPresets.isEmpty || personalizationConfig == null) {
+      return null;
+    }
+    final defaultShape = personalizationConfig.photoShape.trim();
+    final defaultRenderMode = personalizationConfig.photoRenderMode.trim();
+    final currentShape = _photoUserAdjustment.effectiveShape.isNotEmpty
+        ? _photoUserAdjustment.effectiveShape
+        : defaultShape;
+    final currentRenderMode =
+        _photoUserAdjustment.effectivePhotoRenderMode.isNotEmpty
+        ? _photoUserAdjustment.effectivePhotoRenderMode
+        : defaultRenderMode;
+    final presetsWithDefault = <_PosterPhotoPreset>[
+      _PosterPhotoPreset(
+        shape: defaultShape,
+        photoRenderMode: defaultRenderMode,
+      ),
+      ..._posterPhotoPresets,
+    ];
+    final currentIndex = presetsWithDefault.indexWhere(
+      (_PosterPhotoPreset preset) =>
+          preset.shape == currentShape &&
+          preset.photoRenderMode == currentRenderMode,
+    );
+    final nextIndex = currentIndex < 0
+        ? 1
+        : (currentIndex + 1) % presetsWithDefault.length;
+    final next = presetsWithDefault[nextIndex];
+    if (next.shape == defaultShape && next.photoRenderMode == defaultRenderMode) {
+      return null;
+    }
+    return next;
+  }
+
+  void _applyPosterPhotoPresetTap() {
+    if (!_canInteractWithPosterPhoto) {
+      return;
+    }
+    _invalidatePreparedPosterCache();
+    setState(() {
+      final nextPreset = _pickNextPosterPhotoPreset();
+      _photoUserAdjustment = _PosterPhotoUserAdjustment(
+        xOffsetPercent: _photoUserAdjustment.xOffsetPercent,
+        yOffsetPercent: _photoUserAdjustment.yOffsetPercent,
+        preset: nextPreset,
+      );
+    });
+    _schedulePosterWarmup(force: true);
+  }
+
+  void _updatePosterPhotoDrag({
+    required double deltaXPercent,
+    required double deltaYPercent,
+  }) {
+    if (!_canInteractWithPosterPhoto) {
+      return;
+    }
+    final nextX = _photoUserAdjustment.xOffsetPercent + deltaXPercent;
+    final nextY = _photoUserAdjustment.yOffsetPercent + deltaYPercent;
+    if (nextX == _photoUserAdjustment.xOffsetPercent &&
+        nextY == _photoUserAdjustment.yOffsetPercent) {
+      return;
+    }
+    setState(() {
+      _photoUserAdjustment = _PosterPhotoUserAdjustment(
+        xOffsetPercent: nextX,
+        yOffsetPercent: nextY,
+        preset: _photoUserAdjustment.preset,
+      );
+    });
+  }
+
+  void _setPhotoDragInProgress(bool value) {
+    if (_photoDragInProgress == value) {
+      return;
+    }
+    _photoDragInProgress = value;
+    if (!value) {
+      _invalidatePreparedPosterCache();
+      _schedulePosterWarmup(force: true);
+    }
+    widget.onPosterPhotoDragStateChanged(value);
   }
 
   void _schedulePosterWarmup({bool force = false}) {
@@ -3539,6 +3720,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             language: language,
             showProfilePhoto: isPhotoVisible,
             posterRenderCycle: posterRenderCycle,
+            interactivePhotoEnabled: _canInteractWithPosterPhoto,
+            photoShapeOverride: _photoUserAdjustment.effectiveShape,
+            photoRenderModeOverride:
+                _photoUserAdjustment.effectivePhotoRenderMode,
+            photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
+            photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
+            onPhotoTap: _applyPosterPhotoPresetTap,
+            onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
+            onPhotoDragStateChanged: _setPhotoDragInProgress,
             onPosterReadyChanged: onPosterReadyChanged,
           )
         : _ResolvedTemplatePosterImage(
@@ -5163,6 +5353,14 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.language,
     required this.showProfilePhoto,
     required this.posterRenderCycle,
+    required this.interactivePhotoEnabled,
+    required this.photoShapeOverride,
+    required this.photoRenderModeOverride,
+    required this.photoXOffsetPercent,
+    required this.photoYOffsetPercent,
+    required this.onPhotoTap,
+    required this.onPhotoDragDeltaPercent,
+    required this.onPhotoDragStateChanged,
     this.onPosterReadyChanged,
   });
 
@@ -5176,6 +5374,17 @@ class _CreatorPosterPreview extends StatefulWidget {
   final AppLanguage language;
   final bool showProfilePhoto;
   final int posterRenderCycle;
+  final bool interactivePhotoEnabled;
+  final String photoShapeOverride;
+  final String photoRenderModeOverride;
+  final double photoXOffsetPercent;
+  final double photoYOffsetPercent;
+  final VoidCallback onPhotoTap;
+  final void Function({
+    required double deltaXPercent,
+    required double deltaYPercent,
+  }) onPhotoDragDeltaPercent;
+  final ValueChanged<bool> onPhotoDragStateChanged;
   final ValueChanged<bool>? onPosterReadyChanged;
 
   @override
@@ -5538,15 +5747,33 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                       constraints.maxHeight -
                                           stripOverflowAllowance,
                                     );
+                                    final totalCanvasHeight = math.max(
+                                      1.0,
+                                      constraints.maxHeight,
+                                    );
                                     final visualScale = isBusinessProfile
                                         ? photoScale * 0.72
                                         : photoScale;
                                     final effectivePhotoShape =
                                         isBusinessProfile
                                         ? 'circle'
-                                        : widget
-                                              .personalizationConfig
-                                              .photoShape;
+                                        : (widget.photoShapeOverride.trim().isNotEmpty
+                                              ? widget.photoShapeOverride.trim()
+                                              : widget
+                                                    .personalizationConfig
+                                                    .photoShape);
+                                    final effectivePhotoRenderMode =
+                                        isBusinessProfile
+                                        ? 'original'
+                                        : (widget
+                                                  .photoRenderModeOverride
+                                                  .trim()
+                                                  .isNotEmpty
+                                              ? widget.photoRenderModeOverride
+                                                    .trim()
+                                              : widget
+                                                    .personalizationConfig
+                                                    .photoRenderMode);
                                     final maskAspectRatio =
                                         _photoMaskAspectRatio(
                                           effectivePhotoShape,
@@ -5560,14 +5787,18 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                                     .personalizationConfig
                                                     .photoX /
                                                 100)) -
-                                        (width / 2);
+                                        (width / 2) +
+                                        (constraints.maxWidth *
+                                            (widget.photoXOffsetPercent / 100));
                                     final top =
                                         (baseImageHeight *
                                             (widget
                                                     .personalizationConfig
                                                     .photoY /
                                                 100)) -
-                                        (height / 2);
+                                        (height / 2) +
+                                        (totalCanvasHeight *
+                                            (widget.photoYOffsetPercent / 100));
                                     return Stack(
                                       clipBehavior: Clip.none,
                                       children: <Widget>[
@@ -5576,44 +5807,120 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                           top: top,
                                           width: width,
                                           height: height,
-                                          child: _PhotoShapeFrame(
-                                            shape: effectivePhotoShape,
-                                            edgeStyle: widget
-                                                .personalizationConfig
-                                                .edgeStyle,
-                                            photoRenderMode: widget
-                                                .personalizationConfig
-                                                .photoRenderMode,
-                                            isBusinessLogo: isBusinessProfile,
-                                            child: PosterIdentityVisual(
-                                              profile:
-                                                  widget.viewerPosterProfile,
-                                              fit: isBusinessProfile
-                                                  ? BoxFit.contain
-                                                  : widget
-                                                            .personalizationConfig
-                                                            .photoRenderMode ==
-                                                        'cutout'
-                                                  ? BoxFit.contain
-                                                  : BoxFit.cover,
-                                              preferOriginalPersonalPhoto:
-                                                  widget
-                                                      .personalizationConfig
-                                                      .photoRenderMode ==
-                                                  'original',
-                                              allowOriginalFallbackWhenCutoutUnavailable:
-                                                  widget
-                                                      .personalizationConfig
-                                                      .photoRenderMode ==
-                                                  'original',
-                                              textScale:
-                                                  widget
-                                                          .viewerPosterProfile
-                                                          .identityMode ==
-                                                      PosterIdentityMode
-                                                          .business
-                                                  ? 0.84
-                                                  : 1.0,
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: widget.interactivePhotoEnabled
+                                                ? widget.onPhotoTap
+                                                : null,
+                                            onPanStart:
+                                                widget.interactivePhotoEnabled
+                                                ? (_) => widget
+                                                      .onPhotoDragStateChanged(
+                                                        true,
+                                                      )
+                                                : null,
+                                            onPanUpdate:
+                                                widget.interactivePhotoEnabled
+                                                ? (DragUpdateDetails details) {
+                                                    final currentLeft = left;
+                                                    final currentTop = top;
+                                                    final clampedLeft =
+                                                        (currentLeft +
+                                                                details
+                                                                    .delta
+                                                                    .dx)
+                                                            .clamp(
+                                                              0.0,
+                                                              math.max(
+                                                                0.0,
+                                                                constraints
+                                                                        .maxWidth -
+                                                                    width,
+                                                              ),
+                                                            );
+                                                    final clampedTop =
+                                                        (currentTop +
+                                                                details
+                                                                    .delta
+                                                                    .dy)
+                                                            .clamp(
+                                                              0.0,
+                                                              math.max(
+                                                                0.0,
+                                                                totalCanvasHeight -
+                                                                    height,
+                                                              ),
+                                                            );
+                                                    final deltaX =
+                                                        clampedLeft -
+                                                        currentLeft;
+                                                    final deltaY =
+                                                        clampedTop -
+                                                        currentTop;
+                                                    if (deltaX == 0 &&
+                                                        deltaY == 0) {
+                                                      return;
+                                                    }
+                                                    widget.onPhotoDragDeltaPercent(
+                                                      deltaXPercent:
+                                                          (deltaX /
+                                                              constraints
+                                                                  .maxWidth) *
+                                                          100,
+                                                      deltaYPercent:
+                                                          (deltaY /
+                                                              totalCanvasHeight) *
+                                                          100,
+                                                    );
+                                                  }
+                                                : null,
+                                            onPanEnd:
+                                                widget.interactivePhotoEnabled
+                                                ? (_) => widget
+                                                      .onPhotoDragStateChanged(
+                                                        false,
+                                                      )
+                                                : null,
+                                            onPanCancel:
+                                                widget.interactivePhotoEnabled
+                                                ? () => widget
+                                                      .onPhotoDragStateChanged(
+                                                        false,
+                                                      )
+                                                : null,
+                                            child: _PhotoShapeFrame(
+                                              shape: effectivePhotoShape,
+                                              edgeStyle: widget
+                                                  .personalizationConfig
+                                                  .edgeStyle,
+                                              photoRenderMode:
+                                                  effectivePhotoRenderMode,
+                                              isBusinessLogo:
+                                                  isBusinessProfile,
+                                              child: PosterIdentityVisual(
+                                                profile:
+                                                    widget.viewerPosterProfile,
+                                                fit: isBusinessProfile
+                                                    ? BoxFit.contain
+                                                    : effectivePhotoRenderMode ==
+                                                          'cutout'
+                                                    ? BoxFit.contain
+                                                    : BoxFit.cover,
+                                                preferOriginalPersonalPhoto:
+                                                    effectivePhotoRenderMode ==
+                                                    'original',
+                                                allowOriginalFallbackWhenCutoutUnavailable:
+                                                    effectivePhotoRenderMode ==
+                                                    'original',
+                                                textScale:
+                                                    widget
+                                                            .viewerPosterProfile
+                                                            .identityMode ==
+                                                        PosterIdentityMode
+                                                            .business
+                                                    ? 0.84
+                                                    : 1.0,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -5880,6 +6187,10 @@ class _PhotoShapeFrame extends StatelessWidget {
         currentShape == 'transparent_sharp_round';
   }
 
+  bool _isOriginalCleanShape(String currentShape) {
+    return currentShape == 'circle' || currentShape == 'square';
+  }
+
   bool _isTransparentRoundShape(String currentShape) {
     return currentShape == 'transparent_soft_round' ||
         currentShape == 'transparent_sharp_round';
@@ -5916,11 +6227,12 @@ class _PhotoShapeFrame extends StatelessWidget {
     }
     switch (currentShape) {
       case 'circle':
-        return const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF22C55E), Color(0xFF14B8A6)],
+        return BoxDecoration(
+          color: Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.78),
+            width: 2.2,
           ),
         );
       case 'scallop_circle':
@@ -5939,12 +6251,36 @@ class _PhotoShapeFrame extends StatelessWidget {
             colors: <Color>[Color(0xFFA855F7), Color(0xFFEC4899)],
           ),
         );
-      case 'badge':
+      case 'flower':
         return const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFF2563EB), Color(0xFF06B6D4)],
+            colors: <Color>[Color(0xFFFB7185), Color(0xFFF59E0B)],
+          ),
+        );
+      case 'shield':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF1D4ED8), Color(0xFF60A5FA)],
+          ),
+        );
+      case 'arch':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomCenter,
+            colors: <Color>[Color(0xFF0F766E), Color(0xFF38BDF8)],
+          ),
+        );
+      case 'blob':
+        return const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF7C3AED), Color(0xFFF472B6)],
           ),
         );
       case 'rounded':
@@ -5966,11 +6302,11 @@ class _PhotoShapeFrame extends StatelessWidget {
           ),
         );
       case 'square':
-        return const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFF97316), Color(0xFFFACC15)],
+        return BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.76),
+            width: 2.0,
           ),
         );
       default:
@@ -5990,9 +6326,10 @@ class _PhotoShapeFrame extends StatelessWidget {
         return const Alignment(0, 0.24);
       case 'scallop_circle':
       case 'soft_burst':
-      case 'sunburst':
         return const Alignment(0, 0.2);
-      case 'badge':
+      case 'blob':
+        return const Alignment(0, 0.1);
+      case 'shield':
         return const Alignment(0, 0.22);
       case 'oval':
         return const Alignment(0, 0.16);
@@ -6009,13 +6346,23 @@ class _PhotoShapeFrame extends StatelessWidget {
       case 'circle':
         return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'scallop_circle':
-        return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
+        return const _ShapeFramePreset(photoInset: EdgeInsets.all(7));
       case 'soft_burst':
         return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'square':
         return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
-      case 'badge':
-        return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
+      case 'arch':
+        return const _ShapeFramePreset(
+          photoInset: EdgeInsets.fromLTRB(8, 10, 8, 8),
+        );
+      case 'flower':
+        return const _ShapeFramePreset(photoInset: EdgeInsets.all(6));
+      case 'shield':
+        return const _ShapeFramePreset(
+          photoInset: EdgeInsets.fromLTRB(8, 10, 8, 6),
+        );
+      case 'blob':
+        return const _ShapeFramePreset(photoInset: EdgeInsets.all(5));
       case 'vertical_rectangle':
         return const _ShapeFramePreset(photoInset: EdgeInsets.zero);
       case 'rounded':
@@ -6040,6 +6387,8 @@ class _PhotoShapeFrame extends StatelessWidget {
       isBusinessLogo ? 'clean' : edgeStyle,
     );
     final normalizedEdgeStyle = _normalizedEdgeStyle(effectiveEdgeStyle);
+    final shouldForceCleanOriginal =
+        effectivePhotoRenderMode == 'original' && _isOriginalCleanShape(shape);
     final imageAlignment = effectivePhotoRenderMode == 'cutout'
         ? _cutoutAlignmentForShape(shape)
         : Alignment.center;
@@ -6061,6 +6410,9 @@ class _PhotoShapeFrame extends StatelessWidget {
           alignment: Alignment.topCenter,
           child: layer,
         );
+      }
+      if (shouldForceCleanOriginal) {
+        return layer;
       }
       if (normalizedEdgeStyle == 'feather') {
         layer = ShaderMask(

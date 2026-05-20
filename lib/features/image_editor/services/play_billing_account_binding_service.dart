@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PendingSubscriptionPurchaseBinding {
@@ -314,6 +314,8 @@ class PlayBillingAccountBindingService {
     final serialized = details.entries
         .map((entry) => '${entry.key}=${entry.value}')
         .join(' ');
-    debugPrint('[billing-security] $action $serialized');
+    if (kDebugMode) {
+      debugPrint('[billing-security] $action $serialized');
+    }
   }
 }

@@ -414,6 +414,9 @@ class _CanvasWorkspace extends StatelessWidget {
                               layer,
                               pageSize,
                             );
+                            final textInteractiveSize = layer.isText
+                                ? Size(layerSize.width + 16, layerSize.height + 12)
+                                : layerSize;
                             final photoSize = layer.isPhoto
                                 ? _fitPhotoLayerSize(
                                     pageSize: pageSize,
@@ -615,6 +618,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                         layer.textBackgroundOpacity,
                                     textBackgroundRadius:
                                         layer.textBackgroundRadius,
+                                    maxWidth: pageSize.width * 0.9,
                                     textGradient:
                                         layer.textGradientIndex >= 0 &&
                                             layer.textGradientIndex <
@@ -740,6 +744,26 @@ class _CanvasWorkspace extends StatelessWidget {
                                     child: decoratedChild,
                                   )
                                 : decoratedChild;
+
+                            final unselectedInteractiveChild = layer.isPhoto
+                                ? SizedBox(
+                                    width: transformLayerSize.width,
+                                    height: transformLayerSize.height,
+                                    child: layerChild,
+                                  )
+                                : layer.isText
+                                ? SizedBox(
+                                    width: textInteractiveSize.width,
+                                    height: textInteractiveSize.height,
+                                    child: Center(child: effectiveTextChild),
+                                  )
+                                : layer.isSticker
+                                ? SizedBox(
+                                    width: layerSize.width,
+                                    height: layerSize.height,
+                                    child: Center(child: stickerOrTextChild),
+                                  )
+                                : layerChild;
 
                             final child = isSelected
                                 ? (layer.isPhoto || layer.isSticker)
@@ -876,31 +900,41 @@ class _CanvasWorkspace extends StatelessWidget {
                                                           alignment:
                                                               Alignment.center,
                                                           transform: matrix,
-                                                          child: Listener(
-                                                            onPointerDown:
-                                                                onSelectedTextPointerDown,
-                                                            onPointerMove:
-                                                                onSelectedTextPointerMove,
-                                                            onPointerUp: (_) =>
-                                                                onSelectedTextPointerCancel(),
-                                                            onPointerCancel: (_) =>
-                                                                onSelectedTextPointerCancel(),
-                                                            child: GestureDetector(
-                                                              behavior:
-                                                                  HitTestBehavior
-                                                                      .opaque,
-                                                              onTap:
-                                                                  onSelectedTextTap,
-                                                              onDoubleTap:
-                                                                  onSelectedTextDoubleTap,
-                                                              onScaleStart:
-                                                                  onSelectedLayerInteractionStart,
-                                                              onScaleUpdate:
-                                                                  onSelectedLayerScaleUpdate,
-                                                              onScaleEnd: (_) =>
-                                                                  onSelectedLayerInteractionEnd(),
-                                                              child:
-                                                                  effectiveTextChild,
+                                                          child: SizedBox(
+                                                            width:
+                                                                textInteractiveSize
+                                                                    .width,
+                                                            height:
+                                                                textInteractiveSize
+                                                                    .height,
+                                                            child: Listener(
+                                                              onPointerDown:
+                                                                  onSelectedTextPointerDown,
+                                                              onPointerMove:
+                                                                  onSelectedTextPointerMove,
+                                                              onPointerUp:
+                                                                  (_) => onSelectedTextPointerCancel(),
+                                                              onPointerCancel:
+                                                                  (_) => onSelectedTextPointerCancel(),
+                                                              child: GestureDetector(
+                                                                behavior:
+                                                                    HitTestBehavior
+                                                                        .opaque,
+                                                                onTap:
+                                                                    onSelectedTextTap,
+                                                                onDoubleTap:
+                                                                    onSelectedTextDoubleTap,
+                                                                onScaleStart:
+                                                                    onSelectedLayerInteractionStart,
+                                                                onScaleUpdate:
+                                                                    onSelectedLayerScaleUpdate,
+                                                                onScaleEnd:
+                                                                    (_) => onSelectedLayerInteractionEnd(),
+                                                                child: Center(
+                                                                  child:
+                                                                      effectiveTextChild,
+                                                                ),
+                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -910,10 +944,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                                           pageSize: pageSize,
                                                           matrix: matrix,
                                                           layerSize:
-                                                              _workspaceLayerVisualSize(
-                                                                layer,
-                                                                pageSize,
-                                                              ),
+                                                              textInteractiveSize,
                                                           handleOffset:
                                                               const Offset(
                                                                 12,
@@ -967,9 +998,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                 : Transform(
                                     alignment: Alignment.center,
                                     transform: layer.transform,
-                                    child: layer.isSticker
-                                        ? stickerOrTextChild
-                                        : layerChild,
+                                    child: unselectedInteractiveChild,
                                   );
 
                             return Center(
@@ -1118,7 +1147,7 @@ class _CanvasWorkspace extends StatelessWidget {
                 child: isSelected
                     ? child
                     : GestureDetector(
-                        behavior: HitTestBehavior.deferToChild,
+                        behavior: HitTestBehavior.opaque,
                         onTap: () => onLayerSelected(layer.id),
                         child: child,
                       ),
@@ -1964,6 +1993,7 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
     );
   }
   if (layer.isText) {
+    final maxTextWidth = math.max(72.0, pageSize.width * 0.9);
     final renderFontFamily = _resolveLayerRenderFontFamily(layer);
     final renderLineHeight = _effectiveTextLineHeightForRender(
       fontFamily: layer.fontFamily,
@@ -1986,7 +2016,8 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
         ),
       ),
       textDirection: TextDirection.ltr,
-    )..layout();
+      maxLines: null,
+    )..layout(maxWidth: maxTextWidth);
     return painter.size;
   }
   final sticker = layer.sticker;
@@ -2158,6 +2189,7 @@ class _CanvasTextLayerView extends StatelessWidget {
     required this.textBackgroundColor,
     required this.textBackgroundOpacity,
     required this.textBackgroundRadius,
+    this.maxWidth,
     this.textGradient,
     this.editorAssistShadowColor,
     this.editorAssistShadowBlur = 0,
@@ -2183,6 +2215,7 @@ class _CanvasTextLayerView extends StatelessWidget {
   final Color textBackgroundColor;
   final double textBackgroundOpacity;
   final double textBackgroundRadius;
+  final double? maxWidth;
   final List<Color>? textGradient;
   final Color? editorAssistShadowColor;
   final double editorAssistShadowBlur;
@@ -2236,6 +2269,7 @@ class _CanvasTextLayerView extends StatelessWidget {
         : Text(
             text,
             textAlign: textAlign,
+            softWrap: true,
             style: TextStyle(
               fontSize: fontSize,
               height: _effectiveTextLineHeightForRender(
@@ -2284,7 +2318,12 @@ class _CanvasTextLayerView extends StatelessWidget {
             ),
           );
 
-    final fillText = Text(text, textAlign: textAlign, style: baseStyle);
+    final fillText = Text(
+      text,
+      textAlign: textAlign,
+      softWrap: true,
+      style: baseStyle,
+    );
 
     final textView = strokeText == null
         ? fillText
@@ -2293,10 +2332,17 @@ class _CanvasTextLayerView extends StatelessWidget {
             children: <Widget>[strokeText, fillText],
           );
 
+    final constrainedTextView = maxWidth == null
+        ? textView
+        : ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth!),
+            child: textView,
+          );
+
     final hasBackground = textBackgroundOpacity > 0.001;
     final foreground = Opacity(
       opacity: textOpacity.clamp(0.15, 1),
-      child: textView,
+      child: constrainedTextView,
     );
     if (!hasBackground) {
       return foreground;

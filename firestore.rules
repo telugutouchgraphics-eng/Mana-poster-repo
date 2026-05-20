@@ -217,43 +217,38 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // Public website posters must come from a dedicated admin-managed source.
+    // Website/landing pages are intentionally not connected to app portals.
     match /websitePosters/{posterId} {
-      allow read: if resource.data.active == true;
+      allow read: if false;
       allow create, update, delete: if false;
     }
 
-    // Public website config drives the landing page links and section toggles.
+    // Keep app portal settings readable, but do not expose landing-page config.
     match /websiteConfig/{docId} {
-      allow read: if docId in ["landingPage", "portalSettings"];
+      allow read: if docId == "portalSettings";
       allow create, update, delete: if false;
     }
 
-    // Public landing page content managed from website admin.
+    // Landing CMS collections are disabled; dashboards must not publish pages.
     match /landingSite/{docId} {
-      allow read: if docId == "main";
-      allow create, update, delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
-    // Admin-managed landing draft document.
     match /landingDrafts/{draftId} {
-      allow read, create, update, delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
-    // Published landing content snapshot managed by admin publish action.
     match /landingPublished/{docId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
-    // Admin media metadata catalog for landing assets.
+    // Landing/media library is disabled with landing CMS.
     match /mediaLibrary/{mediaId} {
-      allow read, create, update, delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
-    // Version snapshots for publish history and draft restore.
     match /landingVersions/{versionId} {
-      allow read, create, update, delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
     // Admin-only activity/audit history for dashboard actions.

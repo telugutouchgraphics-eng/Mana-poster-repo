@@ -596,7 +596,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         textShadowOpacity: (raw['textShadowOpacity'] as num?)?.toDouble() ?? 0,
         textShadowBlur: (raw['textShadowBlur'] as num?)?.toDouble() ?? 0,
         textShadowOffsetY: (raw['textShadowOffsetY'] as num?)?.toDouble() ?? 0,
-        isTextBold: (raw['isTextBold'] as bool?) ?? true,
+        isTextBold: (raw['isTextBold'] as bool?) ?? false,
         isTextItalic: (raw['isTextItalic'] as bool?) ?? false,
         isTextUnderline: (raw['isTextUnderline'] as bool?) ?? false,
         textStrokeColor: Color(

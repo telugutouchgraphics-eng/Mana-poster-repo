@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:mana_poster/app/services/admob_consent_service.dart';
 
 class RewardedAccessService {
   const RewardedAccessService();
@@ -27,6 +28,12 @@ class RewardedAccessService {
     if (kIsWeb || adUnitId.trim().isEmpty) {
       _debugLog(
         'RewardedAccessService: no rewarded ad configured for $debugLabel, allowing access',
+      );
+      return true;
+    }
+    if (!await AdMobConsentService.instance.canRequestAds()) {
+      _debugLog(
+        'RewardedAccessService: ads consent not granted for $debugLabel, allowing access',
       );
       return true;
     }

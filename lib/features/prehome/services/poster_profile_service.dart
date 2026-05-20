@@ -219,6 +219,7 @@ class PosterProfileService {
       'poster_profile_original_photo_path';
   static const String _originalPhotoUrlKey =
       'poster_profile_original_photo_url';
+  static const String _legacyMigrationPrefix = 'poster_profile_migrated_';
 
   static const List<PosterNameFontOption> nameFontOptions =
       <PosterNameFontOption>[
@@ -289,9 +290,12 @@ class PosterProfileService {
 
   static Future<PosterProfileData> loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
-    final legacyTeluguName = (prefs.getString(_nameTeluguKey) ?? '').trim();
-    final legacyEnglishName = (prefs.getString(_nameEnglishKey) ?? '').trim();
-    final legacyName = (prefs.getString(_nameKey) ?? '').trim();
+    await _migrateLegacyProfileKeysIfNeeded(prefs);
+    final legacyTeluguName = (prefs.getString(_scopedKey(_nameTeluguKey)) ?? '')
+        .trim();
+    final legacyEnglishName =
+        (prefs.getString(_scopedKey(_nameEnglishKey)) ?? '').trim();
+    final legacyName = (prefs.getString(_scopedKey(_nameKey)) ?? '').trim();
     final firebaseDisplayName =
         FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
     final resolvedLegacyName = legacyName.isNotEmpty
@@ -312,22 +316,31 @@ class PosterProfileService {
       nameEnglish: legacyEnglishName.isNotEmpty
           ? legacyEnglishName
           : inferredLegacy.$2,
-      whatsappNumber: (prefs.getString(_whatsappKey) ?? '').trim(),
-      nameFontFamily: _sanitizeFont(prefs.getString(_nameFontKey)),
+      whatsappNumber: (prefs.getString(_scopedKey(_whatsappKey)) ?? '').trim(),
+      nameFontFamily: _sanitizeFont(prefs.getString(_scopedKey(_nameFontKey))),
       displayNameMode: _defaultDisplayNameMode,
-      photoPath: (prefs.getString(_photoPathKey) ?? '').trim(),
-      photoUrl: (prefs.getString(_photoUrlKey) ?? '').trim(),
-      identityMode: _parseIdentityMode(prefs.getString(_identityModeKey)),
-      businessName: (prefs.getString(_businessNameKey) ?? '').trim(),
-      businessTagline: (prefs.getString(_businessTaglineKey) ?? '').trim(),
-      businessWhatsappNumber: (prefs.getString(_businessWhatsappKey) ?? '')
+      photoPath: (prefs.getString(_scopedKey(_photoPathKey)) ?? '').trim(),
+      photoUrl: (prefs.getString(_scopedKey(_photoUrlKey)) ?? '').trim(),
+      identityMode: _parseIdentityMode(
+        prefs.getString(_scopedKey(_identityModeKey)),
+      ),
+      businessName: (prefs.getString(_scopedKey(_businessNameKey)) ?? '')
           .trim(),
-      businessLogoPath: (prefs.getString(_businessLogoPathKey) ?? '').trim(),
-      businessLogoUrl: (prefs.getString(_businessLogoUrlKey) ?? '').trim(),
-      businessLogoStyleId: (prefs.getString(_businessLogoStyleKey) ?? 'style_1')
+      businessTagline: (prefs.getString(_scopedKey(_businessTaglineKey)) ?? '')
           .trim(),
-      originalPhotoPath: (prefs.getString(_originalPhotoPathKey) ?? '').trim(),
-      originalPhotoUrl: (prefs.getString(_originalPhotoUrlKey) ?? '').trim(),
+      businessWhatsappNumber:
+          (prefs.getString(_scopedKey(_businessWhatsappKey)) ?? '').trim(),
+      businessLogoPath:
+          (prefs.getString(_scopedKey(_businessLogoPathKey)) ?? '').trim(),
+      businessLogoUrl: (prefs.getString(_scopedKey(_businessLogoUrlKey)) ?? '')
+          .trim(),
+      businessLogoStyleId:
+          (prefs.getString(_scopedKey(_businessLogoStyleKey)) ?? 'style_1')
+              .trim(),
+      originalPhotoPath:
+          (prefs.getString(_scopedKey(_originalPhotoPathKey)) ?? '').trim(),
+      originalPhotoUrl:
+          (prefs.getString(_scopedKey(_originalPhotoUrlKey)) ?? '').trim(),
     );
     return localProfile;
   }
@@ -584,24 +597,30 @@ class PosterProfileService {
     final trimmedOriginalPhotoUrl = originalPhotoUrl.trim();
 
     if (trimmedPhotoPath.isEmpty) {
-      await prefs.remove(_photoPathKey);
+      await prefs.remove(_scopedKey(_photoPathKey));
     } else {
-      await prefs.setString(_photoPathKey, trimmedPhotoPath);
+      await prefs.setString(_scopedKey(_photoPathKey), trimmedPhotoPath);
     }
     if (trimmedOriginalPhotoPath.isEmpty) {
-      await prefs.remove(_originalPhotoPathKey);
+      await prefs.remove(_scopedKey(_originalPhotoPathKey));
     } else {
-      await prefs.setString(_originalPhotoPathKey, trimmedOriginalPhotoPath);
+      await prefs.setString(
+        _scopedKey(_originalPhotoPathKey),
+        trimmedOriginalPhotoPath,
+      );
     }
     if (trimmedPhotoUrl.isEmpty) {
-      await prefs.remove(_photoUrlKey);
+      await prefs.remove(_scopedKey(_photoUrlKey));
     } else {
-      await prefs.setString(_photoUrlKey, trimmedPhotoUrl);
+      await prefs.setString(_scopedKey(_photoUrlKey), trimmedPhotoUrl);
     }
     if (trimmedOriginalPhotoUrl.isEmpty) {
-      await prefs.remove(_originalPhotoUrlKey);
+      await prefs.remove(_scopedKey(_originalPhotoUrlKey));
     } else {
-      await prefs.setString(_originalPhotoUrlKey, trimmedOriginalPhotoUrl);
+      await prefs.setString(
+        _scopedKey(_originalPhotoUrlKey),
+        trimmedOriginalPhotoUrl,
+      );
     }
 
     if (!saveRemoteUrls) {
@@ -707,20 +726,20 @@ class PosterProfileService {
     final trimmedStyleId = businessLogoStyleId?.trim();
 
     if (trimmedLogoPath.isEmpty) {
-      await prefs.remove(_businessLogoPathKey);
+      await prefs.remove(_scopedKey(_businessLogoPathKey));
     } else {
-      await prefs.setString(_businessLogoPathKey, trimmedLogoPath);
+      await prefs.setString(_scopedKey(_businessLogoPathKey), trimmedLogoPath);
     }
     if (trimmedLogoUrl.isEmpty) {
-      await prefs.remove(_businessLogoUrlKey);
+      await prefs.remove(_scopedKey(_businessLogoUrlKey));
     } else {
-      await prefs.setString(_businessLogoUrlKey, trimmedLogoUrl);
+      await prefs.setString(_scopedKey(_businessLogoUrlKey), trimmedLogoUrl);
     }
     if (trimmedStyleId != null && trimmedStyleId.isNotEmpty) {
-      await prefs.setString(_businessLogoStyleKey, trimmedStyleId);
+      await prefs.setString(_scopedKey(_businessLogoStyleKey), trimmedStyleId);
     }
     if (identityMode != null) {
-      await prefs.setString(_identityModeKey, identityMode.name);
+      await prefs.setString(_scopedKey(_identityModeKey), identityMode.name);
     }
 
     if (!saveRemoteUrl && trimmedStyleId == null && identityMode == null) {
@@ -820,57 +839,163 @@ class PosterProfileService {
     final cleanName = data.displayName.trim().isEmpty
         ? _defaultName
         : data.displayName.trim();
-    await prefs.setString(_nameKey, cleanName);
-    await prefs.setString(_nameTeluguKey, data.nameTelugu.trim());
-    await prefs.setString(_nameEnglishKey, data.nameEnglish.trim());
-    await prefs.setString(_whatsappKey, data.whatsappNumber.trim());
-    await prefs.setString(_nameFontKey, _sanitizeFont(data.nameFontFamily));
-    await prefs.setString(_identityModeKey, data.identityMode.name);
-    await prefs.setString(_businessNameKey, data.businessName.trim());
-    await prefs.setString(_businessTaglineKey, data.businessTagline.trim());
+    await prefs.setString(_scopedKey(_nameKey), cleanName);
+    await prefs.setString(_scopedKey(_nameTeluguKey), data.nameTelugu.trim());
+    await prefs.setString(_scopedKey(_nameEnglishKey), data.nameEnglish.trim());
+    await prefs.setString(_scopedKey(_whatsappKey), data.whatsappNumber.trim());
     await prefs.setString(
-      _businessWhatsappKey,
+      _scopedKey(_nameFontKey),
+      _sanitizeFont(data.nameFontFamily),
+    );
+    await prefs.setString(_scopedKey(_identityModeKey), data.identityMode.name);
+    await prefs.setString(
+      _scopedKey(_businessNameKey),
+      data.businessName.trim(),
+    );
+    await prefs.setString(
+      _scopedKey(_businessTaglineKey),
+      data.businessTagline.trim(),
+    );
+    await prefs.setString(
+      _scopedKey(_businessWhatsappKey),
       data.businessWhatsappNumber.trim(),
     );
     await prefs.setString(
-      _businessLogoStyleKey,
+      _scopedKey(_businessLogoStyleKey),
       data.businessLogoStyleId.trim().isEmpty
           ? 'style_1'
           : data.businessLogoStyleId.trim(),
     );
     if (data.photoPath.trim().isEmpty) {
-      await prefs.remove(_photoPathKey);
+      await prefs.remove(_scopedKey(_photoPathKey));
     } else {
-      await prefs.setString(_photoPathKey, data.photoPath.trim());
+      await prefs.setString(_scopedKey(_photoPathKey), data.photoPath.trim());
     }
     if (data.photoUrl.trim().isEmpty) {
-      await prefs.remove(_photoUrlKey);
+      await prefs.remove(_scopedKey(_photoUrlKey));
     } else {
-      await prefs.setString(_photoUrlKey, data.photoUrl.trim());
+      await prefs.setString(_scopedKey(_photoUrlKey), data.photoUrl.trim());
     }
     if (data.businessLogoPath.trim().isEmpty) {
-      await prefs.remove(_businessLogoPathKey);
-    } else {
-      await prefs.setString(_businessLogoPathKey, data.businessLogoPath.trim());
-    }
-    if (data.businessLogoUrl.trim().isEmpty) {
-      await prefs.remove(_businessLogoUrlKey);
-    } else {
-      await prefs.setString(_businessLogoUrlKey, data.businessLogoUrl.trim());
-    }
-    if (data.originalPhotoPath.trim().isEmpty) {
-      await prefs.remove(_originalPhotoPathKey);
+      await prefs.remove(_scopedKey(_businessLogoPathKey));
     } else {
       await prefs.setString(
-        _originalPhotoPathKey,
+        _scopedKey(_businessLogoPathKey),
+        data.businessLogoPath.trim(),
+      );
+    }
+    if (data.businessLogoUrl.trim().isEmpty) {
+      await prefs.remove(_scopedKey(_businessLogoUrlKey));
+    } else {
+      await prefs.setString(
+        _scopedKey(_businessLogoUrlKey),
+        data.businessLogoUrl.trim(),
+      );
+    }
+    if (data.originalPhotoPath.trim().isEmpty) {
+      await prefs.remove(_scopedKey(_originalPhotoPathKey));
+    } else {
+      await prefs.setString(
+        _scopedKey(_originalPhotoPathKey),
         data.originalPhotoPath.trim(),
       );
     }
     if (data.originalPhotoUrl.trim().isEmpty) {
-      await prefs.remove(_originalPhotoUrlKey);
+      await prefs.remove(_scopedKey(_originalPhotoUrlKey));
     } else {
-      await prefs.setString(_originalPhotoUrlKey, data.originalPhotoUrl.trim());
+      await prefs.setString(
+        _scopedKey(_originalPhotoUrlKey),
+        data.originalPhotoUrl.trim(),
+      );
     }
+  }
+
+  static Future<void> clearLocalCacheForCurrentUser() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.trim().isEmpty) {
+      return;
+    }
+    await clearLocalCacheForUid(uid);
+  }
+
+  static Future<void> clearLocalCacheForUid(String uid) async {
+    final trimmedUid = uid.trim();
+    if (trimmedUid.isEmpty) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final keys = <String>[
+      _nameKey,
+      _nameTeluguKey,
+      _nameEnglishKey,
+      _whatsappKey,
+      _nameFontKey,
+      _photoPathKey,
+      _photoUrlKey,
+      _identityModeKey,
+      _businessNameKey,
+      _businessTaglineKey,
+      _businessWhatsappKey,
+      _businessLogoPathKey,
+      _businessLogoUrlKey,
+      _businessLogoStyleKey,
+      _originalPhotoPathKey,
+      _originalPhotoUrlKey,
+    ];
+    for (final key in keys) {
+      await prefs.remove('${key}_$trimmedUid');
+    }
+    await prefs.remove('$_legacyMigrationPrefix$trimmedUid');
+  }
+
+  static String _scopedKey(String baseKey) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.trim().isEmpty) {
+      return baseKey;
+    }
+    return '${baseKey}_$uid';
+  }
+
+  static Future<void> _migrateLegacyProfileKeysIfNeeded(
+    SharedPreferences prefs,
+  ) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.trim().isEmpty) {
+      return;
+    }
+    final markerKey = '$_legacyMigrationPrefix$uid';
+    if (prefs.getBool(markerKey) == true) {
+      return;
+    }
+    final keys = <String>[
+      _nameKey,
+      _nameTeluguKey,
+      _nameEnglishKey,
+      _whatsappKey,
+      _nameFontKey,
+      _photoPathKey,
+      _photoUrlKey,
+      _identityModeKey,
+      _businessNameKey,
+      _businessTaglineKey,
+      _businessWhatsappKey,
+      _businessLogoPathKey,
+      _businessLogoUrlKey,
+      _businessLogoStyleKey,
+      _originalPhotoPathKey,
+      _originalPhotoUrlKey,
+    ];
+    for (final key in keys) {
+      final scopedKey = '${key}_$uid';
+      if (prefs.containsKey(scopedKey) || !prefs.containsKey(key)) {
+        continue;
+      }
+      final value = prefs.get(key);
+      if (value is String) {
+        await prefs.setString(scopedKey, value);
+      }
+    }
+    await prefs.setBool(markerKey, true);
   }
 
   static PosterProfileData _fromRemoteMap(Map<String, dynamic> data) {

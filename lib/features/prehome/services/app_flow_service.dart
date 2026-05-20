@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -43,25 +46,58 @@ class AppFlowService {
   static const String _permissionsHandledKey = 'permissions_step_handled';
   static const String _initialSetupCompletedKey = 'initial_setup_completed';
 
-  static Future<AppFlowSnapshot> loadSnapshot() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final AppLanguage language = _readLanguage(
-      prefs.getString(_selectedLanguageKey),
-    );
+  static AppLanguage? _memoryLanguage;
+  static bool _memoryLanguageSelected = false;
 
-    return AppFlowSnapshot(
-      language: language,
-      languageSelected: prefs.getBool(_languageSelectedKey) ?? false,
-      permissionsStepHandled: prefs.getBool(_permissionsHandledKey) ?? false,
-      initialSetupCompleted: prefs.getBool(_initialSetupCompletedKey) ?? false,
-    );
+  static Future<AppFlowSnapshot> loadSnapshot() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final AppLanguage language = _readLanguage(
+        prefs.getString(_selectedLanguageKey),
+      );
+      final bool languageSelected = prefs.getBool(_languageSelectedKey) ?? false;
+
+      if (languageSelected) {
+        _memoryLanguage = language;
+        _memoryLanguageSelected = true;
+      }
+
+      return AppFlowSnapshot(
+        language: language,
+        languageSelected: languageSelected || _memoryLanguageSelected,
+        permissionsStepHandled: prefs.getBool(_permissionsHandledKey) ?? false,
+        initialSetupCompleted:
+            prefs.getBool(_initialSetupCompletedKey) ?? false,
+      );
+    } catch (_) {
+      return AppFlowSnapshot(
+        language: _memoryLanguage ?? AppLanguage.telugu,
+        languageSelected: _memoryLanguageSelected,
+        permissionsStepHandled: false,
+        initialSetupCompleted: false,
+      );
+    }
   }
 
-  static Future<void> persistLanguageSelection(AppLanguage language) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedLanguageKey, language.name);
-    await prefs.setBool(_languageSelectedKey, true);
-    await _syncLanguageToRemote(language);
+  static Future<bool> persistLanguageSelection(AppLanguage language) async {
+    _memoryLanguage = language;
+    _memoryLanguageSelected = true;
+
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedLanguageKey, language.name);
+      await prefs.setBool(_languageSelectedKey, true);
+      final storedLanguage = prefs.getString(_selectedLanguageKey);
+      final storedFlag = prefs.getBool(_languageSelectedKey) ?? false;
+      if (storedLanguage == language.name && storedFlag) {
+        unawaited(_syncLanguageToRemote(language));
+        return true;
+      }
+    } catch (_) {}
+
+    // Prefs failed on some devices; keep in-memory selection so onboarding can continue.
+    unawaited(_syncLanguageToRemote(language));
+    return true;
   }
 
   static Future<void> markPermissionsStepHandled() async {
@@ -132,15 +168,22 @@ class AppFlowService {
   }
 
   static Future<void> _syncLanguageToRemote(AppLanguage language) async {
+    if (Firebase.apps.isEmpty) {
+      return;
+    }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return;
     }
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'preferredLanguage': language.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set({
+            'preferredLanguage': language.name,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 4));
     } catch (_) {
       // Best-effort sync only. Local flow should continue even if remote save fails.
     }

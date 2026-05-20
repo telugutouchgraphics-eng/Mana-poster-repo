@@ -178,7 +178,7 @@ class _CanvasLayer {
     this.textShadowOpacity = 0,
     this.textShadowBlur = 0,
     this.textShadowOffsetY = 0,
-    this.isTextBold = true,
+    this.isTextBold = false,
     this.isTextItalic = false,
     this.isTextUnderline = false,
     this.textStrokeColor = const Color(0xFF000000),

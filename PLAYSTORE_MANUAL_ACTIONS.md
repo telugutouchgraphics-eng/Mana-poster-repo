@@ -1,9 +1,9 @@
 # Play Store Manual Actions
 
 ## Still manual in Play Console
-- Add the public Privacy Policy URL: `https://mana-poster-ap.web.app/legal/privacy-policy.html`
-- Add the public Terms URL if needed for reviewer notes: `https://mana-poster-ap.web.app/legal/terms-and-conditions.html`
-- Add the public Account Deletion URL: `https://mana-poster-ap.web.app/legal/account-deletion.html`
+- Add the public Privacy Policy URL: `https://manaposter.in/legal/privacy-policy.html`
+- Add the public Terms URL if needed for reviewer notes: `https://manaposter.in/legal/terms-and-conditions.html`
+- Add the public Account Deletion URL: `https://manaposter.in/legal/account-deletion.html`
 - Set app support email to `manaposter2026@gmail.com`
 - Fill the Data Safety form with current collected data and third-party services
 - Fill App Access instructions for reviewer login

@@ -442,7 +442,15 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
         continue;
       }
     }
-    final selectedDetails = details ?? query.productDetails.first;
+    if (details == null) {
+      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
+        reason: 'target_product_not_found',
+      );
+      return const PurchaseFlowOutcome(
+        result: PurchaseFlowResult.productNotFound,
+      );
+    }
+    final selectedDetails = details;
     _logSelectedProductForPurchase(selectedDetails);
     final binding = await PlayBillingAccountBindingService.instance
         .bindSubscriptionPurchaseToUid(productId: selectedDetails.id);

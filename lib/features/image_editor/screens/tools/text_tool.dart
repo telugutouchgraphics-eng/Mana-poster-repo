@@ -128,9 +128,7 @@ class _TextEditorFullscreenOverlayState
   late int _selectedGradientIndex = widget.textGradientIndex;
   late String _selectedFontFamily = widget.fontFamily;
   late double _fontSize = widget.fontSize.clamp(18, 96).toDouble();
-  late final double _lineHeight = widget.textLineHeight
-      .clamp(0.8, 2.2)
-      .toDouble();
+  late double _lineHeight = widget.textLineHeight.clamp(0.8, 2.2).toDouble();
   late double _letterSpacing = widget.textLetterSpacing
       .clamp(-1, 12)
       .toDouble();
@@ -540,8 +538,31 @@ class _TextEditorFullscreenOverlayState
             });
           },
         ),
+        _buildSliderRow(
+          label: strings.localized(
+            telugu: 'లైన్ స్పేసింగ్',
+            english: 'Line Spacing',
+          ),
+          valueText: _lineHeight.toStringAsFixed(2),
+          value: _lineHeight,
+          min: 0.8,
+          max: 2.2,
+          onChanged: (double value) {
+            setState(() {
+              _lineHeight = value;
+            });
+          },
+        ),
       ],
     );
+  }
+
+
+  void _ensureCollapsedSelectionAtStart() {
+    if (!_inputFocusNode.hasFocus) {
+      _inputFocusNode.requestFocus();
+    }
+    _controller.selection = const TextSelection.collapsed(offset: 0);
   }
 
   Widget _buildLivePreviewText(String text, double maxWidth) {
@@ -558,6 +579,7 @@ class _TextEditorFullscreenOverlayState
                 text: previewText,
                 fontFamily: _selectedFontFamily,
               ));
+    final visibleRenderText = _materializeVisiblePreviewText(renderText);
     final previewOpacity = text.isEmpty
         ? 0.52
         : _textOpacity.clamp(0.15, 1).toDouble();
@@ -582,18 +604,18 @@ class _TextEditorFullscreenOverlayState
         previewGradient == null &&
         _selectedColor.computeLuminance() < 0.18;
 
-    return Align(
-      alignment: switch (_textAlign) {
-        TextAlign.left ||
-        TextAlign.start ||
-        TextAlign.justify => Alignment.centerLeft,
-        TextAlign.right || TextAlign.end => Alignment.centerRight,
-        TextAlign.center => Alignment.center,
-      },
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
+    return SizedBox(
+      width: maxWidth,
+      child: Align(
+        alignment: switch (_textAlign) {
+          TextAlign.left ||
+          TextAlign.start ||
+          TextAlign.justify => Alignment.centerLeft,
+          TextAlign.right || TextAlign.end => Alignment.centerRight,
+          TextAlign.center => Alignment.center,
+        },
         child: _CanvasTextLayerView(
-          text: renderText,
+          text: visibleRenderText,
           textColor: previewColor,
           textAlign: _textAlign,
           fontSize: _fontSize.clamp(18, 96).toDouble(),
@@ -615,6 +637,7 @@ class _TextEditorFullscreenOverlayState
           textBackgroundColor: widget.textBackgroundColor,
           textBackgroundOpacity: widget.textBackgroundOpacity,
           textBackgroundRadius: widget.textBackgroundRadius,
+          maxWidth: maxWidth,
           textGradient: previewGradient,
           editorAssistShadowColor: previewNeedsLift
               ? Colors.white.withValues(alpha: 0.55)
@@ -631,7 +654,7 @@ class _TextEditorFullscreenOverlayState
             telugu: 'ఇక్కడ టెక్స్ట్ టైప్ చేయండి',
             english: 'Type text here',
           )
-        : _controller.text;
+        : _materializeVisiblePreviewText(_controller.text);
     final painter = TextPainter(
       text: TextSpan(
         text: sampleText,
@@ -656,11 +679,29 @@ class _TextEditorFullscreenOverlayState
     return (painter.width + 20).clamp(72.0, maxWidth).toDouble();
   }
 
+  String _materializeVisiblePreviewText(String value) {
+    if (value.isEmpty) {
+      return value;
+    }
+    final normalized = value.replaceAll('\r\n', '\n');
+    return normalized
+        .split('\n')
+        .map((String line) => line.isEmpty ? '\u200B' : line)
+        .join('\n');
+  }
+
   Color _editableCursorColor() {
-    final fillColor = _activeGradient == null ? _selectedColor : Colors.white;
-    return fillColor.computeLuminance() > 0.72
-        ? const Color(0xFF2563EB)
-        : Colors.white;
+    return const Color(0xFF2563EB);
+  }
+
+  Color _editableTypingColor() {
+    if (_activeGradient != null) {
+      return Colors.white;
+    }
+    if (_selectedColor.computeLuminance() < 0.18) {
+      return Colors.white;
+    }
+    return _selectedColor.withValues(alpha: _textOpacity.clamp(0.15, 1));
   }
 
   Widget _buildColorsTab() {
@@ -1018,79 +1059,92 @@ class _TextEditorFullscreenOverlayState
                       child: AnimatedBuilder(
                         animation: _controller,
                         builder: (BuildContext context, Widget? child) {
-                          final editableWidth = _measureEditableTextWidth(
-                            screenSize.width * 0.9,
+                          final textStyle = TextStyle(
+                            color: _controller.text.isEmpty
+                                ? Colors.white.withValues(alpha: 0.52)
+                                : _editableTypingColor(),
+                            fontSize: _fontSize.clamp(18, 96),
+                            height: _effectiveTextLineHeightForRender(
+                              fontFamily: _selectedFontFamily,
+                              textLineHeight: _lineHeight,
+                            ),
+                            letterSpacing: _letterSpacing,
+                            fontFamily: _legacyPreviewText != null
+                                ? _selectedFontFamily
+                                : _resolveTextRenderFontFamily(
+                                    _selectedFontFamily,
+                                  ),
+                            fontWeight: _isTextBold
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            fontStyle: _isTextItalic
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                            decoration: _isTextUnderline
+                                ? TextDecoration.underline
+                                : TextDecoration.none,
+                            decorationColor: _editableTypingColor(),
                           );
-                          return Stack(
-                            alignment: Alignment.center,
-                            children: <Widget>[
-                              IgnorePointer(
-                                child: _buildLivePreviewText(
-                                  _controller.text,
-                                  screenSize.width * 0.9,
-                                ),
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              textSelectionTheme: TextSelectionThemeData(
+                                selectionColor: const Color(
+                                  0xFF2563EB,
+                                ).withValues(alpha: 0.18),
+                                selectionHandleColor: _editableCursorColor(),
+                                cursorColor: _editableCursorColor(),
                               ),
-                              GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTap: _inputFocusNode.requestFocus,
-                                child: Theme(
-                                  data: Theme.of(context).copyWith(
-                                    textSelectionTheme: TextSelectionThemeData(
-                                      selectionColor: const Color(
-                                        0xFF60A5FA,
-                                      ).withValues(alpha: 0.32),
-                                      selectionHandleColor:
-                                          _editableCursorColor(),
-                                      cursorColor: _editableCursorColor(),
-                                    ),
+                            ),
+                            child: SizedBox(
+                              width: screenSize.width * 0.9,
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _inputFocusNode,
+                                autofocus: true,
+                                minLines: 1,
+                                maxLines: 8,
+                                keyboardType: TextInputType.multiline,
+                                textInputAction: TextInputAction.newline,
+                                keyboardAppearance: Brightness.dark,
+                                textAlign: _textAlign,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                enableInteractiveSelection: true,
+                                style: textStyle,
+                                strutStyle: StrutStyle(
+                                  forceStrutHeight: true,
+                                  fontSize: _fontSize.clamp(18, 96).toDouble(),
+                                  height: _effectiveTextLineHeightForRender(
+                                    fontFamily: _selectedFontFamily,
+                                    textLineHeight: _lineHeight,
                                   ),
-                                  child: SizedBox(
-                                    width: editableWidth,
-                                    child: EditableText(
-                                      controller: _controller,
-                                      focusNode: _inputFocusNode,
-                                      autofocus: true,
-                                      minLines: 1,
-                                      maxLines: 8,
-                                      keyboardType: TextInputType.multiline,
-                                      textInputAction: TextInputAction.newline,
-                                      keyboardAppearance: Brightness.dark,
-                                      textAlign: _textAlign,
-                                      enableInteractiveSelection: true,
-                                      enableSuggestions: true,
-                                      autocorrect: true,
-                                      showCursor: true,
-                                      cursorWidth: 2.2,
-                                      cursorRadius: const Radius.circular(999),
-                                      style: TextStyle(
-                                        color: Colors.transparent,
-                                        fontSize: _fontSize.clamp(18, 96),
-                                        height:
-                                            _effectiveTextLineHeightForRender(
-                                              fontFamily: _selectedFontFamily,
-                                              textLineHeight: _lineHeight,
-                                            ),
-                                        letterSpacing: _letterSpacing,
-                                        fontFamily: _legacyPreviewText != null
-                                            ? _selectedFontFamily
-                                            : _resolveTextRenderFontFamily(
-                                                _selectedFontFamily,
-                                              ),
-                                        fontWeight: _isTextBold
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                        fontStyle: _isTextItalic
-                                            ? FontStyle.italic
-                                            : FontStyle.normal,
-                                        decoration: TextDecoration.none,
-                                      ),
-                                      cursorColor: _editableCursorColor(),
-                                      backgroundCursorColor: Colors.white24,
-                                    ),
-                                  ),
+                                  fontFamily: _legacyPreviewText != null
+                                      ? _selectedFontFamily
+                                      : _resolveTextRenderFontFamily(
+                                          _selectedFontFamily,
+                                        ),
+                                  fontWeight: _isTextBold
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  fontStyle: _isTextItalic
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
                                 ),
+                                cursorWidth: 2.2,
+                                cursorHeight:
+                                    _fontSize.clamp(18, 96).toDouble() *
+                                    _effectiveTextLineHeightForRender(
+                                      fontFamily: _selectedFontFamily,
+                                      textLineHeight: _lineHeight,
+                                    ),
+                                cursorRadius: const Radius.circular(999),
+                                cursorColor: _editableCursorColor(),
+                                decoration: null,
+                                onChanged: (_) {
+                                  setState(() {});
+                                },
                               ),
-                            ],
+                            ),
                           );
                         },
                       ),

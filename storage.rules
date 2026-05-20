@@ -25,13 +25,6 @@ service firebase.storage {
         request.resource.contentType.matches('image/.*');
     }
 
-    function isAllowedLandingUpload(maxSizeBytes) {
-      return request.resource != null &&
-        request.resource.size < maxSizeBytes &&
-        (request.resource.contentType.matches('image/.*') ||
-          request.resource.contentType.matches('video/.*'));
-    }
-
     function isAllowedPosterImageUpload() {
       return request.resource != null &&
         request.resource.size <= 500 * 1024 &&
@@ -61,17 +54,11 @@ service firebase.storage {
     }
 
     match /landing-media/{mediaId}/{fileName} {
-      allow read: if true;
-      allow create, update: if isAdmin() &&
-        isAllowedPosterImageUpload();
-      allow delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
     match /landing-site/{allPaths=**} {
-      allow read: if true;
-      allow create, update: if isAdmin() &&
-        isAllowedPosterMediaUpload();
-      allow delete: if isAdmin();
+      allow read, create, update, delete: if false;
     }
 
     // Public read: creatorPosters docs store storage paths served on the anonymous

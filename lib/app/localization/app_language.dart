@@ -151,13 +151,13 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
   'HD export': 'HD \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f',
   'Is Mana Poster Ai AI free?': 'क्या Mana Poster Ai AI फ्री है?',
   'Posters are available with stronger templates and deeper editing inside the app.':
-      '\u092b\u094d\u0930\u0940 \u092a\u094b\u0938\u094d\u091f\u0930\u094d\u0938 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0902\u0964 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u090f\u0915\u094d\u0938\u0947\u0938 \u0938\u0947 \u092c\u0947\u0939\u0924\u0930 templates \u0914\u0930 deeper editing \u092e\u093f\u0932\u0924\u0940 \u0939\u0948\u0964',
+      '\u0906\u092a \u092e\u0947\u0902 posters \u092c\u0928\u093e\u0928\u0947, personalize \u0915\u0930\u0928\u0947 \u0914\u0930 share \u0915\u0930\u0928\u0947 \u0915\u0947 \u0938\u0930\u0932 options \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0902\u0964',
   'Can I add photo and name?': 'क्या मैं फोटो और नाम जोड़ सकता हूँ?',
   'Yes. Personal details can be placed directly on poster templates.':
       '\u0939\u093e\u0901\u0964 \u0935\u094d\u092f\u0915\u094d\u0924\u093f\u0917\u0924 \u0935\u093f\u0935\u0930\u0923 \u0938\u0940\u0927\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 \u091f\u0947\u092e\u094d\u092a\u0932\u0947\u091f\u094d\u0938 \u092a\u0930 \u0930\u0916\u0947 \u091c\u093e \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
   'Are daily categories updated?': 'क्या daily categories अपडेट होती हैं?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page \u0914\u0930 app \u0938\u092e\u092f-\u0906\u0927\u093e\u0930\u093f\u0924 categories \u0914\u0930 special poster needs \u0926\u093f\u0916\u093e \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
+      '\u0906\u092a \u0938\u092e\u092f-\u0906\u0927\u093e\u0930\u093f\u0924 categories \u0914\u0930 daily poster needs \u0926\u093f\u0916\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964',
   'Can I export posters?': 'क्या मैं पोस्टर्स export कर सकता हूँ?',
   'Yes. Export and share flows stay simple for daily usage.':
       '\u0939\u093e\u0901\u0964 \u0930\u094b\u091c\u093c\u093e\u0928\u093e \u0909\u092a\u092f\u094b\u0917 \u0915\u0947 \u0932\u093f\u090f export \u0914\u0930 share flow \u0938\u0930\u0932 \u0930\u0939\u0924\u093e \u0939\u0948\u0964',
@@ -203,7 +203,7 @@ const Map<String, String> _landingHindiFallbacks = <String, String>{
   'Choose the plan that fits your poster workflow':
       '\u0905\u092a\u0928\u0947 \u092a\u094b\u0938\u094d\u091f\u0930 workflow \u0915\u0947 \u0932\u093f\u090f \u0938\u0939\u0940 \u092a\u094d\u0932\u093e\u0928 \u091a\u0941\u0928\u0947\u0902',
   'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
-      '\u092b\u094d\u0930\u0940 quick daily use \u0915\u0947 \u0932\u093f\u090f \u0939\u0948\u0964 \u092a\u094d\u0930\u0940\u092e\u093f\u092f\u092e \u092e\u0947\u0902 fully editable posters, better templates, better exports \u0914\u0930 faster personalization \u092e\u093f\u0932\u0924\u093e \u0939\u0948\u0964',
+      '\u091c\u0932\u094d\u0926 daily posters, export options \u0914\u0930 simple personalization flows \u092e\u0947\u0902 \u0938\u0947 choose \u0915\u0930\u0947\u0902\u0964',
   'Frequently asked questions':
       '\u0905\u0915\u094d\u0938\u0930 \u092a\u0942\u091b\u0947 \u091c\u093e\u0928\u0947 \u0935\u093e\u0932\u0947 \u0938\u0935\u093e\u0932',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
@@ -276,13 +276,13 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
   'HD export': 'HD export',
   'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI இலவசமா?',
   'Posters are available with stronger templates and deeper editing inside the app.':
-      '\u0b87\u0bb2\u0bb5\u0b9a \u0baa\u0bcb\u0bb8\u0bcd\u0b9f\u0bb0\u0bcd\u0b95\u0bb3\u0bcd \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd. Premium access \u0bae\u0bc2\u0bb2\u0bae\u0bcd \u0bae\u0bc7\u0bae\u0bcd\u0baa\u0b9f\u0bcd\u0b9f templates \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd deeper editing \u0ba4\u0bbf\u0bb1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
+      '\u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd posters create, personalize \u0baa\u0ba3\u0bcd\u0ba3\u0bb5\u0bc1\u0bae\u0bcd share \u0baa\u0ba3\u0bcd\u0ba3\u0bb5\u0bc1\u0bae\u0bcd simple options \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
   'Can I add photo and name?': 'நான் புகைப்படம் மற்றும் பெயரை சேர்க்கலாமா?',
   'Yes. Personal details can be placed directly on poster templates.':
       '\u0b86\u0bae\u0bcd. \u0ba4\u0ba9\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f \u0bb5\u0bbf\u0bb5\u0bb0\u0b99\u0bcd\u0b95\u0bb3\u0bc8 \u0ba8\u0bc7\u0bb0\u0b9f\u0bbf\u0baf\u0bbe\u0b95 poster templates-\u0bb2\u0bcd \u0b9a\u0bc7\u0bb0\u0bcd\u0b95\u0bcd\u0b95\u0bb2\u0bbe\u0bae\u0bcd.',
   'Are daily categories updated?': 'தினசரி categories புதுப்பிக்கப்படுமா?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd app, time-based categories \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd special poster needs-\u0b90 \u0b95\u0bbe\u0b9f\u0bcd\u0b9f\u0bc1\u0bae\u0bcd.',
+      '\u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd time-based categories \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd daily poster needs \u0b95\u0bbe\u0b9f\u0bcd\u0b9f \u0bae\u0bc1\u0b9f\u0bbf\u0baf\u0bc1\u0bae\u0bcd.',
   'Can I export posters?': 'நான் போஸ்டர்களை export செய்யலாமா?',
   'Yes. Export and share flows stay simple for daily usage.':
       '\u0b86\u0bae\u0bcd. \u0ba4\u0bbf\u0ba9\u0b9a\u0bb0\u0bbf \u0baa\u0baf\u0ba9\u0bcd\u0baa\u0bbe\u0b9f\u0bcd\u0b9f\u0bbf\u0bb1\u0bcd\u0b95\u0bc1 export \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd share flow \u0b8e\u0bb3\u0bbf\u0bae\u0bc8\u0baf\u0bbe\u0b95 \u0b87\u0bb0\u0bc1\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
@@ -329,7 +329,7 @@ const Map<String, String> _landingTamilFallbacks = <String, String>{
   'Choose the plan that fits your poster workflow':
       '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd poster workflow-\u0b95\u0bcd\u0b95\u0bc1 \u0baa\u0bca\u0bb0\u0bc1\u0ba4\u0bcd\u0ba4\u0bae\u0bbe\u0ba9 \u0ba4\u0bbf\u0b9f\u0bcd\u0b9f\u0ba4\u0bcd\u0ba4\u0bc8\u0ba4\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0ba8\u0bcd\u0ba4\u0bc6\u0b9f\u0bc1\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
   'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
-      'Free, quick daily use-\u0b90 \u0b95\u0bc8\u0baf\u0bbe\u0bb3\u0bc1\u0bae\u0bcd. Premium \u0bae\u0bc2\u0bb2\u0bae\u0bcd fully editable posters, stronger templates, better exports \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd faster personalization \u0b95\u0bbf\u0b9f\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0bae\u0bcd.',
+      '\u0bb5\u0bc7\u0b95\u0bae\u0bbe\u0ba9 daily posters, export options \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd simple personalization flows-\u0bb2\u0bbf\u0bb0\u0bc1\u0ba8\u0bcd\u0ba4\u0bc1 choose \u0baa\u0ba3\u0bcd\u0ba3\u0bb2\u0bbe\u0bae\u0bcd.',
   'Frequently asked questions':
       '\u0b85\u0b9f\u0bbf\u0b95\u0bcd\u0b95\u0b9f\u0bbf \u0b95\u0bc7\u0b9f\u0bcd\u0b95\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0b95\u0bc7\u0bb3\u0bcd\u0bb5\u0bbf\u0b95\u0bb3\u0bcd',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
@@ -402,13 +402,13 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
   'HD export': 'HD export',
   'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI ಉಚಿತವೇ?',
   'Posters are available with stronger templates and deeper editing inside the app.':
-      '\u0c89\u0c9a\u0cbf\u0ca4 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cb3\u0cc1 \u0cb2\u0cad\u0ccd\u0caf. Premium access \u0cae\u0cc2\u0cb2\u0c95 \u0c89\u0ca4\u0ccd\u0ca4\u0cae templates \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 deeper editing \u0ca6\u0cca\u0cb0\u0cc6\u0caf\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
+      '\u0c86\u0caa\u0ccd\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf posters create, personalize \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 simple options \u0cb8\u0cbf\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
   'Can I add photo and name?': 'ನಾನು ಫೋಟೋ ಮತ್ತು ಹೆಸರು ಸೇರಿಸಬಹುದೇ?',
   'Yes. Personal details can be placed directly on poster templates.':
       '\u0cb9\u0ccc\u0ca6\u0cc1. \u0cb5\u0cc8\u0caf\u0c95\u0ccd\u0ca4\u0cbf\u0c95 \u0cb5\u0cbf\u0cb5\u0cb0\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0ca8\u0cc7\u0cb0\u0cb5\u0cbe\u0c97\u0cbf poster templates \u0cae\u0cc7\u0cb2\u0cc6 \u0c87\u0cb0\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
   'Are daily categories updated?': 'ದೈನಂದಿನ categories update ಆಗುತ್ತವೆಯೇ?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 app time-based categories \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 special poster needs \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
+      '\u0c86\u0caa\u0ccd time-based categories \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 daily poster needs \u0ca4\u0ccb\u0cb0\u0cbf\u0cb8\u0cb2\u0cc1 \u0cb8\u0cbe\u0ca7\u0ccd\u0caf.',
   'Can I export posters?': 'ನಾನು ಪೋಸ್ಟರ್‌ಗಳನ್ನು export ಮಾಡಬಹುದೇ?',
   'Yes. Export and share flows stay simple for daily usage.':
       '\u0cb9\u0ccc\u0ca6\u0cc1. \u0ca6\u0cc8\u0ca8\u0c82\u0ca6\u0cbf\u0ca8 \u0cac\u0cb3\u0c95\u0cc6\u0c97\u0cc6 export \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 share flow \u0cb8\u0cb0\u0cb3\u0cb5\u0cbe\u0c97\u0cbf\u0cb0\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6.',
@@ -454,7 +454,7 @@ const Map<String, String> _landingKannadaFallbacks = <String, String>{
   'Choose the plan that fits your poster workflow':
       '\u0ca8\u0cbf\u0cae\u0ccd\u0cae poster workflow \u0c97\u0cc6 \u0cb8\u0cb0\u0cbf\u0cb9\u0cca\u0c82\u0ca6\u0cc1\u0cb5 \u0caf\u0ccb\u0c9c\u0ca8\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0cbe\u0ca1\u0cbf',
   'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
-      'Free quick daily use \u0c97\u0cc6 \u0cb8\u0cbe\u0c95\u0cbe\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0ca6\u0cc6. Premium \u0cae\u0cc2\u0cb2\u0c95 fully editable posters, stronger templates, better exports \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 faster personalization \u0cb8\u0cbf\u0c97\u0cc1\u0ca4\u0ccd\u0ca4\u0cb5\u0cc6.',
+      '\u0cb5\u0cc7\u0c97\u0cb5\u0cbe\u0ca6 daily posters, export options \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 simple personalization flows \u0cae\u0cc2\u0cb2\u0c95 choose \u0cae\u0cbe\u0ca1\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
   'Frequently asked questions':
       '\u0c85\u0ca8\u0cc7\u0c95\u0cb0\u0cbe\u0c97\u0cbf \u0c95\u0cc7\u0cb3\u0cb2\u0cbe\u0c97\u0cc1\u0cb5 \u0caa\u0ccd\u0cb0\u0cb6\u0ccd\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':
@@ -526,13 +526,13 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
   'HD export': 'HD export',
   'Is Mana Poster Ai AI free?': 'Mana Poster Ai AI ഫ്രീ ആണോ?',
   'Posters are available with stronger templates and deeper editing inside the app.':
-      '\u0d2b\u0d4d\u0d30\u0d40 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d4d\u0d31\u0d31\u0d41\u0d15\u0d7e \u0d32\u0d2d\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d. Premium access \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d2e\u0d46\u0d1a\u0d4d\u0d1a\u0d2a\u0d4d\u0d2a\u0d46\u0d1f\u0d4d\u0d1f templates \u0d09\u0d02 deeper editing \u0d09\u0d02 \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+      '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d32\u0d4d posters create, personalize \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 share \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 simple options \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Can I add photo and name?': 'ഫോട്ടോയും പേരും ചേർക്കാനാകുമോ?',
   'Yes. Personal details can be placed directly on poster templates.':
       '\u0d05\u0d24\u0d46. \u0d35\u0d4d\u0d2f\u0d15\u0d4d\u0d24\u0d3f\u0d17\u0d24 \u0d35\u0d3f\u0d35\u0d30\u0d19\u0d4d\u0d19\u0d7e poster templates-\u0d3f\u0d7d \u0d28\u0d47\u0d30\u0d3f\u0d1f\u0d4d\u0d1f\u0d4d \u0d1a\u0d47\u0d7c\u0d15\u0d4d\u0d15\u0d3e\u0d02.',
   'Are daily categories updated?': 'ദൈനംദിന categories update ആവുമോ?',
   'The landing page and app can surface time-based categories and special poster needs.':
-      'Landing page-\u0d35\u0d41\u0d02 app-\u0d35\u0d41\u0d02 time-based categories \u0d09\u0d02 special poster needs \u0d09\u0d02 \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+      '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d32\u0d4d time-based categories \u0d09\u0d02 daily poster needs \u0d09\u0d02 \u0d15\u0d3e\u0d23\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
   'Can I export posters?': 'എനിക്ക് പോസ്റ്ററുകൾ export ചെയ്യാനാകുമോ?',
   'Yes. Export and share flows stay simple for daily usage.':
       '\u0d05\u0d24\u0d46. \u0d26\u0d48\u0d28\u0d02\u0d26\u0d3f\u0d28 \u0d09\u0d2a\u0d2f\u0d4b\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d28\u0d4d export, share flow \u0d32\u0d33\u0d3f\u0d24\u0d2e\u0d3e\u0d2f\u0d3f\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
@@ -579,7 +579,7 @@ const Map<String, String> _landingMalayalamFallbacks = <String, String>{
   'Choose the plan that fits your poster workflow':
       '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 poster workflow-\u0d2f\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d1a\u0d47\u0d30\u0d41\u0d28\u0d4d\u0d28 \u0d2a\u0d4d\u0d32\u0d3e\u0d7b \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
   'Choose from quick daily posters and fully editable poster options with better exports and faster personalization.':
-      'Free quick daily use \u0d28\u0d3f\u0d31\u0d35\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d02. Premium \u0d35\u0d34\u0d3f fully editable posters, stronger templates, better exports, faster personalization \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d02.',
+      '\u0d35\u0d47\u0d17\u0d24\u0d4d\u0d24\u0d3f\u0d32\u0d41\u0d33\u0d4d\u0d33 daily posters, export options \u0d09\u0d02 simple personalization flows \u0d09\u0d02 choose \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d02.',
   'Frequently asked questions':
       '\u0d2a\u0d24\u0d3f\u0d35\u0d4d \u0d1a\u0d4b\u0d26\u0d4d\u0d2f\u0d19\u0d4d\u0d19\u0d7e',
   'Common doubts about templates, photos, HD downloads, and daily Telugu poster updates.':

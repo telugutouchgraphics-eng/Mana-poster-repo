@@ -21,7 +21,7 @@ enum _BottomInlineMode {
 enum _BorderStyle { none, thinWhite, thinBlack, rounded, glow }
 
 const double _topBarHeight = 68;
-const double _bottomBarHeight = 92;
+const double _bottomBarHeight = 84;
 const double _cropBarHeight = 132;
 const double _adjustBarHeight = 196;
 const double _eraserBarHeight = 178;
@@ -162,4 +162,19 @@ const List<String> _englishTextFontFamilies = <String>[
   'Playfair Display',
   'Poppins',
   'Rasa',
+  'Oswald',
+  'Lobster',
+  'Pacifico',
+  'Dancing Script',
+  'Great Vibes',
+  'Abril Fatface',
+  'Bangers',
+  'Cinzel',
+  'Cormorant Garamond',
+  'Lora',
+  'Raleway',
+  'Roboto Slab',
+  'Rubik',
+  'Nunito',
+  'Caveat',
 ];

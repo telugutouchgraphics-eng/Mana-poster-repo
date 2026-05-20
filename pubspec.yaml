@@ -1,5 +1,5 @@
 ﻿name: mana_poster
-description: "A new Flutter project."
+description: "Mana Poster Ai — Telugu political poster maker for Android."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.65+74
+version: 1.0.72+82
 
 environment:
   sdk: ^3.11.1
@@ -33,14 +33,14 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  firebase_core: ^4.6.0
-  firebase_auth: ^6.3.0
-  firebase_storage: ^13.0.2
-  firebase_messaging: ^16.0.2
-  firebase_analytics: ^12.0.4
-  firebase_crashlytics: ^5.0.4
+  firebase_core: 4.7.0
+  firebase_auth: 6.4.0
+  firebase_storage: 13.1.0
+  firebase_messaging: 16.2.0
+  firebase_analytics: 12.3.0
+  firebase_crashlytics: 5.2.0
   google_mobile_ads: ^5.3.1
-  cloud_firestore: ^6.0.3
+  cloud_firestore: 6.3.0
   google_sign_in: ^7.2.0
   permission_handler: ^12.0.1
   device_info_plus: ^12.4.0
@@ -57,7 +57,7 @@ dependencies:
   in_app_purchase_android: ^0.4.0+10
   in_app_purchase_storekit: ^0.4.8+1
   path_provider: ^2.1.5
-  share_plus: 10.0.2
+  share_plus: ^11.1.0
   url_launcher: ^6.3.2
   package_info_plus: ^9.0.0
   play_install_referrer: ^0.5.0
@@ -413,6 +413,51 @@ flutter:
       fonts:
         - asset: assets/fonts/english/rasa.bold.ttf
           weight: 700
+    - family: Oswald
+      fonts:
+        - asset: assets/fonts/english/oswald.variable.ttf
+    - family: Lobster
+      fonts:
+        - asset: assets/fonts/english/lobster.regular.ttf
+    - family: Pacifico
+      fonts:
+        - asset: assets/fonts/english/pacifico.regular.ttf
+    - family: Dancing Script
+      fonts:
+        - asset: assets/fonts/english/dancing-script.variable.ttf
+    - family: Great Vibes
+      fonts:
+        - asset: assets/fonts/english/great-vibes.regular.ttf
+    - family: Abril Fatface
+      fonts:
+        - asset: assets/fonts/english/abril-fatface.regular.ttf
+    - family: Bangers
+      fonts:
+        - asset: assets/fonts/english/bangers.regular.ttf
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/english/cinzel.variable.ttf
+    - family: Cormorant Garamond
+      fonts:
+        - asset: assets/fonts/english/cormorant-garamond.variable.ttf
+    - family: Lora
+      fonts:
+        - asset: assets/fonts/english/lora.variable.ttf
+    - family: Raleway
+      fonts:
+        - asset: assets/fonts/english/raleway.variable.ttf
+    - family: Roboto Slab
+      fonts:
+        - asset: assets/fonts/english/roboto-slab.variable.ttf
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/english/rubik.variable.ttf
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/english/nunito.variable.ttf
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/english/caveat.variable.ttf
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -447,6 +492,3 @@ flutter_launcher_icons:
   image_path: assets/branding/mana_poster_logo.png
   min_sdk_android: 21
   remove_alpha_ios: true
-
-
-

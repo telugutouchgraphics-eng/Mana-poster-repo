@@ -8,7 +8,14 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
 class HelpSupportScreen extends StatefulWidget {
-  const HelpSupportScreen({super.key});
+  const HelpSupportScreen({
+    super.key,
+    this.initialSubject,
+    this.initialBody,
+  });
+
+  final String? initialSubject;
+  final String? initialBody;
 
   @override
   State<HelpSupportScreen> createState() => _HelpSupportScreenState();
@@ -21,12 +28,20 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
 
   Future<void> _contactSupport(_HelpSupportCopy copy) async {
     final selected = _expandedIndex != null ? copy.faqs[_expandedIndex!] : null;
-    final subject = selected == null
+    final defaultSubject = selected == null
         ? copy.defaultSubject
         : '${copy.defaultSubject} - ${selected.question}';
-    final body = selected == null
+    final defaultBody = selected == null
         ? copy.defaultBody
         : '${copy.defaultBody}\n\n${copy.contextLabel}: ${selected.question}\n';
+    final subject =
+        widget.initialSubject?.trim().isNotEmpty == true
+        ? widget.initialSubject!.trim()
+        : defaultSubject;
+    final body =
+        widget.initialBody?.trim().isNotEmpty == true
+        ? widget.initialBody!.trim()
+        : defaultBody;
 
     final uri = Uri(
       scheme: 'mailto',
@@ -534,8 +549,8 @@ class _HelpSupportCopy {
       ? 'సమస్యకి వెంటనే మార్గదర్శకం'
       : 'Quick guidance for common issues';
   String get headerSubtitle => _isTelugu
-      ? 'లాగిన్, ఫోటో ఎంపిక, సేవ్, ఎగుమతి, సబ్‌స్క్రిప్షన్ లేదా సాధారణ యాప్ వినియోగానికి సంబంధించిన సాధారణ ప్రశ్నలకు ఇక్కడే సమాధానాలు ఉన్నాయి.'
-      : 'Find quick answers for login, photo import, save/export, subscription, and other common app issues.';
+      ? 'లాగిన్, ఫోటో ఎంపిక, సేవ్, ఎగుమతి, సబ్‌స్క్రిప్షన్ లేదా సాధారణ యాప్ వినియోగానికి సంబంధించిన సాధారణ ప్రశ్నలకు ఇక్కడే సమాధానాలు ఉన్నాయి. యాప్‌లో కనిపించే పోస్టర్లు ప్రచురణకు ముందు review చేయబడతాయి.'
+      : 'Find quick answers for login, photo import, save/export, subscription, and other common app issues. Posters shown in the app are reviewed before publishing.';
   String get legalTitle =>
       _isTelugu ? 'ప్రైవసీ మరియు నిబంధనలు' : 'Privacy and terms';
   String get legalSubtitle => _isTelugu

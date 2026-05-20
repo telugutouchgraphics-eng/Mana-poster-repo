@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
@@ -71,6 +72,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _prepareNextRoute() async {
     try {
+      await FirebaseBootstrap.ensureInitialized().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {},
+      );
       final snapshot = await AppFlowService.loadSnapshot().timeout(
         const Duration(seconds: 2),
       );

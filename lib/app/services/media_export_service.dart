@@ -169,26 +169,30 @@ class MediaExportService {
   }) async {
     bool result = false;
     try {
-      await Share.shareXFiles(
-        <XFile>[XFile(filePath)],
-        text: text,
-        sharePositionOrigin: sharePositionOrigin,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[XFile(filePath)],
+          text: text,
+          sharePositionOrigin: sharePositionOrigin,
+        ),
       );
       result = true;
     } catch (error, stackTrace) {
       _debugLogStack('shareImageFile error: $error', stackTrace);
       try {
         final Uint8List bytes = await File(filePath).readAsBytes();
-        await Share.shareXFiles(
-          <XFile>[
-            XFile.fromData(
-              bytes,
-              mimeType: 'image/png',
-              name: filePath.split(Platform.pathSeparator).last,
-            ),
-          ],
-          text: text,
-          sharePositionOrigin: sharePositionOrigin,
+        await SharePlus.instance.share(
+          ShareParams(
+            files: <XFile>[
+              XFile.fromData(
+                bytes,
+                mimeType: 'image/png',
+                name: filePath.split(Platform.pathSeparator).last,
+              ),
+            ],
+            text: text,
+            sharePositionOrigin: sharePositionOrigin,
+          ),
         );
         result = true;
       } catch (fallbackError, fallbackStackTrace) {

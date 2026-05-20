@@ -112,13 +112,36 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
     if (widget.triggerRestoreOnOpen && !_didAutoTriggerRestore) {
       _didAutoTriggerRestore = true;
-      unawaited(_restoreSubscriptions());
+      unawaited(_runDeferredAutoAction(_restoreSubscriptions));
       return;
     }
     if (widget.startPurchaseOnOpen && !_didAutoStartPurchase && _canSubscribe) {
       _didAutoStartPurchase = true;
-      unawaited(_subscribeFreePlan());
+      unawaited(_runDeferredAutoAction(_subscribeFreePlan));
     }
+  }
+
+  Future<void> _runDeferredAutoAction(Future<void> Function() action) async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) {
+      return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    if (!mounted) {
+      return;
+    }
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted) {
+        return;
+      }
+    }
+    final latestRoute = ModalRoute.of(context);
+    if (latestRoute != null && !latestRoute.isCurrent) {
+      return;
+    }
+    await action();
   }
 
   Future<ProductDetails?> _loadStoreProduct() async {

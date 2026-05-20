@@ -101,8 +101,23 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
               const Spacer(),
               FilledButton(
                 onPressed: () async {
-                  await AppFlowService.persistLanguageSelection(_selected);
+                  final saved = await AppFlowService.persistLanguageSelection(
+                    _selected,
+                  );
                   if (!context.mounted) {
+                    return;
+                  }
+                  if (!saved) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          strings.localized(
+                            telugu: 'భాష సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+                            english: 'Could not save language. Please try again.',
+                          ),
+                        ),
+                      ),
+                    );
                     return;
                   }
                   context.languageController.setLanguage(_selected);

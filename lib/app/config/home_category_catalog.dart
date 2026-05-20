@@ -141,17 +141,6 @@ class HomeCategoryCatalog {
       aliases: <String>['bhagavad gita', 'gita', 'gita quotes'],
     ),
     HomeCategoryCatalogEntry(
-      id: 'news',
-      label: 'News',
-      badge: 'NEWS',
-      gradient: <Color>[Color(0xFF1D4ED8), Color(0xFF93C5FD)],
-      sampleTitles: <String>[
-        'Breaking update',
-        'Headline story',
-        'Daily bulletin poster',
-      ],
-    ),
-    HomeCategoryCatalogEntry(
       id: 'devotional',
       label: 'Devotional',
       badge: 'BHAKTI',

@@ -19,6 +19,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
   const PosterProfileDetailsScreen({
     super.key,
     required this.initialProfile,
+    this.accountEmail = '',
     this.completeToHomeOnSave = false,
     this.openPersonalPhotoPickerOnStart = false,
     this.embeddedInProfileScreen = false,
@@ -27,6 +28,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
   });
 
   final PosterProfileData initialProfile;
+  final String accountEmail;
   final bool completeToHomeOnSave;
   final bool openPersonalPhotoPickerOnStart;
   final bool embeddedInProfileScreen;
@@ -874,6 +876,8 @@ class _PosterProfileDetailsScreenState
                               _draftProfile.identityMode.name,
                               _draftProfile.photoPath,
                               _draftProfile.photoUrl,
+                              _draftProfile.originalPhotoPath,
+                              _draftProfile.originalPhotoUrl,
                               _draftProfile.businessLogoPath,
                               _draftProfile.businessLogoUrl,
                               _draftProfile.businessLogoStyleId,
@@ -883,11 +887,26 @@ class _PosterProfileDetailsScreenState
                           ),
                           profile: _draftProfile,
                           fit: isBusiness ? BoxFit.contain : BoxFit.cover,
+                          preferOriginalPersonalPhoto: !isBusiness,
                           textScale: 1.18,
                         ),
                       ),
                     ),
                   ),
+                  if (widget.accountEmail.trim().isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.accountEmail.trim(),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 22),
                 ],
               ),

@@ -10,6 +10,8 @@ import android.view.WindowManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import android.os.Bundle
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -17,6 +19,11 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val screenSecurityChannelName = "mana_poster/screen_security"
     private val mediaExportChannelName = "mana_poster/media_export"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        WindowCompat.enableEdgeToEdge(window)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

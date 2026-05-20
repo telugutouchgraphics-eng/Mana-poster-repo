@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mana_poster/firebase_options.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class FirebaseAuthService {
   FirebaseAuthService({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
@@ -107,6 +108,7 @@ class FirebaseAuthService {
   }
 
   Future<void> signOut() async {
+    final previousUid = _firebaseAuth.currentUser?.uid;
     try {
       await SubscriptionBackendService.resetLocalClientStateForAuthChange();
     } catch (_) {}
@@ -114,6 +116,11 @@ class FirebaseAuthService {
       try {
         await _googleSignIn.signOut();
       } catch (_) {}
+      if (previousUid != null && previousUid.trim().isNotEmpty) {
+        try {
+          await PosterProfileService.clearLocalCacheForUid(previousUid);
+        } catch (_) {}
+      }
       return;
     }
 
@@ -121,6 +128,11 @@ class FirebaseAuthService {
       _firebaseAuth.signOut(),
       _googleSignIn.signOut(),
     ]);
+    if (previousUid != null && previousUid.trim().isNotEmpty) {
+      try {
+        await PosterProfileService.clearLocalCacheForUid(previousUid);
+      } catch (_) {}
+    }
   }
 
   Future<void> _signInWithGoogleOnWeb() async {

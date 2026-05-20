@@ -7,7 +7,6 @@ import 'package:mana_poster/features/prehome/models/approved_creator_template.da
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
-import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -68,22 +67,28 @@ class ApprovedCreatorTemplateService {
       }
       final snapshot = await query.get(GetOptions(source: source));
 
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs =
-          snapshot.docs.toList(growable: false);
-      if (startAfterDocument == null) {
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs = snapshot.docs
+          .toList(growable: false);
+      var filteredTemplates = _filterPublished(
+        _mapSortedTemplates(mergedDocs),
+        mergedDocs,
+        pageSize,
+      );
+      if (startAfterDocument == null && filteredTemplates.length < pageSize) {
         mergedDocs = await _mergePosterDocsWithFallback(
           primary: mergedDocs,
           limit: math.min(math.max(queryLimit * 6, 80), 300),
           source: source,
         );
-      }
-
-      return ApprovedCreatorTemplatePage(
-        templates: _filterPublished(
+        filteredTemplates = _filterPublished(
           _mapSortedTemplates(mergedDocs),
           mergedDocs,
           pageSize,
-        ),
+        );
+      }
+
+      return ApprovedCreatorTemplatePage(
+        templates: filteredTemplates,
         lastDocument: snapshot.docs.isEmpty
             ? startAfterDocument
             : snapshot.docs.last,
@@ -132,7 +137,8 @@ class ApprovedCreatorTemplateService {
     }
   }
 
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _mergePosterDocsWithFallback({
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _mergePosterDocsWithFallback({
     required List<QueryDocumentSnapshot<Map<String, dynamic>>> primary,
     required int limit,
     required Source source,
@@ -160,8 +166,10 @@ class ApprovedCreatorTemplateService {
   List<ApprovedCreatorTemplate> _mapSortedTemplates(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) {
-    final templates =
-        docs.map(_mapDoc).whereType<ApprovedCreatorTemplate>().toList(growable: false);
+    final templates = docs
+        .map(_mapDoc)
+        .whereType<ApprovedCreatorTemplate>()
+        .toList(growable: false);
     templates.sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
     return templates;
   }
@@ -187,7 +195,9 @@ class ApprovedCreatorTemplateService {
         .where((template) {
           final publishAt = publishMap[template.id] ?? 0;
           final eventEndAt = eventEndMap[template.id] ?? 0;
-          var visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
+          var visibleFrom = publishAt > 0
+              ? publishAt
+              : template.createdAtMillis;
           if (visibleFrom <= 0) {
             visibleFrom = now;
           }
@@ -233,10 +243,7 @@ class ApprovedCreatorTemplateService {
     return filtered.take(maxItems).toList(growable: false);
   }
 
-  String _firstNonEmptyTrimmed(
-    Map<String, dynamic> data,
-    List<String> keys,
-  ) {
+  String _firstNonEmptyTrimmed(Map<String, dynamic> data, List<String> keys) {
     for (final key in keys) {
       final raw = data[key];
       if (raw is String) {
@@ -291,20 +298,20 @@ class ApprovedCreatorTemplateService {
         .toLowerCase();
     final imageUrl =
         (_firstTrimmedUrlField(data, const <String>[
-              'imageUrl',
-              'imageURL',
-              'posterUrl',
-              'previewUrl',
-              'posterImageUrl',
-              'posterImageURL',
-              'downloadUrl',
-              'downloadURL',
-              'publicUrl',
-              'url',
-              'firebaseUrl',
-            ]) ??
-            '')
-        .trim();
+                  'imageUrl',
+                  'imageURL',
+                  'posterUrl',
+                  'previewUrl',
+                  'posterImageUrl',
+                  'posterImageURL',
+                  'downloadUrl',
+                  'downloadURL',
+                  'publicUrl',
+                  'url',
+                  'firebaseUrl',
+                ]) ??
+                '')
+            .trim();
     final imageStoragePath = _firstNonEmptyTrimmed(data, const <String>[
       'imagePath',
       'imageStoragePath',
@@ -323,13 +330,13 @@ class ApprovedCreatorTemplateService {
     ]);
     final thumbnailUrl =
         (_firstTrimmedUrlField(data, const <String>[
-              'thumbnailUrl',
-              'thumbUrl',
-              'thumbnailImageUrl',
-              'previewUrl',
-            ]) ??
-            imageUrl)
-        .trim();
+                  'thumbnailUrl',
+                  'thumbUrl',
+                  'thumbnailImageUrl',
+                  'previewUrl',
+                ]) ??
+                imageUrl)
+            .trim();
     final thumbnailUrlResolved = thumbnailUrl;
     final videoUrl =
         (data['videoUrl'] as String?)?.trim() ??
@@ -337,7 +344,8 @@ class ApprovedCreatorTemplateService {
         '';
     final hasVideo = mediaType == 'video' && videoUrl.isNotEmpty;
     final hasImageByUrl = imageUrl.isNotEmpty;
-    final hasImage = hasImageByUrl ||
+    final hasImage =
+        hasImageByUrl ||
         thumbnailUrlResolved.isNotEmpty ||
         imageStoragePath.isNotEmpty ||
         thumbnailStoragePath.isNotEmpty;
@@ -495,42 +503,7 @@ class ApprovedCreatorTemplateService {
     if (normalized.isEmpty || !knownDynamicTags.contains(normalized)) {
       return true;
     }
-    final visibleUntil = _dynamicCategoryVisibleUntil(normalized, now);
-    if (visibleUntil != null) {
-      // schedule.endDate is midnight at the start of the last calendar day;
-      // comparing full DateTime hid every poster after 00:00 on that day.
-      final today = DateTime(now.year, now.month, now.day);
-      final lastDay = DateTime(
-        visibleUntil.year,
-        visibleUntil.month,
-        visibleUntil.day,
-      );
-      return !today.isAfter(lastDay);
-    }
     return activeDynamicTags.contains(normalized);
-  }
-
-  DateTime? _dynamicCategoryVisibleUntil(
-    String normalizedCategoryId,
-    DateTime now,
-  ) {
-    final scheduleService = DynamicEventScheduleService(
-      repository: _dynamicEventRepository,
-    );
-    final schedules = scheduleService.schedulesForYear(now.year);
-    for (final schedule in schedules) {
-      final event = schedule.event;
-      final candidateTags = <String>{
-        _normalizeTag(event.id),
-        _normalizeTag(event.slug),
-        ...event.tags.map(_normalizeTag),
-        ..._dynamicTypeFilterTags(event.type).map(_normalizeTag),
-      };
-      if (candidateTags.contains(normalizedCategoryId)) {
-        return schedule.endDate;
-      }
-    }
-    return null;
   }
 
   Set<String> _activeDynamicTagsForDate(DateTime now) {

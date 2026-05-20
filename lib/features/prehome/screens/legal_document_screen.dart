@@ -352,9 +352,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'మీ login వివరాలు భద్రంగా ఉంచాలి. మీరు upload చేసే photos, text, logos లేదా poster materials ను ఉపయోగించే హక్కు మీకే ఉండాలి. చట్టవిరుద్ధం, మోసపూరితం, ద్వేషపూరితం, అసభ్యం లేదా ఇతరుల హక్కులను ఉల్లంఘించే content నిషేధించబడుతుంది.',
+            'మీ login వివరాలు భద్రంగా ఉంచాలి. మీరు upload చేసే photos, text, logos లేదా poster materials ను ఉపయోగించే హక్కు మీకే ఉండాలి. చట్టవిరుద్ధం, మోసపూరితం, ద్వేషపూరితం, అసభ్యం లేదా ఇతరుల హక్కులను ఉల్లంఘించే content నిషేధించబడుతుంది. యాప్‌లో ఇతర users కు కనిపించే posters publication కు ముందు review చేయబడతాయి.',
         english:
-            'You must keep your login details secure. You must have the right to use any photos, text, logos, or poster materials you upload. Illegal, deceptive, hateful, obscene, or infringing content is prohibited.',
+            'You must keep your login details secure. You must have the right to use any photos, text, logos, or poster materials you upload. Illegal, deceptive, hateful, obscene, or infringing content is prohibited. Posters shown to other users in the app are reviewed before publication.',
       ),
     ),
     _LegalSection(
@@ -364,9 +364,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'ప్రస్తుత subscription plan కు ${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} రోజులు ఉంటుంది. Trial గడువు లోపు రద్దు చేయకపోతే, తరువాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున auto-renew అవుతుంది. కొన్ని premium templates లేదా premium posters కు ప్రత్యేక ధర లేదా వేర్వేరు access rules ఉండవచ్చు.',
+            'ప్రస్తుత subscription plan కు ${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} రోజులు ఉంటుంది. Trial గడువు లోపు రద్దు చేయకపోతే, తరువాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున auto-renew అవుతుంది. ప్రస్తుత app access మరియు premium features ఈ subscription plan ప్రకారమే అందించబడతాయి.',
         english:
-            'The current subscription plan includes a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. If you do not cancel within the trial period, the plan auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month. Some premium templates or premium posters may have separate pricing or separate access rules.',
+            'The current subscription plan includes a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. If you do not cancel within the trial period, the plan auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month. Current app access and premium features are provided under this subscription plan.',
       ),
     ),
     _LegalSection(

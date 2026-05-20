@@ -7,14 +7,15 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/app.dart';
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/services/app_temporary_cleanup_service.dart';
-import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -33,6 +34,9 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       if (!kIsWeb) {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
+      if (!kIsWeb) {
         NotificationService.registerBackgroundHandler();
       }
       if (kIsWeb) {
@@ -42,13 +46,10 @@ Future<void> main() async {
         _attachFrameProfiler();
       }
 
-      await FirebaseBootstrap.ensureInitialized();
-      await _configureFirebaseMonitoring();
-
-      final snapshot = await AppFlowService.loadSnapshot();
-
-      runApp(ManaPosterApp(initialLanguage: snapshot.language));
-      unawaited(_runPostLaunchInitialization());
+      runApp(const ManaPosterApp());
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        unawaited(_runPostFirstFrameInitialization());
+      });
     },
     (error, stackTrace) {
       if (Firebase.apps.isNotEmpty && !kIsWeb) {
@@ -69,6 +70,15 @@ Future<void> main() async {
   );
 }
 
+Future<void> _runPostFirstFrameInitialization() async {
+  await _runStartupTask(
+    'firebase_bootstrap',
+    FirebaseBootstrap.ensureInitialized,
+  );
+  await _configureFirebaseMonitoring();
+  await _runPostLaunchInitialization();
+}
+
 Future<void> _runPostLaunchInitialization() async {
   if (Firebase.apps.isEmpty) {
     return;
@@ -87,20 +97,17 @@ Future<void> _runPostLaunchInitialization() async {
     );
     unawaited(
       _runStartupTask(
-        'background_removal_warmup',
-        OfflineBackgroundRemovalService.warmUp,
-      ),
-    );
-    unawaited(
-      _runStartupTask(
         'purchase_gateway_initialize',
         InAppPurchaseGateway().initialize,
       ),
     );
     if (AppPublicInfo.hasAnyAdMobConfig) {
       unawaited(
-        _runStartupTask('admob_initialize', () async {
-          await MobileAds.instance.initialize();
+        _runStartupTask('admob_consent_and_initialize', () async {
+          await AdMobConsentService.instance.prepareForAds();
+          if (await AdMobConsentService.instance.canRequestAds()) {
+            await MobileAds.instance.initialize();
+          }
         }),
       );
     }

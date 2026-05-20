@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/account_deletion_screen.dart';
@@ -47,15 +49,25 @@ class _ProfileScreenState extends State<ProfileScreen>
     photoUrl: '',
   );
   bool _loadingProfile = true;
+  bool _privacyChoicesVisible = false;
 
   @override
   void initState() {
     super.initState();
     _loadPosterProfile();
+    unawaited(_loadPrivacyChoicesVisibility());
+  }
+
+  Future<void> _loadPrivacyChoicesVisibility() async {
+    final required = await AdMobConsentService.instance.isPrivacyOptionsRequired();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _privacyChoicesVisible = required);
   }
 
   Future<void> _loadPosterProfile() async {
-    final profile = await PosterProfileService.loadLocal();
+    final profile = await PosterProfileService.load();
     if (!mounted) {
       return;
     }
@@ -64,22 +76,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       _loadingProfile = false;
     });
     _warmPosterProfileImage(profile);
-    unawaited(_refreshPosterProfileRemote(profile));
-  }
-
-  Future<void> _refreshPosterProfileRemote(PosterProfileData local) async {
-    final profile = await PosterProfileService.refreshFromRemote(
-      localProfile: local,
-    );
-    if (!mounted || profile == null) {
-      return;
-    }
-    setState(() => _posterProfile = profile);
-    _warmPosterProfileImage(profile);
   }
 
   void _warmPosterProfileImage(PosterProfileData profile) {
-    final imageProvider = PosterProfileService.resolveImageProvider(profile);
+    final imageProvider = PosterProfileService.resolveImageProvider(
+      profile,
+      preferOriginalPersonalPhoto:
+          profile.identityMode == PosterIdentityMode.personal,
+    );
     if (imageProvider == null || !mounted) {
       return;
     }
@@ -153,12 +157,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         return;
       }
       final box = context.findRenderObject() as RenderBox?;
-      await Share.shareXFiles(
-        <XFile>[XFile(iconFile.path)],
-        text: shareText,
-        sharePositionOrigin: box == null
-            ? null
-            : box.localToGlobal(Offset.zero) & box.size,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[XFile(iconFile.path)],
+          text: shareText,
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
       );
     } catch (_) {
       if (!mounted) {
@@ -184,6 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return PosterProfileDetailsScreen(
       initialProfile: _posterProfile,
+      accountEmail: FirebaseAuth.instance.currentUser?.email?.trim() ?? '',
       embeddedInProfileScreen: true,
       onSaved: (profile) {
         setState(() => _posterProfile = profile);
@@ -205,6 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   copy: copy,
                   onShareApp: () => _shareApp(copy),
                   onLogout: () => _logout(copy),
+                  showAdPrivacyChoices: _privacyChoicesVisible,
                 ),
               ),
             );
@@ -398,11 +406,13 @@ class _ProfileMoreScreen extends StatelessWidget {
     required this.copy,
     required this.onShareApp,
     required this.onLogout,
+    required this.showAdPrivacyChoices,
   });
 
   final _ProfileCopy copy;
   final Future<void> Function() onShareApp;
   final Future<void> Function() onLogout;
+  final bool showAdPrivacyChoices;
 
   Future<void> _openSubscriptionPlan(
     BuildContext context, {
@@ -541,6 +551,15 @@ class _ProfileMoreScreen extends StatelessWidget {
                   );
                 },
               ),
+              if (showAdPrivacyChoices)
+                _ProfileItemData(
+                  icon: Icons.ads_click_outlined,
+                  title: copy.adPrivacyChoicesTitle,
+                  subtitle: copy.adPrivacyChoicesSubtitle,
+                  onTap: () {
+                    unawaited(AdMobConsentService.instance.showPrivacyOptionsForm());
+                  },
+                ),
               _ProfileItemData(
                 icon: Icons.gavel_rounded,
                 title: copy.legalNoticesTitle,
@@ -569,6 +588,21 @@ class _ProfileMoreScreen extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const AboutAppScreen(),
+                    ),
+                  );
+                },
+              ),
+              _ProfileItemData(
+                icon: Icons.flag_outlined,
+                title: copy.reportIssueTitle,
+                subtitle: copy.reportIssueSubtitle,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => HelpSupportScreen(
+                        initialSubject: copy.reportIssueEmailSubject,
+                        initialBody: copy.reportIssueEmailBody,
+                      ),
                     ),
                   );
                 },
@@ -633,8 +667,10 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
     final userName = (user?.displayName?.trim().isNotEmpty ?? false)
         ? user!.displayName!.trim()
         : 'User';
-    await Share.share(
-      _service.buildShareText(status: status, userName: userName),
+    await SharePlus.instance.share(
+      ShareParams(
+        text: _service.buildShareText(status: status, userName: userName),
+      ),
     );
   }
 
@@ -940,6 +976,16 @@ class _ProfileCopy {
       ? '\u0c39\u0c46\u0c32\u0c4d\u0c2a\u0c4d \u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d'
       : strings.helpSupport;
   String? get helpSubtitle => _isTelugu ? 'సహాయం పొందండి' : 'Get help';
+  String get reportIssueTitle => _isTelugu
+      ? 'పోస్టర్ లేదా సమస్యను రిపోర్ట్ చేయండి'
+      : 'Report a poster or issue';
+  String get reportIssueSubtitle => _isTelugu
+      ? 'అనుచిత పోస్టర్ లేదా యాప్ సమస్యను సపోర్ట్‌కు పంపండి'
+      : 'Send an inappropriate poster or app issue report to support';
+  String get reportIssueEmailSubject => 'Mana Poster Ai Poster Report';
+  String get reportIssueEmailBody => _isTelugu
+      ? 'నమస్కారం Mana Poster Ai టీమ్,\n\nనేను ఒక పోస్టర్ లేదా యాప్ సమస్యను రిపోర్ట్ చేయాలనుకుంటున్నాను.\n\nవివరాలు:\n- సమస్య రకం:\n- పోస్టర్ పేరు లేదా కేటగిరీ:\n- Creator ID (తెలిస్తే):\n- ఏమి సమస్యగా అనిపించింది:\n'
+      : 'Hello Mana Poster Ai team,\n\nI want to report a poster or app issue.\n\nDetails:\n- Issue type:\n- Poster title or category:\n- Creator ID (if known):\n- What seems to be the problem:\n';
 
   String get aboutTitle => _isTelugu
       ? '\u0c2f\u0c3e\u0c2a\u0c4d \u0c17\u0c41\u0c30\u0c3f\u0c02\u0c1a\u0c3f'
@@ -963,6 +1009,11 @@ class _ProfileCopy {
       _isTelugu ? 'ప్రైవసీ పాలసీ' : 'Privacy Policy';
   String get privacyPolicySubtitle =>
       _isTelugu ? 'డేటా వినియోగం చూడండి' : 'Data usage and privacy';
+  String get adPrivacyChoicesTitle =>
+      _isTelugu ? 'యాడ్ ప్రైవసీ ఎంపికలు' : 'Ad privacy choices';
+  String get adPrivacyChoicesSubtitle => _isTelugu
+      ? 'పర్సనలైజ్డ్ యాడ్స్ సెట్టింగ్స్ మార్చండి'
+      : 'Manage personalized ad settings';
   String get legalNoticesTitle =>
       _isTelugu ? 'లీగల్ నోటీసెస్' : 'Legal Notices';
   String get legalNoticesSubtitle =>

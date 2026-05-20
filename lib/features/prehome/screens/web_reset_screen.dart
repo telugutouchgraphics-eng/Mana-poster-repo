@@ -16,7 +16,7 @@ class WebResetScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Text(
-                  'Mana Poster website is being rebuilt.',
+                  'This page is not available in the app.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
@@ -26,7 +26,7 @@ class WebResetScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'The previous public landing content has been cleared. A fresh website will be added here next.',
+                  'Please go back and continue using the main app features.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
