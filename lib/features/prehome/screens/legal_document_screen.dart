@@ -218,8 +218,8 @@ class _LegalCopy {
         );
 
   String get lastUpdated => strings.localized(
-    telugu: 'చివరి నవీకరణ: 17 మే 2026',
-    english: 'Last updated: May 17, 2026',
+    telugu: 'చివరి నవీకరణ: 21 మే 2026',
+    english: 'Last updated: May 21, 2026',
   );
 
   List<_LegalSection> get sections =>
@@ -265,6 +265,18 @@ class _LegalCopy {
     ),
     _LegalSection(
       strings.localized(
+        telugu: 'కమ్యూనిటీ పోస్టర్ అప్లోడ్లు మరియు సమీక్ష',
+        english: 'Community Uploads and Review',
+      ),
+      strings.localized(
+        telugu:
+            'Users poster images ను manager review కోసం upload చేయవచ్చు. Upload చేసిన image, selected category, upload time, applicable visibility date, review status, rejection reason, share/download contribution counts మరియు related moderation history ను process చేయవచ్చు. Approved upload related category లో ఇతర users కు కనిపించవచ్చు. Pending, rejected లేదా policy-violating uploads ను review, reject, remove లేదా retain చేయడానికి managers/admins కు హక్కు ఉంటుంది.',
+        english:
+            'Users may upload poster images for manager review. We may process the uploaded image, selected category, upload time, applicable visibility date, review status, rejection reason, contribution share/download counts, and related moderation history. Approved uploads may become visible to other users in the related category. Managers and admins may review, reject, remove, or retain pending, rejected, or policy-violating uploads as part of moderation and record-keeping.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
         telugu: 'Firebase, Analytics మరియు Ads',
         english: 'Firebase, Analytics, and Ads',
       ),
@@ -273,6 +285,18 @@ class _LegalCopy {
             'యాప్ Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing మరియు AdMob ను ఉపయోగిస్తుంది. ఈ సేవలు app performance, crash diagnostics, notifications, billing verification మరియు ad delivery కోసం ఉపయోగించబడతాయి. Personalized లేదా non-personalized ads అందించడానికి AdMob device identifiers, IP address మరియు usage data ను సేకరించవచ్చు.',
         english:
             'The app uses Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing, and AdMob. These services support app performance, crash diagnostics, notifications, billing verification, and ad delivery. AdMob may collect device identifiers, IP address, and usage data to provide personalized or non-personalized ads.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'డేటా షేరింగ్',
+        english: 'Data Sharing',
+      ),
+      strings.localized(
+        telugu:
+            'మేము personal data ను అమ్మము. Data essential service providers, lawful authorities, billing/review partners లేదా legal/security obligations కోసం అవసరమైనప్పుడు మాత్రమే share చేయవచ్చు.',
+        english:
+            'We do not sell personal data. Data may be shared only with essential service providers, lawful authorities, or where reasonably necessary for billing, moderation, fraud prevention, security, or legal compliance.',
       ),
     ),
     _LegalSection(
@@ -319,6 +343,18 @@ class _LegalCopy {
             'మీరు optional notifications మరియు permissions ను off చేయవచ్చు. యాప్‌లో account deletion request option అందుబాటులో ఉంటుంది. Users complete data deletion ను in-app deletion option ద్వారా లేదా support ను సంప్రదించడం ద్వారా request చేయవచ్చు. Account delete చేసిన తర్వాత login access, poster profile details మరియు linked app data తొలగించబడవచ్చు. కొన్ని billing, tax, anti-fraud లేదా platform-required records పరిమిత కాలం నిల్వ ఉండవచ్చు. మరిన్ని వివరాలు: ${AppPublicInfo.accountDeletionUrl}',
         english:
             'You can turn off optional notifications and permissions. The app provides an in-app account deletion request option. Users can request complete data deletion using the in-app deletion option or by contacting support. After deletion, login access, poster profile details, and linked app data may be removed. Some billing, tax, anti-fraud, or platform-required records may be retained for a limited period. More details: ${AppPublicInfo.accountDeletionUrl}',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'రిపోర్టింగ్ మరియు అపరిచిత/అనుచిత కంటెంట్',
+        english: 'Reporting and Abusive Content',
+      ),
+      strings.localized(
+        telugu:
+            'అపరిచిత, దుర్వినియోగ, కాపీరైట్ ఉల్లంఘన, impersonation లేదా spam పోస్టర్ కనిపిస్తే, app లో available support/report option లేదా ${AppPublicInfo.supportEmail} ద్వారా report చేయవచ్చు. Complaints, moderation decisions, review evidence మరియు limited enforcement records ను abuse prevention, legal compliance మరియు safety కోసం retain చేయవచ్చు.',
+        english:
+            'If you see abusive, infringing, impersonating, deceptive, or spam content, you can report it using the app support/report option or by emailing ${AppPublicInfo.supportEmail}. Complaints, moderation decisions, review evidence, and limited enforcement records may be retained for abuse prevention, legal compliance, and user safety.',
       ),
     ),
     _LegalSection(
@@ -412,9 +448,33 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'యాప్‌లో account deletion request option అందుబాటులో ఉంటుంది. Delete అభ్యర్థన తర్వాత login access, poster profile data మరియు linked app data తొలగించబడవచ్చు. కొన్ని billing లేదా platform-required records పరిమిత కాలం నిల్వ ఉండవచ్చు. అలాగే session controls కారణంగా ఒకే ఖాతా ఒకేసారి ఒక ప్రధాన పరికరంలో మాత్రమే యాక్టివ్‌గా ఉండవచ్చు.',
+            'యాప్‌లో account deletion request option అందుబాటులో ఉంటుంది. Delete అభ్యర్థన తర్వాత login access, poster profile data మరియు linked app data తొలగించబడవచ్చు. కొన్ని billing లేదా platform-required records పరిమిత కాలం నిల్వ ఉండవచ్చు.',
         english:
-            'The app provides an account deletion request option. After deletion, login access, poster profile data, and linked app data may be removed. Some billing or platform-required records may be retained for a limited period. Session controls may also keep one account active on one primary device at a time.',
+            'The app provides an account deletion request option. After deletion, login access, poster profile data, and linked app data may be removed. Some billing or platform-required records may be retained for a limited period.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'కమ్యూనిటీ అప్లోడ్లు, మోడరేషన్ మరియు రిపోర్టింగ్',
+        english: 'Community Uploads, Moderation, and Reporting',
+      ),
+      strings.localized(
+        telugu:
+            'Users manager review కోసం posters upload చేయవచ్చు. Copyright లేకుండా third-party content upload చేయడం, ఇతరులుగా నటించడం, abusive/offensive content, deceptive political misuse, spam uploads, repeated low-quality uploads, illegal notices, fake claims లేదా rights లేని material నిషేధించబడుతుంది. Managers/admins uploads ను approve, reject, customize, delay, unpublish లేదా remove చేయవచ్చు. Rejected uploads కు reason ఇవ్వవచ్చు. Abuse లేదా infringement report చేయడానికి app support flow లేదా ${AppPublicInfo.supportEmail} ఉపయోగించవచ్చు.',
+        english:
+            'Users may upload posters for manager review. Uploading third-party content without rights, impersonation, abusive or offensive content, deceptive political misuse, spam uploads, repeated low-quality uploads, illegal notices, fake claims, or material you do not have rights to use is prohibited. Managers and admins may approve, reject, customize, delay, unpublish, or remove uploads. Rejected uploads may include a reason. Abusive or infringing content can be reported through the app support flow or by emailing ${AppPublicInfo.supportEmail}.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'డివైస్ యాక్సెస్ మరియు సెషన్స్',
+        english: 'Device Access and Sessions',
+      ),
+      strings.localized(
+        telugu:
+            'ఖాతా భద్రత కోసం ఒకే ఖాతా ఒకేసారి ఒక primary device session పై మాత్రమే కొనసాగవచ్చు. అదే ఖాతా మరొక primary device పై activate అయితే పాత session sign out కావచ్చు. ఇది account misuse మరియు unauthorized access ను తగ్గించడానికి ఉపయోగించబడుతుంది.',
+        english:
+            'For account security, one account may remain active on only one primary device session at a time. If the same account is activated on another primary device, the previous session may be signed out. This helps reduce account misuse and unauthorized access.',
       ),
     ),
     _LegalSection(

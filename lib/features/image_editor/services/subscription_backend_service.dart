@@ -68,6 +68,7 @@ class SubscriptionBackendService {
   );
   static SubscriptionBackendResult? _cachedEntitlement;
   static DateTime? _cachedEntitlementAt;
+  static Future<void>? _pendingRecoveryFuture;
   static final ValueNotifier<SubscriptionBackendResult?> entitlementNotifier =
       ValueNotifier<SubscriptionBackendResult?>(null);
   final FirebaseAuth _firebaseAuth;
@@ -182,25 +183,39 @@ class SubscriptionBackendService {
   }
 
   Future<void> recoverPendingPurchaseInBackground() async {
+    final existing = _pendingRecoveryFuture;
+    if (existing != null) {
+      return existing;
+    }
+    final future = _recoverPendingPurchaseInBackgroundOnce();
+    _pendingRecoveryFuture = future;
     try {
-      final evidence = await InAppPurchaseGateway().recoverUnfinishedPurchase();
-      if (evidence == null) {
-        return;
-      }
-      final verification = await verifyPurchase(evidence: evidence);
-      if (!verification.hasAccess) {
-        return;
-      }
-      await evidence.completeStorePurchase();
-      await PlayBillingAccountBindingService.instance
-          .clearPendingSubscriptionBinding(
-            reason: 'pending_purchase_recovered',
-          );
-      await fetchFreshEntitlementWithRetry();
+      await future;
     } catch (_) {
       // Keep recovery best-effort; Play will continue surfacing unfinished
       // purchases until they are verified and completed.
+    } finally {
+      if (identical(_pendingRecoveryFuture, future)) {
+        _pendingRecoveryFuture = null;
+      }
     }
+  }
+
+  Future<void> _recoverPendingPurchaseInBackgroundOnce() async {
+    final evidence = await InAppPurchaseGateway().recoverUnfinishedPurchase();
+    if (evidence == null) {
+      return;
+    }
+    final verification = await verifyPurchase(evidence: evidence);
+    if (!verification.hasAccess) {
+      return;
+    }
+    await evidence.completeStorePurchase();
+    await PlayBillingAccountBindingService.instance
+        .clearPendingSubscriptionBinding(
+          reason: 'pending_purchase_recovered',
+        );
+    await fetchFreshEntitlementWithRetry();
   }
 
   Future<SubscriptionBackendResult> verifyPurchase({

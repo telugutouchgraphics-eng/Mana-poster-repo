@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
@@ -28,6 +29,13 @@ class _SplashScreenState extends State<SplashScreen>
   Timer? _navigationTimer;
   String _nextRoute = AppRoutes.language;
 
+  void _startupLog(String message) {
+    if (!kDebugMode) {
+      return;
+    }
+    developer.log(message, name: 'splash.startup.trace');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -44,7 +52,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
     _animationController.forward();
-
     unawaited(_prepareNextRoute());
   }
 
@@ -72,14 +79,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _prepareNextRoute() async {
     try {
-      await FirebaseBootstrap.ensureInitialized().timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {},
+      await FirebaseBootstrap.ensureInitialized();
+      _startupLog(
+        'firebase_initialized=${FirebaseBootstrap.hasFirebaseApp}',
       );
       final snapshot = await AppFlowService.loadSnapshot().timeout(
         const Duration(seconds: 2),
       );
-      final bool isAuthenticated = _hasAuthenticatedUser();
+      _startupLog(
+        'snapshot languageSelected=${snapshot.languageSelected}'
+        ' permissionsHandled=${snapshot.permissionsStepHandled}'
+        ' initialSetupCompleted=${snapshot.initialSetupCompleted}'
+        ' language=${snapshot.language.name}',
+      );
+      final User? startupUser = await _resolveStartupUser();
+      final bool isAuthenticated = startupUser != null;
+      _startupLog(
+        'startup_user uid=${startupUser?.uid ?? 'null'}'
+        ' email=${startupUser?.email ?? 'null'}',
+      );
       final bool permissionsHandled =
           await AppFlowService.resolvePermissionsStepHandled().timeout(
             const Duration(seconds: 2),
@@ -94,17 +112,26 @@ class _SplashScreenState extends State<SplashScreen>
       } else {
         nextRoute = AppRoutes.home;
       }
+      _startupLog(
+        'pre_profile_route_decision nextRoute=$nextRoute'
+        ' isAuthenticated=$isAuthenticated'
+        ' permissionsHandled=$permissionsHandled',
+      );
       await AppFlowService.syncInitialSetupCompletion(
         isAuthenticated: isAuthenticated,
       ).timeout(const Duration(seconds: 2));
       if (nextRoute == AppRoutes.home) {
-        nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute()
-            .timeout(const Duration(seconds: 2));
+        nextRoute = await AppFlowService.resolveAuthenticatedEntryRouteForStartup()
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => AppRoutes.profileSetup,
+            );
       }
       if (!mounted) {
         return;
       }
       _nextRoute = nextRoute;
+      _startupLog('final_route_decision nextRoute=$_nextRoute');
     } catch (error, stackTrace) {
       developer.log(
         'Splash route preparation failed. Falling back to language screen.',
@@ -128,11 +155,28 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  bool _hasAuthenticatedUser() {
+  Future<User?> _resolveStartupUser() async {
     try {
-      return FirebaseAuth.instance.currentUser != null;
+      if (!FirebaseBootstrap.hasFirebaseApp) {
+        _startupLog('resolve_startup_user firebase_not_ready');
+        return null;
+      }
+      final auth = FirebaseAuth.instance;
+      final currentUser = auth.currentUser;
+      _startupLog('currentUser_at_startup uid=${currentUser?.uid ?? 'null'}');
+      if (currentUser != null) {
+        return currentUser;
+      }
+      final firstAuthState = await auth.authStateChanges().first.timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => auth.currentUser,
+      );
+      _startupLog(
+        'authStateChanges_first uid=${firstAuthState?.uid ?? 'null'}',
+      );
+      return firstAuthState;
     } on Exception {
-      return false;
+      return null;
     }
   }
 

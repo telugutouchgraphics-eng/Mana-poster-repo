@@ -76,9 +76,8 @@ class PermissionService {
     final Permission cameraPermission = await _resolveCameraPermission();
     final PermissionStatus photosStatus = await _safeStatus(photosPermission);
     final PermissionStatus cameraStatus = await _safeStatus(cameraPermission);
-    final PermissionStatus notificationsStatus = await _safeStatus(
-      Permission.notification,
-    );
+    final PermissionStatus notificationsStatus =
+        await _resolveNotificationStatus();
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -101,9 +100,8 @@ class PermissionService {
     final Permission cameraPermission = await _resolveCameraPermission();
     final PermissionStatus photosStatus = await _safeRequest(photosPermission);
     final PermissionStatus cameraStatus = await _safeRequest(cameraPermission);
-    final PermissionStatus notificationsStatus = await _safeRequest(
-      Permission.notification,
-    );
+    final PermissionStatus notificationsStatus =
+        await _requestNotificationStatus();
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -122,6 +120,9 @@ class PermissionService {
   }
 
   Future<PermissionStatus> requestSingle(AppPermissionType type) async {
+    if (type == AppPermissionType.notifications) {
+      return _requestNotificationStatus();
+    }
     final Permission permission = await _permissionFor(type);
     return _safeRequest(permission);
   }
@@ -135,7 +136,7 @@ class PermissionService {
       case AppPermissionType.camera:
         return _resolveCameraPermission();
       case AppPermissionType.notifications:
-        return Future<Permission>.value(Permission.notification);
+        return _resolveNotificationPermission();
     }
   }
 
@@ -154,6 +155,10 @@ class PermissionService {
 
   Future<Permission> _resolveCameraPermission() async {
     return Permission.camera;
+  }
+
+  Future<Permission> _resolveNotificationPermission() async {
+    return Permission.notification;
   }
 
   Future<int?> _loadAndroidSdkInt() async {
@@ -183,5 +188,31 @@ class PermissionService {
     } catch (_) {
       return PermissionStatus.denied;
     }
+  }
+
+  Future<PermissionStatus> _resolveNotificationStatus() async {
+    if (kIsWeb) {
+      return PermissionStatus.granted;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final int? sdkInt = await _loadAndroidSdkInt();
+      if (sdkInt != null && sdkInt < 33) {
+        return PermissionStatus.granted;
+      }
+    }
+    return _safeStatus(await _resolveNotificationPermission());
+  }
+
+  Future<PermissionStatus> _requestNotificationStatus() async {
+    if (kIsWeb) {
+      return PermissionStatus.granted;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final int? sdkInt = await _loadAndroidSdkInt();
+      if (sdkInt != null && sdkInt < 33) {
+        return PermissionStatus.granted;
+      }
+    }
+    return _safeRequest(await _resolveNotificationPermission());
   }
 }

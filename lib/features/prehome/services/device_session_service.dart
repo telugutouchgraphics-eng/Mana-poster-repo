@@ -65,6 +65,12 @@ class DeviceSessionService {
       return;
     }
 
+    try {
+      await _pushSessionOwnership(user);
+    } catch (_) {
+      // Keep login flow moving even if this best-effort ownership sync fails.
+    }
+
     _remoteSessionSubscription = _firestore
         .collection('users')
         .doc(user.uid)

@@ -10,6 +10,14 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
+    function isManager() {
+      return signedIn() && request.auth.token.manager == true;
+    }
+
+    function isModerator() {
+      return isAdmin() || isManager();
+    }
+
     function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
     }
@@ -156,6 +164,77 @@ service cloud.firestore {
         validPlatform(request.resource.data.platform);
     }
 
+    function validUserUploadStatus(value) {
+      return value in ["pending", "approved", "rejected"];
+    }
+
+    function validUserPosterUploadCreate() {
+      return request.resource.data.keys().hasOnly([
+          "id",
+          "contributionKind",
+          "userId",
+          "userName",
+          "userEmail",
+          "userMobile",
+          "imageUrl",
+          "imagePath",
+          "categoryId",
+          "categoryLabel",
+          "status",
+          "rejectionReason",
+          "approvedPosterTemplateId",
+          "shareCount",
+          "downloadCount",
+          "createdAt",
+          "updatedAt",
+          "expiresAt",
+          "appVisibleFromAt",
+        ]) &&
+        request.resource.data.id is string &&
+        request.resource.data.id.size() > 0 &&
+        request.resource.data.contributionKind == "user_upload" &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.userName is string &&
+        request.resource.data.userName.size() > 0 &&
+        request.resource.data.userEmail is string &&
+        request.resource.data.userMobile is string &&
+        request.resource.data.imageUrl is string &&
+        request.resource.data.imageUrl.size() > 0 &&
+        request.resource.data.imagePath is string &&
+        request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/community_uploads/.*") &&
+        request.resource.data.categoryId is string &&
+        request.resource.data.categoryId.size() > 0 &&
+        request.resource.data.categoryLabel is string &&
+        request.resource.data.categoryLabel.size() > 0 &&
+        request.resource.data.status == "pending" &&
+        request.resource.data.rejectionReason == "" &&
+        request.resource.data.approvedPosterTemplateId == "" &&
+        request.resource.data.shareCount == 0 &&
+        request.resource.data.downloadCount == 0 &&
+        request.resource.data.createdAt is int &&
+        request.resource.data.updatedAt is int &&
+        request.resource.data.expiresAt is int &&
+        request.resource.data.appVisibleFromAt is int;
+    }
+
+    function validOwnerUserPosterUploadCounterUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "shareCount",
+          "downloadCount",
+          "updatedAt",
+        ]) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.status == "approved" &&
+        request.resource.data.rejectionReason == resource.data.rejectionReason &&
+        request.resource.data.approvedPosterTemplateId == resource.data.approvedPosterTemplateId &&
+        request.resource.data.shareCount is int &&
+        request.resource.data.downloadCount is int &&
+        request.resource.data.shareCount >= resource.data.shareCount &&
+        request.resource.data.downloadCount >= resource.data.downloadCount &&
+        request.resource.data.updatedAt is int;
+    }
+
     // Direct client access to subscription entitlements is read-only for owner.
     // Writes must go through trusted backend (Cloud Functions with Admin SDK).
     match /users/{userId}/entitlements/{entitlementId} {
@@ -215,6 +294,26 @@ service cloud.firestore {
     match /appBanners/{bannerId} {
       allow read: if resource.data.active == true;
       allow create, update, delete: if false;
+    }
+
+    // Community contribution uploads. Owners can create/read their own uploads.
+    // Manager/Admin review updates are allowed via moderator claims (or server SDK).
+    match /userPosterUploads/{uploadId} {
+      allow read: if signedIn() &&
+        (resource.data.userId == request.auth.uid || isModerator());
+
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        validUserPosterUploadCreate();
+
+      // Owner can only increment contribution counts on approved uploads.
+      allow update: if signedIn() &&
+        resource.data.userId == request.auth.uid &&
+        validOwnerUserPosterUploadCounterUpdate();
+
+      // Manager/Admin can review (approve/reject) and update status fields.
+      allow update: if isModerator();
+      allow delete: if false;
     }
 
     // Website/landing pages are intentionally not connected to app portals.

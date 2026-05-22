@@ -53,6 +53,14 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
+    // Community contribution uploads used for manager review queue.
+    match /users/{userId}/community_uploads/{fileName} {
+      allow read: if isOwner(userId) || isManager();
+      allow create, update: if isOwner(userId) &&
+        isAllowedPosterImageUpload();
+      allow delete: if isOwner(userId) || isManager();
+    }
+
     match /landing-media/{mediaId}/{fileName} {
       allow read, create, update, delete: if false;
     }
@@ -80,6 +88,16 @@ service firebase.storage {
     }
 
     match /portal_assets/admin_app_posters/{categoryId}/{posterId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isAdmin() &&
+        isAllowedPosterImageUpload();
+      allow delete: if isAdmin();
+    }
+
+    // Legacy admin-upload poster assets are already published in the public
+    // home feed via creatorPosters docs. Keep reads public so older records
+    // can resolve safely without auth errors.
+    match /portal_assets/admin_upload_posters/{categoryId}/{posterId}/{fileName} {
       allow read: if true;
       allow create, update: if isAdmin() &&
         isAllowedPosterImageUpload();

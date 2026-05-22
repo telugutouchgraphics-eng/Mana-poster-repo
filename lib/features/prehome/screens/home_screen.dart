@@ -10,12 +10,13 @@ import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -28,6 +29,7 @@ import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -37,6 +39,7 @@ import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
+import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
@@ -44,8 +47,10 @@ import 'package:mana_poster/features/prehome/services/dynamic_category_service.d
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
+import 'package:mana_poster/features/prehome/services/user_poster_uploads_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
+import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -76,6 +81,18 @@ bool _posterStringLooksFirebaseResolvable(String raw) {
   return lower.startsWith('gs://') ||
       lower.contains('firebasestorage.googleapis.com') ||
       lower.contains('firebasestorage.app');
+}
+
+/// Already-public HTTP(S) poster asset URLs can be rendered directly without
+/// minting another authenticated Firebase Storage download URL.
+bool _posterStringLooksDirectHttpDownloadUrl(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) {
+    return false;
+  }
+  final lower = s.toLowerCase();
+  return (lower.startsWith('http://') || lower.startsWith('https://')) &&
+      !lower.startsWith('gs://');
 }
 
 /// Looks like a Storage object path for [FirebaseStorage.ref], not http(s).
@@ -128,8 +145,10 @@ List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
     out.add(_PosterFirebaseCandidate.url(t));
   }
 
+  bool isGsUrl(String value) => value.trim().toLowerCase().startsWith('gs://');
+
   addPath(imageStoragePath);
-  if (_posterStringLooksFirebaseResolvable(imageUrl)) {
+  if (isGsUrl(imageUrl)) {
     addUrl(imageUrl);
   } else if (_posterStringLooksFirebaseStorageRelativePath(imageUrl)) {
     addPath(imageUrl);
@@ -140,7 +159,7 @@ List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
   final tTrim = thumbnailUrl.trim();
   final iTrim = imageUrl.trim();
   if (tTrim.isNotEmpty && tTrim != iTrim) {
-    if (_posterStringLooksFirebaseResolvable(thumbnailUrl)) {
+    if (isGsUrl(thumbnailUrl)) {
       addUrl(thumbnailUrl);
     } else if (_posterStringLooksFirebaseStorageRelativePath(thumbnailUrl)) {
       addPath(thumbnailUrl);
@@ -342,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen>
   ];
 
   final DynamicCategoryService _dynamicCategoryService =
-      const DynamicCategoryService();
+      const DynamicCategoryService(daysBeforeEvent: 7);
   final AppHomeBannerService _appHomeBannerService =
       const AppHomeBannerService();
   final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
@@ -367,7 +386,6 @@ class _HomeScreenState extends State<HomeScreen>
   bool _templatesHasMore = true;
   String? _categoryLoadingSlug;
   int _categoryLoadGeneration = 0;
-  bool _viewerProfileLoading = true;
   bool _hasRatedApp = false;
   String _installedAppVersion = '';
   bool _posterPhotoDragInProgress = false;
@@ -522,7 +540,10 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (selectedCategory.slug == _allCategorySlug) {
-      return true;
+      // Time-based greeting filtering applies only to the All feed. Manual
+      // category selections (including Good Morning/Afternoon/Night) continue
+      // using the existing category matching logic below.
+      return _matchesAllCategoryTimeWindow(item);
     }
 
     final chipSlug = _normalizeTag(selectedCategory.slug);
@@ -553,6 +574,80 @@ class _HomeScreenState extends State<HomeScreen>
 
     final fallbackNeedle = _normalizeTag(selectedCategory.label);
     return fallbackNeedle.isNotEmpty && searchable.contains(fallbackNeedle);
+  }
+
+  bool _matchesAllCategoryTimeWindow(_TemplateItem item) {
+    final itemTags = <String>{};
+    for (final tag in item.categoryTags) {
+      final normalized = _normalizeTag(tag);
+      if (normalized.isNotEmpty) {
+        itemTags.addAll(_expandCategoryAliases(normalized));
+      }
+    }
+
+    const greetingTags = <String>{
+      'good_morning',
+      'good_afternoon',
+      'good_night',
+    };
+    final itemGreetingTags = itemTags.intersection(greetingTags);
+    if (itemGreetingTags.isEmpty) {
+      return true;
+    }
+
+    final activeGreetingTag = _activeAllCategoryGreetingTag(
+      IstTimeService.now(),
+    );
+    return itemGreetingTags.contains(activeGreetingTag);
+  }
+
+  String _activeAllCategoryGreetingTag(DateTime now) {
+    final hour = now.hour;
+    if (hour < 12) {
+      return 'good_morning';
+    }
+    if (hour >= 12 && hour < 18) {
+      return 'good_afternoon';
+    }
+    return 'good_night';
+  }
+
+  List<_TemplateItem> _shuffleAllCategoryTemplates(
+    List<_TemplateItem> templates,
+  ) {
+    if (templates.length < 2) {
+      return templates;
+    }
+
+    // Mix the final All-category feed after time filtering without changing
+    // any manual category behavior. Keep the order stable for the current day
+    // and active greeting window so rebuilds do not keep reordering the list.
+    final now = IstTimeService.now();
+    final seed = Object.hash(
+      now.year,
+      now.month,
+      now.day,
+      _activeAllCategoryGreetingTag(now),
+    );
+    final shuffled = List<_TemplateItem>.of(templates, growable: false);
+    shuffled.sort((a, b) {
+      final aKey = Object.hash(
+        seed,
+        a.templateId ?? '',
+        a.imageUrl ?? '',
+        a.thumbnailUrl ?? '',
+        a.titleEn,
+      );
+      final bKey = Object.hash(
+        seed,
+        b.templateId ?? '',
+        b.imageUrl ?? '',
+        b.thumbnailUrl ?? '',
+        b.titleEn,
+      );
+      return aKey.compareTo(bKey);
+    });
+    return shuffled;
   }
 
   /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
@@ -1048,6 +1143,124 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _scheduleHomeFeedRepaint() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+    });
+  }
+
+  bool _needsAdditionalAllFeedTemplates(List<_TemplateItem> templates) {
+    if (_selectedCategorySlug != _allCategorySlug) {
+      return false;
+    }
+    if (_searchController.text.trim().isNotEmpty || templates.isEmpty) {
+      return false;
+    }
+    return !templates.any(_matchesAllCategoryTimeWindow);
+  }
+
+  Future<
+    ({
+      List<_TemplateItem> templates,
+      QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
+      bool hasMore,
+    })
+  >
+  _expandAllFeedTemplatesIfNeeded({
+    required List<_TemplateItem> initialTemplates,
+    required QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
+    required bool hasMore,
+  }) async {
+    if (!_needsAdditionalAllFeedTemplates(initialTemplates)) {
+      return (
+        templates: initialTemplates,
+        lastDocument: lastDocument,
+        hasMore: hasMore,
+      );
+    }
+
+    final merged = <_TemplateItem>[...initialTemplates];
+    final seenKeys = <String>{
+      for (final item in initialTemplates)
+        item.templateId ??
+            item.imageUrl ??
+            item.imageStoragePath ??
+            '${item.titleEn}-${item.videoUrl ?? ''}',
+    };
+    QueryDocumentSnapshot<Map<String, dynamic>>? resolvedLastDocument =
+        lastDocument;
+    var resolvedHasMore = hasMore;
+    if (resolvedLastDocument != null && resolvedHasMore) {
+      QueryDocumentSnapshot<Map<String, dynamic>>? cursor = resolvedLastDocument;
+      var canLoadMore = resolvedHasMore;
+      const maxExtraPages = 4;
+
+      for (var pageIndex = 0; pageIndex < maxExtraPages; pageIndex++) {
+        final currentCursor = cursor;
+        if (!canLoadMore ||
+            currentCursor == null ||
+            !_needsAdditionalAllFeedTemplates(merged)) {
+          break;
+        }
+        final extraPage = await _approvedCreatorTemplateService
+            .fetchApprovedTemplatesPage(
+              pageSize: _templatesPageSize,
+              startAfterDocument: currentCursor,
+              source: Source.server,
+            );
+        final mapped = extraPage.templates
+            .map(_mapApprovedCreatorTemplate)
+            .toList(growable: false);
+        for (final item in mapped) {
+          final key =
+              item.templateId ??
+              item.imageUrl ??
+              item.imageStoragePath ??
+              '${item.titleEn}-${item.videoUrl ?? ''}';
+          if (seenKeys.add(key)) {
+            merged.add(item);
+          }
+        }
+        cursor = extraPage.lastDocument;
+        canLoadMore = extraPage.hasMore;
+      }
+      resolvedLastDocument = cursor;
+      resolvedHasMore = canLoadMore;
+    }
+
+    if (_needsAdditionalAllFeedTemplates(merged)) {
+      final widePage = await _approvedCreatorTemplateService
+          .fetchApprovedTemplatesPage(
+            pageSize: _templatesPageSize * 6,
+            source: Source.server,
+          );
+      final mapped = widePage.templates
+          .map(_mapApprovedCreatorTemplate)
+          .toList(growable: false);
+      for (final item in mapped) {
+        final key =
+            item.templateId ??
+            item.imageUrl ??
+            item.imageStoragePath ??
+            '${item.titleEn}-${item.videoUrl ?? ''}';
+        if (seenKeys.add(key)) {
+          merged.add(item);
+        }
+      }
+      resolvedLastDocument = widePage.lastDocument ?? resolvedLastDocument;
+      resolvedHasMore = widePage.hasMore || resolvedHasMore;
+    }
+
+    return (
+      templates: merged,
+      lastDocument: resolvedLastDocument,
+      hasMore: resolvedHasMore,
+    );
+  }
+
   Future<void> _loadApprovedCreatorTemplatesInternal() async {
     if (mounted) {
       setState(() {
@@ -1069,6 +1282,7 @@ class _HomeScreenState extends State<HomeScreen>
         _templatesHasMore = cachedPage.hasMore;
         _templatesLastDocument = cachedPage.lastDocument;
       });
+      _scheduleHomeFeedRepaint();
     }
 
     final remotePage = await _approvedCreatorTemplateService
@@ -1076,15 +1290,47 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    final mapped = remotePage.templates
+    var mapped = remotePage.templates
         .map(_mapApprovedCreatorTemplate)
         .toList(growable: false);
+    if (mapped.isEmpty) {
+      final retryPage = await _approvedCreatorTemplateService
+          .fetchApprovedTemplatesPage(
+            pageSize: _templatesPageSize,
+            source: Source.server,
+          );
+      if (!mounted) {
+        return;
+      }
+      mapped = retryPage.templates
+          .map(_mapApprovedCreatorTemplate)
+          .toList(growable: false);
+      final expanded = await _expandAllFeedTemplatesIfNeeded(
+        initialTemplates: mapped,
+        lastDocument: retryPage.lastDocument,
+        hasMore: retryPage.hasMore,
+      );
+      setState(() {
+        _remoteApprovedTemplates = expanded.templates;
+        _templatesLoading = false;
+        _templatesHasMore = expanded.hasMore;
+        _templatesLastDocument = expanded.lastDocument;
+      });
+      _scheduleHomeFeedRepaint();
+      return;
+    }
+    final expanded = await _expandAllFeedTemplatesIfNeeded(
+      initialTemplates: mapped,
+      lastDocument: remotePage.lastDocument,
+      hasMore: remotePage.hasMore,
+    );
     setState(() {
-      _remoteApprovedTemplates = mapped;
+      _remoteApprovedTemplates = expanded.templates;
       _templatesLoading = false;
-      _templatesHasMore = remotePage.hasMore;
-      _templatesLastDocument = remotePage.lastDocument;
+      _templatesHasMore = expanded.hasMore;
+      _templatesLastDocument = expanded.lastDocument;
     });
+    _scheduleHomeFeedRepaint();
   }
 
   Future<bool> _loadMoreApprovedCreatorTemplates() async {
@@ -1213,9 +1459,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadViewerPosterProfileInternal() async {
-    if (mounted) {
-      setState(() => _viewerProfileLoading = true);
-    }
     final localProfile = await PosterProfileService.loadLocal();
     if (!mounted) {
       return;
@@ -1236,7 +1479,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
     setState(() {
       _viewerPosterProfile = resolvedProfile;
-      _viewerProfileLoading = false;
     });
   }
 
@@ -1260,7 +1502,6 @@ class _HomeScreenState extends State<HomeScreen>
       _homeRefreshing = true;
       _posterRenderCycle += 1;
       _templatesLoading = true;
-      _viewerProfileLoading = true;
     });
     _searchFocusNode.unfocus();
     try {
@@ -1459,6 +1700,25 @@ class _HomeScreenState extends State<HomeScreen>
     return entries;
   }
 
+  bool _shouldShowHomeBannerAdFallback(
+    SubscriptionBackendResult? entitlement,
+  ) {
+    if (!AppPublicInfo.hasHomeBannerAdUnitId) {
+      return false;
+    }
+    if (entitlement?.hasAccess == true) {
+      return false;
+    }
+    if (InAppPurchaseGateway.playStoreProActive) {
+      return false;
+    }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null && entitlement == null) {
+      return false;
+    }
+    return true;
+  }
+
   Future<bool> _openPlayStore() async {
     final uri = Uri.parse(AppPublicInfo.playStoreUrl);
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1521,6 +1781,82 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Future<void> _openUserUploadsSheet() async {
+    if (!mounted) {
+      return;
+    }
+    final strings = context.strings;
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        Future<void> openUploadPoster() async {
+          Navigator.of(sheetContext).pop();
+          if (!mounted) {
+            return;
+          }
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const UserPosterUploadsScreen(initialTabIndex: 0),
+            ),
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => unawaited(openUploadPoster()),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD81B60),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.add_rounded, size: 18),
+                    ),
+                    label: Text(
+                      strings.localized(
+                        telugu: 'పోస్టర్ అప్‌లోడ్',
+                        english: 'Upload Poster',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: Text(
+                    strings.localized(telugu: 'రద్దు', english: 'Cancel'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _handlePromoTap(_HomePromoCardType type) async {
     switch (type) {
       case _HomePromoCardType.subscribe:
@@ -1566,16 +1902,17 @@ class _HomeScreenState extends State<HomeScreen>
     if (slug == _allCategorySlug) {
       return;
     }
+    const minimumCategoryTemplateCount = _templatesPageSize;
     var attempts = 0;
     while (mounted &&
         generation == _categoryLoadGeneration &&
-        attempts < 8 &&
+        attempts < 20 &&
         _templatesHasMore) {
       final category = _categoryForSlug(slug, language);
-      final hasMatch = _remoteApprovedTemplates.any(
-        (item) => _matchesTemplate(item, language, category),
-      );
-      if (hasMatch) {
+      final matchingCount = _remoteApprovedTemplates
+          .where((item) => _matchesTemplate(item, language, category))
+          .length;
+      if (matchingCount >= minimumCategoryTemplateCount) {
         break;
       }
       if (_templatesLoading || _templatesLoadingMore) {
@@ -1601,7 +1938,7 @@ class _HomeScreenState extends State<HomeScreen>
   _CategoryChipData _categoryForSlug(String slug, AppLanguage language) {
     final staticCategories = _buildStaticCategories();
     final dynamicCategories = _buildDynamicCategories(
-      DateTime.now(),
+      IstTimeService.now(),
       language,
       templatesLoading: _templatesLoading,
     );
@@ -1653,7 +1990,7 @@ class _HomeScreenState extends State<HomeScreen>
     final language = context.currentLanguage;
     final staticCategories = _buildStaticCategories();
     final dynamicCategories = _buildDynamicCategories(
-      DateTime.now(),
+      IstTimeService.now(),
       language,
       templatesLoading: _templatesLoading,
     );
@@ -1675,9 +2012,12 @@ class _HomeScreenState extends State<HomeScreen>
     );
     final strings = context.strings;
     final List<_TemplateItem> freeTemplates = _remoteApprovedTemplates;
-    final templates = freeTemplates
+    final filteredTemplates = freeTemplates
         .where((item) => _matchesTemplate(item, language, selectedCategory))
         .toList(growable: false);
+    final templates = selectedCategory.slug == _allCategorySlug
+        ? _shuffleAllCategoryTemplates(filteredTemplates)
+        : filteredTemplates;
     final effectiveEntitlement =
         SubscriptionBackendService.entitlementNotifier.value ??
         _TemplateFeedItem.subscriptionBackendService.cachedEntitlement;
@@ -1692,13 +2032,21 @@ class _HomeScreenState extends State<HomeScreen>
       templates: templates,
       promoCards: promoCards,
     );
-    final hidePosterFeed =
-        _templatesLoading || _homeRefreshing || _viewerProfileLoading;
+    // Keep the poster feed visible as soon as templates are ready. Profile
+    // refresh can continue in parallel without blanking the full home list.
+    final hidePosterFeed = _templatesLoading || _homeRefreshing;
     final loadingSelectedCategory =
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => unawaited(_openUserUploadsSheet()),
+        tooltip: 'Community Uploads',
+        backgroundColor: const Color(0xFFD81B60),
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add_rounded),
+      ),
       body: Column(
         children: <Widget>[
           RepaintBoundary(
@@ -1776,8 +2124,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 .subscriptionBackendService
                                 .cachedEntitlement;
                         final shouldShowAdFallback =
-                            AppPublicInfo.hasHomeBannerAdUnitId &&
-                            !(effectiveEntitlement?.hasAccess ?? false);
+                            _shouldShowHomeBannerAdFallback(
+                              effectiveEntitlement,
+                            );
                         if (!shouldShowAdFallback) {
                           return const SliverToBoxAdapter(
                             child: SizedBox.shrink(),
@@ -3030,6 +3379,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     'Reshma',
     'Tejafont',
   ];
+  static const List<String> _randomEnglishPosterNameFonts = <String>[
+    'Anton',
+    'Archivo Black',
+    'Bebas Neue',
+    'League Spartan',
+    'Playfair Display',
+  ];
   final GlobalKey _posterCaptureKey = GlobalKey();
   final ScreenshotController _posterScreenshotController =
       ScreenshotController();
@@ -3049,24 +3405,21 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   String? _queuedPosterWarmupSignature;
   static bool _globalAutoPosterWarmupActive = false;
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
-  static const List<_PosterPhotoPreset> _posterPhotoPresets =
-      <_PosterPhotoPreset>[
-        _PosterPhotoPreset(shape: 'circle', photoRenderMode: 'original'),
-        _PosterPhotoPreset(shape: 'square', photoRenderMode: 'original'),
-        _PosterPhotoPreset(shape: 'flower', photoRenderMode: 'cutout'),
-        _PosterPhotoPreset(shape: 'blob', photoRenderMode: 'cutout'),
-        _PosterPhotoPreset(shape: 'transparent_clean', photoRenderMode: 'cutout'),
-        _PosterPhotoPreset(
-          shape: 'transparent_bottom_fade',
-          photoRenderMode: 'cutout',
-        ),
-        _PosterPhotoPreset(shape: 'arch', photoRenderMode: 'original'),
-        _PosterPhotoPreset(
-          shape: 'scallop_circle',
-          photoRenderMode: 'original',
-        ),
-        _PosterPhotoPreset(shape: 'shield', photoRenderMode: 'original'),
-      ];
+  static const List<_PosterPhotoPreset>
+  _posterPhotoPresets = <_PosterPhotoPreset>[
+    _PosterPhotoPreset(shape: 'circle', photoRenderMode: 'original'),
+    _PosterPhotoPreset(shape: 'square', photoRenderMode: 'original'),
+    _PosterPhotoPreset(shape: 'flower', photoRenderMode: 'cutout'),
+    _PosterPhotoPreset(shape: 'blob', photoRenderMode: 'cutout'),
+    _PosterPhotoPreset(shape: 'transparent_clean', photoRenderMode: 'cutout'),
+    _PosterPhotoPreset(
+      shape: 'transparent_bottom_fade',
+      photoRenderMode: 'cutout',
+    ),
+    _PosterPhotoPreset(shape: 'arch', photoRenderMode: 'original'),
+    _PosterPhotoPreset(shape: 'scallop_circle', photoRenderMode: 'original'),
+    _PosterPhotoPreset(shape: 'shield', photoRenderMode: 'original'),
+  ];
 
   _PosterPhotoUserAdjustment _photoUserAdjustment =
       _PosterPhotoUserAdjustment.none;
@@ -3110,14 +3463,40 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     return _randomPosterNameFonts[index];
   }
 
-  String? _stripNameFontFamily(String text, String teluguFontFamily) {
+  String _resolveEnglishPosterNameFontFamily(String resolvedName) {
+    final personalizationConfig = item.personalizationConfig;
+    final seedSource =
+        '${item.imageUrl ?? item.imageAssetPath ?? 'poster'}'
+        '|${personalizationConfig?.nameX ?? 0}'
+        '|${personalizationConfig?.nameY ?? 0}'
+        '|${personalizationConfig?.stripHeight ?? 0}'
+        '|english|$resolvedName';
+    var hash = 17;
+    for (final codeUnit in seedSource.codeUnits) {
+      hash = 37 * hash + codeUnit;
+    }
+    final index = hash.abs() % _randomEnglishPosterNameFonts.length;
+    return _randomEnglishPosterNameFonts[index];
+  }
+
+  String? _resolveDisplayNameFontFamily(String text) {
     if (_teluguTextPattern.hasMatch(text)) {
-      return teluguFontFamily;
+      return _resolvePosterNameFontFamily(text);
     }
     if (_latinTextPattern.hasMatch(text)) {
-      return 'League Spartan';
+      return _resolveEnglishPosterNameFontFamily(text);
     }
     return null;
+  }
+
+  String _resolveDesignationFontFamily(String text) {
+    if (_teluguTextPattern.hasMatch(text)) {
+      return 'Pallavi Medium';
+    }
+    if (_latinTextPattern.hasMatch(text)) {
+      return 'Poppins';
+    }
+    return 'Poppins';
   }
 
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
@@ -3202,7 +3581,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
         ? 1
         : (currentIndex + 1) % presetsWithDefault.length;
     final next = presetsWithDefault[nextIndex];
-    if (next.shape == defaultShape && next.photoRenderMode == defaultRenderMode) {
+    if (next.shape == defaultShape &&
+        next.photoRenderMode == defaultRenderMode) {
       return null;
     }
     return next;
@@ -3322,11 +3702,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     final resolvedDesignation = isBusinessProfile
         ? viewerPosterProfile.businessTagline.trim()
         : viewerPosterProfile.whatsappNumber.trim();
-    final displayNameFontFamily = _stripNameFontFamily(
-      resolvedName,
-      _resolvePosterNameFontFamily(resolvedName),
+    final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
+    final designationFontFamily = _resolveDesignationFontFamily(
+      resolvedDesignation,
     );
-    const designationFontFamily = 'Pallavi Medium';
     final futures = <Future<String?>>[];
 
     if (_shouldConvertForLegacyTelugu(resolvedName, displayNameFontFamily) &&
@@ -3437,6 +3816,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   }
 
   bool _hasImmediateSubscriptionAccess() {
+    if (InAppPurchaseGateway.playStoreProActive) {
+      unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
+      return true;
+    }
     final cachedEntitlement = _subscriptionBackendService.cachedEntitlement;
     if (_subscriptionBackendService.hasFreshEntitlementCache &&
         cachedEntitlement?.hasAccess == true) {
@@ -3445,15 +3828,24 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     return false;
   }
 
-  bool _shouldRunBlockingSubscriptionStatusCheck() {
+  bool _canAttemptLiveSubscriptionStatusCheck() {
     if (!_subscriptionBackendService.isConfigured) {
+      return false;
+    }
+    return FirebaseAuth.instance.currentUser != null;
+  }
+
+  bool _shouldRunBlockingSubscriptionStatusCheck() {
+    if (!_canAttemptLiveSubscriptionStatusCheck()) {
       return false;
     }
     if (_hasImmediateSubscriptionAccess()) {
       return true;
     }
-    final cachedEntitlement = _subscriptionBackendService.cachedEntitlement;
-    return cachedEntitlement?.hasAccess == true;
+    // When the app has not hydrated the entitlement cache yet, subscribed
+    // users can otherwise see a false paywall on download/share. If we have
+    // a logged-in user, do one live backend check before showing the plan.
+    return true;
   }
 
   bool get _legacySubscriptionStatusPopupEnabled => false;
@@ -3737,6 +4129,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             imageStoragePath: item.imageStoragePath,
             thumbnailStoragePath: item.thumbnailStoragePath,
             thumbnailUrl: item.thumbnailUrl,
+            posterIdForDebug: item.templateId,
             onFirstFrameReady: () => onPosterReadyChanged?.call(true),
           );
   }
@@ -3767,6 +4160,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   }
 
   Future<bool> _resolveLatestSubscriptionAccess() async {
+    if (InAppPurchaseGateway.playStoreProActive) {
+      unawaited(
+        _subscriptionBackendService.refreshEntitlementInBackground(
+          forceRefresh: true,
+        ),
+      );
+      return true;
+    }
+
     final cachedHint = await _subscriptionBackendService
         .fetchEntitlementWithCache(forceRefresh: false);
     if (cachedHint.hasAccess) {
@@ -4077,6 +4479,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             ),
           );
         }
+        final posterId = item.templateId?.trim();
+        if (posterId != null && posterId.isNotEmpty) {
+          unawaited(
+            UserPosterUploadsService.instance
+                .incrementApprovedContributionCountForPoster(
+                  approvedPosterTemplateId: posterId,
+                  isShare: false,
+                ),
+          );
+        }
         _showSnack(messenger, posterSavedMessage);
         return;
       }
@@ -4161,6 +4573,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             ? null
             : box.localToGlobal(Offset.zero) & box.size,
       );
+      final posterId = item.templateId?.trim();
+      if (posterId != null && posterId.isNotEmpty) {
+        unawaited(
+          UserPosterUploadsService.instance
+              .incrementApprovedContributionCountForPoster(
+                approvedPosterTemplateId: posterId,
+                isShare: true,
+              ),
+        );
+      }
       result = true;
     } on MediaShareException catch (error, stackTrace) {
       result = false;
@@ -4687,6 +5109,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
     this.imageStoragePath,
     this.thumbnailStoragePath,
     this.thumbnailUrl,
+    this.posterIdForDebug,
     this.onFirstFrameReady,
   });
 
@@ -4695,6 +5118,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
   final String? imageStoragePath;
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
+  final String? posterIdForDebug;
   final VoidCallback? onFirstFrameReady;
 
   @override
@@ -4706,6 +5130,8 @@ class _ResolvedTemplatePosterImageState
     extends State<_ResolvedTemplatePosterImage> {
   static final Map<String, String> _resolvedDownloadUrlCache =
       <String, String>{};
+  static final Set<String> _failedResolveKeys = <String>{};
+  static final Set<String> _loggedResolveFailures = <String>{};
 
   String? _resolvedImageUrl;
   int _resolveGeneration = 0;
@@ -4735,6 +5161,12 @@ class _ResolvedTemplatePosterImageState
     final direct = widget.imageUrl?.trim() ?? '';
     final thumb = widget.thumbnailUrl?.trim() ?? '';
 
+    final hasDirectDownloadUrl = _posterStringLooksDirectHttpDownloadUrl(direct);
+    if (hasDirectDownloadUrl) {
+      _resolvedImageUrl = direct;
+      return;
+    }
+
     final candidates = List<_PosterFirebaseCandidate>.from(
       _posterFirebaseResolveCandidates(
         imageStoragePath: path,
@@ -4743,9 +5175,16 @@ class _ResolvedTemplatePosterImageState
         thumbnailUrl: thumb,
       ),
     );
+    final cacheKey = _cacheKeyFor(candidates);
 
     if (candidates.isNotEmpty) {
-      _resolvedImageUrl = _resolvedDownloadUrlCache[_cacheKeyFor(candidates)];
+      _resolvedImageUrl = _resolvedDownloadUrlCache[cacheKey];
+      if (_failedResolveKeys.contains(cacheKey)) {
+        _resolvedImageUrl = direct.isNotEmpty
+            ? direct
+            : (thumb.isNotEmpty ? thumb : _resolvedImageUrl);
+        return;
+      }
       unawaited(
         _resolvePosterFirebaseDownloads(
           candidates: candidates,
@@ -4799,10 +5238,18 @@ class _ResolvedTemplatePosterImageState
       return;
     }
     if (lastError != null && lastTrace != null) {
-      _homeDebugLogStack(
-        'All Firebase poster download URL resolves failed (${candidates.length} attempts): $lastError',
-        lastTrace,
-      );
+      final cacheKey = _cacheKeyFor(candidates);
+      _failedResolveKeys.add(cacheKey);
+      final posterId = (widget.posterIdForDebug ?? '').trim();
+      final debugIdentity = posterId.isNotEmpty ? posterId : cacheKey;
+      if (_loggedResolveFailures.add(debugIdentity)) {
+        final attempted = candidates.map((item) => item.value.trim()).join(', ');
+        _homeDebugLogStack(
+          'Poster asset resolve skipped after unauthorized/invalid access '
+          'for $debugIdentity: $lastError; attempted=[$attempted]',
+          lastTrace,
+        );
+      }
     }
   }
 
@@ -5383,7 +5830,8 @@ class _CreatorPosterPreview extends StatefulWidget {
   final void Function({
     required double deltaXPercent,
     required double deltaYPercent,
-  }) onPhotoDragDeltaPercent;
+  })
+  onPhotoDragDeltaPercent;
   final ValueChanged<bool> onPhotoDragStateChanged;
   final ValueChanged<bool>? onPosterReadyChanged;
 
@@ -5402,6 +5850,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     'Reshma',
     'Tejafont',
   ];
+  static const List<String> _randomEnglishPosterNameFonts = <String>[
+    'Anton',
+    'Archivo Black',
+    'Bebas Neue',
+    'League Spartan',
+    'Playfair Display',
+  ];
 
   static const List<List<Color>> _posterStripGradients = <List<Color>>[
     <Color>[Color(0xFF071E48), Color(0xFF0057B8)],
@@ -5417,6 +5872,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   final Map<String, String> _legacyTextOverrides = <String, String>{};
   final Set<String> _legacyTextRequestsInFlight = <String>{};
   Timer? _baseImageReadyFallbackTimer;
+  Offset? _activePhotoDragLastGlobalPosition;
 
   void _scheduleBaseImageReadyFallback() {
     _baseImageReadyFallbackTimer?.cancel();
@@ -5501,6 +5957,50 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     _emitPosterReadyChanged();
   }
 
+  void _startPhotoDrag(Offset globalPosition) {
+    _activePhotoDragLastGlobalPosition = globalPosition;
+    widget.onPhotoDragStateChanged(true);
+  }
+
+  void _updatePhotoDrag({
+    required Offset globalPosition,
+    required double currentLeft,
+    required double currentTop,
+    required double maxWidth,
+    required double totalCanvasHeight,
+    required double photoWidth,
+    required double photoHeight,
+  }) {
+    final previousGlobalPosition = _activePhotoDragLastGlobalPosition;
+    _activePhotoDragLastGlobalPosition = globalPosition;
+    if (previousGlobalPosition == null) {
+      return;
+    }
+    final delta = globalPosition - previousGlobalPosition;
+    final clampedLeft = (currentLeft + delta.dx).clamp(
+      0.0,
+      math.max(0.0, maxWidth - photoWidth),
+    );
+    final clampedTop = (currentTop + delta.dy).clamp(
+      0.0,
+      math.max(0.0, totalCanvasHeight - photoHeight),
+    );
+    final appliedDeltaX = clampedLeft - currentLeft;
+    final appliedDeltaY = clampedTop - currentTop;
+    if (appliedDeltaX == 0 && appliedDeltaY == 0) {
+      return;
+    }
+    widget.onPhotoDragDeltaPercent(
+      deltaXPercent: (appliedDeltaX / maxWidth) * 100,
+      deltaYPercent: (appliedDeltaY / totalCanvasHeight) * 100,
+    );
+  }
+
+  void _endPhotoDrag() {
+    _activePhotoDragLastGlobalPosition = null;
+    widget.onPhotoDragStateChanged(false);
+  }
+
   String _resolvePosterNameFontFamily(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
@@ -5538,14 +6038,39 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     return averageLuminance > 0.48 ? const Color(0xFF111827) : Colors.white;
   }
 
-  String? _stripNameFontFamily(String text, String teluguFontFamily) {
+  String _resolveEnglishPosterNameFontFamily(String resolvedName) {
+    final seedSource =
+        '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
+        '|${widget.personalizationConfig.nameX}'
+        '|${widget.personalizationConfig.nameY}'
+        '|${widget.personalizationConfig.stripHeight}'
+        '|english|$resolvedName';
+    var hash = 17;
+    for (final codeUnit in seedSource.codeUnits) {
+      hash = 37 * hash + codeUnit;
+    }
+    final index = hash.abs() % _randomEnglishPosterNameFonts.length;
+    return _randomEnglishPosterNameFonts[index];
+  }
+
+  String? _resolveDisplayNameFontFamily(String text) {
     if (_teluguTextPattern.hasMatch(text)) {
-      return teluguFontFamily;
+      return _resolvePosterNameFontFamily(text);
     }
     if (_latinTextPattern.hasMatch(text)) {
-      return 'League Spartan';
+      return _resolveEnglishPosterNameFontFamily(text);
     }
     return null;
+  }
+
+  String _resolveDesignationFontFamily(String text) {
+    if (_teluguTextPattern.hasMatch(text)) {
+      return 'Pallavi Medium';
+    }
+    if (_latinTextPattern.hasMatch(text)) {
+      return 'Poppins';
+    }
+    return 'Poppins';
   }
 
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
@@ -5617,13 +6142,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final resolvedDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
         : widget.viewerPosterProfile.whatsappNumber.trim();
-    final displayNameFontFamily = _stripNameFontFamily(
-      resolvedName,
-      _resolvePosterNameFontFamily(resolvedName),
-    );
+    final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     await Future.wait<void>(<Future<void>>[
       _primeLegacyTextValue(resolvedName, displayNameFontFamily),
-      _primeLegacyTextValue(resolvedDesignation, 'Pallavi Medium'),
+      _primeLegacyTextValue(
+        resolvedDesignation,
+        _resolveDesignationFontFamily(resolvedDesignation),
+      ),
     ]);
   }
 
@@ -5683,14 +6208,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         ? widget.viewerPosterProfile.activeWhatsappNumber.trim()
         : '';
     final isTeluguName = _teluguTextPattern.hasMatch(resolvedName);
-    final displayNameFontFamily = _stripNameFontFamily(
-      resolvedName,
-      _resolvePosterNameFontFamily(resolvedName),
-    );
+    final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     final personalNameFontSize = isTeluguName ? 42.0 : 36.0;
     final personalNameLineHeight = isTeluguName ? 0.82 : 0.95;
     final businessNameFontSize = isTeluguName ? 34.0 : 28.0;
-    const designationFontFamily = 'Pallavi Medium';
+    final designationFontFamily = _resolveDesignationFontFamily(
+      resolvedDesignation,
+    );
     final stripGradient = _resolvePosterStripGradient(resolvedName);
     final stripTextColor = _onStripColor(stripGradient);
     final mutedStripTextColor = stripTextColor.withValues(alpha: 0.86);
@@ -5732,245 +6256,225 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                           child: IgnorePointer(
                             ignoring: !showPersonalizationPaint,
                             child: LayoutBuilder(
-                              builder:
-                                  (
-                                    BuildContext context,
-                                    BoxConstraints constraints,
-                                  ) {
-                                    final photoScale =
-                                        widget
-                                            .personalizationConfig
-                                            .photoScale /
-                                        100;
-                                    final baseImageHeight = math.max(
-                                      1.0,
-                                      constraints.maxHeight -
-                                          stripOverflowAllowance,
-                                    );
-                                    final totalCanvasHeight = math.max(
-                                      1.0,
-                                      constraints.maxHeight,
-                                    );
-                                    final visualScale = isBusinessProfile
-                                        ? photoScale * 0.72
-                                        : photoScale;
-                                    final effectivePhotoShape =
-                                        isBusinessProfile
-                                        ? 'circle'
-                                        : (widget.photoShapeOverride.trim().isNotEmpty
-                                              ? widget.photoShapeOverride.trim()
-                                              : widget
-                                                    .personalizationConfig
-                                                    .photoShape);
-                                    final effectivePhotoRenderMode =
-                                        isBusinessProfile
-                                        ? 'original'
-                                        : (widget
-                                                  .photoRenderModeOverride
-                                                  .trim()
-                                                  .isNotEmpty
-                                              ? widget.photoRenderModeOverride
-                                                    .trim()
-                                              : widget
-                                                    .personalizationConfig
-                                                    .photoRenderMode);
-                                    final maskAspectRatio =
-                                        _photoMaskAspectRatio(
-                                          effectivePhotoShape,
-                                        );
-                                    final width =
-                                        constraints.maxWidth * visualScale;
-                                    final height = width / maskAspectRatio;
-                                    final left =
-                                        (constraints.maxWidth *
+                              builder: (BuildContext context, BoxConstraints constraints) {
+                                final photoScale =
+                                    widget.personalizationConfig.photoScale /
+                                    100;
+                                final baseImageHeight = math.max(
+                                  1.0,
+                                  constraints.maxHeight -
+                                      stripOverflowAllowance,
+                                );
+                                final totalCanvasHeight = math.max(
+                                  1.0,
+                                  constraints.maxHeight,
+                                );
+                                final visualScale = isBusinessProfile
+                                    ? photoScale * 0.72
+                                    : photoScale;
+                                final effectivePhotoShape = isBusinessProfile
+                                    ? 'circle'
+                                    : (widget.photoShapeOverride
+                                              .trim()
+                                              .isNotEmpty
+                                          ? widget.photoShapeOverride.trim()
+                                          : widget
+                                                .personalizationConfig
+                                                .photoShape);
+                                final effectivePhotoRenderMode =
+                                    isBusinessProfile
+                                    ? 'original'
+                                    : (widget.photoRenderModeOverride
+                                              .trim()
+                                              .isNotEmpty
+                                          ? widget.photoRenderModeOverride
+                                                .trim()
+                                          : widget
+                                                .personalizationConfig
+                                                .photoRenderMode);
+                                final maskAspectRatio = _photoMaskAspectRatio(
+                                  effectivePhotoShape,
+                                );
+                                final width =
+                                    constraints.maxWidth * visualScale;
+                                final height = width / maskAspectRatio;
+                                final left =
+                                    (constraints.maxWidth *
+                                        (widget.personalizationConfig.photoX /
+                                            100)) -
+                                    (width / 2) +
+                                    (constraints.maxWidth *
+                                        (widget.photoXOffsetPercent / 100));
+                                final top =
+                                    (baseImageHeight *
+                                        (widget.personalizationConfig.photoY /
+                                            100)) -
+                                    (height / 2) +
+                                    (totalCanvasHeight *
+                                        (widget.photoYOffsetPercent / 100));
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: <Widget>[
+                                    Positioned(
+                                      left: left,
+                                      top: top,
+                                      width: width,
+                                      height: height,
+                                      child: RawGestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        gestures:
+                                            <Type, GestureRecognizerFactory>{
+                                              TapGestureRecognizer:
+                                                  GestureRecognizerFactoryWithHandlers<
+                                                    TapGestureRecognizer
+                                                  >(
+                                                    TapGestureRecognizer.new,
+                                                    (
+                                                      TapGestureRecognizer
+                                                      instance,
+                                                    ) {
+                                                      instance.onTap = widget
+                                                              .interactivePhotoEnabled
+                                                          ? widget.onPhotoTap
+                                                          : null;
+                                                    },
+                                                  ),
+                                              LongPressGestureRecognizer:
+                                                  GestureRecognizerFactoryWithHandlers<
+                                                    LongPressGestureRecognizer
+                                                  >(
+                                                    () => LongPressGestureRecognizer(
+                                                      duration: const Duration(
+                                                        seconds: 2,
+                                                      ),
+                                                    ),
+                                                    (
+                                                      LongPressGestureRecognizer
+                                                      instance,
+                                                    ) {
+                                                      if (!widget
+                                                          .interactivePhotoEnabled) {
+                                                        instance
+                                                          ..onLongPressStart =
+                                                              null
+                                                          ..onLongPressMoveUpdate =
+                                                              null
+                                                          ..onLongPressEnd = null
+                                                          ..onLongPressCancel =
+                                                              null;
+                                                        return;
+                                                      }
+                                                      instance.onLongPressStart =
+                                                          (
+                                                            LongPressStartDetails
+                                                            details,
+                                                          ) => _startPhotoDrag(
+                                                            details
+                                                                .globalPosition,
+                                                          );
+                                                      instance.onLongPressMoveUpdate =
+                                                          (
+                                                            LongPressMoveUpdateDetails
+                                                            details,
+                                                          ) => _updatePhotoDrag(
+                                                            globalPosition: details
+                                                                .globalPosition,
+                                                            currentLeft: left,
+                                                            currentTop: top,
+                                                            maxWidth: constraints
+                                                                .maxWidth,
+                                                            totalCanvasHeight:
+                                                                totalCanvasHeight,
+                                                            photoWidth: width,
+                                                            photoHeight: height,
+                                                          );
+                                                      instance.onLongPressEnd =
+                                                          (
+                                                            LongPressEndDetails
+                                                            _,
+                                                          ) => _endPhotoDrag();
+                                                      instance.onLongPressCancel =
+                                                          _endPhotoDrag;
+                                                    },
+                                                  ),
+                                            },
+                                        child: _PhotoShapeFrame(
+                                          shape: effectivePhotoShape,
+                                          edgeStyle: widget
+                                              .personalizationConfig
+                                              .edgeStyle,
+                                          photoRenderMode:
+                                              effectivePhotoRenderMode,
+                                          isBusinessLogo: isBusinessProfile,
+                                          child: PosterIdentityVisual(
+                                            profile: widget.viewerPosterProfile,
+                                            fit: isBusinessProfile
+                                                ? BoxFit.contain
+                                                : effectivePhotoRenderMode ==
+                                                      'cutout'
+                                                ? BoxFit.contain
+                                                : BoxFit.cover,
+                                            preferOriginalPersonalPhoto:
+                                                effectivePhotoRenderMode ==
+                                                'original',
+                                            allowOriginalFallbackWhenCutoutUnavailable:
+                                                effectivePhotoRenderMode ==
+                                                'original',
+                                            textScale:
+                                                widget
+                                                        .viewerPosterProfile
+                                                        .identityMode ==
+                                                    PosterIdentityMode.business
+                                                ? 0.84
+                                                : 1.0,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (!widget
+                                        .personalizationConfig
+                                        .showBottomStrip)
+                                      Positioned(
+                                        left:
+                                            constraints.maxWidth *
                                             (widget
                                                     .personalizationConfig
-                                                    .photoX /
-                                                100)) -
-                                        (width / 2) +
-                                        (constraints.maxWidth *
-                                            (widget.photoXOffsetPercent / 100));
-                                    final top =
-                                        (baseImageHeight *
+                                                    .nameX /
+                                                100),
+                                        top:
+                                            constraints.maxHeight *
                                             (widget
                                                     .personalizationConfig
-                                                    .photoY /
-                                                100)) -
-                                        (height / 2) +
-                                        (totalCanvasHeight *
-                                            (widget.photoYOffsetPercent / 100));
-                                    return Stack(
-                                      clipBehavior: Clip.none,
-                                      children: <Widget>[
-                                        Positioned(
-                                          left: left,
-                                          top: top,
-                                          width: width,
-                                          height: height,
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: widget.interactivePhotoEnabled
-                                                ? widget.onPhotoTap
-                                                : null,
-                                            onPanStart:
-                                                widget.interactivePhotoEnabled
-                                                ? (_) => widget
-                                                      .onPhotoDragStateChanged(
-                                                        true,
-                                                      )
-                                                : null,
-                                            onPanUpdate:
-                                                widget.interactivePhotoEnabled
-                                                ? (DragUpdateDetails details) {
-                                                    final currentLeft = left;
-                                                    final currentTop = top;
-                                                    final clampedLeft =
-                                                        (currentLeft +
-                                                                details
-                                                                    .delta
-                                                                    .dx)
-                                                            .clamp(
-                                                              0.0,
-                                                              math.max(
-                                                                0.0,
-                                                                constraints
-                                                                        .maxWidth -
-                                                                    width,
-                                                              ),
-                                                            );
-                                                    final clampedTop =
-                                                        (currentTop +
-                                                                details
-                                                                    .delta
-                                                                    .dy)
-                                                            .clamp(
-                                                              0.0,
-                                                              math.max(
-                                                                0.0,
-                                                                totalCanvasHeight -
-                                                                    height,
-                                                              ),
-                                                            );
-                                                    final deltaX =
-                                                        clampedLeft -
-                                                        currentLeft;
-                                                    final deltaY =
-                                                        clampedTop -
-                                                        currentTop;
-                                                    if (deltaX == 0 &&
-                                                        deltaY == 0) {
-                                                      return;
-                                                    }
-                                                    widget.onPhotoDragDeltaPercent(
-                                                      deltaXPercent:
-                                                          (deltaX /
-                                                              constraints
-                                                                  .maxWidth) *
-                                                          100,
-                                                      deltaYPercent:
-                                                          (deltaY /
-                                                              totalCanvasHeight) *
-                                                          100,
-                                                    );
-                                                  }
-                                                : null,
-                                            onPanEnd:
-                                                widget.interactivePhotoEnabled
-                                                ? (_) => widget
-                                                      .onPhotoDragStateChanged(
-                                                        false,
-                                                      )
-                                                : null,
-                                            onPanCancel:
-                                                widget.interactivePhotoEnabled
-                                                ? () => widget
-                                                      .onPhotoDragStateChanged(
-                                                        false,
-                                                      )
-                                                : null,
-                                            child: _PhotoShapeFrame(
-                                              shape: effectivePhotoShape,
-                                              edgeStyle: widget
-                                                  .personalizationConfig
-                                                  .edgeStyle,
-                                              photoRenderMode:
-                                                  effectivePhotoRenderMode,
-                                              isBusinessLogo:
-                                                  isBusinessProfile,
-                                              child: PosterIdentityVisual(
-                                                profile:
-                                                    widget.viewerPosterProfile,
-                                                fit: isBusinessProfile
-                                                    ? BoxFit.contain
-                                                    : effectivePhotoRenderMode ==
-                                                          'cutout'
-                                                    ? BoxFit.contain
-                                                    : BoxFit.cover,
-                                                preferOriginalPersonalPhoto:
-                                                    effectivePhotoRenderMode ==
-                                                    'original',
-                                                allowOriginalFallbackWhenCutoutUnavailable:
-                                                    effectivePhotoRenderMode ==
-                                                    'original',
-                                                textScale:
-                                                    widget
-                                                            .viewerPosterProfile
-                                                            .identityMode ==
-                                                        PosterIdentityMode
-                                                            .business
-                                                    ? 0.84
-                                                    : 1.0,
+                                                    .nameY /
+                                                100),
+                                        child: Transform.translate(
+                                          offset: const Offset(-80, -16),
+                                          child: SizedBox(
+                                            width: 160,
+                                            child: _legacyAwareText(
+                                              text: resolvedName,
+                                              fontFamily: displayNameFontFamily,
+                                              maxLines: 1,
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 18,
+                                                shadows: const <Shadow>[
+                                                  Shadow(
+                                                    color: Color(0xCC000000),
+                                                    blurRadius: 4,
+                                                    offset: Offset(0, 1),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
                                         ),
-                                        if (!widget
-                                            .personalizationConfig
-                                            .showBottomStrip)
-                                          Positioned(
-                                            left:
-                                                constraints.maxWidth *
-                                                (widget
-                                                        .personalizationConfig
-                                                        .nameX /
-                                                    100),
-                                            top:
-                                                constraints.maxHeight *
-                                                (widget
-                                                        .personalizationConfig
-                                                        .nameY /
-                                                    100),
-                                            child: Transform.translate(
-                                              offset: const Offset(-80, -16),
-                                              child: SizedBox(
-                                                width: 160,
-                                                child: _legacyAwareText(
-                                                  text: resolvedName,
-                                                  fontFamily:
-                                                      displayNameFontFamily,
-                                                  maxLines: 1,
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w800,
-                                                    fontSize: 18,
-                                                    shadows: const <Shadow>[
-                                                      Shadow(
-                                                        color: Color(
-                                                          0xCC000000,
-                                                        ),
-                                                        blurRadius: 4,
-                                                        offset: Offset(0, 1),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    );
-                                  },
+                                      ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -67,7 +68,8 @@ class ApprovedCreatorTemplateService {
       }
       final snapshot = await query.get(GetOptions(source: source));
 
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs = snapshot.docs
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs = snapshot
+          .docs
           .toList(growable: false);
       var filteredTemplates = _filterPublished(
         _mapSortedTemplates(mergedDocs),
@@ -179,8 +181,8 @@ class ApprovedCreatorTemplateService {
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     int maxItems,
   ) {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final nowDate = DateTime.now();
+    final now = IstTimeService.nowEpochMillis();
+    final nowDate = IstTimeService.now();
     final activeDynamicTags = _activeDynamicTagsForDate(nowDate);
     final knownDynamicTags = _knownDynamicTags();
     final publishMap = <String, int>{};
@@ -509,7 +511,7 @@ class ApprovedCreatorTemplateService {
   Set<String> _activeDynamicTagsForDate(DateTime now) {
     final service = DynamicCategoryService(
       repository: _dynamicEventRepository,
-      daysBeforeEvent: 0,
+      daysBeforeEvent: 3,
     );
     final output = <String>{};
     for (final category in service.categoriesForDate(now)) {

@@ -12,6 +12,7 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
+import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 
@@ -237,7 +238,10 @@ class _PosterProfileDetailsScreenState
         originalTargetPath,
         if (targetPath.isNotEmpty) targetPath,
       };
-      await _deleteLocalAssetUnlessKept(_draftProfile.photoPath, keepNewPersonalAssets);
+      await _deleteLocalAssetUnlessKept(
+        _draftProfile.photoPath,
+        keepNewPersonalAssets,
+      );
       await _deleteLocalAssetUnlessKept(
         _draftProfile.originalPhotoPath,
         keepNewPersonalAssets,
@@ -666,8 +670,9 @@ class _PosterProfileDetailsScreenState
     return Scaffold(
       backgroundColor: minimalSetup ? cs.surface : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor:
-            minimalSetup ? cs.surfaceContainerLow : const Color(0xFFF3F6FB),
+        backgroundColor: minimalSetup
+            ? cs.surfaceContainerLow
+            : const Color(0xFFF3F6FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: !widget.embeddedInProfileScreen,
@@ -729,10 +734,41 @@ class _PosterProfileDetailsScreenState
                   ),
                 ),
                 const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: _saving
+                      ? null
+                      : () {
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const UserPosterUploadsScreen(
+                                profileOnly: true,
+                              ),
+                            ),
+                          );
+                        },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF0F766E),
+                    side: const BorderSide(color: Color(0xFF99F6E4)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    strings.localized(
+                      telugu: 'నా అప్‌లోడ్లు',
+                      english: 'My Uploads',
+                      hindi: 'मेरे अपलोड',
+                      tamil: 'எனது அப்லோட்கள்',
+                      kannada: 'ನನ್ನ ಅಪ್‌ಲೋಡ್‌ಗಳು',
+                      malayalam: 'എന്റെ അപ്‌ലോഡുകൾ',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
               FilledButton(
-                onPressed:
-                    _saving || !hasUnsavedChanges ? null : _saveProfile,
+                onPressed: _saving || !hasUnsavedChanges ? null : _saveProfile,
                 style: FilledButton.styleFrom(
                   backgroundColor: hasUnsavedChanges
                       ? const Color(0xFF6D28D9)

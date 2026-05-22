@@ -7,7 +7,6 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
-import 'package:mana_poster/features/prehome/widgets/flow_screen_header.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 
@@ -294,37 +293,104 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
       body: GradientShell(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const SizedBox(height: 8),
-                FlowScreenHeader(
-                  title: strings.loginWelcome,
-                  subtitle: strings.loginSubtitle,
-                  badge: '03',
-                ),
-                const SizedBox(height: 22),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x120F172A),
+                          blurRadius: 20,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
                     child: Form(
                       key: _formKey,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Text(
-                            isLogin ? strings.loginLabel : strings.signUpLabel,
-                            style: Theme.of(context).textTheme.titleLarge,
+                          Container(
+                            height: 10,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              gradient: const LinearGradient(
+                                colors: <Color>[
+                                  Color(0xFF14B8A6),
+                                  Color(0xFF38BDF8),
+                                  Color(0xFFA78BFA),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 18),
+                          Text(
+                            isLogin
+                                ? strings.loginLabel
+                                : strings.signUpLabel,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
                           Text(
                             authCopy.formSubtitle(isLogin),
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: cs.onSurfaceVariant,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: _ModeChip(
+                                    label: strings.loginLabel,
+                                    selected: isLogin,
+                                    onTap: _isBusy
+                                        ? null
+                                        : () {
+                                            FocusScope.of(context).unfocus();
+                                            setState(
+                                              () => _mode = _AuthMode.login,
+                                            );
+                                          },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _ModeChip(
+                                    label: strings.signUpLabel,
+                                    selected: !isLogin,
+                                    onTap: _isBusy
+                                        ? null
+                                        : () {
+                                            FocusScope.of(context).unfocus();
+                                            setState(
+                                              () => _mode = _AuthMode.signup,
+                                            );
+                                          },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -332,11 +398,19 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
-                            autofillHints: const <String>[AutofillHints.email],
+                            autofillHints: const <String>[
+                              AutofillHints.email,
+                            ],
                             decoration: InputDecoration(
                               hintText: strings.emailAddress,
                               prefixIcon: const Icon(
                                 Icons.mail_outline_rounded,
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
                               ),
                             ),
                             validator: (v) {
@@ -354,12 +428,20 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                             textInputAction: TextInputAction.done,
                             autofillHints: isLogin
                                 ? const <String>[AutofillHints.password]
-                                : const <String>[AutofillHints.newPassword],
+                                : const <String>[
+                                    AutofillHints.newPassword,
+                                  ],
                             onFieldSubmitted: (_) => _continueWithEmail(),
                             decoration: InputDecoration(
                               hintText: strings.password,
                               prefixIcon: const Icon(
                                 Icons.lock_outline_rounded,
+                              ),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
                               ),
                               suffixIcon: IconButton(
                                 onPressed: () {
@@ -388,35 +470,25 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 8),
-                          if (isLogin)
+                          if (isLogin) ...<Widget>[
+                            const SizedBox(height: 2),
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
                                 onPressed: _loadingReset
                                     ? null
                                     : _onForgotPassword,
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 2,
-                                  ),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
                                 child: Text(strings.forgotPassword),
                               ),
                             ),
+                          ],
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 180),
                             child: _loadingReset
                                 ? const Padding(
                                     key: ValueKey<String>('reset-loading'),
                                     padding: EdgeInsets.only(bottom: 8),
-                                    child: LinearProgressIndicator(
-                                      minHeight: 2,
-                                    ),
+                                    child: LinearProgressIndicator(minHeight: 2),
                                   )
                                 : const SizedBox(
                                     key: ValueKey<String>('reset-space'),
@@ -425,17 +497,23 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           ),
                           PrimaryButton(
                             label: isLogin
-                                ? strings.loginWithEmail
-                                : strings.signUpWithEmail,
-                            icon: isLogin
-                                ? Icons.login_rounded
-                                : Icons.person_add_alt_1_rounded,
+                                ? strings.loginLabel
+                                : strings.signUpLabel,
+                            icon: Icons.arrow_forward_rounded,
                             loading: _loadingEmail,
                             onPressed: _continueWithEmail,
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           OutlinedButton.icon(
                             onPressed: _isBusy ? null : _continueWithGoogle,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
                             icon: _loadingGoogle
                                 ? const SizedBox(
                                     width: 16,
@@ -452,101 +530,30 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                   ),
                             label: Text(strings.googleContinue),
                           ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: cs.outlineVariant),
-                            ),
-                            child: Column(
-                              children: <Widget>[
-                                Text(
-                                  authCopy.legalIntro,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: cs.onSurfaceVariant,
-                                    fontSize: 12.5,
-                                    height: 1.45,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 2,
-                                  children: <Widget>[
-                                    TextButton(
-                                      onPressed: () => _openLegalDocument(
-                                        LegalDocumentType.privacyPolicy,
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        minimumSize: Size.zero,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text(authCopy.privacyLabel),
-                                    ),
-                                    Text(
-                                      authCopy.andLabel,
-                                      style: TextStyle(
-                                        color: cs.onSurfaceVariant,
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => _openLegalDocument(
-                                        LegalDocumentType.termsAndConditions,
-                                      ),
-                                      style: TextButton.styleFrom(
-                                        minimumSize: Size.zero,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        tapTargetSize:
-                                            MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: Text(authCopy.termsLabel),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          const SizedBox(height: 10),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 2,
                             children: <Widget>[
+                              TextButton(
+                                onPressed: () => _openLegalDocument(
+                                  LegalDocumentType.privacyPolicy,
+                                ),
+                                child: Text(authCopy.privacyLabel),
+                              ),
                               Text(
-                                isLogin
-                                    ? strings.noAccount
-                                    : strings.alreadyHaveAccount,
-                                style: TextStyle(color: cs.onSurfaceVariant),
+                                authCopy.andLabel,
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 12,
+                                ),
                               ),
                               TextButton(
-                                onPressed: _isBusy
-                                    ? null
-                                    : () {
-                                        FocusScope.of(context).unfocus();
-                                        setState(
-                                          () => _mode = isLogin
-                                              ? _AuthMode.signup
-                                              : _AuthMode.login,
-                                        );
-                                      },
-                                child: Text(
-                                  isLogin
-                                      ? strings.signUpLabel
-                                      : strings.loginLabel,
+                                onPressed: () => _openLegalDocument(
+                                  LegalDocumentType.termsAndConditions,
                                 ),
+                                child: Text(authCopy.termsLabel),
                               ),
                             ],
                           ),
@@ -555,8 +562,51 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(
+                  colors: <Color>[Color(0xFF14B8A6), Color(0xFF0EA5E9)],
+                )
+              : null,
+          color: selected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: selected ? cs.onPrimary : cs.onSurfaceVariant,
           ),
         ),
       ),
@@ -579,30 +629,12 @@ class _AuthUiCopy {
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
-    AppLanguage.telugu =>
-      isLogin
-          ? 'మీ ఖాతా వివరాలతో లాగిన్ అయి పోస్టర్ ప్రయాణాన్ని కొనసాగించండి.'
-          : 'కొత్త ఖాతా సృష్టించి మీ పోస్టర్ ప్రయాణాన్ని ప్రారంభించండి.',
-    AppLanguage.hindi =>
-      isLogin
-          ? 'अपने खाते की जानकारी से लॉगिन करें और पोस्टर यात्रा जारी रखें।'
-          : 'नया खाता बनाएं और अपनी पोस्टर यात्रा शुरू करें।',
-    AppLanguage.english =>
-      isLogin
-          ? 'Login with your account details and continue your poster flow.'
-          : 'Create a new account and start your poster journey.',
-    AppLanguage.tamil =>
-      isLogin
-          ? 'உங்கள் கணக்கு விவரங்களுடன் உள்நுழைந்து போஸ்டர் பயணத்தை தொடருங்கள்.'
-          : 'புதிய கணக்கை உருவாக்கி உங்கள் போஸ்டர் பயணத்தை தொடங்குங்கள்.',
-    AppLanguage.kannada =>
-      isLogin
-          ? 'ನಿಮ್ಮ ಖಾತೆ ವಿವರಗಳಿಂದ ಲಾಗಿನ್ ಮಾಡಿ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಮುಂದುವರಿಸಿ.'
-          : 'ಹೊಸ ಖಾತೆ ಸೃಷ್ಟಿಸಿ ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಪ್ರಯಾಣವನ್ನು ಆರಂಭಿಸಿ.',
-    AppLanguage.malayalam =>
-      isLogin
-          ? 'നിങ്ങളുടെ അക്കൗണ്ട് വിവരങ്ങളോടെ ലോഗിൻ ചെയ്ത് പോസ്റ്റർ യാത്ര തുടരുക.'
-          : 'പുതിയ അക്കൗണ്ട് സൃഷ്ടിച്ച് നിങ്ങളുടെ പോസ്റ്റർ യാത്ര ആരംഭിക്കുക.',
+    AppLanguage.telugu => isLogin ? 'Continue with your account' : 'Create account',
+    AppLanguage.hindi => isLogin ? 'जारी रखें' : 'खाता बनाएँ',
+    AppLanguage.english => isLogin ? 'Continue with your account' : 'Create account',
+    AppLanguage.tamil => isLogin ? 'தொடரவும்' : 'கணக்கு உருவாக்கவும்',
+    AppLanguage.kannada => isLogin ? 'ಮುಂದುವರಿಸಿ' : 'ಖಾತೆ ರಚಿಸಿ',
+    AppLanguage.malayalam => isLogin ? 'തുടരുക' : 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',
   };
 
   String resetSuccess(String email) => switch (language) {

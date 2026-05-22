@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
@@ -45,6 +46,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   FirebaseAnalyticsObserver? _analyticsObserver;
   StreamSubscription<User?>? _authUidSubscription;
   String? _lastSeenAuthUid;
+  bool _firebaseBindingsAttached = false;
 
   @override
   void initState() {
@@ -52,15 +54,36 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     _languageController = AppLanguageController(
       initialLanguage: widget.initialLanguage,
     );
-    if (Firebase.apps.isNotEmpty) {
-      _analyticsObserver = FirebaseAnalyticsObserver(
-        analytics: FirebaseAnalytics.instance,
-      );
-      _attachSubscriptionEntitlementToAuth();
-      if (FirebaseAuth.instance.currentUser != null) {
-        unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());
-      }
+    _attachFirebaseBindingsIfReady();
+    unawaited(_awaitFirebaseAndAttachBindings());
+  }
+
+  Future<void> _awaitFirebaseAndAttachBindings() async {
+    if (_firebaseBindingsAttached) {
+      return;
     }
+    await FirebaseBootstrap.ensureInitialized();
+    if (!mounted) {
+      return;
+    }
+    if (_attachFirebaseBindingsIfReady()) {
+      setState(() {});
+    }
+  }
+
+  bool _attachFirebaseBindingsIfReady() {
+    if (_firebaseBindingsAttached || Firebase.apps.isEmpty) {
+      return false;
+    }
+    _analyticsObserver = FirebaseAnalyticsObserver(
+      analytics: FirebaseAnalytics.instance,
+    );
+    _attachSubscriptionEntitlementToAuth();
+    if (FirebaseAuth.instance.currentUser != null) {
+      unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());
+    }
+    _firebaseBindingsAttached = true;
+    return true;
   }
 
   void _attachSubscriptionEntitlementToAuth() {
@@ -99,6 +122,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   @override
   void dispose() {
     _authUidSubscription?.cancel();
+    _languageController.dispose();
     super.dispose();
   }
 

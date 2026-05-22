@@ -77,3 +77,11 @@ app.*.map.json
 .vs/
 CppProperties.json
 flutter_01.png
+
+# Local debugging / generated artifacts
+/.firebase/
+/firebase_help.txt
+/firebase_projects.txt
+/latest-logcat.txt
+/screenshots/
+/functions/assets/notification_frames/variant_preview.html

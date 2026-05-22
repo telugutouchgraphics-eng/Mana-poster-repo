@@ -75,7 +75,11 @@ class AccountDeletionService {
         message: 'Account deleted successfully.',
       );
     } catch (_) {
-      return _deleteLocally(user);
+      return const AccountDeletionResult(
+        success: false,
+        message:
+            'Account deletion could not be completed right now. Please try again shortly.',
+      );
     } finally {
       client?.close(force: true);
     }

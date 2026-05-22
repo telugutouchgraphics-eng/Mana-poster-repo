@@ -18,7 +18,6 @@ import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
@@ -49,6 +48,10 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  StreamSubscription<RemoteMessage>? _onMessageSubscription;
+  StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
+  StreamSubscription<String>? _tokenRefreshSubscription;
+  StreamSubscription<User?>? _authStateSubscription;
 
   bool _initialized = false;
   Future<void>? _initializationFuture;
@@ -100,7 +103,6 @@ class NotificationService {
     await _initializeLocalNotifications(_localNotifications);
 
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
-    await _requestNotificationPermission(messaging);
     await messaging.setForegroundNotificationPresentationOptions(
       alert: false,
       badge: true,
@@ -119,18 +121,7 @@ class NotificationService {
     }
 
     _initialized = true;
-    FirebaseMessaging.onMessage.listen((message) async {
-      await showRemoteMessage(message);
-    });
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-    messaging.onTokenRefresh.listen((String token) {
-      unawaited(_guardedSyncToken(token));
-    });
-
-    FirebaseAuth.instance.authStateChanges().listen((_) {
-      unawaited(_guardedRegisterCurrentToken());
-    });
+    await _attachRealtimeListeners(messaging);
 
     final RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
@@ -138,6 +129,27 @@ class NotificationService {
     }
 
     await _guardedRegisterCurrentToken();
+  }
+
+  Future<void> _attachRealtimeListeners(FirebaseMessaging messaging) async {
+    await _onMessageSubscription?.cancel();
+    await _onMessageOpenedAppSubscription?.cancel();
+    await _tokenRefreshSubscription?.cancel();
+    await _authStateSubscription?.cancel();
+
+    _onMessageSubscription = FirebaseMessaging.onMessage.listen((message) async {
+      await showRemoteMessage(message);
+    });
+    _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp
+        .listen(_handleNotificationTap);
+    _tokenRefreshSubscription = messaging.onTokenRefresh.listen((String token) {
+      unawaited(_guardedSyncToken(token));
+    });
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      _,
+    ) {
+      unawaited(_guardedRegisterCurrentToken());
+    });
   }
 
   static Future<void> showRemoteMessage(RemoteMessage message) async {
@@ -382,32 +394,6 @@ class NotificationService {
 
   String _tokenToDocId(String token) {
     return token.replaceAll('/', '_');
-  }
-
-  Future<void> _requestNotificationPermission(
-    FirebaseMessaging messaging,
-  ) async {
-    try {
-      if (Platform.isAndroid) {
-        final PermissionStatus status = await Permission.notification.status;
-        if (!status.isGranted && !status.isLimited) {
-          await Permission.notification.request();
-        }
-      }
-      await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-    } catch (error, stackTrace) {
-      developer.log(
-        'Notification permission request skipped: $error',
-        name: 'notification.service',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
   }
 
   Future<void> _syncTopicSubscription(FirebaseMessaging messaging) async {

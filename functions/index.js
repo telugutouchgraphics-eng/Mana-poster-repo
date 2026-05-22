@@ -56,6 +56,9 @@ const playRtdnTopic =
     String(process.env.MANA_POSTER_PLAY_RTDN_TOPIC || "play-billing-rtdn")
         .trim();
 const manaReminderToolKey = String(process.env.MANA_REMINDER_TOOL_KEY || "").trim();
+const allowedCorsOrigins = parseAllowedOrigins(
+    process.env.MANA_POSTER_ALLOWED_ORIGINS || process.env.ALLOW_ORIGIN || "*",
+);
 
 const dynamicEventCatalog = [
   {
@@ -105,8 +108,25 @@ const dynamicEventCatalog = [
 const posterRetentionWindowMillis = 7 * 24 * 60 * 60 * 1000;
 const posterCleanupBatchSize = 250;
 
-function setCors(res) {
-  res.set("Access-Control-Allow-Origin", "*");
+function parseAllowedOrigins(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) {
+    return new Set(["*"]);
+  }
+  const parts = raw.split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  return new Set(parts.length > 0 ? parts : ["*"]);
+}
+
+function setCors(req, res) {
+  const origin = String(req.headers.origin || "").trim();
+  if (allowedCorsOrigins.has("*")) {
+    res.set("Access-Control-Allow-Origin", "*");
+  } else if (origin && allowedCorsOrigins.has(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+  }
   res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
 }
@@ -763,6 +783,16 @@ function stableHashNumber(value) {
   return parseInt(hex.slice(0, 8), 16);
 }
 
+function getIstDayKey(now = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(now);
+}
+
 function reminderCategoryKey(input) {
   const normalized = normalizeText(input);
   if (normalized.includes("welcome")) {
@@ -795,6 +825,8 @@ function framePalette(categoryKey, seed) {
       {shell: "#FFF8F0", frame: "#B35C1E", header: "#743B12", footer: "#F59E0B", accent: "#FFE7C2", text: "#743B12"},
       {shell: "#FFF7E1", frame: "#8A6A00", header: "#5C4700", footer: "#EAB308", accent: "#FCE59A", text: "#5C4700"},
       {shell: "#FFF5EA", frame: "#A6512F", header: "#6E311A", footer: "#FB923C", accent: "#FFD9C2", text: "#6E311A"},
+      {shell: "#FFFCEE", frame: "#8C6B12", header: "#5E4707", footer: "#FACC15", accent: "#FEF3C7", text: "#5E4707"},
+      {shell: "#FFF6E5", frame: "#9A5B16", header: "#6C3F0F", footer: "#FDBA74", accent: "#FFEDD5", text: "#6C3F0F"},
     ],
     afternoon: [
       {shell: "#F8F5FF", frame: "#5243AA", header: "#342A70", footer: "#6D5DF6", accent: "#D8D1FF", text: "#342A70"},
@@ -802,6 +834,8 @@ function framePalette(categoryKey, seed) {
       {shell: "#F5FCFF", frame: "#007F8C", header: "#00535C", footer: "#00B8C9", accent: "#C9F6FA", text: "#00535C"},
       {shell: "#F8FFF7", frame: "#2F7A32", header: "#1C4B1E", footer: "#58B85A", accent: "#D8F4D8", text: "#1C4B1E"},
       {shell: "#FFF7FB", frame: "#9C3D73", header: "#64244A", footer: "#E05FA9", accent: "#FFD6EB", text: "#64244A"},
+      {shell: "#F4F8FF", frame: "#1D4ED8", header: "#1E3A8A", footer: "#60A5FA", accent: "#DBEAFE", text: "#1E3A8A"},
+      {shell: "#F0FDFA", frame: "#0F766E", header: "#134E4A", footer: "#2DD4BF", accent: "#CCFBF1", text: "#134E4A"},
     ],
     night: [
       {shell: "#EEF2FF", frame: "#1E3A8A", header: "#0F1D4D", footer: "#3B82F6", accent: "#C9D6FF", text: "#0F1D4D"},
@@ -809,6 +843,8 @@ function framePalette(categoryKey, seed) {
       {shell: "#EEF7FF", frame: "#0F4C81", header: "#082C4A", footer: "#38A3FF", accent: "#CCE9FF", text: "#082C4A"},
       {shell: "#F5F7FA", frame: "#334155", header: "#0F172A", footer: "#64748B", accent: "#D8DEE8", text: "#0F172A"},
       {shell: "#F8F5FF", frame: "#5B3B8F", header: "#352154", footer: "#8F67FF", accent: "#E0D1FF", text: "#352154"},
+      {shell: "#F0F9FF", frame: "#075985", header: "#082F49", footer: "#0EA5E9", accent: "#E0F2FE", text: "#082F49"},
+      {shell: "#F5F3FF", frame: "#6D28D9", header: "#4C1D95", footer: "#A78BFA", accent: "#EDE9FE", text: "#4C1D95"},
     ],
     default: [
       {shell: "#FFF9F2", frame: "#8A4B08", header: "#4D2804", footer: "#FF8E3C", accent: "#FFD9BA", text: "#4D2804"},
@@ -1204,6 +1240,82 @@ function initialsSvgDataUri(name, palette) {
 
 function reminderCopyLocalized(kind, language, userName) {
   return reminderCopy(kind, language, userName);
+}
+
+function greetingReminderVariants(kind, language) {
+  const lang = sanitizeLanguage(language) || "english";
+  const map = {
+    evening: {
+      telugu: [
+        {title: "శుభ సాయంత్రం", body: "ఈ రోజు సాయంత్రం మీకు శుభాకాంక్షలు. Mana Poster ఓపెన్ చేసి కొత్త పోస్టర్లు చూడండి."},
+        {title: "శుభ సాయంత్రం", body: "సాయంత్రం శుభాకాంక్షలు. మీకు నచ్చిన పోస్టర్ ఎంచుకుని షేర్ చేయండి."},
+        {title: "శుభ సాయంత్రం", body: "ఈ సాయంత్రం greeting సిద్ధంగా ఉంది. యాప్ ఓపెన్ చేసి చూడండి."},
+        {title: "శుభ సాయంత్రం", body: "మీ సాయంత్రం ఇంకా బాగుండాలి. Mana Poster లో కొత్త పోస్టర్లు రెడీగా ఉన్నాయి."},
+        {title: "శుభ సాయంత్రం", body: "ఈరోజు సాయంత్రానికి మీ కోసం greeting రెడీగా ఉంది. ఇప్పుడే ఓపెన్ చేయండి."},
+        {title: "శుభ సాయంత్రం", body: "సాయంత్రం శుభాకాంక్షలు. మీ పోస్టర్ collection చూడడానికి యాప్ ఓపెన్ చేయండి."},
+        {title: "శుభ సాయంత్రం", body: "ఈ సాయంత్రం share చేయడానికి మంచి పోస్టర్లు సిద్ధంగా ఉన్నాయి. ఒక్కసారి చూడండి."},
+      ],
+      english: [
+        {title: "Good Evening", body: "Wishing you a pleasant evening. Open Mana Poster and explore fresh posters."},
+        {title: "Good Evening", body: "Your evening greeting is here. Open the app and share a poster you like."},
+        {title: "Good Evening", body: "Fresh evening posters are ready for you. Take a quick look in Mana Poster."},
+        {title: "Good Evening", body: "Hope your evening is going well. Open Mana Poster for new greeting posters."},
+        {title: "Good Evening", body: "A new evening greeting is ready. Open the app and check it now."},
+        {title: "Good Evening", body: "Take a moment to see today’s evening posters in Mana Poster."},
+        {title: "Good Evening", body: "Evening greetings are ready to explore. Open Mana Poster now."},
+      ],
+      hindi: [
+        {title: "शुभ संध्या", body: "आपको सुखद संध्या की शुभकामनाएँ। Mana Poster खोलें और नए पोस्टर देखें।"},
+        {title: "शुभ संध्या", body: "आपकी शाम की शुभकामना तैयार है। ऐप खोलें और पसंदीदा पोस्टर शेयर करें।"},
+        {title: "शुभ संध्या", body: "ताज़ा शाम के पोस्टर आपके लिए तैयार हैं। Mana Poster में अभी देखें।"},
+        {title: "शुभ संध्या", body: "उम्मीद है आपकी शाम अच्छी जा रही है। नए पोस्टर देखने के लिए ऐप खोलें।"},
+        {title: "शुभ संध्या", body: "आज की शाम के लिए नया greeting तैयार है। अभी ऐप खोलें।"},
+        {title: "शुभ संध्या", body: "आज के शाम वाले पोस्टर देखने के लिए Mana Poster खोलें।"},
+        {title: "शुभ संध्या", body: "शाम की शुभकामनाएँ तैयार हैं। अभी Mana Poster देखें।"},
+      ],
+      tamil: [
+        {title: "மாலை வணக்கம்", body: "இனிய மாலை வணக்கம். Mana Poster திறந்து புதிய போஸ்டர்களைப் பாருங்கள்."},
+        {title: "மாலை வணக்கம்", body: "உங்கள் மாலை வாழ்த்து தயாராக உள்ளது. ஆப்பை திறந்து பிடித்த போஸ்டரை பகிருங்கள்."},
+        {title: "மாலை வணக்கம்", body: "புதிய மாலை போஸ்டர்கள் தயாராக உள்ளன. Mana Poster இல் பாருங்கள்."},
+        {title: "மாலை வணக்கம்", body: "உங்கள் மாலை நன்றாக அமையட்டும். புதிய greeting போஸ்டர்களுக்கு ஆப்பை திறக்கவும்."},
+        {title: "மாலை வணக்கம்", body: "இன்றைய மாலைக்கான புதிய greeting தயார். இப்போதே திறந்து பாருங்கள்."},
+        {title: "மாலை வணக்கம்", body: "இன்றைய மாலை போஸ்டர்களைப் பார்க்க Mana Poster திறக்கவும்."},
+        {title: "மாலை வணக்கம்", body: "மாலை வாழ்த்துகள் தயாராக உள்ளன. இப்போது Mana Poster பாருங்கள்."},
+      ],
+      kannada: [
+        {title: "ಶುಭ ಸಂಜೆ", body: "ನಿಮಗೆ ಸುಂದರವಾದ ಸಂಜೆ ಶುಭಾಶಯಗಳು. Mana Poster ತೆರೆಯಿರಿ ಮತ್ತು ಹೊಸ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ನೋಡಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ನಿಮ್ಮ ಸಂಜೆ ಶುಭಾಶಯ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಇಷ್ಟವಾದ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ಹೊಸ ಸಂಜೆ ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. Mana Poster ನಲ್ಲಿ ನೋಡಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ನಿಮ್ಮ ಸಂಜೆ ಚೆನ್ನಾಗಿರಲಿ. ಹೊಸ greeting ಪೋಸ್ಟರ್‌ಗಳಿಗಾಗಿ ಆಪ್ ತೆರೆಯಿರಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ಇಂದಿನ ಸಂಜೆಗಾಗಿ ಹೊಸ greeting ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ತೆರೆಯಿರಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ಇಂದಿನ ಸಂಜೆ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ನೋಡಲು Mana Poster ತೆರೆಯಿರಿ."},
+        {title: "ಶುಭ ಸಂಜೆ", body: "ಸಂಜೆಯ ಶುಭಾಶಯಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಈಗ Mana Poster ನೋಡಿ."},
+      ],
+      malayalam: [
+        {title: "സായാഹ്ന വന്ദനം", body: "സുഖകരമായ ഒരു സായാഹ്നാശംസകൾ. Mana Poster തുറന്ന് പുതിയ പോസ്റ്ററുകൾ കാണൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "നിങ്ങളുടെ സായാഹ്ന greeting തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഇഷ്ടപ്പെട്ട പോസ്റ്റർ ഷെയർ ചെയ്യൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "പുതിയ സായാഹ്ന പോസ്റ്ററുകൾ തയ്യാറാണ്. Mana Posterയിൽ നോക്കൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "നിങ്ങളുടെ സായാഹ്നം മനോഹരമാകട്ടെ. പുതിയ greeting പോസ്റ്ററുകൾക്കായി ആപ്പ് തുറക്കൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "ഇന്നത്തെ സായാഹ്നത്തിനായുള്ള പുതിയ greeting തയ്യാറായി. ഇപ്പോൾ തന്നെ തുറക്കൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "ഇന്നത്തെ സായാഹ്ന പോസ്റ്ററുകൾ കാണാൻ Mana Poster തുറക്കൂ."},
+        {title: "സായാഹ്ന വന്ദനം", body: "സായാഹ്നാശംസകൾ തയ്യാറാണ്. ഇപ്പോൾ Mana Poster നോക്കൂ."},
+      ],
+    },
+  };
+
+  const variants = (map[kind] || {}).hasOwnProperty(lang) ?
+    map[kind][lang] :
+    (map[kind] || {}).english;
+  return Array.isArray(variants) && variants.length > 0 ? variants : [
+    {title: "Mana Poster", body: "Open the app to see the latest posters."},
+  ];
+}
+
+function greetingReminderVariant(kind, language, now = new Date()) {
+  const variants = greetingReminderVariants(kind, language);
+  const dayKey = getIstDayKey(now);
+  const index = stableHashNumber(`${kind}-${dayKey}`) % variants.length;
+  return variants[index];
 }
 
 function truncateSingleLineText(value, maxLength) {
@@ -2188,6 +2300,7 @@ async function sendDailyPersonalizedReminder({
   categoryKey,
 }) {
   const imageUrl = await pickImageForReminder(keywords);
+  const dayKey = getIstDayKey(new Date());
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
@@ -2233,7 +2346,7 @@ async function sendDailyPersonalizedReminder({
         categoryKey,
         userName: profile.name,
         userPhotoUrl: profile.photoUrl,
-        seed: `${uid}-${token}-${categoryKey}`,
+        seed: `${uid}-${token}-${categoryKey}-${dayKey}`,
       });
     } catch (error) {
       if (isMessagingTokenGoneError(error)) {
@@ -2278,7 +2391,7 @@ async function sendDailyPersonalizedReminder({
         categoryKey,
         userName: "Mana Poster User",
         userPhotoUrl: "",
-        seed: `${token}-${categoryKey}`,
+        seed: `${token}-${categoryKey}-${dayKey}`,
       });
     } catch (error) {
       if (isMessagingTokenGoneError(error)) {
@@ -2348,6 +2461,108 @@ async function sendDirectReminderToEligibleTokens({
       logger.error("direct reminder send failed", {
         token,
         categoryKey,
+        error: messagingErrorDetails(error),
+      });
+    }
+  });
+}
+
+async function sendLocalizedGreetingReminder({
+  categoryKey,
+  reminderKind,
+}) {
+  const now = new Date();
+  const userTokenSnap = await db.collectionGroup("deviceTokens").get();
+  const publicSnap = await db.collection("publicDeviceTokens").get();
+  const seenTokens = new Set();
+  const profileCache = new Map();
+  const userJobs = [];
+
+  for (const doc of userTokenSnap.docs) {
+    const data = doc.data() || {};
+    const token = String(data.token || "").trim();
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+      continue;
+    }
+    const userRef = doc.ref.parent && doc.ref.parent.parent;
+    const uid = userRef ? userRef.id : "";
+    seenTokens.add(token);
+    userJobs.push({
+      token,
+      uid,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
+  }
+
+  await runWithConcurrency(userJobs, 4, async ({token, uid, ref, platform}) => {
+    let profile = profileCache.get(uid);
+    if (!profile) {
+      profile = await loadNotificationProfileForUid(uid);
+      profileCache.set(uid, profile);
+    }
+    const copy = greetingReminderVariant(
+        reminderKind,
+        profile.preferredLanguage,
+        now,
+    );
+    try {
+      await sendReminderToToken({
+        token,
+        platform,
+        title: copy.title,
+        body: copy.body,
+        categoryKey,
+        titleKey: `${reminderKind}_title`,
+        bodyKey: `${reminderKind}_body`,
+      });
+    } catch (error) {
+      if (isMessagingTokenGoneError(error)) {
+        await cleanupInvalidTokenRef(ref);
+      }
+      logger.error("localized greeting reminder failed", {
+        uid,
+        token,
+        reminderKind,
+        error: messagingErrorDetails(error),
+      });
+    }
+  });
+
+  const publicJobs = [];
+  for (const doc of publicSnap.docs) {
+    const data = doc.data() || {};
+    const token = String(data.token || "").trim();
+    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+      continue;
+    }
+    seenTokens.add(token);
+    publicJobs.push({
+      token,
+      ref: doc.ref,
+      platform: String(data.platform || "").trim(),
+    });
+  }
+
+  await runWithConcurrency(publicJobs, 4, async ({token, ref, platform}) => {
+    const copy = greetingReminderVariant(reminderKind, "english", now);
+    try {
+      await sendReminderToToken({
+        token,
+        platform,
+        title: copy.title,
+        body: copy.body,
+        categoryKey,
+        titleKey: `${reminderKind}_title`,
+        bodyKey: `${reminderKind}_body`,
+      });
+    } catch (error) {
+      if (isMessagingTokenGoneError(error)) {
+        await cleanupInvalidTokenRef(ref);
+      }
+      logger.error("public localized greeting reminder failed", {
+        token,
+        reminderKind,
         error: messagingErrorDetails(error),
       });
     }
@@ -2473,7 +2688,7 @@ async function deletePosterStorageAssets(bucket, data) {
 }
 
 exports.referralStatus = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -2529,7 +2744,7 @@ exports.referralStatus = onRequest({region: "asia-south1"}, async (req, res) => 
 });
 
 exports.applyReferralCode = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -2600,7 +2815,7 @@ exports.applyReferralCode = onRequest({region: "asia-south1"}, async (req, res) 
 });
 
 exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -2806,7 +3021,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
 });
 
 exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -2993,7 +3208,7 @@ async function syncSubscriptionEntitlementFromToken({
 }
 
 exports.verifyTemplatePurchase = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -3096,7 +3311,7 @@ exports.verifyTemplatePurchase = onRequest({region: "asia-south1"}, async (req, 
 });
 
 exports.templateEntitlementStatus = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -3133,7 +3348,7 @@ exports.templateEntitlementStatus = onRequest({region: "asia-south1"}, async (re
 });
 
 exports.requestAccountDeletion = onRequest({region: "asia-south1"}, async (req, res) => {
-  setCors(res);
+  setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -3161,10 +3376,22 @@ exports.requestAccountDeletion = onRequest({region: "asia-south1"}, async (req, 
     const userRef = db.collection("users").doc(uid);
     await db.recursiveDelete(userRef);
 
+    const uploadsQuery = await db.collection("userPosterUploads")
+        .where("userId", "==", uid)
+        .get();
+    if (!uploadsQuery.empty) {
+      const bulkWriter = db.bulkWriter();
+      uploadsQuery.docs.forEach((doc) => {
+        bulkWriter.delete(doc.ref);
+      });
+      await bulkWriter.close();
+    }
+
     const bucket = admin.storage().bucket();
     await Promise.allSettled([
       bucket.deleteFiles({prefix: `users/${uid}/poster_profile/`}),
       bucket.deleteFiles({prefix: `users/${uid}/rembg_jobs/`}),
+      bucket.deleteFiles({prefix: `users/${uid}/community_uploads/`}),
     ]);
 
     await admin.auth().deleteUser(uid);
@@ -3317,7 +3544,7 @@ exports.processWelcomeNotifications = onSchedule(
     },
 );
 
-exports.dailyGoodMorningReminder = onSchedule(
+exports.dailyGoodMorningReminder0730 = onSchedule(
     {
       region: "asia-south1",
       schedule: "30 7 * * *",
@@ -3337,7 +3564,46 @@ exports.dailyGoodMorningReminder = onSchedule(
     },
 );
 
-exports.dailyGoodAfternoonReminder = onSchedule(
+exports.dailyGoodMorningReminder0930 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "30 9 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendDailyPersonalizedReminder({
+        keywords: [
+        "good morning",
+        "morning",
+        "suprabhatam",
+        ],
+        categoryKey: "morning",
+      });
+    },
+);
+
+exports.dailyGoodAfternoonReminder1200 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "0 12 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendDailyPersonalizedReminder({
+        keywords: [
+        "good afternoon",
+        "afternoon",
+        ],
+        categoryKey: "afternoon",
+      });
+    },
+);
+
+exports.dailyGoodAfternoonReminder1300 = onSchedule(
     {
       region: "asia-south1",
       schedule: "0 13 * * *",
@@ -3356,7 +3622,23 @@ exports.dailyGoodAfternoonReminder = onSchedule(
     },
 );
 
-exports.dailyGoodNightReminder = onSchedule(
+exports.dailyGoodNightReminder1700 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "0 17 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendLocalizedGreetingReminder({
+        categoryKey: "night",
+        reminderKind: "evening",
+      });
+    },
+);
+
+exports.dailyGoodNightReminder2030 = onSchedule(
     {
       region: "asia-south1",
       schedule: "30 20 * * *",

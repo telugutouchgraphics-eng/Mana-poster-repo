@@ -18,6 +18,11 @@ rembg_session = new_session(model_name=os.getenv("REMBG_MODEL", "u2net"))
 bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "").strip()
 max_input_bytes = int(os.getenv("MAX_INPUT_BYTES", str(20 * 1024 * 1024)))
 allow_origin = os.getenv("ALLOW_ORIGIN", "*")
+allowed_origins = {
+    item.strip()
+    for item in os.getenv("MANA_POSTER_ALLOWED_ORIGINS", allow_origin).split(",")
+    if item.strip()
+}
 alpha_matting_enabled = os.getenv("REMBG_ALPHA_MATTING", "true").lower() == "true"
 alpha_fg_threshold = int(os.getenv("REMBG_ALPHA_FG_THRESHOLD", "240"))
 alpha_bg_threshold = int(os.getenv("REMBG_ALPHA_BG_THRESHOLD", "12"))
@@ -25,7 +30,12 @@ alpha_erode_size = int(os.getenv("REMBG_ALPHA_ERODE_SIZE", "8"))
 
 
 def _cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = allow_origin
+    request_origin = (request.headers.get("Origin") or "").strip()
+    if "*" in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    elif request_origin and request_origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = request_origin
+        response.headers["Vary"] = "Origin"
     response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     return response

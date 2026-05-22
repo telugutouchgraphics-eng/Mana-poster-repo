@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets
 import java.util.Properties
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -133,10 +134,6 @@ kotlin {
     }
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    exclude("io/flutter/plugins/GeneratedPluginRegistrant.java")
-}
-
 flutter {
     source = "../.."
 }
@@ -149,6 +146,30 @@ dependencies {
 
 val releaseBundlePath =
     layout.buildDirectory.file("outputs/bundle/release/app-release.aab")
+
+fun deleteInvalidFlutterDepfile(variant: String) {
+    val depfile = layout.buildDirectory.file("intermediates/flutter/$variant/flutter_build.d").get().asFile
+    if (!depfile.exists()) {
+        return
+    }
+    val prefix = depfile.inputStream().use { input ->
+        val buffer = ByteArray(256)
+        val bytesRead = input.read(buffer)
+        if (bytesRead <= 0) {
+            ""
+        } else {
+            String(buffer, 0, bytesRead, StandardCharsets.UTF_8)
+        }
+    }
+    if (!prefix.contains(": ")) {
+        logger.lifecycle("Deleting invalid Flutter depfile: ${depfile.absolutePath}")
+        depfile.delete()
+    }
+}
+
+deleteInvalidFlutterDepfile("debug")
+deleteInvalidFlutterDepfile("release")
+deleteInvalidFlutterDepfile("profile")
 
 fun shouldStripBundleEntry(path: String): Boolean =
     unsupportedBundleAbis.any { abi ->

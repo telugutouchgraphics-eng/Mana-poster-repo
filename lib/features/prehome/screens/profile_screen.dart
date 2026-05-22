@@ -1015,7 +1015,7 @@ class _ProfileCopy {
       ? 'పర్సనలైజ్డ్ యాడ్స్ సెట్టింగ్స్ మార్చండి'
       : 'Manage personalized ad settings';
   String get legalNoticesTitle =>
-      _isTelugu ? 'లీగల్ నోటీసెస్' : 'Legal Notices';
+      _isTelugu ? 'నిబంధనలు మరియు షరతులు' : 'Terms & Conditions';
   String get legalNoticesSubtitle =>
-      _isTelugu ? 'టెర్మ్స్ మరియు కండిషన్స్' : 'Terms and conditions';
+      _isTelugu ? 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు' : 'Usage and subscription terms';
 }

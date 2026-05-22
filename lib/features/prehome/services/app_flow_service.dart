@@ -159,6 +159,27 @@ class AppFlowService {
         : AppRoutes.profileSetup;
   }
 
+  static Future<String> resolveAuthenticatedEntryRouteForStartup() async {
+    final PosterProfileData localProfile = await PosterProfileService.loadLocal();
+    if (PosterProfileService.isSetupComplete(localProfile)) {
+      return AppRoutes.home;
+    }
+
+    try {
+      final PosterProfileData? remoteProfile = await PosterProfileService
+          .refreshFromRemote(localProfile: localProfile)
+          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+      final PosterProfileData resolved = remoteProfile ?? localProfile;
+      return PosterProfileService.isSetupComplete(resolved)
+          ? AppRoutes.home
+          : AppRoutes.profileSetup;
+    } catch (_) {
+      return PosterProfileService.isSetupComplete(localProfile)
+          ? AppRoutes.home
+          : AppRoutes.profileSetup;
+    }
+  }
+
   static Future<void> syncStoredLanguageToRemote() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final AppLanguage language = _readLanguage(
