@@ -208,6 +208,7 @@ class _TemplateItem {
     this.primaryFirestoreCategoryId,
     this.categoryDisplayLabel,
     this.personalizationConfig,
+    this.createdAtMillis = 0,
   });
 
   final String titleTe;
@@ -227,6 +228,7 @@ class _TemplateItem {
   final List<String> fallbackProductIds;
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
+  final int createdAtMillis;
 
   /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
@@ -703,6 +705,14 @@ class _HomeScreenState extends State<HomeScreen>
       return templates;
     }
 
+    final freshTemplates = _freshAllCategoryTemplatesForToday(templates);
+    final effectiveTemplates = freshTemplates.isNotEmpty
+        ? freshTemplates
+        : templates;
+    if (effectiveTemplates.length < 2) {
+      return effectiveTemplates;
+    }
+
     // Mix the final All-category feed after time filtering without changing
     // any manual category behavior. Keep the order stable for the current day
     // and active greeting window so rebuilds do not keep reordering the list.
@@ -712,8 +722,12 @@ class _HomeScreenState extends State<HomeScreen>
       now.month,
       now.day,
       _activeAllCategoryGreetingTag(now),
+      freshTemplates.isNotEmpty,
     );
-    final shuffled = List<_TemplateItem>.of(templates, growable: false);
+    final shuffled = List<_TemplateItem>.of(
+      effectiveTemplates,
+      growable: false,
+    );
     shuffled.sort((a, b) {
       final aKey = Object.hash(
         seed,
@@ -732,6 +746,21 @@ class _HomeScreenState extends State<HomeScreen>
       return aKey.compareTo(bKey);
     });
     return shuffled;
+  }
+
+  List<_TemplateItem> _freshAllCategoryTemplatesForToday(
+    List<_TemplateItem> templates,
+  ) {
+    final now = DateTime.now();
+    final startOfTodayMillis = IstTimeService.startOfDayUtcMillis(now);
+    final endOfTodayMillis = startOfTodayMillis + IstTimeService.dayMillis;
+    return templates
+        .where((item) {
+          final createdAtMillis = item.createdAtMillis;
+          return createdAtMillis >= startOfTodayMillis &&
+              createdAtMillis < endOfTodayMillis;
+        })
+        .toList(growable: false);
   }
 
   /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
@@ -1523,6 +1552,7 @@ class _HomeScreenState extends State<HomeScreen>
           : null,
       categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
       personalizationConfig: template.personalizationConfig,
+      createdAtMillis: template.createdAtMillis,
     );
   }
 
