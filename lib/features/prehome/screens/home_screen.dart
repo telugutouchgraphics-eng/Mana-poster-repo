@@ -745,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen>
       );
       return aKey.compareTo(bKey);
     });
-    return _spreadAllCategoryTemplateGroups(shuffled);
+    return _spreadAllCategoryTemplateGroups(shuffled, seed: seed);
   }
 
   List<_TemplateItem> _freshAllCategoryTemplatesForToday(
@@ -764,22 +764,44 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_TemplateItem> _spreadAllCategoryTemplateGroups(
-    List<_TemplateItem> templates,
-  ) {
+    List<_TemplateItem> templates, {
+    required int seed,
+  }) {
     if (templates.length < 3) {
       return templates;
     }
-    final remaining = List<_TemplateItem>.of(templates, growable: true);
+
+    final grouped = <String, List<_TemplateItem>>{};
+    for (final item in templates) {
+      final key = _allCategoryGroupingKey(item);
+      grouped.putIfAbsent(key, () => <_TemplateItem>[]).add(item);
+    }
+    if (grouped.length < 2) {
+      return templates;
+    }
+
+    final bucketKeys = grouped.keys.toList(growable: false)
+      ..sort((a, b) {
+        final aKey = Object.hash(seed, a);
+        final bKey = Object.hash(seed, b);
+        return aKey.compareTo(bKey);
+      });
     final arranged = <_TemplateItem>[];
-    while (remaining.isNotEmpty) {
-      final lastCategory = arranged.isEmpty
-          ? null
-          : _allCategoryGroupingKey(arranged.last);
-      final nextIndex = remaining.indexWhere(
-        (item) => _allCategoryGroupingKey(item) != lastCategory,
-      );
-      final pickIndex = nextIndex >= 0 ? nextIndex : 0;
-      arranged.add(remaining.removeAt(pickIndex));
+    var emitted = 0;
+    while (emitted < templates.length) {
+      var addedThisRound = false;
+      for (final key in bucketKeys) {
+        final bucket = grouped[key];
+        if (bucket == null || bucket.isEmpty) {
+          continue;
+        }
+        arranged.add(bucket.removeAt(0));
+        emitted++;
+        addedThisRound = true;
+      }
+      if (!addedThisRound) {
+        break;
+      }
     }
     return arranged;
   }
