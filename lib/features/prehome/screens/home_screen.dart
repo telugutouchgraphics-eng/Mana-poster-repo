@@ -5785,9 +5785,14 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
   }
 
   Future<void> _initialize() async {
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoUrl),
-    );
+    final uri = Uri.tryParse(widget.videoUrl.trim());
+    if (uri == null || !uri.hasScheme) {
+      if (mounted) {
+        setState(() => _hasError = true);
+      }
+      return;
+    }
+    final controller = VideoPlayerController.networkUrl(uri);
     _controller = controller;
     try {
       await controller.initialize();

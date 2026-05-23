@@ -161,7 +161,14 @@ class _SubscriptionExitVideoDialogState
     if (rawUrl.isEmpty) {
       return;
     }
-    final controller = VideoPlayerController.networkUrl(Uri.parse(rawUrl));
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null || !uri.hasScheme) {
+      if (mounted) {
+        setState(() => _hasError = true);
+      }
+      return;
+    }
+    final controller = VideoPlayerController.networkUrl(uri);
     _controller = controller;
     try {
       await controller.initialize();
@@ -347,7 +354,11 @@ class _SubscriptionVideoPromptPreloadCache {
       return _PreparedSubscriptionVideo(config: config);
     }
 
-    final controller = VideoPlayerController.networkUrl(Uri.parse(config!.url));
+    final uri = Uri.tryParse(config!.url.trim());
+    if (uri == null || !uri.hasScheme) {
+      return _PreparedSubscriptionVideo(config: config);
+    }
+    final controller = VideoPlayerController.networkUrl(uri);
     try {
       await controller.initialize();
       await controller.setLooping(false);
