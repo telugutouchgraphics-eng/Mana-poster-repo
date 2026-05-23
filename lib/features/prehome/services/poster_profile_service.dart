@@ -187,6 +187,48 @@ class PosterProfileData {
     }
     return PosterProfileService.defaultName;
   }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is PosterProfileData &&
+            other.nameTelugu == nameTelugu &&
+            other.nameEnglish == nameEnglish &&
+            other.whatsappNumber == whatsappNumber &&
+            other.nameFontFamily == nameFontFamily &&
+            other.displayNameMode == displayNameMode &&
+            other.photoPath == photoPath &&
+            other.photoUrl == photoUrl &&
+            other.identityMode == identityMode &&
+            other.businessName == businessName &&
+            other.businessTagline == businessTagline &&
+            other.businessWhatsappNumber == businessWhatsappNumber &&
+            other.businessLogoPath == businessLogoPath &&
+            other.businessLogoUrl == businessLogoUrl &&
+            other.businessLogoStyleId == businessLogoStyleId &&
+            other.originalPhotoPath == originalPhotoPath &&
+            other.originalPhotoUrl == originalPhotoUrl;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    nameTelugu,
+    nameEnglish,
+    whatsappNumber,
+    nameFontFamily,
+    displayNameMode,
+    photoPath,
+    photoUrl,
+    identityMode,
+    businessName,
+    businessTagline,
+    businessWhatsappNumber,
+    businessLogoPath,
+    businessLogoUrl,
+    businessLogoStyleId,
+    originalPhotoPath,
+    originalPhotoUrl,
+  );
 }
 
 class PosterNameFontOption {

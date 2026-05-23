@@ -72,6 +72,60 @@ class CreatorPosterPersonalization {
   final String photoRenderMode;
   final String edgeStyle;
   final bool showSafeAreas;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is CreatorPosterPersonalization &&
+            other.photoShape == photoShape &&
+            other.photoX == photoX &&
+            other.photoY == photoY &&
+            other.photoScale == photoScale &&
+            other.nameX == nameX &&
+            other.nameY == nameY &&
+            other.showBottomStrip == showBottomStrip &&
+            other.stripHeight == stripHeight &&
+            other.showWhatsapp == showWhatsapp &&
+            other.sampleName == sampleName &&
+            other.nameScale == nameScale &&
+            other.showStyledNameStrip == showStyledNameStrip &&
+            other.showStyledDesignationStrip == showStyledDesignationStrip &&
+            other.sampleDesignation == sampleDesignation &&
+            other.designationScale == designationScale &&
+            other.phoneScale == phoneScale &&
+            other.nameStripColor == nameStripColor &&
+            other.designationStripColor == designationStripColor &&
+            other.boardVariant == boardVariant &&
+            other.photoRenderMode == photoRenderMode &&
+            other.edgeStyle == edgeStyle &&
+            other.showSafeAreas == showSafeAreas;
+  }
+
+  @override
+  int get hashCode => Object.hashAll(<Object?>[
+    photoShape,
+    photoX,
+    photoY,
+    photoScale,
+    nameX,
+    nameY,
+    showBottomStrip,
+    stripHeight,
+    showWhatsapp,
+    sampleName,
+    nameScale,
+    showStyledNameStrip,
+    showStyledDesignationStrip,
+    sampleDesignation,
+    designationScale,
+    phoneScale,
+    nameStripColor,
+    designationStripColor,
+    boardVariant,
+    photoRenderMode,
+    edgeStyle,
+    showSafeAreas,
+  ]);
 }
 
 class ApprovedCreatorTemplate {
