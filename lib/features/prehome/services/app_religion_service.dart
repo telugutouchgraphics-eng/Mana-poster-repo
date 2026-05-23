@@ -17,7 +17,7 @@ class AppReligionService {
       <String, AppReligionPreference>{};
 
   static Future<AppReligionPreference?> loadSelection() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentUser();
     if (user == null) {
       return null;
     }
@@ -27,17 +27,24 @@ class AppReligionService {
       return cached;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final stored = _readPreference(prefs.getString(_localKey(user.uid)));
-    if (stored != null) {
-      _memorySelections[user.uid] = stored;
-      return stored;
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+      final stored = _readPreference(prefs.getString(_localKey(user.uid)));
+      if (stored != null) {
+        _memorySelections[user.uid] = stored;
+        return stored;
+      }
+    } catch (_) {
+      prefs = null;
     }
 
     final remote = await _loadFromRemote(user.uid);
     if (remote != null) {
       _memorySelections[user.uid] = remote;
-      await prefs.setString(_localKey(user.uid), remote.name);
+      try {
+        await prefs?.setString(_localKey(user.uid), remote.name);
+      } catch (_) {}
     }
     return remote;
   }
@@ -47,7 +54,7 @@ class AppReligionService {
   }
 
   static Future<bool> persistSelection(AppReligionPreference preference) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentUser();
     if (user == null) {
       return false;
     }
@@ -85,6 +92,17 @@ class AppReligionService {
   }
 
   static String _localKey(String userId) => '$_localKeyPrefix$userId';
+
+  static User? _currentUser() {
+    if (Firebase.apps.isEmpty) {
+      return null;
+    }
+    try {
+      return FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
 
   static AppReligionPreference? _readPreference(String? rawValue) {
     if (rawValue == null || rawValue.trim().isEmpty) {

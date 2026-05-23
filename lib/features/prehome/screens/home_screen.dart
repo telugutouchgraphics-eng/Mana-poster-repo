@@ -527,8 +527,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadReligionPreference() async {
-    final selection =
-        await AppReligionService.loadSelection() ?? AppReligionPreference.all;
+    AppReligionPreference selection = AppReligionPreference.all;
+    try {
+      selection =
+          await AppReligionService.loadSelection() ?? AppReligionPreference.all;
+    } catch (_) {}
     if (!mounted) {
       return;
     }
