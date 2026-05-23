@@ -745,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen>
       );
       return aKey.compareTo(bKey);
     });
-    return shuffled;
+    return _spreadAllCategoryTemplateGroups(shuffled);
   }
 
   List<_TemplateItem> _freshAllCategoryTemplatesForToday(
@@ -761,6 +761,43 @@ class _HomeScreenState extends State<HomeScreen>
               createdAtMillis < endOfTodayMillis;
         })
         .toList(growable: false);
+  }
+
+  List<_TemplateItem> _spreadAllCategoryTemplateGroups(
+    List<_TemplateItem> templates,
+  ) {
+    if (templates.length < 3) {
+      return templates;
+    }
+    final remaining = List<_TemplateItem>.of(templates, growable: true);
+    final arranged = <_TemplateItem>[];
+    while (remaining.isNotEmpty) {
+      final lastCategory = arranged.isEmpty
+          ? null
+          : _allCategoryGroupingKey(arranged.last);
+      final nextIndex = remaining.indexWhere(
+        (item) => _allCategoryGroupingKey(item) != lastCategory,
+      );
+      final pickIndex = nextIndex >= 0 ? nextIndex : 0;
+      arranged.add(remaining.removeAt(pickIndex));
+    }
+    return arranged;
+  }
+
+  String _allCategoryGroupingKey(_TemplateItem item) {
+    final primary = _normalizeTag(_primaryCategoryIdForHomeChip(item));
+    if (primary.isNotEmpty && primary != _allCategorySlug) {
+      return primary;
+    }
+    for (final tag in item.categoryTags) {
+      final normalized = _normalizeTag(tag);
+      if (normalized.isNotEmpty && normalized != _allCategorySlug) {
+        return normalized;
+      }
+    }
+    return item.templateId?.trim().isNotEmpty == true
+        ? item.templateId!.trim()
+        : item.titleEn.trim();
   }
 
   /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
