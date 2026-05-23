@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
@@ -71,6 +72,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
       _snapshot = snapshot;
       _loading = false;
     });
+    await NotificationService.instance.syncCurrentPreferences();
     await _completeFlowAndGoHome();
   }
 

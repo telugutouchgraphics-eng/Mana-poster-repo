@@ -85,9 +85,11 @@ Future<void> _runPostLaunchInitialization() async {
   }
 
   if (!kIsWeb) {
-    await _runStartupTask(
-      'notification_initialize',
-      NotificationService.instance.initialize,
+    unawaited(
+      _runStartupTask(
+        'notification_initialize',
+        NotificationService.instance.initialize,
+      ),
     );
     unawaited(
       _runStartupTask(
@@ -104,6 +106,7 @@ Future<void> _runPostLaunchInitialization() async {
     if (AppPublicInfo.hasAnyAdMobConfig) {
       unawaited(
         _runStartupTask('admob_consent_and_initialize', () async {
+          await Future<void>.delayed(const Duration(seconds: 3));
           await AdMobConsentService.instance.prepareForAds();
           if (await AdMobConsentService.instance.canRequestAds()) {
             await MobileAds.instance.initialize();
@@ -113,9 +116,11 @@ Future<void> _runPostLaunchInitialization() async {
     }
   }
 
-  await _runStartupTask(
-    'device_session_start',
-    DeviceSessionService.instance.start,
+  unawaited(
+    _runStartupTask(
+      'device_session_start',
+      DeviceSessionService.instance.start,
+    ),
   );
   unawaited(
     _runStartupTask('subscription_refresh_post_launch', () async {

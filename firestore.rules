@@ -132,6 +132,7 @@ service cloud.firestore {
     function validUserRootWrite(userId) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           "preferredLanguage",
+          "religionPreference",
           "updatedAt",
         ]) &&
         (!("preferredLanguage" in request.resource.data) ||
@@ -143,6 +144,14 @@ service cloud.firestore {
               "tamil",
               "kannada",
               "malayalam",
+            ])) &&
+        (!("religionPreference" in request.resource.data) ||
+          (request.resource.data.religionPreference is string &&
+            request.resource.data.religionPreference in [
+              "hindu",
+              "muslim",
+              "christian",
+              "all",
             ]));
     }
 

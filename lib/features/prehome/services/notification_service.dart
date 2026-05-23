@@ -17,6 +17,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
+import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,7 @@ class NotificationService {
   );
   static const String _publicTokenSyncedPrefix = 'public_push_token_synced_';
   static const String _topicAllUsers = 'all_users';
+
   /// Word joiner — non-empty so Android does not substitute app name for title.
   static const String _collapsedImageTitle = '\u2060';
 
@@ -137,7 +139,9 @@ class NotificationService {
     await _tokenRefreshSubscription?.cancel();
     await _authStateSubscription?.cancel();
 
-    _onMessageSubscription = FirebaseMessaging.onMessage.listen((message) async {
+    _onMessageSubscription = FirebaseMessaging.onMessage.listen((
+      message,
+    ) async {
       await showRemoteMessage(message);
     });
     _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp
@@ -189,16 +193,16 @@ class NotificationService {
 
     final _NotificationArtifactBundle bundle =
         await _buildNotificationArtifactBundle(
-      posterImageUrl: posterImageUrl,
-      posterBaseImageUrl: posterBaseImageUrl,
-      userPhotoUrl: _readDataValue(message.data, 'userPhoto'),
-      userName: userName,
-      headerText: headerText,
-      footerText: footerText,
-      categoryKey: categoryKey,
-      title: resolved.title,
-      body: resolved.body,
-    );
+          posterImageUrl: posterImageUrl,
+          posterBaseImageUrl: posterBaseImageUrl,
+          userPhotoUrl: _readDataValue(message.data, 'userPhoto'),
+          userName: userName,
+          headerText: headerText,
+          footerText: footerText,
+          categoryKey: categoryKey,
+          title: resolved.title,
+          body: resolved.body,
+        );
     final payload =
         (_readDataValue(message.data, 'route')).trim().toLowerCase() == 'home'
         ? 'home'
@@ -279,6 +283,9 @@ class NotificationService {
   }
 
   Future<void> _syncToken(String token) async {
+    if (!await _canSyncTokenForCurrentPermissionState()) {
+      return;
+    }
     final User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       await _syncPublicToken(token);
@@ -404,6 +411,18 @@ class NotificationService {
       return;
     }
     await messaging.unsubscribeFromTopic(_topicAllUsers);
+  }
+
+  Future<bool> _canSyncTokenForCurrentPermissionState() async {
+    if (!_supportsNativeNotifications) {
+      return false;
+    }
+    try {
+      final snapshot = await PermissionService().getSnapshot();
+      return snapshot.notifications.isGranted;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>> _buildPreferenceSyncPayload() async {
@@ -583,13 +602,15 @@ class NotificationService {
     if (collapsedHeaderPath != null) {
       disposablePaths.add(collapsedHeaderPath);
     }
-    final String? posterPath =
-        await _prepareExpandedPosterImage(downloadedPosterPath);
+    final String? posterPath = await _prepareExpandedPosterImage(
+      downloadedPosterPath,
+    );
     if (posterPath != null && posterPath.trim().isNotEmpty) {
       disposablePaths.add(posterPath.trim());
     }
-    final String? userPhotoPath =
-        await _downloadImageForNotification(userPhotoUrl);
+    final String? userPhotoPath = await _downloadImageForNotification(
+      userPhotoUrl,
+    );
     if (userPhotoPath != null) {
       disposablePaths.add(userPhotoPath);
     }
@@ -721,9 +742,10 @@ class NotificationService {
         return null;
       }
       const double stripRatio = 232 / 900;
-      final int stripHeight = (decoded.height * stripRatio)
-          .round()
-          .clamp(1, decoded.height);
+      final int stripHeight = (decoded.height * stripRatio).round().clamp(
+        1,
+        decoded.height,
+      );
       final img.Image cropped = img.copyCrop(
         decoded,
         x: 0,
