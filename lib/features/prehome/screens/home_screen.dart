@@ -1314,6 +1314,19 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _triggerSelectedCategoryPrefetch() {
+    final slug = _selectedCategorySlug;
+    if (slug == _allCategorySlug || !mounted) {
+      return;
+    }
+    final language = context.currentLanguage;
+    final generation = ++_categoryLoadGeneration;
+    if (_categoryLoadingSlug != slug) {
+      setState(() => _categoryLoadingSlug = slug);
+    }
+    unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
+  }
+
   void _scheduleHomeFeedRepaint() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -1455,6 +1468,7 @@ class _HomeScreenState extends State<HomeScreen>
         _templatesLastDocument = cachedPage.lastDocument;
       });
       _scheduleHomeFeedRepaint();
+      _triggerSelectedCategoryPrefetch();
     }
 
     final remotePage = await _approvedCreatorTemplateService
@@ -1489,6 +1503,7 @@ class _HomeScreenState extends State<HomeScreen>
         _templatesLastDocument = expanded.lastDocument;
       });
       _scheduleHomeFeedRepaint();
+      _triggerSelectedCategoryPrefetch();
       return;
     }
     final expanded = await _expandAllFeedTemplatesIfNeeded(
@@ -1503,6 +1518,7 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesLastDocument = expanded.lastDocument;
     });
     _scheduleHomeFeedRepaint();
+    _triggerSelectedCategoryPrefetch();
   }
 
   Future<bool> _loadMoreApprovedCreatorTemplates() async {
