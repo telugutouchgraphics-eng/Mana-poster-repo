@@ -10,6 +10,7 @@ import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
+import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
 import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 
@@ -18,6 +19,7 @@ class AppRoutes {
   static const language = '/language';
   static const login = '/login';
   static const permissions = '/permissions';
+  static const religion = '/religion';
   static const profileSetup = '/profile-setup';
   static const home = '/home';
   static const pageSetup = '/page-setup';
@@ -44,6 +46,7 @@ class AppRoutes {
     language: (_) => _webEntry(const LanguageSelectionScreen()),
     login: (_) => _webEntry(const LoginScreen()),
     permissions: (_) => _webEntry(const PermissionsScreen()),
+    religion: (_) => _webEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _webEntry(const ProfileSetupScreen()),
     home: (_) => _webEntry(const HomeScreen()),
     pageSetup: (_) => _webEntry(const PageSetupScreen()),

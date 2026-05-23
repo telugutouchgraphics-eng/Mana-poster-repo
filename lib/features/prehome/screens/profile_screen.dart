@@ -19,6 +19,9 @@ import 'package:mana_poster/features/prehome/screens/notifications_settings_scre
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
+import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
+import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
+import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -59,7 +62,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadPrivacyChoicesVisibility() async {
-    final required = await AdMobConsentService.instance.isPrivacyOptionsRequired();
+    final required = await AdMobConsentService.instance
+        .isPrivacyOptionsRequired();
     if (!mounted) {
       return;
     }
@@ -448,188 +452,215 @@ class _ProfileMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(copy.settingsTitle),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        children: <Widget>[
-          _SettingsGroup(
-            title: copy.quickActionsTitle,
-            items: <_ProfileItemData>[
-              _ProfileItemData(
-                icon: Icons.ios_share_rounded,
-                title: copy.shareAppTitle,
-                subtitle: copy.shareAppSubtitle,
-                onTap: () => unawaited(onShareApp()),
-              ),
-              _ProfileItemData(
-                icon: Icons.language_rounded,
-                title: copy.languageTitle,
-                subtitle: copy.languageSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LanguageSettingsScreen(),
+      body: GradientShell(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          children: <Widget>[
+            OnboardingSurfaceCard(
+              child: Column(
+                children: <Widget>[
+                  Text(
+                    copy.settingsTitle,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
-                  );
-                },
-              ),
-              _ProfileItemData(
-                icon: Icons.card_membership_rounded,
-                title: copy.subscriptionTitle,
-                subtitle: copy.subscriptionSubtitle,
-                badge: _ProfileItemBadge.premium,
-                onTap: () => unawaited(_openSubscriptionPlan(context)),
-              ),
-              _ProfileItemData(
-                icon: Icons.group_add_rounded,
-                title: copy.referralRewardsTitle,
-                subtitle: copy.referralRewardsSubtitle,
-                onTap: () => unawaited(_openReferralRewards(context)),
-              ),
-              _ProfileItemData(
-                icon: Icons.restore_rounded,
-                title: copy.restoreSubscriptionTitle,
-                subtitle: copy.restoreSubscriptionSubtitle,
-                onTap: () => unawaited(
-                  _openSubscriptionPlan(context, triggerRestoreOnOpen: true),
-                ),
-              ),
-              _ProfileItemData(
-                icon: Icons.verified_user_outlined,
-                title: copy.permissionsTitle,
-                subtitle: copy.permissionsSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const PermissionSettingsScreen(),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    copy.quickActionsTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF64748B),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-              _ProfileItemData(
-                icon: Icons.notifications_none_rounded,
-                title: copy.notificationsTitle,
-                subtitle: copy.notificationsSubtitle,
-                badge: _ProfileItemBadge.bell,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const NotificationsSettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-              _ProfileItemData(
-                icon: Icons.help_outline_rounded,
-                title: copy.helpTitle,
-                subtitle: copy.helpSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const HelpSupportScreen(),
-                    ),
-                  );
-                },
-              ),
-              _ProfileItemData(
-                icon: Icons.privacy_tip_outlined,
-                title: copy.privacyPolicyTitle,
-                subtitle: copy.privacyPolicySubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LegalDocumentScreen(
-                        documentType: LegalDocumentType.privacyPolicy,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              if (showAdPrivacyChoices)
+            ),
+            const SizedBox(height: 18),
+            _SettingsGroup(
+              title: copy.quickActionsTitle,
+              items: <_ProfileItemData>[
                 _ProfileItemData(
-                  icon: Icons.ads_click_outlined,
-                  title: copy.adPrivacyChoicesTitle,
-                  subtitle: copy.adPrivacyChoicesSubtitle,
+                  icon: Icons.ios_share_rounded,
+                  title: copy.shareAppTitle,
+                  subtitle: copy.shareAppSubtitle,
+                  onTap: () => unawaited(onShareApp()),
+                ),
+                _ProfileItemData(
+                  icon: Icons.language_rounded,
+                  title: copy.languageTitle,
+                  subtitle: copy.languageSubtitle,
                   onTap: () {
-                    unawaited(AdMobConsentService.instance.showPrivacyOptionsForm());
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LanguageSettingsScreen(),
+                      ),
+                    );
                   },
                 ),
-              _ProfileItemData(
-                icon: Icons.gavel_rounded,
-                title: copy.legalNoticesTitle,
-                subtitle: copy.legalNoticesSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LegalDocumentScreen(
-                        documentType: LegalDocumentType.termsAndConditions,
+                _ProfileItemData(
+                  icon: Icons.card_membership_rounded,
+                  title: copy.subscriptionTitle,
+                  subtitle: copy.subscriptionSubtitle,
+                  badge: _ProfileItemBadge.premium,
+                  onTap: () => unawaited(_openSubscriptionPlan(context)),
+                ),
+                _ProfileItemData(
+                  icon: Icons.group_add_rounded,
+                  title: copy.referralRewardsTitle,
+                  subtitle: copy.referralRewardsSubtitle,
+                  onTap: () => unawaited(_openReferralRewards(context)),
+                ),
+                _ProfileItemData(
+                  icon: Icons.restore_rounded,
+                  title: copy.restoreSubscriptionTitle,
+                  subtitle: copy.restoreSubscriptionSubtitle,
+                  onTap: () => unawaited(
+                    _openSubscriptionPlan(context, triggerRestoreOnOpen: true),
+                  ),
+                ),
+                _ProfileItemData(
+                  icon: Icons.verified_user_outlined,
+                  title: copy.permissionsTitle,
+                  subtitle: copy.permissionsSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PermissionSettingsScreen(),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _SettingsGroup(
-            title: copy.supportTitle,
-            items: <_ProfileItemData>[
-              _ProfileItemData(
-                icon: Icons.info_outline_rounded,
-                title: copy.aboutTitle,
-                subtitle: copy.aboutSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const AboutAppScreen(),
-                    ),
-                  );
-                },
-              ),
-              _ProfileItemData(
-                icon: Icons.flag_outlined,
-                title: copy.reportIssueTitle,
-                subtitle: copy.reportIssueSubtitle,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => HelpSupportScreen(
-                        initialSubject: copy.reportIssueEmailSubject,
-                        initialBody: copy.reportIssueEmailBody,
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.notifications_none_rounded,
+                  title: copy.notificationsTitle,
+                  subtitle: copy.notificationsSubtitle,
+                  badge: _ProfileItemBadge.bell,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const NotificationsSettingsScreen(),
                       ),
-                    ),
-                  );
-                },
-              ),
-              _ProfileItemData(
-                icon: Icons.logout_rounded,
-                title: copy.logoutTitle,
-                subtitle: copy.logoutSubtitle,
-                isDestructive: true,
-                onTap: () => unawaited(onLogout()),
-              ),
-              _ProfileItemData(
-                icon: Icons.delete_forever_outlined,
-                title: copy.deleteAccountTitle,
-                subtitle: copy.deleteAccountSubtitle,
-                isDestructive: true,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const AccountDeletionScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.help_outline_rounded,
+                  title: copy.helpTitle,
+                  subtitle: copy.helpSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HelpSupportScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.privacy_tip_outlined,
+                  title: copy.privacyPolicyTitle,
+                  subtitle: copy.privacyPolicySubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LegalDocumentScreen(
+                          documentType: LegalDocumentType.privacyPolicy,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                if (showAdPrivacyChoices)
+                  _ProfileItemData(
+                    icon: Icons.ads_click_outlined,
+                    title: copy.adPrivacyChoicesTitle,
+                    subtitle: copy.adPrivacyChoicesSubtitle,
+                    onTap: () {
+                      unawaited(
+                        AdMobConsentService.instance.showPrivacyOptionsForm(),
+                      );
+                    },
+                  ),
+                _ProfileItemData(
+                  icon: Icons.gavel_rounded,
+                  title: copy.legalNoticesTitle,
+                  subtitle: copy.legalNoticesSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LegalDocumentScreen(
+                          documentType: LegalDocumentType.termsAndConditions,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _SettingsGroup(
+              title: copy.supportTitle,
+              items: <_ProfileItemData>[
+                _ProfileItemData(
+                  icon: Icons.info_outline_rounded,
+                  title: copy.aboutTitle,
+                  subtitle: copy.aboutSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AboutAppScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.flag_outlined,
+                  title: copy.reportIssueTitle,
+                  subtitle: copy.reportIssueSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => HelpSupportScreen(
+                          initialSubject: copy.reportIssueEmailSubject,
+                          initialBody: copy.reportIssueEmailBody,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _ProfileItemData(
+                  icon: Icons.logout_rounded,
+                  title: copy.logoutTitle,
+                  subtitle: copy.logoutSubtitle,
+                  isDestructive: true,
+                  onTap: () => unawaited(onLogout()),
+                ),
+                _ProfileItemData(
+                  icon: Icons.delete_forever_outlined,
+                  title: copy.deleteAccountTitle,
+                  subtitle: copy.deleteAccountSubtitle,
+                  isDestructive: true,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AccountDeletionScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -729,132 +760,191 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
         mediaQuery.viewInsets.bottom -
         mediaQuery.padding.vertical -
         220;
-    return AlertDialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      title: Text(copy.referralRewardsTitle),
-      content: FutureBuilder<ReferralRewardStatus>(
-        future: _statusFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const SizedBox(
-              height: 112,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (!snapshot.hasData) {
-            return SizedBox(
-              width: 320,
-              child: Text(copy.referralLoadFailedMessage),
-            );
-          }
-          final status = snapshot.data!;
-          return ConstrainedBox(
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.transparent,
+      child: GradientShell(
+        padding: EdgeInsets.zero,
+        child: Center(
+          child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: 360,
-              maxHeight: maxDialogContentHeight.clamp(220, 520).toDouble(),
+              maxWidth: 420,
+              maxHeight: maxDialogContentHeight.clamp(260, 560).toDouble(),
             ),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SelectableText(
-                    status.code,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    copy.referralProgressText(
-                      status.currentCyclePaidCount,
-                      status.requiredPaidReferrals,
-                    ),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => unawaited(_copyCode(status)),
-                          icon: const Icon(Icons.copy_rounded, size: 18),
-                          label: Text(copy.copyReferralCodeAction),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () => unawaited(_share(status)),
-                          icon: const Icon(Icons.ios_share_rounded, size: 18),
-                          label: Text(copy.shareReferralAction),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 28),
-                  TextField(
-                    controller: _codeController,
-                    textCapitalization: TextCapitalization.characters,
-                    decoration: InputDecoration(
-                      labelText: copy.applyReferralCodeLabel,
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _applying
-                          ? null
-                          : () => unawaited(_applyCode()),
-                      child: _applying
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(copy.applyReferralCodeAction),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const LegalDocumentScreen(
-                              documentType:
-                                  LegalDocumentType.termsAndConditions,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Text(copy.referralTermsAction),
-                    ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x120F172A),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
                   ),
                 ],
               ),
+              child: FutureBuilder<ReferralRewardStatus>(
+                future: _statusFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const SizedBox(
+                      height: 180,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (!snapshot.hasData) {
+                    return SizedBox(
+                      height: 180,
+                      child: Center(
+                        child: Text(copy.referralLoadFailedMessage),
+                      ),
+                    );
+                  }
+                  final status = snapshot.data!;
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Container(
+                          height: 10,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            gradient: const LinearGradient(
+                              colors: <Color>[
+                                Color(0xFF14B8A6),
+                                Color(0xFF38BDF8),
+                                Color(0xFFA78BFA),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          copy.referralRewardsTitle,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          copy.referralProgressText(
+                            status.currentCyclePaidCount,
+                            status.requiredPaidReferrals,
+                          ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              SelectableText(
+                                status.code,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () =>
+                                          unawaited(_copyCode(status)),
+                                      icon: const Icon(
+                                        Icons.copy_rounded,
+                                        size: 18,
+                                      ),
+                                      label: Text(copy.copyReferralCodeAction),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: FilledButton.icon(
+                                      onPressed: () =>
+                                          unawaited(_share(status)),
+                                      icon: const Icon(
+                                        Icons.ios_share_rounded,
+                                        size: 18,
+                                      ),
+                                      label: Text(copy.shareReferralAction),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _codeController,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: InputDecoration(
+                            labelText: copy.applyReferralCodeLabel,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            isDense: true,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PrimaryButton(
+                          label: copy.applyReferralCodeAction,
+                          loading: _applying,
+                          onPressed: () => unawaited(_applyCode()),
+                        ),
+                        const SizedBox(height: 6),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const LegalDocumentScreen(
+                                  documentType:
+                                      LegalDocumentType.termsAndConditions,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(copy.referralTermsAction),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: Text(copy.closeAction),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        },
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(copy.closeAction),
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1016,6 +1106,7 @@ class _ProfileCopy {
       : 'Manage personalized ad settings';
   String get legalNoticesTitle =>
       _isTelugu ? 'నిబంధనలు మరియు షరతులు' : 'Terms & Conditions';
-  String get legalNoticesSubtitle =>
-      _isTelugu ? 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు' : 'Usage and subscription terms';
+  String get legalNoticesSubtitle => _isTelugu
+      ? 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు'
+      : 'Usage and subscription terms';
 }

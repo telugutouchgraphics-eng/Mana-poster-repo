@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 
 class AppNavigator {
   AppNavigator._();
@@ -16,6 +19,7 @@ class AppNavigator {
     AppRoutes.imageEditor,
     AppRoutes.login,
     AppRoutes.permissions,
+    AppRoutes.religion,
     AppRoutes.profileSetup,
     AppRoutes.language,
     AppRoutes.notificationUnavailable,
@@ -26,10 +30,12 @@ class AppNavigator {
     if (state == null) {
       return;
     }
-    state.pushNamedAndRemoveUntil(
-      AppRoutes.home,
-      (Route<dynamic> route) => false,
-    );
+    unawaited(_openResolvedHome(state));
+  }
+
+  static Future<void> _openResolvedHome(NavigatorState state) async {
+    final route = await AppFlowService.resolveAuthenticatedEntryRoute();
+    state.pushNamedAndRemoveUntil(route, (Route<dynamic> route) => false);
   }
 
   static void openNotificationRoute(

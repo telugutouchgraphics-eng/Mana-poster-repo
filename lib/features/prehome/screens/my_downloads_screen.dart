@@ -7,6 +7,8 @@ import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
+import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
+import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 
 class MyDownloadsScreen extends StatefulWidget {
   const MyDownloadsScreen({super.key});
@@ -61,8 +63,9 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
       await MediaExportService.shareImageFile(
         path,
         text: shareText,
-        sharePositionOrigin:
-            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
       );
     } on MediaShareException {
       messenger?.showSnackBar(SnackBar(content: Text(failed)));
@@ -93,23 +96,27 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
         malayalam: 'വെബിൽ ലഭ്യമല്ല.',
       );
       return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
           elevation: 0,
           surfaceTintColor: Colors.transparent,
-          backgroundColor: const Color(0xFFF8FAFC),
+          backgroundColor: Theme.of(context).colorScheme.surface,
           title: Text(title),
         ),
-        body: Center(child: Text(msg)),
+        body: GradientShell(
+          child: OnboardingSurfaceCard(
+            child: Text(msg, textAlign: TextAlign.center),
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: const Color(0xFF0F172A),
         title: Text(
           title,
@@ -119,20 +126,16 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
           ),
         ),
       ),
-      body: FutureBuilder<List<PosterDownloadListed>>(
-        future: _itemsFuture,
-        builder: (
-          BuildContext context,
-          AsyncSnapshot<List<PosterDownloadListed>> snap,
-        ) {
-          if (snap.connectionState == ConnectionState.waiting &&
-              (!snap.hasData || snap.data == null)) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
+      body: GradientShell(
+        child: FutureBuilder<List<PosterDownloadListed>>(
+          future: _itemsFuture,
+          builder: (BuildContext context, AsyncSnapshot<List<PosterDownloadListed>> snap) {
+            if (snap.connectionState == ConnectionState.waiting &&
+                (!snap.hasData || snap.data == null)) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return OnboardingSurfaceCard(
                 child: Text(
                   strings.localized(
                     telugu: 'లోడ్ కాలేదు.',
@@ -144,22 +147,18 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-              ),
-            );
-          }
-          final list = snap.data ?? <PosterDownloadListed>[];
-          if (list.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: _reload,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: <Widget>[
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.25,
-                  ),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
+              );
+            }
+            final list = snap.data ?? <PosterDownloadListed>[];
+            if (list.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: _reload,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(20),
+                  children: <Widget>[
+                    SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+                    OnboardingSurfaceCard(
                       child: Text(
                         strings.localized(
                           telugu:
@@ -176,7 +175,7 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
                               '\nகேலரியில் சேமிக்கும்போது இங்கும் சேமிக்கப்படும்.',
                           kannada:
                               'ಡೌನ್‌ಲೋಡ್ ಮಾಡಿದ ಪೋಸ್ಟರುಗಳು ಇಲ್ಲಿ.'
-                              '\nಗ್ಯಾಲರಿಗೆ సೇವ್ ಆದಾಗ ಇಲ್ಲೂ ಉಳಿಯುತ್ತದೆ.',
+                              '\nಗ್ಯಾಲರಿಗೆ ಸೇವ್ ಆದಾಗ ಇಲ್ಲೂ ಉಳಿಯುತ್ತದೆ.',
                           malayalam:
                               'ഡൗൺലോഡ് ചെയ്ത പോസ്റ്ററുകൾ ഇവിടെ.'
                               '\nഗാലറിയിൽ സേവ് ചെയ്യുമ്പോൾ ഇവിടെയും ഉണ്ടാകും.',
@@ -184,74 +183,90 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: _reload,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: <Widget>[
+                  OnboardingSurfaceCard(
+                    maxWidth: 520,
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 0.78,
+                          ),
+                      itemCount: list.length,
+                      itemBuilder: (BuildContext _, int index) {
+                        final PosterDownloadListed item = list[index];
+                        final String path = item.absolutePath;
+                        return ClipRRect(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(14),
+                          ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              ColoredBox(
+                                color: const Color(0xFFE2E8F0),
+                                child: Image.file(
+                                  File(path),
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (_, Object error, StackTrace? st) =>
+                                          const Center(
+                                            child: Icon(
+                                              Icons.broken_image_rounded,
+                                              color: Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.bottomRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: Material(
+                                    color: Colors.black.withValues(alpha: 0.42),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: InkWell(
+                                      onTap: () => _shareListed(item),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Icon(
+                                          Icons.share_rounded,
+                                          size: 20,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.95,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
             );
-          }
-
-          return RefreshIndicator(
-            onRefresh: _reload,
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 0.78,
-              ),
-              itemCount: list.length,
-              itemBuilder: (BuildContext _, int index) {
-                final PosterDownloadListed item = list[index];
-                final String path = item.absolutePath;
-                return ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(14)),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      ColoredBox(
-                        color: const Color(0xFFE2E8F0),
-                        child: Image.file(
-                          File(path),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, Object error, StackTrace? st) =>
-                              const Center(
-                            child: Icon(
-                              Icons.broken_image_rounded,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Material(
-                            color: Colors.black.withValues(alpha: 0.42),
-                            borderRadius: BorderRadius.circular(12),
-                            child: InkWell(
-                              onTap: () => _shareListed(item),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.share_rounded,
-                                  size: 20,
-                                  color: Colors.white.withValues(alpha: 0.95),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }

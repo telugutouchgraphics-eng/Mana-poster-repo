@@ -80,9 +80,7 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _prepareNextRoute() async {
     try {
       await FirebaseBootstrap.ensureInitialized();
-      _startupLog(
-        'firebase_initialized=${FirebaseBootstrap.hasFirebaseApp}',
-      );
+      _startupLog('firebase_initialized=${FirebaseBootstrap.hasFirebaseApp}');
       final snapshot = await AppFlowService.loadSnapshot().timeout(
         const Duration(seconds: 2),
       );
@@ -110,7 +108,12 @@ class _SplashScreenState extends State<SplashScreen>
       } else if (!permissionsHandled) {
         nextRoute = AppRoutes.permissions;
       } else {
-        nextRoute = AppRoutes.home;
+        nextRoute =
+            await AppFlowService.resolveAuthenticatedEntryRouteForStartup()
+                .timeout(
+                  const Duration(seconds: 3),
+                  onTimeout: () => AppRoutes.profileSetup,
+                );
       }
       _startupLog(
         'pre_profile_route_decision nextRoute=$nextRoute'
@@ -120,13 +123,6 @@ class _SplashScreenState extends State<SplashScreen>
       await AppFlowService.syncInitialSetupCompletion(
         isAuthenticated: isAuthenticated,
       ).timeout(const Duration(seconds: 2));
-      if (nextRoute == AppRoutes.home) {
-        nextRoute = await AppFlowService.resolveAuthenticatedEntryRouteForStartup()
-            .timeout(
-              const Duration(seconds: 3),
-              onTimeout: () => AppRoutes.profileSetup,
-            );
-      }
       if (!mounted) {
         return;
       }

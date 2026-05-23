@@ -49,7 +49,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
 
   Future<void> _completeFlowAndGoHome() async {
     await AppFlowService.markPermissionsStepHandled();
-    await AppFlowService.markInitialSetupCompleted();
+    await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
     final String nextRoute =
         await AppFlowService.resolveAuthenticatedEntryRoute();
     if (!mounted) {
@@ -301,9 +301,7 @@ class _PermissionRow extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: granted
-                  ? const Color(0xFF166534)
-                  : cs.onSurfaceVariant,
+              color: granted ? const Color(0xFF166534) : cs.onSurfaceVariant,
             ),
           ),
         ),

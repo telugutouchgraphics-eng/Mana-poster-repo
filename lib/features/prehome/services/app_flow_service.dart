@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
+import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class AppFlowSnapshot {
@@ -34,7 +35,7 @@ class AppFlowSnapshot {
     if (!permissionsStepHandled) {
       return AppRoutes.permissions;
     }
-    return AppRoutes.home;
+    return AppRoutes.religion;
   }
 }
 
@@ -55,7 +56,8 @@ class AppFlowService {
       final AppLanguage language = _readLanguage(
         prefs.getString(_selectedLanguageKey),
       );
-      final bool languageSelected = prefs.getBool(_languageSelectedKey) ?? false;
+      final bool languageSelected =
+          prefs.getBool(_languageSelectedKey) ?? false;
 
       if (languageSelected) {
         _memoryLanguage = language;
@@ -121,10 +123,14 @@ class AppFlowService {
   }) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final bool permissionsHandled = await resolvePermissionsStepHandled();
+    final bool religionHandled = isAuthenticated
+        ? await AppReligionService.hasSelection()
+        : false;
     final bool completed =
         (prefs.getBool(_languageSelectedKey) ?? false) &&
         isAuthenticated &&
-        permissionsHandled;
+        permissionsHandled &&
+        religionHandled;
     await prefs.setBool(_initialSetupCompletedKey, completed);
   }
 
@@ -152,23 +158,35 @@ class AppFlowService {
     return true;
   }
 
-  static Future<String> resolveAuthenticatedEntryRoute() async {
+  static Future<String> resolveAuthenticatedEntryRoute({
+    bool includeReligionGate = true,
+  }) async {
+    if (includeReligionGate && !await AppReligionService.hasSelection()) {
+      return AppRoutes.religion;
+    }
     final PosterProfileData profile = await PosterProfileService.load();
     return PosterProfileService.isSetupComplete(profile)
         ? AppRoutes.home
         : AppRoutes.profileSetup;
   }
 
-  static Future<String> resolveAuthenticatedEntryRouteForStartup() async {
-    final PosterProfileData localProfile = await PosterProfileService.loadLocal();
+  static Future<String> resolveAuthenticatedEntryRouteForStartup({
+    bool includeReligionGate = true,
+  }) async {
+    if (includeReligionGate && !await AppReligionService.hasSelection()) {
+      return AppRoutes.religion;
+    }
+    final PosterProfileData localProfile =
+        await PosterProfileService.loadLocal();
     if (PosterProfileService.isSetupComplete(localProfile)) {
       return AppRoutes.home;
     }
 
     try {
-      final PosterProfileData? remoteProfile = await PosterProfileService
-          .refreshFromRemote(localProfile: localProfile)
-          .timeout(const Duration(seconds: 2), onTimeout: () => null);
+      final PosterProfileData? remoteProfile =
+          await PosterProfileService.refreshFromRemote(
+            localProfile: localProfile,
+          ).timeout(const Duration(seconds: 2), onTimeout: () => null);
       final PosterProfileData resolved = remoteProfile ?? localProfile;
       return PosterProfileService.isSetupComplete(resolved)
           ? AppRoutes.home

@@ -43,12 +43,14 @@ import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
+import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
 import 'package:mana_poster/features/prehome/services/user_poster_uploads_service.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
+import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
@@ -370,6 +372,7 @@ class _HomeScreenState extends State<HomeScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategorySlug = _allCategorySlug;
+  AppReligionPreference _religionPreference = AppReligionPreference.all;
   PosterProfileData _viewerPosterProfile = const PosterProfileData(
     nameTelugu: 'User',
     nameEnglish: '',
@@ -380,10 +383,11 @@ class _HomeScreenState extends State<HomeScreen>
     photoUrl: '',
   );
   bool _homeRefreshing = false;
-  int _posterRenderCycle = 0;
+  final int _posterRenderCycle = 0;
   bool _templatesLoading = true;
   bool _templatesLoadingMore = false;
   bool _templatesHasMore = true;
+  bool _religionSelectionReady = false;
   String? _categoryLoadingSlug;
   int _categoryLoadGeneration = 0;
   bool _hasRatedApp = false;
@@ -444,6 +448,7 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_loadApprovedCreatorTemplates());
     unawaited(_loadHomeBanners());
     unawaited(_loadViewerPosterProfile());
+    unawaited(_loadReligionPreference());
     unawaited(_loadInstalledAppVersion());
     unawaited(_loadPromoCardPreferences());
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -521,11 +526,87 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  Future<void> _loadReligionPreference() async {
+    final selection =
+        await AppReligionService.loadSelection() ?? AppReligionPreference.all;
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _religionPreference = selection;
+      _religionSelectionReady = true;
+      if (_isCategoryHiddenForReligion(_selectedCategorySlug)) {
+        _selectedCategorySlug = _allCategorySlug;
+        _categoryLoadingSlug = null;
+      }
+    });
+  }
+
+  Set<String> _hiddenCategorySlugsForReligion() {
+    return AppReligionService.hiddenCategorySlugsFor(_religionPreference);
+  }
+
+  bool _isCategoryHiddenForReligion(String slug) {
+    final normalized = _normalizeTag(slug);
+    if (normalized.isEmpty || normalized == _allCategorySlug) {
+      return false;
+    }
+    return _hiddenCategorySlugsForReligion().contains(normalized);
+  }
+
+  Set<String> _hiddenCategoryTagsForReligion() {
+    final tags = <String>{};
+    for (final slug in _hiddenCategorySlugsForReligion()) {
+      tags.add(_normalizeTag(slug));
+      for (final tag in _defaultCategoryTagsForSlug(slug)) {
+        final normalized = _normalizeTag(tag);
+        if (normalized.isNotEmpty) {
+          tags.addAll(_expandCategoryAliases(normalized));
+        }
+      }
+    }
+    return tags;
+  }
+
+  bool _isTemplateHiddenForReligion(_TemplateItem item) {
+    final hiddenTags = _hiddenCategoryTagsForReligion();
+    if (hiddenTags.isEmpty) {
+      return false;
+    }
+
+    final primaryFirestore = item.primaryFirestoreCategoryId?.trim() ?? '';
+    if (primaryFirestore.isNotEmpty &&
+        hiddenTags.contains(_normalizeTag(primaryFirestore))) {
+      return true;
+    }
+
+    final itemTags = <String>{};
+    for (final tag in item.categoryTags) {
+      final normalized = _normalizeTag(tag);
+      if (normalized.isNotEmpty) {
+        itemTags.addAll(_expandCategoryAliases(normalized));
+      }
+    }
+    return itemTags.intersection(hiddenTags).isNotEmpty;
+  }
+
+  List<_CategoryChipData> _filterCategoriesByReligion(
+    List<_CategoryChipData> categories,
+  ) {
+    return categories
+        .where((chip) => !_isCategoryHiddenForReligion(chip.slug))
+        .toList(growable: false);
+  }
+
   bool _matchesTemplate(
     _TemplateItem item,
     AppLanguage language,
     _CategoryChipData selectedCategory,
   ) {
+    if (_isTemplateHiddenForReligion(item)) {
+      return false;
+    }
+
     final query = _searchController.text.trim().toLowerCase();
     final searchable = <String>[
       item.titleEn,
@@ -772,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen>
       covered.add(norm);
     }
 
-    return merged.values.toList(growable: false);
+    return _filterCategoriesByReligion(merged.values.toList(growable: false));
   }
 
   Iterable<String> _categoryLabelTokenTags(String? label) sync* {
@@ -821,16 +902,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (staticCategories.isNotEmpty) {
       addChip(staticCategories.first);
     } else {
-      addChip(
-        _CategoryChipData(
-          slug: _allCategorySlug,
-          label: context.strings.localized(
-            telugu: 'à°…à°¨à±à°¨à±€',
-            english: 'All',
-          ),
-          matchTags: <String>['all'],
-        ),
-      );
+      addChip(_allCategoryChip());
     }
 
     for (final chip in dynamicCategories) {
@@ -840,7 +912,15 @@ class _HomeScreenState extends State<HomeScreen>
       addChip(chip);
     }
 
-    return merged;
+    return _filterCategoriesByReligion(merged);
+  }
+
+  _CategoryChipData _allCategoryChip() {
+    return _CategoryChipData(
+      slug: _allCategorySlug,
+      label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
+      matchTags: const <String>['all'],
+    );
   }
 
   List<String> _defaultCategoryTagsForSlug(String slug) {
@@ -849,18 +929,18 @@ class _HomeScreenState extends State<HomeScreen>
       'good_morning' => const <String>['good_morning', 'morning'],
       'good_afternoon' => const <String>['good_afternoon', 'afternoon'],
       'good_night' => const <String>['good_night', 'night'],
-      'motivational' => const <String>['motivational', 'quotes'],
+      'motivational' => const <String>['motivational'],
       'love_quotes' => const <String>['love_quotes', 'love'],
       'today_special' => const <String>['today_special', 'important_day'],
       'birthdays' => const <String>['birthdays', 'birthday', 'celebration'],
-      'life_advice' => const <String>['life_advice', 'good_thoughts'],
-      'gita_wisdom' => const <String>['gita_wisdom', 'devotional'],
-      'devotional' => const <String>['devotional', 'festival'],
-      'mahabharata' => const <String>['mahabharata', 'devotional'],
+      'life_advice' => const <String>['life_advice'],
+      'gita_wisdom' => const <String>['gita_wisdom'],
+      'devotional' => const <String>['devotional'],
+      'mahabharata' => const <String>['mahabharata'],
       'anniversary' => const <String>['anniversary', 'celebration'],
-      'good_thoughts' => const <String>['good_thoughts', 'motivational'],
-      'bible' => const <String>['bible', 'devotional'],
-      'islam' => const <String>['islam', 'devotional'],
+      'good_thoughts' => const <String>['good_thoughts'],
+      'bible' => const <String>['bible'],
+      'islam' => const <String>['islam'],
       'jokes' => const <String>['jokes', 'funny', 'humor', 'comedy'],
       'new' => const <String>['new', 'more', 'latest', 'today_special'],
       _ => <String>[slug],
@@ -898,18 +978,18 @@ class _HomeScreenState extends State<HomeScreen>
       'good_morning': <String>['good_morning', 'morning'],
       'good_afternoon': <String>['good_afternoon', 'afternoon'],
       'good_night': <String>['good_night', 'night'],
-      'motivational': <String>['motivational', 'quotes', 'good_thoughts'],
+      'motivational': <String>['motivational'],
       'love_quotes': <String>['love_quotes', 'love'],
       'today_special': <String>['today_special', 'important_day'],
       'birthdays': <String>['birthdays', 'birthday', 'celebration'],
-      'life_advice': <String>['life_advice', 'good_thoughts'],
-      'gita_wisdom': <String>['gita_wisdom', 'devotional'],
-      'devotional': <String>['devotional', 'festival'],
-      'mahabharata': <String>['mahabharata', 'devotional'],
+      'life_advice': <String>['life_advice'],
+      'gita_wisdom': <String>['gita_wisdom'],
+      'devotional': <String>['devotional'],
+      'mahabharata': <String>['mahabharata'],
       'anniversary': <String>['anniversary', 'celebration'],
-      'good_thoughts': <String>['good_thoughts', 'motivational'],
-      'bible': <String>['bible', 'devotional'],
-      'islam': <String>['islam', 'devotional'],
+      'good_thoughts': <String>['good_thoughts'],
+      'bible': <String>['bible'],
+      'islam': <String>['islam'],
       'new': <String>['new', 'today_special'],
       'weekday_special': <String>['weekday_special', 'today_special'],
       'important_day': <String>['important_day', 'today_special'],
@@ -1194,7 +1274,8 @@ class _HomeScreenState extends State<HomeScreen>
         lastDocument;
     var resolvedHasMore = hasMore;
     if (resolvedLastDocument != null && resolvedHasMore) {
-      QueryDocumentSnapshot<Map<String, dynamic>>? cursor = resolvedLastDocument;
+      QueryDocumentSnapshot<Map<String, dynamic>>? cursor =
+          resolvedLastDocument;
       var canLoadMore = resolvedHasMore;
       const maxExtraPages = 4;
 
@@ -1401,7 +1482,7 @@ class _HomeScreenState extends State<HomeScreen>
       sources: <String?>[
         categoryLabel.isNotEmpty ? categoryLabel : null,
         rawCategoryId.isNotEmpty ? rawCategoryId : null,
-        template.title,
+        if (rawCategoryId.isEmpty && categoryLabel.isEmpty) template.title,
       ],
     );
 
@@ -1500,8 +1581,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
     setState(() {
       _homeRefreshing = true;
-      _posterRenderCycle += 1;
-      _templatesLoading = true;
     });
     _searchFocusNode.unfocus();
     try {
@@ -1700,9 +1779,7 @@ class _HomeScreenState extends State<HomeScreen>
     return entries;
   }
 
-  bool _shouldShowHomeBannerAdFallback(
-    SubscriptionBackendResult? entitlement,
-  ) {
+  bool _shouldShowHomeBannerAdFallback(SubscriptionBackendResult? entitlement) {
     if (!AppPublicInfo.hasHomeBannerAdUnitId) {
       return false;
     }
@@ -1994,21 +2071,16 @@ class _HomeScreenState extends State<HomeScreen>
       language,
       templatesLoading: _templatesLoading,
     );
-    final categories = _mergeCategories(staticCategories, dynamicCategories);
+    final categories = _religionSelectionReady
+        ? _mergeCategories(staticCategories, dynamicCategories)
+        : <_CategoryChipData>[_allCategoryChip()];
     final activeCategorySlug =
         categories.any((chip) => chip.slug == _selectedCategorySlug)
         ? _selectedCategorySlug
         : _allCategorySlug;
     final selectedCategory = categories.firstWhere(
       (chip) => chip.slug == activeCategorySlug,
-      orElse: () => _CategoryChipData(
-        slug: _allCategorySlug,
-        label: context.strings.localized(
-          telugu: 'à°…à°¨à±à°¨à±€',
-          english: 'All',
-        ),
-        matchTags: <String>['all'],
-      ),
+      orElse: _allCategoryChip,
     );
     final strings = context.strings;
     final List<_TemplateItem> freeTemplates = _remoteApprovedTemplates;
@@ -2034,7 +2106,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     // Keep the poster feed visible as soon as templates are ready. Profile
     // refresh can continue in parallel without blanking the full home list.
-    final hidePosterFeed = _templatesLoading || _homeRefreshing;
+    final hidePosterFeed = _templatesLoading || !_religionSelectionReady;
     final loadingSelectedCategory =
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
 
@@ -2067,9 +2139,6 @@ class _HomeScreenState extends State<HomeScreen>
                 // ignore: deprecated_member_use
                 cacheExtent: 720.0,
                 controller: _posterScrollController,
-                key: ValueKey<String>(
-                  hidePosterFeed ? 'home-loading-feed' : 'home-loaded-feed',
-                ),
                 physics: _posterPhotoDragInProgress
                     ? const NeverScrollableScrollPhysics()
                     : const AlwaysScrollableScrollPhysics(
@@ -2164,33 +2233,8 @@ class _HomeScreenState extends State<HomeScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: _HomeFeedState(
                           icon: Icons.collections_outlined,
-                          title: strings.localized(
-                            telugu:
-                                'à°ˆ à°µà°¿à°­à°¾à°—à°‚à°²à±‹ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°µà±',
-                            english: 'No posters are available in this section',
-                            hindi:
-                                'à¤‡à¤¸ à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¤‚',
-                            tamil:
-                                'à®‡à®¨à¯à®¤ à®ªà®•à¯à®¤à®¿à®¯à®¿à®²à¯ à®ªà¯‹à®¸à¯à®Ÿà®°à¯à®•à®³à¯ à®‡à®²à¯à®²à¯ˆ',
-                            kannada:
-                                'à²ˆ à²µà²¿à²­à²¾à²—à²¦à²²à³à²²à²¿ à²ªà³‹à²¸à³à²Ÿà²°à³â€Œà²—à²³à³ à²²à²­à³à²¯à²µà²¿à²²à³à²²',
-                            malayalam:
-                                'à´ˆ à´µà´¿à´­à´¾à´—à´¤àµà´¤à´¿àµ½ à´ªàµ‹à´¸àµà´±àµà´±à´±àµà´•àµ¾ à´²à´­àµà´¯à´®à´²àµà´²',
-                          ),
-                          subtitle: strings.localized(
-                            telugu:
-                                'à°ˆ à°•à±‡à°Ÿà°—à°¿à°°à±€à°²à±‹ à°ªà±à°°à°¸à±à°¤à±à°¤à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°²à±‡à°µà±. à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°šà±‚à°¡à°‚à°¡à°¿.',
-                            english:
-                                'There are no posters for this category right now. Pull down to refresh and check again.',
-                            hindi:
-                                'à¤‡à¤¸ à¤•à¥ˆà¤Ÿà¥‡à¤—à¤°à¥€ à¤®à¥‡à¤‚ à¤…à¤­à¥€ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¤‚à¥¤ à¤°à¤¿à¤«à¥à¤°à¥‡à¤¶ à¤•à¤°à¤•à¥‡ à¤«à¤¿à¤° à¤¦à¥‡à¤–à¥‡à¤‚à¥¤',
-                            tamil:
-                                'à®‡à®¨à¯à®¤ à®µà®•à¯ˆà®¯à®¿à®²à¯ à®‡à®ªà¯à®ªà¯‹à®¤à¯ à®ªà¯‹à®¸à¯à®Ÿà®°à¯à®•à®³à¯ à®‡à®²à¯à®²à¯ˆ. à®°à®¿à®ªà¯à®°à¯†à®·à¯ à®šà¯†à®¯à¯à®¤à¯ à®®à¯€à®£à¯à®Ÿà¯à®®à¯ à®ªà®¾à®°à¯à®•à¯à®•à®µà¯à®®à¯.',
-                            kannada:
-                                'à²ˆ à²µà²°à³à²—à²¦à²²à³à²²à²¿ à²ˆà²— à²ªà³‹à²¸à³à²Ÿà²°à³â€Œà²—à²³à²¿à²²à³à²². à²°à²¿à²«à³à²°à³†à²¶à³ à²®à²¾à²¡à²¿ à²®à²¤à³à²¤à³† à²¨à³‹à²¡à²¿.',
-                            malayalam:
-                                'à´ˆ à´µà´¿à´­à´¾à´—à´¤àµà´¤à´¿àµ½ à´‡à´ªàµà´ªàµ‹àµ¾ à´ªàµ‹à´¸àµà´±àµà´±à´±àµà´•àµ¾ à´‡à´²àµà´². à´±à´¿à´«àµà´°àµ†à´·àµ à´šàµ†à´¯àµà´¤àµ à´µàµ€à´£àµà´Ÿàµà´‚ à´¨àµ‹à´•àµà´•àµ‚.',
-                          ),
+                          title: strings.homeEmptyPostersTitle,
+                          subtitle: strings.homeEmptyPostersSubtitle,
                         ),
                       ),
                     )
@@ -2340,75 +2384,124 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
   Widget build(BuildContext context) {
     final strings = context.strings;
     final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-    return AlertDialog(
-      insetPadding: EdgeInsets.fromLTRB(24, 24, 24, keyboardInset + 24),
-      title: Text(
-        strings.localized(telugu: 'రిఫరల్ కోడ్', english: 'Referral code'),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              strings.localized(
-                telugu: 'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
-                english: 'Enter a referral code if you have one.',
-              ),
-              style: const TextStyle(fontSize: 13.5, height: 1.4),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _controller,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                labelText: strings.localized(
-                  telugu: 'రిఫరల్ కోడ్',
-                  english: 'Referral code',
-                ),
-                errorText: _errorText,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              onSubmitted: (_) => unawaited(_apply()),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const LegalDocumentScreen(
-                      documentType: LegalDocumentType.termsAndConditions,
+    return Dialog(
+      insetPadding: EdgeInsets.fromLTRB(28, 16, 28, keyboardInset + 16),
+      backgroundColor: Colors.transparent,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        gradient: const LinearGradient(
+                          colors: <Color>[
+                            Color(0xFF14B8A6),
+                            Color(0xFF38BDF8),
+                            Color(0xFFA78BFA),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: Text(
-                strings.localized(
-                  telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
-                  english: 'View Terms & Conditions',
+                    const SizedBox(height: 14),
+                    Text(
+                      strings.localized(
+                        telugu: 'రిఫరల్ కోడ్',
+                        english: 'Referral code',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      strings.localized(
+                        telugu:
+                            'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
+                        english: 'Enter a referral code if you have one.',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _controller,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: strings.localized(
+                          telugu: 'రిఫరల్ కోడ్',
+                          english: 'Referral code',
+                        ),
+                        errorText: _errorText,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => unawaited(_apply()),
+                    ),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LegalDocumentScreen(
+                              documentType:
+                                  LegalDocumentType.termsAndConditions,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        strings.localized(
+                          telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+                          english: 'View Terms & Conditions',
+                        ),
+                      ),
+                    ),
+                    PrimaryButton(
+                      label: strings.localized(
+                        telugu: 'అప్లై',
+                        english: 'Apply',
+                      ),
+                      loading: _applying,
+                      onPressed: () => unawaited(_apply()),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: _applying
+                          ? null
+                          : () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(
+                        strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: _applying ? null : () => Navigator.of(context).pop(false),
-          child: Text(strings.localized(telugu: 'స్కిప్', english: 'Skip')),
-        ),
-        FilledButton(
-          onPressed: _applying ? null : () => unawaited(_apply()),
-          child: _applying
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(strings.localized(telugu: 'అప్లై', english: 'Apply')),
-        ),
-      ],
     );
   }
 }
@@ -5161,7 +5254,9 @@ class _ResolvedTemplatePosterImageState
     final direct = widget.imageUrl?.trim() ?? '';
     final thumb = widget.thumbnailUrl?.trim() ?? '';
 
-    final hasDirectDownloadUrl = _posterStringLooksDirectHttpDownloadUrl(direct);
+    final hasDirectDownloadUrl = _posterStringLooksDirectHttpDownloadUrl(
+      direct,
+    );
     if (hasDirectDownloadUrl) {
       _resolvedImageUrl = direct;
       return;
@@ -5243,7 +5338,9 @@ class _ResolvedTemplatePosterImageState
       final posterId = (widget.posterIdForDebug ?? '').trim();
       final debugIdentity = posterId.isNotEmpty ? posterId : cacheKey;
       if (_loggedResolveFailures.add(debugIdentity)) {
-        final attempted = candidates.map((item) => item.value.trim()).join(', ');
+        final attempted = candidates
+            .map((item) => item.value.trim())
+            .join(', ');
         _homeDebugLogStack(
           'Poster asset resolve skipped after unauthorized/invalid access '
           'for $debugIdentity: $lastError; attempted=[$attempted]',
@@ -6322,82 +6419,75 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                       height: height,
                                       child: RawGestureDetector(
                                         behavior: HitTestBehavior.opaque,
-                                        gestures:
-                                            <Type, GestureRecognizerFactory>{
-                                              TapGestureRecognizer:
-                                                  GestureRecognizerFactoryWithHandlers<
-                                                    TapGestureRecognizer
-                                                  >(
-                                                    TapGestureRecognizer.new,
-                                                    (
-                                                      TapGestureRecognizer
-                                                      instance,
-                                                    ) {
-                                                      instance.onTap = widget
-                                                              .interactivePhotoEnabled
-                                                          ? widget.onPhotoTap
-                                                          : null;
-                                                    },
-                                                  ),
-                                              LongPressGestureRecognizer:
-                                                  GestureRecognizerFactoryWithHandlers<
-                                                    LongPressGestureRecognizer
-                                                  >(
-                                                    () => LongPressGestureRecognizer(
+                                        gestures: <Type, GestureRecognizerFactory>{
+                                          TapGestureRecognizer:
+                                              GestureRecognizerFactoryWithHandlers<
+                                                TapGestureRecognizer
+                                              >(TapGestureRecognizer.new, (
+                                                TapGestureRecognizer instance,
+                                              ) {
+                                                instance.onTap =
+                                                    widget
+                                                        .interactivePhotoEnabled
+                                                    ? widget.onPhotoTap
+                                                    : null;
+                                              }),
+                                          LongPressGestureRecognizer:
+                                              GestureRecognizerFactoryWithHandlers<
+                                                LongPressGestureRecognizer
+                                              >(
+                                                () =>
+                                                    LongPressGestureRecognizer(
                                                       duration: const Duration(
                                                         seconds: 2,
                                                       ),
                                                     ),
-                                                    (
-                                                      LongPressGestureRecognizer
-                                                      instance,
-                                                    ) {
-                                                      if (!widget
-                                                          .interactivePhotoEnabled) {
-                                                        instance
-                                                          ..onLongPressStart =
-                                                              null
-                                                          ..onLongPressMoveUpdate =
-                                                              null
-                                                          ..onLongPressEnd = null
-                                                          ..onLongPressCancel =
-                                                              null;
-                                                        return;
-                                                      }
-                                                      instance.onLongPressStart =
-                                                          (
-                                                            LongPressStartDetails
-                                                            details,
-                                                          ) => _startPhotoDrag(
-                                                            details
-                                                                .globalPosition,
-                                                          );
-                                                      instance.onLongPressMoveUpdate =
-                                                          (
-                                                            LongPressMoveUpdateDetails
-                                                            details,
-                                                          ) => _updatePhotoDrag(
-                                                            globalPosition: details
-                                                                .globalPosition,
-                                                            currentLeft: left,
-                                                            currentTop: top,
-                                                            maxWidth: constraints
-                                                                .maxWidth,
-                                                            totalCanvasHeight:
-                                                                totalCanvasHeight,
-                                                            photoWidth: width,
-                                                            photoHeight: height,
-                                                          );
-                                                      instance.onLongPressEnd =
-                                                          (
-                                                            LongPressEndDetails
-                                                            _,
-                                                          ) => _endPhotoDrag();
-                                                      instance.onLongPressCancel =
-                                                          _endPhotoDrag;
-                                                    },
-                                                  ),
-                                            },
+                                                (
+                                                  LongPressGestureRecognizer
+                                                  instance,
+                                                ) {
+                                                  if (!widget
+                                                      .interactivePhotoEnabled) {
+                                                    instance
+                                                      ..onLongPressStart = null
+                                                      ..onLongPressMoveUpdate =
+                                                          null
+                                                      ..onLongPressEnd = null
+                                                      ..onLongPressCancel =
+                                                          null;
+                                                    return;
+                                                  }
+                                                  instance.onLongPressStart =
+                                                      (
+                                                        LongPressStartDetails
+                                                        details,
+                                                      ) => _startPhotoDrag(
+                                                        details.globalPosition,
+                                                      );
+                                                  instance.onLongPressMoveUpdate =
+                                                      (
+                                                        LongPressMoveUpdateDetails
+                                                        details,
+                                                      ) => _updatePhotoDrag(
+                                                        globalPosition: details
+                                                            .globalPosition,
+                                                        currentLeft: left,
+                                                        currentTop: top,
+                                                        maxWidth: constraints
+                                                            .maxWidth,
+                                                        totalCanvasHeight:
+                                                            totalCanvasHeight,
+                                                        photoWidth: width,
+                                                        photoHeight: height,
+                                                      );
+                                                  instance.onLongPressEnd =
+                                                      (LongPressEndDetails _) =>
+                                                          _endPhotoDrag();
+                                                  instance.onLongPressCancel =
+                                                      _endPhotoDrag;
+                                                },
+                                              ),
+                                        },
                                         child: _PhotoShapeFrame(
                                           shape: effectivePhotoShape,
                                           edgeStyle: widget

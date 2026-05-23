@@ -8,12 +8,14 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
+import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
 
 class PosterProfileDetailsScreen extends StatefulWidget {
@@ -551,7 +553,11 @@ class _PosterProfileDetailsScreenState
         return;
       }
       if (widget.completeToHomeOnSave) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        final nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute();
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pushReplacementNamed(nextRoute);
       } else if (widget.embeddedInProfileScreen) {
         widget.onSaved?.call(updated);
         setState(() {
@@ -668,11 +674,9 @@ class _PosterProfileDetailsScreenState
         widget.completeToHomeOnSave && !widget.embeddedInProfileScreen;
 
     return Scaffold(
-      backgroundColor: minimalSetup ? cs.surface : const Color(0xFFF8FAFC),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: minimalSetup
-            ? cs.surfaceContainerLow
-            : const Color(0xFFF3F6FB),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: !widget.embeddedInProfileScreen,
@@ -807,12 +811,12 @@ class _PosterProfileDetailsScreenState
           ),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-        children: <Widget>[
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+      body: GradientShell(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          children: <Widget>[
+            OnboardingSurfaceCard(
+              maxWidth: 460,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
@@ -947,11 +951,10 @@ class _PosterProfileDetailsScreenState
                 ],
               ),
             ),
-          ),
-          if (!isBusiness) ...<Widget>[
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
+            if (!isBusiness) ...<Widget>[
+              const SizedBox(height: 16),
+              OnboardingSurfaceCard(
+                maxWidth: 460,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -1026,11 +1029,10 @@ class _PosterProfileDetailsScreenState
                   ],
                 ),
               ),
-            ),
-          ] else ...<Widget>[
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
+            ] else ...<Widget>[
+              const SizedBox(height: 16),
+              OnboardingSurfaceCard(
+                maxWidth: 460,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -1261,9 +1263,9 @@ class _PosterProfileDetailsScreenState
                   ],
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

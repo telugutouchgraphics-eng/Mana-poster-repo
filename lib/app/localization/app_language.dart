@@ -1072,6 +1072,30 @@ class AppStrings {
     AppLanguage.malayalam => '\u0d24\u0d41\u0d1f\u0d30\u0d41\u0d15',
   };
 
+  String get homeEmptyPostersTitle => switch (language) {
+    AppLanguage.telugu => 'ఈ విభాగంలో పోస్టర్లు అందుబాటులో లేవు',
+    AppLanguage.hindi => 'इस सेक्शन में पोस्टर उपलब्ध नहीं हैं',
+    AppLanguage.english => 'No posters are available in this section',
+    AppLanguage.tamil => 'இந்த பகுதியில் போஸ்டர்கள் இல்லை',
+    AppLanguage.kannada => 'ಈ ವಿಭಾಗದಲ್ಲಿ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ',
+    AppLanguage.malayalam => 'ഈ വിഭാഗത്തിൽ പോസ്റ്ററുകൾ ലഭ്യമല്ല',
+  };
+
+  String get homeEmptyPostersSubtitle => switch (language) {
+    AppLanguage.telugu =>
+      'ఈ కేటగిరీలో ప్రస్తుతం పోస్టర్లు లేవు. రిఫ్రెష్ చేసి మళ్లీ చూడండి.',
+    AppLanguage.hindi =>
+      'इस कैटेगरी में अभी पोस्टर नहीं हैं। रिफ्रेश करके फिर देखें।',
+    AppLanguage.english =>
+      'There are no posters for this category right now. Pull down to refresh and check again.',
+    AppLanguage.tamil =>
+      'இந்த வகையில் தற்போது போஸ்டர்கள் இல்லை. ரிப்ரெஷ் செய்து மீண்டும் பார்க்கவும்.',
+    AppLanguage.kannada =>
+      'ಈ ವರ್ಗದಲ್ಲಿ ಈಗ ಪೋಸ್ಟರ್‌ಗಳು ಇಲ್ಲ. ರಿಫ್ರೆಶ್ ಮಾಡಿ ಮತ್ತೆ ನೋಡಿ.',
+    AppLanguage.malayalam =>
+      'ഈ വിഭാഗത്തിൽ ഇപ്പോൾ പോസ്റ്ററുകൾ ഇല്ല. റിഫ്രെഷ് ചെയ്ത് വീണ്ടും നോക്കൂ.',
+  };
+
   String get loginWelcome => switch (language) {
     AppLanguage.telugu =>
       'Mana Poster Ai \u0c15\u0c3f \u0c38\u0c4d\u0c35\u0c3e\u0c17\u0c24\u0c02',
@@ -1688,7 +1712,6 @@ class AppStrings {
       '\u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41\u0c32\u0c41',
       '\u0c1c\u0c40\u0c35\u0c3f\u0c24 \u0c38\u0c32\u0c39\u0c3e\u0c32\u0c41',
       '\u0c17\u0c40\u0c24\u0c3e \u0c1c\u0c4d\u0c1e\u0c3e\u0c28\u0c02',
-      '\u0c35\u0c3e\u0c30\u0c4d\u0c24\u0c32\u0c41',
       '\u0c2d\u0c15\u0c4d\u0c24\u0c3f',
       '\u0c2e\u0c39\u0c3e\u0c2d\u0c3e\u0c30\u0c24\u0c02',
       '\u0c35\u0c3e\u0c30\u0c4d\u0c37\u0c3f\u0c15\u0c4b\u0c24\u0c4d\u0c38\u0c35\u0c02',
@@ -1709,7 +1732,6 @@ class AppStrings {
       '\u091c\u0928\u094d\u092e\u0926\u093f\u0928',
       '\u091c\u0940\u0935\u0928 \u0938\u0932\u093e\u0939',
       '\u0917\u0940\u0924\u093e \u091c\u094d\u091e\u093e\u0928',
-      '\u0938\u092e\u093e\u091a\u093e\u0930',
       '\u092d\u0915\u094d\u0924\u093f',
       '\u092e\u0939\u093e\u092d\u093e\u0930\u0924',
       '\u0935\u0930\u094d\u0937\u0917\u093e\u0901\u0920',
@@ -1730,7 +1752,6 @@ class AppStrings {
       'Birthdays',
       'Life Advice',
       'Gita Wisdom',
-      'News',
       'Devotional',
       'Mahabharata',
       'Anniversary',
@@ -1751,7 +1772,6 @@ class AppStrings {
       '\u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
       '\u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b86\u0bb2\u0bcb\u0b9a\u0ba9\u0bc8',
       '\u0b95\u0bc0\u0ba4\u0bbe \u0b9e\u0bbe\u0ba9\u0bae\u0bcd',
-      '\u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bbf\u0b95\u0bb3\u0bcd',
       '\u0baa\u0b95\u0bcd\u0ba4\u0bbf',
       '\u0bae\u0b95\u0bbe\u0baa\u0bbe\u0bb0\u0ba4\u0bae\u0bcd',
       '\u0b86\u0ba3\u0bcd\u0b9f\u0bc1 \u0bb5\u0bbf\u0bb4\u0bbe',
@@ -1772,7 +1792,6 @@ class AppStrings {
       '\u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
       '\u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
       '\u0c97\u0cc0\u0ca4\u0cbe \u0c9c\u0ccd\u0c9e\u0cbe\u0ca8',
-      '\u0cb8\u0cc1\u0ca6\u0ccd\u0ca6\u0cbf',
       '\u0cad\u0c95\u0ccd\u0ca4\u0cbf',
       '\u0cae\u0cb9\u0cbe\u0cad\u0cbe\u0cb0\u0ca4',
       '\u0cb5\u0cbe\u0cb0\u0ccd\u0cb7\u0cbf\u0c95\u0ccb\u0ca4\u0ccd\u0cb8\u0cb5',
@@ -1793,7 +1812,6 @@ class AppStrings {
       '\u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
       '\u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',
       '\u0d17\u0d40\u0d24\u0d3e \u0d1c\u0d4d\u0d1e\u0d3e\u0d28\u0d02',
-      '\u0d35\u0d3e\u0d30\u0d4d\u0d24\u0d4d\u0d24\u0d15\u0d7e',
       '\u0d2d\u0d15\u0d4d\u0d24\u0d3f',
       '\u0d2e\u0d39\u0d3e\u0d2d\u0d3e\u0d30\u0d24\u0d02',
       '\u0d35\u0d3e\u0d30\u0d4d\u0d37\u0d3f\u0d15\u0d02',
