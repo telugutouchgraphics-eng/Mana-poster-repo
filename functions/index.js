@@ -798,6 +798,12 @@ function reminderCategoryKey(input) {
   if (normalized.includes("welcome")) {
     return "welcome";
   }
+  if (normalized.includes("motivation") || normalized.includes("inspiration")) {
+    return "motivation";
+  }
+  if (normalized.includes("joke") || normalized.includes("funny") || normalized.includes("humor")) {
+    return "jokes";
+  }
   if (normalized.includes("morning")) {
     return "morning";
   }
@@ -1215,10 +1221,266 @@ function reminderCopy(kind, language, userName) {
         footer: "Share",
       },
     },
+    motivation: {
+      telugu: {
+        title: "మోటివేషన్ టైమ్",
+        body: "మీ కోసం motivational పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే ఓపెన్ చేసి షేర్ చేయండి.",
+        header: reminderGreetingPrefix(
+            name,
+            "మీ motivational పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
+        footer: "షేర్ చేయండి",
+      },
+      english: {
+        title: "Motivation Time",
+        body: "Your motivational poster is ready. Open the app and share it now.",
+        header: reminderGreetingPrefix(
+            name,
+            "your motivational poster is ready to share",
+        ),
+        footer: "Share",
+      },
+      hindi: {
+        title: "मोटिवेशन टाइम",
+        body: "आपका motivational पोस्टर तैयार है। अभी ऐप खोलें और शेयर करें।",
+        header: reminderGreetingPrefix(
+            name,
+            "आपका motivational पोस्टर शेयर करने के लिए तैयार है",
+        ),
+        footer: "Share",
+      },
+      tamil: {
+        title: "மோட்டிவேஷன் நேரம்",
+        body: "உங்கள் motivational போஸ்டர் தயாராக உள்ளது. இப்போதே திறந்து பகிருங்கள்.",
+        header: reminderGreetingPrefix(
+            name,
+            "உங்கள் motivational போஸ்டர் பகிர தயாராக உள்ளது",
+        ),
+        footer: "Share",
+      },
+      kannada: {
+        title: "ಮೋಟಿವೇಶನ್ ಸಮಯ",
+        body: "ನಿಮ್ಮ motivational ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: reminderGreetingPrefix(
+            name,
+            "ನಿಮ್ಮ motivational ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ",
+        ),
+        footer: "Share",
+      },
+      malayalam: {
+        title: "മോട്ടിവേഷൻ സമയം",
+        body: "നിങ്ങളുടെ motivational പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.",
+        header: reminderGreetingPrefix(
+            name,
+            "നിങ്ങളുടെ motivational പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്",
+        ),
+        footer: "Share",
+      },
+    },
+    jokes: {
+      telugu: {
+        title: "జోక్స్ టైమ్",
+        body: "మీ కోసం funny jokes పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే ఓపెన్ చేసి షేర్ చేయండి.",
+        header: reminderGreetingPrefix(
+            name,
+            "మీ jokes పోస్టర్ షేర్ చేయడానికి సిద్ధంగా ఉంది",
+        ),
+        footer: "షేర్ చేయండి",
+      },
+      english: {
+        title: "Jokes Time",
+        body: "Your jokes poster is ready. Open the app and share a fun one now.",
+        header: reminderGreetingPrefix(
+            name,
+            "your jokes poster is ready to share",
+        ),
+        footer: "Share",
+      },
+      hindi: {
+        title: "जोक्स टाइम",
+        body: "आपका funny jokes पोस्टर तैयार है। अभी ऐप खोलें और शेयर करें।",
+        header: reminderGreetingPrefix(
+            name,
+            "आपका jokes पोस्टर शेयर करने के लिए तैयार है",
+        ),
+        footer: "Share",
+      },
+      tamil: {
+        title: "ஜோக்ஸ் நேரம்",
+        body: "உங்கள் funny jokes போஸ்டர் தயாராக உள்ளது. இப்போதே திறந்து பகிருங்கள்.",
+        header: reminderGreetingPrefix(
+            name,
+            "உங்கள் jokes போஸ்டர் பகிர தயாராக உள்ளது",
+        ),
+        footer: "Share",
+      },
+      kannada: {
+        title: "ಜೋಕ್ಸ್ ಸಮಯ",
+        body: "ನಿಮ್ಮ funny jokes ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗಲೇ ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.",
+        header: reminderGreetingPrefix(
+            name,
+            "ನಿಮ್ಮ jokes ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ",
+        ),
+        footer: "Share",
+      },
+      malayalam: {
+        title: "ജോക്സ് സമയം",
+        body: "നിങ്ങളുടെ funny jokes പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.",
+        header: reminderGreetingPrefix(
+            name,
+            "നിങ്ങളുടെ jokes പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്",
+        ),
+        footer: "Share",
+      },
+    },
   };
 
   const bucket = map[kind] || map.welcome;
   return bucket[lang] || bucket.english;
+}
+
+function reminderCopyVariants(kind, language, userName) {
+  const displayName = pickFirstUsablePosterName(userName);
+  const lang =
+      sanitizeLanguage(language) ||
+      (displayName ? defaultLanguageForName(displayName) : "english");
+  const name = displayName;
+  const map = {
+    morning: {
+      telugu: [
+        {title: "శుభోదయం", body: "ఈరోజు ఉదయం share చేయడానికి అందమైన పోస్టర్లు రెడీగా ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ ఉదయపు పోస్టర్ రెడీగా ఉంది"), footer: "ఇప్పుడే షేర్ చేయండి"},
+        {title: "శుభోదయం", body: "మీ status కి సరిపోయే fresh morning posters ఇప్పుడు Mana Poster లో ఉన్నాయి.", header: reminderGreetingPrefix(name, "ఈరోజు ఉదయపు greeting సిద్ధంగా ఉంది"), footer: "ఓపెన్ చేయండి"},
+        {title: "శుభోదయం", body: "రోజు మొదలవ్వడానికి ఒక మంచి పోస్టర్ share చేయండి. కొత్త morning designs రెడీగా ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ morning share కోసం పోస్టర్ సిద్ధం"), footer: "షేర్ చేయండి"},
+        {title: "శుభోదయం", body: "ఈరోజు ఉదయానికి ఆకట్టుకునే కొత్త పోస్టర్ collection సిద్ధంగా ఉంది.", header: reminderGreetingPrefix(name, "మీ కోసం morning పోస్టర్లు వచ్చాయి"), footer: "చూడండి"},
+        {title: "శుభోదయం", body: "Good morning wishes ని special ga పంపడానికి కొత్త పోస్టర్ select చేయండి.", header: reminderGreetingPrefix(name, "ఈరోజు morning poster ready"), footer: "Select & Share"},
+      ],
+      english: [
+        {title: "Good Morning", body: "Fresh morning posters are ready for today. Open Mana Poster and share one now.", header: reminderGreetingPrefix(name, "your morning poster is ready"), footer: "Share now"},
+        {title: "Good Morning", body: "Start the day with a bright new greeting poster from Mana Poster.", header: reminderGreetingPrefix(name, "today's morning greeting is ready"), footer: "Open now"},
+        {title: "Good Morning", body: "Your daily morning poster collection has a fresh pick waiting for you.", header: reminderGreetingPrefix(name, "a new morning poster is waiting"), footer: "See posters"},
+        {title: "Good Morning", body: "Send a beautiful morning wish today with a fresh poster from the app.", header: reminderGreetingPrefix(name, "share your morning poster today"), footer: "Choose & share"},
+        {title: "Good Morning", body: "A new morning design is ready to make your status stand out today.", header: reminderGreetingPrefix(name, "your morning status poster is ready"), footer: "Open app"},
+      ],
+    },
+    afternoon: {
+      telugu: [
+        {title: "శుభ మధ్యాహ్నం", body: "ఈ మధ్యాహ్నం share చేయడానికి కొత్త attractive posters సిద్ధంగా ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ మధ్యాహ్న పోస్టర్ రెడీగా ఉంది"), footer: "ఇప్పుడే ఓపెన్ చేయండి"},
+        {title: "శుభ మధ్యాహ్నం", body: "మధ్యాహ్నం greeting కి సరిపోయే fresh designs ఇప్పుడు app లో ఉన్నాయి.", header: reminderGreetingPrefix(name, "ఈరోజు మధ్యాహ్న greeting సిద్ధంగా ఉంది"), footer: "చూడండి"},
+        {title: "శుభ మధ్యాహ్నం", body: "మీ status కి కొత్త afternoon poster ఎంపిక చేసుకునే సమయం వచ్చింది.", header: reminderGreetingPrefix(name, "మీ afternoon share కోసం పోస్టర్ సిద్ధం"), footer: "Select చేయండి"},
+        {title: "శుభ మధ్యాహ్నం", body: "రోజు మధ్యలో కూడా highlight అయ్యే పోస్టర్ ready ga ఉంది.", header: reminderGreetingPrefix(name, "ఈ మధ్యాహ్నం పోస్టర్లు వచ్చాయి"), footer: "షేర్ చేయండి"},
+        {title: "శుభ మధ్యాహ్నం", body: "ఇప్పుడే ఒక nice afternoon poster share చేసి reach పెంచండి.", header: reminderGreetingPrefix(name, "మీ afternoon poster ready"), footer: "Open & Share"},
+      ],
+      english: [
+        {title: "Good Afternoon", body: "Fresh afternoon posters are ready for you. Open the app and share one today.", header: reminderGreetingPrefix(name, "your afternoon poster is ready"), footer: "Share now"},
+        {title: "Good Afternoon", body: "A bright new afternoon greeting is waiting in Mana Poster.", header: reminderGreetingPrefix(name, "today's afternoon greeting is ready"), footer: "Open now"},
+        {title: "Good Afternoon", body: "Make your afternoon status stand out with a new poster from the app.", header: reminderGreetingPrefix(name, "a new afternoon poster is ready"), footer: "See posters"},
+        {title: "Good Afternoon", body: "Your daily poster feed has a fresh afternoon design ready to share.", header: reminderGreetingPrefix(name, "your afternoon share is ready"), footer: "Choose & share"},
+        {title: "Good Afternoon", body: "A fresh afternoon poster is ready to keep your audience engaged today.", header: reminderGreetingPrefix(name, "your afternoon status poster is ready"), footer: "Open app"},
+      ],
+    },
+    night: {
+      telugu: [
+        {title: "శుభ రాత్రి", body: "ఈ రాత్రి share చేయడానికి కొత్త good night posters రెడీగా ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ రాత్రి పోస్టర్ రెడీగా ఉంది"), footer: "ఇప్పుడే షేర్ చేయండి"},
+        {title: "శుభ రాత్రి", body: "రోజు ముగిసేలోపు ఒక attractive night poster ని share చేయండి.", header: reminderGreetingPrefix(name, "ఈరోజు night greeting సిద్ధంగా ఉంది"), footer: "ఓపెన్ చేయండి"},
+        {title: "శుభ రాత్రి", body: "మీ status కోసం fresh night designs ఇప్పుడు app లో ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ night పోస్టర్ సిద్ధంగా ఉంది"), footer: "చూడండి"},
+        {title: "శుభ రాత్రి", body: "ఈ రాత్రికి calm and classy poster collection మీ కోసం సిద్ధంగా ఉంది.", header: reminderGreetingPrefix(name, "ఈరోజు రాత్రి share ready"), footer: "Select చేయండి"},
+        {title: "శుభ రాత్రి", body: "Good night wishes ని special ga పంపడానికి కొత్త పోస్టర్ ఎంచుకోండి.", header: reminderGreetingPrefix(name, "మీ night poster వచ్చేసింది"), footer: "Open & Share"},
+      ],
+      english: [
+        {title: "Good Night", body: "Fresh good night posters are ready. Open Mana Poster and share one tonight.", header: reminderGreetingPrefix(name, "your night poster is ready"), footer: "Share now"},
+        {title: "Good Night", body: "End the day with a classy night greeting from Mana Poster.", header: reminderGreetingPrefix(name, "tonight's greeting is ready"), footer: "Open now"},
+        {title: "Good Night", body: "A fresh night poster is waiting to light up your status tonight.", header: reminderGreetingPrefix(name, "your night share is ready"), footer: "See posters"},
+        {title: "Good Night", body: "Your daily poster feed has a calm new night design ready to share.", header: reminderGreetingPrefix(name, "a new night poster is ready"), footer: "Choose & share"},
+        {title: "Good Night", body: "Send a beautiful good night wish today with a fresh poster from the app.", header: reminderGreetingPrefix(name, "your night status poster is ready"), footer: "Open app"},
+      ],
+    },
+    motivation: {
+      telugu: [
+        {title: "మోటివేషన్ టైమ్", body: "ఈరోజు మోటివేషన్ పోస్టర్ తో మీ audience కి spark ఇవ్వండి.", header: reminderGreetingPrefix(name, "మీ motivational పోస్టర్ సిద్ధంగా ఉంది"), footer: "ఇప్పుడే షేర్ చేయండి"},
+        {title: "Daily Motivation", body: "ఒక strong quote poster ఈ రోజు reach ని పెంచగలదు. ఇప్పుడు చూడండి.", header: reminderGreetingPrefix(name, "ఈరోజు motivation పోస్టర్ రెడీ"), footer: "చూడండి"},
+        {title: "Inspiration Ready", body: "Fresh motivational designs మీ status కి ready ga ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ కోసం inspiration పోస్టర్లు వచ్చాయి"), footer: "Open చేయండి"},
+        {title: "Boost Your Day", body: "ఈ రోజు ఒక powerful motivation poster share చేసే time వచ్చింది.", header: reminderGreetingPrefix(name, "మీ motivational share ready"), footer: "Select చేయండి"},
+        {title: "Motivation పోస్టర్", body: "Okka attractive quote poster తో ఈరోజు engagement పెంచండి.", header: reminderGreetingPrefix(name, "మీ motivation poster సిద్ధం"), footer: "Share now"},
+      ],
+      english: [
+        {title: "Motivation Time", body: "Share a powerful motivational poster today and energize your audience.", header: reminderGreetingPrefix(name, "your motivational poster is ready"), footer: "Share now"},
+        {title: "Daily Motivation", body: "A strong quote poster is ready to boost your reach today.", header: reminderGreetingPrefix(name, "today's motivation poster is ready"), footer: "Open now"},
+        {title: "Inspiration Ready", body: "Fresh motivational designs are waiting for your next status update.", header: reminderGreetingPrefix(name, "your inspiration poster is ready"), footer: "See posters"},
+        {title: "Boost Your Day", body: "A new motivation poster is ready to keep your content active today.", header: reminderGreetingPrefix(name, "your motivational share is ready"), footer: "Choose & share"},
+        {title: "Keep Them Inspired", body: "Open Mana Poster and post a fresh motivational design today.", header: reminderGreetingPrefix(name, "your motivation update is ready"), footer: "Open app"},
+      ],
+      hindi: [
+        {title: "मोटिवेशन टाइम", body: "आज एक powerful motivational पोस्टर शेयर करके अपने audience को inspire करें।", header: reminderGreetingPrefix(name, "आपका motivational पोस्टर तैयार है"), footer: "अभी शेयर करें"},
+        {title: "Daily Motivation", body: "आज आपकी reach बढ़ाने के लिए एक strong quote poster तैयार है।", header: reminderGreetingPrefix(name, "आज का motivation poster तैयार है"), footer: "अभी खोलें"},
+        {title: "Inspiration Ready", body: "आपके next status update के लिए fresh motivational designs तैयार हैं।", header: reminderGreetingPrefix(name, "आपका inspiration poster तैयार है"), footer: "पोस्टर देखें"},
+      ],
+      tamil: [
+        {title: "மோட்டிவேஷன் நேரம்", body: "இன்று ஒரு powerful motivational போஸ்டரை பகிர்ந்து உங்கள் audience ஐ inspire செய்யுங்கள்.", header: reminderGreetingPrefix(name, "உங்கள் motivational போஸ்டர் தயாராக உள்ளது"), footer: "இப்போதே பகிருங்கள்"},
+        {title: "Daily Motivation", body: "இன்றைய reach ஐ boost செய்ய ஒரு strong quote poster தயாராக உள்ளது.", header: reminderGreetingPrefix(name, "இன்றைய motivation poster தயாராக உள்ளது"), footer: "இப்போது திறக்கவும்"},
+        {title: "Inspiration Ready", body: "உங்கள் next status update க்காக fresh motivational designs தயாராக உள்ளன.", header: reminderGreetingPrefix(name, "உங்கள் inspiration poster தயாராக உள்ளது"), footer: "போஸ்டர்கள் பார்க்கவும்"},
+      ],
+      kannada: [
+        {title: "ಮೋಟಿವೇಶನ್ ಸಮಯ", body: "ಇಂದು ಒಂದು powerful motivational ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಂಡು ನಿಮ್ಮ audience ಗೆ inspiration ನೀಡಿ.", header: reminderGreetingPrefix(name, "ನಿಮ್ಮ motivational ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ"},
+        {title: "Daily Motivation", body: "ಇಂದಿನ reach ಹೆಚ್ಚಿಸಲು ಒಂದು strong quote poster ಸಿದ್ಧವಾಗಿದೆ.", header: reminderGreetingPrefix(name, "ಇಂದಿನ motivation poster ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಈಗ ತೆರೆಯಿರಿ"},
+        {title: "Inspiration Ready", body: "ನಿಮ್ಮ next status update ಗಾಗಿ fresh motivational designs ಸಿದ್ಧವಾಗಿವೆ.", header: reminderGreetingPrefix(name, "ನಿಮ್ಮ inspiration poster ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಪೋಸ್ಟರ್‌ಗಳನ್ನು ನೋಡಿ"},
+      ],
+      malayalam: [
+        {title: "മോട്ടിവേഷൻ സമയം", body: "ഇന്ന് ഒരു powerful motivational പോസ്റ്റർ ഷെയർ ചെയ്ത് നിങ്ങളുടെ audience നെ inspire ചെയ്യൂ.", header: reminderGreetingPrefix(name, "നിങ്ങളുടെ motivational പോസ്റ്റർ തയ്യാറാണ്"), footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ"},
+        {title: "Daily Motivation", body: "ഇന്നത്തെ reach boost ചെയ്യാൻ ഒരു strong quote poster തയ്യാറായി കാത്തിരിക്കുന്നു.", header: reminderGreetingPrefix(name, "ഇന്നത്തെ motivation poster തയ്യാറാണ്"), footer: "ഇപ്പോൾ തുറക്കൂ"},
+        {title: "Inspiration Ready", body: "നിങ്ങളുടെ next status update നായി fresh motivational designs തയ്യാറാണ്.", header: reminderGreetingPrefix(name, "നിങ്ങളുടെ inspiration poster തയ്യാറാണ്"), footer: "പോസ്റ്ററുകൾ കാണൂ"},
+      ],
+    },
+    jokes: {
+      telugu: [
+        {title: "Jokes Ready", body: "ఈరోజు నవ్వించే కొత్త jokes posters మీ కోసం సిద్ధంగా ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ jokes పోస్టర్ రెడీగా ఉంది"), footer: "ఇప్పుడే చూడండి"},
+        {title: "Fun Time", body: "ఒక funny poster తో మీ status కి instant attention తెచ్చుకోండి.", header: reminderGreetingPrefix(name, "ఈరోజు jokes share సిద్ధంగా ఉంది"), footer: "షేర్ చేయండి"},
+        {title: "Daily Jokes", body: "Fresh comedy posters ఇప్పుడు app లో ready ga ఉన్నాయి.", header: reminderGreetingPrefix(name, "మీ funny పోస్టర్ వచ్చింది"), footer: "Open చేయండి"},
+        {title: "Laugh & Share", body: "ఈ రోజు audience ని smile చేయించే poster ఒకటి share చేయండి.", header: reminderGreetingPrefix(name, "మీ jokes పోస్టర్లు సిద్ధం"), footer: "Select చేయండి"},
+        {title: "Comedy Poster", body: "Okka fun poster తో engagement పెంచడానికి right time ఇదే.", header: reminderGreetingPrefix(name, "మీ comedy poster ready"), footer: "Share now"},
+      ],
+      english: [
+        {title: "Jokes Ready", body: "Fresh jokes posters are ready today. Open the app and share a fun one.", header: reminderGreetingPrefix(name, "your jokes poster is ready"), footer: "Open now"},
+        {title: "Fun Time", body: "Bring a smile to your audience with a fresh funny poster today.", header: reminderGreetingPrefix(name, "today's fun poster is ready"), footer: "Share now"},
+        {title: "Daily Jokes", body: "New comedy poster ideas are waiting in Mana Poster right now.", header: reminderGreetingPrefix(name, "your funny poster is ready"), footer: "See posters"},
+        {title: "Laugh & Share", body: "A fresh jokes poster is ready to boost engagement on your status.", header: reminderGreetingPrefix(name, "your fun share is ready"), footer: "Choose & share"},
+        {title: "Comedy Poster", body: "Open Mana Poster and post a fun, light-hearted design today.", header: reminderGreetingPrefix(name, "your comedy update is ready"), footer: "Open app"},
+      ],
+      hindi: [
+        {title: "जोक्स रेडी", body: "आज के लिए fresh jokes posters तैयार हैं। ऐप खोलें और एक मजेदार पोस्टर शेयर करें।", header: reminderGreetingPrefix(name, "आपका jokes poster तैयार है"), footer: "अभी खोलें"},
+        {title: "Fun Time", body: "आज एक fresh funny poster के साथ अपने audience के चेहरे पर मुस्कान लाइए।", header: reminderGreetingPrefix(name, "आज का fun poster तैयार है"), footer: "अभी शेयर करें"},
+        {title: "Daily Jokes", body: "नए comedy poster ideas अभी Mana Poster में आपका इंतज़ार कर रहे हैं।", header: reminderGreetingPrefix(name, "आपका funny poster तैयार है"), footer: "पोस्टर देखें"},
+      ],
+      tamil: [
+        {title: "ஜோக்ஸ் ரெடி", body: "இன்றைக்கு fresh jokes posters தயாராக உள்ளன. ஆப்பை திறந்து ஒரு fun poster பகிருங்கள்.", header: reminderGreetingPrefix(name, "உங்கள் jokes poster தயாராக உள்ளது"), footer: "இப்போது திறக்கவும்"},
+        {title: "Fun Time", body: "இன்று ஒரு fresh funny poster மூலம் உங்கள் audience க்கு சிரிப்பு கொண்டு வாருங்கள்.", header: reminderGreetingPrefix(name, "இன்றைய fun poster தயாராக உள்ளது"), footer: "இப்போதே பகிருங்கள்"},
+        {title: "Daily Jokes", body: "புதிய comedy poster ideas இப்போது Mana Poster இல் காத்திருக்கின்றன.", header: reminderGreetingPrefix(name, "உங்கள் funny poster தயாராக உள்ளது"), footer: "போஸ்டர்கள் பார்க்கவும்"},
+      ],
+      kannada: [
+        {title: "ಜೋಕ್ಸ್ ರೆಡಿ", body: "ಇಂದಿಗಾಗಿ fresh jokes posters ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಒಂದು fun poster ಹಂಚಿಕೊಳ್ಳಿ.", header: reminderGreetingPrefix(name, "ನಿಮ್ಮ jokes poster ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಈಗ ತೆರೆಯಿರಿ"},
+        {title: "Fun Time", body: "ಇಂದು ಒಂದು fresh funny poster ಮೂಲಕ ನಿಮ್ಮ audience ಗೆ ನಗು ತರಿರಿ.", header: reminderGreetingPrefix(name, "ಇಂದಿನ fun poster ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಈಗಲೇ ಹಂಚಿಕೊಳ್ಳಿ"},
+        {title: "Daily Jokes", body: "ಹೊಸ comedy poster ideas ಈಗ Mana Poster ನಲ್ಲಿ ನಿಮಗಾಗಿ ಕಾಯುತ್ತಿವೆ.", header: reminderGreetingPrefix(name, "ನಿಮ್ಮ funny poster ಸಿದ್ಧವಾಗಿದೆ"), footer: "ಪೋಸ್ಟರ್‌ಗಳನ್ನು ನೋಡಿ"},
+      ],
+      malayalam: [
+        {title: "ജോക്സ് റെഡി", body: "ഇന്നത്തേക്ക് fresh jokes posters തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഒരു fun poster ഷെയർ ചെയ്യൂ.", header: reminderGreetingPrefix(name, "നിങ്ങളുടെ jokes poster തയ്യാറാണ്"), footer: "ഇപ്പോൾ തുറക്കൂ"},
+        {title: "Fun Time", body: "ഇന്ന് ഒരു fresh funny poster വഴി നിങ്ങളുടെ audience നെ ചിരിപ്പിക്കൂ.", header: reminderGreetingPrefix(name, "ഇന്നത്തെ fun poster തയ്യാറാണ്"), footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ"},
+        {title: "Daily Jokes", body: "പുതിയ comedy poster ideas ഇപ്പോൾ Mana Poster ൽ കാത്തിരിക്കുന്നു.", header: reminderGreetingPrefix(name, "നിങ്ങളുടെ funny poster തയ്യാറാണ്"), footer: "പോസ്റ്ററുകൾ കാണൂ"},
+      ],
+    },
+  };
+
+  const fallback = reminderCopy(kind, lang, userName);
+  const variantsByKind = map[kind];
+  if (!variantsByKind) {
+    return [fallback];
+  }
+  const variants = variantsByKind[lang] || [fallback];
+  return Array.isArray(variants) && variants.length > 0 ? variants : [fallback];
+}
+
+function notificationLanguageFromTokenData(data, fallback = "english") {
+  return sanitizeLanguage(
+      (data && (data.preferredLanguage || data.language || data.locale)) || "",
+  ) || fallback;
 }
 
 function initialsSvgDataUri(name, palette) {
@@ -1238,8 +1500,11 @@ function initialsSvgDataUri(name, palette) {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
-function reminderCopyLocalized(kind, language, userName) {
-  return reminderCopy(kind, language, userName);
+function reminderCopyLocalized(kind, language, userName, now = new Date()) {
+  const variants = reminderCopyVariants(kind, language, userName);
+  const dayKey = getIstDayKey(now);
+  const index = stableHashNumber(`${kind}-${sanitizeLanguage(language) || "english"}-${dayKey}`) % variants.length;
+  return variants[index];
 }
 
 function greetingReminderVariants(kind, language) {
@@ -1398,6 +1663,12 @@ function reminderBadgeLabel(categoryKey, title) {
   }
   if (normalized === "night") {
     return "Good Night";
+  }
+  if (normalized === "motivation") {
+    return "Motivation";
+  }
+  if (normalized === "jokes") {
+    return "Jokes";
   }
   return truncateSingleLineText(String(title || "Mana Poster").trim(), 16);
 }
@@ -1898,12 +2169,20 @@ async function sendReminderToToken({
   const normalizedTitle = String(title || "").trim();
   const normalizedBody = String(body || "").trim();
   const normalizedImageUrl = String(imageUrl || "").trim();
-  const normalizedPlatform = String(platform || "").trim().toLowerCase();
-  const isAndroidTarget = normalizedPlatform === "android";
   const message = {
     token,
+    notification: {
+      title: normalizedTitle,
+      body: normalizedBody,
+    },
     android: {
       priority: "high",
+      notification: {
+        channelId: "mana_poster_general",
+        clickAction: "FLUTTER_NOTIFICATION_CLICK",
+        title: normalizedTitle,
+        body: normalizedBody,
+      },
     },
     apns: {
       payload: {
@@ -1919,10 +2198,10 @@ async function sendReminderToToken({
     data: {
       click_action: "FLUTTER_NOTIFICATION_CLICK",
       route: "home",
-      title: isAndroidTarget && normalizedImageUrl ? "" : normalizedTitle,
-      body: isAndroidTarget && normalizedImageUrl ? "" : normalizedBody,
-      title_key: isAndroidTarget && normalizedImageUrl ? "" : titleKey || "",
-      body_key: isAndroidTarget && normalizedImageUrl ? "" : bodyKey || "",
+      title: normalizedTitle,
+      body: normalizedBody,
+      title_key: titleKey || "",
+      body_key: bodyKey || "",
       userName: userName || "",
       userPhoto: userPhotoUrl || "",
       headerText: headerText || "",
@@ -1933,20 +2212,7 @@ async function sendReminderToToken({
     },
   };
 
-  if (!isAndroidTarget) {
-    message.notification = {
-      title: normalizedTitle,
-      body: normalizedBody,
-    };
-    message.android.notification = {
-      channelId: "mana_poster_general",
-      clickAction: "FLUTTER_NOTIFICATION_CLICK",
-      title: normalizedImageUrl ? "\u200B" : normalizedTitle,
-      body: normalizedImageUrl ? "" : normalizedBody,
-    };
-  }
-
-  if (normalizedImageUrl && !isAndroidTarget) {
+  if (normalizedImageUrl) {
     message.android.notification.imageUrl = normalizedImageUrl;
     message.apns.fcmOptions = {image: normalizedImageUrl};
   }
@@ -2042,20 +2308,27 @@ async function sendPersonalizedReminderToToken({
   return messageId;
 }
 
-async function sendWelcomeToToken(token, platform = "") {
+async function sendWelcomeToToken(
+    token,
+    platform = "",
+    language = "english",
+    userName = "",
+) {
+  const copy = reminderCopyLocalized("welcome", language, userName);
   const imageUrl = await getPrimaryBannerImage();
   await sendReminderToToken({
     token,
     platform,
-    title: "Welcome to Mana Poster",
-    body: "Mee kosam daily posters ready ga untayi. Open chesi share cheyyandi.",
+    title: copy.title,
+    body: copy.body,
     imageUrl,
     posterBaseImageUrl: imageUrl || "",
-    headerText: "Welcome to Mana Poster",
-    footerText: "Share",
+    headerText: copy.header,
+    footerText: copy.footer,
     categoryKey: "welcome",
     titleKey: "welcome_title",
     bodyKey: "welcome_body",
+    userName,
   });
 }
 
@@ -2097,12 +2370,12 @@ function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-async function getRelatedPosterImageByKeywords(keywords) {
+async function getRelatedPosterImagesByKeywords(keywords) {
   const keyList = (keywords || [])
       .map((item) => normalizeText(item))
       .filter((item) => item.length > 0);
   if (keyList.length === 0) {
-    return null;
+    return [];
   }
 
   try {
@@ -2110,35 +2383,144 @@ async function getRelatedPosterImageByKeywords(keywords) {
         .collection("creatorPosters")
         .where("status", "==", "approved")
         .orderBy("createdAt", "desc")
-        .limit(180)
+        .limit(300)
         .get();
 
+    const matchedImages = [];
     for (const doc of snap.docs) {
       const data = doc.data() || {};
       const categoryId = normalizeText(data.categoryId);
       const categoryLabel = normalizeText(data.categoryLabel);
-      const title = normalizeText(data.title);
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl) {
         continue;
       }
-      const haystack = `${categoryId} ${categoryLabel} ${title}`;
+      const haystack = `${categoryId} ${categoryLabel}`;
       const matched = keyList.some((keyword) => haystack.includes(keyword));
       if (matched) {
-        return imageUrl;
+        matchedImages.push(imageUrl);
       }
     }
-    return null;
+    return matchedImages;
   } catch (error) {
-    logger.warn("getRelatedPosterImageByKeywords failed", error);
-    return null;
+    logger.warn("getRelatedPosterImagesByKeywords failed", error);
+    return [];
   }
 }
 
-async function pickImageForReminder(keywords) {
-  const related = await getRelatedPosterImageByKeywords(keywords);
-  if (related) {
-    return related;
+function reminderCategoryAliases(input) {
+  const category = reminderCategoryKey(input);
+  if (category === "morning") {
+    return ["good_morning", "good morning", "morning", "suprabhatam"];
+  }
+  if (category === "afternoon") {
+    return ["good_afternoon", "good afternoon", "afternoon", "madhyahna"];
+  }
+  if (category === "night") {
+    return ["good_night", "good night", "night", "evening", "ratri"];
+  }
+  if (category === "motivation") {
+    return ["motivational", "motivation", "inspiration", "quotes"];
+  }
+  if (category === "jokes") {
+    return ["jokes", "joke", "funny", "humor", "comedy"];
+  }
+  return [];
+}
+
+async function getApprovedPosterImagesForReminderCategory(categoryKey) {
+  const aliases = reminderCategoryAliases(categoryKey)
+      .map((item) => normalizeText(item))
+      .filter((item) => item.length > 0);
+  if (aliases.length === 0) {
+    return [];
+  }
+
+  try {
+    const snap = await db
+        .collection("creatorPosters")
+        .where("status", "==", "approved")
+        .orderBy("createdAt", "desc")
+        .limit(300)
+        .get();
+
+    const matchedImages = [];
+    for (const doc of snap.docs) {
+      const data = doc.data() || {};
+      const categoryId = normalizeText(data.categoryId);
+      const categoryLabel = normalizeText(data.categoryLabel);
+      const imageUrl = String(data.imageUrl || "").trim();
+      if (!imageUrl) {
+        continue;
+      }
+      const matched = aliases.some((alias) =>
+        categoryId === alias ||
+        categoryLabel === alias ||
+        categoryId.includes(alias) ||
+        categoryLabel.includes(alias),
+      );
+      if (matched) {
+        matchedImages.push(imageUrl);
+      }
+    }
+    return matchedImages;
+  } catch (error) {
+    logger.warn("getApprovedPosterImagesForReminderCategory failed", {
+      categoryKey,
+      error,
+    });
+    return [];
+  }
+}
+
+async function getRandomApprovedPosterImage() {
+  try {
+    const snap = await db
+        .collection("creatorPosters")
+        .where("status", "==", "approved")
+        .orderBy("createdAt", "desc")
+        .limit(300)
+        .get();
+
+    const images = snap.docs
+        .map((doc) => String((doc.data() || {}).imageUrl || "").trim())
+        .filter((imageUrl) => imageUrl.length > 0);
+    if (images.length === 0) {
+      return "";
+    }
+    const index = Math.floor(Math.random() * images.length);
+    return images[index] || "";
+  } catch (error) {
+    logger.warn("getRandomApprovedPosterImage failed", error);
+    return "";
+  }
+}
+
+async function pickImageForReminder(keywords, seed = "") {
+  const normalizedCategory = reminderCategoryKey(
+      Array.isArray(keywords) ? keywords.join(" ") : keywords,
+  );
+  const strictMatches = await getApprovedPosterImagesForReminderCategory(
+      normalizedCategory,
+  );
+  if (strictMatches.length > 0) {
+    const index = stableHashNumber(
+        `${normalizedCategory}-${seed || Date.now()}-strict`,
+    ) % strictMatches.length;
+    return strictMatches[index] || "";
+  }
+
+  const relatedMatches = await getRelatedPosterImagesByKeywords(keywords);
+  if (relatedMatches.length > 0) {
+    const index = stableHashNumber(
+        `${normalizedCategory}-${seed || Date.now()}-related`,
+    ) % relatedMatches.length;
+    return relatedMatches[index] || "";
+  }
+
+  const randomPosterImage = await getRandomApprovedPosterImage();
+  if (randomPosterImage) {
+    return randomPosterImage;
   }
   return getPrimaryBannerImage();
 }
@@ -2299,8 +2681,9 @@ async function sendDailyPersonalizedReminder({
   keywords,
   categoryKey,
 }) {
-  const imageUrl = await pickImageForReminder(keywords);
-  const dayKey = getIstDayKey(new Date());
+  const now = new Date();
+  const dayKey = getIstDayKey(now);
+  const imageUrl = await pickImageForReminder(keywords, `${categoryKey}-${dayKey}`);
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
@@ -2323,7 +2706,7 @@ async function sendDailyPersonalizedReminder({
     });
   }
 
-  await runWithConcurrency(userJobs, 2, async ({token, uid, ref, platform}) => {
+  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform}) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
@@ -2334,19 +2717,22 @@ async function sendDailyPersonalizedReminder({
           categoryKey,
           profile.preferredLanguage,
           profile.name,
+          now,
       );
-      await sendPersonalizedReminderToToken({
+      await sendReminderToToken({
         token,
         platform,
         title: copy.title,
         body: copy.body,
-        headerText: copy.header,
-        footerText: copy.footer,
-        baseImageUrl: imageUrl,
+        imageUrl: imageUrl || null,
+        posterBaseImageUrl: imageUrl || "",
+        headerText: copy.header || "",
+        footerText: copy.footer || "",
         categoryKey,
-        userName: profile.name,
-        userPhotoUrl: profile.photoUrl,
-        seed: `${uid}-${token}-${categoryKey}-${dayKey}`,
+        titleKey: `${categoryKey}_title`,
+        bodyKey: `${categoryKey}_body`,
+        userName: profile.name || "",
+        userPhotoUrl: profile.photoUrl || "",
       });
     } catch (error) {
       if (isMessagingTokenGoneError(error)) {
@@ -2374,24 +2760,31 @@ async function sendDailyPersonalizedReminder({
       token,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      language: notificationLanguageFromTokenData(data),
     });
   }
 
-  await runWithConcurrency(publicJobs, 2, async ({token, ref, platform}) => {
+  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language}) => {
     try {
-      const copy = reminderCopyLocalized(categoryKey, "english", "Mana Poster User");
-      await sendPersonalizedReminderToToken({
+      const copy = reminderCopyLocalized(
+          categoryKey,
+          language,
+          "Mana Poster User",
+          now,
+      );
+      await sendReminderToToken({
         token,
         platform,
         title: copy.title,
         body: copy.body,
-        headerText: copy.header,
-        footerText: copy.footer,
-        baseImageUrl: imageUrl,
+        imageUrl: imageUrl || null,
+        posterBaseImageUrl: imageUrl || "",
+        headerText: copy.header || "",
+        footerText: copy.footer || "",
         categoryKey,
+        titleKey: `${categoryKey}_title`,
+        bodyKey: `${categoryKey}_body`,
         userName: "Mana Poster User",
-        userPhotoUrl: "",
-        seed: `${token}-${categoryKey}-${dayKey}`,
       });
     } catch (error) {
       if (isMessagingTokenGoneError(error)) {
@@ -2472,6 +2865,14 @@ async function sendLocalizedGreetingReminder({
   reminderKind,
 }) {
   const now = new Date();
+  const imageKeywords =
+      reminderKind === "evening" ?
+      ["good night", "night", "evening"] :
+      [categoryKey];
+  const imageUrl = await pickImageForReminder(
+      imageKeywords,
+      `${categoryKey}-${reminderKind}-${getIstDayKey(now)}`,
+  );
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
   const seenTokens = new Set();
@@ -2495,7 +2896,7 @@ async function sendLocalizedGreetingReminder({
     });
   }
 
-  await runWithConcurrency(userJobs, 4, async ({token, uid, ref, platform}) => {
+  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform}) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
@@ -2512,6 +2913,8 @@ async function sendLocalizedGreetingReminder({
         platform,
         title: copy.title,
         body: copy.body,
+        imageUrl: imageUrl || null,
+        posterBaseImageUrl: imageUrl || "",
         categoryKey,
         titleKey: `${reminderKind}_title`,
         bodyKey: `${reminderKind}_body`,
@@ -2541,17 +2944,20 @@ async function sendLocalizedGreetingReminder({
       token,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      language: notificationLanguageFromTokenData(data),
     });
   }
 
-  await runWithConcurrency(publicJobs, 4, async ({token, ref, platform}) => {
-    const copy = greetingReminderVariant(reminderKind, "english", now);
+  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language}) => {
+    const copy = greetingReminderVariant(reminderKind, language, now);
     try {
       await sendReminderToToken({
         token,
         platform,
         title: copy.title,
         body: copy.body,
+        imageUrl: imageUrl || null,
+        posterBaseImageUrl: imageUrl || "",
         categoryKey,
         titleKey: `${reminderKind}_title`,
         bodyKey: `${reminderKind}_body`,
@@ -3463,18 +3869,24 @@ exports.processWelcomeNotifications = onSchedule(
       // Process public pre-login tokens.
       const publicSnap = await db
           .collection("publicDeviceTokens")
-          .where("welcomeSent", "==", false)
           .limit(40)
           .get();
 
       for (const doc of publicSnap.docs) {
         const data = doc.data() || {};
+        if (data.welcomeSent === true) {
+          continue;
+        }
         const token = String(data.token || "").trim();
         if (!token) {
           continue;
         }
         try {
-          await sendWelcomeToToken(token, String(data.platform || "").trim());
+          await sendWelcomeToToken(
+              token,
+              String(data.platform || "").trim(),
+              notificationLanguageFromTokenData(data),
+          );
           await doc.ref.set({
             welcomeSent: true,
             welcomeSentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3508,9 +3920,13 @@ exports.processWelcomeNotifications = onSchedule(
           const userRef = doc.ref.parent && doc.ref.parent.parent;
           const uid = userRef ? userRef.id : "";
           const profile = await loadNotificationProfileForUid(uid);
+          const resolvedLanguage = notificationLanguageFromTokenData(
+              data,
+              profile.preferredLanguage,
+          );
           const copy = reminderCopyLocalized(
               "welcome",
-              profile.preferredLanguage,
+              resolvedLanguage,
               profile.name,
           );
           await sendPersonalizedWelcomeToToken({
@@ -3523,7 +3939,7 @@ exports.processWelcomeNotifications = onSchedule(
             body: copy.body,
             headerText: copy.header,
             footerText: copy.footer,
-            language: profile.preferredLanguage,
+            language: resolvedLanguage,
           });
           await doc.ref.set({
             welcomeSent: true,
@@ -3622,18 +4038,24 @@ exports.dailyGoodAfternoonReminder1300 = onSchedule(
     },
 );
 
-exports.dailyGoodNightReminder1700 = onSchedule(
+exports.dailyMotivationReminder1130 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "0 17 * * *",
+      schedule: "30 11 * * *",
       timeZone: "Asia/Kolkata",
       memory: "1GiB",
       timeoutSeconds: 300,
     },
     async () => {
-      await sendLocalizedGreetingReminder({
-        categoryKey: "night",
-        reminderKind: "evening",
+      await sendDailyPersonalizedReminder({
+        keywords: [
+          "motivational",
+          "motivation",
+          "good thoughts",
+          "life advice",
+          "inspiration",
+        ],
+        categoryKey: "motivation",
       });
     },
 );
@@ -3653,6 +4075,27 @@ exports.dailyGoodNightReminder2030 = onSchedule(
         "night",
         ],
         categoryKey: "night",
+      });
+    },
+);
+
+exports.dailyJokesReminder1630 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "0 18 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendDailyPersonalizedReminder({
+        keywords: [
+          "jokes",
+          "funny",
+          "humor",
+          "comedy",
+        ],
+        categoryKey: "jokes",
       });
     },
 );

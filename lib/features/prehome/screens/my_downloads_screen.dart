@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
+import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
@@ -23,7 +25,14 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
   @override
   void initState() {
     super.initState();
+    unawaited(ScreenSecurityService.enableSecure());
     _itemsFuture = PosterDownloadsService.listForDisplay();
+  }
+
+  @override
+  void dispose() {
+    unawaited(ScreenSecurityService.disableSecure());
+    super.dispose();
   }
 
   Future<void> _reload() async {

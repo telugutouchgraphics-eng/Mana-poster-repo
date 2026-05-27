@@ -4,6 +4,7 @@
         <item name="android:windowSplashScreenBackground">#F8FAFF</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo</item>
         <item name="android:windowSplashScreenIconBackgroundColor">#F8FAFF</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
     </style>
 
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">

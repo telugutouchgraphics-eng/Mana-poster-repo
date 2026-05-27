@@ -399,9 +399,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     await initialize();
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'billing_unavailable',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(reason: 'billing_unavailable');
       return const PurchaseFlowOutcome(
         result: PurchaseFlowResult.billingUnavailable,
       );
@@ -410,9 +409,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     final targetProductIds = _allProductIds;
     var query = await _inAppPurchase.queryProductDetails(targetProductIds);
     if (query.error != null) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'product_query_failed',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(reason: 'product_query_failed');
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     }
     if (query.productDetails.isEmpty) {
@@ -425,9 +423,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
     }
     if (query.productDetails.isEmpty) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'product_not_found',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(reason: 'product_not_found');
       return const PurchaseFlowOutcome(
         result: PurchaseFlowResult.productNotFound,
       );
@@ -443,14 +440,20 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
     }
     if (details == null) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'target_product_not_found',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(reason: 'target_product_not_found');
       return const PurchaseFlowOutcome(
         result: PurchaseFlowResult.productNotFound,
       );
     }
     final selectedDetails = details;
+    if (!_canLaunchPurchaseForProduct(selectedDetails)) {
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(
+            reason: 'unsupported_purchase_product_details',
+          );
+      return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
+    }
     _logSelectedProductForPurchase(selectedDetails);
     final binding = await PlayBillingAccountBindingService.instance
         .bindSubscriptionPurchaseToUid(productId: selectedDetails.id);
@@ -459,9 +462,10 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     }
     final purchaseParam = _buildPurchaseParam(selectedDetails);
     if (purchaseParam == null) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'invalid_subscription_offer_token',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(
+            reason: 'invalid_subscription_offer_token',
+          );
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     }
 
@@ -471,18 +475,18 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       timeoutResult: const PurchaseFlowOutcome(
         result: PurchaseFlowResult.timedOut,
       ),
-      trigger: () => _inAppPurchase.buyNonConsumable(
-        purchaseParam: purchaseParam,
-      ),
+      trigger: () =>
+          _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam),
       acceptRestored: false,
     );
     if (outcome.result == PurchaseFlowResult.cancelled ||
         outcome.result == PurchaseFlowResult.failed ||
         outcome.result == PurchaseFlowResult.productNotFound ||
         outcome.result == PurchaseFlowResult.billingUnavailable) {
-      await PlayBillingAccountBindingService.instance.clearPendingSubscriptionBinding(
-        reason: 'purchase_flow_${outcome.result.name}',
-      );
+      await PlayBillingAccountBindingService.instance
+          .clearPendingSubscriptionBinding(
+            reason: 'purchase_flow_${outcome.result.name}',
+          );
     }
     return outcome;
   }
@@ -680,6 +684,33 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     return PurchaseParam(productDetails: productDetails);
   }
 
+  bool _canLaunchPurchaseForProduct(ProductDetails productDetails) {
+    if (kIsWeb || !Platform.isAndroid) {
+      return true;
+    }
+    if (productDetails is! GooglePlayProductDetails) {
+      return false;
+    }
+    if (productDetails.id.trim().isEmpty) {
+      return false;
+    }
+    final wrappedDetails = productDetails.productDetails;
+    if (wrappedDetails.productId.trim().isEmpty) {
+      return false;
+    }
+    if (wrappedDetails.productType == ProductType.subs) {
+      final offers = wrappedDetails.subscriptionOfferDetails;
+      if (offers == null || offers.isEmpty) {
+        return false;
+      }
+      final selectedOffer = _selectSubscriptionOffer(offers);
+      final offerToken =
+          selectedOffer?.offerIdToken ?? productDetails.offerToken;
+      return offerToken != null && offerToken.trim().isNotEmpty;
+    }
+    return true;
+  }
+
   SubscriptionOfferDetailsWrapper? _selectSubscriptionOffer(
     List<SubscriptionOfferDetailsWrapper>? offers,
   ) {
@@ -768,7 +799,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
         final earliestAllowedTime = binding.startedAt.subtract(
           const Duration(minutes: 5),
         );
-        if (purchaseTime == null || purchaseTime.isBefore(earliestAllowedTime)) {
+        if (purchaseTime == null ||
+            purchaseTime.isBefore(earliestAllowedTime)) {
           _debugLog(
             'Blocked stale Play purchase claim'
             ' trigger=$trigger'

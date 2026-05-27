@@ -61,9 +61,27 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
   }
 
   Future<void> _openLegalDocument(LegalDocumentType type) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => LegalDocumentScreen(documentType: type),
+    final url = type == LegalDocumentType.privacyPolicy
+        ? AppPublicInfo.privacyPolicyUrl
+        : AppPublicInfo.termsUrl;
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened) {
+        return;
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            english: 'Could not open the link. Please try again.',
+          ),
+        ),
       ),
     );
   }

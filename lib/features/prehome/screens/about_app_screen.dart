@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
-import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AboutAppScreen extends StatefulWidget {
@@ -16,6 +16,29 @@ class AboutAppScreen extends StatefulWidget {
 class _AboutAppScreenState extends State<AboutAppScreen> {
   static const String _supportEmail = AppPublicInfo.supportEmail;
   Future<PackageInfo>? _packageInfoFuture;
+
+  Future<void> _openPublicUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (opened) {
+        return;
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            english: 'Could not open the link. Please try again.',
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -257,15 +280,8 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                         child: _LegalActionButton(
                           label: copy.privacyButton,
                           icon: Icons.verified_user_outlined,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LegalDocumentScreen(
-                                  documentType: LegalDocumentType.privacyPolicy,
-                                ),
-                              ),
-                            );
-                          },
+                          onTap: () =>
+                              _openPublicUrl(AppPublicInfo.privacyPolicyUrl),
                         ),
                       ),
                       SizedBox(
@@ -273,16 +289,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                         child: _LegalActionButton(
                           label: copy.termsButton,
                           icon: Icons.article_outlined,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LegalDocumentScreen(
-                                  documentType:
-                                      LegalDocumentType.termsAndConditions,
-                                ),
-                              ),
-                            );
-                          },
+                          onTap: () => _openPublicUrl(AppPublicInfo.termsUrl),
                         ),
                       ),
                     ],

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -330,14 +332,33 @@ class PosterProfileService {
     return _ensureRemotePersonalPhotoSynced(profile);
   }
 
-  static Future<PosterProfileData> loadLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    await _migrateLegacyProfileKeysIfNeeded(prefs);
-    final legacyTeluguName = (prefs.getString(_scopedKey(_nameTeluguKey)) ?? '')
+  static Future<PosterProfileData> loadLocal({
+    String? fallbackUid,
+    SharedPreferences? prefs,
+  }) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    await _migrateLegacyProfileKeysIfNeeded(
+      resolvedPrefs,
+      fallbackUid: fallbackUid,
+    );
+    final legacyTeluguName =
+        (resolvedPrefs.getString(
+                  _scopedKey(_nameTeluguKey, fallbackUid: fallbackUid),
+                ) ??
+                '')
         .trim();
     final legacyEnglishName =
-        (prefs.getString(_scopedKey(_nameEnglishKey)) ?? '').trim();
-    final legacyName = (prefs.getString(_scopedKey(_nameKey)) ?? '').trim();
+        (resolvedPrefs.getString(
+                  _scopedKey(_nameEnglishKey, fallbackUid: fallbackUid),
+                ) ??
+                '')
+            .trim();
+    final legacyName =
+        (resolvedPrefs.getString(
+                  _scopedKey(_nameKey, fallbackUid: fallbackUid),
+                ) ??
+                '')
+            .trim();
     final firebaseDisplayName =
         FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
     final resolvedLegacyName = legacyName.isNotEmpty
@@ -358,31 +379,83 @@ class PosterProfileService {
       nameEnglish: legacyEnglishName.isNotEmpty
           ? legacyEnglishName
           : inferredLegacy.$2,
-      whatsappNumber: (prefs.getString(_scopedKey(_whatsappKey)) ?? '').trim(),
-      nameFontFamily: _sanitizeFont(prefs.getString(_scopedKey(_nameFontKey))),
-      displayNameMode: _defaultDisplayNameMode,
-      photoPath: (prefs.getString(_scopedKey(_photoPathKey)) ?? '').trim(),
-      photoUrl: (prefs.getString(_scopedKey(_photoUrlKey)) ?? '').trim(),
-      identityMode: _parseIdentityMode(
-        prefs.getString(_scopedKey(_identityModeKey)),
+      whatsappNumber:
+          (resolvedPrefs.getString(
+                    _scopedKey(_whatsappKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      nameFontFamily: _sanitizeFont(
+        resolvedPrefs.getString(
+          _scopedKey(_nameFontKey, fallbackUid: fallbackUid),
+        ),
       ),
-      businessName: (prefs.getString(_scopedKey(_businessNameKey)) ?? '')
+      displayNameMode: _defaultDisplayNameMode,
+      photoPath:
+          (resolvedPrefs.getString(
+                    _scopedKey(_photoPathKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      photoUrl:
+          (resolvedPrefs.getString(
+                    _scopedKey(_photoUrlKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      identityMode: _parseIdentityMode(
+        resolvedPrefs.getString(
+          _scopedKey(_identityModeKey, fallbackUid: fallbackUid),
+        ),
+      ),
+      businessName:
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessNameKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
           .trim(),
-      businessTagline: (prefs.getString(_scopedKey(_businessTaglineKey)) ?? '')
+      businessTagline:
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessTaglineKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
           .trim(),
       businessWhatsappNumber:
-          (prefs.getString(_scopedKey(_businessWhatsappKey)) ?? '').trim(),
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessWhatsappKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
       businessLogoPath:
-          (prefs.getString(_scopedKey(_businessLogoPathKey)) ?? '').trim(),
-      businessLogoUrl: (prefs.getString(_scopedKey(_businessLogoUrlKey)) ?? '')
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessLogoPathKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      businessLogoUrl:
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessLogoUrlKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
           .trim(),
       businessLogoStyleId:
-          (prefs.getString(_scopedKey(_businessLogoStyleKey)) ?? 'style_1')
+          (resolvedPrefs.getString(
+                    _scopedKey(_businessLogoStyleKey, fallbackUid: fallbackUid),
+                  ) ??
+                  'style_1')
               .trim(),
       originalPhotoPath:
-          (prefs.getString(_scopedKey(_originalPhotoPathKey)) ?? '').trim(),
+          (resolvedPrefs.getString(
+                    _scopedKey(_originalPhotoPathKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
       originalPhotoUrl:
-          (prefs.getString(_scopedKey(_originalPhotoUrlKey)) ?? '').trim(),
+          (resolvedPrefs.getString(
+                    _scopedKey(_originalPhotoUrlKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
     );
     return localProfile;
   }
@@ -600,29 +673,45 @@ class PosterProfileService {
     if (user == null) {
       return;
     }
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('posterProfile')
-        .doc('main')
-        .set(<String, dynamic>{
-          'displayName': data.displayName.trim().isEmpty
-              ? _defaultName
-              : data.displayName.trim(),
-          'nameTelugu': data.nameTelugu.trim(),
-          'nameEnglish': data.nameEnglish.trim(),
-          'whatsappNumber': data.whatsappNumber.trim(),
-          'nameFontFamily': _sanitizeFont(data.nameFontFamily),
-          'photoUrl': data.photoUrl.trim(),
-          'originalPhotoUrl': data.originalPhotoUrl.trim(),
-          'identityMode': data.identityMode.name,
-          'businessName': data.businessName.trim(),
-          'businessTagline': data.businessTagline.trim(),
-          'businessWhatsappNumber': data.businessWhatsappNumber.trim(),
-          'businessLogoUrl': data.businessLogoUrl.trim(),
-          'businessLogoStyleId': data.businessLogoStyleId.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+    unawaited(_saveRemoteProfile(user.uid, data));
+  }
+
+  static Future<void> _saveRemoteProfile(
+    String uid,
+    PosterProfileData data,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('posterProfile')
+          .doc('main')
+          .set(<String, dynamic>{
+            'displayName': data.displayName.trim().isEmpty
+                ? _defaultName
+                : data.displayName.trim(),
+            'nameTelugu': data.nameTelugu.trim(),
+            'nameEnglish': data.nameEnglish.trim(),
+            'whatsappNumber': data.whatsappNumber.trim(),
+            'nameFontFamily': _sanitizeFont(data.nameFontFamily),
+            'photoUrl': data.photoUrl.trim(),
+            'originalPhotoUrl': data.originalPhotoUrl.trim(),
+            'identityMode': data.identityMode.name,
+            'businessName': data.businessName.trim(),
+            'businessTagline': data.businessTagline.trim(),
+            'businessWhatsappNumber': data.businessWhatsappNumber.trim(),
+            'businessLogoUrl': data.businessLogoUrl.trim(),
+            'businessLogoStyleId': data.businessLogoStyleId.trim(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    } catch (error, stackTrace) {
+      developer.log(
+        'Poster profile remote save deferred: $error',
+        name: 'poster_profile.save',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   static Future<void> savePersonalPhotoAssets({
@@ -990,8 +1079,8 @@ class PosterProfileService {
     await prefs.remove('$_legacyMigrationPrefix$trimmedUid');
   }
 
-  static String _scopedKey(String baseKey) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  static String _scopedKey(String baseKey, {String? fallbackUid}) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? fallbackUid;
     if (uid == null || uid.trim().isEmpty) {
       return baseKey;
     }
@@ -999,9 +1088,11 @@ class PosterProfileService {
   }
 
   static Future<void> _migrateLegacyProfileKeysIfNeeded(
-    SharedPreferences prefs,
+    SharedPreferences prefs, {
+    String? fallbackUid,
+  }
   ) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? fallbackUid;
     if (uid == null || uid.trim().isEmpty) {
       return;
     }

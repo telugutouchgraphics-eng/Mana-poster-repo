@@ -19,7 +19,6 @@ import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -42,7 +41,6 @@ class NotificationService {
     description: 'General reminders and event updates',
     importance: Importance.high,
   );
-  static const String _publicTokenSyncedPrefix = 'public_push_token_synced_';
   static const String _topicAllUsers = 'all_users';
 
   /// Word joiner — non-empty so Android does not substitute app name for title.
@@ -105,6 +103,7 @@ class NotificationService {
     await _initializeLocalNotifications(_localNotifications);
 
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
+    await messaging.setAutoInitEnabled(true);
     await messaging.setForegroundNotificationPresentationOptions(
       alert: false,
       badge: true,
@@ -293,46 +292,7 @@ class NotificationService {
     }
 
     await _syncUserToken(currentUser, token);
-  }
-
-  Future<void> _syncPublicToken(String token) async {
-    final String tokenId = _tokenToDocId(token);
-    final DocumentReference<Map<String, dynamic>> ref = FirebaseFirestore
-        .instance
-        .collection('publicDeviceTokens')
-        .doc(tokenId);
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String syncedKey = '$_publicTokenSyncedPrefix$tokenId';
-    final String platform = Platform.isAndroid
-        ? 'android'
-        : Platform.isIOS
-        ? 'ios'
-        : 'other';
-    final bool alreadySynced = prefs.getBool(syncedKey) ?? false;
-    final Map<String, dynamic> preferencePayload =
-        await _buildPreferenceSyncPayload();
-    final Map<String, dynamic> payload = <String, dynamic>{
-      'token': token,
-      'platform': platform,
-      'updatedAt': FieldValue.serverTimestamp(),
-      ...preferencePayload,
-    };
-    if (!alreadySynced) {
-      payload['createdAt'] = FieldValue.serverTimestamp();
-      payload['welcomeSent'] = false;
-    }
-
-    try {
-      await ref.set(payload, SetOptions(merge: true));
-      await prefs.setBool(syncedKey, true);
-    } on FirebaseException catch (error, stackTrace) {
-      developer.log(
-        'Public notification token sync skipped: ${error.code}',
-        name: 'notification.service',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    }
+    await _syncPublicToken(token, currentUser: currentUser);
   }
 
   Future<void> _syncUserToken(User currentUser, String token) async {
@@ -344,36 +304,65 @@ class NotificationService {
         .collection('deviceTokens')
         .doc(tokenId);
 
-    final Map<String, dynamic> preferencePayload =
-        await _buildPreferenceSyncPayload();
-    final Map<String, dynamic> payload = <String, dynamic>{
-      'token': token,
-      'platform': Platform.isAndroid
-          ? 'android'
-          : Platform.isIOS
-          ? 'ios'
-          : 'other',
-      'uid': currentUser.uid,
-      'updatedAt': FieldValue.serverTimestamp(),
-      ...preferencePayload,
-    };
-
     final DocumentSnapshot<Map<String, dynamic>> existing = await ref.get();
-    if (!existing.exists) {
-      payload['createdAt'] = FieldValue.serverTimestamp();
-      payload['welcomeSent'] = false;
-    }
+    final Map<String, dynamic> payload = await _buildTokenPayload(
+      token: token,
+      uid: currentUser.uid,
+      includeCreatedAt: !existing.exists,
+      includeWelcomeSent: !existing.exists,
+    );
 
     try {
+      developer.log(
+        'Syncing authenticated notification token',
+        name: 'notification.service',
+        error: <String, Object?>{
+          'uid': currentUser.uid,
+          'token': token,
+          'tokenId': tokenId,
+          'documentPath': ref.path,
+          'payload': payload,
+        },
+      );
       await ref.set(payload, SetOptions(merge: true));
-      await FirebaseFirestore.instance
-          .collection('publicDeviceTokens')
-          .doc(tokenId)
-          .delete()
-          .catchError((_) {});
     } on FirebaseException catch (error, stackTrace) {
       developer.log(
         'User notification token sync skipped: ${error.code}',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<void> _syncPublicToken(String token, {User? currentUser}) async {
+    final String tokenId = _tokenToDocId(token);
+    final DocumentReference<Map<String, dynamic>> ref = FirebaseFirestore
+        .instance
+        .collection('publicDeviceTokens')
+        .doc(tokenId);
+    try {
+      final Map<String, dynamic> updatePayload = await _buildTokenPayload(
+        token: token,
+        uid: currentUser?.uid,
+        includeCreatedAt: false,
+        includeWelcomeSent: false,
+      );
+      developer.log(
+        'Syncing public notification token',
+        name: 'notification.service',
+        error: <String, Object?>{
+          'uid': currentUser?.uid,
+          'token': token,
+          'tokenId': tokenId,
+          'documentPath': ref.path,
+          'payload': updatePayload,
+        },
+      );
+      await ref.set(updatePayload, SetOptions(merge: true));
+    } on FirebaseException catch (error, stackTrace) {
+      developer.log(
+        'Public notification token sync skipped: ${error.code}',
         name: 'notification.service',
         error: error,
         stackTrace: stackTrace,
@@ -433,6 +422,31 @@ class NotificationService {
       'newPosters': snapshot.newPosters,
       'offersUpdates': snapshot.offersUpdates,
       'subscriptionReminders': snapshot.subscriptionReminders,
+    };
+  }
+
+  Future<Map<String, dynamic>> _buildTokenPayload({
+    required String token,
+    String? uid,
+    required bool includeCreatedAt,
+    required bool includeWelcomeSent,
+  }) async {
+    final Map<String, dynamic> preferencePayload =
+        await _buildPreferenceSyncPayload();
+    final AppFlowSnapshot snapshot = await AppFlowService.loadSnapshot();
+    return <String, dynamic>{
+      'token': token,
+      'platform': Platform.isAndroid
+          ? 'android'
+          : Platform.isIOS
+          ? 'ios'
+          : 'other',
+      if (uid != null && uid.trim().isNotEmpty) 'uid': uid.trim(),
+      'preferredLanguage': snapshot.language.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+      ...preferencePayload,
+      if (includeCreatedAt) 'createdAt': FieldValue.serverTimestamp(),
+      if (includeWelcomeSent) 'welcomeSent': false,
     };
   }
 

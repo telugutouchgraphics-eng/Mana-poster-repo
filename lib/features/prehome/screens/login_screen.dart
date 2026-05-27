@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
-import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
@@ -19,19 +22,81 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with AppLanguageStateMixin, WidgetsBindingObserver {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _service = FirebaseAuthService();
   final _formKey = GlobalKey<FormState>();
 
   _AuthMode _mode = _AuthMode.login;
+  bool _authBootstrapping = !FirebaseBootstrap.hasFirebaseApp;
   bool _loadingGoogle = false;
   bool _loadingEmail = false;
   bool _loadingReset = false;
   bool _showPassword = false;
 
-  bool get _isBusy => _loadingGoogle || _loadingEmail || _loadingReset;
+  bool get _isBusy =>
+      _authBootstrapping || _loadingGoogle || _loadingEmail || _loadingReset;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _stabilizeBottomSystemUi();
+    unawaited(_prepareAuthDependencies());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _stabilizeBottomSystemUi();
+    }
+  }
+
+  Future<void> _prepareAuthDependencies() async {
+    if (FirebaseBootstrap.hasFirebaseApp) {
+      if (mounted && _authBootstrapping) {
+        setState(() => _authBootstrapping = false);
+      }
+      return;
+    }
+    try {
+      await FirebaseBootstrap.ensureInitialized(activateAppCheck: false);
+    } finally {
+      if (mounted) {
+        setState(() => _authBootstrapping = false);
+      }
+    }
+  }
+
+  Future<void> _stabilizeBottomSystemUi() async {
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: const <SystemUiOverlay>[SystemUiOverlay.top],
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 180), () async {
+          if (!mounted) {
+            return;
+          }
+          await SystemChrome.setEnabledSystemUIMode(
+            SystemUiMode.manual,
+            overlays: const <SystemUiOverlay>[SystemUiOverlay.top],
+          );
+        }),
+      );
+    });
+  }
 
   Future<void> _continueWithGoogle() async {
     if (_loadingEmail || _loadingReset) {
@@ -40,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
     setState(() => _loadingGoogle = true);
     try {
       await _service.signInWithGoogle();
+      await _stabilizeBottomSystemUi();
       await _continueAfterAuth();
     } catch (e) {
       _showError(_messageForError(e));
@@ -71,6 +137,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
           password: _passwordController.text,
         );
       }
+      await _stabilizeBottomSystemUi();
       await _continueAfterAuth();
     } catch (e) {
       _showError(_messageForError(e));
@@ -214,13 +281,11 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
   }
 
   Future<void> _continueAfterAuth() async {
+    await _stabilizeBottomSystemUi();
+    await AppFlowService.persistLastKnownAuthUid(_service.currentUser?.uid);
     await AppFlowService.loadSnapshot();
-    final permissionsHandled =
-        await AppFlowService.resolvePermissionsStepHandled();
     await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
-    final String nextRoute = permissionsHandled
-        ? await AppFlowService.resolveAuthenticatedEntryRoute()
-        : AppRoutes.permissions;
+    final String nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute();
     if (!mounted) {
       return;
     }
@@ -260,26 +325,34 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
         : AppPublicInfo.termsUrl;
     final uri = Uri.tryParse(url);
     if (uri != null) {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (opened) {
+      final openedExternally = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (openedExternally) {
+        return;
+      }
+      final openedInDefaultMode = await launchUrl(
+        uri,
+        mode: LaunchMode.platformDefault,
+      );
+      if (openedInDefaultMode) {
         return;
       }
     }
     if (!mounted) {
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => LegalDocumentScreen(documentType: type),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'లీగల్ పేజీ తెరవలేకపోయాము. మళ్లీ ప్రయత్నించండి.',
+            english: 'Unable to open legal page. Please try again.',
+          ),
+        ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
@@ -337,9 +410,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           ),
                           const SizedBox(height: 18),
                           Text(
-                            isLogin
-                                ? strings.loginLabel
-                                : strings.signUpLabel,
+                            isLogin ? strings.loginLabel : strings.signUpLabel,
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
@@ -398,9 +469,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
-                            autofillHints: const <String>[
-                              AutofillHints.email,
-                            ],
+                            autofillHints: const <String>[AutofillHints.email],
                             decoration: InputDecoration(
                               hintText: strings.emailAddress,
                               prefixIcon: const Icon(
@@ -428,9 +497,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                             textInputAction: TextInputAction.done,
                             autofillHints: isLogin
                                 ? const <String>[AutofillHints.password]
-                                : const <String>[
-                                    AutofillHints.newPassword,
-                                  ],
+                                : const <String>[AutofillHints.newPassword],
                             onFieldSubmitted: (_) => _continueWithEmail(),
                             decoration: InputDecoration(
                               hintText: strings.password,
@@ -488,13 +555,20 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                                 ? const Padding(
                                     key: ValueKey<String>('reset-loading'),
                                     padding: EdgeInsets.only(bottom: 8),
-                                    child: LinearProgressIndicator(minHeight: 2),
+                                    child: LinearProgressIndicator(
+                                      minHeight: 2,
+                                    ),
                                   )
                                 : const SizedBox(
                                     key: ValueKey<String>('reset-space'),
                                     height: 8,
                                   ),
                           ),
+                          if (_authBootstrapping) ...<Widget>[
+                            const SizedBox(height: 6),
+                            const LinearProgressIndicator(minHeight: 2),
+                            const SizedBox(height: 10),
+                          ],
                           PrimaryButton(
                             label: isLogin
                                 ? strings.loginLabel
@@ -507,9 +581,7 @@ class _LoginScreenState extends State<LoginScreen> with AppLanguageStateMixin {
                           OutlinedButton.icon(
                             onPressed: _isBusy ? null : _continueWithGoogle,
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),
@@ -629,9 +701,11 @@ class _AuthUiCopy {
   };
 
   String formSubtitle(bool isLogin) => switch (language) {
-    AppLanguage.telugu => isLogin ? 'Continue with your account' : 'Create account',
+    AppLanguage.telugu =>
+      isLogin ? 'Continue with your account' : 'Create account',
     AppLanguage.hindi => isLogin ? 'जारी रखें' : 'खाता बनाएँ',
-    AppLanguage.english => isLogin ? 'Continue with your account' : 'Create account',
+    AppLanguage.english =>
+      isLogin ? 'Continue with your account' : 'Create account',
     AppLanguage.tamil => isLogin ? 'தொடரவும்' : 'கணக்கு உருவாக்கவும்',
     AppLanguage.kannada => isLogin ? 'ಮುಂದುವರಿಸಿ' : 'ಖಾತೆ ರಚಿಸಿ',
     AppLanguage.malayalam => isLogin ? 'തുടരുക' : 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',

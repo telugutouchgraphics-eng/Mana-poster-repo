@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 
 class DeviceSessionService {
   DeviceSessionService._();
@@ -129,6 +130,7 @@ class DeviceSessionService {
         await GoogleSignIn.instance.signOut();
       } catch (_) {}
       await _auth.signOut();
+      await AppFlowService.persistLastKnownAuthUid(null);
 
       final navigator = AppNavigator.navigatorKey.currentState;
       if (navigator != null) {

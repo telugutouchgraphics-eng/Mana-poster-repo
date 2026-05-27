@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:mana_poster/app/config/home_category_catalog.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -68,6 +70,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   @override
   void initState() {
     super.initState();
+    unawaited(ScreenSecurityService.enableSecure());
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(
       length: widget.profileOnly ? 1 : 2,
@@ -94,6 +97,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
 
   @override
   void dispose() {
+    unawaited(ScreenSecurityService.disableSecure());
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _tabController.dispose();
@@ -255,16 +259,25 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   }
 
   Future<void> _refreshUploads({bool forceServer = false}) async {
-    final uploads = await UserPosterUploadsService.instance
-        .fetchCurrentUserUploads(forceServer: forceServer);
-    if (!mounted) {
-      return;
+    try {
+      final uploads = await UserPosterUploadsService.instance
+          .fetchCurrentUserUploads(forceServer: forceServer);
+      if (!mounted) {
+        return;
+      }
+      final visible = _applyLocalVisibility(uploads);
+      setState(() {
+        _serverFreshUploads = visible;
+        _lastVisibleUploads = visible;
+      });
+    } catch (error, stackTrace) {
+      developer.log(
+        'User uploads refresh skipped: $error',
+        name: 'user_uploads.refresh',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
-    final visible = _applyLocalVisibility(uploads);
-    setState(() {
-      _serverFreshUploads = visible;
-      _lastVisibleUploads = visible;
-    });
   }
 
   Future<void> _hideUploadLocally(UserPosterUpload upload) async {

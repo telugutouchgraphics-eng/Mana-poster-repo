@@ -64,16 +64,41 @@ class _PermissionsScreenState extends State<PermissionsScreen>
       return;
     }
     setState(() => _loading = true);
-    final snapshot = await _service.requestEssentialPermissions();
-    if (!mounted) {
-      return;
+    try {
+      final snapshot = await _service.requestEssentialPermissions();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _snapshot = snapshot;
+        _loading = false;
+      });
+      await NotificationService.instance.syncCurrentPreferences();
+      await _completeFlowAndGoHome();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu: 'Permissions request పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.',
+              english:
+                  'Permissions request could not be completed. Please try again.',
+              hindi: 'Permissions request पूरी नहीं हो सकी। फिर से कोशिश करें.',
+              tamil:
+                  'Permissions request முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+              kannada:
+                  'Permissions request ಪೂರ್ಣಗೊಳ್ಳಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam:
+                  'Permissions request പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+            ),
+          ),
+        ),
+      );
     }
-    setState(() {
-      _snapshot = snapshot;
-      _loading = false;
-    });
-    await NotificationService.instance.syncCurrentPreferences();
-    await _completeFlowAndGoHome();
   }
 
   Future<void> _continueLater() async {

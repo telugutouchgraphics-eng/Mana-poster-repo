@@ -20,7 +20,7 @@ class AppPublicInfo {
   );
   static const String latestPlayStoreVersion = String.fromEnvironment(
     'MANA_POSTER_LATEST_PLAY_STORE_VERSION',
-    defaultValue: '1.0.72',
+    defaultValue: '1.0.88',
   );
   static const String adMobHomeBannerAdUnitId = String.fromEnvironment(
     'MANA_POSTER_HOME_BANNER_AD_UNIT_ID',
@@ -42,16 +42,31 @@ class AppPublicInfo {
 
   static const String privacyPolicyUrl = String.fromEnvironment(
     'MANA_POSTER_PRIVACY_POLICY_URL',
-    defaultValue: 'https://manaposter.in/legal/privacy-policy.html',
+    defaultValue: 'https://manaposter.in/privacy-policy',
   );
 
   static const String termsUrl = String.fromEnvironment(
     'MANA_POSTER_TERMS_URL',
-    defaultValue: 'https://manaposter.in/legal/terms-and-conditions.html',
+    defaultValue: 'https://manaposter.in/terms-and-conditions',
   );
 
   static const String accountDeletionUrl = String.fromEnvironment(
     'MANA_POSTER_ACCOUNT_DELETION_URL',
-    defaultValue: 'https://manaposter.in/legal/account-deletion.html',
+    defaultValue: 'https://manaposter.in/account-deletion',
+  );
+
+  static const String aboutUsUrl = String.fromEnvironment(
+    'MANA_POSTER_ABOUT_US_URL',
+    defaultValue: 'https://manaposter.in/about-us',
+  );
+
+  static const String legalNoticesUrl = String.fromEnvironment(
+    'MANA_POSTER_LEGAL_NOTICES_URL',
+    defaultValue: 'https://manaposter.in/legal-notices',
+  );
+
+  static const String assetSearchUrl = String.fromEnvironment(
+    'MANA_POSTER_ASSET_SEARCH_URL',
+    defaultValue: 'https://manaposter.in/assets',
   );
 }

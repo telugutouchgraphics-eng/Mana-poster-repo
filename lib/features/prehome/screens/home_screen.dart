@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -15,7 +16,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, kProfileMode;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -24,6 +25,7 @@ import 'package:screenshot/screenshot.dart';
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
@@ -32,19 +34,24 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
+import 'package:mana_poster/app/services/time_slot_service.dart';
+import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
-import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
+import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
+import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
@@ -59,17 +66,45 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void _homeDebugLog(String message) {
-  if (kDebugMode) {
-    debugPrint(message);
+  if (!kDebugMode && !kProfileMode) {
+    return;
   }
+  // ignore: avoid_print
+  print(message);
 }
 
 void _homeDebugLogStack(String message, StackTrace stackTrace) {
-  if (!kDebugMode) {
+  if (!kDebugMode && !kProfileMode) {
     return;
   }
-  debugPrint(message);
-  debugPrintStack(stackTrace: stackTrace);
+  // ignore: avoid_print
+  print(message);
+  // ignore: avoid_print
+  print(stackTrace);
+}
+
+Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null) {
+    return;
+  }
+  final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (opened || !context.mounted) {
+    return;
+  }
+  final messenger = ScaffoldMessenger.of(context);
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          context.strings.localized(
+            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            english: 'Could not open the link. Please try again.',
+          ),
+        ),
+      ),
+    );
 }
 
 /// Firebase Storage URLs (https with token or gs://). Use [Reference.refFromURL]
@@ -286,12 +321,14 @@ class _CategoryChipData {
     required this.slug,
     required this.label,
     this.matchTags = const <String>[],
+    this.presenceTags = const <String>[],
     this.isDynamic = false,
   });
 
   final String slug;
   final String label;
   final List<String> matchTags;
+  final List<String> presenceTags;
   final bool isDynamic;
 }
 
@@ -321,6 +358,740 @@ class _HomeFeedEntry {
   bool get isPromo => promo != null;
 }
 
+enum _AllFeedBucket { primary, dynamic, motivational, jokes, remaining }
+
+class _HomeTemplateProjection {
+  const _HomeTemplateProjection({
+    required this.filteredTemplates,
+    required this.templates,
+  });
+
+  final List<_TemplateItem> filteredTemplates;
+  final List<_TemplateItem> templates;
+}
+
+class _AllFeedRankingWorkerRequest {
+  const _AllFeedRankingWorkerRequest({
+    required this.templates,
+    required this.slot,
+    required this.year,
+    required this.month,
+    required this.day,
+    required this.dynamicTags,
+    required this.recentTemplateKeys,
+  });
+
+  final List<_TemplateItem> templates;
+  final HomeFeedTimeSlot slot;
+  final int year;
+  final int month;
+  final int day;
+  final Set<String> dynamicTags;
+  final Set<String> recentTemplateKeys;
+}
+
+String _normalizeTagWorker(String value) {
+  var scratch = value.trim();
+  if (scratch.isEmpty) {
+    return '';
+  }
+  for (var round = 0; round < 8; round++) {
+    final next = scratch.replaceAllMapped(
+      RegExp(r'([a-z0-9])([A-Z])'),
+      (Match match) => '${match.group(1)}_${match.group(2)}',
+    );
+    if (next == scratch) {
+      break;
+    }
+    scratch = next;
+  }
+  return scratch
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^\w]+'), '_')
+      .replaceAll(RegExp(r'_+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+}
+
+Set<String> _expandCategoryAliasesWorker(String normalizedTag) {
+  const aliasMap = <String, List<String>>{
+    'all': <String>['all'],
+    'good_morning': <String>['good_morning', 'morning'],
+    'good_afternoon': <String>['good_afternoon', 'afternoon'],
+    'good_evening': <String>['good_evening', 'evening'],
+    'good_night': <String>['good_night', 'night'],
+    'motivational': <String>['motivational'],
+    'love_quotes': <String>['love_quotes', 'love'],
+    'today_special': <String>['today_special', 'important_day'],
+    'birthdays': <String>['birthdays', 'birthday', 'celebration'],
+    'life_advice': <String>['life_advice'],
+    'gita_wisdom': <String>['gita_wisdom'],
+    'devotional': <String>['devotional'],
+    'mahabharata': <String>['mahabharata'],
+    'anniversary': <String>['anniversary', 'celebration'],
+    'good_thoughts': <String>['good_thoughts'],
+    'bible': <String>['bible'],
+    'islam': <String>['islam'],
+    'new': <String>['new', 'today_special'],
+    'weekday_special': <String>['weekday_special', 'today_special'],
+    'important_day': <String>['important_day', 'today_special'],
+    'regional_special': <String>['regional_special', 'today_special'],
+    'festival': <String>['festival', 'devotional', 'today_special'],
+    'jayanthi': <String>['jayanthi', 'important_day', 'regional_special'],
+    'vardhanthi': <String>['vardhanthi', 'important_day', 'regional_special'],
+  };
+
+  final output = <String>{normalizedTag};
+  final aliases = aliasMap[normalizedTag];
+  if (aliases != null) {
+    output.addAll(aliases.map(_normalizeTagWorker));
+  }
+  return output;
+}
+
+Iterable<String> _categoryLabelTokenTagsWorker(String? label) sync* {
+  if (label == null || label.trim().isEmpty) {
+    return;
+  }
+  final norm = _normalizeTagWorker(label);
+  if (norm.isNotEmpty) {
+    yield norm;
+  }
+  for (final word in label.toLowerCase().split(RegExp(r'\s+'))) {
+    final normalized = _normalizeTagWorker(word);
+    if (normalized.length > 2) {
+      yield normalized;
+    }
+  }
+}
+
+void _addNormalizedSourceTagsWorker(Set<String> tags, String source) {
+  final trimmed = source.trim();
+  if (trimmed.isEmpty) {
+    return;
+  }
+
+  final normalized = _normalizeTagWorker(trimmed);
+  if (normalized.isNotEmpty) {
+    tags.addAll(_expandCategoryAliasesWorker(normalized));
+  }
+
+  final words = trimmed
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList(growable: false);
+
+  for (final word in words) {
+    tags.addAll(_expandCategoryAliasesWorker(_normalizeTagWorker(word)));
+  }
+
+  if (words.length >= 2) {
+    for (var i = 0; i < words.length - 1; i++) {
+      tags.addAll(
+        _expandCategoryAliasesWorker(
+          _normalizeTagWorker('${words[i]} ${words[i + 1]}'),
+        ),
+      );
+    }
+  }
+}
+
+List<String> _inferTemplateCategoryTagsWorker({
+  required List<String> seedTags,
+  required List<String?> sources,
+}) {
+  final tags = <String>{...seedTags.map(_normalizeTagWorker)};
+  final cleanSources = sources
+      .whereType<String>()
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
+  for (final source in cleanSources) {
+    _addNormalizedSourceTagsWorker(tags, source);
+  }
+  final normalized = cleanSources.map((value) => value.toLowerCase()).join(' ');
+
+  void add(String tag) => tags.add(_normalizeTagWorker(tag));
+
+  if (normalized.contains('birthday')) {
+    add('birthdays');
+    add('celebration');
+  }
+  if (normalized.contains('morning')) {
+    add('good_morning');
+  }
+  if (normalized.contains('afternoon')) {
+    add('good_afternoon');
+  }
+  if (normalized.contains('night')) {
+    add('good_night');
+  }
+  if (normalized.contains('evening')) {
+    add('good_evening');
+  }
+  if (normalized.contains('festival') ||
+      normalized.contains('ekadasi') ||
+      normalized.contains('devotional')) {
+    add('festival');
+    add('devotional');
+    add('both_telugu_states');
+  }
+  if (normalized.contains('political')) {
+    add('political');
+    add('jayanthi');
+    add('vardhanthi');
+    add('regional_special');
+    add('important_day');
+  }
+  if (normalized.contains('poster') || normalized.contains('flyer')) {
+    add('today_special');
+  }
+  if (normalized.contains('telangana')) {
+    add('telangana');
+  }
+  if (normalized.contains('andhra')) {
+    add('andhra_pradesh');
+  }
+  if (tags.isEmpty) {
+    add('today_special');
+  }
+  return tags.toList(growable: false);
+}
+
+_TemplateItem _mapApprovedCreatorTemplateWorker(
+  ApprovedCreatorTemplate template,
+) {
+  final creatorId = template.creatorPublicId.trim();
+  final displayTitle = creatorId.isNotEmpty ? creatorId : template.title;
+  final rawCategoryId = template.categoryId.trim();
+  final categoryLabel = template.categoryLabel.trim();
+  final inferredTags = _inferTemplateCategoryTagsWorker(
+    seedTags: rawCategoryId.isNotEmpty
+        ? <String>[rawCategoryId]
+        : const <String>[],
+    sources: <String?>[
+      categoryLabel.isNotEmpty ? categoryLabel : null,
+      rawCategoryId.isNotEmpty ? rawCategoryId : null,
+      if (rawCategoryId.isEmpty && categoryLabel.isEmpty) template.title,
+    ],
+  );
+  final tagSet = <String>{...inferredTags};
+  if (rawCategoryId.isNotEmpty) {
+    tagSet.add(rawCategoryId);
+    tagSet.add(_normalizeTagWorker(rawCategoryId));
+    tagSet.addAll(
+      _categoryLabelTokenTagsWorker(
+        categoryLabel.isNotEmpty ? categoryLabel : null,
+      ),
+    );
+  }
+  final categoryTags = tagSet
+      .where((tag) => tag.trim().isNotEmpty)
+      .toList(growable: false);
+
+  return _TemplateItem(
+    titleTe: displayTitle,
+    titleHi: displayTitle,
+    titleEn: displayTitle,
+    templateId: template.id,
+    imageUrl: template.imageUrl,
+    imageStoragePath: template.imageStoragePath.trim().isNotEmpty
+        ? template.imageStoragePath
+        : null,
+    thumbnailStoragePath: template.thumbnailStoragePath.trim().isNotEmpty
+        ? template.thumbnailStoragePath
+        : null,
+    thumbnailUrl: template.thumbnailUrl,
+    mediaType: template.mediaType,
+    videoUrl: template.videoUrl,
+    categoryTags: categoryTags,
+    primaryFirestoreCategoryId: rawCategoryId.isNotEmpty ? rawCategoryId : null,
+    categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
+    personalizationConfig: template.personalizationConfig,
+    createdAtMillis: template.createdAtMillis,
+    pageConfig: template.pageConfig,
+  );
+}
+
+List<_TemplateItem> _mapApprovedCreatorTemplatesWorker(
+  List<ApprovedCreatorTemplate> templates,
+) {
+  return templates
+      .map(_mapApprovedCreatorTemplateWorker)
+      .toList(growable: false);
+}
+
+String _templateSequenceKeyWorker(_TemplateItem item) {
+  final id = item.templateId?.trim() ?? '';
+  if (id.isNotEmpty) {
+    return id;
+  }
+  final image = item.imageUrl?.trim() ?? '';
+  if (image.isNotEmpty) {
+    return image;
+  }
+  final storage = item.imageStoragePath?.trim() ?? '';
+  if (storage.isNotEmpty) {
+    return storage;
+  }
+  final video = item.videoUrl?.trim() ?? '';
+  return '${item.titleEn}|$video';
+}
+
+List<_TemplateItem> _mergeTemplateListsWorker(
+  List<List<_TemplateItem>> batches,
+) {
+  final merged = <_TemplateItem>[];
+  final seenKeys = <String>{};
+  for (final batch in batches) {
+    for (final item in batch) {
+      if (seenKeys.add(_templateSequenceKeyWorker(item))) {
+        merged.add(item);
+      }
+    }
+  }
+  return merged;
+}
+
+bool _matchesPriorityTagWorker(_TemplateItem item, Set<String> priorityTags) {
+  final primaryCategory = _normalizeTagWorker(
+    item.primaryFirestoreCategoryId ?? '',
+  );
+  if (primaryCategory.isNotEmpty &&
+      _expandCategoryAliasesWorker(
+        primaryCategory,
+      ).intersection(priorityTags).isNotEmpty) {
+    return true;
+  }
+  for (final tag in item.categoryTags) {
+    final normalized = _normalizeTagWorker(tag);
+    if (normalized.isEmpty) {
+      continue;
+    }
+    if (_expandCategoryAliasesWorker(
+      normalized,
+    ).intersection(priorityTags).isNotEmpty) {
+      return true;
+    }
+  }
+  return false;
+}
+
+String _allCategoryGroupingKeyWorker(_TemplateItem item) {
+  final primary = _normalizeTagWorker(item.primaryFirestoreCategoryId ?? '');
+  if (primary.isNotEmpty && primary != 'all') {
+    return primary;
+  }
+  for (final tag in item.categoryTags) {
+    final normalized = _normalizeTagWorker(tag);
+    if (normalized.isNotEmpty && normalized != 'all') {
+      return normalized;
+    }
+  }
+  return item.templateId?.trim().isNotEmpty == true
+      ? item.templateId!.trim()
+      : item.titleEn.trim();
+}
+
+List<_TemplateItem> _spreadAllCategoryTemplateGroupsWorker(
+  List<_TemplateItem> templates, {
+  required int seed,
+}) {
+  if (templates.length < 3) {
+    return templates;
+  }
+  final grouped = <String, List<_TemplateItem>>{};
+  for (final item in templates) {
+    final key = _allCategoryGroupingKeyWorker(item);
+    grouped.putIfAbsent(key, () => <_TemplateItem>[]).add(item);
+  }
+  if (grouped.length < 2) {
+    return templates;
+  }
+  final bucketKeys = grouped.keys.toList(growable: false)
+    ..sort((a, b) => Object.hash(seed, a).compareTo(Object.hash(seed, b)));
+  final arranged = <_TemplateItem>[];
+  var emitted = 0;
+  while (emitted < templates.length) {
+    var addedThisRound = false;
+    for (final key in bucketKeys) {
+      final bucket = grouped[key];
+      if (bucket == null || bucket.isEmpty) {
+        continue;
+      }
+      arranged.add(bucket.removeAt(0));
+      emitted++;
+      addedThisRound = true;
+    }
+    if (!addedThisRound) {
+      break;
+    }
+  }
+  return arranged;
+}
+
+List<_TemplateItem> _blendAllFeedPriorityBucketsWorker({
+  required List<_TemplateItem> primaryPriority,
+  required List<_TemplateItem> dynamicPriority,
+  required List<_TemplateItem> motivationalPriority,
+  required List<_TemplateItem> jokesPriority,
+  required List<_TemplateItem> remaining,
+  required HomeFeedTimeSlot slot,
+}) {
+  final primaryQueue = List<_TemplateItem>.of(primaryPriority);
+  final dynamicQueue = List<_TemplateItem>.of(dynamicPriority);
+  final motivationalQueue = List<_TemplateItem>.of(motivationalPriority);
+  final jokesQueue = List<_TemplateItem>.of(jokesPriority);
+  final remainingQueue = List<_TemplateItem>.of(remaining);
+  final blended = <_TemplateItem>[];
+  final earlyPattern = switch (slot) {
+    HomeFeedTimeSlot.morning ||
+    HomeFeedTimeSlot.afternoon ||
+    HomeFeedTimeSlot.evening => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.jokes,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.remaining,
+    ],
+    HomeFeedTimeSlot.funEvening => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.remaining,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.remaining,
+    ],
+    HomeFeedTimeSlot.night => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.jokes,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.jokes,
+      _AllFeedBucket.remaining,
+    ],
+  };
+  final steadyPattern = switch (slot) {
+    HomeFeedTimeSlot.morning ||
+    HomeFeedTimeSlot.afternoon ||
+    HomeFeedTimeSlot.evening => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.remaining,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.remaining,
+      _AllFeedBucket.jokes,
+    ],
+    HomeFeedTimeSlot.funEvening => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.remaining,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.remaining,
+    ],
+    HomeFeedTimeSlot.night => const <_AllFeedBucket>[
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.remaining,
+      _AllFeedBucket.jokes,
+      _AllFeedBucket.primary,
+      _AllFeedBucket.dynamic,
+      _AllFeedBucket.motivational,
+      _AllFeedBucket.remaining,
+    ],
+  };
+
+  String? lastCategoryKey;
+
+  List<_TemplateItem> queueFor(_AllFeedBucket bucket) {
+    return switch (bucket) {
+      _AllFeedBucket.primary => primaryQueue,
+      _AllFeedBucket.dynamic => dynamicQueue,
+      _AllFeedBucket.motivational => motivationalQueue,
+      _AllFeedBucket.jokes => jokesQueue,
+      _AllFeedBucket.remaining => remainingQueue,
+    };
+  }
+
+  _TemplateItem? takeWithoutImmediateRepeat(List<_TemplateItem> queue) {
+    if (queue.isEmpty) {
+      return null;
+    }
+    if (lastCategoryKey == null) {
+      return queue.removeAt(0);
+    }
+    final alternateIndex = queue.indexWhere(
+      (item) => _allCategoryGroupingKeyWorker(item) != lastCategoryKey,
+    );
+    if (alternateIndex <= 0) {
+      return queue.removeAt(0);
+    }
+    return queue.removeAt(alternateIndex);
+  }
+
+  void pushFrom(_AllFeedBucket preferredBucket) {
+    final fallbackOrder = switch (preferredBucket) {
+      _AllFeedBucket.primary => <_AllFeedBucket>[
+        _AllFeedBucket.primary,
+        _AllFeedBucket.dynamic,
+        _AllFeedBucket.motivational,
+        _AllFeedBucket.jokes,
+        _AllFeedBucket.remaining,
+      ],
+      _AllFeedBucket.dynamic => <_AllFeedBucket>[
+        _AllFeedBucket.dynamic,
+        _AllFeedBucket.primary,
+        _AllFeedBucket.motivational,
+        _AllFeedBucket.jokes,
+        _AllFeedBucket.remaining,
+      ],
+      _AllFeedBucket.motivational => <_AllFeedBucket>[
+        _AllFeedBucket.motivational,
+        _AllFeedBucket.dynamic,
+        _AllFeedBucket.primary,
+        _AllFeedBucket.jokes,
+        _AllFeedBucket.remaining,
+      ],
+      _AllFeedBucket.jokes => <_AllFeedBucket>[
+        _AllFeedBucket.jokes,
+        _AllFeedBucket.dynamic,
+        _AllFeedBucket.primary,
+        _AllFeedBucket.motivational,
+        _AllFeedBucket.remaining,
+      ],
+      _AllFeedBucket.remaining => <_AllFeedBucket>[
+        _AllFeedBucket.remaining,
+        _AllFeedBucket.primary,
+        _AllFeedBucket.dynamic,
+        _AllFeedBucket.motivational,
+        _AllFeedBucket.jokes,
+      ],
+    };
+    for (final bucket in fallbackOrder) {
+      final item = takeWithoutImmediateRepeat(queueFor(bucket));
+      if (item == null) {
+        continue;
+      }
+      blended.add(item);
+      lastCategoryKey = _allCategoryGroupingKeyWorker(item);
+      return;
+    }
+  }
+
+  for (final bucket in earlyPattern) {
+    if (primaryQueue.isEmpty &&
+        dynamicQueue.isEmpty &&
+        motivationalQueue.isEmpty &&
+        jokesQueue.isEmpty &&
+        remainingQueue.isEmpty) {
+      break;
+    }
+    pushFrom(bucket);
+  }
+
+  var steadyIndex = 0;
+  while (primaryQueue.isNotEmpty ||
+      dynamicQueue.isNotEmpty ||
+      motivationalQueue.isNotEmpty ||
+      jokesQueue.isNotEmpty ||
+      remainingQueue.isNotEmpty) {
+    pushFrom(steadyPattern[steadyIndex % steadyPattern.length]);
+    steadyIndex++;
+  }
+
+  return blended;
+}
+
+List<_TemplateItem> _promoteDynamicAllFeedStartupBatchWorker(
+  List<_TemplateItem> templates, {
+  required Set<String> dynamicTags,
+  int maxLeadingDynamic = 2,
+}) {
+  if (templates.length < 2 || dynamicTags.isEmpty || maxLeadingDynamic <= 0) {
+    return templates;
+  }
+  final leadingDynamic = <_TemplateItem>[];
+  final remainder = <_TemplateItem>[];
+  for (final item in templates) {
+    if (leadingDynamic.length < maxLeadingDynamic &&
+        _matchesPriorityTagWorker(item, dynamicTags)) {
+      leadingDynamic.add(item);
+    } else {
+      remainder.add(item);
+    }
+  }
+  if (leadingDynamic.isEmpty) {
+    return templates;
+  }
+  return <_TemplateItem>[...leadingDynamic, ...remainder];
+}
+
+List<_TemplateItem> _rankAllFeedTemplatesWorker(
+  _AllFeedRankingWorkerRequest request,
+) {
+  final templates = request.templates;
+  if (templates.length < 2) {
+    return templates;
+  }
+  final startOfTodayMillis = IstTimeService.startOfDayUtcMillis(
+    DateTime(request.year, request.month, request.day),
+  );
+  final endOfTodayMillis = startOfTodayMillis + IstTimeService.dayMillis;
+  final freshTemplates = templates
+      .where((item) {
+        final createdAtMillis = item.createdAtMillis;
+        return createdAtMillis >= startOfTodayMillis &&
+            createdAtMillis < endOfTodayMillis;
+      })
+      .toList(growable: false);
+  final effectiveTemplates = freshTemplates.isNotEmpty
+      ? freshTemplates
+      : templates;
+  if (effectiveTemplates.length < 2) {
+    return effectiveTemplates;
+  }
+
+  final seed = Object.hash(
+    request.year,
+    request.month,
+    request.day,
+    request.slot.name,
+    freshTemplates.isNotEmpty,
+  );
+  final shuffled = List<_TemplateItem>.of(effectiveTemplates, growable: false)
+    ..sort((a, b) {
+      final aKey = Object.hash(
+        seed,
+        a.templateId ?? '',
+        a.imageUrl ?? '',
+        a.thumbnailUrl ?? '',
+        a.titleEn,
+      );
+      final bKey = Object.hash(
+        seed,
+        b.templateId ?? '',
+        b.imageUrl ?? '',
+        b.thumbnailUrl ?? '',
+        b.titleEn,
+      );
+      return aKey.compareTo(bKey);
+    });
+  if (request.recentTemplateKeys.isNotEmpty) {
+    shuffled.sort((a, b) {
+      final aRecent = request.recentTemplateKeys.contains(
+        _templateSequenceKeyWorker(a),
+      );
+      final bRecent = request.recentTemplateKeys.contains(
+        _templateSequenceKeyWorker(b),
+      );
+      if (aRecent == bRecent) {
+        return 0;
+      }
+      return aRecent ? 1 : -1;
+    });
+  }
+  final spreadTemplates = _spreadAllCategoryTemplateGroupsWorker(
+    shuffled,
+    seed: seed,
+  );
+  final orderedPriorityTags =
+      TimeSlotService.prioritizedCategoryTagsForHomeFeed(
+            DateTime(
+              request.year,
+              request.month,
+              request.day,
+              switch (request.slot) {
+                HomeFeedTimeSlot.morning => 9,
+                HomeFeedTimeSlot.afternoon => 13,
+                HomeFeedTimeSlot.evening => 17,
+                HomeFeedTimeSlot.funEvening => 19,
+                HomeFeedTimeSlot.night => 22,
+              },
+            ),
+          )
+          .map(_normalizeTagWorker)
+          .where((tag) => tag.isNotEmpty)
+          .toList(growable: false);
+  final priorityTags = orderedPriorityTags.toSet();
+  if (priorityTags.isEmpty && request.dynamicTags.isEmpty) {
+    return spreadTemplates;
+  }
+
+  final primaryPriority = <_TemplateItem>[];
+  final dynamicPriority = <_TemplateItem>[];
+  final motivationalPriority = <_TemplateItem>[];
+  final jokesPriority = <_TemplateItem>[];
+  final remaining = <_TemplateItem>[];
+  final primaryTag = orderedPriorityTags.isNotEmpty
+      ? orderedPriorityTags.first
+      : null;
+  final motivationalTags = orderedPriorityTags.contains('motivational')
+      ? const <String>{'motivational'}
+      : const <String>{};
+  final jokesTags = orderedPriorityTags.contains('jokes')
+      ? const <String>{'jokes'}
+      : const <String>{};
+  for (final item in spreadTemplates) {
+    if (primaryTag != null &&
+        _matchesPriorityTagWorker(item, <String>{primaryTag})) {
+      primaryPriority.add(item);
+    } else if (request.dynamicTags.isNotEmpty &&
+        _matchesPriorityTagWorker(item, request.dynamicTags)) {
+      dynamicPriority.add(item);
+    } else if (motivationalTags.isNotEmpty &&
+        _matchesPriorityTagWorker(item, motivationalTags)) {
+      motivationalPriority.add(item);
+    } else if (jokesTags.isNotEmpty &&
+        _matchesPriorityTagWorker(item, jokesTags)) {
+      jokesPriority.add(item);
+    } else {
+      remaining.add(item);
+    }
+  }
+  if (primaryPriority.isEmpty &&
+      dynamicPriority.isEmpty &&
+      motivationalPriority.isEmpty &&
+      jokesPriority.isEmpty) {
+    return spreadTemplates;
+  }
+  return _blendAllFeedPriorityBucketsWorker(
+    primaryPriority: primaryPriority,
+    dynamicPriority: dynamicPriority,
+    motivationalPriority: motivationalPriority,
+    jokesPriority: jokesPriority,
+    remaining: remaining,
+    slot: request.slot,
+  );
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -338,8 +1109,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with AppLanguageStateMixin, RouteAware, WidgetsBindingObserver {
   static const String _allCategorySlug = 'all';
+  static const String _startupTemplateSnapshotKey =
+      'home_startup_template_snapshot_v1';
   static const int _templatesPageSize = 12;
   static const int _promoSlidesLimit = 5;
+  static const int _startupCacheWarmTemplatesPageSize = 3;
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
   static const String _homeReferralPromptKeyPrefix =
       'mana_poster_home_referral_prompt_dismissed_';
@@ -363,6 +1137,19 @@ class _HomeScreenState extends State<HomeScreen>
     'jokes',
     'new',
   ];
+  static const int _initialTemplatesPageSize = 8;
+  static const int _initialPriorityPrimaryFetchSize = 4;
+  static const int _initialPrioritySecondaryFetchSize = 2;
+  static const int _startupInitialVisibleTemplateCount = 4;
+  static const int _startupMergeBatchSize = 6;
+  static const int _smallMappingBatchSize = 8;
+  static const int _smallMergeBatchInputCount = 16;
+  static const int _startupSnapshotTemplateCount = 8;
+  static const int _startupSnapshotMinimumVisibleCount = 4;
+  static const Duration _startupSnapshotHydrationDelay = Duration(
+    milliseconds: 450,
+  );
+  static const double _homeFeedCacheExtent = 48.0;
 
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService(daysBeforeEvent: 7);
@@ -402,6 +1189,36 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
+  final Set<String> _hydratedCategorySlugs = <String>{};
+  String _lastCategoryDebugSnapshot = '';
+  _HomeTemplateProjection? _templateProjectionCache;
+  Object? _templateProjectionIdentity;
+  List<_CategoryChipData>? _categoryListCache;
+  Object? _categoryListIdentity;
+  bool _adFallbackSlotEnabled = false;
+  HomeFeedTimeSlot _activeHomeFeedTimeSlot = TimeSlotService.homeFeedSlot(
+    IstTimeService.now(),
+  );
+  final Stopwatch _startupStopwatch = Stopwatch()..start();
+  bool _loggedFirstFeedProjection = false;
+  bool _loggedFirstTemplatesPaint = false;
+  bool _loggedFirstVisibleUi = false;
+  bool _loggedFirstCachedFeedPaint = false;
+  bool _loggedFirstRemoteFeedPaint = false;
+  bool _loggedRankingComplete = false;
+  bool _allFeedRankingReady = false;
+  bool _allFeedRankingInFlight = false;
+  bool _progressiveHydrationQueued = false;
+  bool _posterFeedLoadMoreArmed = false;
+  bool _startupRichPosterPreviewReady = false;
+  bool _startupRichPosterPreviewActivationQueued = false;
+  bool _startupSnapshotHydrationDeferred = false;
+  bool _startupSnapshotAttemptCompleted = false;
+  bool _startupPermissionPromptQueued = false;
+  List<_TemplateItem>? _rankedAllFeedTemplates;
+  List<_TemplateItem>? _lockedAllFeedTemplates;
+  Set<String> _recentAllFeedTemplateKeys = <String>{};
+  Timer? _startupSnapshotPersistTimer;
 
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
@@ -439,23 +1256,146 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _homeDebugLog('[StartupTiming] home_init_start t=0ms');
     final initialCategory = widget.initialCategorySlug?.trim();
     if (initialCategory != null && initialCategory.isNotEmpty) {
       _selectedCategorySlug = initialCategory;
     }
     WidgetsBinding.instance.addObserver(this);
     _posterScrollController.addListener(_onPosterScroll);
-    unawaited(_hidePhoneNavigationButtons());
-    unawaited(ScreenSecurityService.enableSecure());
-    unawaited(_loadApprovedCreatorTemplates());
-    unawaited(_loadHomeBanners());
-    unawaited(_loadViewerPosterProfile());
-    unawaited(_loadReligionPreference());
-    unawaited(_loadInstalledAppVersion());
-    unawaited(_loadPromoCardPreferences());
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_showReferralPromptIfNeeded());
+      unawaited(_hidePhoneNavigationButtons());
+      unawaited(ScreenSecurityService.enableSecure());
+      unawaited(_loadReligionPreference());
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 40),
+        _loadStartupTemplateSnapshot,
+      );
+      _homeDebugLog(
+        '[StartupTiming] first_frame t=${_startupStopwatch.elapsedMilliseconds}ms',
+      );
+      if (!_loggedFirstVisibleUi) {
+        _loggedFirstVisibleUi = true;
+        _homeDebugLog(
+          '[StartupTiming] first_visible_ui=${_startupStopwatch.elapsedMilliseconds}ms',
+        );
+      }
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 120),
+        _loadApprovedCreatorTemplatesAfterStartup,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 900),
+        _loadViewerPosterProfile,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 300),
+        _loadPromoCardPreferences,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 700),
+        _loadInstalledAppVersion,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1100),
+        _loadHomeBanners,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1600),
+        _showReferralPromptIfNeeded,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 2200),
+        _requestStartupPermissionsIfNeeded,
+      );
+      _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
+        if (!mounted || _adFallbackSlotEnabled) {
+          return;
+        }
+        setState(() => _adFallbackSlotEnabled = true);
+      });
     });
+  }
+
+  void _scheduleDeferredHomeStartupTask(
+    Duration delay,
+    Future<void> Function() task,
+  ) {
+    unawaited(() async {
+      await Future<void>.delayed(delay);
+      if (!mounted) {
+        return;
+      }
+      await task();
+    }());
+  }
+
+  Future<void> _loadApprovedCreatorTemplatesAfterStartup() async {
+    var waitCycles = 0;
+    while (!_startupSnapshotAttemptCompleted && waitCycles < 8) {
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      if (!mounted) {
+        return;
+      }
+      waitCycles++;
+    }
+    await FirebaseBootstrap.ensureInitialized();
+    if (!mounted) {
+      return;
+    }
+    if (_remoteApprovedTemplates.isNotEmpty) {
+      await Future<void>.delayed(_startupSnapshotHydrationDelay);
+      if (!mounted) {
+        return;
+      }
+    }
+    await _loadApprovedCreatorTemplates();
+  }
+
+  Future<void> _requestStartupPermissionsIfNeeded() async {
+    if (_startupPermissionPromptQueued || kIsWeb || !mounted) {
+      return;
+    }
+    _startupPermissionPromptQueued = true;
+    try {
+      final alreadyHandled = await AppFlowService.resolvePermissionsStepHandled();
+      final permissionService = PermissionService();
+      final snapshot = await permissionService.getSnapshot();
+      if (!mounted) {
+        return;
+      }
+      if (snapshot.allGranted) {
+        await AppFlowService.markPermissionsStepHandled();
+        await NotificationService.instance.syncCurrentPreferences();
+        return;
+      }
+      final bool shouldRecoverStaleHandledState =
+          alreadyHandled &&
+          snapshot.items.every(
+            (AppPermissionState item) =>
+                item.isDenied && !item.isPermanentlyDenied,
+          );
+      if (alreadyHandled && !shouldRecoverStaleHandledState) {
+        return;
+      }
+      if (shouldRecoverStaleHandledState) {
+        await AppFlowService.resetPermissionsStep();
+      }
+      await _awaitStartupUiSettled(
+        minimumDelay: const Duration(milliseconds: 280),
+      );
+      if (!mounted) {
+        return;
+      }
+      await permissionService.requestEssentialPermissions();
+      await AppFlowService.markPermissionsStepHandled();
+      await NotificationService.instance.syncCurrentPreferences();
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'startup permission request skipped: $error',
+        stackTrace,
+      );
+    }
   }
 
   @override
@@ -507,6 +1447,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _refreshHomeFeedTimeSlotIfNeeded();
       unawaited(
         _TemplateFeedItem.subscriptionBackendService
             .refreshEntitlementInBackground(forceRefresh: true),
@@ -518,6 +1459,7 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     AppNavigator.routeObserver.unsubscribe(this);
+    _startupSnapshotPersistTimer?.cancel();
     _posterScrollController
       ..removeListener(_onPosterScroll)
       ..dispose();
@@ -537,10 +1479,18 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
+    final categoryWillReset = _isCategoryHiddenForReligion(
+      _selectedCategorySlug,
+    );
+    if (_religionSelectionReady &&
+        _religionPreference == selection &&
+        !categoryWillReset) {
+      return;
+    }
     setState(() {
       _religionPreference = selection;
       _religionSelectionReady = true;
-      if (_isCategoryHiddenForReligion(_selectedCategorySlug)) {
+      if (categoryWillReset) {
         _selectedCategorySlug = _allCategorySlug;
         _categoryLoadingSlug = null;
       }
@@ -618,6 +1568,8 @@ class _HomeScreenState extends State<HomeScreen>
       item.titleHi,
       item.titleTe,
       item.titleFor(language),
+      item.primaryFirestoreCategoryId ?? '',
+      item.categoryDisplayLabel ?? '',
       ...item.categoryTags,
     ].join(' ').toLowerCase();
 
@@ -626,35 +1578,12 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (selectedCategory.slug == _allCategorySlug) {
-      // Time-based greeting filtering applies only to the All feed. Manual
-      // category selections (including Good Morning/Afternoon/Night) continue
-      // using the existing category matching logic below.
-      return _matchesAllCategoryTimeWindow(item);
+      return _matchesActiveAllFeedTimeSlot(item);
     }
 
-    final chipSlug = _normalizeTag(selectedCategory.slug);
-    final primaryFirestore = item.primaryFirestoreCategoryId?.trim() ?? '';
-    if (chipSlug.isNotEmpty &&
-        primaryFirestore.isNotEmpty &&
-        _normalizeTag(primaryFirestore) == chipSlug) {
-      return true;
-    }
-
-    final itemTags = <String>{};
-    for (final t in item.categoryTags) {
-      final n = _normalizeTag(t);
-      if (n.isNotEmpty) {
-        itemTags.addAll(_expandCategoryAliases(n));
-      }
-    }
-    final categoryTags = <String>{};
-    for (final t in selectedCategory.matchTags) {
-      final n = _normalizeTag(t);
-      if (n.isNotEmpty) {
-        categoryTags.addAll(_expandCategoryAliases(n));
-      }
-    }
-    if (itemTags.intersection(categoryTags).isNotEmpty) {
+    final itemSignals = _templateCategorySignalsForMatching(item);
+    final categorySignals = _categorySignalsForMatching(selectedCategory);
+    if (itemSignals.intersection(categorySignals).isNotEmpty) {
       return true;
     }
 
@@ -662,154 +1591,54 @@ class _HomeScreenState extends State<HomeScreen>
     return fallbackNeedle.isNotEmpty && searchable.contains(fallbackNeedle);
   }
 
-  bool _matchesAllCategoryTimeWindow(_TemplateItem item) {
-    final itemTags = <String>{};
-    for (final tag in item.categoryTags) {
-      final normalized = _normalizeTag(tag);
-      if (normalized.isNotEmpty) {
-        itemTags.addAll(_expandCategoryAliases(normalized));
-      }
-    }
-
-    const greetingTags = <String>{
-      'good_morning',
-      'good_afternoon',
-      'good_night',
-    };
-    final itemGreetingTags = itemTags.intersection(greetingTags);
-    if (itemGreetingTags.isEmpty) {
+  bool _matchesActiveAllFeedTimeSlot(_TemplateItem item) {
+    final itemTemporalTags = _templateTemporalSignals(item);
+    if (itemTemporalTags.isEmpty) {
       return true;
     }
-
-    final activeGreetingTag = _activeAllCategoryGreetingTag(
-      IstTimeService.now(),
-    );
-    return itemGreetingTags.contains(activeGreetingTag);
+    final activeTags = _timeSlotSignals(_activeHomeFeedTimeSlot);
+    return itemTemporalTags.intersection(activeTags).isNotEmpty;
   }
 
-  String _activeAllCategoryGreetingTag(DateTime now) {
-    final hour = now.hour;
-    if (hour < 12) {
-      return 'good_morning';
-    }
-    if (hour >= 12 && hour < 18) {
-      return 'good_afternoon';
-    }
-    return 'good_night';
-  }
-
-  List<_TemplateItem> _shuffleAllCategoryTemplates(
-    List<_TemplateItem> templates,
-  ) {
-    if (templates.length < 2) {
-      return templates;
-    }
-
-    final freshTemplates = _freshAllCategoryTemplatesForToday(templates);
-    final effectiveTemplates = freshTemplates.isNotEmpty
-        ? freshTemplates
-        : templates;
-    if (effectiveTemplates.length < 2) {
-      return effectiveTemplates;
-    }
-
-    // Mix the final All-category feed after time filtering without changing
-    // any manual category behavior. Keep the order stable for the current day
-    // and active greeting window so rebuilds do not keep reordering the list.
-    final now = IstTimeService.now();
-    final seed = Object.hash(
-      now.year,
-      now.month,
-      now.day,
-      _activeAllCategoryGreetingTag(now),
-      freshTemplates.isNotEmpty,
-    );
-    final shuffled = List<_TemplateItem>.of(
-      effectiveTemplates,
-      growable: false,
-    );
-    shuffled.sort((a, b) {
-      final aKey = Object.hash(
-        seed,
-        a.templateId ?? '',
-        a.imageUrl ?? '',
-        a.thumbnailUrl ?? '',
-        a.titleEn,
-      );
-      final bKey = Object.hash(
-        seed,
-        b.templateId ?? '',
-        b.imageUrl ?? '',
-        b.thumbnailUrl ?? '',
-        b.titleEn,
-      );
-      return aKey.compareTo(bKey);
-    });
-    return _spreadAllCategoryTemplateGroups(shuffled, seed: seed);
-  }
-
-  List<_TemplateItem> _freshAllCategoryTemplatesForToday(
-    List<_TemplateItem> templates,
-  ) {
-    final now = DateTime.now();
-    final startOfTodayMillis = IstTimeService.startOfDayUtcMillis(now);
-    final endOfTodayMillis = startOfTodayMillis + IstTimeService.dayMillis;
-    return templates
-        .where((item) {
-          final createdAtMillis = item.createdAtMillis;
-          return createdAtMillis >= startOfTodayMillis &&
-              createdAtMillis < endOfTodayMillis;
-        })
-        .toList(growable: false);
-  }
-
-  List<_TemplateItem> _spreadAllCategoryTemplateGroups(
-    List<_TemplateItem> templates, {
-    required int seed,
-  }) {
-    if (templates.length < 3) {
-      return templates;
-    }
-
-    final grouped = <String, List<_TemplateItem>>{};
-    for (final item in templates) {
-      final key = _allCategoryGroupingKey(item);
-      grouped.putIfAbsent(key, () => <_TemplateItem>[]).add(item);
-    }
-    if (grouped.length < 2) {
-      return templates;
-    }
-
-    final bucketKeys = grouped.keys.toList(growable: false)
-      ..sort((a, b) {
-        final aKey = Object.hash(seed, a);
-        final bKey = Object.hash(seed, b);
-        return aKey.compareTo(bKey);
-      });
-    final arranged = <_TemplateItem>[];
-    var emitted = 0;
-    while (emitted < templates.length) {
-      var addedThisRound = false;
-      for (final key in bucketKeys) {
-        final bucket = grouped[key];
-        if (bucket == null || bucket.isEmpty) {
-          continue;
-        }
-        arranged.add(bucket.removeAt(0));
-        emitted++;
-        addedThisRound = true;
+  Set<String> _templateTemporalSignals(_TemplateItem item) {
+    final signals = <String>{};
+    for (final tag in item.categoryTags) {
+      final normalized = _normalizeTag(tag);
+      if (normalized.isEmpty) {
+        continue;
       }
-      if (!addedThisRound) {
-        break;
-      }
+      signals.addAll(
+        _expandCategoryAliases(normalized).where(
+          (alias) =>
+              alias == 'good_morning' ||
+              alias == 'morning' ||
+              alias == 'good_afternoon' ||
+              alias == 'afternoon' ||
+              alias == 'good_evening' ||
+              alias == 'evening' ||
+              alias == 'good_night' ||
+              alias == 'night',
+        ),
+      );
     }
-    return arranged;
+    return signals;
   }
 
-  String _allCategoryGroupingKey(_TemplateItem item) {
-    final primary = _normalizeTag(_primaryCategoryIdForHomeChip(item));
-    if (primary.isNotEmpty && primary != _allCategorySlug) {
-      return primary;
+  Set<String> _timeSlotSignals(HomeFeedTimeSlot slot) {
+    return switch (slot) {
+      HomeFeedTimeSlot.morning => const <String>{'good_morning', 'morning'},
+      HomeFeedTimeSlot.afternoon =>
+        const <String>{'good_afternoon', 'afternoon'},
+      HomeFeedTimeSlot.evening || HomeFeedTimeSlot.funEvening =>
+        const <String>{'good_evening', 'evening'},
+      HomeFeedTimeSlot.night => const <String>{'good_night', 'night'},
+    };
+  }
+
+  String _normalizedCategoryForDebug(_TemplateItem item) {
+    final primary = item.primaryFirestoreCategoryId?.trim() ?? '';
+    if (primary.isNotEmpty) {
+      return _normalizeTag(primary);
     }
     for (final tag in item.categoryTags) {
       final normalized = _normalizeTag(tag);
@@ -817,9 +1646,143 @@ class _HomeScreenState extends State<HomeScreen>
         return normalized;
       }
     }
-    return item.templateId?.trim().isNotEmpty == true
-        ? item.templateId!.trim()
-        : item.titleEn.trim();
+    return '';
+  }
+
+  Map<String, int> _countTemplatesByCategory(Iterable<_TemplateItem> items) {
+    final out = <String, int>{};
+    for (final item in items) {
+      final key = _normalizedCategoryForDebug(item);
+      out[key] = (out[key] ?? 0) + 1;
+    }
+    return out;
+  }
+
+  void _debugLogCategoryPipeline({
+    required AppLanguage language,
+    required _CategoryChipData selectedCategory,
+    required List<_TemplateItem> filteredTemplates,
+    required List<_TemplateItem> finalTemplates,
+    required int feedEntriesCount,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    final selectedSlug = _normalizeTag(selectedCategory.slug);
+    final allCounts = _countTemplatesByCategory(_remoteApprovedTemplates);
+    final filteredCounts = _countTemplatesByCategory(filteredTemplates);
+    final finalCounts = _countTemplatesByCategory(finalTemplates);
+    final selectedMatchCount = _remoteApprovedTemplates
+        .where((item) => _matchesTemplate(item, language, selectedCategory))
+        .length;
+    final selectedPrimaryExactCount = _remoteApprovedTemplates
+        .where(
+          (item) =>
+              _normalizeTag(item.primaryFirestoreCategoryId?.trim() ?? '') ==
+              selectedSlug,
+        )
+        .length;
+    final snapshot =
+        'slug=$selectedSlug remote=${_remoteApprovedTemplates.length} '
+        'selectedMatch=$selectedMatchCount selectedPrimaryExact=$selectedPrimaryExactCount '
+        'filtered=${filteredTemplates.length} final=${finalTemplates.length} '
+        'feedEntries=$feedEntriesCount hasMore=$_templatesHasMore '
+        'all=$allCounts filteredByCategory=$filteredCounts finalByCategory=$finalCounts';
+    if (snapshot == _lastCategoryDebugSnapshot) {
+      return;
+    }
+    _lastCategoryDebugSnapshot = snapshot;
+    _homeDebugLog('[PosterUI] $snapshot');
+  }
+
+  Set<String> _activeDynamicAllFeedTags(AppLanguage language) {
+    final dynamicCategories = _buildDynamicCategories(
+      IstTimeService.now(),
+      language,
+      templatesLoading: false,
+    );
+    final tags = <String>{};
+    for (final category in dynamicCategories) {
+      final slug = _normalizeTag(category.slug);
+      if (slug.isEmpty ||
+          slug == _allCategorySlug ||
+          _staticCategorySlugs.contains(category.slug)) {
+        continue;
+      }
+      tags.add(slug);
+      for (final tag in category.matchTags) {
+        final normalized = _normalizeTag(tag);
+        if (normalized.isNotEmpty) {
+          tags.add(normalized);
+        }
+      }
+    }
+    return tags;
+  }
+
+  DateTime _slotReferenceTime(HomeFeedTimeSlot slot) {
+    final now = IstTimeService.now();
+    final hour = switch (slot) {
+      HomeFeedTimeSlot.morning => 9,
+      HomeFeedTimeSlot.afternoon => 13,
+      HomeFeedTimeSlot.evening => 17,
+      HomeFeedTimeSlot.funEvening => 19,
+      HomeFeedTimeSlot.night => 22,
+    };
+    return DateTime(now.year, now.month, now.day, hour);
+  }
+
+  void _refreshHomeFeedTimeSlotIfNeeded() {
+    final nextSlot = TimeSlotService.homeFeedSlot(IstTimeService.now());
+    if (nextSlot == _activeHomeFeedTimeSlot) {
+      return;
+    }
+    _rememberRecentAllFeedTemplates();
+    _activeHomeFeedTimeSlot = nextSlot;
+    _resetAllFeedScrollOrderLock();
+    _rankedAllFeedTemplates = null;
+    _allFeedRankingReady = false;
+    _allFeedRankingInFlight = false;
+    _templateProjectionCache = null;
+    _templateProjectionIdentity = null;
+    if (mounted && _selectedCategorySlug == _allCategorySlug) {
+      setState(() {});
+    }
+  }
+
+  void _rememberRecentAllFeedTemplates({
+    List<_TemplateItem>? source,
+    int maxItems = 8,
+  }) {
+    final templates = (source ?? _currentAllFeedDisplaySource())
+        .take(maxItems)
+        .map(_templateSequenceKey)
+        .where((key) => key.trim().isNotEmpty)
+        .toSet();
+    if (templates.isNotEmpty) {
+      _recentAllFeedTemplateKeys = templates;
+    }
+  }
+
+  void _debugLogAllFeedRanking(
+    List<_TemplateItem> ranked, {
+    required HomeFeedTimeSlot slot,
+    required Set<String> dynamicTags,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    final priorities = TimeSlotService.prioritizedCategoryTagsForHomeFeed(
+      _slotReferenceTime(slot),
+    );
+    final topSlice = ranked.take(12).toList(growable: false);
+    final distribution = _countTemplatesByCategory(topSlice);
+    _homeDebugLog(
+      '[AllFeedPriority] slot=${slot.name} '
+      'priorities=${priorities.join(">")} '
+      'dynamicActive=${dynamicTags.length} '
+      'top12=$distribution',
+    );
   }
 
   /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
@@ -834,6 +1797,40 @@ class _HomeScreenState extends State<HomeScreen>
     return template.categoryTags.first.trim();
   }
 
+  void _resetAllFeedScrollOrderLock() {
+    if (_lockedAllFeedTemplates == null) {
+      return;
+    }
+    _lockedAllFeedTemplates = null;
+    _templateProjectionCache = null;
+    _templateProjectionIdentity = null;
+  }
+
+  List<_TemplateItem> _currentAllFeedDisplaySource() {
+    final locked = _lockedAllFeedTemplates;
+    if (locked != null) {
+      return locked;
+    }
+    if (_allFeedRankingReady && _rankedAllFeedTemplates != null) {
+      return _rankedAllFeedTemplates!;
+    }
+    return _remoteApprovedTemplates;
+  }
+
+  Future<List<_TemplateItem>?> _extendLockedAllFeedTemplates(
+    List<_TemplateItem> incoming, {
+    required String phase,
+  }) async {
+    final locked = _lockedAllFeedTemplates;
+    if (locked == null || incoming.isEmpty) {
+      return null;
+    }
+    return _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+      locked,
+      incoming,
+    ], phase: '${phase}_visible_order_lock');
+  }
+
   List<_CategoryChipData> _buildDynamicCategories(
     DateTime now,
     AppLanguage language, {
@@ -843,56 +1840,23 @@ class _HomeScreenState extends State<HomeScreen>
       return const <_CategoryChipData>[];
     }
 
-    final slugsFromPrimaryIds = <String>{};
-    for (final item in _remoteApprovedTemplates) {
-      final id = (item.primaryFirestoreCategoryId ?? '').trim();
-      if (id.isNotEmpty) {
-        slugsFromPrimaryIds.add(id);
-        final n = _normalizeTag(id);
-        if (n.isNotEmpty) {
-          slugsFromPrimaryIds.add(n);
-        }
-      }
-    }
-    final templateCategorySlugsForCalendar = slugsFromPrimaryIds.isNotEmpty
-        ? slugsFromPrimaryIds
-        : _remoteApprovedTemplates.expand((item) => item.categoryTags);
-    final visibleTemplateDynamicCategories = _dynamicCategoryService
-        .categoriesForSlugs(
-          templateCategorySlugsForCalendar,
-          language: language,
-        );
+    final activeCalendarCategories = _dynamicCategoryService.categoriesForDate(
+      now,
+      language: language,
+    );
     final merged = <String, _CategoryChipData>{};
-    // When there are approved templates (admin app posters or creators), show
-    // only dynamic chips for categories those templates use — not the full
-    // calendar list (which made every dynamic event visible after one upload).
-    final restrictDynamicToTemplateCategories =
-        _remoteApprovedTemplates.isNotEmpty;
-    if (restrictDynamicToTemplateCategories) {
-      for (final item in visibleTemplateDynamicCategories) {
-        merged[item.slug] = _CategoryChipData(
-          slug: item.slug,
-          label: item.label,
-          matchTags: item.tags,
-          isDynamic: true,
-        );
+    for (final item in activeCalendarCategories) {
+      if (_remoteApprovedTemplates.isNotEmpty &&
+          !_hasVisibleTemplateForCategoryChip(item, language)) {
+        continue;
       }
-    } else {
-      final fromCalendar = _dynamicCategoryService.categoriesForDate(
-        now,
-        language: language,
+      merged[item.slug] = _CategoryChipData(
+        slug: item.slug,
+        label: item.label,
+        matchTags: item.tags,
+        presenceTags: _dynamicPresenceTags(item).toList(growable: false),
+        isDynamic: true,
       );
-      for (final item in [
-        ...fromCalendar,
-        ...visibleTemplateDynamicCategories,
-      ]) {
-        merged[item.slug] = _CategoryChipData(
-          slug: item.slug,
-          label: item.label,
-          matchTags: item.tags,
-          isDynamic: true,
-        );
-      }
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
@@ -939,12 +1903,141 @@ class _HomeScreenState extends State<HomeScreen>
         slug: rawId,
         label: label.isNotEmpty ? label : rawId,
         matchTags: matchTags,
+        presenceTags: matchTags,
         isDynamic: true,
       );
       covered.add(norm);
     }
 
     return _filterCategoriesByReligion(merged.values.toList(growable: false));
+  }
+
+  Set<String> _dynamicPresenceTags(DynamicCategory category) {
+    const broadTags = <String>{
+      'festival',
+      'devotional',
+      'today_special',
+      'important_day',
+      'regional_special',
+      'weekday_special',
+      'global',
+      'india',
+      'andhra_pradesh',
+      'telangana',
+      'both_telugu_states',
+    };
+    final output = <String>{};
+
+    void addValue(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isEmpty) {
+        return;
+      }
+      output.add(normalized);
+    }
+
+    addValue(category.id);
+    addValue(category.slug);
+    for (final tag in category.tags) {
+      final normalized = _normalizeTag(tag);
+      if (normalized.isEmpty || broadTags.contains(normalized)) {
+        continue;
+      }
+      addValue(tag);
+    }
+    return output;
+  }
+
+  Set<String> _templateCategoryPresenceSignals(_TemplateItem item) {
+    final output = <String>{};
+
+    void addValue(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isEmpty) {
+        return;
+      }
+      output.add(normalized);
+    }
+
+    addValue(item.primaryFirestoreCategoryId ?? '');
+    addValue(item.categoryDisplayLabel ?? '');
+    for (final tag in item.categoryTags) {
+      addValue(tag);
+    }
+    return output;
+  }
+
+  Set<String> _templateCategorySignalsForMatching(_TemplateItem item) {
+    final output = <String>{};
+
+    void addValue(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isEmpty) {
+        return;
+      }
+      output.add(normalized);
+      output.addAll(_expandCategoryAliases(normalized));
+    }
+
+    final primaryCategoryId = (item.primaryFirestoreCategoryId ?? '').trim();
+    if (primaryCategoryId.isNotEmpty) {
+      addValue(primaryCategoryId);
+      return output;
+    }
+
+    addValue(item.categoryDisplayLabel ?? '');
+    for (final tag in item.categoryTags) {
+      addValue(tag);
+    }
+    return output;
+  }
+
+  Set<String> _categorySignalsForMatching(_CategoryChipData category) {
+    final output = <String>{};
+
+    void addValue(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isEmpty) {
+        return;
+      }
+      output.add(normalized);
+      output.addAll(_expandCategoryAliases(normalized));
+    }
+
+    addValue(category.slug);
+    addValue(category.label);
+    for (final tag in category.matchTags) {
+      addValue(tag);
+    }
+    return output;
+  }
+
+  bool _hasVisibleTemplateForCategoryChip(
+    DynamicCategory category,
+    AppLanguage language,
+  ) {
+    final probeChip = _CategoryChipData(
+      slug: category.slug,
+      label: category.label,
+      matchTags: category.tags,
+      presenceTags: _dynamicPresenceTags(category).toList(growable: false),
+      isDynamic: true,
+    );
+    for (final template in _remoteApprovedTemplates) {
+      final templateSignals = _templateCategoryPresenceSignals(template);
+      final chipSignals = <String>{};
+      for (final token in probeChip.presenceTags) {
+        final normalized = _normalizeTag(token);
+        if (normalized.isEmpty) {
+          continue;
+        }
+        chipSignals.add(normalized);
+      }
+      if (templateSignals.intersection(chipSignals).isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Iterable<String> _categoryLabelTokenTags(String? label) sync* {
@@ -1098,99 +2191,6 @@ class _HomeScreenState extends State<HomeScreen>
     return output;
   }
 
-  void _addNormalizedSourceTags(Set<String> tags, String source) {
-    final trimmed = source.trim();
-    if (trimmed.isEmpty) {
-      return;
-    }
-
-    final normalized = _normalizeTag(trimmed);
-    if (normalized.isNotEmpty) {
-      tags.addAll(_expandCategoryAliases(normalized));
-    }
-
-    final words = trimmed
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .toList(growable: false);
-
-    for (final word in words) {
-      tags.addAll(_expandCategoryAliases(_normalizeTag(word)));
-    }
-
-    if (words.length >= 2) {
-      for (var i = 0; i < words.length - 1; i++) {
-        tags.addAll(
-          _expandCategoryAliases(_normalizeTag('${words[i]} ${words[i + 1]}')),
-        );
-      }
-    }
-  }
-
-  List<String> _inferTemplateCategoryTags({
-    required List<String> seedTags,
-    required List<String?> sources,
-  }) {
-    final tags = <String>{...seedTags.map(_normalizeTag)};
-    final cleanSources = sources
-        .whereType<String>()
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList(growable: false);
-    for (final source in cleanSources) {
-      _addNormalizedSourceTags(tags, source);
-    }
-    final normalized = cleanSources
-        .map((value) => value.toLowerCase())
-        .join(' ');
-
-    void add(String tag) => tags.add(_normalizeTag(tag));
-
-    if (normalized.contains('birthday')) {
-      add('birthdays');
-      add('celebration');
-    }
-    if (normalized.contains('morning')) {
-      add('good_morning');
-    }
-    if (normalized.contains('afternoon')) {
-      add('good_afternoon');
-    }
-    if (normalized.contains('night')) {
-      add('good_night');
-    }
-    if (normalized.contains('festival') ||
-        normalized.contains('ekadasi') ||
-        normalized.contains('devotional')) {
-      add('festival');
-      add('devotional');
-      add('both_telugu_states');
-    }
-    if (normalized.contains('political')) {
-      add('political');
-      add('jayanthi');
-      add('vardhanthi');
-      add('regional_special');
-      add('important_day');
-    }
-    if (normalized.contains('poster') || normalized.contains('flyer')) {
-      add('today_special');
-    }
-    if (normalized.contains('telangana')) {
-      add('telangana');
-    }
-    if (normalized.contains('andhra')) {
-      add('andhra_pradesh');
-    }
-    if (tags.isEmpty) {
-      add('today_special');
-    }
-    return tags.toList(growable: false);
-  }
-
   void _showWebEditorUnavailableMessage() {
     if (!mounted) {
       return;
@@ -1286,16 +2286,658 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadHomeBannersInternal() async {
+    final remoteFuture = _appHomeBannerService.fetchBanners();
     final cached = await _appHomeBannerService.fetchBannersFromCache();
     if (mounted && cached.isNotEmpty) {
-      setState(() => _homeBanners = cached);
+      if (!_sameHomeBannerSequence(_homeBanners, cached)) {
+        setState(() => _homeBanners = cached);
+      }
     }
 
-    final remote = await _appHomeBannerService.fetchBanners();
+    final remote = await remoteFuture;
     if (!mounted) {
       return;
     }
+    if (_sameHomeBannerSequence(_homeBanners, remote)) {
+      return;
+    }
     setState(() => _homeBanners = remote);
+  }
+
+  developer.TimelineTask _startStartupTimelineTask(
+    String name, {
+    Map<String, Object?> arguments = const <String, Object?>{},
+  }) {
+    final task = developer.TimelineTask(filterKey: 'home_startup');
+    task.start(name, arguments: arguments);
+    return task;
+  }
+
+  Future<List<_TemplateItem>> _mapTemplatesOffMain(
+    List<ApprovedCreatorTemplate> templates, {
+    String phase = 'map',
+  }) async {
+    if (templates.isEmpty) {
+      return const <_TemplateItem>[];
+    }
+    if (templates.length <= _smallMappingBatchSize) {
+      return _mapApprovedCreatorTemplatesWorker(templates);
+    }
+    final task = _startStartupTimelineTask(
+      'map',
+      arguments: <String, Object?>{'phase': phase, 'count': templates.length},
+    );
+    try {
+      final mapped = await Isolate.run<List<_TemplateItem>>(
+        () => _mapApprovedCreatorTemplatesWorker(templates),
+      );
+      task.finish(
+        arguments: <String, Object?>{'phase': phase, 'count': mapped.length},
+      );
+      return mapped;
+    } catch (error) {
+      task.finish(
+        arguments: <String, Object?>{'phase': phase, 'error': error.toString()},
+      );
+      rethrow;
+    }
+  }
+
+  Future<List<_TemplateItem>> _mergeTemplateListsOffMain(
+    List<List<_TemplateItem>> batches, {
+    required String phase,
+  }) async {
+    if (batches.isEmpty) {
+      return const <_TemplateItem>[];
+    }
+    final inputCount = batches.fold<int>(
+      0,
+      (totalCount, batch) => totalCount + batch.length,
+    );
+    if (inputCount <= _smallMergeBatchInputCount) {
+      return _mergeTemplateListsWorker(batches);
+    }
+    final task = _startStartupTimelineTask(
+      'dedupe',
+      arguments: <String, Object?>{
+        'phase': phase,
+        'batches': batches.length,
+        'inputCount': inputCount,
+      },
+    );
+    try {
+      final merged = await Isolate.run<List<_TemplateItem>>(
+        () => _mergeTemplateListsWorker(batches),
+      );
+      task.finish(
+        arguments: <String, Object?>{'phase': phase, 'count': merged.length},
+      );
+      return merged;
+    } catch (error) {
+      task.finish(
+        arguments: <String, Object?>{'phase': phase, 'error': error.toString()},
+      );
+      rethrow;
+    }
+  }
+
+  Map<String, Object?> _serializePageConfig(EditorPageConfig? config) {
+    if (config == null) {
+      return const <String, Object?>{};
+    }
+    return <String, Object?>{
+      'name': config.name,
+      'widthPx': config.widthPx,
+      'heightPx': config.heightPx,
+    };
+  }
+
+  EditorPageConfig? _deserializePageConfig(Map<String, dynamic>? data) {
+    if (data == null || data.isEmpty) {
+      return null;
+    }
+    final name = (data['name'] as String?)?.trim() ?? '';
+    final widthPx = (data['widthPx'] as num?)?.toInt() ?? 0;
+    final heightPx = (data['heightPx'] as num?)?.toInt() ?? 0;
+    if (name.isEmpty || widthPx <= 0 || heightPx <= 0) {
+      return null;
+    }
+    return EditorPageConfig(name: name, widthPx: widthPx, heightPx: heightPx);
+  }
+
+  Map<String, Object?> _serializePersonalization(
+    CreatorPosterPersonalization? config,
+  ) {
+    if (config == null) {
+      return const <String, Object?>{};
+    }
+    return <String, Object?>{
+      'photoShape': config.photoShape,
+      'photoX': config.photoX,
+      'photoY': config.photoY,
+      'photoScale': config.photoScale,
+      'nameX': config.nameX,
+      'nameY': config.nameY,
+      'showBottomStrip': config.showBottomStrip,
+      'stripHeight': config.stripHeight,
+      'showWhatsapp': config.showWhatsapp,
+      'sampleName': config.sampleName,
+      'nameScale': config.nameScale,
+      'showStyledNameStrip': config.showStyledNameStrip,
+      'showStyledDesignationStrip': config.showStyledDesignationStrip,
+      'sampleDesignation': config.sampleDesignation,
+      'designationScale': config.designationScale,
+      'phoneScale': config.phoneScale,
+      'nameStripColor': config.nameStripColor,
+      'designationStripColor': config.designationStripColor,
+      'boardVariant': config.boardVariant,
+      'photoRenderMode': config.photoRenderMode,
+      'edgeStyle': config.edgeStyle,
+      'showSafeAreas': config.showSafeAreas,
+    };
+  }
+
+  CreatorPosterPersonalization? _deserializePersonalization(
+    Map<String, dynamic>? data,
+  ) {
+    if (data == null || data.isEmpty) {
+      return null;
+    }
+    final photoShape = (data['photoShape'] as String?)?.trim() ?? '';
+    if (photoShape.isEmpty) {
+      return null;
+    }
+    return CreatorPosterPersonalization(
+      photoShape: photoShape,
+      photoX: (data['photoX'] as num?)?.toDouble() ?? 78,
+      photoY: (data['photoY'] as num?)?.toDouble() ?? 42,
+      photoScale: (data['photoScale'] as num?)?.toDouble() ?? 44,
+      nameX: (data['nameX'] as num?)?.toDouble() ?? 50,
+      nameY: (data['nameY'] as num?)?.toDouble() ?? 82,
+      showBottomStrip: data['showBottomStrip'] as bool? ?? true,
+      stripHeight: (data['stripHeight'] as num?)?.toDouble() ?? 16,
+      showWhatsapp: data['showWhatsapp'] as bool? ?? true,
+      sampleName: (data['sampleName'] as String?)?.trim() ?? 'User Name',
+      nameScale: (data['nameScale'] as num?)?.toDouble() ?? 100,
+      showStyledNameStrip: data['showStyledNameStrip'] as bool? ?? false,
+      showStyledDesignationStrip:
+          data['showStyledDesignationStrip'] as bool? ?? false,
+      sampleDesignation: (data['sampleDesignation'] as String?)?.trim() ?? '',
+      designationScale: (data['designationScale'] as num?)?.toDouble() ?? 100,
+      phoneScale: (data['phoneScale'] as num?)?.toDouble() ?? 100,
+      nameStripColor: (data['nameStripColor'] as String?)?.trim() ?? '#0F172A',
+      designationStripColor:
+          (data['designationStripColor'] as String?)?.trim() ?? '#1E293B',
+      boardVariant: (data['boardVariant'] as num?)?.toInt() ?? 0,
+      photoRenderMode: (data['photoRenderMode'] as String?)?.trim() ?? 'cutout',
+      edgeStyle: (data['edgeStyle'] as String?)?.trim() ?? 'soft_fade',
+      showSafeAreas: data['showSafeAreas'] as bool? ?? true,
+    );
+  }
+
+  Map<String, Object?> _serializeTemplateSnapshotItem(_TemplateItem item) {
+    return <String, Object?>{
+      'titleTe': item.titleTe,
+      'titleHi': item.titleHi,
+      'titleEn': item.titleEn,
+      'imageUrl': item.imageUrl,
+      'imageStoragePath': item.imageStoragePath,
+      'thumbnailStoragePath': item.thumbnailStoragePath,
+      'thumbnailUrl': item.thumbnailUrl,
+      'mediaType': item.mediaType,
+      'videoUrl': item.videoUrl,
+      'imageAssetPath': item.imageAssetPath,
+      'price': item.price,
+      'templateId': item.templateId,
+      'templateDocumentSource': item.templateDocumentSource,
+      'productId': item.productId,
+      'fallbackProductIds': item.fallbackProductIds,
+      'categoryTags': item.categoryTags,
+      'createdAtMillis': item.createdAtMillis,
+      'primaryFirestoreCategoryId': item.primaryFirestoreCategoryId,
+      'categoryDisplayLabel': item.categoryDisplayLabel,
+      'pageConfig': _serializePageConfig(item.pageConfig),
+      'personalizationConfig': _serializePersonalization(
+        item.personalizationConfig,
+      ),
+    };
+  }
+
+  _TemplateItem? _deserializeTemplateSnapshotItem(Map<String, dynamic> data) {
+    final titleEn = (data['titleEn'] as String?)?.trim() ?? '';
+    if (titleEn.isEmpty) {
+      return null;
+    }
+    return _TemplateItem(
+      titleTe: (data['titleTe'] as String?) ?? titleEn,
+      titleHi: (data['titleHi'] as String?) ?? titleEn,
+      titleEn: titleEn,
+      imageUrl: (data['imageUrl'] as String?)?.trim(),
+      imageStoragePath: (data['imageStoragePath'] as String?)?.trim(),
+      thumbnailStoragePath: (data['thumbnailStoragePath'] as String?)?.trim(),
+      thumbnailUrl: (data['thumbnailUrl'] as String?)?.trim(),
+      mediaType: (data['mediaType'] as String?)?.trim() ?? 'image',
+      videoUrl: (data['videoUrl'] as String?)?.trim(),
+      imageAssetPath: (data['imageAssetPath'] as String?)?.trim(),
+      price: (data['price'] as num?)?.toInt(),
+      templateId: (data['templateId'] as String?)?.trim(),
+      templateDocumentSource: (data['templateDocumentSource'] as String?)
+          ?.trim(),
+      productId: (data['productId'] as String?)?.trim(),
+      fallbackProductIds:
+          (data['fallbackProductIds'] as List<dynamic>? ?? const <dynamic>[])
+              .map((value) => value.toString())
+              .toList(growable: false),
+      categoryTags:
+          (data['categoryTags'] as List<dynamic>? ?? const <dynamic>[])
+              .map((value) => value.toString())
+              .toList(growable: false),
+      createdAtMillis: (data['createdAtMillis'] as num?)?.toInt() ?? 0,
+      primaryFirestoreCategoryId:
+          (data['primaryFirestoreCategoryId'] as String?)?.trim(),
+      categoryDisplayLabel: (data['categoryDisplayLabel'] as String?)?.trim(),
+      pageConfig: _deserializePageConfig(
+        (data['pageConfig'] as Map?)?.cast<String, dynamic>(),
+      ),
+      personalizationConfig: _deserializePersonalization(
+        (data['personalizationConfig'] as Map?)?.cast<String, dynamic>(),
+      ),
+    );
+  }
+
+  Future<void> _persistStartupTemplateSnapshot(
+    List<_TemplateItem> templates,
+  ) async {
+    if (templates.isEmpty) {
+      return;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = templates
+          .take(_startupSnapshotTemplateCount)
+          .map(_serializeTemplateSnapshotItem)
+          .toList(growable: false);
+      await prefs.setString(_startupTemplateSnapshotKey, jsonEncode(payload));
+    } catch (_) {
+    } finally {
+      _startupSnapshotAttemptCompleted = true;
+    }
+  }
+
+  void _scheduleStartupTemplateSnapshotPersist(List<_TemplateItem> templates) {
+    if (templates.isEmpty) {
+      return;
+    }
+    final snapshot = templates
+        .take(_startupSnapshotTemplateCount)
+        .toList(growable: false);
+    _startupSnapshotPersistTimer?.cancel();
+    _startupSnapshotPersistTimer = Timer(
+      const Duration(milliseconds: 1200),
+      () {
+        if (!mounted) {
+          return;
+        }
+        unawaited(_persistStartupTemplateSnapshot(snapshot));
+      },
+    );
+  }
+
+  Future<void> _loadStartupTemplateSnapshot() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_startupTemplateSnapshotKey)?.trim() ?? '';
+      if (raw.isEmpty || !mounted || _remoteApprovedTemplates.isNotEmpty) {
+        return;
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return;
+      }
+      final mapped = decoded
+          .whereType<Map>()
+          .map(
+            (item) =>
+                _deserializeTemplateSnapshotItem(item.cast<String, dynamic>()),
+          )
+          .whereType<_TemplateItem>()
+          .toList(growable: false);
+      if (mapped.isEmpty ||
+          mapped.length < _startupSnapshotMinimumVisibleCount ||
+          !mounted ||
+          _remoteApprovedTemplates.isNotEmpty) {
+        return;
+      }
+      setState(() {
+        _remoteApprovedTemplates = mapped;
+        _templatesLoading = false;
+        _templatesHasMore = true;
+      });
+      _startupSnapshotHydrationDeferred = true;
+      _scheduleStartupRichPosterPreviewActivation(
+        initialDelay: const Duration(milliseconds: 40),
+      );
+      _scheduleSelectedCategoryPrefetchAfterVisibleTemplates();
+      _logPostPaintTimingOnce(
+        kind: 'first_snapshot_feed_paint',
+        alreadyLogged: _loggedFirstCachedFeedPaint,
+        markLogged: () => _loggedFirstCachedFeedPaint = true,
+        count: mapped.length,
+      );
+      _homeDebugLog(
+        '[StartupTiming] templates_snapshot_ready '
+        't=${_startupStopwatch.elapsedMilliseconds}ms count=${mapped.length}',
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _applyStartupTemplateState(
+    List<_TemplateItem> templates, {
+    required bool hasMore,
+    required QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
+    required String phase,
+    required bool logFirstRemotePaint,
+    int primaryCount = 0,
+    int secondaryCount = 0,
+    int genericCount = 0,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+    final setStateTask = _startStartupTimelineTask(
+      'first_set_state',
+      arguments: <String, Object?>{'phase': phase, 'count': templates.length},
+    );
+    final setStateStopwatch = Stopwatch()..start();
+    setState(() {
+      _remoteApprovedTemplates = templates;
+      _rankedAllFeedTemplates = null;
+      _allFeedRankingReady = false;
+      _templatesLoading = false;
+      _templatesHasMore = hasMore;
+      _templatesLastDocument = lastDocument;
+    });
+    setStateTask.finish(
+      arguments: <String, Object?>{
+        'phase': phase,
+        'count': templates.length,
+        'setStateMs': setStateStopwatch.elapsedMilliseconds,
+      },
+    );
+    _templateProjectionCache = null;
+    _templateProjectionIdentity = null;
+    _categoryListCache = null;
+    _categoryListIdentity = null;
+    _hydratedCategorySlugs.clear();
+    _scheduleSelectedCategoryPrefetchAfterVisibleTemplates();
+    _scheduleDeferredAllFeedRanking();
+    _scheduleStartupRichPosterPreviewActivation();
+    if (logFirstRemotePaint) {
+      _logPostPaintTimingOnce(
+        kind: 'first_remote_feed_paint',
+        alreadyLogged: _loggedFirstRemoteFeedPaint,
+        markLogged: () => _loggedFirstRemoteFeedPaint = true,
+        count: templates.length,
+      );
+    }
+    _homeDebugLog(
+      '[StartupTiming] templates_$phase t=${_startupStopwatch.elapsedMilliseconds}ms '
+      'count=${templates.length} primary=$primaryCount secondary=$secondaryCount '
+      'generic=$genericCount hasMore=$hasMore',
+    );
+  }
+
+  void _scheduleStartupRichPosterPreviewActivation({
+    Duration initialDelay = const Duration(milliseconds: 2200),
+  }) {
+    if (_startupRichPosterPreviewReady ||
+        _startupRichPosterPreviewActivationQueued) {
+      return;
+    }
+    _startupRichPosterPreviewActivationQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(() async {
+        await Future<void>.delayed(initialDelay);
+        if (!mounted) {
+          return;
+        }
+        if (!PostSplashStartupGate.isReady) {
+          _startupRichPosterPreviewActivationQueued = false;
+          await Future<void>.delayed(const Duration(milliseconds: 320));
+          if (!mounted) {
+            return;
+          }
+          _scheduleStartupRichPosterPreviewActivation(
+            initialDelay: const Duration(milliseconds: 640),
+          );
+          return;
+        }
+        if (_posterScrollController.hasClients &&
+            _posterScrollController.position.isScrollingNotifier.value) {
+          _startupRichPosterPreviewActivationQueued = false;
+          await Future<void>.delayed(const Duration(milliseconds: 900));
+          if (!mounted) {
+            return;
+          }
+          _scheduleStartupRichPosterPreviewActivation();
+          return;
+        }
+        if (_templatesLoading ||
+            _templatesLoadingMore ||
+            _posterPhotoDragInProgress) {
+          _startupRichPosterPreviewActivationQueued = false;
+          await Future<void>.delayed(const Duration(milliseconds: 1100));
+          if (!mounted) {
+            return;
+          }
+          _scheduleStartupRichPosterPreviewActivation();
+          return;
+        }
+        _startupRichPosterPreviewActivationQueued = false;
+        if (_startupRichPosterPreviewReady) {
+          return;
+        }
+        setState(() {
+          _startupRichPosterPreviewReady = true;
+        });
+      }());
+    });
+  }
+
+  Future<void> _awaitStartupUiSettled({
+    Duration minimumDelay = const Duration(milliseconds: 420),
+  }) async {
+    try {
+      await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    await Future<void>.delayed(minimumDelay);
+    if (!mounted) {
+      return;
+    }
+    if (_posterScrollController.hasClients &&
+        _posterScrollController.position.isScrollingNotifier.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 420));
+    }
+    if (!mounted) {
+      return;
+    }
+    if (_templatesLoading ||
+        _templatesLoadingMore ||
+        _posterPhotoDragInProgress) {
+      await Future<void>.delayed(const Duration(milliseconds: 520));
+    }
+  }
+
+  Future<void> _appendTemplatesIncrementally(
+    List<_TemplateItem> incoming, {
+    required bool hasMore,
+    required QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
+    required String phase,
+  }) async {
+    if (incoming.isEmpty || !mounted) {
+      if (mounted) {
+        setState(() {
+          _templatesHasMore = hasMore;
+          _templatesLastDocument = lastDocument;
+          _templatesLoadingMore = false;
+        });
+      }
+      return;
+    }
+    final applyAsSingleBatch = phase == 'load_more_merge';
+    if (applyAsSingleBatch) {
+      final lockedMerged = await _extendLockedAllFeedTemplates(
+        incoming,
+        phase: phase,
+      );
+      final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+        _remoteApprovedTemplates,
+        incoming,
+      ], phase: phase);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _remoteApprovedTemplates = merged;
+        if (lockedMerged != null) {
+          _lockedAllFeedTemplates = lockedMerged;
+        }
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _templatesHasMore = hasMore;
+        _templatesLastDocument = lastDocument;
+        _templatesLoading = false;
+        _templatesLoadingMore = false;
+      });
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+      _scheduleDeferredAllFeedRanking();
+      if (phase.contains('merge') && merged.isNotEmpty) {
+        _scheduleStartupTemplateSnapshotPersist(merged);
+      }
+      return;
+    }
+    for (
+      var start = 0;
+      start < incoming.length && mounted;
+      start += _startupMergeBatchSize
+    ) {
+      final end = math.min(start + _startupMergeBatchSize, incoming.length);
+      final chunk = incoming.sublist(start, end);
+      final lockedMerged = await _extendLockedAllFeedTemplates(
+        chunk,
+        phase: phase,
+      );
+      final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+        _remoteApprovedTemplates,
+        chunk,
+      ], phase: '$phase:${start ~/ _startupMergeBatchSize}');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _remoteApprovedTemplates = merged;
+        if (lockedMerged != null) {
+          _lockedAllFeedTemplates = lockedMerged;
+        }
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _templatesHasMore = hasMore;
+        _templatesLastDocument = lastDocument;
+        _templatesLoading = false;
+        _templatesLoadingMore = false;
+      });
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+      _scheduleDeferredAllFeedRanking();
+      if (phase.contains('merge') && merged.isNotEmpty) {
+        _scheduleStartupTemplateSnapshotPersist(merged);
+      }
+      if (end < incoming.length) {
+        await WidgetsBinding.instance.endOfFrame;
+        await Future<void>.delayed(const Duration(milliseconds: 24));
+      }
+    }
+  }
+
+  Future<void> _completeStartupSecondaryHydration({
+    List<_TemplateItem> deferredPrimaryItems = const <_TemplateItem>[],
+    required Future<List<ApprovedCreatorTemplate>> secondaryFuture,
+    required Future<ApprovedCreatorTemplatePage> genericFuture,
+  }) async {
+    await WidgetsBinding.instance.endOfFrame;
+    await _awaitStartupUiSettled();
+    if (!mounted) {
+      return;
+    }
+
+    if (deferredPrimaryItems.isNotEmpty) {
+      await _appendTemplatesIncrementally(
+        deferredPrimaryItems,
+        hasMore: _templatesHasMore,
+        lastDocument: _templatesLastDocument,
+        phase: 'primary_merge',
+      );
+      await WidgetsBinding.instance.endOfFrame;
+      await _awaitStartupUiSettled(
+        minimumDelay: const Duration(milliseconds: 320),
+      );
+      if (!mounted) {
+        return;
+      }
+    }
+
+    final secondaryTemplates = await secondaryFuture;
+    if (!mounted) {
+      return;
+    }
+    final secondaryItems = await _mapTemplatesOffMain(
+      secondaryTemplates,
+      phase: 'secondary',
+    );
+    if (!mounted) {
+      return;
+    }
+    await _appendTemplatesIncrementally(
+      secondaryItems,
+      hasMore: _templatesHasMore,
+      lastDocument: _templatesLastDocument,
+      phase: 'secondary_merge',
+    );
+
+    await WidgetsBinding.instance.endOfFrame;
+    await _awaitStartupUiSettled(
+      minimumDelay: const Duration(milliseconds: 320),
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final genericPage = await genericFuture;
+    if (!mounted) {
+      return;
+    }
+    final genericItems = await _mapTemplatesOffMain(
+      genericPage.templates,
+      phase: 'generic',
+    );
+    if (!mounted) {
+      return;
+    }
+    await _appendTemplatesIncrementally(
+      genericItems,
+      hasMore: genericPage.hasMore,
+      lastDocument: genericPage.lastDocument,
+      phase: 'generic_merge',
+    );
+    if (!mounted) {
+      return;
+    }
+    _scheduleProgressiveTemplateHydration();
   }
 
   Future<void> _loadApprovedCreatorTemplates() async {
@@ -1327,198 +2969,688 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
   }
 
-  void _scheduleHomeFeedRepaint() {
+  void _scheduleSelectedCategoryPrefetchAfterVisibleTemplates() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
+      if (!mounted || _remoteApprovedTemplates.isEmpty) {
         return;
       }
-      setState(() {});
+      if (!_loggedFirstTemplatesPaint) {
+        _loggedFirstTemplatesPaint = true;
+        _homeDebugLog(
+          '[StartupTiming] firstTemplatesPaintMs=${_startupStopwatch.elapsedMilliseconds}ms '
+          'count=${_remoteApprovedTemplates.length}',
+        );
+      }
+      _triggerSelectedCategoryPrefetch();
     });
-  }
-
-  bool _needsAdditionalAllFeedTemplates(List<_TemplateItem> templates) {
-    if (_selectedCategorySlug != _allCategorySlug) {
-      return false;
-    }
-    if (_searchController.text.trim().isNotEmpty || templates.isEmpty) {
-      return false;
-    }
-    return !templates.any(_matchesAllCategoryTimeWindow);
-  }
-
-  Future<
-    ({
-      List<_TemplateItem> templates,
-      QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
-      bool hasMore,
-    })
-  >
-  _expandAllFeedTemplatesIfNeeded({
-    required List<_TemplateItem> initialTemplates,
-    required QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument,
-    required bool hasMore,
-  }) async {
-    if (!_needsAdditionalAllFeedTemplates(initialTemplates)) {
-      return (
-        templates: initialTemplates,
-        lastDocument: lastDocument,
-        hasMore: hasMore,
-      );
-    }
-
-    final merged = <_TemplateItem>[...initialTemplates];
-    final seenKeys = <String>{
-      for (final item in initialTemplates)
-        item.templateId ??
-            item.imageUrl ??
-            item.imageStoragePath ??
-            '${item.titleEn}-${item.videoUrl ?? ''}',
-    };
-    QueryDocumentSnapshot<Map<String, dynamic>>? resolvedLastDocument =
-        lastDocument;
-    var resolvedHasMore = hasMore;
-    if (resolvedLastDocument != null && resolvedHasMore) {
-      QueryDocumentSnapshot<Map<String, dynamic>>? cursor =
-          resolvedLastDocument;
-      var canLoadMore = resolvedHasMore;
-      const maxExtraPages = 4;
-
-      for (var pageIndex = 0; pageIndex < maxExtraPages; pageIndex++) {
-        final currentCursor = cursor;
-        if (!canLoadMore ||
-            currentCursor == null ||
-            !_needsAdditionalAllFeedTemplates(merged)) {
-          break;
-        }
-        final extraPage = await _approvedCreatorTemplateService
-            .fetchApprovedTemplatesPage(
-              pageSize: _templatesPageSize,
-              startAfterDocument: currentCursor,
-              source: Source.server,
-            );
-        final mapped = extraPage.templates
-            .map(_mapApprovedCreatorTemplate)
-            .toList(growable: false);
-        for (final item in mapped) {
-          final key =
-              item.templateId ??
-              item.imageUrl ??
-              item.imageStoragePath ??
-              '${item.titleEn}-${item.videoUrl ?? ''}';
-          if (seenKeys.add(key)) {
-            merged.add(item);
-          }
-        }
-        cursor = extraPage.lastDocument;
-        canLoadMore = extraPage.hasMore;
-      }
-      resolvedLastDocument = cursor;
-      resolvedHasMore = canLoadMore;
-    }
-
-    if (_needsAdditionalAllFeedTemplates(merged)) {
-      final widePage = await _approvedCreatorTemplateService
-          .fetchApprovedTemplatesPage(
-            pageSize: _templatesPageSize * 6,
-            source: Source.server,
-          );
-      final mapped = widePage.templates
-          .map(_mapApprovedCreatorTemplate)
-          .toList(growable: false);
-      for (final item in mapped) {
-        final key =
-            item.templateId ??
-            item.imageUrl ??
-            item.imageStoragePath ??
-            '${item.titleEn}-${item.videoUrl ?? ''}';
-        if (seenKeys.add(key)) {
-          merged.add(item);
-        }
-      }
-      resolvedLastDocument = widePage.lastDocument ?? resolvedLastDocument;
-      resolvedHasMore = widePage.hasMore || resolvedHasMore;
-    }
-
-    return (
-      templates: merged,
-      lastDocument: resolvedLastDocument,
-      hasMore: resolvedHasMore,
-    );
   }
 
   Future<void> _loadApprovedCreatorTemplatesInternal() async {
+    final stopwatch = Stopwatch()..start();
+    final hadVisibleTemplates = _remoteApprovedTemplates.isNotEmpty;
+    final initialPageSize = hadVisibleTemplates
+        ? _templatesPageSize
+        : _initialTemplatesPageSize;
+    final shouldUseSlotAwareStartupFetch =
+        !hadVisibleTemplates && _selectedCategorySlug == _allCategorySlug;
+    final startupSlot = shouldUseSlotAwareStartupFetch
+        ? _activeHomeFeedTimeSlot
+        : null;
+    final startupOrderedTags = shouldUseSlotAwareStartupFetch
+        ? TimeSlotService.prioritizedCategoryTagsForHomeFeed(
+                _slotReferenceTime(startupSlot!),
+              )
+              .map(_normalizeTag)
+              .where((tag) => tag.isNotEmpty)
+              .toList(growable: false)
+        : const <String>[];
+    final startupPrimaryTag = startupOrderedTags.isNotEmpty
+        ? startupOrderedTags.first
+        : null;
+    final startupSecondaryTag = startupOrderedTags.length > 1
+        ? startupOrderedTags[1]
+        : null;
+    final genericFetchStopwatch = Stopwatch()..start();
+    final startupGenericRemoteFuture = shouldUseSlotAwareStartupFetch
+        ? _approvedCreatorTemplateService
+              .fetchApprovedTemplatesPage(
+                pageSize: initialPageSize,
+                allowFallbackMerge: false,
+              )
+              .whenComplete(() {
+                _homeDebugLog(
+                  '[StartupTiming] generic_fetch_done t=${_startupStopwatch.elapsedMilliseconds}ms '
+                  'waitMs=${genericFetchStopwatch.elapsedMilliseconds}',
+                );
+              })
+        : _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
+            pageSize: initialPageSize,
+          );
+    final startupSecondaryFuture = shouldUseSlotAwareStartupFetch
+        ? (startupSecondaryTag == null
+              ? Future<List<ApprovedCreatorTemplate>>.value(
+                  const <ApprovedCreatorTemplate>[],
+                )
+              : _approvedCreatorTemplateService
+                    .fetchAllApprovedTemplatesForCategory(
+                      categoryId: startupSecondaryTag,
+                      source: Source.serverAndCache,
+                      scanLimit: _initialPrioritySecondaryFetchSize,
+                    ))
+        : null;
+    final startupPrimaryFuture = shouldUseSlotAwareStartupFetch
+        ? (startupPrimaryTag == null
+              ? startupGenericRemoteFuture.then((page) => page.templates)
+              : _approvedCreatorTemplateService
+                    .fetchAllApprovedTemplatesForCategory(
+                      categoryId: startupPrimaryTag,
+                      source: Source.serverAndCache,
+                      scanLimit: _initialPriorityPrimaryFetchSize,
+                    ))
+        : null;
     if (mounted) {
       setState(() {
-        _templatesLoading = true;
+        _templatesLoading = !hadVisibleTemplates;
         _templatesLoadingMore = false;
-        _templatesHasMore = true;
-        _templatesLastDocument = null;
+        if (!hadVisibleTemplates) {
+          _templatesHasMore = true;
+          _templatesLastDocument = null;
+        }
       });
     }
-    final cachedPage = await _approvedCreatorTemplateService
-        .fetchApprovedTemplatesPageFromCache(pageSize: _templatesPageSize);
-    if (mounted && cachedPage.templates.isNotEmpty) {
-      final mapped = cachedPage.templates
-          .map(_mapApprovedCreatorTemplate)
-          .toList(growable: false);
-      setState(() {
-        _remoteApprovedTemplates = mapped;
-        _templatesLoading = false;
-        _templatesHasMore = cachedPage.hasMore;
-        _templatesLastDocument = cachedPage.lastDocument;
-      });
-      _scheduleHomeFeedRepaint();
-      _triggerSelectedCategoryPrefetch();
-    }
-
-    final remotePage = await _approvedCreatorTemplateService
-        .fetchApprovedTemplatesPage(pageSize: _templatesPageSize);
-    if (!mounted) {
-      return;
-    }
-    var mapped = remotePage.templates
-        .map(_mapApprovedCreatorTemplate)
-        .toList(growable: false);
-    if (mapped.isEmpty) {
-      final retryPage = await _approvedCreatorTemplateService
-          .fetchApprovedTemplatesPage(
-            pageSize: _templatesPageSize,
-            source: Source.server,
+    try {
+      final cacheQueryStopwatch = Stopwatch()..start();
+      final cachedPage = await _approvedCreatorTemplateService
+          .fetchApprovedTemplatesPageFromCache(
+            pageSize: hadVisibleTemplates
+                ? _remoteApprovedTemplates.length.clamp(
+                    _startupCacheWarmTemplatesPageSize,
+                    _templatesPageSize,
+                  )
+                : _startupCacheWarmTemplatesPageSize,
           );
+      final cacheQueryMs = cacheQueryStopwatch.elapsedMilliseconds;
+      if (hadVisibleTemplates &&
+          _startupSnapshotHydrationDeferred &&
+          _remoteApprovedTemplates.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _templatesLoading = false;
+            _templatesHasMore = cachedPage.hasMore;
+            _templatesLastDocument = cachedPage.lastDocument;
+          });
+        }
+        _scheduleStartupRichPosterPreviewActivation(
+          initialDelay: const Duration(milliseconds: 40),
+        );
+        _homeDebugLog(
+          '[StartupTiming] templates_cache_skipped_after_snapshot '
+          't=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms current=${_remoteApprovedTemplates.length} '
+          'cacheQueryMs=$cacheQueryMs',
+        );
+        return;
+      }
+      if (mounted && cachedPage.templates.isNotEmpty) {
+        final mappingStopwatch = Stopwatch()..start();
+        final mapped = await _mapTemplatesOffMain(
+          cachedPage.templates,
+          phase: hadVisibleTemplates ? 'cache' : 'cold_cache',
+        );
+        final mappingMs = mappingStopwatch.elapsedMilliseconds;
+        if (!mounted) {
+          return;
+        }
+        final changed = !_sameTemplateSequence(
+          _remoteApprovedTemplates,
+          mapped,
+        );
+        if (changed || _templatesLoading) {
+          if (hadVisibleTemplates && _remoteApprovedTemplates.isNotEmpty) {
+            setState(() {
+              _templatesLoading = false;
+              _templatesHasMore = cachedPage.hasMore;
+              _templatesLastDocument = cachedPage.lastDocument;
+            });
+            _scheduleStartupRichPosterPreviewActivation();
+            _homeDebugLog(
+              '[StartupTiming] templates_cache_preserved_visible '
+              't=${_startupStopwatch.elapsedMilliseconds}ms '
+              'duration=${stopwatch.elapsedMilliseconds}ms current=${_remoteApprovedTemplates.length} '
+              'cacheCount=${mapped.length} cacheQueryMs=$cacheQueryMs mappingMs=$mappingMs',
+            );
+            return;
+          }
+          final setStateStopwatch = Stopwatch()..start();
+          setState(() {
+            _remoteApprovedTemplates = mapped;
+            _rankedAllFeedTemplates = null;
+            _allFeedRankingReady = false;
+            _templatesLoading = false;
+            _templatesHasMore = cachedPage.hasMore;
+            _templatesLastDocument = cachedPage.lastDocument;
+          });
+          final setStateMs = setStateStopwatch.elapsedMilliseconds;
+          _hydratedCategorySlugs.clear();
+          _scheduleStartupRichPosterPreviewActivation();
+          _scheduleSelectedCategoryPrefetchAfterVisibleTemplates();
+          _logPostPaintTimingOnce(
+            kind: 'first_cached_feed_paint',
+            alreadyLogged: _loggedFirstCachedFeedPaint,
+            markLogged: () => _loggedFirstCachedFeedPaint = true,
+            count: mapped.length,
+          );
+          _homeDebugLog(
+            '[StartupTiming] templates_cache_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+            'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+            'cacheQueryMs=$cacheQueryMs mappingMs=$mappingMs setStateMs=$setStateMs',
+          );
+          _scheduleStartupTemplateSnapshotPersist(mapped);
+        } else {
+          final setStateStopwatch = Stopwatch()..start();
+          setState(() {
+            _templatesLoading = false;
+            _templatesHasMore = cachedPage.hasMore;
+            _templatesLastDocument = cachedPage.lastDocument;
+          });
+          _scheduleStartupRichPosterPreviewActivation();
+          _homeDebugLog(
+            '[StartupTiming] templates_cache_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+            'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+            'cacheQueryMs=$cacheQueryMs mappingMs=$mappingMs '
+            'setStateMs=${setStateStopwatch.elapsedMilliseconds}',
+          );
+        }
+      } else if (!hadVisibleTemplates) {
+        _homeDebugLog(
+          '[StartupTiming] templates_cache_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms count=0 '
+          'cacheQueryMs=$cacheQueryMs mappingMs=0 setStateMs=0',
+        );
+      }
+      final startupFeedAlreadyVisible = _remoteApprovedTemplates.isNotEmpty;
+
+      if (shouldUseSlotAwareStartupFetch) {
+        final fetchTask = _startStartupTimelineTask(
+          'fetch',
+          arguments: <String, Object?>{
+            'phase': 'primary',
+            'tag': startupPrimaryTag ?? 'generic_fallback',
+            'target': _initialPriorityPrimaryFetchSize,
+          },
+        );
+        final primaryFetchStopwatch = Stopwatch()..start();
+        final primaryTemplates = await startupPrimaryFuture!;
+        fetchTask.finish(
+          arguments: <String, Object?>{
+            'phase': 'primary',
+            'count': primaryTemplates.length,
+          },
+        );
+        _homeDebugLog(
+          '[StartupTiming] primary_fetch_done t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'waitMs=${primaryFetchStopwatch.elapsedMilliseconds} count=${primaryTemplates.length}',
+        );
+        if (!mounted) {
+          return;
+        }
+        final primaryMapStopwatch = Stopwatch()..start();
+        final primaryItems = await _mapTemplatesOffMain(
+          primaryTemplates
+              .take(_initialPriorityPrimaryFetchSize)
+              .toList(growable: false),
+          phase: 'primary',
+        );
+        _homeDebugLog(
+          '[StartupTiming] primary_map_done t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'waitMs=${primaryMapStopwatch.elapsedMilliseconds} count=${primaryItems.length}',
+        );
+        if (!mounted) {
+          return;
+        }
+        final startupDynamicTags = _activeDynamicAllFeedTags(
+          context.currentLanguage,
+        );
+        final prioritizedPrimaryItems =
+            _promoteDynamicAllFeedStartupBatchWorker(
+              primaryItems,
+              dynamicTags: startupDynamicTags,
+            );
+        final visiblePrimaryCount = math.min(
+          _startupInitialVisibleTemplateCount,
+          prioritizedPrimaryItems.length,
+        );
+        final initialVisiblePrimaryItems = prioritizedPrimaryItems
+            .take(visiblePrimaryCount)
+            .toList(growable: false);
+        final deferredPrimaryItems =
+            prioritizedPrimaryItems.length > visiblePrimaryCount
+            ? prioritizedPrimaryItems.sublist(visiblePrimaryCount)
+            : const <_TemplateItem>[];
+        if (startupFeedAlreadyVisible) {
+          unawaited(
+            _completeStartupSecondaryHydration(
+              deferredPrimaryItems: prioritizedPrimaryItems,
+              secondaryFuture: startupSecondaryFuture!,
+              genericFuture: startupGenericRemoteFuture,
+            ),
+          );
+          _homeDebugLog(
+            '[StartupTiming] templates_primary_merge_only '
+            't=${_startupStopwatch.elapsedMilliseconds}ms '
+            'duration=${stopwatch.elapsedMilliseconds}ms count=${primaryItems.length} '
+            'slot=${startupSlot!.name} primaryTag=${startupPrimaryTag ?? 'none'} secondaryTag=${startupSecondaryTag ?? 'none'}',
+          );
+          return;
+        }
+        await _applyStartupTemplateState(
+          initialVisiblePrimaryItems,
+          hasMore: true,
+          lastDocument: null,
+          phase: 'primary_ready',
+          logFirstRemotePaint: true,
+          primaryCount: initialVisiblePrimaryItems.length,
+        );
+        _scheduleStartupTemplateSnapshotPersist(initialVisiblePrimaryItems);
+        unawaited(
+          _completeStartupSecondaryHydration(
+            deferredPrimaryItems: deferredPrimaryItems,
+            secondaryFuture: startupSecondaryFuture!,
+            genericFuture: startupGenericRemoteFuture,
+          ),
+        );
+        _homeDebugLog(
+          '[StartupTiming] templates_primary_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms count=${primaryItems.length} '
+          'slot=${startupSlot!.name} primaryTag=${startupPrimaryTag ?? 'none'} secondaryTag=${startupSecondaryTag ?? 'none'}',
+        );
+        return;
+      }
+
+      final remotePage = await startupGenericRemoteFuture;
       if (!mounted) {
         return;
       }
-      mapped = retryPage.templates
-          .map(_mapApprovedCreatorTemplate)
-          .toList(growable: false);
-      final expanded = await _expandAllFeedTemplatesIfNeeded(
-        initialTemplates: mapped,
-        lastDocument: retryPage.lastDocument,
-        hasMore: retryPage.hasMore,
+      final remoteMappingStopwatch = Stopwatch()..start();
+      var mapped = await _mapTemplatesOffMain(
+        remotePage.templates,
+        phase: 'page',
       );
+      var mappingMs = remoteMappingStopwatch.elapsedMilliseconds;
+      if (mapped.isEmpty) {
+        final retryPage = await _approvedCreatorTemplateService
+            .fetchApprovedTemplatesPage(
+              pageSize: _templatesPageSize,
+              source: Source.server,
+            );
+        if (!mounted) {
+          return;
+        }
+        final retryMappingStopwatch = Stopwatch()..start();
+        mapped = await _mapTemplatesOffMain(
+          retryPage.templates,
+          phase: 'retry',
+        );
+        mappingMs = retryMappingStopwatch.elapsedMilliseconds;
+        final visibleRetryCount = math.min(
+          _startupInitialVisibleTemplateCount,
+          mapped.length,
+        );
+        final initialVisibleRetryItems = mapped
+            .take(visibleRetryCount)
+            .toList(growable: false);
+        final deferredRetryItems = mapped.length > visibleRetryCount
+            ? mapped.sublist(visibleRetryCount)
+            : const <_TemplateItem>[];
+        if (startupFeedAlreadyVisible) {
+          if (mapped.isNotEmpty && mounted) {
+            unawaited(() async {
+              await WidgetsBinding.instance.endOfFrame;
+              await Future<void>.delayed(const Duration(milliseconds: 48));
+              if (!mounted) {
+                return;
+              }
+              await _appendTemplatesIncrementally(
+                mapped,
+                hasMore: retryPage.hasMore,
+                lastDocument: retryPage.lastDocument,
+                phase: 'retry_merge_only',
+              );
+              if (!mounted) {
+                return;
+              }
+              _scheduleProgressiveTemplateHydration();
+            }());
+          } else {
+            _scheduleProgressiveTemplateHydration();
+          }
+          _homeDebugLog(
+            '[StartupTiming] templates_retry_merge_only t=${_startupStopwatch.elapsedMilliseconds}ms '
+            'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+            'mappingMs=$mappingMs setStateMs=deferred',
+          );
+          return;
+        }
+        await _applyStartupTemplateState(
+          initialVisibleRetryItems,
+          hasMore: retryPage.hasMore,
+          lastDocument: retryPage.lastDocument,
+          phase: 'retry_ready',
+          logFirstRemotePaint: true,
+        );
+        _scheduleStartupTemplateSnapshotPersist(initialVisibleRetryItems);
+        if (deferredRetryItems.isNotEmpty && mounted) {
+          unawaited(() async {
+            await WidgetsBinding.instance.endOfFrame;
+            await Future<void>.delayed(const Duration(milliseconds: 48));
+            if (!mounted) {
+              return;
+            }
+            await _appendTemplatesIncrementally(
+              deferredRetryItems,
+              hasMore: retryPage.hasMore,
+              lastDocument: retryPage.lastDocument,
+              phase: 'retry_merge',
+            );
+            if (!mounted) {
+              return;
+            }
+            _scheduleProgressiveTemplateHydration();
+          }());
+        } else {
+          _scheduleProgressiveTemplateHydration();
+        }
+        _homeDebugLog(
+          '[StartupTiming] templates_retry_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+          'mappingMs=$mappingMs setStateMs=deferred',
+        );
+        return;
+      }
+      final visibleRemoteCount = math.min(
+        _startupInitialVisibleTemplateCount,
+        mapped.length,
+      );
+      final initialVisibleRemoteItems = mapped
+          .take(visibleRemoteCount)
+          .toList(growable: false);
+      final deferredRemoteItems = mapped.length > visibleRemoteCount
+          ? mapped.sublist(visibleRemoteCount)
+          : const <_TemplateItem>[];
+      if (startupFeedAlreadyVisible) {
+        if (mapped.isNotEmpty && mounted) {
+          unawaited(() async {
+            await WidgetsBinding.instance.endOfFrame;
+            await Future<void>.delayed(const Duration(milliseconds: 48));
+            if (!mounted) {
+              return;
+            }
+            await _appendTemplatesIncrementally(
+              mapped,
+              hasMore: remotePage.hasMore,
+              lastDocument: remotePage.lastDocument,
+              phase: 'remote_merge_only',
+            );
+            if (!mounted) {
+              return;
+            }
+            _scheduleProgressiveTemplateHydration();
+          }());
+        } else {
+          _scheduleProgressiveTemplateHydration();
+        }
+        _homeDebugLog(
+          '[StartupTiming] templates_remote_merge_only t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+          'mappingMs=$mappingMs setStateMs=deferred',
+        );
+        return;
+      }
+      await _applyStartupTemplateState(
+        initialVisibleRemoteItems,
+        hasMore: remotePage.hasMore,
+        lastDocument: remotePage.lastDocument,
+        phase: 'remote_ready',
+        logFirstRemotePaint: true,
+      );
+      _scheduleStartupTemplateSnapshotPersist(initialVisibleRemoteItems);
+      if (deferredRemoteItems.isNotEmpty && mounted) {
+        unawaited(() async {
+          await WidgetsBinding.instance.endOfFrame;
+          await Future<void>.delayed(const Duration(milliseconds: 48));
+          if (!mounted) {
+            return;
+          }
+          await _appendTemplatesIncrementally(
+            deferredRemoteItems,
+            hasMore: remotePage.hasMore,
+            lastDocument: remotePage.lastDocument,
+            phase: 'remote_merge',
+          );
+          if (!mounted) {
+            return;
+          }
+          _scheduleProgressiveTemplateHydration();
+        }());
+      } else {
+        _scheduleProgressiveTemplateHydration();
+      }
+      _homeDebugLog(
+        '[StartupTiming] templates_remote_ready t=${_startupStopwatch.elapsedMilliseconds}ms '
+        'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+        'mappingMs=$mappingMs setStateMs=deferred',
+      );
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('home template load failed: $error', stackTrace);
+      if (!mounted) {
+        return;
+      }
       setState(() {
-        _remoteApprovedTemplates = expanded.templates;
         _templatesLoading = false;
-        _templatesHasMore = expanded.hasMore;
-        _templatesLastDocument = expanded.lastDocument;
+        _templatesLoadingMore = false;
       });
-      _scheduleHomeFeedRepaint();
-      _triggerSelectedCategoryPrefetch();
+    }
+  }
+
+  bool _sameTemplateSequence(
+    List<_TemplateItem> left,
+    List<_TemplateItem> right,
+  ) {
+    if (identical(left, right)) {
+      return true;
+    }
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var i = 0; i < left.length; i++) {
+      if (_templateSequenceKey(left[i]) != _templateSequenceKey(right[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _logPostPaintTimingOnce({
+    required String kind,
+    required bool alreadyLogged,
+    required VoidCallback markLogged,
+    required int count,
+  }) {
+    if (alreadyLogged) {
       return;
     }
-    final expanded = await _expandAllFeedTemplatesIfNeeded(
-      initialTemplates: mapped,
-      lastDocument: remotePage.lastDocument,
-      hasMore: remotePage.hasMore,
-    );
-    setState(() {
-      _remoteApprovedTemplates = expanded.templates;
-      _templatesLoading = false;
-      _templatesHasMore = expanded.hasMore;
-      _templatesLastDocument = expanded.lastDocument;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || alreadyLogged) {
+        return;
+      }
+      markLogged();
+      _homeDebugLog(
+        '[StartupTiming] $kind=${_startupStopwatch.elapsedMilliseconds}ms count=$count',
+      );
     });
-    _scheduleHomeFeedRepaint();
-    _triggerSelectedCategoryPrefetch();
+  }
+
+  void _scheduleDeferredAllFeedRanking() {
+    if (_lockedAllFeedTemplates != null ||
+        _allFeedRankingInFlight ||
+        _remoteApprovedTemplates.length < 8) {
+      return;
+    }
+    _allFeedRankingInFlight = true;
+    final rankingSource = _remoteApprovedTemplates;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 1400));
+        if (!mounted ||
+            _lockedAllFeedTemplates != null ||
+            !identical(_remoteApprovedTemplates, rankingSource)) {
+          _allFeedRankingInFlight = false;
+          if (mounted &&
+              _lockedAllFeedTemplates == null &&
+              !identical(_remoteApprovedTemplates, rankingSource)) {
+            _scheduleDeferredAllFeedRanking();
+          }
+          return;
+        }
+        final now = IstTimeService.now();
+        final rankingTask = _startStartupTimelineTask(
+          'ranking',
+          arguments: <String, Object?>{
+            'count': _remoteApprovedTemplates.length,
+            'slot': _activeHomeFeedTimeSlot.name,
+          },
+        );
+        try {
+          final activeDynamicTags = _activeDynamicAllFeedTags(
+            context.currentLanguage,
+          );
+          final ranked = await Isolate.run<List<_TemplateItem>>(
+            () => _rankAllFeedTemplatesWorker(
+              _AllFeedRankingWorkerRequest(
+                templates: _remoteApprovedTemplates,
+                slot: _activeHomeFeedTimeSlot,
+                year: now.year,
+                month: now.month,
+                day: now.day,
+                dynamicTags: activeDynamicTags,
+                recentTemplateKeys: _recentAllFeedTemplateKeys,
+              ),
+            ),
+          );
+          rankingTask.finish(
+            arguments: <String, Object?>{'count': ranked.length},
+          );
+          if (!mounted ||
+              _lockedAllFeedTemplates != null ||
+              !identical(_remoteApprovedTemplates, rankingSource)) {
+            _allFeedRankingInFlight = false;
+            if (mounted &&
+                _lockedAllFeedTemplates == null &&
+                !identical(_remoteApprovedTemplates, rankingSource)) {
+              _scheduleDeferredAllFeedRanking();
+            }
+            return;
+          }
+          _allFeedRankingReady = true;
+          _allFeedRankingInFlight = false;
+          _templateProjectionCache = null;
+          _templateProjectionIdentity = null;
+          _debugLogAllFeedRanking(
+            ranked,
+            slot: _activeHomeFeedTimeSlot,
+            dynamicTags: activeDynamicTags,
+          );
+          _rememberRecentAllFeedTemplates(source: ranked);
+          setState(() {
+            _rankedAllFeedTemplates = ranked;
+          });
+        } catch (error) {
+          rankingTask.finish(
+            arguments: <String, Object?>{'error': error.toString()},
+          );
+          _allFeedRankingInFlight = false;
+          return;
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _loggedRankingComplete) {
+            return;
+          }
+          _loggedRankingComplete = true;
+          _homeDebugLog(
+            '[StartupTiming] ranking_complete=${_startupStopwatch.elapsedMilliseconds}ms',
+          );
+        });
+      }());
+    });
+  }
+
+  void _scheduleProgressiveTemplateHydration() {
+    if (_progressiveHydrationQueued ||
+        !_templatesHasMore ||
+        _templatesLastDocument == null) {
+      return;
+    }
+    // Keep startup feed visually stable. Additional pages can load on demand
+    // when the user scrolls near the bottom instead of mutating the visible
+    // list immediately after first paint.
+    if (_remoteApprovedTemplates.isNotEmpty) {
+      return;
+    }
+    _progressiveHydrationQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 480));
+        if (!mounted) {
+          return;
+        }
+        await _loadMoreApprovedCreatorTemplates();
+      }());
+    });
+  }
+
+  bool _sameHomeBannerSequence(
+    List<AppHomeBanner> left,
+    List<AppHomeBanner> right,
+  ) {
+    if (identical(left, right)) {
+      return true;
+    }
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      final a = left[index];
+      final b = right[index];
+      if (a.id != b.id ||
+          a.imageUrl != b.imageUrl ||
+          a.sortOrder != b.sortOrder ||
+          a.active != b.active ||
+          a.title != b.title ||
+          a.subtitle != b.subtitle ||
+          a.ctaLabel != b.ctaLabel ||
+          a.ctaTarget != b.ctaTarget ||
+          a.placement != b.placement) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  String _templateSequenceKey(_TemplateItem item) {
+    final id = item.templateId?.trim() ?? '';
+    if (id.isNotEmpty) {
+      return id;
+    }
+    final image = item.imageUrl?.trim() ?? '';
+    if (image.isNotEmpty) {
+      return image;
+    }
+    final storage = item.imageStoragePath?.trim() ?? '';
+    if (storage.isNotEmpty) {
+      return storage;
+    }
+    final video = item.videoUrl?.trim() ?? '';
+    return '${item.titleEn}|$video';
   }
 
   Future<bool> _loadMoreApprovedCreatorTemplates() async {
@@ -1529,38 +3661,72 @@ class _HomeScreenState extends State<HomeScreen>
       return false;
     }
     setState(() => _templatesLoadingMore = true);
-    final page = await _approvedCreatorTemplateService
-        .fetchApprovedTemplatesPage(
-          pageSize: _templatesPageSize,
-          startAfterDocument: _templatesLastDocument,
+    try {
+      final page = await _approvedCreatorTemplateService
+          .fetchApprovedTemplatesPage(
+            pageSize: _templatesPageSize,
+            startAfterDocument: _templatesLastDocument,
+          );
+      if (!mounted) {
+        return false;
+      }
+      final mapped = await _mapTemplatesOffMain(
+        page.templates,
+        phase: 'load_more',
+      );
+      if (!mounted) {
+        return false;
+      }
+      final lockedMerged = await _extendLockedAllFeedTemplates(
+        mapped,
+        phase: 'load_more',
+      );
+      if (!mounted) {
+        return false;
+      }
+      final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+        _remoteApprovedTemplates,
+        mapped,
+      ], phase: 'load_more_merge');
+      if (!mounted) {
+        return false;
+      }
+      final freshCount = math.max(
+        merged.length - _remoteApprovedTemplates.length,
+        0,
+      );
+      if (kDebugMode) {
+        final droppedByDedupe = mapped.length - freshCount;
+        _homeDebugLog(
+          '[PosterUI] loadMore pageMapped=${mapped.length} fresh=$freshCount '
+          'droppedByDedupe=$droppedByDedupe '
+          'remoteBefore=${_remoteApprovedTemplates.length} hasMore=${page.hasMore}',
         );
-    if (!mounted) {
+      }
+      setState(() {
+        _remoteApprovedTemplates = merged;
+        if (lockedMerged != null) {
+          _lockedAllFeedTemplates = lockedMerged;
+        }
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _templatesLoadingMore = false;
+        _templatesHasMore = page.hasMore;
+        _templatesLastDocument = page.lastDocument;
+      });
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+      _scheduleDeferredAllFeedRanking();
+      return freshCount > 0 || page.hasMore;
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('loadMore failed: $error', stackTrace);
+      if (mounted) {
+        setState(() => _templatesLoadingMore = false);
+      }
       return false;
     }
-    final mapped = page.templates
-        .map(_mapApprovedCreatorTemplate)
-        .toList(growable: false);
-    final existingIds = _remoteApprovedTemplates
-        .map(
-          (item) => item.imageUrl ?? '${item.titleEn}-${item.videoUrl ?? ''}',
-        )
-        .toSet();
-    final fresh = mapped
-        .where((item) {
-          final key = item.imageUrl ?? '${item.titleEn}-${item.videoUrl ?? ''}';
-          return !existingIds.contains(key);
-        })
-        .toList(growable: false);
-    setState(() {
-      _remoteApprovedTemplates = <_TemplateItem>[
-        ..._remoteApprovedTemplates,
-        ...fresh,
-      ];
-      _templatesLoadingMore = false;
-      _templatesHasMore = page.hasMore;
-      _templatesLastDocument = page.lastDocument;
-    });
-    return fresh.isNotEmpty || page.hasMore;
   }
 
   void _onPosterScroll() {
@@ -1568,67 +3734,22 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     final position = _posterScrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 320) {
-      unawaited(_loadMoreApprovedCreatorTemplates());
-    }
-  }
-
-  _TemplateItem _mapApprovedCreatorTemplate(ApprovedCreatorTemplate template) {
-    final creatorId = template.creatorPublicId.trim();
-    final displayTitle = creatorId.isNotEmpty ? creatorId : template.title;
-    final rawCategoryId = template.categoryId.trim();
-    final categoryLabel = template.categoryLabel.trim();
-
-    // Always derive inferred tags from label/title/copy (morning→good_morning, etc.).
-    // When categoryId alone is present (Firestore doc id without slug), omitting inference
-    // left templates matching only All — not static chips like good_morning.
-    final inferredTags = _inferTemplateCategoryTags(
-      seedTags: rawCategoryId.isNotEmpty
-          ? <String>[rawCategoryId]
-          : const <String>[],
-      sources: <String?>[
-        categoryLabel.isNotEmpty ? categoryLabel : null,
-        rawCategoryId.isNotEmpty ? rawCategoryId : null,
-        if (rawCategoryId.isEmpty && categoryLabel.isEmpty) template.title,
-      ],
-    );
-
-    final tagSet = <String>{...inferredTags};
-    if (rawCategoryId.isNotEmpty) {
-      tagSet.add(rawCategoryId);
-      tagSet.add(_normalizeTag(rawCategoryId));
-      tagSet.addAll(
-        _categoryLabelTokenTags(
-          categoryLabel.isNotEmpty ? categoryLabel : null,
-        ),
+    if (_selectedCategorySlug == _allCategorySlug &&
+        _lockedAllFeedTemplates == null &&
+        position.pixels > 24) {
+      _lockedAllFeedTemplates = List<_TemplateItem>.of(
+        _currentAllFeedDisplaySource(),
       );
     }
-    final categoryTags = tagSet
-        .where((t) => t.trim().isNotEmpty)
-        .toList(growable: false);
-
-    return _TemplateItem(
-      titleTe: displayTitle,
-      titleHi: displayTitle,
-      titleEn: displayTitle,
-      imageUrl: template.imageUrl,
-      imageStoragePath: template.imageStoragePath.trim().isNotEmpty
-          ? template.imageStoragePath
-          : null,
-      thumbnailStoragePath: template.thumbnailStoragePath.trim().isNotEmpty
-          ? template.thumbnailStoragePath
-          : null,
-      thumbnailUrl: template.thumbnailUrl,
-      mediaType: template.mediaType,
-      videoUrl: template.videoUrl,
-      categoryTags: categoryTags,
-      primaryFirestoreCategoryId: rawCategoryId.isNotEmpty
-          ? rawCategoryId
-          : null,
-      categoryDisplayLabel: categoryLabel.isNotEmpty ? categoryLabel : null,
-      personalizationConfig: template.personalizationConfig,
-      createdAtMillis: template.createdAtMillis,
-    );
+    final hasScrollableExtent = position.maxScrollExtent > 0;
+    final userHasActuallyScrolled = position.pixels > 120;
+    if (_posterFeedLoadMoreArmed &&
+        hasScrollableExtent &&
+        userHasActuallyScrolled &&
+        position.pixels >= position.maxScrollExtent - 320) {
+      _posterFeedLoadMoreArmed = false;
+      unawaited(_loadMoreApprovedCreatorTemplates());
+    }
   }
 
   Future<void> _loadViewerPosterProfile() async {
@@ -1652,23 +3773,48 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    PosterProfileData resolvedProfile = localProfile;
+    if (_viewerPosterProfile != localProfile) {
+      setState(() {
+        _viewerPosterProfile = localProfile;
+      });
+    }
+    _deferPosterProfileImageWarmup(
+      localProfile,
+      const Duration(milliseconds: 1500),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted) {
+      return;
+    }
     final remoteProfile = await PosterProfileService.refreshFromRemote(
       localProfile: localProfile,
     ).timeout(const Duration(seconds: 2), onTimeout: () => null);
-    if (!mounted) {
+    if (!mounted || remoteProfile == null) {
       return;
     }
-    if (remoteProfile != null) {
-      resolvedProfile = remoteProfile;
+    if (_viewerPosterProfile != remoteProfile) {
+      setState(() {
+        _viewerPosterProfile = remoteProfile;
+      });
     }
-    await _warmPosterProfileImage(resolvedProfile);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _viewerPosterProfile = resolvedProfile;
-    });
+    _deferPosterProfileImageWarmup(
+      remoteProfile,
+      const Duration(milliseconds: 450),
+    );
+  }
+
+  void _deferPosterProfileImageWarmup(
+    PosterProfileData profile,
+    Duration delay,
+  ) {
+    unawaited(() async {
+      await Future<void>.delayed(delay);
+      if (!mounted) {
+        return;
+      }
+      await _warmPosterProfileImage(profile);
+    }());
   }
 
   Future<void> _warmPosterProfileImage(PosterProfileData profile) async {
@@ -1683,6 +3829,96 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  _HomeTemplateProjection _projectTemplatesForHomeFeed({
+    required AppLanguage language,
+    required _CategoryChipData selectedCategory,
+  }) {
+    final stopwatch = Stopwatch()..start();
+    final projectionIdentity = Object.hash(
+      identityHashCode(_remoteApprovedTemplates),
+      identityHashCode(_rankedAllFeedTemplates),
+      identityHashCode(_lockedAllFeedTemplates),
+      _allFeedRankingReady,
+      selectedCategory.slug,
+      language,
+      _searchController.text,
+      _religionPreference,
+      _religionSelectionReady,
+      selectedCategory.slug == _allCategorySlug
+          ? Object.hash(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day,
+              _activeHomeFeedTimeSlot.name,
+            )
+          : 0,
+    );
+    final cached = _templateProjectionCache;
+    if (cached != null && _templateProjectionIdentity == projectionIdentity) {
+      if (!_loggedFirstFeedProjection) {
+        _loggedFirstFeedProjection = true;
+        _homeDebugLog(
+          '[StartupTiming] first_projection_cached t=${_startupStopwatch.elapsedMilliseconds}ms '
+          'duration=${stopwatch.elapsedMilliseconds}ms templates=${cached.templates.length}',
+        );
+      }
+      return cached;
+    }
+
+    final baseTemplates = selectedCategory.slug == _allCategorySlug
+        ? _currentAllFeedDisplaySource()
+        : _remoteApprovedTemplates;
+    final filteredTemplates = baseTemplates
+        .where((item) => _matchesTemplate(item, language, selectedCategory))
+        .toList(growable: false);
+    final templates = filteredTemplates;
+    final projection = _HomeTemplateProjection(
+      filteredTemplates: filteredTemplates,
+      templates: templates,
+    );
+    _templateProjectionCache = projection;
+    _templateProjectionIdentity = projectionIdentity;
+    if (!_loggedFirstFeedProjection) {
+      _loggedFirstFeedProjection = true;
+      _homeDebugLog(
+        '[StartupTiming] first_projection_built t=${_startupStopwatch.elapsedMilliseconds}ms '
+        'duration=${stopwatch.elapsedMilliseconds}ms filtered=${filteredTemplates.length} '
+        'final=${templates.length}',
+      );
+    }
+    return projection;
+  }
+
+  List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
+    final identity = Object.hash(
+      identityHashCode(_remoteApprovedTemplates),
+      language,
+      _templatesLoading,
+      _religionPreference,
+      _religionSelectionReady,
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+      IstTimeService.now().hour,
+    );
+    final cached = _categoryListCache;
+    if (cached != null && _categoryListIdentity == identity) {
+      return cached;
+    }
+    final staticCategories = _buildStaticCategories();
+    final dynamicCategories = _buildDynamicCategories(
+      IstTimeService.now(),
+      language,
+      templatesLoading: _templatesLoading,
+    );
+    final categories = _religionSelectionReady
+        ? _mergeCategories(staticCategories, dynamicCategories)
+        : <_CategoryChipData>[_allCategoryChip()];
+    _categoryListCache = categories;
+    _categoryListIdentity = identity;
+    return categories;
+  }
+
   Future<void> _refreshHomeFeed() async {
     if (_homeRefreshing) {
       return;
@@ -1690,6 +3926,11 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _homeRefreshing = true;
     });
+    _resetAllFeedScrollOrderLock();
+    _progressiveHydrationQueued = false;
+    _allFeedRankingReady = false;
+    _allFeedRankingInFlight = false;
+    _rankedAllFeedTemplates = null;
     _searchFocusNode.unfocus();
     try {
       await Future.wait<void>(<Future<void>>[
@@ -1710,7 +3951,11 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) {
         return;
       }
-      setState(() => _installedAppVersion = packageInfo.version.trim());
+      final version = packageInfo.version.trim();
+      if (_installedAppVersion == version) {
+        return;
+      }
+      setState(() => _installedAppVersion = version);
     } catch (_) {}
   }
 
@@ -1720,6 +3965,9 @@ class _HomeScreenState extends State<HomeScreen>
       final hasRated = prefs.getBool(_homeFeedRatedKey) ?? false;
       if (!mounted) {
         _hasRatedApp = hasRated;
+        return;
+      }
+      if (_hasRatedApp == hasRated) {
         return;
       }
       setState(() => _hasRatedApp = hasRated);
@@ -1935,6 +4183,28 @@ class _HomeScreenState extends State<HomeScreen>
     await _openSubscriptionPlan();
   }
 
+  Future<void> _openWebsiteSearch() async {
+    final query = _searchController.text.trim();
+    _searchFocusNode.unfocus();
+    final baseUri = Uri.tryParse(AppPublicInfo.assetSearchUrl);
+    if (baseUri == null) {
+      return;
+    }
+    final uri = query.isEmpty
+        ? baseUri
+        : baseUri.replace(
+            queryParameters: <String, String>{
+              ...baseUri.queryParameters,
+              'q': query,
+            },
+          );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened && mounted) {
+      _searchController.clear();
+      setState(() {});
+    }
+  }
+
   Future<void> _openSubscriptionPlan({bool startPurchaseOnOpen = false}) async {
     await _pushSubscriptionPlanRoute(startPurchaseOnOpen: startPurchaseOnOpen);
     if (!mounted) {
@@ -2075,6 +4345,7 @@ class _HomeScreenState extends State<HomeScreen>
       _selectedCategorySlug = slug;
       _categoryLoadingSlug = slug == _allCategorySlug ? null : slug;
     });
+    _resetAllFeedScrollOrderLock();
     _schedulePosterFeedResetToTop();
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
   }
@@ -2087,37 +4358,101 @@ class _HomeScreenState extends State<HomeScreen>
     if (slug == _allCategorySlug) {
       return;
     }
-    const minimumCategoryTemplateCount = _templatesPageSize;
-    var attempts = 0;
-    while (mounted &&
-        generation == _categoryLoadGeneration &&
-        attempts < 20 &&
-        _templatesHasMore) {
-      final category = _categoryForSlug(slug, language);
-      final matchingCount = _remoteApprovedTemplates
-          .where((item) => _matchesTemplate(item, language, category))
-          .length;
-      if (matchingCount >= minimumCategoryTemplateCount) {
-        break;
+    final category = _categoryForSlug(slug, language);
+    final matchingCount = _remoteApprovedTemplates
+        .where((item) => _matchesTemplate(item, language, category))
+        .length;
+    if (kDebugMode) {
+      _homeDebugLog(
+        '[PosterUI] categoryPrefetch slug=$slug localMatches=$matchingCount '
+        'remoteCount=${_remoteApprovedTemplates.length} hasMore=$_templatesHasMore',
+      );
+    }
+    final normalizedSlug = _normalizeTag(slug);
+    final needsHydration = !_hydratedCategorySlugs.contains(normalizedSlug);
+    final hasEnoughLocalMatches = matchingCount >= _templatesPageSize;
+    if (hasEnoughLocalMatches && needsHydration) {
+      _hydratedCategorySlugs.add(normalizedSlug);
+      if (kDebugMode) {
+        _homeDebugLog(
+          '[PosterUI] categoryPrefetch slug=$slug skipped=local_satisfied '
+          'localMatches=$matchingCount pageTarget=$_templatesPageSize',
+        );
       }
-      if (_templatesLoading || _templatesLoadingMore) {
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-        continue;
-      }
+    }
+    if ((matchingCount < _templatesPageSize && needsHydration) &&
+        mounted &&
+        generation == _categoryLoadGeneration) {
       if (_categoryLoadingSlug != slug) {
         setState(() => _categoryLoadingSlug = slug);
       }
-      attempts += 1;
-      final loadedMore = await _loadMoreApprovedCreatorTemplates();
-      if (!loadedMore) {
-        break;
-      }
+      await _topUpSelectedCategoryFromServer(slug, generation);
     }
     if (mounted &&
         generation == _categoryLoadGeneration &&
         _categoryLoadingSlug == slug) {
       setState(() => _categoryLoadingSlug = null);
     }
+  }
+
+  Future<void> _topUpSelectedCategoryFromServer(
+    String slug,
+    int generation,
+  ) async {
+    final normalizedSlug = _normalizeTag(slug);
+    if (normalizedSlug.isEmpty || normalizedSlug == _allCategorySlug) {
+      return;
+    }
+    final targeted = await _approvedCreatorTemplateService
+        .fetchAllApprovedTemplatesForCategory(
+          categoryId: normalizedSlug,
+          source: Source.server,
+          scanLimit: _templatesPageSize * 2,
+        );
+    if (!mounted || generation != _categoryLoadGeneration || targeted.isEmpty) {
+      if (normalizedSlug.isNotEmpty) {
+        _hydratedCategorySlugs.add(normalizedSlug);
+      }
+      return;
+    }
+    final mapped = await _mapTemplatesOffMain(
+      targeted,
+      phase: 'category_topup',
+    );
+    if (!mounted || generation != _categoryLoadGeneration) {
+      return;
+    }
+    final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+      _remoteApprovedTemplates,
+      mapped,
+    ], phase: 'category_topup_merge');
+    if (!mounted || generation != _categoryLoadGeneration) {
+      return;
+    }
+    final freshCount = math.max(
+      merged.length - _remoteApprovedTemplates.length,
+      0,
+    );
+    if (freshCount == 0) {
+      _homeDebugLog(
+        '[PosterUI] categoryTopUp slug=$slug targeted=${mapped.length} fresh=0',
+      );
+      return;
+    }
+    _homeDebugLog(
+      '[PosterUI] categoryTopUp slug=$slug targeted=${mapped.length} fresh=$freshCount',
+    );
+    setState(() {
+      _remoteApprovedTemplates = merged;
+      _rankedAllFeedTemplates = null;
+      _allFeedRankingReady = false;
+    });
+    _templateProjectionCache = null;
+    _templateProjectionIdentity = null;
+    _categoryListCache = null;
+    _categoryListIdentity = null;
+    _scheduleDeferredAllFeedRanking();
+    _hydratedCategorySlugs.add(normalizedSlug);
   }
 
   _CategoryChipData _categoryForSlug(String slug, AppLanguage language) {
@@ -2173,15 +4508,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final language = context.currentLanguage;
-    final staticCategories = _buildStaticCategories();
-    final dynamicCategories = _buildDynamicCategories(
-      IstTimeService.now(),
-      language,
-      templatesLoading: _templatesLoading,
-    );
-    final categories = _religionSelectionReady
-        ? _mergeCategories(staticCategories, dynamicCategories)
-        : <_CategoryChipData>[_allCategoryChip()];
+    final categories = _buildCategoriesForHome(language);
     final activeCategorySlug =
         categories.any((chip) => chip.slug == _selectedCategorySlug)
         ? _selectedCategorySlug
@@ -2191,13 +4518,12 @@ class _HomeScreenState extends State<HomeScreen>
       orElse: _allCategoryChip,
     );
     final strings = context.strings;
-    final List<_TemplateItem> freeTemplates = _remoteApprovedTemplates;
-    final filteredTemplates = freeTemplates
-        .where((item) => _matchesTemplate(item, language, selectedCategory))
-        .toList(growable: false);
-    final templates = selectedCategory.slug == _allCategorySlug
-        ? _shuffleAllCategoryTemplates(filteredTemplates)
-        : filteredTemplates;
+    final projection = _projectTemplatesForHomeFeed(
+      language: language,
+      selectedCategory: selectedCategory,
+    );
+    final filteredTemplates = projection.filteredTemplates;
+    final templates = projection.templates;
     final effectiveEntitlement =
         SubscriptionBackendService.entitlementNotifier.value ??
         _TemplateFeedItem.subscriptionBackendService.cachedEntitlement;
@@ -2212,9 +4538,18 @@ class _HomeScreenState extends State<HomeScreen>
       templates: templates,
       promoCards: promoCards,
     );
+    _debugLogCategoryPipeline(
+      language: language,
+      selectedCategory: selectedCategory,
+      filteredTemplates: filteredTemplates,
+      finalTemplates: templates,
+      feedEntriesCount: feedEntries.length,
+    );
     // Keep the poster feed visible as soon as templates are ready. Profile
     // refresh can continue in parallel without blanking the full home list.
-    final hidePosterFeed = _templatesLoading || !_religionSelectionReady;
+    final hidePosterFeed =
+        _templatesLoading ||
+        (!_religionSelectionReady && _remoteApprovedTemplates.isEmpty);
     final loadingSelectedCategory =
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
 
@@ -2236,176 +4571,199 @@ class _HomeScreenState extends State<HomeScreen>
               viewerPosterProfile: _viewerPosterProfile,
               searchController: _searchController,
               searchFocusNode: _searchFocusNode,
-              onSearchChanged: (_) => setState(() {}),
+              onSearchChanged: (_) {},
+              onSearchSubmitted: _openWebsiteSearch,
             ),
           ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _refreshHomeFeed,
               color: const Color(0xFF0F172A),
-              child: CustomScrollView(
-                // ignore: deprecated_member_use
-                cacheExtent: 720.0,
-                controller: _posterScrollController,
-                physics: _posterPhotoDragInProgress
-                    ? const NeverScrollableScrollPhysics()
-                    : const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                slivers: <Widget>[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: RepaintBoundary(
-                        child: SizedBox(
-                          height: 46,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: categories.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 7),
-                            itemBuilder: (_, index) => _CategoryChip(
-                              data: categories[index],
-                              isSelected:
-                                  categories[index].slug == activeCategorySlug,
-                              onTap: () {
-                                final nextSlug = categories[index].slug;
-                                _selectCategory(nextSlug);
-                              },
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification &&
+                      notification.dragDetails != null) {
+                    _posterFeedLoadMoreArmed = true;
+                  }
+                  return false;
+                },
+                child: CustomScrollView(
+                  // Keep prebuild work small so launch focuses on visible content.
+                  // ignore: deprecated_member_use
+                  cacheExtent: _homeFeedCacheExtent,
+                  controller: _posterScrollController,
+                  physics: _posterPhotoDragInProgress
+                      ? const NeverScrollableScrollPhysics()
+                      : const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  slivers: <Widget>[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: RepaintBoundary(
+                          child: SizedBox(
+                            height: 46,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: categories.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 7),
+                              itemBuilder: (_, index) => _CategoryChip(
+                                data: categories[index],
+                                isSelected:
+                                    categories[index].slug ==
+                                    activeCategorySlug,
+                                onTap: () {
+                                  final nextSlug = categories[index].slug;
+                                  _selectCategory(nextSlug);
+                                },
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_homeBanners.isNotEmpty) ...<Widget>[
-                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                    SliverToBoxAdapter(
-                      child: RepaintBoundary(
-                        child: _HomeHeroBanner(banners: _homeBanners),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  ] else
-                    ValueListenableBuilder<SubscriptionBackendResult?>(
-                      valueListenable:
-                          SubscriptionBackendService.entitlementNotifier,
-                      builder: (context, entitlement, _) {
-                        final effectiveEntitlement =
-                            entitlement ??
-                            _TemplateFeedItem
-                                .subscriptionBackendService
-                                .cachedEntitlement;
-                        final shouldShowAdFallback =
-                            _shouldShowHomeBannerAdFallback(
-                              effectiveEntitlement,
-                            );
-                        if (!shouldShowAdFallback) {
-                          return const SliverToBoxAdapter(
-                            child: SizedBox.shrink(),
-                          );
-                        }
-                        return const SliverToBoxAdapter(
-                          child: Column(
-                            children: <Widget>[
-                              SizedBox(height: 14),
-                              RepaintBoundary(child: _HomeBannerAdFallback()),
-                              SizedBox(height: 16),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 14)),
-                  if (_homeRefreshing)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: LinearProgressIndicator(minHeight: 2),
-                      ),
-                    ),
-                  if (_homeRefreshing)
-                    const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  if (hidePosterFeed || loadingSelectedCategory)
-                    const SliverPadding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      sliver: _PosterFeedSkeletonSliver(),
-                    )
-                  else if (templates.isEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _HomeFeedState(
-                          icon: Icons.collections_outlined,
-                          title: strings.homeEmptyPostersTitle,
-                          subtitle: strings.homeEmptyPostersSubtitle,
+                    if (_homeBanners.isNotEmpty) ...<Widget>[
+                      const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                      SliverToBoxAdapter(
+                        child: RepaintBoundary(
+                          child: _HomeHeroBanner(banners: _homeBanners),
                         ),
                       ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final entry = feedEntries[index];
-                            if (entry.isPromo) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _HomeInlinePromoCard(
-                                  data: entry.promo!,
-                                  viewerPosterProfile: _viewerPosterProfile,
-                                  slides: promoSlides,
-                                  onTap: () => unawaited(
-                                    _handlePromoTap(entry.promo!.type),
-                                  ),
-                                ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ] else
+                      ValueListenableBuilder<SubscriptionBackendResult?>(
+                        valueListenable:
+                            SubscriptionBackendService.entitlementNotifier,
+                        builder: (context, entitlement, _) {
+                          final effectiveEntitlement =
+                              entitlement ??
+                              _TemplateFeedItem
+                                  .subscriptionBackendService
+                                  .cachedEntitlement;
+                          final shouldShowAdFallback =
+                              _shouldShowHomeBannerAdFallback(
+                                effectiveEntitlement,
                               );
-                            }
-                            final item = entry.template!;
-                            return _TemplateFeedItem(
-                              key: ValueKey<String>(
-                                item.templateId?.trim().isNotEmpty == true
-                                    ? item.templateId!.trim()
-                                    : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
-                              ),
-                              item: item,
-                              hostContext: context,
-                              language: language,
-                              onOpenSubscriptionPlan:
-                                  _pushSubscriptionPlanRoute,
-                              viewerPosterProfile: _viewerPosterProfile,
-                              posterRenderCycle: _posterRenderCycle,
-                              onPosterPhotoDragStateChanged:
-                                  _setPosterPhotoDragInProgress,
+                          if (!shouldShowAdFallback ||
+                              !_adFallbackSlotEnabled) {
+                            return const SliverToBoxAdapter(
+                              child: SizedBox.shrink(),
                             );
-                          },
-                          childCount: feedEntries.length,
-                          addAutomaticKeepAlives: true,
-                          addRepaintBoundaries: true,
-                          addSemanticIndexes: false,
+                          }
+                          return const SliverToBoxAdapter(
+                            child: Column(
+                              children: <Widget>[
+                                SizedBox(height: 14),
+                                RepaintBoundary(child: _HomeBannerAdFallback()),
+                                SizedBox(height: 16),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                    if (_homeRefreshing)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: LinearProgressIndicator(minHeight: 2),
                         ),
                       ),
-                    ),
-                  if (_templatesLoadingMore)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                    if (_homeRefreshing)
+                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    if (hidePosterFeed || loadingSelectedCategory)
+                      const SliverPadding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        sliver: _PosterFeedSkeletonSliver(),
+                      )
+                    else if (templates.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _HomeFeedState(
+                            icon: Icons.collections_outlined,
+                            title: strings.homeEmptyPostersTitle,
+                            subtitle: strings.homeEmptyPostersSubtitle,
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final entry = feedEntries[index];
+                              if (entry.isPromo) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _HomeInlinePromoCard(
+                                    data: entry.promo!,
+                                    viewerPosterProfile: _viewerPosterProfile,
+                                    slides: promoSlides,
+                                    onTap: () => unawaited(
+                                      _handlePromoTap(entry.promo!.type),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final item = entry.template!;
+                              return _TemplateFeedItem(
+                                key: ValueKey<String>(
+                                  item.templateId?.trim().isNotEmpty == true
+                                      ? item.templateId!.trim()
+                                      : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
+                                ),
+                                item: item,
+                                hostContext: context,
+                                language: language,
+                                preferUltraLightImage:
+                                    activeCategorySlug == _allCategorySlug &&
+                                    index == 0 &&
+                                    !_startupRichPosterPreviewReady,
+                                deferRichPosterPreview:
+                                    !_startupRichPosterPreviewReady,
+                                onOpenSubscriptionPlan:
+                                    _pushSubscriptionPlanRoute,
+                                viewerPosterProfile: _viewerPosterProfile,
+                                posterRenderCycle: _posterRenderCycle,
+                                onPosterPhotoDragStateChanged:
+                                    _setPosterPhotoDragInProgress,
+                              );
+                            },
+                            childCount: feedEntries.length,
+                            addAutomaticKeepAlives: false,
+                            addRepaintBoundaries: true,
+                            addSemanticIndexes: false,
                           ),
                         ),
                       ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                ],
+                    if (_templatesLoadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2563,16 +4921,10 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     ),
                     const SizedBox(height: 4),
                     TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const LegalDocumentScreen(
-                              documentType:
-                                  LegalDocumentType.termsAndConditions,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () => _openExternalPublicUrl(
+                        context,
+                        AppPublicInfo.termsUrl,
+                      ),
                       child: Text(
                         strings.localized(
                           telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
@@ -2622,6 +4974,7 @@ class _HomeHeader extends StatelessWidget {
     required this.searchController,
     required this.searchFocusNode,
     required this.onSearchChanged,
+    required this.onSearchSubmitted,
   });
 
   final VoidCallback onCreateTap;
@@ -2630,6 +4983,7 @@ class _HomeHeader extends StatelessWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
+  final Future<void> Function() onSearchSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -2699,9 +5053,14 @@ class _HomeHeader extends StatelessWidget {
                   focusNode: searchFocusNode,
                   textInputAction: TextInputAction.search,
                   onChanged: onSearchChanged,
+                  onEditingComplete: () => unawaited(onSearchSubmitted()),
+                  onSubmitted: (_) => unawaited(onSearchSubmitted()),
                   decoration: InputDecoration(
                     hintText: strings.searchTemplates,
-                    prefixIcon: const Icon(Icons.search_rounded),
+                    prefixIcon: IconButton(
+                      onPressed: () => unawaited(onSearchSubmitted()),
+                      icon: const Icon(Icons.search_rounded),
+                    ),
                     fillColor: Colors.white,
                     filled: true,
                     contentPadding: const EdgeInsets.symmetric(
@@ -3221,8 +5580,8 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                   ? (constraints.maxWidth *
                             MediaQuery.devicePixelRatioOf(context))
                         .round()
-                        .clamp(360, 1080)
-                  : 1080;
+                        .clamp(320, 720)
+                  : 720;
               return CachedNetworkImage(
                 imageUrl: _slides[index].imageUrl,
                 cacheManager: PosterNetworkImageCache.instance,
@@ -3281,6 +5640,14 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     if (kIsWeb || !Platform.isAndroid || !AppPublicInfo.hasHomeBannerAdUnitId) {
       return;
     }
+    try {
+      await PostSplashStartupGate.whenReady.timeout(
+        const Duration(seconds: 20),
+      );
+      await Future<void>.delayed(const Duration(seconds: 10));
+    } catch (_) {
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -3315,7 +5682,9 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
           });
         },
         onAdFailedToLoad: (ad, error) {
-          _homeDebugLog('home banner ad failed: $error');
+          if (error.code != 3) {
+            _homeDebugLog('home banner ad failed: $error');
+          }
           ad.dispose();
           if (!mounted) {
             return;
@@ -3546,20 +5915,24 @@ class _TemplateFeedItem extends StatefulWidget {
     required this.item,
     required this.hostContext,
     required this.language,
+    required this.deferRichPosterPreview,
     required this.onOpenSubscriptionPlan,
     required this.viewerPosterProfile,
     required this.posterRenderCycle,
     required this.onPosterPhotoDragStateChanged,
+    this.preferUltraLightImage = false,
   });
 
   final _TemplateItem item;
   final BuildContext hostContext;
   final AppLanguage language;
+  final bool deferRichPosterPreview;
   final Future<void> Function({bool startPurchaseOnOpen})
   onOpenSubscriptionPlan;
   final PosterProfileData viewerPosterProfile;
   final int posterRenderCycle;
   final ValueChanged<bool> onPosterPhotoDragStateChanged;
+  final bool preferUltraLightImage;
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
 
@@ -3570,7 +5943,8 @@ class _TemplateFeedItem extends StatefulWidget {
   State<_TemplateFeedItem> createState() => _TemplateFeedItemState();
 }
 
-class _TemplateFeedItemState extends State<_TemplateFeedItem> {
+class _TemplateFeedItemState extends State<_TemplateFeedItem>
+    with AutomaticKeepAliveClientMixin<_TemplateFeedItem> {
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
   static const List<String> _randomPosterNameFonts = <String>[
@@ -3581,11 +5955,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     'Tejafont',
   ];
   static const List<String> _randomEnglishPosterNameFonts = <String>[
-    'Anton',
-    'Archivo Black',
-    'Bebas Neue',
-    'League Spartan',
-    'Playfair Display',
+    'Montserrat',
+    'Oswald',
+    'Cinzel',
+    'Raleway',
+    'Rubik',
   ];
   final GlobalKey _posterCaptureKey = GlobalKey();
   final ScreenshotController _posterScreenshotController =
@@ -3629,6 +6003,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
   AppLanguage get language => widget.language;
+  bool get deferRichPosterPreview => widget.deferRichPosterPreview;
+  bool get preferUltraLightImage => widget.preferUltraLightImage;
   Future<void> Function({bool startPurchaseOnOpen})
   get onOpenSubscriptionPlan => widget.onOpenSubscriptionPlan;
   PosterProfileData get viewerPosterProfile => widget.viewerPosterProfile;
@@ -3695,7 +6071,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
       return 'Pallavi Medium';
     }
     if (_latinTextPattern.hasMatch(text)) {
-      return 'Poppins';
+      return 'Montserrat';
     }
     return 'Poppins';
   }
@@ -4291,6 +6667,32 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
     ValueChanged<bool>? onPosterReadyChanged,
   }) {
     final personalizationConfig = item.personalizationConfig;
+    if (deferRichPosterPreview) {
+      return item.pageConfig != null
+          ? AspectRatio(
+              aspectRatio: item.pageConfig!.aspectRatio,
+              child: _ResolvedTemplatePosterImage(
+                imageAssetPath: item.imageAssetPath,
+                imageUrl: item.imageUrl ?? '',
+                imageStoragePath: item.imageStoragePath,
+                thumbnailStoragePath: item.thumbnailStoragePath,
+                thumbnailUrl: item.thumbnailUrl,
+                posterIdForDebug: item.templateId,
+                preferUltraLightDecode: preferUltraLightImage,
+                onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+              ),
+            )
+          : _ResolvedTemplatePosterImage(
+              imageAssetPath: item.imageAssetPath,
+              imageUrl: item.imageUrl ?? '',
+              imageStoragePath: item.imageStoragePath,
+              thumbnailStoragePath: item.thumbnailStoragePath,
+              thumbnailUrl: item.thumbnailUrl,
+              posterIdForDebug: item.templateId,
+              preferUltraLightDecode: preferUltraLightImage,
+              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+            );
+    }
     return item.isVideo
         ? _FeedTapToPlayVideoPoster(
             videoUrl: item.videoUrl!,
@@ -4308,10 +6710,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             imageStoragePath: item.imageStoragePath,
             thumbnailStoragePath: item.thumbnailStoragePath,
             thumbnailUrl: item.thumbnailUrl,
+            pageConfig: item.pageConfig,
             personalizationConfig: personalizationConfig,
             viewerPosterProfile: viewerPosterProfile,
             language: language,
             showProfilePhoto: isPhotoVisible,
+            deferLegacyTextPrime: deferRichPosterPreview,
             posterRenderCycle: posterRenderCycle,
             interactivePhotoEnabled: _canInteractWithPosterPhoto,
             photoShapeOverride: _photoUserAdjustment.effectiveShape,
@@ -4323,6 +6727,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
             onPhotoDragStateChanged: _setPhotoDragInProgress,
             onPosterReadyChanged: onPosterReadyChanged,
+          )
+        : item.pageConfig != null
+        ? AspectRatio(
+            aspectRatio: item.pageConfig!.aspectRatio,
+            child: _ResolvedTemplatePosterImage(
+              imageAssetPath: item.imageAssetPath,
+              imageUrl: item.imageUrl ?? '',
+              imageStoragePath: item.imageStoragePath,
+              thumbnailStoragePath: item.thumbnailStoragePath,
+              thumbnailUrl: item.thumbnailUrl,
+              posterIdForDebug: item.templateId,
+              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+            ),
           )
         : _ResolvedTemplatePosterImage(
             imageAssetPath: item.imageAssetPath,
@@ -4575,13 +6992,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
             termsLabel: _subscriptionTermsLabelLocalized(screenContext),
             skipLabel: _subscriptionSkipLabelLocalized(screenContext),
             actionLabel: _subscriptionButtonLabelLocalized(screenContext),
-            onTermsTap: () => Navigator.of(dialogContext).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const LegalDocumentScreen(
-                  documentType: LegalDocumentType.termsAndConditions,
-                ),
-              ),
-            ),
+            onTermsTap: () =>
+                _openExternalPublicUrl(dialogContext, AppPublicInfo.termsUrl),
             onSkipTap: () => Navigator.of(dialogContext).pop(false),
             onConfirmTap: () => Navigator.of(dialogContext).pop(true),
           ),
@@ -4805,6 +7217,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final strings = context.strings;
     final personalizationConfig = item.personalizationConfig;
     final canTogglePhoto = personalizationConfig != null && !item.isVideo;
@@ -4817,18 +7230,26 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
           ValueListenableBuilder<bool>(
             valueListenable: _showPosterPhotoNotifier,
             builder: (context, isPhotoVisible, _) {
+              final preview = _buildPosterPreview(
+                isPhotoVisible: isPhotoVisible,
+                onPosterReadyChanged: _handlePosterReadyState,
+              );
+              if (deferRichPosterPreview) {
+                return KeyedSubtree(key: _posterCaptureKey, child: preview);
+              }
               return KeyedSubtree(
                 key: _posterCaptureKey,
                 child: Screenshot(
                   controller: _posterScreenshotController,
-                  child: _buildPosterPreview(
-                    isPhotoVisible: isPhotoVisible,
-                    onPosterReadyChanged: _handlePosterReadyState,
-                  ),
+                  child: preview,
                 ),
               );
             },
           ),
+          if (deferRichPosterPreview) ...<Widget>[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
           if (canTogglePhoto && item.titleEn.trim().isEmpty) ...<Widget>[
             const SizedBox(height: 4),
             ValueListenableBuilder<bool>(
@@ -4840,11 +7261,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(24),
-                      onTap: () {
-                        _invalidatePreparedPosterCache();
-                        _showPosterPhotoNotifier.value = !isPhotoVisible;
-                        _schedulePosterWarmup(force: true);
-                      },
+                      onTap: deferRichPosterPreview
+                          ? null
+                          : () {
+                              _invalidatePreparedPosterCache();
+                              _showPosterPhotoNotifier.value = !isPhotoVisible;
+                              _schedulePosterWarmup(force: true);
+                            },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 2,
@@ -4885,11 +7308,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
                                     MaterialTapTargetSize.shrinkWrap,
                                 activeTrackColor: const Color(0xFF25D366),
                                 activeThumbColor: Colors.white,
-                                onChanged: (bool value) {
-                                  _invalidatePreparedPosterCache();
-                                  _showPosterPhotoNotifier.value = value;
-                                  _schedulePosterWarmup(force: true);
-                                },
+                                onChanged: deferRichPosterPreview
+                                    ? null
+                                    : (bool value) {
+                                        _invalidatePreparedPosterCache();
+                                        _showPosterPhotoNotifier.value = value;
+                                        _schedulePosterWarmup(force: true);
+                                      },
                               ),
                             ),
                           ],
@@ -4910,7 +7335,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
                   builder: (context, activeAction, _) {
                     final isBusy = activeAction == 'share';
                     return OutlinedButton.icon(
-                      onPressed: item.isVideo || activeAction != null
+                      onPressed:
+                          deferRichPosterPreview ||
+                              item.isVideo ||
+                              activeAction != null
                           ? null
                           : () => unawaited(_onShareTap(context)),
                       icon: isBusy
@@ -4972,11 +7400,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
                     valueListenable: _showPosterPhotoNotifier,
                     builder: (context, isPhotoVisible, _) {
                       return OutlinedButton.icon(
-                        onPressed: () {
-                          _invalidatePreparedPosterCache();
-                          _showPosterPhotoNotifier.value = !isPhotoVisible;
-                          _schedulePosterWarmup(force: true);
-                        },
+                        onPressed: deferRichPosterPreview
+                            ? null
+                            : () {
+                                _invalidatePreparedPosterCache();
+                                _showPosterPhotoNotifier.value =
+                                    !isPhotoVisible;
+                                _schedulePosterWarmup(force: true);
+                              },
                         icon: Icon(
                           isPhotoVisible
                               ? Icons.visibility_rounded
@@ -5031,7 +7462,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
                   builder: (context, activeAction, _) {
                     final isBusy = activeAction == 'download';
                     return FilledButton.icon(
-                      onPressed: item.isVideo || activeAction != null
+                      onPressed:
+                          deferRichPosterPreview ||
+                              item.isVideo ||
+                              activeAction != null
                           ? null
                           : () => unawaited(_onDownloadTap(context)),
                       icon: isBusy
@@ -5091,20 +7525,102 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem> {
       ),
     );
   }
+
+  @override
+  bool get wantKeepAlive => false;
 }
 
-class _TemplatePosterImage extends StatelessWidget {
+class _TemplatePosterImage extends StatefulWidget {
   const _TemplatePosterImage({
     required this.imageAssetPath,
     required this.imageUrl,
     this.thumbnailUrl,
+    this.preferUltraLightDecode = false,
     this.onFirstFrameReady,
   });
 
   final String? imageAssetPath;
   final String? imageUrl;
   final String? thumbnailUrl;
+  final bool preferUltraLightDecode;
   final VoidCallback? onFirstFrameReady;
+
+  @override
+  State<_TemplatePosterImage> createState() => _TemplatePosterImageState();
+}
+
+class _TemplatePosterImageState extends State<_TemplatePosterImage> {
+  static const int _feedPosterDecodeMinWidth = 280;
+  static const int _feedPosterDecodeMaxWidth = 560;
+  static const int _feedPosterUltraLightMinWidth = 180;
+  static const int _feedPosterUltraLightMaxWidth = 280;
+  static const int _feedPosterThumbMinWidth = 140;
+  static const int _feedPosterThumbMaxWidth = 240;
+  ImageProvider<Object>? _mainNetworkProvider;
+  ImageProvider<Object>? _thumbnailProvider;
+  String? _mainProviderUrl;
+  String? _thumbnailProviderUrl;
+  int? _mainProviderWidth;
+  int? _thumbnailProviderWidth;
+
+  @override
+  void didUpdateWidget(covariant _TemplatePosterImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.thumbnailUrl != widget.thumbnailUrl ||
+        oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode) {
+      _mainNetworkProvider = null;
+      _thumbnailProvider = null;
+      _mainProviderUrl = null;
+      _thumbnailProviderUrl = null;
+      _mainProviderWidth = null;
+      _thumbnailProviderWidth = null;
+    }
+  }
+
+  ImageProvider<Object> _networkProviderFor({
+    required String url,
+    required int decodeWidth,
+  }) {
+    return ResizeImage.resizeIfNeeded(
+      decodeWidth,
+      null,
+      CachedNetworkImageProvider(
+        url,
+        cacheManager: PosterNetworkImageCache.instance,
+        maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+        maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+      ),
+    );
+  }
+
+  ImageProvider<Object> _mainProviderFor(String url, int decodeWidth) {
+    if (_mainNetworkProvider == null ||
+        _mainProviderUrl != url ||
+        _mainProviderWidth != decodeWidth) {
+      _mainProviderUrl = url;
+      _mainProviderWidth = decodeWidth;
+      _mainNetworkProvider = _networkProviderFor(
+        url: url,
+        decodeWidth: decodeWidth,
+      );
+    }
+    return _mainNetworkProvider!;
+  }
+
+  ImageProvider<Object> _thumbnailProviderFor(String url, int decodeWidth) {
+    if (_thumbnailProvider == null ||
+        _thumbnailProviderUrl != url ||
+        _thumbnailProviderWidth != decodeWidth) {
+      _thumbnailProviderUrl = url;
+      _thumbnailProviderWidth = decodeWidth;
+      _thumbnailProvider = _networkProviderFor(
+        url: url,
+        decodeWidth: decodeWidth,
+      );
+    }
+    return _thumbnailProvider!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -5112,7 +7628,7 @@ class _TemplatePosterImage extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           void schedulePosterReady() {
-            final VoidCallback? cb = onFirstFrameReady;
+            final VoidCallback? cb = widget.onFirstFrameReady;
             if (cb != null) {
               WidgetsBinding.instance.addPostFrameCallback((_) => cb());
             }
@@ -5124,13 +7640,24 @@ class _TemplatePosterImage extends StatelessWidget {
           final pixelRatio = MediaQuery.devicePixelRatioOf(
             context,
           ).clamp(1.0, 3.0);
-          final cacheWidth = (width * pixelRatio).round().clamp(360, 960);
+          final shouldPreferUltraLightDecode =
+              widget.preferUltraLightDecode ||
+              Scrollable.recommendDeferredLoadingForContext(context);
+          final cacheWidth = shouldPreferUltraLightDecode
+              ? (width * pixelRatio * 0.38).round().clamp(
+                  _feedPosterUltraLightMinWidth,
+                  _feedPosterUltraLightMaxWidth,
+                )
+              : (width * pixelRatio).round().clamp(
+                  _feedPosterDecodeMinWidth,
+                  _feedPosterDecodeMaxWidth,
+                );
           final posterPlaceholderHeight = width.isFinite && width >= 48
               ? math.max(width * 1.25, 260.0)
               : 260.0;
 
-          final placeholderUrl = thumbnailUrl?.trim() ?? '';
-          final mainUrlTrim = (imageUrl ?? '').trim();
+          final placeholderUrl = widget.thumbnailUrl?.trim() ?? '';
+          final mainUrlTrim = (widget.imageUrl ?? '').trim();
           final primaryNetworkUrl = mainUrlTrim.isNotEmpty
               ? mainUrlTrim
               : placeholderUrl;
@@ -5140,17 +7667,27 @@ class _TemplatePosterImage extends StatelessWidget {
             required int decodeWidth,
             required bool notifyWhenLoaded,
           }) {
+            final imageProvider = _mainProviderFor(resolvedUrl, decodeWidth);
+            final loadingThumb = placeholderUrl;
+            final hasSeparateThumbnail =
+                loadingThumb.isNotEmpty && loadingThumb != resolvedUrl;
+            final ImageProvider<Object>? thumbnailProvider =
+                hasSeparateThumbnail
+                ? _thumbnailProviderFor(
+                    loadingThumb,
+                    shouldPreferUltraLightDecode
+                        ? decodeWidth.clamp(
+                            _feedPosterThumbMinWidth,
+                            _feedPosterUltraLightMaxWidth,
+                          )
+                        : decodeWidth.clamp(
+                            _feedPosterThumbMinWidth,
+                            _feedPosterThumbMaxWidth,
+                          ),
+                  )
+                : null;
             return Image(
-              image: ResizeImage.resizeIfNeeded(
-                decodeWidth,
-                null,
-                CachedNetworkImageProvider(
-                  resolvedUrl,
-                  cacheManager: PosterNetworkImageCache.instance,
-                  maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
-                  maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
-                ),
-              ),
+              image: imageProvider,
               width: double.infinity,
               fit: BoxFit.contain,
               alignment: Alignment.topCenter,
@@ -5158,26 +7695,32 @@ class _TemplatePosterImage extends StatelessWidget {
               filterQuality: FilterQuality.low,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                 if (wasSynchronouslyLoaded || frame != null) {
-                  if (notifyWhenLoaded && onFirstFrameReady != null) {
+                  if (notifyWhenLoaded && widget.onFirstFrameReady != null) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      onFirstFrameReady!.call();
+                      widget.onFirstFrameReady!.call();
                     });
                   }
-                  return child;
-                }
-                final loadingThumb = placeholderUrl;
-                if (loadingThumb.isNotEmpty && loadingThumb != resolvedUrl) {
-                  return Image(
-                    image: ResizeImage.resizeIfNeeded(
-                      decodeWidth.clamp(240, 480),
-                      null,
-                      CachedNetworkImageProvider(
-                        loadingThumb,
-                        cacheManager: PosterNetworkImageCache.instance,
-                        maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
-                        maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+                  if (thumbnailProvider == null) {
+                    return child;
+                  }
+                  return Stack(
+                    fit: StackFit.passthrough,
+                    children: <Widget>[
+                      Image(
+                        image: thumbnailProvider,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.topCenter,
+                        gaplessPlayback: true,
+                        filterQuality: FilterQuality.low,
                       ),
-                    ),
+                      child,
+                    ],
+                  );
+                }
+                if (thumbnailProvider != null) {
+                  return Image(
+                    image: thumbnailProvider,
                     width: double.infinity,
                     fit: BoxFit.contain,
                     alignment: Alignment.topCenter,
@@ -5220,7 +7763,7 @@ class _TemplatePosterImage extends StatelessWidget {
             );
           }
 
-          if (imageAssetPath == null && primaryNetworkUrl.isEmpty) {
+          if (widget.imageAssetPath == null && primaryNetworkUrl.isEmpty) {
             schedulePosterReady();
             final strings = context.strings;
             return Align(
@@ -5243,9 +7786,9 @@ class _TemplatePosterImage extends StatelessWidget {
             );
           }
 
-          final imageWidget = imageAssetPath != null
+          final imageWidget = widget.imageAssetPath != null
               ? Image.asset(
-                  imageAssetPath!,
+                  widget.imageAssetPath!,
                   width: double.infinity,
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,
@@ -5255,9 +7798,9 @@ class _TemplatePosterImage extends StatelessWidget {
                   frameBuilder:
                       (context, child, frame, wasSynchronouslyLoaded) {
                         if (wasSynchronouslyLoaded || frame != null) {
-                          if (onFirstFrameReady != null) {
+                          if (widget.onFirstFrameReady != null) {
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              onFirstFrameReady!.call();
+                              widget.onFirstFrameReady!.call();
                             });
                           }
                           return child;
@@ -5311,6 +7854,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
     this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.posterIdForDebug,
+    this.preferUltraLightDecode = false,
     this.onFirstFrameReady,
   });
 
@@ -5320,6 +7864,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final String? posterIdForDebug;
+  final bool preferUltraLightDecode;
   final VoidCallback? onFirstFrameReady;
 
   @override
@@ -5328,7 +7873,8 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
 }
 
 class _ResolvedTemplatePosterImageState
-    extends State<_ResolvedTemplatePosterImage> {
+    extends State<_ResolvedTemplatePosterImage>
+    with AutomaticKeepAliveClientMixin<_ResolvedTemplatePosterImage> {
   static final Map<String, String> _resolvedDownloadUrlCache =
       <String, String>{};
   static final Set<String> _failedResolveKeys = <String>{};
@@ -5423,6 +7969,9 @@ class _ResolvedTemplatePosterImageState
           return;
         }
         final trimmedFresh = fresh.trim();
+        if (!mounted || generation != _resolveGeneration) {
+          return;
+        }
         _resolvedDownloadUrlCache[_cacheKeyFor(candidates)] = trimmedFresh;
         if (_resolvedImageUrl == trimmedFresh) {
           return;
@@ -5469,6 +8018,7 @@ class _ResolvedTemplatePosterImageState
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final path = widget.imageStoragePath?.trim() ?? '';
     final thumbPath = widget.thumbnailStoragePath?.trim() ?? '';
     final thumb = widget.thumbnailUrl?.trim() ?? '';
@@ -5497,9 +8047,13 @@ class _ResolvedTemplatePosterImageState
       imageAssetPath: widget.imageAssetPath,
       imageUrl: displayUrl.isEmpty ? null : displayUrl,
       thumbnailUrl: widget.thumbnailUrl,
+      preferUltraLightDecode: widget.preferUltraLightDecode,
       onFirstFrameReady: widget.onFirstFrameReady,
     );
   }
+
+  @override
+  bool get wantKeepAlive => false;
 }
 
 class _SubscriptionInfoLine extends StatelessWidget {
@@ -6005,10 +8559,12 @@ class _CreatorPosterPreview extends StatefulWidget {
     this.imageStoragePath,
     this.thumbnailStoragePath,
     this.thumbnailUrl,
+    this.pageConfig,
     required this.personalizationConfig,
     required this.viewerPosterProfile,
     required this.language,
     required this.showProfilePhoto,
+    required this.deferLegacyTextPrime,
     required this.posterRenderCycle,
     required this.interactivePhotoEnabled,
     required this.photoShapeOverride,
@@ -6026,10 +8582,12 @@ class _CreatorPosterPreview extends StatefulWidget {
   final String? imageStoragePath;
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
+  final EditorPageConfig? pageConfig;
   final CreatorPosterPersonalization personalizationConfig;
   final PosterProfileData viewerPosterProfile;
   final AppLanguage language;
   final bool showProfilePhoto;
+  final bool deferLegacyTextPrime;
   final int posterRenderCycle;
   final bool interactivePhotoEnabled;
   final String photoShapeOverride;
@@ -6050,6 +8608,8 @@ class _CreatorPosterPreview extends StatefulWidget {
 }
 
 class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
+  static const String _visibleTeluguFallbackFontFamily =
+      'Anek Telugu Condensed Regular';
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
 
@@ -6061,23 +8621,22 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     'Tejafont',
   ];
   static const List<String> _randomEnglishPosterNameFonts = <String>[
-    'Anton',
-    'Archivo Black',
-    'Bebas Neue',
-    'League Spartan',
-    'Playfair Display',
+    'Montserrat',
+    'Oswald',
+    'Cinzel',
+    'Raleway',
+    'Rubik',
   ];
 
   static const List<List<Color>> _posterStripGradients = <List<Color>>[
-    <Color>[Color(0xFF071E48), Color(0xFF0057B8)],
-    <Color>[Color(0xFF062D1D), Color(0xFF0F9F6E)],
-    <Color>[Color(0xFF4A1407), Color(0xFFE76F1E)],
-    <Color>[Color(0xFF34115B), Color(0xFF9D4EDD)],
-    <Color>[Color(0xFF5A3A00), Color(0xFFFFB703)],
+    <Color>[Color(0xFF5B2C83), Color(0xFF8A4BC9)],
+    <Color>[Color(0xFF0F4C75), Color(0xFF3282B8)],
+    <Color>[Color(0xFF8D153A), Color(0xFFC84B68)],
+    <Color>[Color(0xFF5A3E2B), Color(0xFF9C6B4A)],
+    <Color>[Color(0xFF374151), Color(0xFF6B7280)],
   ];
 
   bool _basePosterReady = false;
-  bool _legacyOverlayReady = false;
   int _legacyPrimeGeneration = 0;
   final Map<String, String> _legacyTextOverrides = <String, String>{};
   final Set<String> _legacyTextRequestsInFlight = <String>{};
@@ -6098,7 +8657,9 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   @override
   void initState() {
     super.initState();
-    _scheduleLegacyPrime();
+    if (!widget.deferLegacyTextPrime) {
+      _scheduleLegacyPrime();
+    }
     _scheduleBaseImageReadyFallback();
   }
 
@@ -6129,32 +8690,51 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         oldWidget.language != widget.language ||
         oldWidget.personalizationConfig != widget.personalizationConfig ||
         oldWidget.posterRenderCycle != widget.posterRenderCycle) {
+      if (!widget.deferLegacyTextPrime) {
+        _scheduleLegacyPrime();
+      }
+    }
+    if (oldWidget.deferLegacyTextPrime && !widget.deferLegacyTextPrime) {
       _scheduleLegacyPrime();
     }
   }
 
   void _scheduleLegacyPrime() {
+    if (widget.deferLegacyTextPrime) {
+      _emitPosterReadyChanged();
+      return;
+    }
     final generation = ++_legacyPrimeGeneration;
-    setState(() => _legacyOverlayReady = false);
+    if (!_needsLegacyTextPrimeForCurrentState()) {
+      _emitPosterReadyChanged();
+      return;
+    }
     _emitPosterReadyChanged();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        await _primeLegacyTextCacheForCurrentState().timeout(
+        final updates = await _primeLegacyTextCacheForCurrentState().timeout(
           const Duration(seconds: 15),
+          onTimeout: () => const <String, String>{},
         );
+        if (!mounted || generation != _legacyPrimeGeneration) {
+          return;
+        }
+        if (updates.isNotEmpty) {
+          setState(() {
+            _legacyTextOverrides.addAll(updates);
+          });
+        }
       } catch (_) {
-        // Still reveal overlays — raw glyphs preferable to an infinite skeleton.
+        if (!mounted || generation != _legacyPrimeGeneration) {
+          return;
+        }
       }
-      if (!mounted || generation != _legacyPrimeGeneration) {
-        return;
-      }
-      setState(() => _legacyOverlayReady = true);
       _emitPosterReadyChanged();
     });
   }
 
   void _emitPosterReadyChanged() {
-    widget.onPosterReadyChanged?.call(_basePosterReady && _legacyOverlayReady);
+    widget.onPosterReadyChanged?.call(_basePosterReady);
   }
 
   void _handleBasePosterReady() {
@@ -6238,14 +8818,14 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     return _posterStripGradients[hash.abs() % _posterStripGradients.length];
   }
 
-  Color _onStripColor(List<Color> gradient) {
+  Color _onStripColor(List<Color> colors) {
     final averageLuminance =
-        gradient.fold<double>(
+        colors.fold<double>(
           0,
-          (luminanceTotal, color) => luminanceTotal + color.computeLuminance(),
+          (double sum, Color color) => sum + color.computeLuminance(),
         ) /
-        gradient.length;
-    return averageLuminance > 0.48 ? const Color(0xFF111827) : Colors.white;
+        colors.length;
+    return averageLuminance > 0.45 ? const Color(0xFF1F2937) : Colors.white;
   }
 
   String _resolveEnglishPosterNameFontFamily(String resolvedName) {
@@ -6278,9 +8858,131 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       return 'Pallavi Medium';
     }
     if (_latinTextPattern.hasMatch(text)) {
-      return 'Poppins';
+      return 'Montserrat';
     }
     return 'Poppins';
+  }
+
+  bool _isEnglishOnlyText(String text) {
+    return !_teluguTextPattern.hasMatch(text) &&
+        _latinTextPattern.hasMatch(text);
+  }
+
+  Widget _buildEnglishBusinessStrip({
+    required String resolvedName,
+    required String resolvedDesignation,
+    required String? displayNameFontFamily,
+    required String designationFontFamily,
+    required Color stripTextColor,
+    required Color mutedStripTextColor,
+    required bool showPhoneInStrip,
+    required String resolvedPhone,
+  }) {
+    final hasDesignation = resolvedDesignation.isNotEmpty;
+    if (!hasDesignation && !showPhoneInStrip) {
+      return Center(
+        child: _legacyAwareText(
+          text: resolvedName,
+          fontFamily: displayNameFontFamily,
+          maxLines: 1,
+          textAlign: TextAlign.center,
+          fitToWidth: true,
+          style: TextStyle(
+            color: stripTextColor,
+            fontWeight: FontWeight.w700,
+            fontSize: 26,
+            height: 1.0,
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Row(
+            children: <Widget>[
+              Flexible(
+                child: _legacyAwareText(
+                  text: resolvedName,
+                  fontFamily: displayNameFontFamily,
+                  maxLines: 1,
+                  textAlign: TextAlign.left,
+                  fitToWidth: true,
+                  style: TextStyle(
+                    color: stripTextColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 26,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+              if (hasDesignation) ...<Widget>[
+                const SizedBox(width: 10),
+                Container(
+                  width: 1.4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: mutedStripTextColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: _legacyAwareText(
+                    text: resolvedDesignation,
+                    fontFamily: designationFontFamily,
+                    maxLines: 1,
+                    textAlign: TextAlign.left,
+                    fitToWidth: true,
+                    style: TextStyle(
+                      color: mutedStripTextColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (showPhoneInStrip) ...<Widget>[
+          const SizedBox(width: 8),
+          Container(
+            width: 2,
+            height: 30,
+            decoration: BoxDecoration(
+              color: mutedStripTextColor,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            flex: 0,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 82),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  resolvedPhone,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: mutedStripTextColor,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
@@ -6304,46 +9006,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         TeluguLegacyTextService.cachedValue(text, fontFamily: fontFamily);
   }
 
-  Future<void> _primeLegacyTextValue(String text, String? fontFamily) async {
-    if (!_shouldConvertForLegacyTelugu(text, fontFamily) ||
-        fontFamily == null ||
-        text.trim().isEmpty) {
-      return;
-    }
-    final key = _legacyTextCacheKey(text, fontFamily);
-    final cached = TeluguLegacyTextService.cachedValue(
-      text,
-      fontFamily: fontFamily,
-    );
-    if (cached != null && cached.isNotEmpty) {
-      _legacyTextOverrides[key] = cached;
-      return;
-    }
-    if (_legacyTextRequestsInFlight.contains(key)) {
-      return;
-    }
-    _legacyTextRequestsInFlight.add(key);
-    try {
-      final converted = await TeluguLegacyTextService.convert(
-        text,
-        fontFamily: fontFamily,
-      );
-      if (!mounted) {
-        return;
-      }
-      if (converted != null &&
-          converted.isNotEmpty &&
-          _legacyTextOverrides[key] != converted) {
-        setState(() {
-          _legacyTextOverrides[key] = converted;
-        });
-      }
-    } finally {
-      _legacyTextRequestsInFlight.remove(key);
-    }
-  }
-
-  Future<void> _primeLegacyTextCacheForCurrentState() async {
+  bool _needsLegacyTextPrimeForCurrentState() {
     final resolvedName = widget.viewerPosterProfile.resolvedName(
       language: widget.language,
     );
@@ -6353,13 +9016,96 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         ? widget.viewerPosterProfile.businessTagline.trim()
         : widget.viewerPosterProfile.whatsappNumber.trim();
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
-    await Future.wait<void>(<Future<void>>[
-      _primeLegacyTextValue(resolvedName, displayNameFontFamily),
-      _primeLegacyTextValue(
-        resolvedDesignation,
-        _resolveDesignationFontFamily(resolvedDesignation),
-      ),
-    ]);
+    final designationFontFamily = _resolveDesignationFontFamily(
+      resolvedDesignation,
+    );
+    return _legacyTextNeedsAsyncPrime(resolvedName, displayNameFontFamily) ||
+        _legacyTextNeedsAsyncPrime(resolvedDesignation, designationFontFamily);
+  }
+
+  bool _legacyTextNeedsAsyncPrime(String text, String? fontFamily) {
+    if (!_shouldConvertForLegacyTelugu(text, fontFamily) ||
+        fontFamily == null ||
+        text.trim().isEmpty) {
+      return false;
+    }
+    final key = _legacyTextCacheKey(text, fontFamily);
+    if (_legacyTextOverrides.containsKey(key)) {
+      return false;
+    }
+    final cached = TeluguLegacyTextService.cachedValue(
+      text,
+      fontFamily: fontFamily,
+    );
+    if (cached != null && cached.isNotEmpty) {
+      return false;
+    }
+    return !_legacyTextRequestsInFlight.contains(key);
+  }
+
+  Future<MapEntry<String, String>?> _primeLegacyTextValue(
+    String text,
+    String? fontFamily,
+  ) async {
+    if (!_shouldConvertForLegacyTelugu(text, fontFamily) ||
+        fontFamily == null ||
+        text.trim().isEmpty) {
+      return null;
+    }
+    final key = _legacyTextCacheKey(text, fontFamily);
+    final cached = TeluguLegacyTextService.cachedValue(
+      text,
+      fontFamily: fontFamily,
+    );
+    if (cached != null && cached.isNotEmpty) {
+      return null;
+    }
+    if (_legacyTextRequestsInFlight.contains(key)) {
+      return null;
+    }
+    _legacyTextRequestsInFlight.add(key);
+    try {
+      final converted = await TeluguLegacyTextService.convert(
+        text,
+        fontFamily: fontFamily,
+      );
+      if (converted != null &&
+          converted.isNotEmpty &&
+          _legacyTextOverrides[key] != converted) {
+        return MapEntry<String, String>(key, converted);
+      }
+      return null;
+    } finally {
+      _legacyTextRequestsInFlight.remove(key);
+    }
+  }
+
+  Future<Map<String, String>> _primeLegacyTextCacheForCurrentState() async {
+    final resolvedName = widget.viewerPosterProfile.resolvedName(
+      language: widget.language,
+    );
+    final isBusinessProfile =
+        widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
+    final resolvedDesignation = isBusinessProfile
+        ? widget.viewerPosterProfile.businessTagline.trim()
+        : widget.viewerPosterProfile.whatsappNumber.trim();
+    final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
+    final entries = await Future.wait<MapEntry<String, String>?>(
+      <Future<MapEntry<String, String>?>>[
+        _primeLegacyTextValue(resolvedName, displayNameFontFamily),
+        _primeLegacyTextValue(
+          resolvedDesignation,
+          _resolveDesignationFontFamily(resolvedDesignation),
+        ),
+      ],
+    );
+    final updates = <String, String>{};
+    for (final entry in entries) {
+      if (entry != null) {
+        updates[entry.key] = entry.value;
+      }
+    }
+    return updates;
   }
 
   Widget _legacyAwareText({
@@ -6370,13 +9116,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     TextAlign textAlign = TextAlign.center,
     bool fitToWidth = false,
   }) {
-    Widget buildText(String value) {
+    Widget buildText(String value, {String? resolvedFontFamily}) {
       final textWidget = Text(
         value,
         maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
         textAlign: textAlign,
-        style: style.copyWith(fontFamily: fontFamily),
+        style: style.copyWith(fontFamily: resolvedFontFamily ?? fontFamily),
       );
       if (!fitToWidth) {
         return textWidget;
@@ -6391,7 +9137,14 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         text.trim().isEmpty) {
       return buildText(text);
     }
-    return buildText(_legacyOverrideFor(text, fontFamily) ?? text);
+    final override = _legacyOverrideFor(text, fontFamily);
+    if (override != null && override.isNotEmpty) {
+      return buildText(override);
+    }
+    return buildText(
+      text,
+      resolvedFontFamily: _visibleTeluguFallbackFontFamily,
+    );
   }
 
   @override
@@ -6425,9 +9178,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
     );
-    final stripGradient = _resolvePosterStripGradient(resolvedName);
-    final stripTextColor = _onStripColor(stripGradient);
-    final mutedStripTextColor = stripTextColor.withValues(alpha: 0.86);
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
     final bottomStripPadding = (widget.personalizationConfig.stripHeight * 0.3)
         .clamp(4.0, 8.0);
@@ -6435,7 +9185,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         ? (isBusinessProfile ? 56.0 : 60.0)
         : 0.0;
 
-    final showPersonalizationPaint = _basePosterReady && _legacyOverlayReady;
+    final showPhotoOverlay = _basePosterReady;
 
     return RepaintBoundary(
       child: SizedBox(
@@ -6450,21 +9200,34 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: <Widget>[
-                    _ResolvedTemplatePosterImage(
-                      imageAssetPath: widget.imageAssetPath,
-                      imageUrl: widget.imageUrl ?? '',
-                      imageStoragePath: widget.imageStoragePath,
-                      thumbnailStoragePath: widget.thumbnailStoragePath,
-                      thumbnailUrl: widget.thumbnailUrl,
-                      onFirstFrameReady: _handleBasePosterReady,
-                    ),
+                    if (widget.pageConfig != null)
+                      AspectRatio(
+                        aspectRatio: widget.pageConfig!.aspectRatio,
+                        child: _ResolvedTemplatePosterImage(
+                          imageAssetPath: widget.imageAssetPath,
+                          imageUrl: widget.imageUrl ?? '',
+                          imageStoragePath: widget.imageStoragePath,
+                          thumbnailStoragePath: widget.thumbnailStoragePath,
+                          thumbnailUrl: widget.thumbnailUrl,
+                          onFirstFrameReady: _handleBasePosterReady,
+                        ),
+                      )
+                    else
+                      _ResolvedTemplatePosterImage(
+                        imageAssetPath: widget.imageAssetPath,
+                        imageUrl: widget.imageUrl ?? '',
+                        imageStoragePath: widget.imageStoragePath,
+                        thumbnailStoragePath: widget.thumbnailStoragePath,
+                        thumbnailUrl: widget.thumbnailUrl,
+                        onFirstFrameReady: _handleBasePosterReady,
+                      ),
                     if (widget.showProfilePhoto && shouldShowIdentityVisual)
                       Positioned.fill(
                         bottom: -stripOverflowAllowance,
                         child: Offstage(
-                          offstage: !showPersonalizationPaint,
+                          offstage: !showPhotoOverlay,
                           child: IgnorePointer(
-                            ignoring: !showPersonalizationPaint,
+                            ignoring: !showPhotoOverlay,
                             child: LayoutBuilder(
                               builder: (BuildContext context, BoxConstraints constraints) {
                                 final photoScale =
@@ -6685,188 +9448,218 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                   ],
                 ),
                 if (widget.personalizationConfig.showBottomStrip)
-                  Offstage(
-                    offstage: !showPersonalizationPaint,
-                    child: IgnorePointer(
-                      ignoring: !showPersonalizationPaint,
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: bottomStripPadding,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: stripGradient,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            if (isBusinessProfile)
-                              Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    flex: 5,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        _legacyAwareText(
-                                          text: resolvedName,
-                                          fontFamily: displayNameFontFamily,
-                                          maxLines: 1,
-                                          textAlign: TextAlign.left,
-                                          fitToWidth: true,
-                                          style: TextStyle(
-                                            color: stripTextColor,
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: businessNameFontSize,
-                                            height: isTeluguName ? 0.98 : 1.0,
-                                          ),
-                                        ),
-                                        if (resolvedDesignation
-                                            .isNotEmpty) ...<Widget>[
-                                          const SizedBox(height: 0),
-                                          _legacyAwareText(
-                                            text: resolvedDesignation,
-                                            fontFamily: designationFontFamily,
-                                            maxLines: 1,
-                                            textAlign: TextAlign.left,
-                                            fitToWidth: true,
-                                            style: TextStyle(
-                                              color: mutedStripTextColor,
-                                              fontWeight: FontWeight.w400,
-                                              fontSize: 18,
-                                              height: 0.98,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  if (showPhoneInStrip) ...<Widget>[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      width: 2,
-                                      height: 34,
-                                      decoration: BoxDecoration(
-                                        color: mutedStripTextColor,
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      flex: 0,
-                                      child: ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 82,
-                                        ),
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            resolvedPhone,
-                                            maxLines: 1,
-                                            softWrap: false,
-                                            textAlign: TextAlign.right,
-                                            style: TextStyle(
-                                              color: mutedStripTextColor,
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 15,
-                                              height: 1.0,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              )
-                            else ...<Widget>[
-                              _legacyAwareText(
-                                text: resolvedName,
-                                fontFamily: displayNameFontFamily,
-                                maxLines: 1,
-                                textAlign: TextAlign.center,
-                                fitToWidth: true,
-                                style: TextStyle(
-                                  color: stripTextColor,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: personalNameFontSize,
-                                  height: personalNameLineHeight,
-                                ),
-                              ),
-                              if (resolvedDesignation.isNotEmpty)
-                                Transform.translate(
-                                  offset: const Offset(0, -5),
-                                  child: _legacyAwareText(
-                                    text: resolvedDesignation,
-                                    fontFamily: designationFontFamily,
-                                    maxLines: 1,
-                                    textAlign: TextAlign.center,
-                                    fitToWidth: true,
-                                    style: TextStyle(
-                                      color: mutedStripTextColor,
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 20,
-                                      height: 0.82,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
+                  _buildPosterBottomStrip(
+                    resolvedName: resolvedName,
+                    resolvedDesignation: resolvedDesignation,
+                    displayNameFontFamily: displayNameFontFamily,
+                    designationFontFamily: designationFontFamily,
+                    isBusinessProfile: isBusinessProfile,
+                    isTeluguName: isTeluguName,
+                    businessNameFontSize: businessNameFontSize,
+                    personalNameFontSize: personalNameFontSize,
+                    personalNameLineHeight: personalNameLineHeight,
+                    showPhoneInStrip: showPhoneInStrip,
+                    resolvedPhone: resolvedPhone,
+                    bottomStripPadding: bottomStripPadding,
                   ),
               ],
             ),
-            if (!showPersonalizationPaint)
-              Positioned.fill(
-                child: _PosterCanvasSkeletonPlaceholder(
-                  showBottomStrip: widget.personalizationConfig.showBottomStrip,
-                ),
-              ),
           ],
         ),
       ),
     );
   }
-}
 
-class _PosterCanvasSkeletonPlaceholder extends StatelessWidget {
-  const _PosterCanvasSkeletonPlaceholder({required this.showBottomStrip});
+  Widget _buildPosterBottomStrip({
+    required String resolvedName,
+    required String resolvedDesignation,
+    required String? displayNameFontFamily,
+    required String designationFontFamily,
+    required bool isBusinessProfile,
+    required bool isTeluguName,
+    required double businessNameFontSize,
+    required double personalNameFontSize,
+    required double personalNameLineHeight,
+    required bool showPhoneInStrip,
+    required String resolvedPhone,
+    required double bottomStripPadding,
+  }) {
+    final stripGradient = _resolvePosterStripGradient(resolvedName);
+    final stripTextColor = _onStripColor(stripGradient);
+    final mutedStripTextColor = stripTextColor.withValues(alpha: 0.82);
+    final dividerColor = Colors.white.withValues(alpha: 0.9);
 
-  final bool showBottomStrip;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: const Color(0xFFEFF3F8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    Widget buildSplitStripRow({
+      required double nameFontSize,
+      required double designationFontSize,
+      required FontWeight nameFontWeight,
+      required FontWeight designationFontWeight,
+      required double nameHeight,
+      required double designationHeight,
+    }) {
+      return Row(
         children: <Widget>[
           Expanded(
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: _SkeletonBox(
-                    height: math.max(1, constraints.maxHeight),
-                    radius: 18,
-                  ),
-                );
-              },
+            child: _legacyAwareText(
+              text: resolvedName,
+              fontFamily: displayNameFontFamily,
+              maxLines: 1,
+              textAlign: TextAlign.left,
+              fitToWidth: true,
+              style: TextStyle(
+                color: stripTextColor,
+                fontWeight: nameFontWeight,
+                fontSize: nameFontSize,
+                height: nameHeight,
+              ),
             ),
           ),
-          if (showBottomStrip) const _SkeletonBox(height: 52, radius: 12),
+          const SizedBox(width: 10),
+          Container(
+            width: 1.5,
+            height: 18,
+            decoration: BoxDecoration(
+              color: dividerColor,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _legacyAwareText(
+              text: resolvedDesignation,
+              fontFamily: designationFontFamily,
+              maxLines: 1,
+              textAlign: TextAlign.right,
+              fitToWidth: true,
+              style: TextStyle(
+                color: mutedStripTextColor,
+                fontWeight: designationFontWeight,
+                fontSize: designationFontSize,
+                height: designationHeight,
+              ),
+            ),
+          ),
         ],
+      );
+    }
+
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (isBusinessProfile)
+          resolvedDesignation.isNotEmpty
+              ? buildSplitStripRow(
+                  nameFontSize: _isEnglishOnlyText(resolvedName)
+                      ? 24
+                      : businessNameFontSize,
+                  designationFontSize: _isEnglishOnlyText(resolvedName)
+                      ? 13.5
+                      : 18,
+                  nameFontWeight: FontWeight.w500,
+                  designationFontWeight: _isEnglishOnlyText(resolvedName)
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                  nameHeight: isTeluguName ? 0.98 : 1.0,
+                  designationHeight: 0.98,
+                )
+              : Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _isEnglishOnlyText(resolvedName)
+                          ? _buildEnglishBusinessStrip(
+                              resolvedName: resolvedName,
+                              resolvedDesignation: resolvedDesignation,
+                              displayNameFontFamily: displayNameFontFamily,
+                              designationFontFamily: designationFontFamily,
+                              stripTextColor: stripTextColor,
+                              mutedStripTextColor: mutedStripTextColor,
+                              showPhoneInStrip: showPhoneInStrip,
+                              resolvedPhone: resolvedPhone,
+                            )
+                          : _legacyAwareText(
+                              text: resolvedName,
+                              fontFamily: displayNameFontFamily,
+                              maxLines: 1,
+                              textAlign: TextAlign.left,
+                              fitToWidth: true,
+                              style: TextStyle(
+                                color: stripTextColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: businessNameFontSize,
+                                height: isTeluguName ? 0.98 : 1.0,
+                              ),
+                            ),
+                    ),
+                  ],
+                )
+        else if (_isEnglishOnlyText(resolvedName) &&
+            resolvedDesignation.isEmpty) ...<Widget>[
+          _legacyAwareText(
+            text: resolvedName,
+            fontFamily: displayNameFontFamily,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            fitToWidth: true,
+            style: TextStyle(
+              color: stripTextColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 26,
+              height: 1.0,
+            ),
+          ),
+        ] else if (_isEnglishOnlyText(resolvedName) &&
+            resolvedDesignation.isNotEmpty) ...<Widget>[
+          buildSplitStripRow(
+            nameFontSize: 24,
+            designationFontSize: 13.5,
+            nameFontWeight: FontWeight.w700,
+            designationFontWeight: FontWeight.w600,
+            nameHeight: 1.0,
+            designationHeight: 1.0,
+          ),
+        ] else ...<Widget>[
+          if (resolvedDesignation.isNotEmpty)
+            buildSplitStripRow(
+              nameFontSize: personalNameFontSize,
+              designationFontSize: 20,
+              nameFontWeight: FontWeight.w500,
+              designationFontWeight: FontWeight.w400,
+              nameHeight: personalNameLineHeight,
+              designationHeight: 0.82,
+            )
+          else
+            _legacyAwareText(
+              text: resolvedName,
+              fontFamily: displayNameFontFamily,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              fitToWidth: true,
+              style: TextStyle(
+                color: stripTextColor,
+                fontWeight: FontWeight.w500,
+                fontSize: personalNameFontSize,
+                height: personalNameLineHeight,
+              ),
+            ),
+        ],
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: stripGradient,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: bottomStripPadding,
+        ),
+        child: content,
       ),
     );
   }

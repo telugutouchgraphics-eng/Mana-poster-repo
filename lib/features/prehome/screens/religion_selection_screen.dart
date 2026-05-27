@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -7,7 +9,12 @@ import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 
 class ReligionSelectionScreen extends StatefulWidget {
-  const ReligionSelectionScreen({super.key});
+  const ReligionSelectionScreen({
+    super.key,
+    this.returnToPreviousOnSave = false,
+  });
+
+  final bool returnToPreviousOnSave;
 
   @override
   State<ReligionSelectionScreen> createState() =>
@@ -19,17 +26,66 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
   AppReligionPreference _selected = AppReligionPreference.all;
   bool _saving = false;
 
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadInitialSelection());
+  }
+
+  Future<void> _loadInitialSelection() async {
+    final selection = await AppReligionService.loadSelection();
+    if (!mounted || selection == null) {
+      return;
+    }
+    setState(() => _selected = selection);
+  }
+
   Future<void> _continue() async {
     if (_saving) {
       return;
     }
     setState(() => _saving = true);
-    final saved = await AppReligionService.persistSelection(_selected);
-    if (!mounted) {
-      return;
-    }
-    if (!saved) {
-      setState(() => _saving = false);
+    try {
+      final saved = await AppReligionService.persistSelection(_selected);
+      if (!mounted) {
+        return;
+      }
+      if (!saved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.strings.localized(
+                telugu: 'ఎంపిక సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+                english: 'Could not save your selection. Please try again.',
+                hindi: 'चयन सेव नहीं हो सका। कृपया फिर से कोशिश करें।',
+                tamil: 'தேர்வை சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+                kannada: 'ಆಯ್ಕೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                malayalam:
+                    'തിരഞ്ഞെടുപ്പ് സേവ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (widget.returnToPreviousOnSave) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+
+      await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
+      final nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute(
+        includeReligionGate: false,
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pushReplacementNamed(nextRoute);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -45,17 +101,11 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
           ),
         ),
       );
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
-
-    await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
-    final nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute(
-      includeReligionGate: false,
-    );
-    if (!mounted) {
-      return;
-    }
-    Navigator.of(context).pushReplacementNamed(nextRoute);
   }
 
   @override

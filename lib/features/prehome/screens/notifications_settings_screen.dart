@@ -42,12 +42,16 @@ class _NotificationsSettingsScreenState
       _snapshot = next;
       _saving = true;
     });
-    await NotificationPreferencesService.save(next);
-    await NotificationService.instance.syncCurrentPreferences();
-    if (!mounted) {
-      return;
+    try {
+      await NotificationPreferencesService.save(next);
+      await NotificationService.instance.syncCurrentPreferences();
+    } catch (_) {
+      // Keep the optimistic toggle state, but always release the saving UI.
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
-    setState(() => _saving = false);
   }
 
   @override
@@ -149,36 +153,39 @@ class _NotificationsSettingsScreenState
                                 color: Colors.white.withValues(alpha: 0.9),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: SwitchListTile.adaptive(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 2,
-                                ),
-                                title: Text(
-                                  copy.allNotificationsTitle,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF0F172A),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: SwitchListTile.adaptive(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 2,
                                   ),
-                                ),
-                                subtitle: Text(copy.allNotificationsSubtitle),
-                                value: _snapshot.allNotifications,
-                                onChanged: (value) {
-                                  _update(
-                                    _snapshot.copyWith(
-                                      allNotifications: value,
-                                      newPosters: value
-                                          ? _snapshot.newPosters
-                                          : false,
-                                      offersUpdates: value
-                                          ? _snapshot.offersUpdates
-                                          : false,
-                                      subscriptionReminders: value
-                                          ? _snapshot.subscriptionReminders
-                                          : false,
+                                  title: Text(
+                                    copy.allNotificationsTitle,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF0F172A),
                                     ),
-                                  );
-                                },
+                                  ),
+                                  subtitle: Text(copy.allNotificationsSubtitle),
+                                  value: _snapshot.allNotifications,
+                                  onChanged: (value) {
+                                    _update(
+                                      _snapshot.copyWith(
+                                        allNotifications: value,
+                                        newPosters: value
+                                            ? _snapshot.newPosters
+                                            : false,
+                                        offersUpdates: value
+                                            ? _snapshot.offersUpdates
+                                            : false,
+                                        subscriptionReminders: value
+                                            ? _snapshot.subscriptionReminders
+                                            : false,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ],
@@ -319,26 +326,32 @@ class _NotificationToggleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: enabled ? 1 : 0.55,
-      child: SwitchListTile.adaptive(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w500,
+      child: Material(
+        color: Colors.transparent,
+        child: SwitchListTile.adaptive(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 2,
           ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.w500,
+            ),
           ),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          value: enabled && value,
+          onChanged: enabled ? onChanged : null,
         ),
-        value: enabled && value,
-        onChanged: enabled ? onChanged : null,
       ),
     );
   }

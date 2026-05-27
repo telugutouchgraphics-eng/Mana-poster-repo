@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/services/admob_consent_service.dart';
@@ -14,15 +15,16 @@ import 'package:mana_poster/features/prehome/screens/account_deletion_screen.dar
 import 'package:mana_poster/features/prehome/screens/about_app_screen.dart';
 import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
-import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
+import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
+import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
@@ -36,6 +38,29 @@ class ProfileScreen extends StatefulWidget {
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri != null) {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened) {
+      return;
+    }
+  }
+  if (!context.mounted) {
+    return;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        context.strings.localized(
+          telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+          english: 'Could not open the link. Please try again.',
+        ),
+      ),
+    ),
+  );
 }
 
 class _ProfileScreenState extends State<ProfileScreen>
@@ -71,15 +96,28 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _loadPosterProfile() async {
-    final profile = await PosterProfileService.load();
-    if (!mounted) {
-      return;
+    try {
+      final profile = await PosterProfileService.load();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _posterProfile = profile;
+        _loadingProfile = false;
+      });
+      _warmPosterProfileImage(profile);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Profile load failed: $error',
+        name: 'profile.screen',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _loadingProfile = false);
     }
-    setState(() {
-      _posterProfile = profile;
-      _loadingProfile = false;
-    });
-    _warmPosterProfileImage(profile);
   }
 
   void _warmPosterProfileImage(PosterProfileData profile) {
@@ -180,6 +218,36 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _openReligionSelection(_ProfileCopy copy) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const ReligionSelectionScreen(
+          returnToPreviousOnSave: true,
+        ),
+      ),
+    );
+    if (!mounted || changed != true) {
+      return;
+    }
+
+    await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
+    final selection = await AppReligionService.loadSelection();
+    if (!mounted || selection == null) {
+      return;
+    }
+
+    final message = switch (selection) {
+      AppReligionPreference.hindu => copy.religionSavedHinduMessage,
+      AppReligionPreference.muslim => copy.religionSavedMuslimMessage,
+      AppReligionPreference.christian => copy.religionSavedChristianMessage,
+      AppReligionPreference.all => copy.religionSavedAllMessage,
+    };
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
@@ -203,6 +271,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       appBarActions: <Widget>[
         IconButton(
           visualDensity: VisualDensity.compact,
+          tooltip: copy.religionTitle,
+          icon: const Icon(
+            Icons.account_balance_rounded,
+            size: 22,
+            color: Color(0xFF0F172A),
+          ),
+          onPressed: () => unawaited(_openReligionSelection(copy)),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
           tooltip: copy.settingsTitle,
           icon: const Icon(
             Icons.settings_rounded,
@@ -215,6 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (_) => _ProfileMoreScreen(
                   copy: copy,
                   onShareApp: () => _shareApp(copy),
+                  onOpenReligionSelection: () => _openReligionSelection(copy),
                   onLogout: () => _logout(copy),
                   showAdPrivacyChoices: _privacyChoicesVisible,
                 ),
@@ -293,25 +372,28 @@ class _ProfileOptionTile extends StatelessWidget {
 
     return Column(
       children: <Widget>[
-        ListTile(
-          minTileHeight: 52,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-          leading: _buildLeading(iconBackground, iconColor),
-          title: Text(
-            item.title,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: titleColor,
-              fontSize: 15,
+        Material(
+          color: Colors.transparent,
+          child: ListTile(
+            minTileHeight: 52,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+            leading: _buildLeading(iconBackground, iconColor),
+            title: Text(
+              item.title,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: titleColor,
+                fontSize: 15,
+              ),
             ),
+            subtitle: null,
+            trailing: Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.black.withValues(alpha: 0.32),
+              size: 21,
+            ),
+            onTap: item.onTap ?? () {},
           ),
-          subtitle: null,
-          trailing: Icon(
-            Icons.chevron_right_rounded,
-            color: Colors.black.withValues(alpha: 0.32),
-            size: 21,
-          ),
-          onTap: item.onTap ?? () {},
         ),
         if (showDivider)
           const Divider(
@@ -409,12 +491,14 @@ class _ProfileMoreScreen extends StatelessWidget {
   const _ProfileMoreScreen({
     required this.copy,
     required this.onShareApp,
+    required this.onOpenReligionSelection,
     required this.onLogout,
     required this.showAdPrivacyChoices,
   });
 
   final _ProfileCopy copy;
   final Future<void> Function() onShareApp;
+  final Future<void> Function() onOpenReligionSelection;
   final Future<void> Function() onLogout;
   final bool showAdPrivacyChoices;
 
@@ -508,6 +592,12 @@ class _ProfileMoreScreen extends StatelessWidget {
                   },
                 ),
                 _ProfileItemData(
+                  icon: Icons.account_balance_rounded,
+                  title: copy.religionTitle,
+                  subtitle: copy.religionSubtitle,
+                  onTap: () => unawaited(onOpenReligionSelection()),
+                ),
+                _ProfileItemData(
                   icon: Icons.card_membership_rounded,
                   title: copy.subscriptionTitle,
                   subtitle: copy.subscriptionSubtitle,
@@ -569,15 +659,10 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.privacy_tip_outlined,
                   title: copy.privacyPolicyTitle,
                   subtitle: copy.privacyPolicySubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const LegalDocumentScreen(
-                          documentType: LegalDocumentType.privacyPolicy,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _openExternalPublicUrl(
+                    context,
+                    AppPublicInfo.privacyPolicyUrl,
+                  ),
                 ),
                 if (showAdPrivacyChoices)
                   _ProfileItemData(
@@ -594,15 +679,10 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.gavel_rounded,
                   title: copy.legalNoticesTitle,
                   subtitle: copy.legalNoticesSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const LegalDocumentScreen(
-                          documentType: LegalDocumentType.termsAndConditions,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _openExternalPublicUrl(
+                    context,
+                    AppPublicInfo.legalNoticesUrl,
+                  ),
                 ),
               ],
             ),
@@ -914,16 +994,10 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
                         ),
                         const SizedBox(height: 6),
                         TextButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const LegalDocumentScreen(
-                                  documentType:
-                                      LegalDocumentType.termsAndConditions,
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () => _openExternalPublicUrl(
+                            context,
+                            AppPublicInfo.termsUrl,
+                          ),
                           child: Text(copy.referralTermsAction),
                         ),
                         OutlinedButton(
@@ -992,6 +1066,23 @@ class _ProfileCopy {
   String get moreSubtitle =>
       _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
   String get settingsTitle => _isTelugu ? 'సెట్టింగ్స్' : 'Settings';
+  String get religionTitle =>
+      _isTelugu ? 'మతం మార్చండి' : 'Change religion';
+  String get religionSubtitle => _isTelugu
+      ? 'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి'
+      : 'Update which categories appear in home';
+  String get religionSavedHinduMessage => _isTelugu
+      ? 'హిందూ ఎంపిక సేవ్ అయింది'
+      : 'Hindu preference saved';
+  String get religionSavedMuslimMessage => _isTelugu
+      ? 'ముస్లిం ఎంపిక సేవ్ అయింది'
+      : 'Muslim preference saved';
+  String get religionSavedChristianMessage => _isTelugu
+      ? 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది'
+      : 'Christian preference saved';
+  String get religionSavedAllMessage => _isTelugu
+      ? 'అన్ని కేటగిరీలు చూపించే ఎంపిక సేవ్ అయింది'
+      : 'All categories preference saved';
 
   String get languageTitle =>
       _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;

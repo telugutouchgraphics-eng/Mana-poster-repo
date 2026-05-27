@@ -1,3 +1,5 @@
+import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
+
 class CreatorPosterPersonalization {
   const CreatorPosterPersonalization({
     required this.photoShape,
@@ -143,6 +145,7 @@ class ApprovedCreatorTemplate {
     required this.createdAtMillis,
     required this.personalizationConfig,
     this.creatorPublicId = '',
+    this.pageConfig,
   });
 
   final String id;
@@ -158,4 +161,5 @@ class ApprovedCreatorTemplate {
   final int createdAtMillis;
   final CreatorPosterPersonalization personalizationConfig;
   final String creatorPublicId;
+  final EditorPageConfig? pageConfig;
 }

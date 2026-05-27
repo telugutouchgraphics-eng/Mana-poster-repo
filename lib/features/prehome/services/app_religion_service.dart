@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mana_poster/app/services/native_startup_state_store.dart';
 
 enum AppReligionPreference { hindu, muslim, christian, all }
 
@@ -12,6 +17,10 @@ class AppReligionService {
 
   static const String _localKeyPrefix = 'selected_religion_v1_';
   static const String _remoteFieldKey = 'religionPreference';
+  static const String _lastRemoteSyncKeyPrefix =
+      'selected_religion_remote_sync_attempt_v1_';
+  static const String _religionStateFileName = 'app_religion_state_v1.json';
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static final Map<String, AppReligionPreference> _memorySelections =
       <String, AppReligionPreference>{};
@@ -30,7 +39,7 @@ class AppReligionService {
     SharedPreferences? prefs;
     try {
       prefs = await SharedPreferences.getInstance();
-      final stored = _readPreference(prefs.getString(_localKey(user.uid)));
+      final stored = await _loadStoredPreference(user.uid, prefs: prefs);
       if (stored != null) {
         _memorySelections[user.uid] = stored;
         return stored;
@@ -53,19 +62,60 @@ class AppReligionService {
     return (await loadSelection()) != null;
   }
 
+  static Future<bool> hasDeviceSelection({
+    String? fallbackUid,
+    SharedPreferences? prefs,
+  }) async {
+    final uid = _resolvedUid(fallbackUid);
+    if (uid == null) {
+      return false;
+    }
+
+    if (_memorySelections[uid] != null) {
+      return true;
+    }
+
+    try {
+      final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+      return await _loadStoredPreference(uid, prefs: resolvedPrefs) != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<bool> persistSelection(AppReligionPreference preference) async {
     final user = _currentUser();
     if (user == null) {
       return false;
     }
 
-    _memorySelections[user.uid] = preference;
-
     try {
       final prefs = await SharedPreferences.getInstance();
+      await _secureStorage.write(
+        key: _localKey(user.uid),
+        value: preference.name,
+      );
+      await NativeStartupStateStore.writeEntries(<String, Object?>{
+        _localKey(user.uid): preference.name,
+      });
+      await _writeReligionStateFile(<String, Object?>{user.uid: preference.name});
       await prefs.setString(_localKey(user.uid), preference.name);
+      final storedPreference = await _loadStoredPreference(user.uid, prefs: prefs);
+      if (storedPreference != preference) {
+        return false;
+      }
+      _memorySelections[user.uid] = preference;
+      final syncKey = '$_lastRemoteSyncKeyPrefix${user.uid}';
+      if (prefs.getString(syncKey) == preference.name) {
+        unawaited(_syncToRemote(user.uid, preference));
+        return true;
+      }
+      await prefs.setString(syncKey, preference.name);
+      if (prefs.getString(syncKey) != preference.name) {
+        return false;
+      }
     } catch (_) {
-      // Keep the in-memory selection so onboarding can continue.
+      return false;
     }
 
     unawaited(_syncToRemote(user.uid, preference));
@@ -102,6 +152,15 @@ class AppReligionService {
     } catch (_) {
       return null;
     }
+  }
+
+  static String? _resolvedUid(String? fallbackUid) {
+    final currentUid = _currentUser()?.uid.trim();
+    if (currentUid != null && currentUid.isNotEmpty) {
+      return currentUid;
+    }
+    final fallback = fallbackUid?.trim() ?? '';
+    return fallback.isEmpty ? null : fallback;
   }
 
   static AppReligionPreference? _readPreference(String? rawValue) {
@@ -155,5 +214,74 @@ class AppReligionService {
     } catch (_) {
       // Best-effort sync only.
     }
+  }
+
+  static Future<AppReligionPreference?> _loadStoredPreference(
+    String uid, {
+    required SharedPreferences prefs,
+  }) async {
+    final prefsValue = prefs.getString(_localKey(uid));
+    final nativeState = await NativeStartupStateStore.readAll();
+    final nativeValue = nativeState[_localKey(uid)] as String?;
+    final secureValue = await _secureStorage.read(key: _localKey(uid));
+    final fileState = await _readReligionStateFile();
+    final fileValue = fileState[uid] as String?;
+    final resolved =
+        _readPreference(prefsValue) ??
+        _readPreference(nativeValue) ??
+        _readPreference(fileValue) ??
+        _readPreference(secureValue);
+    if (resolved == null) {
+      return null;
+    }
+    if (prefsValue != resolved.name) {
+      await prefs.setString(_localKey(uid), resolved.name);
+    }
+    if (fileValue != resolved.name) {
+      await _writeReligionStateFile(<String, Object?>{uid: resolved.name});
+    }
+    if (nativeValue != resolved.name) {
+      await NativeStartupStateStore.writeEntries(<String, Object?>{
+        _localKey(uid): resolved.name,
+      });
+    }
+    if (secureValue != resolved.name) {
+      await _secureStorage.write(key: _localKey(uid), value: resolved.name);
+    }
+    return resolved;
+  }
+
+  static Future<Map<String, Object?>> _readReligionStateFile() async {
+    try {
+      final file = await _religionStateFile();
+      if (!await file.exists()) {
+        return <String, Object?>{};
+      }
+      final raw = await file.readAsString();
+      if (raw.trim().isEmpty) {
+        return <String, Object?>{};
+      }
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {}
+    return <String, Object?>{};
+  }
+
+  static Future<void> _writeReligionStateFile(Map<String, Object?> updates) async {
+    try {
+      final current = await _readReligionStateFile();
+      current.addAll(updates);
+      current.removeWhere((key, value) => value == null);
+      final file = await _religionStateFile();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode(current), flush: true);
+    } catch (_) {}
+  }
+
+  static Future<File> _religionStateFile() async {
+    final directory = await getApplicationSupportDirectory();
+    return File('${directory.path}${Platform.pathSeparator}$_religionStateFileName');
   }
 }

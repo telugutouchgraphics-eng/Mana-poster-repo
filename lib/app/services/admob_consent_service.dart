@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 
 /// Google UMP (User Messaging Platform) consent before AdMob ad requests.
 class AdMobConsentService {
@@ -13,6 +14,11 @@ class AdMobConsentService {
     if (kIsWeb) {
       return;
     }
+    try {
+      await PostSplashStartupGate.whenReady.timeout(
+        const Duration(seconds: 20),
+      );
+    } catch (_) {}
 
     final params = ConsentRequestParameters();
     await _requestConsentInfoUpdate(params);

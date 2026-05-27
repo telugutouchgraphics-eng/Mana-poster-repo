@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
     if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
@@ -9,7 +10,6 @@ import 'package:mana_poster/features/prehome/screens/language_selection_screen.d
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
-import 'package:mana_poster/features/prehome/screens/permissions_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
 import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
@@ -41,18 +41,34 @@ class AppRoutes {
     return const WebResetScreen();
   }
 
+  static Widget _readyEntry(Widget mobileScreen) {
+    return _webEntry(PostSplashStartupReadyMarker(child: mobileScreen));
+  }
+
+  static Widget startupScreenFor(String routeName) {
+    switch (routeName) {
+      case language:
+        return _readyEntry(const LanguageSelectionScreen());
+      case login:
+        return _readyEntry(const LoginScreen());
+      case home:
+        return _readyEntry(const HomeScreen());
+      default:
+        return _readyEntry(const LanguageSelectionScreen());
+    }
+  }
+
   static final Map<String, WidgetBuilder> map = <String, WidgetBuilder>{
     splash: (_) => _webEntry(const SplashScreen()),
-    language: (_) => _webEntry(const LanguageSelectionScreen()),
-    login: (_) => _webEntry(const LoginScreen()),
-    permissions: (_) => _webEntry(const PermissionsScreen()),
-    religion: (_) => _webEntry(const ReligionSelectionScreen()),
-    profileSetup: (_) => _webEntry(const ProfileSetupScreen()),
-    home: (_) => _webEntry(const HomeScreen()),
-    pageSetup: (_) => _webEntry(const PageSetupScreen()),
-    imageEditor: (_) => _webEntry(const ImageEditorScreen()),
+    language: (_) => _readyEntry(const LanguageSelectionScreen()),
+    login: (_) => _readyEntry(const LoginScreen()),
+    religion: (_) => _readyEntry(const ReligionSelectionScreen()),
+    profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),
+    home: (_) => _readyEntry(const HomeScreen()),
+    pageSetup: (_) => _readyEntry(const PageSetupScreen()),
+    imageEditor: (_) => _readyEntry(const ImageEditorScreen()),
     notificationUnavailable: (_) =>
-        _webEntry(const NotificationUnavailableScreen()),
+        _readyEntry(const NotificationUnavailableScreen()),
   };
 
   static Route<dynamic>? resolveDynamicRoute(RouteSettings settings) {
@@ -75,7 +91,7 @@ class AppRoutes {
     Widget? screen;
     switch (kind) {
       case 'category':
-        screen = _webEntry(
+        screen = _readyEntry(
           HomeScreen(
             initialCategorySlug: id,
             initialNotificationPayload: payload,
@@ -83,7 +99,7 @@ class AppRoutes {
         );
         break;
       case 'event':
-        screen = _webEntry(
+        screen = _readyEntry(
           HomeScreen(
             initialCategorySlug: id,
             initialNotificationPayload: payload,
@@ -92,7 +108,7 @@ class AppRoutes {
         break;
       case 'offer':
       case 'poster':
-        screen = _webEntry(
+        screen = _readyEntry(
           HomeScreen(
             initialNotificationPayload: payload..putIfAbsent('id', () => id),
           ),
@@ -100,13 +116,15 @@ class AppRoutes {
         break;
       case 'editor':
         if (id.isEmpty) {
-          screen = _webEntry(const NotificationUnavailableScreen());
+          screen = _readyEntry(const NotificationUnavailableScreen());
         } else {
-          screen = _webEntry(ImageEditorScreen(templateDocumentSource: id));
+          screen = _readyEntry(
+            ImageEditorScreen(templateDocumentSource: id),
+          );
         }
         break;
       default:
-        screen = _webEntry(const NotificationUnavailableScreen());
+        screen = _readyEntry(const NotificationUnavailableScreen());
     }
 
     return MaterialPageRoute<void>(builder: (_) => screen!, settings: settings);

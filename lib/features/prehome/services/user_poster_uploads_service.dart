@@ -11,10 +11,7 @@ import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class UserPosterUploadSubmitResult {
-  const UserPosterUploadSubmitResult._({
-    required this.ok,
-    required this.code,
-  });
+  const UserPosterUploadSubmitResult._({required this.ok, required this.code});
 
   final bool ok;
   final UserPosterUploadSubmitCode code;
@@ -25,8 +22,9 @@ class UserPosterUploadSubmitResult {
         code: UserPosterUploadSubmitCode.success,
       );
 
-  static UserPosterUploadSubmitResult failure(UserPosterUploadSubmitCode code) =>
-      UserPosterUploadSubmitResult._(ok: false, code: code);
+  static UserPosterUploadSubmitResult failure(
+    UserPosterUploadSubmitCode code,
+  ) => UserPosterUploadSubmitResult._(ok: false, code: code);
 }
 
 enum UserPosterUploadSubmitCode {
@@ -48,6 +46,10 @@ class UserPosterUploadsService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  static const List<Duration> _transientReadRetryDelays = <Duration>[
+    Duration(milliseconds: 350),
+    Duration(milliseconds: 900),
+  ];
 
   String _hiddenUploadsKey(String uid) =>
       'mana_poster_hidden_user_uploads_v1::$uid';
@@ -65,7 +67,9 @@ class UserPosterUploadsService {
     final now = DateTime.now().millisecondsSinceEpoch;
     return docs
         .map((doc) => UserPosterUpload.fromMap(doc.id, doc.data()))
-        .where((item) => item.expiresAtMillis <= 0 || item.expiresAtMillis > now)
+        .where(
+          (item) => item.expiresAtMillis <= 0 || item.expiresAtMillis > now,
+        )
         .toList(growable: false);
   }
 
@@ -87,12 +91,49 @@ class UserPosterUploadsService {
     if (uid.isEmpty) {
       return const <UserPosterUpload>[];
     }
-    final snapshot = await _uploadsQueryForUser(uid).get(
-      GetOptions(
-        source: forceServer ? Source.server : Source.serverAndCache,
-      ),
-    );
-    return _mapUploadDocs(snapshot.docs);
+    final query = _uploadsQueryForUser(uid);
+    for (
+      var attempt = 0;
+      attempt <= _transientReadRetryDelays.length;
+      attempt++
+    ) {
+      try {
+        final snapshot = await query.get(
+          GetOptions(
+            source: forceServer ? Source.server : Source.serverAndCache,
+          ),
+        );
+        return _mapUploadDocs(snapshot.docs);
+      } on FirebaseException catch (error) {
+        final canRetry =
+            _isTransientFirestoreReadError(error) &&
+            attempt < _transientReadRetryDelays.length;
+        if (canRetry) {
+          await Future<void>.delayed(_transientReadRetryDelays[attempt]);
+          continue;
+        }
+        if (forceServer && _isTransientFirestoreReadError(error)) {
+          try {
+            final cachedSnapshot = await query.get(
+              const GetOptions(source: Source.cache),
+            );
+            return _mapUploadDocs(cachedSnapshot.docs);
+          } on FirebaseException {
+            rethrow;
+          }
+        }
+        rethrow;
+      }
+    }
+    return const <UserPosterUpload>[];
+  }
+
+  bool _isTransientFirestoreReadError(FirebaseException error) {
+    final code = error.code.trim().toLowerCase();
+    return code == 'unavailable' ||
+        code == 'deadline-exceeded' ||
+        code == 'aborted' ||
+        code == 'resource-exhausted';
   }
 
   Future<Set<String>> hiddenUploadIdsForCurrentUser() async {
@@ -129,8 +170,11 @@ class UserPosterUploadsService {
 
   static int resolveApplicableFromMillis([DateTime? now]) {
     final istNow = _istDateTime(now);
-    final sameDayStartUtc = DateTime.utc(istNow.year, istNow.month, istNow.day)
-        .subtract(IstTimeService.offset);
+    final sameDayStartUtc = DateTime.utc(
+      istNow.year,
+      istNow.month,
+      istNow.day,
+    ).subtract(IstTimeService.offset);
     if (istNow.hour >= _uploadCutoffHourIst) {
       return sameDayStartUtc.millisecondsSinceEpoch + IstTimeService.dayMillis;
     }
@@ -232,25 +276,39 @@ class UserPosterUploadsService {
     required bool isShare,
   }) async {
     final posterId = approvedPosterTemplateId.trim();
-    if (posterId.isEmpty) {
+    final uid = _auth.currentUser?.uid.trim() ?? '';
+    if (posterId.isEmpty || uid.isEmpty) {
       return;
     }
     final field = isShare ? 'shareCount' : 'downloadCount';
     try {
-      final query = await _firestore
-          .collection('userPosterUploads')
-          .where('status', isEqualTo: 'approved')
-          .where('approvedPosterTemplateId', isEqualTo: posterId)
-          .limit(1)
-          .get();
-      if (query.docs.isEmpty) {
+      final snapshot = await _uploadsQueryForUser(
+        uid,
+      ).get(const GetOptions(source: Source.serverAndCache));
+      QueryDocumentSnapshot<Map<String, dynamic>>? matchedDoc;
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final status = (data['status'] as String?)?.trim().toLowerCase() ?? '';
+        final approvedId =
+            (data['approvedPosterTemplateId'] as String?)?.trim() ?? '';
+        if (status == 'approved' && approvedId == posterId) {
+          matchedDoc = doc;
+          break;
+        }
+      }
+      if (matchedDoc == null) {
         return;
       }
-      await query.docs.first.reference.update(<String, dynamic>{
+      await matchedDoc.reference.update(<String, dynamic>{
         field: FieldValue.increment(1),
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
       });
-    } catch (_) {
+    } catch (error) {
+      if (kDebugMode || kProfileMode) {
+        debugPrint(
+          'UserPosterUploadsService.incrementApprovedContributionCountForPoster failed: $error',
+        );
+      }
       // Best-effort metrics update only.
     }
   }

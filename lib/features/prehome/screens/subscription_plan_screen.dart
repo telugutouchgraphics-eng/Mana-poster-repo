@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -27,7 +29,7 @@ class SubscriptionPlanScreen extends StatefulWidget {
 }
 
 class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
-    with AppLanguageStateMixin {
+    with AppLanguageStateMixin, WidgetsBindingObserver {
   final SubscriptionBackendService _backendService =
       SubscriptionBackendService();
   final ProPurchaseGateway _purchaseGateway = InAppPurchaseGateway();
@@ -40,6 +42,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool _busyRestore = false;
   bool _didAutoStartPurchase = false;
   bool _didAutoTriggerRestore = false;
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  DateTime _screenShownAt = DateTime.now();
+  DateTime? _lastStoreFlowAttemptAt;
 
   void _debugLog(String message) {
     if (kDebugMode) {
@@ -62,6 +67,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _screenShownAt = DateTime.now();
     unawaited(_purchaseGateway.initialize());
     unawaited(prewarmSubscriptionVideoPrompts());
     SubscriptionBackendService.entitlementNotifier.addListener(
@@ -72,6 +79,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_purchaseGateway.isPurchaseFlowActive) {
       unawaited(_purchaseGateway.abandonPendingPurchaseFlow());
     }
@@ -79,6 +87,11 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       _handleEntitlementChanged,
     );
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appLifecycleState = state;
   }
 
   void _handleEntitlementChanged() {
@@ -93,31 +106,46 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   Future<void> _loadStatus() async {
     setState(() => _loading = true);
-    final wait = await Future.wait<Object?>(<Future<Object?>>[
-      _loadStoreProduct(),
-      _backendService.fetchEntitlement(forceRefresh: true),
-    ]);
-    final product = wait[0] as ProductDetails?;
-    final result = wait[1] as SubscriptionBackendResult;
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _backendResult = result;
-      _selectedProduct = product;
-      _loading = false;
-    });
-    if (product != null) {
-      _logSelectedProduct(product);
-    }
-    if (widget.triggerRestoreOnOpen && !_didAutoTriggerRestore) {
-      _didAutoTriggerRestore = true;
-      unawaited(_runDeferredAutoAction(_restoreSubscriptions));
-      return;
-    }
-    if (widget.startPurchaseOnOpen && !_didAutoStartPurchase && _canSubscribe) {
-      _didAutoStartPurchase = true;
-      unawaited(_runDeferredAutoAction(_subscribeFreePlan));
+    try {
+      final wait = await Future.wait<Object?>(<Future<Object?>>[
+        _loadStoreProduct(),
+        _backendService.fetchEntitlement(forceRefresh: true),
+      ]);
+      final product = wait[0] as ProductDetails?;
+      final result = wait[1] as SubscriptionBackendResult;
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _backendResult = result;
+        _selectedProduct = product;
+        _loading = false;
+      });
+      if (product != null) {
+        _logSelectedProduct(product);
+      }
+      if (widget.triggerRestoreOnOpen && !_didAutoTriggerRestore) {
+        _didAutoTriggerRestore = true;
+        unawaited(_runDeferredAutoAction(_restoreSubscriptions));
+        return;
+      }
+      if (widget.startPurchaseOnOpen &&
+          !_didAutoStartPurchase &&
+          _canSubscribe) {
+        _didAutoStartPurchase = true;
+        unawaited(_runDeferredAutoAction(_subscribeFreePlan));
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+        _backendResult ??= const SubscriptionBackendResult(
+          state: SubscriptionBackendState.failed,
+          message: 'Unable to load subscription status right now.',
+        );
+      });
     }
   }
 
@@ -126,22 +154,52 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (!mounted) {
       return;
     }
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) {
       return;
     }
-    final route = ModalRoute.of(context);
-    if (route != null && !route.isCurrent) {
+    if (!_canSafelyLaunchStoreFlow()) {
       await Future<void>.delayed(const Duration(milliseconds: 250));
       if (!mounted) {
         return;
       }
     }
-    final latestRoute = ModalRoute.of(context);
-    if (latestRoute != null && !latestRoute.isCurrent) {
+    if (!_canSafelyLaunchStoreFlow()) {
       return;
     }
     await action();
+  }
+
+  bool _canSafelyLaunchStoreFlow() {
+    if (!mounted) {
+      return false;
+    }
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) {
+      return false;
+    }
+    if (_appLifecycleState != AppLifecycleState.resumed) {
+      return false;
+    }
+    final sinceShown = DateTime.now().difference(_screenShownAt);
+    if (sinceShown < const Duration(milliseconds: 800)) {
+      return false;
+    }
+    final lastAttemptAt = _lastStoreFlowAttemptAt;
+    if (lastAttemptAt != null &&
+        DateTime.now().difference(lastAttemptAt) < const Duration(seconds: 3)) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _prepareForStoreFlow() async {
+    await _purchaseGateway.initialize();
+    if (!_canSafelyLaunchStoreFlow()) {
+      return false;
+    }
+    _lastStoreFlowAttemptAt = DateTime.now();
+    return true;
   }
 
   Future<ProductDetails?> _loadStoreProduct() async {
@@ -196,6 +254,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (_isBusy || !_canSubscribe) {
       return;
     }
+    if (!await _prepareForStoreFlow()) {
+      return;
+    }
     var shouldShowThanksPrompt = false;
     setState(() => _busyFree = true);
     try {
@@ -229,7 +290,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       return;
     }
     if (shouldShowThanksPrompt) {
-      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      await _showThanksPromptOnce();
       if (!mounted) {
         return;
       }
@@ -239,6 +300,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   Future<void> _restoreSubscriptions() async {
     if (_isBusy) {
+      return;
+    }
+    if (!await _prepareForStoreFlow()) {
       return;
     }
     setState(() => _busyRestore = true);
@@ -272,7 +336,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
               ),
             ),
           );
-          await showSubscriptionThanksVideoPromptIfAvailable(context);
+          await _showThanksPromptOnce();
           if (!mounted) {
             return;
           }
@@ -294,7 +358,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!mounted || !restored) {
         return;
       }
-      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      await _showThanksPromptOnce();
       if (!mounted) {
         return;
       }
@@ -458,6 +522,61 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
           state: SubscriptionBackendState.failed,
           message: 'Subscription verification failed',
         );
+  }
+
+  Future<void> _showThanksPromptOnce() async {
+    final result = _backendResult;
+    if (result == null) {
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      return;
+    }
+
+    final identity = _buildThanksPromptIdentity(result);
+    if (identity == null) {
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final seenIdentity = prefs.getString(_thanksPromptSeenKey(result));
+    if (seenIdentity == identity) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+
+    await showSubscriptionThanksVideoPromptIfAvailable(context);
+    if (!mounted) {
+      return;
+    }
+    await prefs.setString(_thanksPromptSeenKey(result), identity);
+  }
+
+  String _thanksPromptSeenKey(SubscriptionBackendResult result) {
+    final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    final latestOrderId = result.latestOrderId?.trim() ?? '';
+    final identityScope = authUid.isNotEmpty ? authUid : latestOrderId;
+    final resolvedScope = identityScope.isNotEmpty ? identityScope : 'anon';
+    return 'subscription_thanks_video_seen_v1_$resolvedScope';
+  }
+
+  String? _buildThanksPromptIdentity(SubscriptionBackendResult result) {
+    if (!result.hasAccess) {
+      return null;
+    }
+    final latestOrderId = result.latestOrderId?.trim() ?? '';
+    final subscriptionState = result.subscriptionState?.trim() ?? '';
+    final startEpoch = result.startDate?.millisecondsSinceEpoch.toString() ?? '';
+    final expiryEpoch =
+        result.expiryTime?.millisecondsSinceEpoch.toString() ?? '';
+    final identity = <String>[
+      latestOrderId,
+      subscriptionState,
+      startEpoch,
+      expiryEpoch,
+    ].where((value) => value.isNotEmpty).join('|');
+    return identity.isEmpty ? null : identity;
   }
 
   String _messageForPurchaseResult(PurchaseFlowResult result) {

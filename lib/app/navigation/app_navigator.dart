@@ -18,7 +18,6 @@ class AppNavigator {
     AppRoutes.pageSetup,
     AppRoutes.imageEditor,
     AppRoutes.login,
-    AppRoutes.permissions,
     AppRoutes.religion,
     AppRoutes.profileSetup,
     AppRoutes.language,

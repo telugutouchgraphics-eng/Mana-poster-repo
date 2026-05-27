@@ -6,18 +6,28 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:mana_poster/firebase_options.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class FirebaseAuthService {
   FirebaseAuthService({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+    : _firebaseAuthOverride = firebaseAuth,
       _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
-  final FirebaseAuth _firebaseAuth;
+  final FirebaseAuth? _firebaseAuthOverride;
   final GoogleSignIn _googleSignIn;
 
   bool _googleInitialized = false;
+
+  FirebaseAuth get _firebaseAuth {
+    final override = _firebaseAuthOverride;
+    if (override != null) {
+      return override;
+    }
+    _ensureFirebaseConfigured();
+    return FirebaseAuth.instance;
+  }
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -28,7 +38,7 @@ class FirebaseAuthService {
     try {
       if (kIsWeb) {
         await _signInWithGoogleOnWeb();
-        await DeviceSessionService.instance.registerCurrentDeviceSession();
+        await _registerCurrentDeviceSessionBestEffort();
         return;
       }
 
@@ -46,7 +56,7 @@ class FirebaseAuthService {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       await _firebaseAuth.signInWithCredential(credential);
-      await DeviceSessionService.instance.registerCurrentDeviceSession();
+      await _registerCurrentDeviceSessionBestEffort();
     } on AuthFailure {
       rethrow;
     } on FirebaseAuthException catch (error) {
@@ -76,7 +86,7 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
-      await DeviceSessionService.instance.registerCurrentDeviceSession();
+      await _registerCurrentDeviceSessionBestEffort();
     } on FirebaseAuthException catch (error) {
       throw _mapFirebaseAuthError(error);
     }
@@ -92,7 +102,7 @@ class FirebaseAuthService {
         email: email,
         password: password,
       );
-      await DeviceSessionService.instance.registerCurrentDeviceSession();
+      await _registerCurrentDeviceSessionBestEffort();
     } on FirebaseAuthException catch (error) {
       throw _mapFirebaseAuthError(error);
     }
@@ -116,6 +126,7 @@ class FirebaseAuthService {
       try {
         await _googleSignIn.signOut();
       } catch (_) {}
+      await AppFlowService.persistLastKnownAuthUid(null);
       if (previousUid != null && previousUid.trim().isNotEmpty) {
         try {
           await PosterProfileService.clearLocalCacheForUid(previousUid);
@@ -128,6 +139,7 @@ class FirebaseAuthService {
       _firebaseAuth.signOut(),
       _googleSignIn.signOut(),
     ]);
+    await AppFlowService.persistLastKnownAuthUid(null);
     if (previousUid != null && previousUid.trim().isNotEmpty) {
       try {
         await PosterProfileService.clearLocalCacheForUid(previousUid);
@@ -295,6 +307,14 @@ class FirebaseAuthService {
       'Authentication is not configured on this build. Complete Firebase setup for this platform first.',
       code: 'not-configured',
     );
+  }
+
+  Future<void> _registerCurrentDeviceSessionBestEffort() async {
+    try {
+      await DeviceSessionService.instance.registerCurrentDeviceSession();
+    } catch (_) {
+      // Auth should still succeed even if post-login session sync is blocked.
+    }
   }
 }
 

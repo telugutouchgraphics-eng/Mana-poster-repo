@@ -4,9 +4,11 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 
@@ -14,6 +16,7 @@ import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/app/theme/app_theme.dart';
 
 class ManaPosterApp extends StatefulWidget {
@@ -43,6 +46,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   );
 
   late final AppLanguageController _languageController;
+  late final ThemeData _appTheme;
   FirebaseAnalyticsObserver? _analyticsObserver;
   StreamSubscription<User?>? _authUidSubscription;
   String? _lastSeenAuthUid;
@@ -54,15 +58,25 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     _languageController = AppLanguageController(
       initialLanguage: widget.initialLanguage,
     );
+    _appTheme = AppTheme.light();
     _attachFirebaseBindingsIfReady();
-    unawaited(_awaitFirebaseAndAttachBindings());
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      unawaited(_awaitFirebaseAndAttachBindings());
+    });
   }
 
   Future<void> _awaitFirebaseAndAttachBindings() async {
     if (_firebaseBindingsAttached) {
       return;
     }
-    await FirebaseBootstrap.ensureInitialized();
+    try {
+      await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 6));
+    } catch (_) {}
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) {
+      return;
+    }
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: false);
     if (!mounted) {
       return;
     }
@@ -89,8 +103,14 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
   void _attachSubscriptionEntitlementToAuth() {
     final auth = FirebaseAuth.instance;
     _lastSeenAuthUid = auth.currentUser?.uid;
+    if (_lastSeenAuthUid?.trim().isNotEmpty == true) {
+      unawaited(AppFlowService.persistLastKnownAuthUid(_lastSeenAuthUid));
+    }
     _authUidSubscription = auth.authStateChanges().listen((User? user) async {
       final nextUid = user?.uid;
+      if (nextUid?.trim().isNotEmpty == true) {
+        unawaited(AppFlowService.persistLastKnownAuthUid(nextUid));
+      }
       if (nextUid == _lastSeenAuthUid) {
         return;
       }
@@ -141,7 +161,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             showPerformanceOverlay: _showPerformanceOverlay,
             checkerboardRasterCacheImages: _showRasterCheckerboard,
             title: AppPublicInfo.appName,
-            theme: AppTheme.light(),
+            theme: _appTheme,
             navigatorObservers: <NavigatorObserver>[
               AppNavigator.routeObserver,
               ?analyticsObserver,

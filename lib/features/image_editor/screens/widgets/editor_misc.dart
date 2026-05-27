@@ -816,65 +816,68 @@ class _AdvancedLayersFullscreenOverlayState
                           : Colors.white.withValues(alpha: 0.08),
                     ),
                   ),
-                  child: ListTile(
-                    onTap: () {
-                      widget.onSelectLayer(layer.id);
-                      setState(() {});
-                    },
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 4,
-                    ),
-                    leading: _buildLayerPreview(layer),
-                    title: Text(
-                      _layerTitle(layer),
-                      style: const TextStyle(
-                        color: Color(0xFFF8FAFC),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ListTile(
+                      onTap: () {
+                        widget.onSelectLayer(layer.id);
+                        setState(() {});
+                      },
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 4,
                       ),
-                    ),
-                    subtitle: Text(
-                      selected ? 'Selected' : 'Tap to select',
-                      style: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
+                      leading: _buildLayerPreview(layer),
+                      title: Text(
+                        _layerTitle(layer),
+                        style: const TextStyle(
+                          color: Color(0xFFF8FAFC),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        IconButton(
-                          onPressed: () =>
-                              widget.onToggleLayerVisibility(layer.id),
-                          icon: Icon(
-                            layer.isHidden
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: const Color(0xFFE2E8F0),
-                          ),
+                      subtitle: Text(
+                        selected ? 'Selected' : 'Tap to select',
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
                         ),
-                        IconButton(
-                          onPressed: () => widget.onToggleLayerLock(layer.id),
-                          icon: Icon(
-                            layer.isLocked
-                                ? Icons.lock_rounded
-                                : Icons.lock_open_rounded,
-                            color: const Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.drag_handle_rounded,
-                              color: Color(0xFFE2E8F0),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () =>
+                                widget.onToggleLayerVisibility(layer.id),
+                            icon: Icon(
+                              layer.isHidden
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: const Color(0xFFE2E8F0),
                             ),
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            onPressed: () => widget.onToggleLayerLock(layer.id),
+                            icon: Icon(
+                              layer.isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded,
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.drag_handle_rounded,
+                                color: Color(0xFFE2E8F0),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -1348,6 +1351,18 @@ class _DraftsScreenState extends State<_DraftsScreen> {
   late Future<List<FileSystemEntity>> _draftsFuture = _loadDrafts();
   bool _saving = false;
 
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ScreenSecurityService.enableSecure());
+  }
+
+  @override
+  void dispose() {
+    unawaited(ScreenSecurityService.disableSecure());
+    super.dispose();
+  }
+
   Future<List<FileSystemEntity>> _loadDrafts() {
     return widget.storageService.listManualDraftFiles();
   }
@@ -1460,24 +1475,27 @@ class _DraftsScreenState extends State<_DraftsScreen> {
                         color: Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
-                    child: ListTile(
-                      onTap: () => _openDraft(file),
-                      title: Text(
-                        name,
-                        style: const TextStyle(
-                          color: Color(0xFFF8FAFC),
-                          fontWeight: FontWeight.w700,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        onTap: () => _openDraft(file),
+                        title: Text(
+                          name,
+                          style: const TextStyle(
+                            color: Color(0xFFF8FAFC),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      subtitle: Text(
-                        modified.toLocal().toString(),
-                        style: const TextStyle(color: Color(0xFF94A3B8)),
-                      ),
-                      trailing: IconButton(
-                        onPressed: () => _deleteDraft(file),
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          color: Color(0xFFE2E8F0),
+                        subtitle: Text(
+                          modified.toLocal().toString(),
+                          style: const TextStyle(color: Color(0xFF94A3B8)),
+                        ),
+                        trailing: IconButton(
+                          onPressed: () => _deleteDraft(file),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Color(0xFFE2E8F0),
+                          ),
                         ),
                       ),
                     ),

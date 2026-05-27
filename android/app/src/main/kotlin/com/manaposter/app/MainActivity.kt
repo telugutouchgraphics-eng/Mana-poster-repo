@@ -11,7 +11,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import android.os.Bundle
-import androidx.core.view.WindowCompat
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -19,10 +18,12 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val screenSecurityChannelName = "mana_poster/screen_security"
     private val mediaExportChannelName = "mana_poster/media_export"
+    private val installSourceChannelName = "mana_poster/install_source"
+    private val startupStateChannelName = "mana_poster/startup_state"
+    private val startupStatePrefsName = "mana_poster_startup_state_v1"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.enableEdgeToEdge(window)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -86,6 +87,80 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installSourceChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isTrustedPlayInstall" -> {
+                        result.success(isTrustedPlayInstall())
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, startupStateChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "readState" -> {
+                        result.success(readStartupState())
+                    }
+                    "writeState" -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val entries = call.argument<Map<String, Any?>>("entries")
+                        if (entries == null) {
+                            result.success(false)
+                        } else {
+                            result.success(writeStartupState(entries))
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+    }
+    private fun readStartupState(): Map<String, Any?> {
+        val prefs = applicationContext.getSharedPreferences(startupStatePrefsName, MODE_PRIVATE)
+        val state = prefs.all.mapValues { (_, value) ->
+            when (value) {
+                is String, is Boolean, is Int, is Long, is Float -> value
+                else -> value?.toString()
+            }
+        }
+        Log.d("ManaPosterStartupState", "readState=$state")
+        return state
+    }
+
+    private fun writeStartupState(entries: Map<String, Any?>): Boolean {
+        val prefs = applicationContext.getSharedPreferences(startupStatePrefsName, MODE_PRIVATE)
+        val editor = prefs.edit()
+        for ((key, value) in entries) {
+            when (value) {
+                null -> editor.remove(key)
+                is String -> editor.putString(key, value)
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is Double -> editor.putString(key, value.toString())
+                else -> editor.putString(key, value.toString())
+            }
+        }
+        val committed = editor.commit()
+        Log.d("ManaPosterStartupState", "writeState entries=$entries committed=$committed final=${prefs.all}")
+        return committed
+    }
+
+    private fun isTrustedPlayInstall(): Boolean {
+        return try {
+            val installerPackage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                packageManager.getInstallSourceInfo(packageName).installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getInstallerPackageName(packageName)
+            }?.trim()
+            installerPackage == "com.android.vending"
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun saveImageFileToGallery(filePath: String, fileName: String, mimeType: String): Map<String, Any?> {

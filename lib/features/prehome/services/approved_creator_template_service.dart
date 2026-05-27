@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/app/services/ist_time_service.dart';
+import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -35,11 +34,21 @@ class ApprovedCreatorTemplateService {
   final DynamicEventRepository _dynamicEventRepository;
 
   void _debugLogStack(String message, StackTrace stackTrace) {
-    if (!kDebugMode) {
+    if (!kDebugMode && !kProfileMode) {
       return;
     }
-    debugPrint(message);
-    debugPrintStack(stackTrace: stackTrace);
+    // ignore: avoid_print
+    print(message);
+    // ignore: avoid_print
+    print(stackTrace);
+  }
+
+  void _debugLog(String message) {
+    if (!kDebugMode && !kProfileMode) {
+      return;
+    }
+    // ignore: avoid_print
+    print(message);
   }
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
@@ -51,50 +60,172 @@ class ApprovedCreatorTemplateService {
     return page.templates;
   }
 
+  Future<List<ApprovedCreatorTemplate>> fetchAllApprovedTemplatesForCategory({
+    required String categoryId,
+    Source source = Source.serverAndCache,
+    int scanLimit = 800,
+  }) async {
+    final target = _normalizeTag(categoryId);
+    if (target.isEmpty) {
+      return const <ApprovedCreatorTemplate>[];
+    }
+    try {
+      final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      final seenIds = <String>{};
+      final directCandidates = <String>{
+        categoryId.trim(),
+        target,
+      }.where((value) => value.isNotEmpty).toList(growable: false);
+      var queriedDocs = 0;
+      var scannedDocs = 0;
+
+      for (final candidate in directCandidates) {
+        final snapshot = await firestore
+            .collection('creatorPosters')
+            .where('status', isEqualTo: 'approved')
+            .where('categoryId', isEqualTo: candidate)
+            .orderBy('createdAt', descending: true)
+            .limit(scanLimit)
+            .get(GetOptions(source: source));
+        queriedDocs += snapshot.docs.length;
+        scannedDocs += snapshot.docs.length;
+        for (final doc in snapshot.docs) {
+          if (seenIds.add(doc.id)) {
+            docs.add(doc);
+          }
+        }
+      }
+
+      final mapped = _mapSortedTemplates(docs);
+      final filtered = _filterPublished(mapped, docs, scanLimit);
+      if (filtered.isNotEmpty) {
+        _debugLog(
+          '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
+          'scannedDocs=$scannedDocs matchedDocs=${docs.length} '
+          'filtered=${filtered.length} fallbackScan=skipped source=$source',
+        );
+        return filtered;
+      }
+
+      final fallbackDocs = await _scanApprovedTemplatesForCategory(
+        categoryId: target,
+        limit: scanLimit,
+        source: source,
+      );
+      final fallbackMapped = _mapSortedTemplates(fallbackDocs);
+      final fallbackFiltered = _filterPublished(
+        fallbackMapped,
+        fallbackDocs,
+        scanLimit,
+      );
+      _debugLog(
+        '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
+        'scannedDocs=$scannedDocs matchedDocs=${docs.length} '
+        'filtered=${filtered.length} fallbackScan=${fallbackFiltered.length} '
+        'source=$source',
+      );
+      return fallbackFiltered;
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService.fetchAllApprovedTemplatesForCategory failed: $error',
+        stackTrace,
+      );
+      return const <ApprovedCreatorTemplate>[];
+    }
+  }
+
   Future<ApprovedCreatorTemplatePage> fetchApprovedTemplatesPage({
     int pageSize = 5,
     QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
     Source source = Source.serverAndCache,
+    bool allowFallbackMerge = true,
   }) async {
     try {
+      final totalStopwatch = Stopwatch()..start();
       final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
-      Query<Map<String, dynamic>> query = firestore
-          .collection('creatorPosters')
-          .where('status', isEqualTo: 'approved')
-          .orderBy('createdAt', descending: true)
-          .limit(queryLimit);
-      if (startAfterDocument != null) {
-        query = query.startAfterDocument(startAfterDocument);
-      }
-      final snapshot = await query.get(GetOptions(source: source));
+      final maxQueryPages = source == Source.cache
+          ? 1
+          : startAfterDocument == null
+          ? (allowFallbackMerge ? 3 : 1)
+          : 2;
+      final mergedVisible = <ApprovedCreatorTemplate>[];
+      final seenTemplateIds = <String>{};
+      QueryDocumentSnapshot<Map<String, dynamic>>? cursor = startAfterDocument;
+      QueryDocumentSnapshot<Map<String, dynamic>>? lastDocument =
+          startAfterDocument;
+      var queryMs = 0;
+      var mappingMs = 0;
+      var scannedDocs = 0;
+      var queriedPages = 0;
+      var lastPageDocCount = 0;
+      var hasExhaustedQuery = false;
 
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> mergedDocs = snapshot
-          .docs
-          .toList(growable: false);
-      var filteredTemplates = _filterPublished(
-        _mapSortedTemplates(mergedDocs),
-        mergedDocs,
-        pageSize,
-      );
-      if (startAfterDocument == null && filteredTemplates.length < pageSize) {
-        mergedDocs = await _mergePosterDocsWithFallback(
-          primary: mergedDocs,
-          limit: math.min(math.max(queryLimit * 6, 80), 300),
-          source: source,
+      while (queriedPages < maxQueryPages && mergedVisible.length < pageSize) {
+        final queryStopwatch = Stopwatch()..start();
+        Query<Map<String, dynamic>> query = firestore
+            .collection('creatorPosters')
+            .where('status', isEqualTo: 'approved')
+            .orderBy('createdAt', descending: true)
+            .limit(queryLimit);
+        if (cursor != null) {
+          query = query.startAfterDocument(cursor);
+        }
+        final snapshot = await query.get(GetOptions(source: source));
+        queryMs += queryStopwatch.elapsedMilliseconds;
+        queriedPages++;
+        lastPageDocCount = snapshot.docs.length;
+        if (snapshot.docs.isEmpty) {
+          hasExhaustedQuery = true;
+          break;
+        }
+        cursor = snapshot.docs.last;
+        lastDocument = cursor;
+        scannedDocs += snapshot.docs.length;
+        _debugLog(
+          '[PosterFetch] primary query docs=${snapshot.docs.length} '
+          'pageSize=$pageSize queryLimit=$queryLimit '
+          'startAfter=${queriedPages == 1 ? startAfterDocument?.id ?? 'null' : lastDocument.id} '
+          'source=$source page=$queriedPages/$maxQueryPages',
         );
-        filteredTemplates = _filterPublished(
-          _mapSortedTemplates(mergedDocs),
-          mergedDocs,
-          pageSize,
+
+        final mappingStopwatch = Stopwatch()..start();
+        final batchVisible = _filterPublished(
+          _mapSortedTemplates(snapshot.docs),
+          snapshot.docs,
+          queryLimit,
         );
+        mappingMs += mappingStopwatch.elapsedMilliseconds;
+        for (final template in batchVisible) {
+          if (seenTemplateIds.add(template.id)) {
+            mergedVisible.add(template);
+            if (mergedVisible.length >= pageSize) {
+              break;
+            }
+          }
+        }
+        if (snapshot.docs.length < queryLimit) {
+          hasExhaustedQuery = true;
+          break;
+        }
       }
+
+      final filteredTemplates = mergedVisible.length <= pageSize
+          ? mergedVisible
+          : mergedVisible.take(pageSize).toList(growable: false);
+      final fallbackMergeMs = totalStopwatch.elapsedMilliseconds - queryMs - mappingMs;
+      _debugLog(
+        '[PosterFetch] final mergedDocs=$scannedDocs '
+        'filteredTemplates=${filteredTemplates.length} '
+        'pageTarget=$pageSize pageCapDropped=0 '
+        'cacheQueryMs=$queryMs mappingMs=$mappingMs '
+        'queryPages=$queriedPages exhausted=$hasExhaustedQuery '
+        'fallbackMergeMs=$fallbackMergeMs totalMs=${totalStopwatch.elapsedMilliseconds}',
+      );
 
       return ApprovedCreatorTemplatePage(
         templates: filteredTemplates,
-        lastDocument: snapshot.docs.isEmpty
-            ? startAfterDocument
-            : snapshot.docs.last,
-        hasMore: snapshot.docs.length >= queryLimit,
+        lastDocument: lastDocument,
+        hasMore: !hasExhaustedQuery && lastPageDocCount >= queryLimit,
       );
     } catch (error, stackTrace) {
       _debugLogStack(
@@ -140,28 +271,47 @@ class ApprovedCreatorTemplateService {
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-  _mergePosterDocsWithFallback({
-    required List<QueryDocumentSnapshot<Map<String, dynamic>>> primary,
+  _scanApprovedTemplatesForCategory({
+    required String categoryId,
     required int limit,
     required Source source,
   }) async {
     try {
-      final unordered = await firestore
-          .collection('creatorPosters')
-          .where('status', isEqualTo: 'approved')
-          .limit(limit)
-          .get(GetOptions(source: source));
-      final known = primary.map((d) => d.id).toSet();
-      final extra = unordered.docs.where((d) => !known.contains(d.id)).toList();
-      if (extra.isEmpty) {
-        return primary;
+      final matched = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      QueryDocumentSnapshot<Map<String, dynamic>>? cursor;
+      const pageSize = 120;
+      var scanned = 0;
+      while (matched.length < limit && scanned < limit * 4) {
+        Query<Map<String, dynamic>> query = firestore
+            .collection('creatorPosters')
+            .where('status', isEqualTo: 'approved')
+            .orderBy(FieldPath.documentId)
+            .limit(pageSize);
+        if (cursor != null) {
+          query = query.startAfterDocument(cursor);
+        }
+        final page = await query.get(GetOptions(source: source));
+        if (page.docs.isEmpty) {
+          break;
+        }
+        cursor = page.docs.last;
+        scanned += page.docs.length;
+        for (final doc in page.docs) {
+          if (_docMatchesCategory(doc.data(), categoryId)) {
+            matched.add(doc);
+            if (matched.length >= limit) {
+              break;
+            }
+          }
+        }
       }
-      return <QueryDocumentSnapshot<Map<String, dynamic>>>[
-        ...primary,
-        ...extra,
-      ];
+      _debugLog(
+        '[PosterFetch] categoryFallbackScan target=$categoryId '
+        'matched=${matched.length} scanned=$scanned limit=$limit source=$source',
+      );
+      return matched;
     } catch (_) {
-      return primary;
+      return const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
     }
   }
 
@@ -174,6 +324,84 @@ class ApprovedCreatorTemplateService {
         .toList(growable: false);
     templates.sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
     return templates;
+  }
+
+  bool _docMatchesCategory(Map<String, dynamic> data, String categoryId) {
+    final targetAliases = _categoryAliases(categoryId);
+    if (targetAliases.isEmpty) {
+      return false;
+    }
+    final docCategoryId = (data['categoryId'] as String?)?.trim() ?? '';
+    if (_categoryAliases(
+      docCategoryId,
+    ).intersection(targetAliases).isNotEmpty) {
+      return true;
+    }
+    final docCategoryLabel = (data['categoryLabel'] as String?)?.trim() ?? '';
+    final labelTokens = <String>{
+      ..._categoryAliases(docCategoryLabel),
+      ..._categoryLabelTokenTags(docCategoryLabel),
+    };
+    if (labelTokens.intersection(targetAliases).isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
+
+  Set<String> _categoryAliases(String value) {
+    final normalized = _normalizeTag(value);
+    if (normalized.isEmpty) {
+      return const <String>{};
+    }
+    const aliasMap = <String, List<String>>{
+      'all': <String>['all'],
+      'good_morning': <String>['good_morning', 'morning'],
+      'good_afternoon': <String>['good_afternoon', 'afternoon'],
+      'good_night': <String>['good_night', 'night'],
+      'motivational': <String>['motivational'],
+      'love_quotes': <String>['love_quotes', 'love'],
+      'today_special': <String>['today_special', 'important_day'],
+      'birthdays': <String>['birthdays', 'birthday', 'celebration'],
+      'life_advice': <String>['life_advice'],
+      'gita_wisdom': <String>['gita_wisdom'],
+      'devotional': <String>['devotional'],
+      'mahabharata': <String>['mahabharata'],
+      'anniversary': <String>['anniversary', 'celebration'],
+      'good_thoughts': <String>['good_thoughts'],
+      'bible': <String>['bible'],
+      'islam': <String>['islam'],
+      'new': <String>['new', 'today_special'],
+      'weekday_special': <String>['weekday_special', 'today_special'],
+      'important_day': <String>['important_day', 'today_special'],
+      'regional_special': <String>['regional_special', 'today_special'],
+      'festival': <String>['festival', 'devotional', 'today_special'],
+      'jayanthi': <String>['jayanthi', 'important_day', 'regional_special'],
+      'vardhanthi': <String>['vardhanthi', 'important_day', 'regional_special'],
+    };
+    final output = <String>{normalized};
+    final aliases = aliasMap[normalized];
+    if (aliases != null) {
+      output.addAll(aliases.map(_normalizeTag));
+    }
+    return output.where((item) => item.isNotEmpty).toSet();
+  }
+
+  Set<String> _categoryLabelTokenTags(String value) {
+    if (value.trim().isEmpty) {
+      return const <String>{};
+    }
+    final output = <String>{};
+    final normalized = _normalizeTag(value);
+    if (normalized.isNotEmpty) {
+      output.add(normalized);
+    }
+    for (final word in value.toLowerCase().split(RegExp(r'\s+'))) {
+      final token = _normalizeTag(word);
+      if (token.length > 2) {
+        output.add(token);
+      }
+    }
+    return output;
   }
 
   List<ApprovedCreatorTemplate> _filterPublished(
@@ -193,39 +421,84 @@ class ApprovedCreatorTemplateService {
       publishMap[doc.id] = _toMillis(rawPublish) ?? 0;
       eventEndMap[doc.id] = _toMillis(data['eventEndAt']) ?? 0;
     }
-    final filtered = templates
-        .where((template) {
-          final publishAt = publishMap[template.id] ?? 0;
-          final eventEndAt = eventEndMap[template.id] ?? 0;
-          var visibleFrom = publishAt > 0
-              ? publishAt
-              : template.createdAtMillis;
-          if (visibleFrom <= 0) {
-            visibleFrom = now;
-          }
-          if (visibleFrom > now) {
-            return false;
-          }
-          if (eventEndAt > 0 && now > eventEndAt) {
-            return false;
-          }
-          final normalized = _normalizeTag(template.categoryId);
-          final usesRollingRetention =
-              normalized.isNotEmpty && knownDynamicTags.contains(normalized);
-          final retentionMs = usesRollingRetention
-              ? _posterRetentionWindowMillis
-              : 365 * 24 * 60 * 60 * 1000;
-          if (eventEndAt <= 0 && visibleFrom + retentionMs <= now) {
-            return false;
-          }
-          return _isTemplateDynamicCategoryVisible(
-            template.categoryId,
-            activeDynamicTags,
-            knownDynamicTags,
-            nowDate,
-          );
-        })
-        .toList(growable: false);
+    final filtered = <ApprovedCreatorTemplate>[];
+    final collectDebugCounts = kDebugMode;
+    final totalByCategory = collectDebugCounts ? <String, int>{} : null;
+    final publishHiddenByCategory = collectDebugCounts ? <String, int>{} : null;
+    final eventEndedByCategory = collectDebugCounts ? <String, int>{} : null;
+    final retentionHiddenByCategory = collectDebugCounts
+        ? <String, int>{}
+        : null;
+    final dynamicHiddenByCategory = collectDebugCounts ? <String, int>{} : null;
+    for (final template in templates) {
+      final category = _normalizeTag(template.categoryId);
+      if (collectDebugCounts) {
+        totalByCategory![category] = (totalByCategory[category] ?? 0) + 1;
+      }
+      final publishAt = publishMap[template.id] ?? 0;
+      final eventEndAt = eventEndMap[template.id] ?? 0;
+      var visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
+      if (visibleFrom <= 0) {
+        visibleFrom = now;
+      }
+      if (visibleFrom > now) {
+        if (collectDebugCounts) {
+          publishHiddenByCategory![category] =
+              (publishHiddenByCategory[category] ?? 0) + 1;
+        }
+        continue;
+      }
+      if (eventEndAt > 0 && now > eventEndAt) {
+        if (collectDebugCounts) {
+          eventEndedByCategory![category] =
+              (eventEndedByCategory[category] ?? 0) + 1;
+        }
+        continue;
+      }
+      final usesRollingRetention =
+          category.isNotEmpty && knownDynamicTags.contains(category);
+      final retentionMs = usesRollingRetention
+          ? _posterRetentionWindowMillis
+          : 365 * 24 * 60 * 60 * 1000;
+      if (eventEndAt <= 0 && visibleFrom + retentionMs <= now) {
+        if (collectDebugCounts) {
+          retentionHiddenByCategory![category] =
+              (retentionHiddenByCategory[category] ?? 0) + 1;
+        }
+        continue;
+      }
+      final dynamicVisible = _isTemplateDynamicCategoryVisible(
+        template.categoryId,
+        activeDynamicTags,
+        knownDynamicTags,
+        nowDate,
+      );
+      if (!dynamicVisible) {
+        if (collectDebugCounts) {
+          dynamicHiddenByCategory![category] =
+              (dynamicHiddenByCategory[category] ?? 0) + 1;
+        }
+        continue;
+      }
+      filtered.add(template);
+    }
+    if (kDebugMode) {
+      final filteredByCategory = <String, int>{};
+      for (final item in filtered) {
+        final key = _normalizeTag(item.categoryId);
+        filteredByCategory[key] = (filteredByCategory[key] ?? 0) + 1;
+      }
+      final pageCapDropped = filtered.length > maxItems
+          ? filtered.length - maxItems
+          : 0;
+      _debugLog(
+        '[PosterFetch] counts total=${templates.length} filtered=${filtered.length} '
+        'totalByCategory=$totalByCategory filteredByCategory=$filteredByCategory '
+        'publishHidden=$publishHiddenByCategory eventEnded=$eventEndedByCategory '
+        'retentionHidden=$retentionHiddenByCategory dynamicHidden=$dynamicHiddenByCategory '
+        'pageTarget=$maxItems pageCapDropped=$pageCapDropped',
+      );
+    }
     filtered.sort((a, b) {
       final publishA = publishMap[a.id] ?? 0;
       final publishB = publishMap[b.id] ?? 0;
@@ -242,6 +515,8 @@ class ApprovedCreatorTemplateService {
     if (filtered.length <= maxItems) {
       return filtered;
     }
+    // Respect requested page size to avoid large UI list jumps during startup
+    // and pagination; callers rely on deterministic page-sized batches.
     return filtered.take(maxItems).toList(growable: false);
   }
 
@@ -361,6 +636,16 @@ class ApprovedCreatorTemplateService {
     final categoryId = (data['categoryId'] as String?)?.trim() ?? '';
     final categoryLabel = (data['categoryLabel'] as String?)?.trim() ?? '';
     final createdAtMillis = _effectiveCreationMillis(data);
+    final widthPx = (data['widthPx'] as num?)?.toInt();
+    final heightPx = (data['heightPx'] as num?)?.toInt();
+    final pageConfig =
+        widthPx != null && heightPx != null && widthPx > 0 && heightPx > 0
+        ? EditorPageConfig(
+            name: '${widthPx}x$heightPx',
+            widthPx: widthPx,
+            heightPx: heightPx,
+          )
+        : null;
 
     return ApprovedCreatorTemplate(
       id: doc.id,
@@ -378,6 +663,7 @@ class ApprovedCreatorTemplateService {
         data['personalizationConfig'] ?? data['personalization'],
       ),
       creatorPublicId: (data['creatorPublicId'] as String? ?? '').trim(),
+      pageConfig: pageConfig,
     );
   }
 

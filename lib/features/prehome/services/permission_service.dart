@@ -72,9 +72,8 @@ class PermissionService {
   }
 
   Future<PermissionSnapshot> getSnapshot() async {
-    final Permission photosPermission = await _resolvePhotosPermission();
+    final PermissionStatus photosStatus = await _resolvePhotosStatus();
     final Permission cameraPermission = await _resolveCameraPermission();
-    final PermissionStatus photosStatus = await _safeStatus(photosPermission);
     final PermissionStatus cameraStatus = await _safeStatus(cameraPermission);
     final PermissionStatus notificationsStatus =
         await _resolveNotificationStatus();
@@ -96,9 +95,8 @@ class PermissionService {
   }
 
   Future<PermissionSnapshot> requestEssentialPermissions() async {
-    final Permission photosPermission = await _resolvePhotosPermission();
+    final PermissionStatus photosStatus = await _requestPhotosStatus();
     final Permission cameraPermission = await _resolveCameraPermission();
-    final PermissionStatus photosStatus = await _safeRequest(photosPermission);
     final PermissionStatus cameraStatus = await _safeRequest(cameraPermission);
     final PermissionStatus notificationsStatus =
         await _requestNotificationStatus();
@@ -120,38 +118,17 @@ class PermissionService {
   }
 
   Future<PermissionStatus> requestSingle(AppPermissionType type) async {
-    if (type == AppPermissionType.notifications) {
-      return _requestNotificationStatus();
+    switch (type) {
+      case AppPermissionType.photos:
+        return _requestPhotosStatus();
+      case AppPermissionType.camera:
+        return _safeRequest(await _resolveCameraPermission());
+      case AppPermissionType.notifications:
+        return _requestNotificationStatus();
     }
-    final Permission permission = await _permissionFor(type);
-    return _safeRequest(permission);
   }
 
   Future<bool> openSettings() => openAppSettings();
-
-  Future<Permission> _permissionFor(AppPermissionType type) {
-    switch (type) {
-      case AppPermissionType.photos:
-        return _resolvePhotosPermission();
-      case AppPermissionType.camera:
-        return _resolveCameraPermission();
-      case AppPermissionType.notifications:
-        return _resolveNotificationPermission();
-    }
-  }
-
-  Future<Permission> _resolvePhotosPermission() async {
-    if (kIsWeb) {
-      return Permission.photos;
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final sdkInt = await _loadAndroidSdkInt();
-      return sdkInt != null && sdkInt >= 33
-          ? Permission.photos
-          : Permission.storage;
-    }
-    return Permission.photos;
-  }
 
   Future<Permission> _resolveCameraPermission() async {
     return Permission.camera;
@@ -172,6 +149,46 @@ class PermissionService {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<bool> _needsPhotosPermission() async {
+    if (kIsWeb) {
+      return false;
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return true;
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+    final sdkInt = await _loadAndroidSdkInt();
+    return sdkInt == null || sdkInt <= 28;
+  }
+
+  Future<PermissionStatus> _resolvePhotosStatus() async {
+    if (!(await _needsPhotosPermission())) {
+      return PermissionStatus.granted;
+    }
+    final permission = await _resolvePhotosPermission();
+    return _safeStatus(permission);
+  }
+
+  Future<PermissionStatus> _requestPhotosStatus() async {
+    if (!(await _needsPhotosPermission())) {
+      return PermissionStatus.granted;
+    }
+    final permission = await _resolvePhotosPermission();
+    return _safeRequest(permission);
+  }
+
+  Future<Permission> _resolvePhotosPermission() async {
+    if (kIsWeb) {
+      return Permission.photos;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return Permission.storage;
+    }
+    return Permission.photos;
   }
 
   Future<PermissionStatus> _safeStatus(Permission permission) async {

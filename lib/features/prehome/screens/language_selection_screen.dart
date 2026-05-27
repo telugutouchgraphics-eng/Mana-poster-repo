@@ -1,8 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
-import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
@@ -47,13 +49,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
   }
 
   void _openLoginScreen() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        settings: const RouteSettings(name: AppRoutes.login),
-        builder: (_) => const LoginScreen(),
-      ),
-      (Route<dynamic> route) => false,
-    );
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.login, (Route<dynamic> route) => false);
   }
 
   Future<void> _continueToLogin() async {
@@ -61,17 +59,31 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
       return;
     }
     setState(() => _isContinuing = true);
-    final saved = await AppFlowService.persistLanguageSelection(_selected);
-    if (!mounted) {
-      return;
-    }
-    if (!saved) {
+    try {
+      final saved = await AppFlowService.persistLanguageSelection(_selected);
+      if (!mounted) {
+        return;
+      }
+      if (!saved) {
+        _showSaveError();
+        return;
+      }
+      context.languageController.setLanguage(_selected);
+      await FirebaseBootstrap.ensureInitialized(activateAppCheck: false);
+      if (!mounted) {
+        return;
+      }
+      _openLoginScreen();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
       _showSaveError();
-      setState(() => _isContinuing = false);
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isContinuing = false);
+      }
     }
-    context.languageController.setLanguage(_selected);
-    _openLoginScreen();
   }
 
   @override
@@ -79,21 +91,36 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
     final cs = Theme.of(context).colorScheme;
     final strings = context.strings;
     final languages = AppLanguage.values;
+    final mediaQuery = MediaQuery.of(context);
+    final safeViewportHeight = math.max(
+      0,
+      mediaQuery.size.height -
+          mediaQuery.padding.vertical -
+          mediaQuery.viewInsets.vertical,
+    );
 
     return Scaffold(
       body: GradientShell(
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final constrainedViewportHeight = constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : safeViewportHeight;
+              final minScrollableHeight = math
+                  .max(
+                    0.0,
+                    math.min(constrainedViewportHeight, safeViewportHeight) -
+                        48,
+                  )
+                  .toDouble();
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 24,
                 ),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 48,
-                  ),
+                  constraints: BoxConstraints(minHeight: minScrollableHeight),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 420),
@@ -186,7 +213,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen>
                                           ),
                                           alignment: Alignment.center,
                                           child: Text(
-                                            strings.languageName(item)
+                                            strings
+                                                .languageName(item)
                                                 .substring(0, 1),
                                             style: TextStyle(
                                               fontSize: 18,
