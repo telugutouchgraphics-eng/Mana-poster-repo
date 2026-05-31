@@ -6,6 +6,7 @@ class _TopBar extends StatelessWidget {
     required this.onUndoTap,
     required this.onRedoTap,
     required this.onDraftsTap,
+    required this.onShareTap,
     required this.onExportTap,
     required this.onDeleteTap,
     required this.onDuplicateTap,
@@ -13,6 +14,7 @@ class _TopBar extends StatelessWidget {
     required this.onSendBackTap,
     required this.canUndo,
     required this.canRedo,
+    required this.isSharing,
     required this.isExporting,
     required this.canDelete,
     required this.canDuplicate,
@@ -24,6 +26,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onUndoTap;
   final VoidCallback onRedoTap;
   final VoidCallback onDraftsTap;
+  final VoidCallback onShareTap;
   final VoidCallback onExportTap;
   final VoidCallback onDeleteTap;
   final VoidCallback onDuplicateTap;
@@ -31,6 +34,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onSendBackTap;
   final bool canUndo;
   final bool canRedo;
+  final bool isSharing;
   final bool isExporting;
   final bool canDelete;
   final bool canDuplicate;
@@ -54,12 +58,12 @@ class _TopBar extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: const BoxDecoration(
-        color: Color(0xF2101826),
+        color: _editorChromeSurfaceStrong,
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x1F000000),
-            blurRadius: 10,
-            offset: Offset(0, 2),
+            color: Color(0x120F172A),
+            blurRadius: 14,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -73,43 +77,38 @@ class _TopBar extends StatelessWidget {
               onTap: _withHaptic(() => Navigator.of(context).maybePop()),
             ),
             const SizedBox(width: 8),
-            SizedBox(
-              width: 164,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    strings.localized(
-                      telugu: 'ఇమేజ్ ఎడిటర్',
-                      english: 'Image Editor',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFFF8FAFC),
-                      letterSpacing: -0.2,
-                      fontSize: 20,
-                      height: 1.04,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    strings.localized(
-                      telugu: 'పోస్టర్ వర్క్‌స్పేస్',
-                      english: 'Poster workspace',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      height: 1.1,
-                      color: Color(0xFFB8C4D6),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+            _TopPrimaryPillButton(
+              label: strings.localized(
+                telugu: isSharing ? 'షేర్ అవుతోంది...' : 'షేర్',
+                english: isSharing ? 'Sharing...' : 'Share',
+              ),
+              onTap: isSharing ? null : onShareTap,
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              borderColor: const Color(0xFF25D366),
+              icon: Image.asset(
+                'assets/branding/whatsapp_icon.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) =>
+                    const Icon(Icons.whatshot_rounded, size: 16, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _TopPrimaryPillButton(
+              label: strings.localized(
+                telugu: isExporting ? 'సేవ్ అవుతోంది...' : 'డౌన్‌లోడ్',
+                english: isExporting ? 'Saving...' : 'Download',
+              ),
+              onTap: isExporting ? null : onExportTap,
+              backgroundColor: const Color(0xFF64748B),
+              foregroundColor: Colors.white,
+              borderColor: const Color(0xFF64748B),
+              icon: const Icon(
+                Icons.download_rounded,
+                size: 18,
+                color: Colors.white,
               ),
             ),
             _TopActionButton(
@@ -125,14 +124,6 @@ class _TopBar extends StatelessWidget {
             _TopActionButton(
               label: strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts'),
               onTap: onDraftsTap,
-            ),
-            const SizedBox(width: 8),
-            _TopActionButton(
-              label: strings.localized(
-                telugu: isExporting ? 'సేవ్ అవుతోంది...' : 'ఎగుమతి',
-                english: isExporting ? 'Saving...' : 'Export',
-              ),
-              onTap: isExporting ? null : onExportTap,
             ),
             const SizedBox(width: 6),
             _EditorIconButton(
@@ -166,6 +157,56 @@ class _TopBar extends StatelessWidget {
                 english: 'Delete selected',
               ),
               onTap: _withHaptic(canDelete ? onDeleteTap : null),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopPrimaryPillButton extends StatelessWidget {
+  const _TopPrimaryPillButton({
+    required this.label,
+    required this.onTap,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.borderColor,
+    required this.icon,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final Color borderColor;
+  final Widget icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PressableSurface(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      enabled: onTap != null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            icon,
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: foregroundColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),

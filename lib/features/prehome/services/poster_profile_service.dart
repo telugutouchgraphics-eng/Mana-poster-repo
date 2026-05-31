@@ -319,10 +319,18 @@ class PosterProfileService {
   static String get defaultName => _defaultName;
 
   static bool isSetupComplete(PosterProfileData profile) {
-    return profile.photoPath.trim().isNotEmpty ||
+    return profile.nameTelugu.trim().isNotEmpty ||
+        profile.nameEnglish.trim().isNotEmpty ||
+        profile.whatsappNumber.trim().isNotEmpty ||
+        profile.photoPath.trim().isNotEmpty ||
         profile.photoUrl.trim().isNotEmpty ||
         profile.originalPhotoPath.trim().isNotEmpty ||
-        profile.originalPhotoUrl.trim().isNotEmpty;
+        profile.originalPhotoUrl.trim().isNotEmpty ||
+        profile.businessName.trim().isNotEmpty ||
+        profile.businessTagline.trim().isNotEmpty ||
+        profile.businessWhatsappNumber.trim().isNotEmpty ||
+        profile.businessLogoPath.trim().isNotEmpty ||
+        profile.businessLogoUrl.trim().isNotEmpty;
   }
 
   static Future<PosterProfileData> load() async {

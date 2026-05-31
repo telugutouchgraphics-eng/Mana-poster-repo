@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth_platform_interface/firebase_auth_platform_interface.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -8,9 +9,24 @@ import 'package:mana_poster/firebase_options.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
+import 'package:mana_poster/features/prehome/services/first150_trial_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
+class AuthFlowResult {
+  const AuthFlowResult({
+    this.first150TrialGranted = false,
+    this.first150TrialExpiry,
+  });
+
+  final bool first150TrialGranted;
+  final DateTime? first150TrialExpiry;
+}
+
 class FirebaseAuthService {
+  static const String _googleProviderId = 'google.com';
+  static const String _passwordProviderId = 'password';
+  static const Duration _first150RetryWindow = Duration(hours: 24);
+
   FirebaseAuthService({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
     : _firebaseAuthOverride = firebaseAuth,
       _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
@@ -33,18 +49,18 @@ class FirebaseAuthService {
 
   User? get currentUser => _firebaseAuth.currentUser;
 
-  Future<void> signInWithGoogle() async {
+  Future<AuthFlowResult> signInWithGoogle() async {
     _ensureFirebaseConfigured();
     try {
       if (kIsWeb) {
-        await _signInWithGoogleOnWeb();
+        final isNewUser = await _signInWithGoogleOnWeb();
         await _registerCurrentDeviceSessionBestEffort();
-        return;
+        return _claimFirst150TrialIfEligible(isNewUser: isNewUser);
       }
 
       await _ensureGoogleInitialized();
 
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAccount googleUser = await _resolveGoogleAccount();
       final String? idToken = googleUser.authentication.idToken;
 
       if (idToken == null || idToken.isEmpty) {
@@ -55,8 +71,13 @@ class FirebaseAuthService {
       }
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
-      await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
       await _registerCurrentDeviceSessionBestEffort();
+      return _claimFirst150TrialIfEligible(
+        isNewUser: userCredential.additionalUserInfo?.isNewUser == true,
+      );
     } on AuthFailure {
       rethrow;
     } on FirebaseAuthException catch (error) {
@@ -76,42 +97,76 @@ class FirebaseAuthService {
     }
   }
 
-  Future<void> signInWithEmail({
+  Future<AuthFlowResult> signInWithEmail({
     required String email,
     required String password,
   }) async {
     _ensureFirebaseConfigured();
+    final normalizedEmail = _normalizeEmail(email);
+    final normalizedPassword = _sanitizePassword(password);
+    final trimmedPassword = normalizedPassword.trim();
     try {
       await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+        email: normalizedEmail,
+        password: normalizedPassword,
       );
       await _registerCurrentDeviceSessionBestEffort();
+      return _claimFirst150TrialIfEligible(isNewUser: false);
     } on FirebaseAuthException catch (error) {
+      final canRetryWithTrimmedPassword =
+          error.code == 'invalid-credential' &&
+          trimmedPassword != normalizedPassword &&
+          trimmedPassword.length >= 6;
+      if (canRetryWithTrimmedPassword) {
+        try {
+          await _firebaseAuth.signInWithEmailAndPassword(
+            email: normalizedEmail,
+            password: trimmedPassword,
+          );
+          await _registerCurrentDeviceSessionBestEffort();
+          return _claimFirst150TrialIfEligible(isNewUser: false);
+        } on FirebaseAuthException catch (retryError) {
+          throw _mapFirebaseAuthError(retryError);
+        }
+      }
       throw _mapFirebaseAuthError(error);
     }
   }
 
-  Future<void> signUpWithEmail({
+  Future<AuthFlowResult> signUpWithEmail({
     required String email,
     required String password,
   }) async {
     _ensureFirebaseConfigured();
+    final normalizedEmail = _normalizeEmail(email);
+    final normalizedPassword = _sanitizePassword(password);
     try {
       await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+        email: normalizedEmail,
+        password: normalizedPassword,
       );
       await _registerCurrentDeviceSessionBestEffort();
+      return _claimFirst150TrialIfEligible(isNewUser: true);
     } on FirebaseAuthException catch (error) {
+      if (error.code == 'email-already-in-use') {
+        final methods = await _fetchSignInMethods(normalizedEmail);
+        if (methods.contains(_googleProviderId) &&
+            !methods.contains(_passwordProviderId)) {
+          throw const AuthFailure(
+            'This email is already registered with Google Sign-In. Continue with Google for this account.',
+            code: 'email-already-in-use-google',
+          );
+        }
+      }
       throw _mapFirebaseAuthError(error);
     }
   }
 
   Future<void> sendPasswordResetEmail({required String email}) async {
     _ensureFirebaseConfigured();
+    final normalizedEmail = _normalizeEmail(email);
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
+      await _firebaseAuth.sendPasswordResetEmail(email: normalizedEmail);
     } on FirebaseAuthException catch (error) {
       throw _mapFirebaseAuthError(error);
     }
@@ -147,20 +202,47 @@ class FirebaseAuthService {
     }
   }
 
-  Future<void> _signInWithGoogleOnWeb() async {
+  Future<bool> _signInWithGoogleOnWeb() async {
     final provider = GoogleAuthProvider()
       ..addScope('email')
       ..setCustomParameters(<String, String>{'prompt': 'select_account'});
 
     try {
-      await _firebaseAuth.signInWithPopup(provider);
+      final credential = await _firebaseAuth.signInWithPopup(provider);
+      return credential.additionalUserInfo?.isNewUser == true;
     } on FirebaseAuthException catch (error) {
       if (error.code == 'operation-not-supported-in-this-environment') {
         await _firebaseAuth.signInWithRedirect(provider);
-        return;
+        return false;
       }
       rethrow;
     }
+  }
+
+  Future<AuthFlowResult> _claimFirst150TrialIfEligible({
+    required bool isNewUser,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      return const AuthFlowResult();
+    }
+    final creationTime = user.metadata.creationTime;
+    final isRecentUser =
+        creationTime != null &&
+        DateTime.now().difference(creationTime) <= _first150RetryWindow;
+    if (!isNewUser && !isRecentUser) {
+      return const AuthFlowResult();
+    }
+    final result = await First150TrialService(
+      firebaseAuth: _firebaseAuth,
+    ).claimIfEligible();
+    if (!result.claimed) {
+      return const AuthFlowResult();
+    }
+    return AuthFlowResult(
+      first150TrialGranted: true,
+      first150TrialExpiry: result.expiryTime,
+    );
   }
 
   Future<void> _ensureGoogleInitialized() async {
@@ -179,6 +261,67 @@ class FirebaseAuthService {
       serverClientId: DefaultFirebaseOptions.webClientId,
     );
     _googleInitialized = true;
+  }
+
+  Future<GoogleSignInAccount> _resolveGoogleAccount() async {
+    try {
+      final restored = await _googleSignIn.attemptLightweightAuthentication(
+        reportAllExceptions: true,
+      );
+      if (restored != null) {
+        return restored;
+      }
+    } on GoogleSignInException catch (error) {
+      if (!_shouldRetryGoogleSignIn(error)) {
+        rethrow;
+      }
+    }
+
+    try {
+      return await _googleSignIn.authenticate();
+    } on GoogleSignInException catch (error) {
+      if (!_shouldRetryGoogleSignIn(error)) {
+        rethrow;
+      }
+    }
+
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+    _googleInitialized = false;
+    await _ensureGoogleInitialized();
+    return _googleSignIn.authenticate();
+  }
+
+  bool _shouldRetryGoogleSignIn(GoogleSignInException error) {
+    return switch (error.code) {
+      GoogleSignInExceptionCode.interrupted => true,
+      GoogleSignInExceptionCode.providerConfigurationError => true,
+      GoogleSignInExceptionCode.unknownError => true,
+      _ => false,
+    };
+  }
+
+  Future<Set<String>> _fetchSignInMethods(String email) async {
+    try {
+      final delegate = FirebaseAuthPlatform.instanceFor(
+        app: _firebaseAuth.app,
+        pluginConstants: const <String, dynamic>{},
+      );
+      final methods = await delegate.fetchSignInMethodsForEmail(email);
+      return methods
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toSet();
+    } on FirebaseAuthException {
+      return <String>{};
+    }
+  }
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  String _sanitizePassword(String password) {
+    return password.replaceAll('\r', '').replaceAll('\n', '');
   }
 
   AuthFailure _mapFirebaseAuthError(FirebaseAuthException error) {

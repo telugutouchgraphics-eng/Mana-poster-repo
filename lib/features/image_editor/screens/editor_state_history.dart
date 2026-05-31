@@ -541,6 +541,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'textBackgroundRadius': layer.textBackgroundRadius,
       'photoAspectRatio': layer.photoAspectRatio,
       'photoMaskShape': layer.photoMaskShape,
+      'fillPageBounds': layer.fillPageBounds,
       'transform': _matrixToList(layer.transform),
     };
   }
@@ -614,6 +615,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['textBackgroundRadius'] as num?)?.toDouble() ?? 0,
         photoAspectRatio: (raw['photoAspectRatio'] as num?)?.toDouble(),
         photoMaskShape: raw['photoMaskShape'] as String? ?? '',
+        fillPageBounds: (raw['fillPageBounds'] as bool?) ?? false,
         transform: _matrixFromList(raw['transform']),
       );
     } catch (_) {
@@ -732,10 +734,20 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         builder: (BuildContext context) {
           final strings = context.strings;
           return AlertDialog(
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
             title: Text(
               strings.localized(
                 telugu: 'డ్రాఫ్ట్‌ను తిరిగి తెరవాలా',
                 english: 'Recover Draft',
+              ),
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w800,
               ),
             ),
             content: Text(
@@ -745,13 +757,30 @@ extension _EditorHistoryState on _ImageEditorScreenState {
                 english:
                     'A last autosaved project was found. Do you want to restore it?',
               ),
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                height: 1.4,
+              ),
             ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: Text(strings.localized(telugu: 'వద్దు', english: 'No')),
+                child: Text(
+                  strings.localized(telugu: 'వద్దు', english: 'No'),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0EA5E9),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: () => Navigator.of(context).pop(true),
                 child: Text(
                   strings.localized(

@@ -215,6 +215,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.snapGuidesEnabled,
     required this.selectedPhotoRenderListenable,
     required this.eraserPreviewListenable,
+    this.preferFullWidthPage = false,
   });
 
   final List<_CanvasLayer> layers;
@@ -264,6 +265,7 @@ class _CanvasWorkspace extends StatelessWidget {
   final ValueListenable<_SelectedPhotoRenderState?>
   selectedPhotoRenderListenable;
   final ValueListenable<_PhotoEraserPreviewState?> eraserPreviewListenable;
+  final bool preferFullWidthPage;
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +284,7 @@ class _CanvasWorkspace extends StatelessWidget {
         ? _fitPageSize(
             workspaceSize: workspaceSize,
             aspectRatio: pageAspectRatio!,
+            preferFullWidth: preferFullWidthPage,
           )
         : workspaceSize;
     final pageRect = Rect.fromCenter(
@@ -330,7 +333,7 @@ class _CanvasWorkspace extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: showCanvasBackground
-            ? const Color(0xFF000000)
+            ? Colors.white
             : Colors.transparent,
       ),
       child: GestureDetector(
@@ -418,10 +421,12 @@ class _CanvasWorkspace extends StatelessWidget {
                                 ? Size(layerSize.width + 16, layerSize.height + 12)
                                 : layerSize;
                             final photoSize = layer.isPhoto
-                                ? _fitPhotoLayerSize(
-                                    pageSize: pageSize,
-                                    photoAspectRatio: layer.photoAspectRatio,
-                                  )
+                                ? (layer.fillPageBounds
+                                      ? pageSize
+                                      : _fitPhotoLayerSize(
+                                          pageSize: pageSize,
+                                          photoAspectRatio: layer.photoAspectRatio,
+                                        ))
                                 : Size.zero;
                             final transformLayerSize = layer.isPhoto
                                 ? photoSize
@@ -1266,12 +1271,21 @@ class _PhotoEraserPreviewPainter extends CustomPainter {
   }
 }
 
-Size _fitPageSize({required Size workspaceSize, required double aspectRatio}) {
+Size _fitPageSize({
+  required Size workspaceSize,
+  required double aspectRatio,
+  bool preferFullWidth = false,
+}) {
   if (workspaceSize.width <= 0 || workspaceSize.height <= 0) {
     return Size.zero;
   }
 
   final safeAspect = aspectRatio <= 0 ? 1.0 : aspectRatio;
+  if (preferFullWidth) {
+    final width = workspaceSize.width;
+    final height = width / safeAspect;
+    return Size(width, height);
+  }
   final maxWidth = workspaceSize.width;
   final maxHeight = workspaceSize.height;
 
@@ -1606,13 +1620,13 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
               colors: <Color>[
                 Color(0xFFFFFFFF),
                 Color(0xFFFFFFFF),
-                Color(0xFAFFFFFF),
-                Color(0xD1FFFFFF),
-                Color(0x70FFFFFF),
-                Color(0x1FFFFFFF),
+                Color(0xF2FFFFFF),
+                Color(0xB8FFFFFF),
+                Color(0x54FFFFFF),
+                Color(0x12FFFFFF),
                 Color(0x00FFFFFF),
               ],
-              stops: <double>[0.0, 0.56, 0.68, 0.78, 0.88, 0.94, 1.0],
+              stops: <double>[0.0, 0.5, 0.62, 0.74, 0.84, 0.92, 1.0],
             ).createShader(bounds);
           },
           child: layer,
@@ -1987,10 +2001,12 @@ class _EditorPhotoMaskClipper extends CustomClipper<Path> {
 
 Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
   if (layer.isPhoto) {
-    return _fitPhotoLayerSize(
-      pageSize: pageSize,
-      photoAspectRatio: layer.photoAspectRatio,
-    );
+    return layer.fillPageBounds
+        ? pageSize
+        : _fitPhotoLayerSize(
+            pageSize: pageSize,
+            photoAspectRatio: layer.photoAspectRatio,
+          );
   }
   if (layer.isText) {
     final maxTextWidth = math.max(72.0, pageSize.width * 0.9);

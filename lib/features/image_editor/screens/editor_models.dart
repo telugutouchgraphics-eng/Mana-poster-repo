@@ -189,6 +189,7 @@ class _CanvasLayer {
     this.textBackgroundRadius = 0,
     this.photoAspectRatio,
     this.photoMaskShape = '',
+    this.fillPageBounds = false,
     required this.transform,
   });
 
@@ -230,6 +231,7 @@ class _CanvasLayer {
   final double textBackgroundRadius;
   final double? photoAspectRatio;
   final String photoMaskShape;
+  final bool fillPageBounds;
   final Matrix4 transform;
 
   bool get isPhoto => type == _CanvasLayerType.photo;
@@ -275,6 +277,7 @@ class _CanvasLayer {
     double? textBackgroundRadius,
     double? photoAspectRatio,
     String? photoMaskShape,
+    bool? fillPageBounds,
     Matrix4? transform,
   }) {
     return _CanvasLayer(
@@ -319,6 +322,7 @@ class _CanvasLayer {
       textBackgroundRadius: textBackgroundRadius ?? this.textBackgroundRadius,
       photoAspectRatio: photoAspectRatio ?? this.photoAspectRatio,
       photoMaskShape: photoMaskShape ?? this.photoMaskShape,
+      fillPageBounds: fillPageBounds ?? this.fillPageBounds,
       transform: transform ?? this.transform,
     );
   }

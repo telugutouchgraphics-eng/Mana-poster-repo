@@ -210,9 +210,9 @@ class _CropInlineStrip extends StatelessWidget {
         height: height,
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         decoration: BoxDecoration(
-          color: const Color(0xCC0F172A),
+          color: _editorChromeSurfaceStrong,
           border: Border(
-            top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            top: BorderSide(color: _editorChromeBorder),
           ),
         ),
         child: Column(
@@ -309,18 +309,22 @@ class _CropInlineStrip extends StatelessWidget {
         decoration: BoxDecoration(
           color: primary
               ? const Color(0xFF2563EB).withValues(alpha: disabled ? 0.45 : 0.9)
-              : Colors.white.withValues(alpha: 0.08),
+              : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: primary
                 ? const Color(0xFF3B82F6).withValues(alpha: 0.9)
-                : Colors.white.withValues(alpha: 0.14),
+                : _editorChromeBorder,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: disabled ? 0.5 : 0.95),
+            color: primary
+                ? Colors.white.withValues(alpha: disabled ? 0.5 : 0.95)
+                : (disabled
+                      ? _editorChromeTextSecondary.withValues(alpha: 0.6)
+                      : _editorChromeTextPrimary),
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
           ),

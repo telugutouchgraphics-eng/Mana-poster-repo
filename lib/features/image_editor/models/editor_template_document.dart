@@ -47,6 +47,8 @@ class EditorTemplateLayer {
     required this.height,
     required this.opacity,
     required this.visible,
+    this.isLocked = false,
+    this.photoMaskShape = '',
   });
 
   factory EditorTemplateLayer.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,8 @@ class EditorTemplateLayer {
       height: (json['height'] as num?)?.toDouble() ?? 0,
       opacity: ((json['opacity'] as num?)?.toDouble() ?? 1).clamp(0, 1),
       visible: json['visible'] as bool? ?? true,
+      isLocked: json['isLocked'] as bool? ?? false,
+      photoMaskShape: json['photoMaskShape'] as String? ?? '',
     );
   }
 
@@ -70,4 +74,6 @@ class EditorTemplateLayer {
   final double height;
   final double opacity;
   final bool visible;
+  final bool isLocked;
+  final String photoMaskShape;
 }

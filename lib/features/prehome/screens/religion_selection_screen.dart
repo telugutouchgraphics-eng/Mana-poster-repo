@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 
@@ -23,13 +24,36 @@ class ReligionSelectionScreen extends StatefulWidget {
 
 class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
     with AppLanguageStateMixin {
+  final OnboardingAudioService _onboardingAudio = OnboardingAudioService();
   AppReligionPreference _selected = AppReligionPreference.all;
   bool _saving = false;
+  bool _autoPlayedGuide = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadInitialSelection());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_autoPlayedGuide) {
+      return;
+    }
+    _autoPlayedGuide = true;
+    unawaited(
+      _onboardingAudio.autoplayIfSupported(
+        language: context.currentLanguage,
+        cue: OnboardingAudioCue.religionSelection,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    unawaited(_onboardingAudio.dispose());
+    super.dispose();
   }
 
   Future<void> _loadInitialSelection() async {
@@ -112,6 +136,7 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final strings = context.strings;
+    final showGuideAudio = context.currentLanguage == AppLanguage.telugu;
     final options = <_ReligionOptionData>[
       _ReligionOptionData(
         preference: AppReligionPreference.hindu,
@@ -251,6 +276,30 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
                                 color: cs.onSurfaceVariant,
                               ),
                             ),
+                            if (showGuideAudio) ...<Widget>[
+                              const SizedBox(height: 8),
+                              Align(
+                                alignment: Alignment.center,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    unawaited(
+                                      _onboardingAudio.replayIfSupported(
+                                        language: context.currentLanguage,
+                                        cue: OnboardingAudioCue
+                                            .religionSelection,
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.volume_up_rounded),
+                                  label: Text(
+                                    strings.localized(
+                                      telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
+                                      english: 'Replay voice guide',
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 18),
                             ...options.map((item) {
                               final selected = item.preference == _selected;

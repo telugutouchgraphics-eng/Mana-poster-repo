@@ -160,12 +160,111 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (_isExporting) {
       return;
     }
+    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    if (!mounted || !hasAccess) {
+      return;
+    }
     final canProceed = await _confirmExportIfCanvasEmpty();
-    if (!canProceed) {
+    if (!mounted || !canProceed) {
       return;
     }
     final format = _defaultExportFormat();
     await _performExport(format: format);
+  }
+
+  Future<void> _handleShareTap() async {
+    if (_isCropMode || _isSharing || _isExporting || _isCommitWorkerBusy) {
+      return;
+    }
+    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    if (!mounted || !hasAccess) {
+      return;
+    }
+    final canProceed = await _confirmExportIfCanvasEmpty();
+    if (!mounted || !canProceed) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.strings;
+    final format = _defaultExportFormat();
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final shareBoundaryNotReadyMessage = strings.localized(
+      telugu: 'షేర్ ప్రాంతం సిద్ధంగా లేదు',
+      english: 'Share boundary not ready',
+    );
+    final shareInProgressMessage = strings.localized(
+      telugu: 'షేర్ ఇప్పటికే జరుగుతోంది',
+      english: 'Share is already in progress',
+    );
+    try {
+      final sharedBytes = await _runQueuedCommitJob<Uint8List>(
+        jobKey: 'share_${DateTime.now().microsecondsSinceEpoch}',
+        label: strings.localized(
+          telugu: 'పోస్టర్ షేర్ అవుతోంది',
+          english: 'Sharing poster',
+        ),
+        detail: strings.localized(
+          telugu: 'ఫైనల్ అవుట్‌పుట్‌ను రెండర్ చేసి షేర్ చేస్తోంది',
+          english: 'Rendering and sharing the final output',
+        ),
+        onStart: () {
+          _isSharing = true;
+        },
+        onFinish: () {
+          _isSharing = false;
+          _isTransparentExportCapture = false;
+          unawaited(ScreenSecurityService.enableSecure());
+        },
+        operation: () async {
+          if (format == _ExportImageFormat.pngTransparent) {
+            if (mounted) {
+              setState(() {
+                _isTransparentExportCapture = true;
+              });
+            } else {
+              _isTransparentExportCapture = true;
+            }
+            await _waitForRenderedFrame();
+          }
+          await ScreenSecurityService.disableSecure();
+          await WidgetsBinding.instance.endOfFrame;
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+          final image = await _captureStageImage(
+            pixelRatio: _exportPixelRatio(devicePixelRatio),
+          );
+          if (image == null) {
+            throw Exception(shareBoundaryNotReadyMessage);
+          }
+          final bytes = await _encodeExportImageBytes(
+            image,
+            format: format == _ExportImageFormat.pngTransparent
+                ? _ExportImageFormat.png
+                : format,
+          );
+          await _shareLatestPoster(
+            bytes,
+            format: format,
+            recheckAccess: false,
+            bypassSharingGuard: true,
+            manageSharingState: false,
+          );
+          return bytes;
+        },
+      );
+      if (sharedBytes == null && mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(shareInProgressMessage)),
+        );
+      }
+    } catch (error, stackTrace) {
+      _debugLogStack('editor share outer failed: $error', stackTrace);
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   _ExportImageFormat _defaultExportFormat() {
@@ -297,8 +396,8 @@ extension _EditorExportState on _ImageEditorScreenState {
 
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
-    const topInset = _canvasChromeInset;
-    const bottomInset = _canvasChromeInset;
+    final topInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
+    final bottomInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
     final workspaceHeight = math.max(
       0.0,
       canvasSize.height - topInset - bottomInset,
@@ -309,6 +408,7 @@ extension _EditorExportState on _ImageEditorScreenState {
         ? _fitPageSize(
             workspaceSize: workspaceSize,
             aspectRatio: _pageAspectRatio!,
+            preferFullWidth: widget.preferFullWidthCanvas,
           )
         : workspaceSize;
     return Rect.fromCenter(
@@ -395,6 +495,8 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (_isExporting || _isCommitWorkerBusy) {
       return;
     }
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.strings;
     final exportPermissionMessage = context.strings.localized(
       telugu: 'గ్యాలరీ అనుమతి ఇవ్వండి, తర్వాత మళ్లీ ఎగుమతి చేయండి',
       english: 'Allow gallery permission and try exporting again',
@@ -411,11 +513,11 @@ extension _EditorExportState on _ImageEditorScreenState {
     try {
       final exportedBytes = await _runQueuedCommitJob<Uint8List>(
         jobKey: 'export_${DateTime.now().microsecondsSinceEpoch}',
-        label: context.strings.localized(
+        label: strings.localized(
           telugu: 'పోస్టర్ ఎగుమతి అవుతోంది',
           english: 'Exporting poster',
         ),
-        detail: context.strings.localized(
+        detail: strings.localized(
           telugu: 'ఫైనల్ అవుట్‌పుట్‌ను రెండర్ చేసి సేవ్ చేస్తోంది',
           english: 'Rendering and saving the final output',
         ),
@@ -485,7 +587,7 @@ extension _EditorExportState on _ImageEditorScreenState {
             }
             if (mounted) {
               final isSuccess = saveResult.success;
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     _exportResultMessage(
@@ -498,9 +600,9 @@ extension _EditorExportState on _ImageEditorScreenState {
                   ),
                   action: isSuccess
                       ? SnackBarAction(
-                          label: context.strings.localized(
-                            telugu: _isSharing ? 'షేర్ అవుతోంది...' : 'షేర్',
-                            english: _isSharing ? 'Sharing...' : 'Share',
+                          label: strings.localized(
+                            telugu: 'షేర్',
+                            english: 'Share',
                           ),
                           onPressed: _isSharing
                               ? () {}
@@ -525,10 +627,10 @@ extension _EditorExportState on _ImageEditorScreenState {
         },
       );
       if (exportedBytes == null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
-              context.strings.localized(
+              strings.localized(
                 telugu: 'ఎగుమతి ఇప్పటికే జరుగుతోంది',
                 english: 'Export is already in progress',
               ),
@@ -541,7 +643,7 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(error.toString().replaceFirst('Exception: ', '')),
         ),
@@ -622,14 +724,28 @@ extension _EditorExportState on _ImageEditorScreenState {
   Future<void> _shareLatestPoster(
     Uint8List imageBytes, {
     required _ExportImageFormat format,
+    bool recheckAccess = true,
+    bool bypassSharingGuard = false,
+    bool manageSharingState = true,
   }) async {
-    if (_isSharing) {
+    if (_isSharing && !bypassSharingGuard) {
       return;
     }
+    if (recheckAccess) {
+      final hasAccess = await _ensureSubscriptionAccessForExportActions();
+      if (!mounted || !hasAccess) {
+        return;
+      }
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.strings;
+    final box = context.findRenderObject() as RenderBox?;
 
-    setState(() {
-      _isSharing = true;
-    });
+    if (manageSharingState) {
+      setState(() {
+        _isSharing = true;
+      });
+    }
     File? tempShareFile;
     try {
       await ScreenSecurityService.disableSecure();
@@ -639,7 +755,6 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      final box = context.findRenderObject() as RenderBox?;
       final directory = await getTemporaryDirectory();
       final filePath =
           '${directory.path}${Platform.pathSeparator}mana_poster_share.${_exportFileExtension(format)}';
@@ -658,10 +773,10 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
-            context.strings.localized(
+            strings.localized(
               telugu: 'Share fail ayindi, malli prayatninchandi',
               english: 'Share failed, please try again',
             ),
@@ -669,7 +784,7 @@ extension _EditorExportState on _ImageEditorScreenState {
         ),
       );
     } finally {
-      if (mounted) {
+      if (manageSharingState && mounted) {
         setState(() {
           _isSharing = false;
         });

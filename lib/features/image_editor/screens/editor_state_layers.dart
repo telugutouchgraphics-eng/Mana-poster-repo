@@ -1245,14 +1245,84 @@ extension _EditorLayersState on _ImageEditorScreenState {
       if (!mounted || pickedFile == null) {
         return;
       }
+      final XFile effectiveFile;
+      if (widget.autoProcessAddedPhotos) {
+        final cropped = await ImageCropper().cropImage(
+          sourcePath: pickedFile.path,
+          compressQuality: 95,
+          uiSettings: <PlatformUiSettings>[
+            AndroidUiSettings(
+              toolbarTitle: context.strings.localized(
+                telugu: 'ఫోటో క్రాప్ చేయండి',
+                english: 'Crop Photo',
+              ),
+              toolbarColor: Colors.white,
+              toolbarWidgetColor: const Color(0xFF0F172A),
+              backgroundColor: Colors.white,
+              activeControlsWidgetColor: const Color(0xFF2563EB),
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: context.strings.localized(
+                telugu: 'ఫోటో క్రాప్ చేయండి',
+                english: 'Crop Photo',
+              ),
+              aspectRatioLockEnabled: false,
+              rotateButtonsHidden: false,
+            ),
+          ],
+        );
+        if (!mounted || cropped == null) {
+          return;
+        }
+        effectiveFile = XFile(cropped.path);
+      } else {
+        effectiveFile = pickedFile;
+      }
 
-      final rawBytes = await pickedFile.readAsBytes();
-      final optimizedPhoto = await compute(
-        _optimizeEditorPhotoPayload,
-        rawBytes,
-      );
-      final bytes = optimizedPhoto.bytes;
+      late final _OptimizedPhotoPayload optimizedPhoto;
+      Uint8List? processedBytes;
+      if (widget.autoProcessAddedPhotos) {
+        await _runQueuedCommitJob<void>(
+          jobKey: 'import_photo_${DateTime.now().microsecondsSinceEpoch}',
+          label: context.strings.localized(
+            telugu: 'బ్యాక్‌గ్రౌండ్ రిమూవ్ ప్రాసెసింగ్',
+            english: 'Background remove processing',
+          ),
+          detail: context.strings.localized(
+            telugu: 'ఫోటో సిద్ధం అవుతోంది. దయచేసి వేచి ఉండండి',
+            english: 'Preparing your photo. Please wait.',
+          ),
+          operation: () async {
+            final rawBytes = await effectiveFile.readAsBytes();
+            optimizedPhoto = await compute(
+              _optimizeEditorPhotoPayload,
+              rawBytes,
+            );
+            processedBytes = optimizedPhoto.bytes;
+            try {
+              final result = await _backgroundRemovalService.removeBackground(
+                optimizedPhoto.bytes,
+              );
+              processedBytes = result.pngBytes;
+            } catch (_) {}
+          },
+          showBusyMessage: false,
+        );
+      } else {
+        final rawBytes = await effectiveFile.readAsBytes();
+        optimizedPhoto = await compute(
+          _optimizeEditorPhotoPayload,
+          rawBytes,
+        );
+        processedBytes = optimizedPhoto.bytes;
+      }
       if (!mounted) {
+        return;
+      }
+      final bytes = processedBytes;
+      if (bytes == null) {
         return;
       }
 
@@ -1260,8 +1330,9 @@ extension _EditorLayersState on _ImageEditorScreenState {
         id: 'layer_${_layerSeed++}',
         type: _CanvasLayerType.photo,
         bytes: bytes,
-        originalPhotoBytes: bytes,
+        originalPhotoBytes: optimizedPhoto.bytes,
         photoAspectRatio: optimizedPhoto.aspectRatio,
+        photoMaskShape: widget.defaultAddedPhotoMaskShape.trim(),
         transform: Matrix4.identity(),
       );
 

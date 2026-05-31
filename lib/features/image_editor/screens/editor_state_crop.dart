@@ -54,10 +54,10 @@ extension _EditorCropState on _ImageEditorScreenState {
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: cropTitle,
-            toolbarColor: const Color(0xFF000000),
-            toolbarWidgetColor: Colors.white,
-            backgroundColor: const Color(0xFF000000),
-            activeControlsWidgetColor: Colors.white,
+            toolbarColor: Colors.white,
+            toolbarWidgetColor: const Color(0xFF0F172A),
+            backgroundColor: Colors.white,
+            activeControlsWidgetColor: const Color(0xFF2563EB),
             initAspectRatio: CropAspectRatioPreset.original,
             lockAspectRatio: false,
             hideBottomControls: false,

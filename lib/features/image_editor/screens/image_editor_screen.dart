@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -22,6 +23,7 @@ import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
@@ -58,6 +60,13 @@ part 'tools/crop_tool.dart';
 part 'tools/adjust_tool.dart';
 part 'tools/background_tool.dart';
 
+const Color _editorChromeSurface = Color(0xFFF8FAFC);
+const Color _editorChromeSurfaceStrong = Color(0xFFFFFFFF);
+const Color _editorChromeBorder = Color(0xFFE2E8F0);
+const Color _editorChromeTextPrimary = Color(0xFF0F172A);
+const Color _editorChromeTextSecondary = Color(0xFF64748B);
+const Color _editorCanvasBackdrop = Color(0xFFEFF4F8);
+
 class ImageEditorScreen extends StatefulWidget {
   const ImageEditorScreen({
     super.key,
@@ -66,6 +75,17 @@ class ImageEditorScreen extends StatefulWidget {
     this.templateDocumentSource,
     this.initialPosterProfile,
     this.initialPersonalizationConfig,
+    this.includeInitialPosterNameLayer = true,
+    this.autoSelectInitialLayers = true,
+    this.preferFullWidthCanvas = false,
+    this.requireSubscriptionForExportActions = false,
+    this.initialPhotoShapeOverride = '',
+    this.initialPhotoRenderModeOverride = '',
+    this.initialPhotoXOffsetPercent = 0,
+    this.initialPhotoYOffsetPercent = 0,
+    this.lockTemplateLayers = false,
+    this.autoProcessAddedPhotos = false,
+    this.defaultAddedPhotoMaskShape = '',
   });
 
   final EditorPageConfig? pageConfig;
@@ -73,6 +93,17 @@ class ImageEditorScreen extends StatefulWidget {
   final String? templateDocumentSource;
   final PosterProfileData? initialPosterProfile;
   final CreatorPosterPersonalization? initialPersonalizationConfig;
+  final bool includeInitialPosterNameLayer;
+  final bool autoSelectInitialLayers;
+  final bool preferFullWidthCanvas;
+  final bool requireSubscriptionForExportActions;
+  final String initialPhotoShapeOverride;
+  final String initialPhotoRenderModeOverride;
+  final double initialPhotoXOffsetPercent;
+  final double initialPhotoYOffsetPercent;
+  final bool lockTemplateLayers;
+  final bool autoProcessAddedPhotos;
+  final String defaultAddedPhotoMaskShape;
 
   @override
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
@@ -105,7 +136,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
   final List<_EditorHistoryEntry> _redoStack = <_EditorHistoryEntry>[];
   String? _selectedLayerId;
-  Color _canvasBackgroundColor = const Color(0xFF000000);
+  Color _canvasBackgroundColor = const Color(0xFFFFFFFF);
   int _canvasBackgroundGradientIndex = -1;
   int _layerSeed = 0;
   static const int _maxHistory = 40;
@@ -449,6 +480,46 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool get _hasRewardedEditorProAccess =>
       SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
       _editorEntitlementService.cachedEntitlement?.hasAccess == true;
+
+  bool get _hasImmediateEditorSubscriptionAccess =>
+      SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
+      _editorEntitlementService.cachedEntitlement?.hasAccess == true;
+
+  Future<bool> _ensureSubscriptionAccessForExportActions() async {
+    if (!widget.requireSubscriptionForExportActions) {
+      return true;
+    }
+    if (_hasImmediateEditorSubscriptionAccess) {
+      unawaited(_editorEntitlementService.refreshEntitlementInBackground());
+      return true;
+    }
+
+    if (_editorEntitlementService.isConfigured &&
+        FirebaseAuth.instance.currentUser != null) {
+      final result = await _editorEntitlementService.fetchEntitlement(
+        forceRefresh: true,
+      );
+      if (!mounted) {
+        return false;
+      }
+      if (result.hasAccess) {
+        return true;
+      }
+    }
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const SubscriptionPlanScreen(),
+      ),
+    );
+    if (!mounted) {
+      return false;
+    }
+    final refreshed = _editorEntitlementService.isConfigured
+        ? await _editorEntitlementService.fetchFreshEntitlementWithRetry()
+        : _editorEntitlementService.cachedEntitlement;
+    return refreshed?.hasAccess == true;
+  }
 
   bool _isPremiumTeluguFontFamily(String family) =>
       _textFontFamilies.contains(family);
@@ -1687,6 +1758,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<String> _loadTemplateDocumentString(String source) async {
+    if (_looksLikeLocalFileSource(source)) {
+      return File(source).readAsString();
+    }
     if (_looksLikeNetworkSource(source)) {
       final client = HttpClient();
       try {
@@ -1701,6 +1775,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<Uint8List> _loadTemplateLayerBytes(String source) async {
+    if (_looksLikeLocalFileSource(source)) {
+      return File(source).readAsBytes();
+    }
     if (_looksLikeNetworkSource(source)) {
       final client = HttpClient();
       try {
@@ -1720,6 +1797,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final normalized = source.trim().toLowerCase();
     return normalized.startsWith('http://') ||
         normalized.startsWith('https://');
+  }
+
+  bool _looksLikeLocalFileSource(String source) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty || _looksLikeNetworkSource(trimmed)) {
+      return false;
+    }
+    return File(trimmed).existsSync();
   }
 
   Future<void> _hydrateTemplateDocument({
@@ -1745,6 +1830,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             templateLayer.height <= 0) {
           continue;
         }
+        final fillPageBounds = templateLayer.id == 'base_poster';
 
         Uint8List bytes;
         try {
@@ -1761,10 +1847,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         final aspectRatio = templateLayer.width / templateLayer.height;
         final targetWidth =
             (templateLayer.width / document.sourceWidth) * pageSize.width;
-        final baseSize = _fitPhotoLayerSize(
-          pageSize: pageSize,
-          photoAspectRatio: aspectRatio,
-        );
+        final baseSize = fillPageBounds
+            ? pageSize
+            : _fitPhotoLayerSize(
+                pageSize: pageSize,
+                photoAspectRatio: aspectRatio,
+              );
         final scale = baseSize.width <= 0
             ? 1.0
             : (targetWidth / baseSize.width).clamp(0.01, 100.0);
@@ -1789,6 +1877,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             originalPhotoBytes: bytes,
             photoOpacity: templateLayer.opacity,
             photoAspectRatio: aspectRatio,
+            isLocked: templateLayer.isLocked || widget.lockTemplateLayers,
+            photoMaskShape: templateLayer.photoMaskShape.trim(),
+            fillPageBounds: fillPageBounds,
             transform: transform,
           ),
         );
@@ -1802,10 +1893,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _layers
           ..clear()
           ..addAll(importedLayers);
-        _selectedLayerId = importedLayers.isEmpty
-            ? null
-            : importedLayers.last.id;
-        _canvasBackgroundColor = const Color(0xFF000000);
+        _selectedLayerId = widget.autoSelectInitialLayers &&
+                importedLayers.isNotEmpty
+            ? importedLayers.last.id
+            : null;
+        _canvasBackgroundColor = const Color(0xFFFFFFFF);
         _canvasBackgroundGradientIndex = -1;
         _stageBackgroundImageBytes = null;
         _templateDocument = null;
@@ -1864,6 +1956,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       final photoLayer = _buildInitialPersonalizedPhotoLayer(
         bytes: photoBytes.bytes,
         aspectRatio: photoBytes.aspectRatio,
+        posterProfile: posterProfile,
         pageSize: pageSize,
         personalization: personalization,
       );
@@ -1872,7 +1965,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       }
     }
 
-    if (resolvedName.isNotEmpty) {
+    if (widget.includeInitialPosterNameLayer && resolvedName.isNotEmpty) {
       insertedLayers.add(
         _buildInitialPersonalizedTextLayer(
           text: resolvedName,
@@ -1889,7 +1982,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
     setState(() {
       _layers.addAll(insertedLayers);
-      _selectedLayerId = insertedLayers.last.id;
+      if (widget.autoSelectInitialLayers) {
+        _selectedLayerId = insertedLayers.last.id;
+      }
     });
   }
 
@@ -1897,7 +1992,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     required PosterProfileData posterProfile,
     required CreatorPosterPersonalization personalization,
   }) async {
-    final preferOriginal = personalization.photoRenderMode == 'original';
+    final overrideRenderMode = widget.initialPhotoRenderModeOverride.trim();
+    final effectiveRenderMode = overrideRenderMode.isNotEmpty
+        ? overrideRenderMode
+        : personalization.photoRenderMode.trim();
+    final preferOriginal = effectiveRenderMode == 'original';
     final localPath = preferOriginal
         ? posterProfile.originalPhotoPath.trim()
         : posterProfile.photoPath.trim();
@@ -1932,10 +2031,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _CanvasLayer? _buildInitialPersonalizedPhotoLayer({
     required Uint8List bytes,
     required double? aspectRatio,
+    required PosterProfileData posterProfile,
     required Size pageSize,
     required CreatorPosterPersonalization personalization,
   }) {
-    final maskShape = personalization.photoShape.trim();
+    final isBusinessProfile =
+        posterProfile.identityMode == PosterIdentityMode.business;
+    final overrideShape = widget.initialPhotoShapeOverride.trim();
+    final maskShape = isBusinessProfile
+        ? 'circle'
+        : (overrideShape.isNotEmpty
+              ? overrideShape
+              : personalization.photoShape.trim());
     final resolvedAspectRatio = maskShape.isNotEmpty
         ? _editorPhotoMaskAspectRatio(maskShape)
         : (aspectRatio ?? 1);
@@ -1951,13 +2058,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return null;
     }
 
-    final targetWidth =
-        pageSize.width * (personalization.photoScale.clamp(1, 100) / 100);
+    final photoScale = personalization.photoScale.clamp(1, 100) / 100;
+    final visualScale = isBusinessProfile ? photoScale * 0.72 : photoScale;
+    final targetWidth = pageSize.width * visualScale;
     final scale = (targetWidth / baseSize.width).clamp(0.05, 20.0);
+    final stripOverflowAllowance = personalization.showBottomStrip
+        ? (isBusinessProfile ? 56.0 : 60.0)
+        : 0.0;
+    final baseImageHeight = math.max(1.0, pageSize.height - stripOverflowAllowance);
     final pageCenter = Offset(pageSize.width / 2, pageSize.height / 2);
     final targetCenter = Offset(
-      pageSize.width * (personalization.photoX / 100),
-      pageSize.height * (personalization.photoY / 100),
+      (pageSize.width * (personalization.photoX / 100)) +
+          (pageSize.width * (widget.initialPhotoXOffsetPercent / 100)),
+      (baseImageHeight * (personalization.photoY / 100)) +
+          (pageSize.height * (widget.initialPhotoYOffsetPercent / 100)),
     );
     final translation = targetCenter - pageCenter;
     final transform = Matrix4.identity()
@@ -2106,7 +2220,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF060B16),
+      backgroundColor: _editorCanvasBackdrop,
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
@@ -2122,8 +2236,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 : _isPhotoEraserMode
                 ? _eraserBarHeight
                 : _bottomBarHeight;
-            const reservedTopInset = _canvasChromeInset;
-            const reservedBottomInset = _canvasChromeInset;
+            final reservedTopInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
+            final reservedBottomInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
             _lastCanvasSize = canvasSize;
             final workspaceHeight = math.max(
               canvasSize.height - reservedTopInset - reservedBottomInset,
@@ -2135,6 +2249,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ? _fitPageSize(
                     workspaceSize: workspaceSize,
                     aspectRatio: _pageAspectRatio!,
+                    preferFullWidth: widget.preferFullWidthCanvas,
                   )
                 : workspaceSize;
 
@@ -2164,7 +2279,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               children: <Widget>[
                 const Positioned.fill(
                   child: IgnorePointer(
-                    child: ColoredBox(color: Color(0xFF000000)),
+                    child: ColoredBox(color: _editorCanvasBackdrop),
                   ),
                 ),
                 Positioned.fill(
@@ -2235,6 +2350,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       selectedPhotoRenderListenable:
                           _selectedPhotoRenderNotifier,
                       eraserPreviewListenable: _eraserPreviewNotifier,
+                      preferFullWidthPage: widget.preferFullWidthCanvas,
                     ),
                   ),
                 ),
@@ -2262,6 +2378,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       onUndoTap: _handleUndo,
                       onRedoTap: _handleRedo,
                       onDraftsTap: _openDraftsScreen,
+                      onShareTap: _handleShareTap,
                       onExportTap: _handleExportTap,
                       onDeleteTap: _handleDeleteSelectedLayer,
                       onDuplicateTap: _handleDuplicateSelectedLayer,
@@ -2269,6 +2386,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       onSendBackTap: _moveSelectedLayerToBack,
                       canUndo: _canUndo,
                       canRedo: _canRedo,
+                      isSharing: _isSharing,
                       isExporting: _isExporting,
                       canDelete: _selectedLayerId != null,
                       canDuplicate: _selectedLayerId != null,

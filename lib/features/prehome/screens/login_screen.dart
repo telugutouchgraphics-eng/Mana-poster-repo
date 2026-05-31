@@ -10,6 +10,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
+import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 
@@ -27,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _service = FirebaseAuthService();
+  final OnboardingAudioService _onboardingAudio = OnboardingAudioService();
   final _formKey = GlobalKey<FormState>();
 
   _AuthMode _mode = _AuthMode.login;
@@ -35,6 +37,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _loadingEmail = false;
   bool _loadingReset = false;
   bool _showPassword = false;
+  bool _autoPlayedGuide = false;
 
   bool get _isBusy =>
       _authBootstrapping || _loadingGoogle || _loadingEmail || _loadingReset;
@@ -52,7 +55,23 @@ class _LoginScreenState extends State<LoginScreen>
     WidgetsBinding.instance.removeObserver(this);
     _emailController.dispose();
     _passwordController.dispose();
+    unawaited(_onboardingAudio.dispose());
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_autoPlayedGuide) {
+      return;
+    }
+    _autoPlayedGuide = true;
+    unawaited(
+      _onboardingAudio.autoplayIfSupported(
+        language: context.currentLanguage,
+        cue: OnboardingAudioCue.login,
+      ),
+    );
   }
 
   @override
@@ -104,8 +123,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
     setState(() => _loadingGoogle = true);
     try {
-      await _service.signInWithGoogle();
+      final authResult = await _service.signInWithGoogle();
       await _stabilizeBottomSystemUi();
+      await _showFirst150TrialDialogIfNeeded(authResult);
       await _continueAfterAuth();
     } catch (e) {
       _showError(_messageForError(e));
@@ -127,15 +147,17 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _loadingEmail = true);
     try {
       if (_mode == _AuthMode.login) {
-        await _service.signInWithEmail(
+        final authResult = await _service.signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _showFirst150TrialDialogIfNeeded(authResult);
       } else {
-        await _service.signUpWithEmail(
+        final authResult = await _service.signUpWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await _showFirst150TrialDialogIfNeeded(authResult);
       }
       await _stabilizeBottomSystemUi();
       await _continueAfterAuth();
@@ -160,6 +182,45 @@ class _LoginScreenState extends State<LoginScreen>
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showFirst150TrialDialogIfNeeded(AuthFlowResult result) async {
+    if (!result.first150TrialGranted || !mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            context.strings.localized(
+              telugu: 'ప్రీమియం బహుమతి',
+              english: 'Premium Gift',
+            ),
+          ),
+          content: Text(
+            context.strings.localized(
+              telugu:
+                  'అభినందనలు! మీకు 30 రోజుల ప్రీమియం ఉచితంగా లభించింది.',
+              english:
+                  'Congratulations! You received 30 days Premium free.',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                context.strings.localized(
+                  telugu: 'సరే',
+                  english: 'OK',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   String _messageForError(Object error) {
@@ -197,6 +258,13 @@ class _LoginScreenState extends State<LoginScreen>
         return strings.localized(
           telugu: 'ఈ ఇమెయిల్‌తో ఇప్పటికే ఖాతా ఉంది.',
           english: 'An account already exists with this email.',
+        );
+      case 'email-already-in-use-google':
+        return strings.localized(
+          telugu:
+              'ఈ ఇమెయిల్ ఇప్పటికే Google login తో ఉంది. Google తోనే continue చేయండి.',
+          english:
+              'This email is already linked to Google Sign-In. Continue with Google.',
         );
       case 'weak-password':
         return strings.passwordError;
@@ -259,6 +327,13 @@ class _LoginScreenState extends State<LoginScreen>
           telugu: 'Google account mismatch వచ్చింది. మళ్లీ sign in చేయండి.',
           english: 'Signed-in account mismatch. Please sign in again.',
         );
+      case 'use-google-for-this-email':
+        return strings.localized(
+          telugu:
+              'ఈ ఇమెయిల్ Google login తో register అయ్యింది. Google తోనే continue చేయండి.',
+          english:
+              'This email is registered with Google Sign-In. Continue with Google.',
+        );
       case 'unsupported-platform':
         return strings.localized(
           telugu: 'ఈ build లో Google login support లేదు.',
@@ -285,7 +360,8 @@ class _LoginScreenState extends State<LoginScreen>
     await AppFlowService.persistLastKnownAuthUid(_service.currentUser?.uid);
     await AppFlowService.loadSnapshot();
     await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
-    final String nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute();
+    final String nextRoute =
+        await AppFlowService.resolveAuthenticatedEntryRoute();
     if (!mounted) {
       return;
     }
@@ -361,6 +437,7 @@ class _LoginScreenState extends State<LoginScreen>
     final isLogin = _mode == _AuthMode.login;
     final authCopy = _AuthUiCopy(context.currentLanguage);
     final cs = Theme.of(context).colorScheme;
+    final showGuideAudio = context.currentLanguage == AppLanguage.telugu;
 
     return Scaffold(
       body: GradientShell(
@@ -424,6 +501,29 @@ class _LoginScreenState extends State<LoginScreen>
                               fontSize: 12.5,
                             ),
                           ),
+                          if (showGuideAudio) ...<Widget>[
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.center,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  unawaited(
+                                    _onboardingAudio.replayIfSupported(
+                                      language: context.currentLanguage,
+                                      cue: OnboardingAudioCue.login,
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.volume_up_rounded),
+                                label: Text(
+                                  strings.localized(
+                                    telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
+                                    english: 'Replay voice guide',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 18),
                           Container(
                             padding: const EdgeInsets.all(4),
@@ -469,6 +569,9 @@ class _LoginScreenState extends State<LoginScreen>
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             textInputAction: TextInputAction.next,
+                            textCapitalization: TextCapitalization.none,
+                            autocorrect: false,
+                            enableSuggestions: false,
                             autofillHints: const <String>[AutofillHints.email],
                             decoration: InputDecoration(
                               hintText: strings.emailAddress,
@@ -495,6 +598,10 @@ class _LoginScreenState extends State<LoginScreen>
                             controller: _passwordController,
                             obscureText: !_showPassword,
                             textInputAction: TextInputAction.done,
+                            keyboardType: TextInputType.visiblePassword,
+                            textCapitalization: TextCapitalization.none,
+                            autocorrect: false,
+                            enableSuggestions: false,
                             autofillHints: isLogin
                                 ? const <String>[AutofillHints.password]
                                 : const <String>[AutofillHints.newPassword],

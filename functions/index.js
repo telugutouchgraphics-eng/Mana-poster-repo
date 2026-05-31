@@ -107,6 +107,11 @@ const dynamicEventCatalog = [
 
 const posterRetentionWindowMillis = 7 * 24 * 60 * 60 * 1000;
 const posterCleanupBatchSize = 250;
+const first150TrialConfigPath = "promo_config/first150";
+const first150TrialSource = "first150_trial";
+const first150TrialProductId = "first150_trial";
+const first150TrialState = "FIRST150_TRIAL";
+const first150TrialNewUserWindowMillis = 24 * 60 * 60 * 1000;
 
 function parseAllowedOrigins(rawValue) {
   const raw = String(rawValue || "").trim();
@@ -537,6 +542,51 @@ function deriveEntitlementStatus({isPro, subscriptionState, expiryTime}) {
     return "expired";
   }
   return "inactive";
+}
+
+function isFirst150TrialActive(entitlementData) {
+  if (String(entitlementData.source || "").trim() !== first150TrialSource) {
+    return false;
+  }
+  const expiryMillis = toMillis(entitlementData.expiryTime);
+  return expiryMillis > Date.now();
+}
+
+function isEligibleFirst150NewUser(userRecord, nowMillis = Date.now()) {
+  const creationMillis = Date.parse(
+      String(userRecord && userRecord.metadata &&
+        userRecord.metadata.creationTime || ""),
+  );
+  if (!Number.isFinite(creationMillis) || creationMillis <= 0) {
+    return false;
+  }
+  const lastSignInMillis = Date.parse(
+      String(userRecord && userRecord.metadata &&
+        userRecord.metadata.lastSignInTime || ""),
+  );
+  if (!Number.isFinite(lastSignInMillis) || lastSignInMillis <= 0) {
+    return false;
+  }
+  const accountAgeMillis = nowMillis - creationMillis;
+  if (accountAgeMillis < 0 || accountAgeMillis > first150TrialNewUserWindowMillis) {
+    return false;
+  }
+  return Math.abs(lastSignInMillis - creationMillis) <=
+    first150TrialNewUserWindowMillis;
+}
+
+function isEligibleForFirst150StartWindow(userRecord, startsAtMillis) {
+  if (!Number.isFinite(startsAtMillis) || startsAtMillis <= 0) {
+    return false;
+  }
+  const creationMillis = Date.parse(
+      String(userRecord && userRecord.metadata &&
+        userRecord.metadata.creationTime || ""),
+  );
+  if (!Number.isFinite(creationMillis) || creationMillis <= 0) {
+    return false;
+  }
+  return creationMillis >= startsAtMillis;
 }
 
 function serverSubscriptionTokenRef(tokenHash) {
@@ -2680,10 +2730,15 @@ function tokenAllowsCategory(data, categoryKey) {
 async function sendDailyPersonalizedReminder({
   keywords,
   categoryKey,
+  reminderSeed = "",
 }) {
   const now = new Date();
   const dayKey = getIstDayKey(now);
-  const imageUrl = await pickImageForReminder(keywords, `${categoryKey}-${dayKey}`);
+  const resolvedSeed = normalizeText(reminderSeed) || "default";
+  const imageUrl = await pickImageForReminder(
+      keywords,
+      `${categoryKey}-${dayKey}-${resolvedSeed}`,
+  );
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
@@ -3220,6 +3275,143 @@ exports.applyReferralCode = onRequest({region: "asia-south1"}, async (req, res) 
   }
 });
 
+exports.claimFirst150Trial = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({claimed: false, message: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const decoded = await verifyAuth(req);
+    const uid = decoded.uid;
+    const nowMillis = Date.now();
+    const configRef = db.doc(first150TrialConfigPath);
+    const configSnap = await configRef.get();
+    const config = configSnap.data() || {};
+    const startsAtMillis = toMillis(config.startsAt);
+    const userRecord = await admin.auth().getUser(uid);
+    if (!isEligibleFirst150NewUser(userRecord, nowMillis) ||
+        !isEligibleForFirst150StartWindow(userRecord, startsAtMillis)) {
+      res.status(200).json({
+        claimed: false,
+        alreadyClaimed: false,
+        message: "User is not eligible for the first 150 trial offer",
+      });
+      return;
+    }
+
+    const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
+    const eventRef = db.collection(`users/${uid}/purchaseEvents`).doc();
+    const nowTimestamp = admin.firestore.Timestamp.fromMillis(nowMillis);
+    let claimed = false;
+    let alreadyClaimed = false;
+    let expiryIso = null;
+    let responseMessage = "Offer not available";
+
+    await db.runTransaction(async (tx) => {
+      const [freshConfigSnap, entitlementSnap] = await Promise.all([
+        tx.get(configRef),
+        tx.get(entitlementRef),
+      ]);
+      const config = freshConfigSnap.data() || {};
+      const entitlement = entitlementSnap.data() || {};
+      const freshStartsAtMillis = toMillis(config.startsAt);
+
+      if (entitlement.first150Claimed === true ||
+          String(entitlement.source || "").trim() === first150TrialSource) {
+        alreadyClaimed = true;
+        claimed = isFirst150TrialActive(entitlement);
+        expiryIso = firestoreValueToIsoString(entitlement.expiryTime);
+        responseMessage = "Trial already claimed";
+        return;
+      }
+      if (
+        entitlementSnap.exists &&
+        (
+          entitlement.isPro === true ||
+          String(entitlement.productId || "").trim().length > 0 ||
+          String(entitlement.source || "").trim().length > 0 ||
+          String(entitlement.verificationTokenHash || "").trim().length > 0
+        )
+      ) {
+        responseMessage = "Existing entitlement found";
+        return;
+      }
+
+      const enabled = config.enabled === true;
+      const limit = Math.max(0, Number(config.limit || 0) || 0);
+      const usedCount = Math.max(0, Number(config.usedCount || 0) || 0);
+      const days = Math.max(1, Number(config.days || 30) || 30);
+
+      if (!enabled ||
+          limit <= 0 ||
+          usedCount >= limit ||
+          !Number.isFinite(freshStartsAtMillis) ||
+          freshStartsAtMillis <= 0 ||
+          !isEligibleForFirst150StartWindow(userRecord, freshStartsAtMillis)) {
+        responseMessage = enabled ? "Offer limit reached" : "Offer disabled";
+        return;
+      }
+
+      const expiryMillis = nowMillis + (days * 24 * 60 * 60 * 1000);
+      const expiryTimestamp = admin.firestore.Timestamp.fromMillis(expiryMillis);
+
+      tx.set(configRef, {
+        usedCount: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      tx.set(entitlementRef, {
+        isPro: true,
+        status: "active",
+        productId: first150TrialProductId,
+        source: first150TrialSource,
+        subscriptionState: first150TrialState,
+        first150Claimed: true,
+        isPremiumTrial: true,
+        startTime: nowTimestamp,
+        expiryTime: expiryTimestamp,
+        autoRenewing: false,
+        latestOrderId: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      tx.set(eventRef, {
+        type: "first150_trial_claimed",
+        productId: first150TrialProductId,
+        source: first150TrialSource,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiryTime: expiryTimestamp,
+        days,
+      });
+
+      claimed = true;
+      expiryIso = expiryTimestamp.toDate().toISOString();
+      responseMessage = "First 150 premium trial granted";
+    });
+
+    res.status(200).json({
+      claimed,
+      alreadyClaimed,
+      isPro: claimed,
+      message: responseMessage,
+      expiryTime: expiryIso,
+    });
+  } catch (error) {
+    logger.error("claimFirst150Trial error", error);
+    res.status(httpStatusForError(error)).json({
+      claimed: false,
+      message: error instanceof Error ? error.message : "Unauthorized",
+    });
+  }
+});
+
 exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res) => {
   setCors(req, res);
   if (req.method === "OPTIONS") {
@@ -3462,6 +3654,17 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
     if (!token && String(data.source || "") === "referral_reward") {
       isPro = false;
       status = "inactive";
+    }
+    if (!token && String(data.source || "") === first150TrialSource) {
+      isPro = isFirst150TrialActive(data);
+      status = deriveEntitlementStatus({
+        isPro,
+        subscriptionState: data.subscriptionState || first150TrialState,
+        expiryTime,
+      });
+      productId = data.productId || first150TrialProductId;
+      subscriptionState = data.subscriptionState || first150TrialState;
+      autoRenewing = false;
     }
 
     if (token) {
@@ -3976,6 +4179,7 @@ exports.dailyGoodMorningReminder0730 = onSchedule(
         "suprabhatam",
         ],
         categoryKey: "morning",
+        reminderSeed: "0730",
       });
     },
 );
@@ -3996,6 +4200,7 @@ exports.dailyGoodMorningReminder0930 = onSchedule(
         "suprabhatam",
         ],
         categoryKey: "morning",
+        reminderSeed: "0930",
       });
     },
 );
@@ -4015,6 +4220,7 @@ exports.dailyGoodAfternoonReminder1200 = onSchedule(
         "afternoon",
         ],
         categoryKey: "afternoon",
+        reminderSeed: "1200",
       });
     },
 );
@@ -4034,6 +4240,7 @@ exports.dailyGoodAfternoonReminder1300 = onSchedule(
         "afternoon",
         ],
         categoryKey: "afternoon",
+        reminderSeed: "1300",
       });
     },
 );
@@ -4056,6 +4263,7 @@ exports.dailyMotivationReminder1130 = onSchedule(
           "inspiration",
         ],
         categoryKey: "motivation",
+        reminderSeed: "1130",
       });
     },
 );
@@ -4075,6 +4283,7 @@ exports.dailyGoodNightReminder2030 = onSchedule(
         "night",
         ],
         categoryKey: "night",
+        reminderSeed: "2030",
       });
     },
 );
@@ -4096,6 +4305,7 @@ exports.dailyJokesReminder1630 = onSchedule(
           "comedy",
         ],
         categoryKey: "jokes",
+        reminderSeed: "1800",
       });
     },
 );

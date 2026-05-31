@@ -13,6 +13,7 @@ import 'package:mana_poster/features/image_editor/services/background_removal_se
 import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
@@ -68,10 +69,12 @@ class _PosterProfileDetailsScreenState
   late final TextEditingController _businessTaglineController;
   late final TextEditingController _businessWhatsappController;
   final ImagePicker _imagePicker = ImagePicker();
+  final OnboardingAudioService _onboardingAudio = OnboardingAudioService();
   bool _saving = false;
   bool _personalPhotoBusy = false;
   bool _businessLogoBusy = false;
   bool _pickerBusy = false;
+  bool _autoPlayedGuide = false;
   Future<void>? _backgroundRemoverInitialization;
   AppLanguageController? _languageController;
 
@@ -114,6 +117,15 @@ class _PosterProfileDetailsScreenState
     _languageController?.removeListener(_handleLanguageChanged);
     _languageController = controller;
     _languageController?.addListener(_handleLanguageChanged);
+    if (!_autoPlayedGuide && _isOnboardingFlow) {
+      _autoPlayedGuide = true;
+      unawaited(
+        _onboardingAudio.autoplayIfSupported(
+          language: context.currentLanguage,
+          cue: OnboardingAudioCue.profileSetup,
+        ),
+      );
+    }
   }
 
   void _handleLanguageChanged() {
@@ -131,6 +143,7 @@ class _PosterProfileDetailsScreenState
     _businessTaglineController.dispose();
     _businessWhatsappController.dispose();
     _languageController?.removeListener(_handleLanguageChanged);
+    unawaited(_onboardingAudio.dispose());
     super.dispose();
   }
 
@@ -544,6 +557,13 @@ class _PosterProfileDetailsScreenState
     }
     final updated = _currentProfileFromInputs();
     if (!_hasUnsavedChanges) {
+      if (widget.completeToHomeOnSave) {
+        final nextRoute = await AppFlowService.resolveAuthenticatedEntryRoute();
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pushReplacementNamed(nextRoute);
+      }
       return;
     }
     setState(() => _saving = true);
@@ -608,6 +628,9 @@ class _PosterProfileDetailsScreenState
 
   String _onlyDigits(String value) => value.replaceAll(RegExp(r'\D'), '');
 
+  bool get _isOnboardingFlow =>
+      widget.completeToHomeOnSave && !widget.embeddedInProfileScreen;
+
   PosterProfileData _currentProfileFromInputs() {
     final splitName = PosterProfileService.splitDisplayName(
       _nameController.text.trim(),
@@ -670,8 +693,9 @@ class _PosterProfileDetailsScreenState
     final strings = context.strings;
     final hasUnsavedChanges = _hasUnsavedChanges;
     final cs = Theme.of(context).colorScheme;
-    final minimalSetup =
-        widget.completeToHomeOnSave && !widget.embeddedInProfileScreen;
+    final minimalSetup = _isOnboardingFlow;
+    final canSubmitProfile = minimalSetup || hasUnsavedChanges;
+    final showGuideAudio = context.currentLanguage == AppLanguage.telugu;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -772,12 +796,12 @@ class _PosterProfileDetailsScreenState
                 const SizedBox(height: 10),
               ],
               FilledButton(
-                onPressed: _saving || !hasUnsavedChanges ? null : _saveProfile,
+                onPressed: _saving || !canSubmitProfile ? null : _saveProfile,
                 style: FilledButton.styleFrom(
-                  backgroundColor: hasUnsavedChanges
+                  backgroundColor: canSubmitProfile
                       ? const Color(0xFF6D28D9)
                       : const Color(0xFFE2E8F0),
-                  foregroundColor: hasUnsavedChanges
+                  foregroundColor: canSubmitProfile
                       ? Colors.white
                       : const Color(0xFF64748B),
                   disabledBackgroundColor: const Color(0xFFE2E8F0),
@@ -798,12 +822,20 @@ class _PosterProfileDetailsScreenState
                           malayalam: 'സേവ് ചെയ്യുന്നു...',
                         )
                       : strings.localized(
-                          telugu: 'మార్పులు సేవ్ చేయండి',
-                          english: 'Save Changes',
-                          hindi: 'बदलाव सेव करें',
-                          tamil: 'மாற்றங்களை சேமிக்கவும்',
-                          kannada: 'ಬದಲಾವಣೆಗಳನ್ನು ಸೇವ್ ಮಾಡಿ',
-                          malayalam: 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക',
+                          telugu: minimalSetup
+                              ? 'కొనసాగండి'
+                              : 'మార్పులు సేవ్ చేయండి',
+                          english: minimalSetup ? 'Continue' : 'Save Changes',
+                          hindi: minimalSetup ? 'जारी रखें' : 'बदलाव सेव करें',
+                          tamil: minimalSetup
+                              ? 'தொடரவும்'
+                              : 'மாற்றங்களை சேமிக்கவும்',
+                          kannada: minimalSetup
+                              ? 'ಮುಂದುವರಿಸಿ'
+                              : 'ಬದಲಾವಣೆಗಳನ್ನು ಸೇವ್ ಮಾಡಿ',
+                          malayalam: minimalSetup
+                              ? 'തുടരുക'
+                              : 'മാറ്റങ്ങൾ സേവ് ചെയ്യുക',
                         ),
                 ),
               ),
@@ -948,6 +980,33 @@ class _PosterProfileDetailsScreenState
                     ),
                   ],
                   const SizedBox(height: 22),
+                  if (showGuideAudio) ...<Widget>[
+                    Align(
+                      alignment: Alignment.center,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          unawaited(
+                            _onboardingAudio.replayIfSupported(
+                              language: context.currentLanguage,
+                              cue: OnboardingAudioCue.profileSetup,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.volume_up_rounded),
+                        label: Text(
+                          strings.localized(
+                            telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
+                            english: 'Replay voice guide',
+                            hindi: 'वॉइस गाइड फिर सुनें',
+                            tamil: 'வாய்ஸ் கையேட்டை மீண்டும் கேளுங்கள்',
+                            kannada: 'ವಾಯ್ಸ್ ಗೈಡ್ ಮತ್ತೆ ಕೇಳಿ',
+                            malayalam: 'വോയ്സ് ഗൈഡ് വീണ്ടും കേൾക്കുക',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ],
               ),
             ),

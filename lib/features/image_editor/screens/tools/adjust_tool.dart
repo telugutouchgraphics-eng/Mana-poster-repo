@@ -112,9 +112,9 @@ class _AdjustInlineStrip extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: SafeArea(
@@ -159,7 +159,7 @@ class _AdjustInlineStrip extends StatelessWidget {
                               english: 'Adjust',
                             ),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: _editorChromeTextPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),

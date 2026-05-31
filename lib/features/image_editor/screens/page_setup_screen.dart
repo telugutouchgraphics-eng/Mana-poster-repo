@@ -5,6 +5,8 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/background_presets.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/models/editor_stage_background.dart';
+import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
+import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
     if (dart.library.io)
         'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
@@ -262,35 +264,91 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     final canStart = _resolveConfig() != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
-        surfaceTintColor: Colors.transparent,
-        foregroundColor: const Color(0xFF0F172A),
-        elevation: 0,
-        title: Text(
-          strings.localized(telugu: 'కొత్త పోస్టర్', english: 'New Poster'),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: _skipToEditor,
-            child: Text(
-              strings.localized(telugu: 'స్కిప్', english: 'Skip'),
-              style: const TextStyle(
-                color: Color(0xFF0EA5E9),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                children: <Widget>[
+      body: GradientShell(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x120F172A),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFFF8FAFC),
+                              foregroundColor: const Color(0xFF0F172A),
+                            ),
+                            icon: const Icon(Icons.arrow_back_rounded),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              height: 10,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(999),
+                                gradient: const LinearGradient(
+                                  colors: <Color>[
+                                    Color(0xFF14B8A6),
+                                    Color(0xFF38BDF8),
+                                    Color(0xFFA78BFA),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          TextButton(
+                            onPressed: _skipToEditor,
+                            child: Text(
+                              strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+                              style: const TextStyle(
+                                color: Color(0xFF0EA5E9),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        strings.localized(telugu: 'కొత్త పోస్టర్', english: 'New Poster'),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        strings.localized(
+                          telugu: 'సైజ్, బ్యాక్‌గ్రౌండ్ ఎంచుకుని డిజైన్ ప్రారంభించండి.',
+                          english: 'Pick size and background, then start your design.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
                   Text(
                     strings.localized(
                       telugu: 'పేజీ సెటప్',
@@ -591,14 +649,8 @@ class _PageSetupScreenState extends State<PageSetupScreen>
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    height: 148,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
                     child: AspectRatio(
                       aspectRatio: config.aspectRatio.clamp(0.2, 5),
                       child: DecoratedBox(
@@ -622,8 +674,7 @@ class _PageSetupScreenState extends State<PageSetupScreen>
                                           )],
                                 )
                               : null,
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
-                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD7E2EE)),
                         ),
                         child:
                             previewBackground.type ==
@@ -636,34 +687,20 @@ class _PageSetupScreenState extends State<PageSetupScreen>
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-              ),
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF0EA5E9),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: canStart ? _openEditor : null,
-                child: Text(
-                  strings.localized(
-                    telugu: 'డిజైన్ ప్రారంభించండి',
-                    english: 'Start Design',
+                      const SizedBox(height: 22),
+                      PrimaryButton(
+                        label: strings.localized(
+                          telugu: 'డిజైన్ ప్రారంభించండి',
+                          english: 'Start Design',
+                        ),
+                        onPressed: canStart ? _openEditor : null,
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

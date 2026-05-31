@@ -166,9 +166,9 @@ class _EditorMainToolsStrip extends StatelessWidget {
         compact ? 8 : 10,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Row(
@@ -441,9 +441,9 @@ class _EditorSubToolsStrip extends StatelessWidget {
         compact ? 8 : 10,
       ),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Row(
@@ -497,9 +497,9 @@ class _PhotoEraserInlineStrip extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(compact ? 8 : 10, 8, compact ? 8 : 10, 10),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Column(
@@ -517,10 +517,10 @@ class _PhotoEraserInlineStrip extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: const Color(0xFFF8FAFC),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: _editorChromeBorder,
                   ),
                 ),
                 child: Center(
@@ -529,12 +529,8 @@ class _PhotoEraserInlineStrip extends StatelessWidget {
                     height: (brushSize / 4).clamp(8, 24).toDouble(),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withValues(
-                        alpha: 0.22 + (hardness.clamp(0, 1) * 0.34),
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
+                      color: const Color(0xFFCBD5E1),
+                      border: Border.all(color: const Color(0xFF94A3B8)),
                     ),
                   ),
                 ),
@@ -549,7 +545,7 @@ class _PhotoEraserInlineStrip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.82),
+                    color: _editorChromeTextPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -561,7 +557,9 @@ class _PhotoEraserInlineStrip extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2563EB),
+                    ),
                   ),
                 ),
             ],
@@ -618,7 +616,7 @@ class _EraserSliderRow extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
+              color: _editorChromeTextSecondary,
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
@@ -635,8 +633,8 @@ class _EraserSliderRow extends StatelessWidget {
               value: value.clamp(min, max).toDouble(),
               min: min,
               max: max,
-              activeColor: const Color(0xFFF8FAFC),
-              inactiveColor: Colors.white.withValues(alpha: 0.18),
+              activeColor: const Color(0xFF2563EB),
+              inactiveColor: const Color(0xFFCBD5E1),
               onChanged: onChanged,
             ),
           ),
@@ -647,7 +645,7 @@ class _EraserSliderRow extends StatelessWidget {
             valueLabel,
             textAlign: TextAlign.right,
             style: const TextStyle(
-              color: Colors.white,
+              color: _editorChromeTextPrimary,
               fontSize: 11.5,
               fontWeight: FontWeight.w900,
             ),
@@ -732,9 +730,9 @@ class _LayersInlineStrip extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 6, compact ? 6 : 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Column(
@@ -797,7 +795,7 @@ class _LayersInlineStrip extends StatelessWidget {
               Text(
                 strings.localized(telugu: 'లేయర్లు', english: 'Layers'),
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
+                  color: _editorChromeTextPrimary,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -825,8 +823,9 @@ class _LayersInlineStrip extends StatelessWidget {
                           width: compact ? 26 : 30,
                           height: compact ? 26 : 30,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
+                            color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: _editorChromeBorder),
                           ),
                           child: _layerPreview(layer),
                         ),
@@ -839,8 +838,8 @@ class _LayersInlineStrip extends StatelessWidget {
                             fontSize: compact ? 9.8 : 10.5,
                             fontWeight: FontWeight.w700,
                             color: selected
-                                ? const Color(0xFFE2E8F0)
-                                : const Color(0xFFCBD5E1),
+                                ? const Color(0xFF4338CA)
+                                : _editorChromeTextSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -851,7 +850,7 @@ class _LayersInlineStrip extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: selected
                                 ? const Color(0xFF8B5CF6)
-                                : Colors.white.withValues(alpha: 0.18),
+                                : const Color(0xFFCBD5E1),
                             borderRadius: BorderRadius.circular(999),
                           ),
                         ),
@@ -889,9 +888,9 @@ class _StickerCategoryStrip extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 6, compact ? 6 : 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Row(
@@ -948,9 +947,9 @@ class _StickerItemsStrip extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 6, compact ? 6 : 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Column(
@@ -967,7 +966,7 @@ class _StickerItemsStrip extends StatelessWidget {
               Text(
                 category,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: _editorChromeTextPrimary,
                   fontSize: compact ? 10.5 : 11.2,
                   fontWeight: FontWeight.w700,
                 ),
@@ -990,8 +989,9 @@ class _StickerItemsStrip extends StatelessWidget {
                     width: compact ? 52 : 58,
                     margin: const EdgeInsets.symmetric(vertical: 1),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _editorChromeBorder),
                     ),
                     child: Center(
                       child: imageLike
@@ -1060,9 +1060,9 @@ class _BorderInlineStrip extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(compact ? 6 : 8, 6, compact ? 6 : 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCC0F172A),
+        color: _editorChromeSurfaceStrong,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _editorChromeBorder),
         ),
       ),
       child: Row(

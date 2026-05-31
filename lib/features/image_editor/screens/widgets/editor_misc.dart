@@ -958,9 +958,16 @@ class _EditorCommitOverlay extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xE6101726),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: _editorChromeBorder),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x140F172A),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -968,7 +975,7 @@ class _EditorCommitOverlay extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                color: Color(0xFFF8FAFC),
+                color: _editorChromeTextPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
               ),
@@ -979,7 +986,7 @@ class _EditorCommitOverlay extends StatelessWidget {
                 detail!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFFCBD5E1),
+                  color: _editorChromeTextSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1193,14 +1200,14 @@ class _EditorIconButton extends StatelessWidget {
           height: size,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: _editorChromeBorder),
           ),
           child: Icon(
             icon,
             size: compact ? 16 : 18,
-            color: const Color(0xFFE2E8F0),
+            color: _editorChromeTextPrimary,
           ),
         ),
       ),
@@ -1223,14 +1230,14 @@ class _TopActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: _editorChromeBorder),
         ),
         child: Text(
           label,
           style: const TextStyle(
-            color: Color(0xFFE2E8F0),
+            color: _editorChromeTextPrimary,
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
@@ -1299,20 +1306,26 @@ class _ToolItem extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: active
-              ? Colors.white.withValues(alpha: 0.14)
-              : Colors.white.withValues(alpha: 0.05),
+              ? const Color(0xFFE0E7FF)
+              : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: active
-                ? Colors.white.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.08),
+                ? const Color(0xFFC7D2FE)
+                : _editorChromeBorder,
           ),
         ),
         padding: EdgeInsets.symmetric(vertical: compact ? 8 : 9, horizontal: 6),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(icon, size: compact ? 17 : 18, color: const Color(0xFFE2E8F0)),
+            Icon(
+              icon,
+              size: compact ? 17 : 18,
+              color: active
+                  ? const Color(0xFF4338CA)
+                  : _editorChromeTextPrimary,
+            ),
             const SizedBox(height: 5),
             Text(
               label,
@@ -1320,7 +1333,9 @@ class _ToolItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: const Color(0xFFE2E8F0),
+                color: active
+                    ? const Color(0xFF4338CA)
+                    : _editorChromeTextPrimary,
                 fontSize: compact ? 9.5 : 10.5,
                 fontWeight: FontWeight.w700,
               ),
@@ -1411,11 +1426,18 @@ class _DraftsScreenState extends State<_DraftsScreen> {
   Widget build(BuildContext context) {
     final strings = context.strings;
     return Scaffold(
-      backgroundColor: const Color(0xFF020617),
+      backgroundColor: _editorCanvasBackdrop,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF020617),
+        backgroundColor: _editorChromeSurfaceStrong,
         elevation: 0,
-        title: Text(strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts')),
+        foregroundColor: _editorChromeTextPrimary,
+        title: Text(
+          strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts'),
+          style: const TextStyle(
+            color: _editorChromeTextPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: _saving ? null : _saveCurrentDraft,
@@ -1453,7 +1475,7 @@ class _DraftsScreenState extends State<_DraftsScreen> {
                       telugu: 'ఇంకా సేవ్ చేసిన డ్రాఫ్ట్స్ లేవు',
                       english: 'No saved drafts yet',
                     ),
-                    style: const TextStyle(color: Color(0xFFCBD5E1)),
+                    style: const TextStyle(color: _editorChromeTextSecondary),
                   ),
                 );
               }
@@ -1469,11 +1491,9 @@ class _DraftsScreenState extends State<_DraftsScreen> {
                   final modified = file.lastModifiedSync();
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06),
+                      color: _editorChromeSurfaceStrong,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
+                      border: Border.all(color: _editorChromeBorder),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -1482,19 +1502,19 @@ class _DraftsScreenState extends State<_DraftsScreen> {
                         title: Text(
                           name,
                           style: const TextStyle(
-                            color: Color(0xFFF8FAFC),
+                            color: _editorChromeTextPrimary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         subtitle: Text(
                           modified.toLocal().toString(),
-                          style: const TextStyle(color: Color(0xFF94A3B8)),
+                          style: const TextStyle(color: _editorChromeTextSecondary),
                         ),
                         trailing: IconButton(
                           onPressed: () => _deleteDraft(file),
                           icon: const Icon(
                             Icons.delete_outline_rounded,
-                            color: Color(0xFFE2E8F0),
+                            color: _editorChromeTextSecondary,
                           ),
                         ),
                       ),

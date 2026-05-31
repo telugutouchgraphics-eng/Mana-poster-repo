@@ -38,6 +38,7 @@ import 'package:mana_poster/app/services/time_slot_service.dart';
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
+import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
@@ -4695,10 +4696,10 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverList(
+      else
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(vertical: 0),
+          sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
                               final entry = feedEntries[index];
@@ -6323,10 +6324,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     await Future.wait(futures);
   }
 
-  Future<void> _preparePosterExport({bool force = false}) async {
-    final signature = _posterSignature(
-      isPhotoVisible: _showPosterPhotoNotifier.value,
-    );
+  Future<void> _preparePosterExport({
+    bool force = false,
+    bool? photoVisibleOverride,
+  }) async {
+    final requestedPhotoVisible =
+        photoVisibleOverride ?? _showPosterPhotoNotifier.value;
+    final signature = _posterSignature(isPhotoVisible: requestedPhotoVisible);
     if (!force &&
         _preparedPosterSignature == signature &&
         _preparedPosterBytes != null &&
@@ -6338,7 +6342,24 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     if (inFlight != null) {
       return inFlight;
     }
-    final future = _doPreparePosterExport(signature);
+    final future = () async {
+      final originalPhotoVisible = _showPosterPhotoNotifier.value;
+      final shouldTemporarilySwitch =
+          requestedPhotoVisible != originalPhotoVisible;
+      if (shouldTemporarilySwitch) {
+        _showPosterPhotoNotifier.value = requestedPhotoVisible;
+        await _settlePosterCaptureFrame();
+      }
+      try {
+        await _doPreparePosterExport(signature);
+      } finally {
+        if (shouldTemporarilySwitch) {
+          _showPosterPhotoNotifier.value = originalPhotoVisible;
+          await _settlePosterCaptureFrame();
+          _schedulePosterWarmup(force: true);
+        }
+      }
+    }();
     _preparePosterFuture = future;
     try {
       await future;
@@ -6375,16 +6396,20 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<String?> _ensurePreparedPosterFile() async {
-    final signature = _posterSignature(
-      isPhotoVisible: _showPosterPhotoNotifier.value,
-    );
+    return _ensurePreparedPosterFileForVisibility(_showPosterPhotoNotifier.value);
+  }
+
+  Future<String?> _ensurePreparedPosterFileForVisibility(
+    bool isPhotoVisible,
+  ) async {
+    final signature = _posterSignature(isPhotoVisible: isPhotoVisible);
     final existingPath = _preparedPosterFilePath;
     if (_preparedPosterSignature == signature &&
         existingPath != null &&
         await File(existingPath).exists()) {
       return existingPath;
     }
-    await _preparePosterExport();
+    await _preparePosterExport(photoVisibleOverride: isPhotoVisible);
     final refreshedPath = _preparedPosterFilePath;
     if (refreshedPath != null && await File(refreshedPath).exists()) {
       return refreshedPath;
@@ -6599,7 +6624,25 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         View.maybeOf(context) ??
         WidgetsBinding.instance.platformDispatcher.implicitView;
     final devicePixelRatio = view?.devicePixelRatio ?? 1.0;
-    return devicePixelRatio.clamp(1.0, 3.0);
+    final renderBox =
+        _posterCaptureKey.currentContext?.findRenderObject() as RenderBox?;
+    final logicalWidth =
+        renderBox != null && renderBox.hasSize && renderBox.size.width > 0
+        ? renderBox.size.width
+        : MediaQuery.sizeOf(context).width;
+    final pageConfig = _editorPageConfigForPoster();
+    final targetWidthRatio = pageConfig.widthPx / math.max(1.0, logicalWidth);
+    return math.max(devicePixelRatio, targetWidthRatio).clamp(1.0, 4.5);
+  }
+
+  Future<void> _settlePosterCaptureFrame() async {
+    await Future<void>.delayed(const Duration(milliseconds: 24));
+    final completer = Completer<void>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      completer.complete();
+    });
+    await completer.future;
+    await Future<void>.delayed(const Duration(milliseconds: 36));
   }
 
   void _recordPosterCaptureTrace(
@@ -7215,6 +7258,128 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
   }
 
+  EditorPageConfig _editorPageConfigForPoster() {
+    final existing = item.pageConfig;
+    if (existing != null) {
+      return existing;
+    }
+    final captureContext = _posterCaptureKey.currentContext;
+    final renderBox = captureContext?.findRenderObject() as RenderBox?;
+    final size =
+        renderBox != null && renderBox.hasSize && !renderBox.size.isEmpty
+        ? renderBox.size
+        : const Size(1080, 1350);
+    final safeWidth = size.width <= 0 ? 1080.0 : size.width;
+    final safeHeight = size.height <= 0 ? 1350.0 : size.height;
+    final widthPx = 1080;
+    final heightPx = ((widthPx / safeWidth) * safeHeight)
+        .round()
+        .clamp(320, 4000);
+    return EditorPageConfig(
+      name: 'Poster Editor',
+      widthPx: widthPx,
+      heightPx: heightPx,
+    );
+  }
+
+  Future<String?> _preparePosterEditorTemplateSource() async {
+    final shouldInjectEditableUserPhoto = item.personalizationConfig != null;
+    final posterPath = await _ensurePreparedPosterFileForVisibility(
+      shouldInjectEditableUserPhoto ? false : _showPosterPhotoNotifier.value,
+    );
+    if (posterPath == null) {
+      return null;
+    }
+    final tempDirectory = await getTemporaryDirectory();
+    final fileName =
+        'poster_editor_template_${item.templateId ?? item.titleEn.hashCode.abs()}.json';
+    final filePath =
+        '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+    final pageConfig = _editorPageConfigForPoster();
+    final templateDocument = <String, Object?>{
+      'templateId': item.templateId ?? 'poster_editor',
+      'title': item.titleFor(language),
+      'sourceWidth': pageConfig.widthPx,
+      'sourceHeight': pageConfig.heightPx,
+      'layers': <Map<String, Object?>>[
+        <String, Object?>{
+          'id': 'base_poster',
+          'assetPath': posterPath,
+          'left': 0,
+          'top': 0,
+          'width': pageConfig.widthPx,
+          'height': pageConfig.heightPx,
+          'opacity': 1,
+          'visible': true,
+          'isLocked': true,
+        },
+      ],
+    };
+    await File(filePath).writeAsString(jsonEncode(templateDocument), flush: true);
+    return filePath;
+  }
+
+  Future<void> _openPosterPhotoEditor(BuildContext context) async {
+    if (!_beginAction('poster_editor')) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.strings;
+    try {
+      final templateSource = await _preparePosterEditorTemplateSource();
+      if (templateSource == null) {
+        _showSnack(
+          messenger,
+          strings.localized(
+            telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            english: 'Poster is not ready yet. Please try again.',
+          ),
+        );
+        return;
+      }
+      if (!context.mounted) {
+        return;
+      }
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => ImageEditorScreen(
+            pageConfig: _editorPageConfigForPoster(),
+            templateDocumentSource: templateSource,
+            initialPosterProfile: item.personalizationConfig != null
+                ? viewerPosterProfile
+                : null,
+            initialPersonalizationConfig: item.personalizationConfig,
+            includeInitialPosterNameLayer: false,
+            autoSelectInitialLayers: false,
+            preferFullWidthCanvas: true,
+            requireSubscriptionForExportActions: true,
+            initialPhotoShapeOverride: _photoUserAdjustment.effectiveShape,
+            initialPhotoRenderModeOverride:
+                _photoUserAdjustment.effectivePhotoRenderMode,
+            initialPhotoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
+            initialPhotoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
+            lockTemplateLayers: false,
+            autoProcessAddedPhotos: true,
+            defaultAddedPhotoMaskShape: 'transparent_bottom_fade',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('poster editor open failed: $error', stackTrace);
+      if (context.mounted) {
+        _showSnack(
+          messenger,
+          strings.localized(
+            telugu: 'ఎడిటర్ ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            english: 'Could not open editor. Please try again.',
+          ),
+        );
+      }
+    } finally {
+      _endAction();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -7379,14 +7544,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         foregroundColor: Colors.white,
                         backgroundColor: const Color(0xFF25D366),
                         side: const BorderSide(color: Color(0xFF25D366)),
-                        minimumSize: const Size.fromHeight(40),
+                        minimumSize: const Size.fromHeight(42),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         padding: const EdgeInsets.symmetric(
-                          vertical: 7,
-                          horizontal: 10,
+                          vertical: 8,
+                          horizontal: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                     );
@@ -7493,18 +7658,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         ),
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1D4ED8),
+                        backgroundColor: const Color(0xFF64748B),
                         foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(40),
+                        minimumSize: const Size.fromHeight(42),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         padding: const EdgeInsets.symmetric(
                           vertical: 8,
-                          horizontal: 10,
+                          horizontal: 14,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         elevation: 0,
+                        side: const BorderSide(color: Color(0xFF64748B)),
                       ),
                     );
                   },
@@ -7512,6 +7678,48 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               ),
             ],
           ),
+          if (!item.isVideo) ...<Widget>[
+            const SizedBox(height: 10),
+            ValueListenableBuilder<String?>(
+              valueListenable: _activeActionNotifier,
+              builder: (context, activeAction, _) {
+                final isBusy = activeAction == 'poster_editor';
+                return OutlinedButton.icon(
+                  onPressed:
+                      deferRichPosterPreview || activeAction != null
+                      ? null
+                      : () => unawaited(_openPosterPhotoEditor(context)),
+                  icon: isBusy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                  label: Text(
+                    strings.localized(
+                      telugu: 'ఎడిట్',
+                      english: 'Edit',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6D28D9),
+                    side: const BorderSide(color: Color(0xFFC4B5FD)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    minimumSize: const Size.fromHeight(38),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
           const SizedBox(height: 6),
           Text(
             item.titleFor(language),
@@ -9949,13 +10157,13 @@ class _PhotoShapeFrame extends StatelessWidget {
               colors: <Color>[
                 Color(0xFFFFFFFF),
                 Color(0xFFFFFFFF),
-                Color(0xFAFFFFFF),
-                Color(0xD1FFFFFF),
-                Color(0x70FFFFFF),
-                Color(0x1FFFFFFF),
+                Color(0xF2FFFFFF),
+                Color(0xB8FFFFFF),
+                Color(0x54FFFFFF),
+                Color(0x12FFFFFF),
                 Color(0x00FFFFFF),
               ],
-              stops: <double>[0.0, 0.56, 0.68, 0.78, 0.88, 0.94, 1.0],
+              stops: <double>[0.0, 0.5, 0.62, 0.74, 0.84, 0.92, 1.0],
             ).createShader(bounds);
           },
           child: layer,
