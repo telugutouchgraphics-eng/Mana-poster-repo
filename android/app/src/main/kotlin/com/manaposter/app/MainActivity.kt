@@ -1,12 +1,19 @@
 package com.manaposter.app
 
 import android.content.ContentValues
+import android.content.Intent
 import android.util.Log
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.WindowManager
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.android.play.core.review.ReviewManagerFactory
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -19,11 +26,23 @@ class MainActivity : FlutterActivity() {
     private val screenSecurityChannelName = "mana_poster/screen_security"
     private val mediaExportChannelName = "mana_poster/media_export"
     private val installSourceChannelName = "mana_poster/install_source"
+    private val playEngagementChannelName = "mana_poster/play_engagement"
     private val startupStateChannelName = "mana_poster/startup_state"
     private val startupStatePrefsName = "mana_poster_startup_state_v1"
+    private val appUpdateRequestCode = 3017
+    private val appUpdateManager: AppUpdateManager by lazy {
+        AppUpdateManagerFactory.create(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == appUpdateRequestCode) {
+            Log.d("ManaPosterPlay", "updateFlow resultCode=$resultCode")
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -97,6 +116,28 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, playEngagementChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "checkForAppUpdate" -> {
+                        checkForAppUpdate(result)
+                    }
+                    "startImmediateUpdate" -> {
+                        startUpdateFlow(AppUpdateType.IMMEDIATE, result)
+                    }
+                    "startFlexibleUpdate" -> {
+                        startUpdateFlow(AppUpdateType.FLEXIBLE, result)
+                    }
+                    "completeFlexibleUpdate" -> {
+                        completeFlexibleUpdate(result)
+                    }
+                    "requestInAppReview" -> {
+                        requestInAppReview(result)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, startupStateChannelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -117,6 +158,110 @@ class MainActivity : FlutterActivity() {
             }
 
     }
+
+    private fun checkForAppUpdate(result: MethodChannel.Result) {
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { appUpdateInfo ->
+                result.success(
+                    mapOf(
+                        "updateAvailable" to (
+                            appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE ||
+                                appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+                            ),
+                        "updateInProgress" to
+                            (appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS),
+                        "immediateAllowed" to appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE),
+                        "flexibleAllowed" to appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE),
+                        "stalenessDays" to appUpdateInfo.clientVersionStalenessDays(),
+                        "priority" to appUpdateInfo.updatePriority(),
+                        "installStatus" to appUpdateInfo.installStatus(),
+                    ),
+                )
+            }
+            .addOnFailureListener { throwable ->
+                Log.e("ManaPosterPlay", "checkForAppUpdate failed", throwable)
+                result.error(
+                    "update_check_failed",
+                    throwable.message ?: "Update check failed",
+                    null,
+                )
+            }
+    }
+
+    private fun startUpdateFlow(updateType: Int, result: MethodChannel.Result) {
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { appUpdateInfo ->
+                val allowed = appUpdateInfo.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS ||
+                    appUpdateInfo.isUpdateTypeAllowed(updateType)
+                if (!allowed) {
+                    result.success(false)
+                    return@addOnSuccessListener
+                }
+                launchUpdateFlow(appUpdateInfo, updateType, result)
+            }
+            .addOnFailureListener { throwable ->
+                Log.e("ManaPosterPlay", "startUpdateFlow failed", throwable)
+                result.success(false)
+            }
+    }
+
+    private fun launchUpdateFlow(
+        appUpdateInfo: AppUpdateInfo,
+        updateType: Int,
+        result: MethodChannel.Result,
+    ) {
+        try {
+            appUpdateManager.startUpdateFlowForResult(
+                appUpdateInfo,
+                updateType,
+                this,
+                appUpdateRequestCode,
+            )
+            result.success(true)
+        } catch (throwable: Throwable) {
+            Log.e("ManaPosterPlay", "launchUpdateFlow failed", throwable)
+            result.success(false)
+        }
+    }
+
+    private fun completeFlexibleUpdate(result: MethodChannel.Result) {
+        appUpdateManager.completeUpdate()
+            .addOnSuccessListener {
+                result.success(true)
+            }
+            .addOnFailureListener { throwable ->
+                Log.e("ManaPosterPlay", "completeFlexibleUpdate failed", throwable)
+                result.success(false)
+            }
+    }
+
+    private fun requestInAppReview(result: MethodChannel.Result) {
+        val reviewManager = ReviewManagerFactory.create(this)
+        reviewManager.requestReviewFlow()
+            .addOnCompleteListener { requestTask ->
+                if (!requestTask.isSuccessful) {
+                    val throwable = requestTask.exception
+                    Log.e("ManaPosterPlay", "requestReviewFlow failed", throwable)
+                    result.success(false)
+                    return@addOnCompleteListener
+                }
+                val reviewInfo = requestTask.result
+                reviewManager.launchReviewFlow(this, reviewInfo)
+                    .addOnCompleteListener { launchTask ->
+                        if (!launchTask.isSuccessful) {
+                            Log.e(
+                                "ManaPosterPlay",
+                                "launchReviewFlow failed",
+                                launchTask.exception,
+                            )
+                            result.success(false)
+                            return@addOnCompleteListener
+                        }
+                        result.success(true)
+                    }
+            }
+    }
+
     private fun readStartupState(): Map<String, Any?> {
         val prefs = applicationContext.getSharedPreferences(startupStatePrefsName, MODE_PRIVATE)
         val state = prefs.all.mapValues { (_, value) ->

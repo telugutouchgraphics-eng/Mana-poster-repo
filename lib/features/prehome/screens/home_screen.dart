@@ -33,6 +33,7 @@ import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
+import 'package:mana_poster/app/services/play_engagement_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/services/time_slot_service.dart';
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
@@ -1298,6 +1299,10 @@ class _HomeScreenState extends State<HomeScreen>
         _loadInstalledAppVersion,
       );
       _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1300),
+        _handlePlayStoreEngagementOnHomeOpen,
+      );
+      _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 1100),
         _loadHomeBanners,
       );
@@ -1449,6 +1454,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshHomeFeedTimeSlotIfNeeded();
+      unawaited(PlayEngagementService.instance.handleAppResume());
       unawaited(
         _TemplateFeedItem.subscriptionBackendService
             .refreshEntitlementInBackground(forceRefresh: true),
@@ -3973,6 +3979,27 @@ class _HomeScreenState extends State<HomeScreen>
       }
       setState(() => _hasRatedApp = hasRated);
     } catch (_) {}
+  }
+
+  Future<void> _handlePlayStoreEngagementOnHomeOpen() async {
+    if (!mounted) {
+      return;
+    }
+    try {
+      await _loadPromoCardPreferences();
+      if (!mounted) {
+        return;
+      }
+      await PlayEngagementService.instance.handleHomeOpen(
+        hasRatedApp: _hasRatedApp,
+        onReviewRecorded: _markAppRated,
+      );
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'play engagement startup flow skipped: $error',
+        stackTrace,
+      );
+    }
   }
 
   bool _isUpdateAvailable() {
