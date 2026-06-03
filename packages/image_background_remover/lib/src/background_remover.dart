@@ -40,7 +40,17 @@ class BackgroundRemover {
   Future<void> _createSession() async {
     OrtSessionOptions? sessionOptions;
     try {
+      _session?.release();
+      _session = null;
       sessionOptions = OrtSessionOptions();
+      sessionOptions.setSessionExecutionMode(
+        OrtSessionExecutionMode.ortSequential,
+      );
+      sessionOptions.setIntraOpNumThreads(1);
+      sessionOptions.setInterOpNumThreads(1);
+      sessionOptions.setSessionGraphOptimizationLevel(
+        GraphOptimizationLevel.ortEnableBasic,
+      );
       final rawAssetFile = await rootBundle.load(Assets.modelPath);
       final bytes = rawAssetFile.buffer.asUint8List();
       _session = OrtSession.fromBuffer(bytes, sessionOptions);
@@ -90,8 +100,8 @@ class BackgroundRemover {
     List<OrtValue?>? outputs;
     try {
       runOptions = OrtRunOptions();
-      outputs = await _session!.runAsync(runOptions, inputs);
-      final outputTensor = outputs?[0]?.value;
+      outputs = _session!.run(runOptions, inputs);
+      final outputTensor = outputs[0]?.value;
       if (outputTensor is List) {
         final mask = outputTensor[0][0];
         final resizedMask = smoothMask
@@ -112,7 +122,7 @@ class BackgroundRemover {
       throw Exception('Unexpected output format from ONNX model.');
     } catch (error, stackTrace) {
       log(
-        'OrtSession.runAsync failed: $error inputBytes=${imageBytes.length} modelSize=$modelSize',
+        'OrtSession.run failed: $error inputBytes=${imageBytes.length} modelSize=$modelSize',
         name: 'BackgroundRemover',
         stackTrace: stackTrace,
       );

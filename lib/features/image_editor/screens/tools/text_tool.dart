@@ -126,7 +126,7 @@ class _TextEditorFullscreenOverlayState
 
   late Color _selectedColor = widget.textColor;
   late int _selectedGradientIndex = widget.textGradientIndex;
-  late String _selectedFontFamily = widget.fontFamily;
+  late String _selectedFontFamily;
   late double _fontSize = widget.fontSize.clamp(18, 96).toDouble();
   late double _lineHeight = widget.textLineHeight.clamp(0.8, 2.2).toDouble();
   late double _letterSpacing = widget.textLetterSpacing
@@ -160,6 +160,7 @@ class _TextEditorFullscreenOverlayState
   @override
   void initState() {
     super.initState();
+    _selectedFontFamily = _initialTypingFontFamily(widget.fontFamily);
     _controller.addListener(_handlePreviewSourceChanged);
     _controller.selection = TextSelection.collapsed(
       offset: _controller.text.length,
@@ -648,6 +649,10 @@ class _TextEditorFullscreenOverlayState
     );
   }
 
+  Widget _buildSelectedFontPreview(double maxWidth) {
+    return const SizedBox.shrink();
+  }
+
   double _measureEditableTextWidth(double maxWidth) {
     final sampleText = _controller.text.isEmpty
         ? context.strings.localized(
@@ -660,14 +665,9 @@ class _TextEditorFullscreenOverlayState
         text: sampleText,
         style: TextStyle(
           fontSize: _fontSize.clamp(18, 96).toDouble(),
-          height: _effectiveTextLineHeightForRender(
-            fontFamily: _selectedFontFamily,
-            textLineHeight: _lineHeight,
-          ),
-          letterSpacing: _letterSpacing,
-          fontFamily: _legacyPreviewText != null
-              ? _selectedFontFamily
-              : _resolveTextRenderFontFamily(_selectedFontFamily),
+          height: _editableInputLineHeight(),
+          letterSpacing: _editableInputLetterSpacing(),
+          fontFamily: _editableInputFontFamily(_selectedFontFamily),
           fontWeight: _isTextBold ? FontWeight.w700 : FontWeight.w500,
           fontStyle: _isTextItalic ? FontStyle.italic : FontStyle.normal,
         ),
@@ -688,6 +688,33 @@ class _TextEditorFullscreenOverlayState
         .split('\n')
         .map((String line) => line.isEmpty ? '\u200B' : line)
         .join('\n');
+  }
+
+  String _initialTypingFontFamily(String family) {
+    return family;
+  }
+
+  String _editableInputFontFamily(String family) {
+    if (_isLegacyTeluguFontFamily(family)) {
+      return 'Anek Telugu Condensed Regular';
+    }
+    return _resolveTextRenderFontFamily(family);
+  }
+
+  double _editableInputLineHeight() {
+    final resolved = _effectiveTextLineHeightForRender(
+      fontFamily: _selectedFontFamily,
+      textLineHeight: _lineHeight,
+    );
+    return _isLegacyTeluguFontFamily(_selectedFontFamily)
+        ? resolved.clamp(1.18, 2.4).toDouble()
+        : resolved;
+  }
+
+  double _editableInputLetterSpacing() {
+    return _isLegacyTeluguFontFamily(_selectedFontFamily)
+        ? 0
+        : _letterSpacing.clamp(-1, 12).toDouble();
   }
 
   Color _editableCursorColor() {
@@ -1059,21 +1086,20 @@ class _TextEditorFullscreenOverlayState
                       child: AnimatedBuilder(
                         animation: _controller,
                         builder: (BuildContext context, Widget? child) {
+                          final useLegacyPreviewInput =
+                              _isLegacyTeluguFontFamily(_selectedFontFamily);
                           final textStyle = TextStyle(
-                            color: _controller.text.isEmpty
-                                ? Colors.white.withValues(alpha: 0.52)
-                                : _editableTypingColor(),
+                            color: useLegacyPreviewInput
+                                ? Colors.transparent
+                                : (_controller.text.isEmpty
+                                      ? Colors.white.withValues(alpha: 0.52)
+                                      : _editableTypingColor()),
                             fontSize: _fontSize.clamp(18, 96),
-                            height: _effectiveTextLineHeightForRender(
-                              fontFamily: _selectedFontFamily,
-                              textLineHeight: _lineHeight,
+                            height: _editableInputLineHeight(),
+                            letterSpacing: _editableInputLetterSpacing(),
+                            fontFamily: _editableInputFontFamily(
+                              _selectedFontFamily,
                             ),
-                            letterSpacing: _letterSpacing,
-                            fontFamily: _legacyPreviewText != null
-                                ? _selectedFontFamily
-                                : _resolveTextRenderFontFamily(
-                                    _selectedFontFamily,
-                                  ),
                             fontWeight: _isTextBold
                                 ? FontWeight.w700
                                 : FontWeight.w500,
@@ -1097,51 +1123,80 @@ class _TextEditorFullscreenOverlayState
                             ),
                             child: SizedBox(
                               width: screenSize.width * 0.9,
-                              child: TextField(
-                                controller: _controller,
-                                focusNode: _inputFocusNode,
-                                autofocus: true,
-                                minLines: 1,
-                                maxLines: 8,
-                                keyboardType: TextInputType.multiline,
-                                textInputAction: TextInputAction.newline,
-                                keyboardAppearance: Brightness.dark,
-                                textAlign: _textAlign,
-                                enableSuggestions: false,
-                                autocorrect: false,
-                                enableInteractiveSelection: true,
-                                style: textStyle,
-                                strutStyle: StrutStyle(
-                                  forceStrutHeight: true,
-                                  fontSize: _fontSize.clamp(18, 96).toDouble(),
-                                  height: _effectiveTextLineHeightForRender(
-                                    fontFamily: _selectedFontFamily,
-                                    textLineHeight: _lineHeight,
-                                  ),
-                                  fontFamily: _legacyPreviewText != null
-                                      ? _selectedFontFamily
-                                      : _resolveTextRenderFontFamily(
-                                          _selectedFontFamily,
-                                        ),
-                                  fontWeight: _isTextBold
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  fontStyle: _isTextItalic
-                                      ? FontStyle.italic
-                                      : FontStyle.normal,
-                                ),
-                                cursorWidth: 2.2,
-                                cursorHeight:
-                                    _fontSize.clamp(18, 96).toDouble() *
-                                    _effectiveTextLineHeightForRender(
-                                      fontFamily: _selectedFontFamily,
-                                      textLineHeight: _lineHeight,
+                              child: LayoutBuilder(
+                                builder: (
+                                  BuildContext context,
+                                  BoxConstraints constraints,
+                                ) {
+                                  return SingleChildScrollView(
+                                    physics: const BouncingScrollPhysics(),
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minHeight: constraints.maxHeight,
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: <Widget>[
+                                          _buildSelectedFontPreview(
+                                            screenSize.width * 0.9,
+                                          ),
+                                          TextField(
+                                            controller: _controller,
+                                            focusNode: _inputFocusNode,
+                                            autofocus: true,
+                                            minLines: 1,
+                                            maxLines: 8,
+                                            keyboardType: TextInputType.multiline,
+                                            textInputAction:
+                                                TextInputAction.newline,
+                                            keyboardAppearance: Brightness.dark,
+                                            textAlign: _textAlign,
+                                            enableSuggestions: true,
+                                            autocorrect: true,
+                                            enableInteractiveSelection: true,
+                                            style: textStyle.copyWith(
+                                              color: _controller.text.isEmpty
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.52,
+                                                    )
+                                                  : _editableTypingColor(),
+                                              decorationColor:
+                                                  _editableTypingColor(),
+                                            ),
+                                            strutStyle: StrutStyle(
+                                              forceStrutHeight: true,
+                                              fontSize: _fontSize
+                                                  .clamp(18, 96)
+                                                  .toDouble(),
+                                              height: _editableInputLineHeight(),
+                                              fontFamily:
+                                                  _editableInputFontFamily(
+                                                    _selectedFontFamily,
+                                                  ),
+                                              fontWeight: _isTextBold
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              fontStyle: _isTextItalic
+                                                  ? FontStyle.italic
+                                                  : FontStyle.normal,
+                                            ),
+                                            cursorWidth: 2.2,
+                                            cursorHeight: _fontSize
+                                                    .clamp(18, 96)
+                                                    .toDouble() *
+                                                _editableInputLineHeight(),
+                                            cursorRadius:
+                                                const Radius.circular(999),
+                                            cursorColor: _editableCursorColor(),
+                                            decoration: null,
+                                            onChanged: (_) {
+                                              setState(() {});
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                cursorRadius: const Radius.circular(999),
-                                cursorColor: _editableCursorColor(),
-                                decoration: null,
-                                onChanged: (_) {
-                                  setState(() {});
+                                  );
                                 },
                               ),
                             ),
@@ -1389,11 +1444,15 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                   ),
                   child: TextField(
                     controller: _searchController,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    cursorColor: const Color(0xFF0F172A),
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 13,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search font',
                       hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.5),
                       ),
                       prefixIcon: const Icon(Icons.search_rounded, size: 18),
                       prefixIconColor: const Color(0xFFCBD5E1),
@@ -1498,7 +1557,7 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: _resolveTextRenderFontFamily(family),
+                  fontFamily: family,
                   fontSize: 17,
                   height: 1.1,
                   color: Colors.white.withValues(alpha: selected ? 0.98 : 0.82),

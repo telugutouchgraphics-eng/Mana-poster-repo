@@ -52,6 +52,7 @@ import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -435,6 +436,41 @@ Set<String> _expandCategoryAliasesWorker(String normalizedTag) {
     'islam': <String>['islam'],
     'new': <String>['new', 'today_special'],
     'weekday_special': <String>['weekday_special', 'today_special'],
+    'weekday_monday_special': <String>[
+      'weekday_monday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_tuesday_special': <String>[
+      'weekday_tuesday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_wednesday_special': <String>[
+      'weekday_wednesday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_thursday_special': <String>[
+      'weekday_thursday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_friday_special': <String>[
+      'weekday_friday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_saturday_special': <String>[
+      'weekday_saturday_special',
+      'weekday_special',
+      'today_special',
+    ],
+    'weekday_sunday_special': <String>[
+      'weekday_sunday_special',
+      'weekday_special',
+      'today_special',
+    ],
     'important_day': <String>['important_day', 'today_special'],
     'regional_special': <String>['regional_special', 'today_special'],
     'festival': <String>['festival', 'devotional', 'today_special'],
@@ -1159,6 +1195,8 @@ class _HomeScreenState extends State<HomeScreen>
       const AppHomeBannerService();
   final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
       ApprovedCreatorTemplateService();
+  final ManualEventCategoryService _manualEventCategoryService =
+      const ManualEventCategoryService();
   final ScrollController _posterScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -1189,14 +1227,20 @@ class _HomeScreenState extends State<HomeScreen>
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
+  Future<void>? _manualEventCategoriesLoadFuture;
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
+  List<DynamicCategory> _manualEventCategories = const <DynamicCategory>[];
+  final Map<String, bool> _dynamicCategoryAvailabilityBySlug = <String, bool>{};
+  final Set<String> _dynamicCategoryAvailabilityInFlight = <String>{};
   String _lastCategoryDebugSnapshot = '';
+  String _dynamicCategoryAvailabilitySignature = '';
   _HomeTemplateProjection? _templateProjectionCache;
   Object? _templateProjectionIdentity;
   List<_CategoryChipData>? _categoryListCache;
   Object? _categoryListIdentity;
+  AppLanguage? _manualCategoryLanguage;
   bool _adFallbackSlotEnabled = false;
   HomeFeedTimeSlot _activeHomeFeedTimeSlot = TimeSlotService.homeFeedSlot(
     IstTimeService.now(),
@@ -1287,6 +1331,10 @@ class _HomeScreenState extends State<HomeScreen>
         _loadApprovedCreatorTemplatesAfterStartup,
       );
       _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 140),
+        _loadManualEventCategories,
+      );
+      _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 900),
         _loadViewerPosterProfile,
       );
@@ -1358,6 +1406,41 @@ class _HomeScreenState extends State<HomeScreen>
     await _loadApprovedCreatorTemplates();
   }
 
+  Future<void> _loadManualEventCategories() async {
+    final inFlight = _manualEventCategoriesLoadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      await FirebaseBootstrap.ensureInitialized();
+      if (!mounted) {
+        return;
+      }
+      final categories = await _manualEventCategoryService.fetchVisibleCategories(
+        language: context.currentLanguage,
+      );
+      if (!mounted) {
+        return;
+      }
+      _homeDebugLog(
+        '[ManualCategories] loaded=${categories.map((item) => item.slug).join(",")}',
+      );
+      setState(() {
+        _manualEventCategories = categories;
+      });
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+    }();
+    _manualEventCategoriesLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_manualEventCategoriesLoadFuture, future)) {
+        _manualEventCategoriesLoadFuture = null;
+      }
+    }
+  }
+
   Future<void> _requestStartupPermissionsIfNeeded() async {
     if (_startupPermissionPromptQueued || kIsWeb || !mounted) {
       return;
@@ -1407,6 +1490,11 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final currentLanguage = context.currentLanguage;
+    if (_manualCategoryLanguage != currentLanguage) {
+      _manualCategoryLanguage = currentLanguage;
+      unawaited(_loadManualEventCategories());
+    }
     final route = ModalRoute.of(context);
     if (route is PageRoute<void>) {
       AppNavigator.routeObserver.subscribe(this, route);
@@ -1589,9 +1677,15 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final itemSignals = _templateCategorySignalsForMatching(item);
-    final categorySignals = _categorySignalsForMatching(selectedCategory);
+    final categorySignals = selectedCategory.isDynamic
+        ? _strictDynamicCategorySignals(selectedCategory)
+        : _categorySignalsForMatching(selectedCategory);
     if (itemSignals.intersection(categorySignals).isNotEmpty) {
       return true;
+    }
+
+    if (selectedCategory.isDynamic) {
+      return false;
     }
 
     final fallbackNeedle = _normalizeTag(selectedCategory.label);
@@ -1792,18 +1886,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// Firestore category id for chips; avoids label-derived tokens matching many calendar events.
-  String _primaryCategoryIdForHomeChip(_TemplateItem template) {
-    final primary = (template.primaryFirestoreCategoryId ?? '').trim();
-    if (primary.isNotEmpty) {
-      return primary;
-    }
-    if (template.categoryTags.isEmpty) {
-      return '';
-    }
-    return template.categoryTags.first.trim();
-  }
-
   void _resetAllFeedScrollOrderLock() {
     if (_lockedAllFeedTemplates == null) {
       return;
@@ -1846,15 +1928,68 @@ class _HomeScreenState extends State<HomeScreen>
     if (templatesLoading && _remoteApprovedTemplates.isEmpty) {
       return const <_CategoryChipData>[];
     }
+    if (_startupSnapshotHydrationDeferred) {
+      return const <_CategoryChipData>[];
+    }
 
-    final activeCalendarCategories = _dynamicCategoryService.categoriesForDate(
-      now,
-      language: language,
-    );
+    final activeCalendarCategories = <DynamicCategory>[
+      ..._dynamicCategoryService.categoriesForDate(now, language: language),
+      ..._manualEventCategories,
+    ];
+    _scheduleDynamicCategoryAvailabilityChecks(activeCalendarCategories);
+    final loadedTemplateCategoryKeys = _remoteApprovedTemplates
+        .map(_normalizedCategoryForDebug)
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final debugStates = <String>[];
     final merged = <String, _CategoryChipData>{};
     for (final item in activeCalendarCategories) {
-      if (_remoteApprovedTemplates.isNotEmpty &&
-          !_hasVisibleTemplateForCategoryChip(item, language)) {
+      final slug = _normalizeTag(item.slug);
+      final hasLocalTemplates = _hasVisibleTemplateForCategoryChip(item);
+      final hasServerTemplates =
+          _dynamicCategoryAvailabilityBySlug[slug] == true;
+      final categorySignalKeys = <String>{
+        _normalizeTag(item.id),
+        _normalizeTag(item.slug),
+        ...item.tags.map(_normalizeTag),
+      }.where((value) => value.isNotEmpty).toSet();
+      final hasLoadedCategoryKey =
+          loadedTemplateCategoryKeys.intersection(categorySignalKeys).isNotEmpty;
+      debugStates.add(
+        '$slug(local=$hasLocalTemplates,server=$hasServerTemplates,loaded=$hasLoadedCategoryKey)',
+      );
+      if (!hasLocalTemplates &&
+          !hasServerTemplates &&
+          !hasLoadedCategoryKey) {
+        continue;
+      }
+      merged[item.slug] = _CategoryChipData(
+        slug: item.slug,
+        label: item.label,
+        matchTags: item.tags,
+        presenceTags: _dynamicPresenceTags(item).toList(growable: false),
+        isDynamic: true,
+      );
+    }
+
+    final loadedDynamicCategories = _dynamicCategoryService.categoriesForSlugs(
+      loadedTemplateCategoryKeys,
+      language: language,
+    );
+    final templateDrivenManualCategories = _manualEventCategories.where((item) {
+      final itemSignals = <String>{
+        _normalizeTag(item.id),
+        _normalizeTag(item.slug),
+        ...item.tags.map(_normalizeTag),
+      }.where((value) => value.isNotEmpty).toSet();
+      return loadedTemplateCategoryKeys.intersection(itemSignals).isNotEmpty;
+    });
+    for (final item in <DynamicCategory>[
+      ...loadedDynamicCategories,
+      ...templateDrivenManualCategories,
+    ]) {
+      final slug = _normalizeTag(item.slug);
+      if (slug.isEmpty || merged.containsKey(item.slug)) {
         continue;
       }
       merged[item.slug] = _CategoryChipData(
@@ -1874,7 +2009,7 @@ class _HomeScreenState extends State<HomeScreen>
     };
     final labelByCategoryId = <String, String>{};
     for (final template in _remoteApprovedTemplates) {
-      final rawId = _primaryCategoryIdForHomeChip(template);
+      final rawId = (template.primaryFirestoreCategoryId ?? '').trim();
       if (rawId.isEmpty) {
         continue;
       }
@@ -1884,7 +2019,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     for (final template in _remoteApprovedTemplates) {
-      final rawId = _primaryCategoryIdForHomeChip(template);
+      final rawId = (template.primaryFirestoreCategoryId ?? '').trim();
       if (rawId.isEmpty) {
         continue;
       }
@@ -1916,7 +2051,140 @@ class _HomeScreenState extends State<HomeScreen>
       covered.add(norm);
     }
 
+    if (kDebugMode) {
+      _homeDebugLog(
+        '[DynamicChips] active=${activeCalendarCategories.map((item) => _normalizeTag(item.slug)).join(",")} '
+        'states=${debugStates.join(" | ")} '
+        'shown=${merged.keys.map(_normalizeTag).join(",")}',
+      );
+    }
+
     return _filterCategoriesByReligion(merged.values.toList(growable: false));
+  }
+
+  List<_CategoryChipData> _buildLoadedTemplateDynamicCategories(
+    AppLanguage language,
+  ) {
+    final loadedTemplateCategoryKeys = _remoteApprovedTemplates
+        .map(_normalizedCategoryForDebug)
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    if (loadedTemplateCategoryKeys.isEmpty) {
+      return const <_CategoryChipData>[];
+    }
+    final dynamicCategories = _dynamicCategoryService.categoriesForSlugs(
+      loadedTemplateCategoryKeys,
+      language: language,
+    );
+    final manualCategories = _manualEventCategories.where((item) {
+      final signals = <String>{
+        _normalizeTag(item.id),
+        _normalizeTag(item.slug),
+        ...item.tags.map(_normalizeTag),
+      }.where((value) => value.isNotEmpty).toSet();
+      return loadedTemplateCategoryKeys.intersection(signals).isNotEmpty;
+    });
+    final mergedCategories = <DynamicCategory>[
+      ...dynamicCategories,
+      ...manualCategories,
+    ];
+    if (mergedCategories.isEmpty) {
+      return const <_CategoryChipData>[];
+    }
+    return mergedCategories
+        .map(
+          (item) => _CategoryChipData(
+            slug: item.slug,
+            label: item.label,
+            matchTags: item.tags,
+            presenceTags: _dynamicPresenceTags(item).toList(growable: false),
+            isDynamic: true,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  void _scheduleDynamicCategoryAvailabilityChecks(
+    List<DynamicCategory> activeCalendarCategories,
+  ) {
+    final normalizedSlugs = activeCalendarCategories
+        .map((item) => _normalizeTag(item.slug))
+        .where((slug) => slug.isNotEmpty)
+        .toList(growable: false)
+      ..sort();
+    final remotePresenceSignatureParts = _remoteApprovedTemplates
+        .expand((template) => _templateCategoryPresenceSignals(template))
+        .map(_normalizeTag)
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList(growable: false)
+      ..sort();
+    final signature =
+        '${normalizedSlugs.join(",")}|remote=${remotePresenceSignatureParts.join(",")}';
+    if (signature != _dynamicCategoryAvailabilitySignature) {
+      _dynamicCategoryAvailabilitySignature = signature;
+      _dynamicCategoryAvailabilityBySlug.clear();
+    }
+
+    final pending = activeCalendarCategories.where((item) {
+      final slug = _normalizeTag(item.slug);
+      if (slug.isEmpty) {
+        return false;
+      }
+      if (_hasVisibleTemplateForCategoryChip(item)) {
+        _dynamicCategoryAvailabilityBySlug[slug] = true;
+        return false;
+      }
+      if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
+        return false;
+      }
+      return !_dynamicCategoryAvailabilityInFlight.contains(slug);
+    }).toList(growable: false);
+    if (pending.isEmpty) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      for (final category in pending) {
+        unawaited(_checkDynamicCategoryAvailability(category));
+      }
+    });
+  }
+
+  Future<void> _checkDynamicCategoryAvailability(DynamicCategory category) async {
+    final slug = _normalizeTag(category.slug);
+    if (slug.isEmpty || _dynamicCategoryAvailabilityInFlight.contains(slug)) {
+      return;
+    }
+    _dynamicCategoryAvailabilityInFlight.add(slug);
+    try {
+      final available = await _approvedCreatorTemplateService
+          .hasPublishedTemplatesForExactCategory(
+            categoryId: slug,
+            source: Source.serverAndCache,
+          );
+      _homeDebugLog('[DynamicAvailability] slug=$slug available=$available');
+      if (!mounted) {
+        return;
+      }
+      final previous = _dynamicCategoryAvailabilityBySlug[slug];
+      _dynamicCategoryAvailabilityBySlug[slug] = available;
+      if (previous != available) {
+        setState(() {
+          _categoryListCache = null;
+          _categoryListIdentity = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        _dynamicCategoryAvailabilityBySlug[slug] = false;
+      }
+    } finally {
+      _dynamicCategoryAvailabilityInFlight.remove(slug);
+    }
   }
 
   Set<String> _dynamicPresenceTags(DynamicCategory category) {
@@ -1974,6 +2242,20 @@ class _HomeScreenState extends State<HomeScreen>
     return output;
   }
 
+  bool _templateMatchesDynamicCategoryExactly(
+    _TemplateItem item,
+    DynamicCategory category,
+  ) {
+    final normalizedPrimary = _normalizeTag(
+      item.primaryFirestoreCategoryId?.trim() ?? '',
+    );
+    final normalizedCategoryId = _normalizeTag(category.id);
+    final normalizedCategorySlug = _normalizeTag(category.slug);
+    return normalizedPrimary.isNotEmpty &&
+        (normalizedPrimary == normalizedCategoryId ||
+            normalizedPrimary == normalizedCategorySlug);
+  }
+
   Set<String> _templateCategorySignalsForMatching(_TemplateItem item) {
     final output = <String>{};
 
@@ -1989,7 +2271,6 @@ class _HomeScreenState extends State<HomeScreen>
     final primaryCategoryId = (item.primaryFirestoreCategoryId ?? '').trim();
     if (primaryCategoryId.isNotEmpty) {
       addValue(primaryCategoryId);
-      return output;
     }
 
     addValue(item.categoryDisplayLabel ?? '');
@@ -2019,28 +2300,31 @@ class _HomeScreenState extends State<HomeScreen>
     return output;
   }
 
-  bool _hasVisibleTemplateForCategoryChip(
-    DynamicCategory category,
-    AppLanguage language,
-  ) {
-    final probeChip = _CategoryChipData(
+  Set<String> _strictDynamicCategorySignals(_CategoryChipData category) {
+    final normalizedSlug = _normalizeTag(category.slug);
+    if (normalizedSlug.isEmpty) {
+      return const <String>{};
+    }
+    return _expandCategoryAliases(normalizedSlug);
+  }
+
+  bool _hasVisibleTemplateForCategoryChip(DynamicCategory category) {
+    final categoryChip = _CategoryChipData(
       slug: category.slug,
       label: category.label,
       matchTags: category.tags,
       presenceTags: _dynamicPresenceTags(category).toList(growable: false),
       isDynamic: true,
     );
+    final categorySignals = _strictDynamicCategorySignals(categoryChip);
     for (final template in _remoteApprovedTemplates) {
-      final templateSignals = _templateCategoryPresenceSignals(template);
-      final chipSignals = <String>{};
-      for (final token in probeChip.presenceTags) {
-        final normalized = _normalizeTag(token);
-        if (normalized.isEmpty) {
-          continue;
-        }
-        chipSignals.add(normalized);
+      if (_templateMatchesDynamicCategoryExactly(template, category)) {
+        return true;
       }
-      if (templateSignals.intersection(chipSignals).isNotEmpty) {
+      if (categorySignals.isNotEmpty &&
+          _templateCategorySignalsForMatching(
+            template,
+          ).intersection(categorySignals).isNotEmpty) {
         return true;
       }
     }
@@ -2660,6 +2944,7 @@ class _HomeScreenState extends State<HomeScreen>
       _remoteApprovedTemplates = templates;
       _rankedAllFeedTemplates = null;
       _allFeedRankingReady = false;
+      _startupSnapshotHydrationDeferred = false;
       _templatesLoading = false;
       _templatesHasMore = hasMore;
       _templatesLastDocument = lastDocument;
@@ -2811,6 +3096,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
         _rankedAllFeedTemplates = null;
         _allFeedRankingReady = false;
+        _startupSnapshotHydrationDeferred = false;
         _templatesHasMore = hasMore;
         _templatesLastDocument = lastDocument;
         _templatesLoading = false;
@@ -2851,6 +3137,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
         _rankedAllFeedTemplates = null;
         _allFeedRankingReady = false;
+        _startupSnapshotHydrationDeferred = false;
         _templatesHasMore = hasMore;
         _templatesLastDocument = lastDocument;
         _templatesLoading = false;
@@ -2947,12 +3234,14 @@ class _HomeScreenState extends State<HomeScreen>
     _scheduleProgressiveTemplateHydration();
   }
 
-  Future<void> _loadApprovedCreatorTemplates() async {
+  Future<void> _loadApprovedCreatorTemplates({bool forceRefresh = false}) async {
     final inFlight = _approvedTemplatesLoadFuture;
     if (inFlight != null) {
       return inFlight;
     }
-    final future = _loadApprovedCreatorTemplatesInternal();
+    final future = _loadApprovedCreatorTemplatesInternal(
+      forceRefresh: forceRefresh,
+    );
     _approvedTemplatesLoadFuture = future;
     try {
       await future;
@@ -2992,9 +3281,62 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _loadApprovedCreatorTemplatesInternal() async {
+  Future<void> _loadApprovedCreatorTemplatesInternal({
+    bool forceRefresh = false,
+  }) async {
     final stopwatch = Stopwatch()..start();
     final hadVisibleTemplates = _remoteApprovedTemplates.isNotEmpty;
+    if (forceRefresh) {
+      try {
+        final page = await _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
+          pageSize: _templatesPageSize,
+          source: Source.server,
+        );
+        if (!mounted) {
+          return;
+        }
+        final mapped = await _mapTemplatesOffMain(
+          page.templates,
+          phase: 'refresh',
+        );
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _remoteApprovedTemplates = mapped;
+          _lockedAllFeedTemplates = null;
+          _rankedAllFeedTemplates = null;
+          _allFeedRankingReady = false;
+          _templatesLoading = false;
+          _templatesLoadingMore = false;
+          _templatesHasMore = page.hasMore;
+          _templatesLastDocument = page.lastDocument;
+          _startupSnapshotHydrationDeferred = false;
+        });
+        _hydratedCategorySlugs.clear();
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
+        _categoryListCache = null;
+        _categoryListIdentity = null;
+        _scheduleSelectedCategoryPrefetchAfterVisibleTemplates();
+        _scheduleProgressiveTemplateHydration();
+        _homeDebugLog(
+          '[PosterRefresh] server_replace '
+          'duration=${stopwatch.elapsedMilliseconds}ms count=${mapped.length} '
+          'hasMore=${page.hasMore}',
+        );
+      } catch (error, stackTrace) {
+        _homeDebugLogStack('home template refresh failed: $error', stackTrace);
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _templatesLoading = false;
+          _templatesLoadingMore = false;
+        });
+      }
+      return;
+    }
     final initialPageSize = hadVisibleTemplates
         ? _templatesPageSize
         : _initialTemplatesPageSize;
@@ -3055,6 +3397,8 @@ class _HomeScreenState extends State<HomeScreen>
                       scanLimit: _initialPriorityPrimaryFetchSize,
                     ))
         : null;
+    final shouldContinueAfterStartupSnapshot =
+        hadVisibleTemplates && _startupSnapshotHydrationDeferred;
     if (mounted) {
       setState(() {
         _templatesLoading = !hadVisibleTemplates;
@@ -3096,7 +3440,9 @@ class _HomeScreenState extends State<HomeScreen>
           'duration=${stopwatch.elapsedMilliseconds}ms current=${_remoteApprovedTemplates.length} '
           'cacheQueryMs=$cacheQueryMs',
         );
-        return;
+        if (!shouldContinueAfterStartupSnapshot) {
+          return;
+        }
       }
       if (mounted && cachedPage.templates.isNotEmpty) {
         final mappingStopwatch = Stopwatch()..start();
@@ -3126,7 +3472,9 @@ class _HomeScreenState extends State<HomeScreen>
               'duration=${stopwatch.elapsedMilliseconds}ms current=${_remoteApprovedTemplates.length} '
               'cacheCount=${mapped.length} cacheQueryMs=$cacheQueryMs mappingMs=$mappingMs',
             );
-            return;
+            if (!shouldContinueAfterStartupSnapshot) {
+              return;
+            }
           }
           final setStateStopwatch = Stopwatch()..start();
           setState(() {
@@ -3717,6 +4065,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
         _rankedAllFeedTemplates = null;
         _allFeedRankingReady = false;
+        _startupSnapshotHydrationDeferred = false;
         _templatesLoadingMore = false;
         _templatesHasMore = page.hasMore;
         _templatesLastDocument = page.lastDocument;
@@ -3897,12 +4246,26 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
+    final availabilityIdentity = Object.hashAll(
+      _dynamicCategoryAvailabilityBySlug.entries
+          .toList(growable: false)
+        ..sort((a, b) => a.key.compareTo(b.key)),
+    );
+    final manualCategoryIdentity = Object.hashAll(
+      _manualEventCategories
+          .map((item) => '${item.slug}:${item.label}')
+          .toList(growable: false)
+        ..sort(),
+    );
     final identity = Object.hash(
       identityHashCode(_remoteApprovedTemplates),
       language,
       _templatesLoading,
       _religionPreference,
       _religionSelectionReady,
+      availabilityIdentity,
+      manualCategoryIdentity,
+      _startupSnapshotHydrationDeferred,
       DateTime.now().year,
       DateTime.now().month,
       DateTime.now().day,
@@ -3913,14 +4276,27 @@ class _HomeScreenState extends State<HomeScreen>
       return cached;
     }
     final staticCategories = _buildStaticCategories();
-    final dynamicCategories = _buildDynamicCategories(
+    final templateDrivenDynamicCategories =
+        _buildLoadedTemplateDynamicCategories(language);
+    final scheduledDynamicCategories = _buildDynamicCategories(
       IstTimeService.now(),
       language,
       templatesLoading: _templatesLoading,
     );
+    final dynamicCategories = <_CategoryChipData>[
+      ...templateDrivenDynamicCategories,
+      ...scheduledDynamicCategories,
+    ];
+    _homeDebugLog(
+      '[DynamicCategoryList] template=${templateDrivenDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")} '
+      'scheduled=${scheduledDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")}',
+    );
     final categories = _religionSelectionReady
         ? _mergeCategories(staticCategories, dynamicCategories)
         : <_CategoryChipData>[_allCategoryChip()];
+    _homeDebugLog(
+      '[CategoryList] slugs=${categories.map((item) => _normalizeTag(item.slug)).join(",")}',
+    );
     _categoryListCache = categories;
     _categoryListIdentity = identity;
     return categories;
@@ -3942,7 +4318,8 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       await Future.wait<void>(<Future<void>>[
         _loadHomeBanners(),
-        _loadApprovedCreatorTemplates(),
+        _loadApprovedCreatorTemplates(forceRefresh: true),
+        _loadManualEventCategories(),
         _loadViewerPosterProfile(),
       ]);
     } finally {

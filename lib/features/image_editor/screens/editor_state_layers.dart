@@ -484,6 +484,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
     if (layer.isText) {
       final renderFontFamily = _resolveLayerRenderFontFamily(layer);
+      final textPadding = _textLayerVisualPadding(layer);
+      final viewPadding = _textLayerViewPadding(layer);
       final renderLineHeight = _effectiveTextLineHeightForRender(
         fontFamily: layer.fontFamily,
         textLineHeight: layer.textLineHeight,
@@ -507,10 +509,10 @@ extension _EditorLayersState on _ImageEditorScreenState {
         textAlign: layer.textAlign,
         textDirection: TextDirection.ltr,
       )..layout();
-      final hasBackground = layer.textBackgroundOpacity > 0.001;
-      return hasBackground
-          ? Size(painter.size.width + 24, painter.size.height + 16)
-          : painter.size;
+      return Size(
+        painter.size.width + textPadding.horizontal + viewPadding.horizontal,
+        painter.size.height + textPadding.vertical + viewPadding.vertical,
+      );
     }
     final sticker = layer.sticker;
     if (_EditorTextState._isImageLikeSticker(sticker)) {

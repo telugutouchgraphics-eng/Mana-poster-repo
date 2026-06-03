@@ -255,6 +255,21 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         ),
         const SizedBox(height: 8),
         _CompactLabeledSlider(
+          sliderId: 'line-height',
+          label: strings.localized(
+            telugu: 'నిలువు స్పేసింగ్',
+            english: 'Vertical Spacing',
+          ),
+          value: layer.textLineHeight.clamp(0.8, 2.2).toDouble(),
+          min: 0.8,
+          max: 2.2,
+          valueText: layer.textLineHeight.toStringAsFixed(2),
+          onChangeStart: widget.onLineHeightChangeStart,
+          onChanged: widget.onLineHeightChanged,
+          onChangeEnd: widget.onLineHeightChangeEnd,
+        ),
+        const SizedBox(height: 8),
+        _CompactLabeledSlider(
           sliderId: 'letter-spacing',
           label: strings.localized(
             telugu: 'అక్షరాల దూరం',

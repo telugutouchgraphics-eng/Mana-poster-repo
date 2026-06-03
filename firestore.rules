@@ -130,11 +130,19 @@ service cloud.firestore {
     }
 
     function validUserRootWrite(userId) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "preferredLanguage",
-          "religionPreference",
-          "updatedAt",
-        ]) &&
+      return (
+          resource == null
+              ? request.resource.data.keys().hasOnly([
+                  "preferredLanguage",
+                  "religionPreference",
+                  "updatedAt",
+                ])
+              : request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                  "preferredLanguage",
+                  "religionPreference",
+                  "updatedAt",
+                ])
+        ) &&
         (!("preferredLanguage" in request.resource.data) ||
           (request.resource.data.preferredLanguage is string &&
             request.resource.data.preferredLanguage in [
@@ -301,6 +309,12 @@ service cloud.firestore {
 
     // Public app banners for home/category promotional surfaces.
     match /appBanners/{bannerId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
+    // Admin-created manual event categories used to show event chips in app.
+    match /manualEventCategories/{categoryId} {
       allow read: if resource.data.active == true;
       allow create, update, delete: if false;
     }

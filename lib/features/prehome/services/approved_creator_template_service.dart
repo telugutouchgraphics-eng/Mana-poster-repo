@@ -134,6 +134,85 @@ class ApprovedCreatorTemplateService {
     }
   }
 
+  Future<bool> hasPublishedTemplatesForExactCategory({
+    required String categoryId,
+    Source source = Source.serverAndCache,
+  }) async {
+    final normalizedTarget = _normalizeTag(categoryId);
+    if (normalizedTarget.isEmpty) {
+      return false;
+    }
+    try {
+      final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      final seenIds = <String>{};
+      final directCandidates = <String>{
+        categoryId.trim(),
+        normalizedTarget,
+      }.where((value) => value.isNotEmpty).toList(growable: false);
+
+      for (final candidate in directCandidates) {
+        final snapshot = await firestore
+            .collection('creatorPosters')
+            .where('status', isEqualTo: 'approved')
+            .where('categoryId', isEqualTo: candidate)
+            .orderBy('createdAt', descending: true)
+            .limit(8)
+            .get(GetOptions(source: source));
+        for (final doc in snapshot.docs) {
+          if (seenIds.add(doc.id)) {
+            docs.add(doc);
+          }
+        }
+      }
+
+      if (docs.isEmpty) {
+        final fallbackDocs = await _scanApprovedTemplatesForCategory(
+          categoryId: normalizedTarget,
+          limit: 8,
+          source: source,
+        );
+        if (fallbackDocs.isEmpty) {
+          return false;
+        }
+        final fallbackMapped = _mapSortedTemplates(fallbackDocs);
+        final fallbackFiltered = _filterPublished(
+          fallbackMapped,
+          fallbackDocs,
+          8,
+        );
+        return fallbackFiltered.isNotEmpty;
+      }
+
+      final mapped = _mapSortedTemplates(docs);
+      final filtered = _filterPublished(mapped, docs, 8);
+      if (filtered.isNotEmpty) {
+        return true;
+      }
+
+      final fallbackDocs = await _scanApprovedTemplatesForCategory(
+        categoryId: normalizedTarget,
+        limit: 8,
+        source: source,
+      );
+      if (fallbackDocs.isEmpty) {
+        return false;
+      }
+      final fallbackMapped = _mapSortedTemplates(fallbackDocs);
+      final fallbackFiltered = _filterPublished(
+        fallbackMapped,
+        fallbackDocs,
+        8,
+      );
+      return fallbackFiltered.isNotEmpty;
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService.hasPublishedTemplatesForExactCategory failed: $error',
+        stackTrace,
+      );
+      return false;
+    }
+  }
+
   Future<ApprovedCreatorTemplatePage> fetchApprovedTemplatesPage({
     int pageSize = 5,
     QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
@@ -372,6 +451,41 @@ class ApprovedCreatorTemplateService {
       'islam': <String>['islam'],
       'new': <String>['new', 'today_special'],
       'weekday_special': <String>['weekday_special', 'today_special'],
+      'weekday_monday_special': <String>[
+        'weekday_monday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_tuesday_special': <String>[
+        'weekday_tuesday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_wednesday_special': <String>[
+        'weekday_wednesday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_thursday_special': <String>[
+        'weekday_thursday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_friday_special': <String>[
+        'weekday_friday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_saturday_special': <String>[
+        'weekday_saturday_special',
+        'weekday_special',
+        'today_special',
+      ],
+      'weekday_sunday_special': <String>[
+        'weekday_sunday_special',
+        'weekday_special',
+        'today_special',
+      ],
       'important_day': <String>['important_day', 'today_special'],
       'regional_special': <String>['regional_special', 'today_special'],
       'festival': <String>['festival', 'devotional', 'today_special'],

@@ -171,6 +171,49 @@ class _PosterProfileDetailsScreenState
     } catch (_) {}
   }
 
+  String _stagedImageExtension(XFile file) {
+    final source = file.name.trim().isNotEmpty ? file.name : file.path;
+    final dotIndex = source.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == source.length - 1) {
+      return 'jpg';
+    }
+    final extension = source.substring(dotIndex + 1).toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'webp':
+        return extension;
+      default:
+        return 'jpg';
+    }
+  }
+
+  Future<File> _stagePickedImageForCrop(
+    XFile picked, {
+    required String filePrefix,
+  }) async {
+    final tempDir = await getTemporaryDirectory();
+    final stagedFile = File(
+      '${tempDir.path}${Platform.pathSeparator}'
+      '${filePrefix}_${DateTime.now().millisecondsSinceEpoch}.'
+      '${_stagedImageExtension(picked)}',
+    );
+    await stagedFile.writeAsBytes(await picked.readAsBytes(), flush: true);
+    return stagedFile;
+  }
+
+  Future<void> _deleteFileSilently(File? file) async {
+    if (file == null) {
+      return;
+    }
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
   Future<void> _pickPersonalPhoto() async {
     if (_personalPhotoBusy || _pickerBusy) {
       return;
@@ -180,6 +223,7 @@ class _PosterProfileDetailsScreenState
       _personalPhotoBusy = true;
       _pickerBusy = true;
     });
+    File? stagedCropSourceFile;
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -190,8 +234,13 @@ class _PosterProfileDetailsScreenState
       if (picked == null) {
         return;
       }
+      stagedCropSourceFile = await _stagePickedImageForCrop(
+        picked,
+        filePrefix: 'poster_profile_pick',
+      );
       final CroppedFile? cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
+        sourcePath: stagedCropSourceFile.path,
+        compressFormat: ImageCompressFormat.png,
         compressQuality: 95,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
@@ -315,6 +364,9 @@ class _PosterProfileDetailsScreenState
         ),
       );
     } finally {
+      if (stagedCropSourceFile != null) {
+        unawaited(_deleteFileSilently(stagedCropSourceFile));
+      }
       if (mounted) {
         setState(() {
           _personalPhotoBusy = false;
@@ -414,6 +466,7 @@ class _PosterProfileDetailsScreenState
       _businessLogoBusy = true;
       _pickerBusy = true;
     });
+    File? stagedCropSourceFile;
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -424,8 +477,13 @@ class _PosterProfileDetailsScreenState
       if (picked == null) {
         return;
       }
+      stagedCropSourceFile = await _stagePickedImageForCrop(
+        picked,
+        filePrefix: 'poster_business_logo_pick',
+      );
       final CroppedFile? cropped = await ImageCropper().cropImage(
-        sourcePath: picked.path,
+        sourcePath: stagedCropSourceFile.path,
+        compressFormat: ImageCompressFormat.png,
         compressQuality: 90,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
@@ -506,6 +564,9 @@ class _PosterProfileDetailsScreenState
         ),
       );
     } finally {
+      if (stagedCropSourceFile != null) {
+        unawaited(_deleteFileSilently(stagedCropSourceFile));
+      }
       if (mounted) {
         setState(() {
           _businessLogoBusy = false;

@@ -233,6 +233,103 @@ class PosterProfileData {
   );
 }
 
+class ScriptLocalizationService {
+  const ScriptLocalizationService._();
+
+  static String convert(String input, AppLanguage language) {
+    return _NameScriptConverter.convert(input, language);
+  }
+
+  static String localizeCategoryLabel(String input, AppLanguage language) {
+    final raw = input.trim();
+    if (raw.isEmpty || language == AppLanguage.english) {
+      return input;
+    }
+    final normalized = raw.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final phraseOverride = _categoryPhraseOverrides[language]?[normalized];
+    if (phraseOverride != null && phraseOverride.isNotEmpty) {
+      return phraseOverride;
+    }
+    final wordOverrides = _categoryWordOverrides[language];
+    if (wordOverrides == null || wordOverrides.isEmpty) {
+      return input;
+    }
+    var hasReplacement = false;
+    var missingWord = false;
+    final localized = raw.replaceAllMapped(RegExp(r'[A-Za-z]+'), (match) {
+      final word = match.group(0) ?? '';
+      final replacement = wordOverrides[word.toLowerCase()];
+      if (replacement == null || replacement.isEmpty) {
+        missingWord = true;
+        return word;
+      }
+      hasReplacement = true;
+      return replacement;
+    });
+    if (hasReplacement && !missingWord) {
+      return localized;
+    }
+    return input;
+  }
+
+  static const Map<AppLanguage, Map<String, String>> _categoryPhraseOverrides =
+      <AppLanguage, Map<String, String>>{
+        AppLanguage.telugu: <String, String>{
+          'sankranthi': 'సంక్రాంతి',
+          'sankranti': 'సంక్రాంతి',
+          'pongal': 'పొంగల్',
+        },
+        AppLanguage.hindi: <String, String>{
+          'sankranthi': 'संक्रांति',
+          'sankranti': 'संक्रांति',
+          'pongal': 'पोंगल',
+        },
+        AppLanguage.tamil: <String, String>{
+          'sankranthi': 'சங்கராந்தி',
+          'sankranti': 'சங்கராந்தி',
+          'pongal': 'பொங்கல்',
+        },
+        AppLanguage.kannada: <String, String>{
+          'sankranthi': 'ಸಂಕ್ರಾಂತಿ',
+          'sankranti': 'ಸಂಕ್ರಾಂತಿ',
+          'pongal': 'ಪೊಂಗಲ್',
+        },
+        AppLanguage.malayalam: <String, String>{
+          'sankranthi': 'സംക്രാന്തി',
+          'sankranti': 'സംക്രാന്തി',
+          'pongal': 'പൊങ്കൽ',
+        },
+      };
+
+  static const Map<AppLanguage, Map<String, String>> _categoryWordOverrides =
+      <AppLanguage, Map<String, String>>{
+        AppLanguage.telugu: <String, String>{
+          'test': 'టెస్ట్',
+          'category': 'క్యాటగిరి',
+          'categori': 'క్యాటగిరి',
+          'special': 'స్పెషల్',
+          'festival': 'ఫెస్టివల్',
+          'wish': 'విష్',
+          'wishes': 'విషెస్',
+          'quotes': 'కోట్స్',
+          'quote': 'కోట్',
+          'birthday': 'బర్త్‌డే',
+          'anniversary': 'యానివర్సరీ',
+          'love': 'లవ్',
+          'life': 'లైఫ్',
+          'good': 'గుడ్',
+          'morning': 'మార్నింగ్',
+          'night': 'నైట్',
+          'devotional': 'డివోషనల్',
+          'jayanthi': 'జయంతి',
+          'vardhanthi': 'వర్ధంతి',
+          'sankranthi': 'సంక్రాంతి',
+          'sankranti': 'సంక్రాంతి',
+          'pongal': 'పొంగల్',
+        },
+      };
+}
+
 class PosterNameFontOption {
   const PosterNameFontOption({required this.label, required this.family});
 
@@ -1323,6 +1420,9 @@ class _NameScriptConverter {
           'media': 'మీడియా',
           'tech': 'టెక్',
           'solutions': 'సొల్యూషన్స్',
+          'sankranthi': 'సంక్రాంతి',
+          'sankranti': 'సంక్రాంతి',
+          'pongal': 'పొంగల్',
         },
         AppLanguage.hindi: <String, String>{
           'telugu': 'तेलुगु',
@@ -1338,6 +1438,9 @@ class _NameScriptConverter {
           'media': 'मीडिया',
           'tech': 'टेक',
           'solutions': 'सोल्यूशन्स',
+          'sankranthi': 'संक्रांति',
+          'sankranti': 'संक्रांति',
+          'pongal': 'पोंगल',
         },
         AppLanguage.tamil: <String, String>{
           'telugu': 'தெலுகு',
@@ -1353,6 +1456,9 @@ class _NameScriptConverter {
           'media': 'மீடியா',
           'tech': 'டெக்',
           'solutions': 'சொல்யூஷன்ஸ்',
+          'sankranthi': 'சங்கராந்தி',
+          'sankranti': 'சங்கராந்தி',
+          'pongal': 'பொங்கல்',
         },
         AppLanguage.kannada: <String, String>{
           'telugu': 'ತೆಲುಗು',
@@ -1368,6 +1474,9 @@ class _NameScriptConverter {
           'media': 'ಮೀಡಿಯಾ',
           'tech': 'ಟೆಕ್',
           'solutions': 'ಸೊಲ್ಯೂಶನ್ಸ್',
+          'sankranthi': 'ಸಂಕ್ರಾಂತಿ',
+          'sankranti': 'ಸಂಕ್ರಾಂತಿ',
+          'pongal': 'ಪೊಂಗಲ್',
         },
         AppLanguage.malayalam: <String, String>{
           'telugu': 'തെലുഗു',
@@ -1383,6 +1492,9 @@ class _NameScriptConverter {
           'media': 'മീഡിയ',
           'tech': 'ടെക്',
           'solutions': 'സൊല്യൂഷൻസ്',
+          'sankranthi': 'സംക്രാന്തി',
+          'sankranti': 'സംക്രാന്തി',
+          'pongal': 'പൊങ്കൽ',
         },
       };
 

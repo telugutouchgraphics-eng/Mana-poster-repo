@@ -418,7 +418,16 @@ class _CanvasWorkspace extends StatelessWidget {
                               pageSize,
                             );
                             final textInteractiveSize = layer.isText
-                                ? Size(layerSize.width + 16, layerSize.height + 12)
+                                ? Size(
+                                    layerSize.width + 16,
+                                    layerSize.height + 12,
+                                  )
+                                : layerSize;
+                            final textTapTargetSize = layer.isText
+                                ? Size(
+                                    layerSize.width + 56,
+                                    layerSize.height + 36,
+                                  )
                                 : layerSize;
                             final photoSize = layer.isPhoto
                                 ? (layer.fillPageBounds
@@ -907,10 +916,10 @@ class _CanvasWorkspace extends StatelessWidget {
                                                           transform: matrix,
                                                           child: SizedBox(
                                                             width:
-                                                                textInteractiveSize
+                                                                textTapTargetSize
                                                                     .width,
                                                             height:
-                                                                textInteractiveSize
+                                                                textTapTargetSize
                                                                     .height,
                                                             child: Listener(
                                                               onPointerDown:
@@ -2011,6 +2020,8 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
   if (layer.isText) {
     final maxTextWidth = math.max(72.0, pageSize.width * 0.9);
     final renderFontFamily = _resolveLayerRenderFontFamily(layer);
+    final textPadding = _textLayerVisualPadding(layer);
+    final viewPadding = _textLayerViewPadding(layer);
     final renderLineHeight = _effectiveTextLineHeightForRender(
       fontFamily: layer.fontFamily,
       textLineHeight: layer.textLineHeight,
@@ -2034,7 +2045,10 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
       textDirection: TextDirection.ltr,
       maxLines: null,
     )..layout(maxWidth: maxTextWidth);
-    return painter.size;
+    return Size(
+      painter.size.width + textPadding.horizontal + viewPadding.horizontal,
+      painter.size.height + textPadding.vertical + viewPadding.vertical,
+    );
   }
   final sticker = layer.sticker;
   if (_EditorTextState._isImageLikeSticker(sticker)) {
@@ -2048,6 +2062,63 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
     textDirection: TextDirection.ltr,
   )..layout();
   return painter.size;
+}
+
+EdgeInsets _textLayerViewPadding(_CanvasLayer layer) {
+  final hasBackground = layer.textBackgroundOpacity > 0.001;
+  return EdgeInsets.fromLTRB(
+    8 + (hasBackground ? 12 : 0),
+    6 + (hasBackground ? 8 : 0),
+    8 + (hasBackground ? 12 : 0),
+    6 + (hasBackground ? 8 : 0),
+  );
+}
+
+EdgeInsets _textLayerVisualPadding(_CanvasLayer layer) {
+  return _textVisualOverflowPadding(
+    fontFamily: layer.fontFamily,
+    fontSize: layer.fontSize,
+    textStrokeWidth: layer.textStrokeWidth,
+    textShadowOpacity: layer.textShadowOpacity,
+    textShadowBlur: layer.textShadowBlur,
+    textShadowOffsetY: layer.textShadowOffsetY,
+    isTextUnderline: layer.isTextUnderline,
+  );
+}
+
+EdgeInsets _textVisualOverflowPadding({
+  required String fontFamily,
+  required double fontSize,
+  required double textStrokeWidth,
+  required double textShadowOpacity,
+  required double textShadowBlur,
+  required double textShadowOffsetY,
+  required bool isTextUnderline,
+}) {
+  final strokePad = textStrokeWidth > 0.001
+      ? textStrokeWidth.ceilToDouble() + 2
+      : 2.0;
+  final shadowBottom = textShadowOpacity > 0.001
+      ? (textShadowBlur * 0.5) + math.max(0, textShadowOffsetY)
+      : 0.0;
+  final legacyBottomPad = _isLegacyTeluguFontFamily(fontFamily)
+      ? math.max(10.0, fontSize * 0.24)
+      : 0.0;
+  final descenderPad = math.max(4.0, fontSize * 0.12);
+  final underlinePad = isTextUnderline
+      ? math.max(2.0, fontSize * 0.04)
+      : 0.0;
+  final horizontalPad = math.max(2.0, strokePad);
+  final topPad = math.max(2.0, strokePad);
+  final bottomPad = math.max(descenderPad + underlinePad, strokePad) +
+      shadowBottom +
+      legacyBottomPad;
+  return EdgeInsets.fromLTRB(
+    horizontalPad,
+    topPad,
+    horizontalPad,
+    bottomPad,
+  );
 }
 
 class _FixedSelectionHandleOverlay extends StatelessWidget {
@@ -2238,6 +2309,15 @@ class _CanvasTextLayerView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final overflowPadding = _textVisualOverflowPadding(
+      fontFamily: fontFamily,
+      fontSize: fontSize,
+      textStrokeWidth: textStrokeWidth,
+      textShadowOpacity: textShadowOpacity,
+      textShadowBlur: textShadowBlur,
+      textShadowOffsetY: textShadowOffsetY,
+      isTextUnderline: isTextUnderline,
+    );
     final fillForeground = textGradient == null
         ? null
         : (Paint()
@@ -2358,7 +2438,10 @@ class _CanvasTextLayerView extends StatelessWidget {
     final hasBackground = textBackgroundOpacity > 0.001;
     final foreground = Opacity(
       opacity: textOpacity.clamp(0.15, 1),
-      child: constrainedTextView,
+      child: Padding(
+        padding: overflowPadding,
+        child: constrainedTextView,
+      ),
     );
     if (!hasBackground) {
       return foreground;
