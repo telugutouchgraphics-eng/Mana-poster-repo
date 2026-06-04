@@ -127,25 +127,7 @@ double _softSnapRotation(double angle) {
 }
 
 Uint8List _optimizeEditorPhotoBytes(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    return bytes;
-  }
-
-  const targetMaxDimension = 4096;
-  final longest = math.max(decoded.width, decoded.height);
-  if (longest <= targetMaxDimension) {
-    return bytes;
-  }
-
-  final scale = targetMaxDimension / longest;
-  final width = math.max(320, (decoded.width * scale).round());
-  final height = math.max(320, (decoded.height * scale).round());
-  final resized = img.copyResize(decoded, width: width, height: height);
-  if (resized.hasAlpha) {
-    return Uint8List.fromList(img.encodePng(resized));
-  }
-  return Uint8List.fromList(img.encodeJpg(resized, quality: 92));
+  return bytes;
 }
 
 _OptimizedPhotoPayload _optimizeEditorPhotoPayload(Uint8List bytes) {

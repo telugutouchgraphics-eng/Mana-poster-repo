@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -227,9 +226,6 @@ class _PosterProfileDetailsScreenState
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 95,
       );
       if (picked == null) {
         return;
@@ -241,7 +237,7 @@ class _PosterProfileDetailsScreenState
       final CroppedFile? cropped = await ImageCropper().cropImage(
         sourcePath: stagedCropSourceFile.path,
         compressFormat: ImageCompressFormat.png,
-        compressQuality: 95,
+        compressQuality: 100,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
@@ -470,9 +466,6 @@ class _PosterProfileDetailsScreenState
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 88,
       );
       if (picked == null) {
         return;
@@ -484,7 +477,7 @@ class _PosterProfileDetailsScreenState
       final CroppedFile? cropped = await ImageCropper().cropImage(
         sourcePath: stagedCropSourceFile.path,
         compressFormat: ImageCompressFormat.png,
-        compressQuality: 90,
+        compressQuality: 100,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
@@ -1392,53 +1385,11 @@ class _PosterProfileDetailsScreenState
 }
 
 Uint8List _optimizeProfilePhotoBytes(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    return bytes;
-  }
-
-  const targetMaxDimension = 1920;
-  final longest = decoded.width > decoded.height
-      ? decoded.width
-      : decoded.height;
-  img.Image output = decoded;
-
-  if (longest > targetMaxDimension) {
-    final scale = targetMaxDimension / longest;
-    final width = ((decoded.width * scale).round()).clamp(320, 1920);
-    final height = ((decoded.height * scale).round()).clamp(320, 1920);
-    output = img.copyResize(decoded, width: width, height: height);
-  }
-
-  if (output.hasAlpha) {
-    return Uint8List.fromList(img.encodePng(output));
-  }
-  return Uint8List.fromList(img.encodeJpg(output, quality: 92));
+  return bytes;
 }
 
 Uint8List _prepareProfilePhotoRemovalBytes(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    return bytes;
-  }
-
-  const targetMaxDimension = 1920;
-  final longest = decoded.width > decoded.height
-      ? decoded.width
-      : decoded.height;
-  img.Image output = decoded;
-
-  if (longest > targetMaxDimension) {
-    final scale = targetMaxDimension / longest;
-    final width = ((decoded.width * scale).round()).clamp(320, 1920);
-    final height = ((decoded.height * scale).round()).clamp(320, 1920);
-    output = img.copyResize(decoded, width: width, height: height);
-  }
-
-  if (output.hasAlpha) {
-    return Uint8List.fromList(img.encodePng(output));
-  }
-  return Uint8List.fromList(img.encodeJpg(output, quality: 92));
+  return bytes;
 }
 
 class _IdentityPreviewCard extends StatelessWidget {

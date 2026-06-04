@@ -1240,9 +1240,6 @@ extension _EditorLayersState on _ImageEditorScreenState {
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: source,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 95,
       );
       if (!mounted || pickedFile == null) {
         return;
@@ -1251,7 +1248,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
       if (widget.autoProcessAddedPhotos) {
         final cropped = await ImageCropper().cropImage(
           sourcePath: pickedFile.path,
-          compressQuality: 95,
+          compressQuality: 100,
           uiSettings: <PlatformUiSettings>[
             AndroidUiSettings(
               toolbarTitle: context.strings.localized(

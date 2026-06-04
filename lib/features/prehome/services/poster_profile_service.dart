@@ -8,7 +8,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/painting.dart';
-import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -1291,51 +1290,24 @@ class PosterProfileService {
   }) async {
     final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
     final originalBytes = await file.readAsBytes();
-    final optimizedBytes = _optimizeImageBytes(
-      originalBytes,
-      extension: cleanExtension,
-    );
     final normalizedExtension = _normalizedUploadExtension(cleanExtension);
-    final fileHash = _stableBytesHash(optimizedBytes);
+    final fileHash = _stableBytesHash(originalBytes);
     return _PreparedStorageUpload(
-      bytes: optimizedBytes,
+      bytes: originalBytes,
       contentType: _contentTypeForExtension(normalizedExtension),
       fileName: '${assetPrefix}_$fileHash.$normalizedExtension',
     );
   }
 
-  static Uint8List _optimizeImageBytes(
-    Uint8List bytes, {
-    required String extension,
-  }) {
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) {
-      return bytes;
-    }
-    final resized = decoded.width > 1080 || decoded.height > 1080
-        ? img.copyResize(
-            decoded,
-            width: decoded.width >= decoded.height ? 1080 : null,
-            height: decoded.height > decoded.width ? 1080 : null,
-            interpolation: img.Interpolation.average,
-          )
-        : decoded;
-    final normalizedExtension = _normalizedUploadExtension(extension);
-    if (normalizedExtension == 'png') {
-      return Uint8List.fromList(img.encodePng(resized, level: 6));
-    }
-    return Uint8List.fromList(img.encodeJpg(resized, quality: 75));
-  }
-
   static String _normalizedUploadExtension(String extension) {
     final normalized = extension.trim().toLowerCase();
-    if (normalized == 'png') {
-      return 'png';
-    }
-    if (normalized == 'webp') {
-      return 'jpg';
-    }
-    return 'jpg';
+    return switch (normalized) {
+      'png' => 'png',
+      'webp' => 'webp',
+      'jpeg' => 'jpg',
+      'jpg' => 'jpg',
+      _ => 'jpg',
+    };
   }
 
   static String _stableBytesHash(Uint8List bytes) {
