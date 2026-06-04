@@ -9,8 +9,6 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:image/image.dart' as img;
-
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -149,6 +147,18 @@ bool _posterStringLooksFirebaseStorageRelativePath(String raw) {
   return true;
 }
 
+bool _shouldPreferOriginalPosterQualitySource(String? value) {
+  final raw = (value ?? '').trim().toLowerCase();
+  if (raw.isEmpty) {
+    return false;
+  }
+  return raw.contains('community_uploads') ||
+      raw.contains('creator_posters/') ||
+      raw.contains('creator-posters/') ||
+      raw.contains('portal_assets/admin_upload_posters/') ||
+      raw.contains('portal_assets/admin_app_posters/');
+}
+
 class _PosterFirebaseCandidate {
   const _PosterFirebaseCandidate.path(this.value) : urlMode = false;
   const _PosterFirebaseCandidate.url(this.value) : urlMode = true;
@@ -252,6 +262,7 @@ class _TemplateItem {
     this.categoryDisplayLabel,
     this.personalizationConfig,
     this.createdAtMillis = 0,
+    this.preferOriginalPosterQuality = false,
   });
 
   final String titleTe;
@@ -279,6 +290,7 @@ class _TemplateItem {
   /// Firestore manual / admin category label for home chip + matching.
   final String? categoryDisplayLabel;
   final CreatorPosterPersonalization? personalizationConfig;
+  final bool preferOriginalPosterQuality;
 
   bool get isVideo =>
       mediaType == 'video' && (videoUrl?.trim().isNotEmpty ?? false);
@@ -352,28 +364,7 @@ class _PosterExtraPhotoSelection {
 }
 
 Uint8List _optimizeAdditionalPosterPhotoBytes(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    return bytes;
-  }
-
-  const targetMaxDimension = 1920;
-  final longest = decoded.width > decoded.height
-      ? decoded.width
-      : decoded.height;
-  img.Image output = decoded;
-
-  if (longest > targetMaxDimension) {
-    final scale = targetMaxDimension / longest;
-    final width = ((decoded.width * scale).round()).clamp(320, 1920);
-    final height = ((decoded.height * scale).round()).clamp(320, 1920);
-    output = img.copyResize(decoded, width: width, height: height);
-  }
-
-  if (output.hasAlpha) {
-    return Uint8List.fromList(img.encodePng(output));
-  }
-  return Uint8List.fromList(img.encodeJpg(output, quality: 92));
+  return bytes;
 }
 
 Uint8List _prepareAdditionalPosterPhotoRemovalBytes(Uint8List bytes) {
@@ -711,6 +702,12 @@ _TemplateItem _mapApprovedCreatorTemplateWorker(
     personalizationConfig: template.personalizationConfig,
     createdAtMillis: template.createdAtMillis,
     pageConfig: template.pageConfig,
+    preferOriginalPosterQuality:
+        creatorId == 'community_user' ||
+        _shouldPreferOriginalPosterQualitySource(template.imageStoragePath) ||
+        _shouldPreferOriginalPosterQualitySource(template.imageUrl) ||
+        _shouldPreferOriginalPosterQualitySource(template.thumbnailStoragePath) ||
+        _shouldPreferOriginalPosterQualitySource(template.thumbnailUrl),
   );
 }
 
@@ -6749,9 +6746,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     try {
       final XFile? picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 95,
       );
       if (picked == null) {
         return;
@@ -6763,7 +6757,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       final CroppedFile? cropped = await ImageCropper().cropImage(
         sourcePath: stagedCropSourceFile.path,
         compressFormat: ImageCompressFormat.png,
-        compressQuality: 95,
+        compressQuality: 100,
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
@@ -7328,12 +7322,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         return;
       }
       await precacheImage(
-        CachedNetworkImageProvider(
-          resolvedUrl,
-          cacheManager: PosterNetworkImageCache.instance,
-          maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
-          maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
-        ),
+        item.preferOriginalPosterQuality
+            ? CachedNetworkImageProvider(
+                resolvedUrl,
+                cacheManager: PosterNetworkImageCache.instance,
+              )
+            : CachedNetworkImageProvider(
+                resolvedUrl,
+                cacheManager: PosterNetworkImageCache.instance,
+                maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+                maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+              ),
         posterContext,
       );
     } catch (error, stackTrace) {
@@ -7513,13 +7512,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 imageAssetPath: item.imageAssetPath,
                 imageUrl: item.imageUrl ?? '',
                 imageStoragePath: item.imageStoragePath,
-                thumbnailStoragePath: item.thumbnailStoragePath,
-                thumbnailUrl: item.thumbnailUrl,
-                posterIdForDebug: item.templateId,
-                preferUltraLightDecode: preferUltraLightImage,
-                onFirstFrameReady: () => onPosterReadyChanged?.call(true),
-              ),
-            )
+              thumbnailStoragePath: item.thumbnailStoragePath,
+              thumbnailUrl: item.thumbnailUrl,
+              posterIdForDebug: item.templateId,
+              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+              preferUltraLightDecode: preferUltraLightImage,
+              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+            ),
+          )
           : _ResolvedTemplatePosterImage(
               imageAssetPath: item.imageAssetPath,
               imageUrl: item.imageUrl ?? '',
@@ -7527,6 +7527,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
               posterIdForDebug: item.templateId,
+              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
               preferUltraLightDecode: preferUltraLightImage,
               onFirstFrameReady: () => onPosterReadyChanged?.call(true),
             );
@@ -7550,6 +7551,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             thumbnailUrl: item.thumbnailUrl,
             pageConfig: item.pageConfig,
             personalizationConfig: personalizationConfig,
+            preferOriginalPosterQuality: item.preferOriginalPosterQuality,
             viewerPosterProfile: viewerPosterProfile,
             language: language,
             showProfilePhoto: isPhotoVisible,
@@ -7581,6 +7583,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
               posterIdForDebug: item.templateId,
+              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
               onFirstFrameReady: () => onPosterReadyChanged?.call(true),
             ),
           )
@@ -7591,6 +7594,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             thumbnailStoragePath: item.thumbnailStoragePath,
             thumbnailUrl: item.thumbnailUrl,
             posterIdForDebug: item.templateId,
+            preferOriginalPosterQuality: item.preferOriginalPosterQuality,
             onFirstFrameReady: () => onPosterReadyChanged?.call(true),
           );
   }
@@ -8543,6 +8547,7 @@ class _TemplatePosterImage extends StatefulWidget {
     required this.imageAssetPath,
     required this.imageUrl,
     this.thumbnailUrl,
+    this.preferOriginalPosterQuality = false,
     this.preferUltraLightDecode = false,
     this.onFirstFrameReady,
   });
@@ -8550,6 +8555,7 @@ class _TemplatePosterImage extends StatefulWidget {
   final String? imageAssetPath;
   final String? imageUrl;
   final String? thumbnailUrl;
+  final bool preferOriginalPosterQuality;
   final bool preferUltraLightDecode;
   final VoidCallback? onFirstFrameReady;
 
@@ -8570,12 +8576,18 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
   String? _thumbnailProviderUrl;
   int? _mainProviderWidth;
   int? _thumbnailProviderWidth;
+  Object? _aspectRatioSource;
+  ImageStream? _aspectRatioStream;
+  ImageStreamListener? _aspectRatioListener;
+  double? _resolvedAspectRatio;
 
   @override
   void didUpdateWidget(covariant _TemplatePosterImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl ||
         oldWidget.thumbnailUrl != widget.thumbnailUrl ||
+        oldWidget.preferOriginalPosterQuality !=
+            widget.preferOriginalPosterQuality ||
         oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode) {
       _mainNetworkProvider = null;
       _thumbnailProvider = null;
@@ -8583,22 +8595,98 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
       _thumbnailProviderUrl = null;
       _mainProviderWidth = null;
       _thumbnailProviderWidth = null;
+      _resetAspectRatioResolution();
     }
+  }
+
+  @override
+  void dispose() {
+    _detachAspectRatioListener();
+    super.dispose();
+  }
+
+  void _resetAspectRatioResolution() {
+    _detachAspectRatioListener();
+    _aspectRatioSource = null;
+    _resolvedAspectRatio = null;
+  }
+
+  void _detachAspectRatioListener() {
+    final stream = _aspectRatioStream;
+    final listener = _aspectRatioListener;
+    if (stream != null && listener != null) {
+      stream.removeListener(listener);
+    }
+    _aspectRatioStream = null;
+    _aspectRatioListener = null;
+  }
+
+  void _resolveAspectRatio({
+    required Object sourceKey,
+    required ImageProvider<Object> provider,
+  }) {
+    if (_aspectRatioSource == sourceKey && _resolvedAspectRatio != null) {
+      return;
+    }
+    if (_aspectRatioSource == sourceKey && _aspectRatioListener != null) {
+      return;
+    }
+
+    _detachAspectRatioListener();
+    _aspectRatioSource = sourceKey;
+
+    final stream = provider.resolve(createLocalImageConfiguration(context));
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        final width = info.image.width;
+        final height = info.image.height;
+        if (width <= 0 || height <= 0 || !mounted) {
+          return;
+        }
+        final nextAspectRatio = width / height;
+        if (_resolvedAspectRatio == nextAspectRatio &&
+            _aspectRatioSource == sourceKey) {
+          return;
+        }
+        setState(() {
+          _resolvedAspectRatio = nextAspectRatio;
+        });
+        _detachAspectRatioListener();
+      },
+      onError: (_, _) {
+        if (_aspectRatioSource == sourceKey) {
+          _detachAspectRatioListener();
+        }
+      },
+    );
+    _aspectRatioStream = stream;
+    _aspectRatioListener = listener;
+    stream.addListener(listener);
   }
 
   ImageProvider<Object> _networkProviderFor({
     required String url,
     required int decodeWidth,
   }) {
+    final baseProvider = widget.preferOriginalPosterQuality
+        ? CachedNetworkImageProvider(
+            url,
+            cacheManager: PosterNetworkImageCache.instance,
+          )
+        : CachedNetworkImageProvider(
+            url,
+            cacheManager: PosterNetworkImageCache.instance,
+            maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+            maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+          );
+    if (widget.preferOriginalPosterQuality) {
+      return baseProvider;
+    }
     return ResizeImage.resizeIfNeeded(
       decodeWidth,
       null,
-      CachedNetworkImageProvider(
-        url,
-        cacheManager: PosterNetworkImageCache.instance,
-        maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
-        maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
-      ),
+      baseProvider,
     );
   }
 
@@ -8649,13 +8737,16 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
             context,
           ).clamp(1.0, 3.0);
           final shouldPreferUltraLightDecode =
-              widget.preferUltraLightDecode ||
-              Scrollable.recommendDeferredLoadingForContext(context);
+              !widget.preferOriginalPosterQuality &&
+              (widget.preferUltraLightDecode ||
+                  Scrollable.recommendDeferredLoadingForContext(context));
           final cacheWidth = shouldPreferUltraLightDecode
               ? (width * pixelRatio * 0.38).round().clamp(
                   _feedPosterUltraLightMinWidth,
                   _feedPosterUltraLightMaxWidth,
                 )
+              : widget.preferOriginalPosterQuality
+              ? (width * pixelRatio).round().clamp(320, 2048)
               : (width * pixelRatio).round().clamp(
                   _feedPosterDecodeMinWidth,
                   _feedPosterDecodeMaxWidth,
@@ -8700,7 +8791,9 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
               fit: BoxFit.contain,
               alignment: Alignment.topCenter,
               gaplessPlayback: true,
-              filterQuality: FilterQuality.low,
+              filterQuality: widget.preferOriginalPosterQuality
+                  ? FilterQuality.high
+                  : FilterQuality.low,
               frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                 if (wasSynchronouslyLoaded || frame != null) {
                   if (notifyWhenLoaded && widget.onFirstFrameReady != null) {
@@ -8720,7 +8813,9 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                         fit: BoxFit.contain,
                         alignment: Alignment.topCenter,
                         gaplessPlayback: true,
-                        filterQuality: FilterQuality.low,
+                        filterQuality: widget.preferOriginalPosterQuality
+                            ? FilterQuality.high
+                            : FilterQuality.low,
                       ),
                       child,
                     ],
@@ -8733,7 +8828,9 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     fit: BoxFit.contain,
                     alignment: Alignment.topCenter,
                     gaplessPlayback: true,
-                    filterQuality: FilterQuality.low,
+                    filterQuality: widget.preferOriginalPosterQuality
+                        ? FilterQuality.high
+                        : FilterQuality.low,
                   );
                 }
                 return SizedBox(
@@ -8801,7 +8898,9 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,
                   gaplessPlayback: true,
-                  filterQuality: FilterQuality.low,
+                  filterQuality: widget.preferOriginalPosterQuality
+                      ? FilterQuality.high
+                      : FilterQuality.low,
                   cacheWidth: cacheWidth,
                   frameBuilder:
                       (context, child, frame, wasSynchronouslyLoaded) {
@@ -8841,11 +8940,31 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   notifyWhenLoaded: true,
                 );
 
+          if (widget.imageAssetPath != null) {
+            _resolveAspectRatio(
+              sourceKey: 'asset:${widget.imageAssetPath!}',
+              provider: AssetImage(widget.imageAssetPath!),
+            );
+          } else if (primaryNetworkUrl.isNotEmpty) {
+            _resolveAspectRatio(
+              sourceKey: 'network:$primaryNetworkUrl',
+              provider: _mainProviderFor(primaryNetworkUrl, cacheWidth),
+            );
+          }
+
+          final wrappedImageWidget =
+              _resolvedAspectRatio != null && _resolvedAspectRatio! > 0
+              ? AspectRatio(
+                  aspectRatio: _resolvedAspectRatio!,
+                  child: imageWidget,
+                )
+              : imageWidget;
+
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
               constraints: BoxConstraints(minWidth: math.max(width, 1)),
-              child: imageWidget,
+              child: wrappedImageWidget,
             ),
           );
         },
@@ -8862,6 +8981,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
     this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.posterIdForDebug,
+    this.preferOriginalPosterQuality = false,
     this.preferUltraLightDecode = false,
     this.onFirstFrameReady,
   });
@@ -8872,6 +8992,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final String? posterIdForDebug;
+  final bool preferOriginalPosterQuality;
   final bool preferUltraLightDecode;
   final VoidCallback? onFirstFrameReady;
 
@@ -8903,7 +9024,9 @@ class _ResolvedTemplatePosterImageState
     if (oldWidget.imageUrl != widget.imageUrl ||
         oldWidget.imageStoragePath != widget.imageStoragePath ||
         oldWidget.thumbnailStoragePath != widget.thumbnailStoragePath ||
-        oldWidget.thumbnailUrl != widget.thumbnailUrl) {
+        oldWidget.thumbnailUrl != widget.thumbnailUrl ||
+        oldWidget.preferOriginalPosterQuality !=
+            widget.preferOriginalPosterQuality) {
       _resetResolvedImageUrl();
     }
   }
@@ -9043,6 +9166,9 @@ class _ResolvedTemplatePosterImageState
     final String displayUrl;
     if (resolved.isNotEmpty) {
       displayUrl = resolved;
+    } else if (widget.preferOriginalPosterQuality &&
+        (direct.isNotEmpty || path.isNotEmpty)) {
+      displayUrl = direct;
     } else if ((hasFirebaseCandidates ||
             _posterStringLooksFirebaseResolvable(direct)) &&
         thumb.isNotEmpty) {
@@ -9054,7 +9180,10 @@ class _ResolvedTemplatePosterImageState
     return _TemplatePosterImage(
       imageAssetPath: widget.imageAssetPath,
       imageUrl: displayUrl.isEmpty ? null : displayUrl,
-      thumbnailUrl: widget.thumbnailUrl,
+      thumbnailUrl: widget.preferOriginalPosterQuality
+          ? null
+          : widget.thumbnailUrl,
+      preferOriginalPosterQuality: widget.preferOriginalPosterQuality,
       preferUltraLightDecode: widget.preferUltraLightDecode,
       onFirstFrameReady: widget.onFirstFrameReady,
     );
@@ -9568,6 +9697,7 @@ class _CreatorPosterPreview extends StatefulWidget {
     this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.pageConfig,
+    this.preferOriginalPosterQuality = false,
     required this.personalizationConfig,
     required this.viewerPosterProfile,
     required this.language,
@@ -9593,6 +9723,7 @@ class _CreatorPosterPreview extends StatefulWidget {
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final EditorPageConfig? pageConfig;
+  final bool preferOriginalPosterQuality;
   final CreatorPosterPersonalization personalizationConfig;
   final PosterProfileData viewerPosterProfile;
   final AppLanguage language;
@@ -10193,11 +10324,318 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
     final bottomStripPadding = (widget.personalizationConfig.stripHeight * 0.3)
         .clamp(4.0, 8.0);
-    final stripOverflowAllowance = widget.personalizationConfig.showBottomStrip
+    final preserveOriginalCanvasBounds = false;
+    final stripOverflowAllowance =
+        widget.personalizationConfig.showBottomStrip &&
+            !preserveOriginalCanvasBounds
         ? (isBusinessProfile ? 56.0 : 60.0)
         : 0.0;
 
     final showPhotoOverlay = _basePosterReady;
+
+    Widget buildPosterVisual() {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          if (widget.pageConfig != null)
+            AspectRatio(
+              aspectRatio: widget.pageConfig!.aspectRatio,
+              child: _ResolvedTemplatePosterImage(
+                imageAssetPath: widget.imageAssetPath,
+                imageUrl: widget.imageUrl ?? '',
+                imageStoragePath: widget.imageStoragePath,
+                thumbnailStoragePath: widget.thumbnailStoragePath,
+                thumbnailUrl: widget.thumbnailUrl,
+                preferOriginalPosterQuality: widget.preferOriginalPosterQuality,
+                onFirstFrameReady: _handleBasePosterReady,
+              ),
+            )
+          else
+            _ResolvedTemplatePosterImage(
+              imageAssetPath: widget.imageAssetPath,
+              imageUrl: widget.imageUrl ?? '',
+              imageStoragePath: widget.imageStoragePath,
+              thumbnailStoragePath: widget.thumbnailStoragePath,
+              thumbnailUrl: widget.thumbnailUrl,
+              preferOriginalPosterQuality: widget.preferOriginalPosterQuality,
+              onFirstFrameReady: _handleBasePosterReady,
+            ),
+          if (widget.showProfilePhoto && shouldShowIdentityVisual)
+            Positioned.fill(
+              bottom: -stripOverflowAllowance,
+              child: Offstage(
+                offstage: !showPhotoOverlay,
+                child: IgnorePointer(
+                  ignoring: !showPhotoOverlay,
+                  child: LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      final photoScale =
+                          widget.personalizationConfig.photoScale / 100;
+                      final baseImageHeight = math.max(
+                        1.0,
+                        constraints.maxHeight - stripOverflowAllowance,
+                      );
+                      final totalCanvasHeight = math.max(
+                        1.0,
+                        constraints.maxHeight,
+                      );
+                      final visualScale = isBusinessProfile
+                          ? photoScale * 0.72
+                          : photoScale;
+                      final effectivePhotoShape = isBusinessProfile
+                          ? 'circle'
+                          : (widget.photoShapeOverride.trim().isNotEmpty
+                                ? widget.photoShapeOverride.trim()
+                                : widget.personalizationConfig.photoShape);
+                      final effectivePhotoRenderMode = isBusinessProfile
+                          ? 'original'
+                          : (widget.photoRenderModeOverride.trim().isNotEmpty
+                                ? widget.photoRenderModeOverride.trim()
+                                : widget.personalizationConfig.photoRenderMode);
+                      final maskAspectRatio = _photoMaskAspectRatio(
+                        effectivePhotoShape,
+                      );
+                      final additionalPhotoProfile =
+                          widget.additionalPhotoSelection?.asPosterProfileData();
+                      final showAdditionalPhotoSlot =
+                          widget.personalizationConfig.showVideoExtraPhoto;
+                      final additionalPhotoShape =
+                          widget.personalizationConfig.videoExtraPhotoShape;
+                      final additionalPhotoRenderMode =
+                          widget.personalizationConfig.videoExtraPhotoRenderMode;
+                      final additionalPhotoWidth =
+                          constraints.maxWidth *
+                          (widget.personalizationConfig.videoExtraPhotoScale /
+                              100);
+                      final additionalPhotoHeight =
+                          additionalPhotoWidth /
+                          _photoMaskAspectRatio(additionalPhotoShape);
+                      final additionalPhotoLeft =
+                          (constraints.maxWidth *
+                              (widget.personalizationConfig.videoExtraPhotoX /
+                                  100)) -
+                          (additionalPhotoWidth / 2);
+                      final additionalPhotoTop =
+                          (baseImageHeight *
+                              (widget.personalizationConfig.videoExtraPhotoY /
+                                  100)) -
+                          (additionalPhotoHeight / 2);
+                      final width = constraints.maxWidth * visualScale;
+                      final height = width / maskAspectRatio;
+                      final left =
+                          (constraints.maxWidth *
+                              (widget.personalizationConfig.photoX / 100)) -
+                          (width / 2) +
+                          (constraints.maxWidth *
+                              (widget.photoXOffsetPercent / 100));
+                      final top =
+                          (baseImageHeight *
+                              (widget.personalizationConfig.photoY / 100)) -
+                          (height / 2) +
+                          (totalCanvasHeight *
+                              (widget.photoYOffsetPercent / 100));
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: <Widget>[
+                          Positioned(
+                            left: left,
+                            top: top,
+                            width: width,
+                            height: height,
+                            child: RawGestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              gestures: <Type, GestureRecognizerFactory>{
+                                TapGestureRecognizer:
+                                    GestureRecognizerFactoryWithHandlers<
+                                      TapGestureRecognizer
+                                    >(TapGestureRecognizer.new, (
+                                      TapGestureRecognizer instance,
+                                    ) {
+                                      instance.onTap =
+                                          widget.interactivePhotoEnabled
+                                          ? widget.onPhotoTap
+                                          : null;
+                                    }),
+                                LongPressGestureRecognizer:
+                                    GestureRecognizerFactoryWithHandlers<
+                                      LongPressGestureRecognizer
+                                    >(
+                                      () => LongPressGestureRecognizer(
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                      (LongPressGestureRecognizer instance) {
+                                        if (!widget.interactivePhotoEnabled) {
+                                          instance
+                                            ..onLongPressStart = null
+                                            ..onLongPressMoveUpdate = null
+                                            ..onLongPressEnd = null
+                                            ..onLongPressCancel = null;
+                                          return;
+                                        }
+                                        instance.onLongPressStart =
+                                            (LongPressStartDetails details) =>
+                                                _startPhotoDrag(
+                                                  details.globalPosition,
+                                                );
+                                        instance.onLongPressMoveUpdate =
+                                            (
+                                              LongPressMoveUpdateDetails details,
+                                            ) => _updatePhotoDrag(
+                                              globalPosition:
+                                                  details.globalPosition,
+                                              currentLeft: left,
+                                              currentTop: top,
+                                              maxWidth: constraints.maxWidth,
+                                              totalCanvasHeight:
+                                                  totalCanvasHeight,
+                                              photoWidth: width,
+                                              photoHeight: height,
+                                            );
+                                        instance.onLongPressEnd =
+                                            (LongPressEndDetails _) =>
+                                                _endPhotoDrag();
+                                        instance.onLongPressCancel =
+                                            _endPhotoDrag;
+                                      },
+                                    ),
+                              },
+                              child: _PhotoShapeFrame(
+                                shape: effectivePhotoShape,
+                                edgeStyle:
+                                    widget.personalizationConfig.edgeStyle,
+                                photoRenderMode: effectivePhotoRenderMode,
+                                isBusinessLogo: isBusinessProfile,
+                                child: PosterIdentityVisual(
+                                  profile: widget.viewerPosterProfile,
+                                  fit: isBusinessProfile
+                                      ? BoxFit.contain
+                                      : effectivePhotoRenderMode == 'cutout'
+                                      ? BoxFit.contain
+                                      : BoxFit.cover,
+                                  preferOriginalPersonalPhoto:
+                                      effectivePhotoRenderMode == 'original',
+                                  allowOriginalFallbackWhenCutoutUnavailable:
+                                      effectivePhotoRenderMode == 'original',
+                                  textScale:
+                                      widget.viewerPosterProfile.identityMode ==
+                                          PosterIdentityMode.business
+                                      ? 0.84
+                                      : 1.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (showAdditionalPhotoSlot)
+                            Positioned(
+                              left: additionalPhotoLeft,
+                              top: additionalPhotoTop,
+                              width: additionalPhotoWidth,
+                              height: additionalPhotoHeight,
+                              child: GestureDetector(
+                                onTap: widget.onAdditionalPhotoTap,
+                                behavior: HitTestBehavior.opaque,
+                                child: additionalPhotoProfile != null
+                                    ? _PhotoShapeFrame(
+                                        shape: additionalPhotoShape,
+                                        edgeStyle: widget
+                                            .personalizationConfig
+                                            .videoExtraPhotoEdgeStyle,
+                                        photoRenderMode:
+                                            additionalPhotoRenderMode,
+                                        isBusinessLogo: false,
+                                        child: PosterIdentityVisual(
+                                          profile: additionalPhotoProfile,
+                                          fit:
+                                              additionalPhotoRenderMode ==
+                                                  'cutout'
+                                              ? BoxFit.contain
+                                              : BoxFit.cover,
+                                          preferOriginalPersonalPhoto:
+                                              additionalPhotoRenderMode ==
+                                              'original',
+                                          allowOriginalFallbackWhenCutoutUnavailable:
+                                              true,
+                                        ),
+                                      )
+                                    : Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2.4,
+                                          ),
+                                          boxShadow: const <BoxShadow>[
+                                            BoxShadow(
+                                              color: Color(0x55000000),
+                                              blurRadius: 10,
+                                              offset: Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            context.strings.localized(
+                                              telugu: 'Add Photo',
+                                              english: 'Add Photo',
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.15,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          if (!widget.personalizationConfig.showBottomStrip)
+                            Positioned(
+                              left:
+                                  constraints.maxWidth *
+                                  (widget.personalizationConfig.nameX / 100),
+                              top:
+                                  constraints.maxHeight *
+                                  (widget.personalizationConfig.nameY / 100),
+                              child: Transform.translate(
+                                offset: const Offset(-80, -16),
+                                child: SizedBox(
+                                  width: 160,
+                                  child: _legacyAwareText(
+                                    text: resolvedName,
+                                    fontFamily: displayNameFontFamily,
+                                    maxLines: 1,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                      shadows: const <Shadow>[
+                                        Shadow(
+                                          color: Color(0xCC000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
 
     return RepaintBoundary(
       child: SizedBox(
@@ -10209,363 +10647,9 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: <Widget>[
-                    if (widget.pageConfig != null)
-                      AspectRatio(
-                        aspectRatio: widget.pageConfig!.aspectRatio,
-                        child: _ResolvedTemplatePosterImage(
-                          imageAssetPath: widget.imageAssetPath,
-                          imageUrl: widget.imageUrl ?? '',
-                          imageStoragePath: widget.imageStoragePath,
-                          thumbnailStoragePath: widget.thumbnailStoragePath,
-                          thumbnailUrl: widget.thumbnailUrl,
-                          onFirstFrameReady: _handleBasePosterReady,
-                        ),
-                      )
-                    else
-                      _ResolvedTemplatePosterImage(
-                        imageAssetPath: widget.imageAssetPath,
-                        imageUrl: widget.imageUrl ?? '',
-                        imageStoragePath: widget.imageStoragePath,
-                        thumbnailStoragePath: widget.thumbnailStoragePath,
-                        thumbnailUrl: widget.thumbnailUrl,
-                        onFirstFrameReady: _handleBasePosterReady,
-                      ),
-                    if (widget.showProfilePhoto && shouldShowIdentityVisual)
-                      Positioned.fill(
-                        bottom: -stripOverflowAllowance,
-                        child: Offstage(
-                          offstage: !showPhotoOverlay,
-                          child: IgnorePointer(
-                            ignoring: !showPhotoOverlay,
-                            child: LayoutBuilder(
-                              builder: (BuildContext context, BoxConstraints constraints) {
-                                final photoScale =
-                                    widget.personalizationConfig.photoScale /
-                                    100;
-                                final baseImageHeight = math.max(
-                                  1.0,
-                                  constraints.maxHeight -
-                                      stripOverflowAllowance,
-                                );
-                                final totalCanvasHeight = math.max(
-                                  1.0,
-                                  constraints.maxHeight,
-                                );
-                                final visualScale = isBusinessProfile
-                                    ? photoScale * 0.72
-                                    : photoScale;
-                                final effectivePhotoShape = isBusinessProfile
-                                    ? 'circle'
-                                    : (widget.photoShapeOverride
-                                              .trim()
-                                              .isNotEmpty
-                                          ? widget.photoShapeOverride.trim()
-                                          : widget
-                                                .personalizationConfig
-                                                .photoShape);
-                                final effectivePhotoRenderMode =
-                                    isBusinessProfile
-                                    ? 'original'
-                                    : (widget.photoRenderModeOverride
-                                              .trim()
-                                              .isNotEmpty
-                                          ? widget.photoRenderModeOverride
-                                                .trim()
-                                          : widget
-                                                .personalizationConfig
-                                                .photoRenderMode);
-                                final maskAspectRatio = _photoMaskAspectRatio(
-                                  effectivePhotoShape,
-                                );
-                                final additionalPhotoProfile =
-                                    widget.additionalPhotoSelection
-                                        ?.asPosterProfileData();
-                                final showAdditionalPhotoSlot =
-                                    widget.personalizationConfig
-                                        .showVideoExtraPhoto;
-                                final additionalPhotoShape = widget
-                                    .personalizationConfig
-                                    .videoExtraPhotoShape;
-                                final additionalPhotoRenderMode = widget
-                                    .personalizationConfig
-                                    .videoExtraPhotoRenderMode;
-                                final additionalPhotoWidth =
-                                    constraints.maxWidth *
-                                    (widget.personalizationConfig
-                                            .videoExtraPhotoScale /
-                                        100);
-                                final additionalPhotoHeight =
-                                    additionalPhotoWidth /
-                                    _photoMaskAspectRatio(additionalPhotoShape);
-                                final additionalPhotoLeft =
-                                    (constraints.maxWidth *
-                                        (widget.personalizationConfig
-                                                .videoExtraPhotoX /
-                                            100)) -
-                                    (additionalPhotoWidth / 2);
-                                final additionalPhotoTop =
-                                    (baseImageHeight *
-                                        (widget.personalizationConfig
-                                                .videoExtraPhotoY /
-                                            100)) -
-                                    (additionalPhotoHeight / 2);
-                                final width =
-                                    constraints.maxWidth * visualScale;
-                                final height = width / maskAspectRatio;
-                                final left =
-                                    (constraints.maxWidth *
-                                        (widget.personalizationConfig.photoX /
-                                            100)) -
-                                    (width / 2) +
-                                    (constraints.maxWidth *
-                                        (widget.photoXOffsetPercent / 100));
-                                final top =
-                                    (baseImageHeight *
-                                        (widget.personalizationConfig.photoY /
-                                            100)) -
-                                    (height / 2) +
-                                    (totalCanvasHeight *
-                                        (widget.photoYOffsetPercent / 100));
-                                return Stack(
-                                  clipBehavior: Clip.none,
-                                  children: <Widget>[
-                                    Positioned(
-                                      left: left,
-                                      top: top,
-                                      width: width,
-                                      height: height,
-                                      child: RawGestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        gestures: <Type, GestureRecognizerFactory>{
-                                          TapGestureRecognizer:
-                                              GestureRecognizerFactoryWithHandlers<
-                                                TapGestureRecognizer
-                                              >(TapGestureRecognizer.new, (
-                                                TapGestureRecognizer instance,
-                                              ) {
-                                                instance.onTap =
-                                                    widget
-                                                        .interactivePhotoEnabled
-                                                    ? widget.onPhotoTap
-                                                    : null;
-                                              }),
-                                          LongPressGestureRecognizer:
-                                              GestureRecognizerFactoryWithHandlers<
-                                                LongPressGestureRecognizer
-                                              >(
-                                                () =>
-                                                    LongPressGestureRecognizer(
-                                                      duration: const Duration(
-                                                        seconds: 2,
-                                                      ),
-                                                    ),
-                                                (
-                                                  LongPressGestureRecognizer
-                                                  instance,
-                                                ) {
-                                                  if (!widget
-                                                      .interactivePhotoEnabled) {
-                                                    instance
-                                                      ..onLongPressStart = null
-                                                      ..onLongPressMoveUpdate =
-                                                          null
-                                                      ..onLongPressEnd = null
-                                                      ..onLongPressCancel =
-                                                          null;
-                                                    return;
-                                                  }
-                                                  instance.onLongPressStart =
-                                                      (
-                                                        LongPressStartDetails
-                                                        details,
-                                                      ) => _startPhotoDrag(
-                                                        details.globalPosition,
-                                                      );
-                                                  instance.onLongPressMoveUpdate =
-                                                      (
-                                                        LongPressMoveUpdateDetails
-                                                        details,
-                                                      ) => _updatePhotoDrag(
-                                                        globalPosition: details
-                                                            .globalPosition,
-                                                        currentLeft: left,
-                                                        currentTop: top,
-                                                        maxWidth: constraints
-                                                            .maxWidth,
-                                                        totalCanvasHeight:
-                                                            totalCanvasHeight,
-                                                        photoWidth: width,
-                                                        photoHeight: height,
-                                                      );
-                                                  instance.onLongPressEnd =
-                                                      (LongPressEndDetails _) =>
-                                                          _endPhotoDrag();
-                                                  instance.onLongPressCancel =
-                                                      _endPhotoDrag;
-                                                },
-                                              ),
-                                        },
-                                        child: _PhotoShapeFrame(
-                                          shape: effectivePhotoShape,
-                                          edgeStyle: widget
-                                              .personalizationConfig
-                                              .edgeStyle,
-                                          photoRenderMode:
-                                              effectivePhotoRenderMode,
-                                          isBusinessLogo: isBusinessProfile,
-                                          child: PosterIdentityVisual(
-                                            profile: widget.viewerPosterProfile,
-                                            fit: isBusinessProfile
-                                                ? BoxFit.contain
-                                                : effectivePhotoRenderMode ==
-                                                      'cutout'
-                                                ? BoxFit.contain
-                                                : BoxFit.cover,
-                                            preferOriginalPersonalPhoto:
-                                                effectivePhotoRenderMode ==
-                                                'original',
-                                            allowOriginalFallbackWhenCutoutUnavailable:
-                                                effectivePhotoRenderMode ==
-                                                'original',
-                                            textScale:
-                                                widget
-                                                        .viewerPosterProfile
-                                                        .identityMode ==
-                                                    PosterIdentityMode.business
-                                                ? 0.84
-                                                : 1.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (showAdditionalPhotoSlot)
-                                      Positioned(
-                                        left: additionalPhotoLeft,
-                                        top: additionalPhotoTop,
-                                        width: additionalPhotoWidth,
-                                        height: additionalPhotoHeight,
-                                        child: GestureDetector(
-                                          onTap: widget.onAdditionalPhotoTap,
-                                          behavior: HitTestBehavior.opaque,
-                                          child: additionalPhotoProfile != null
-                                              ? _PhotoShapeFrame(
-                                                  shape: additionalPhotoShape,
-                                                  edgeStyle: widget
-                                                      .personalizationConfig
-                                                      .videoExtraPhotoEdgeStyle,
-                                                  photoRenderMode:
-                                                      additionalPhotoRenderMode,
-                                                  isBusinessLogo: false,
-                                                  child: PosterIdentityVisual(
-                                                    profile:
-                                                        additionalPhotoProfile,
-                                                    fit:
-                                                        additionalPhotoRenderMode ==
-                                                            'cutout'
-                                                        ? BoxFit.contain
-                                                        : BoxFit.cover,
-                                                    preferOriginalPersonalPhoto:
-                                                        additionalPhotoRenderMode ==
-                                                        'original',
-                                                    allowOriginalFallbackWhenCutoutUnavailable:
-                                                        true,
-                                                  ),
-                                                )
-                                              : Container(
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Colors.white
-                                                        .withValues(
-                                                          alpha: 0.18,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: Colors.white,
-                                                      width: 2.4,
-                                                    ),
-                                                    boxShadow: const <BoxShadow>[
-                                                      BoxShadow(
-                                                        color: Color(
-                                                          0x55000000,
-                                                        ),
-                                                        blurRadius: 10,
-                                                        offset: Offset(0, 4),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      context.strings.localized(
-                                                        telugu: 'Add Photo',
-                                                        english: 'Add Photo',
-                                                      ),
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        height: 1.15,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    if (!widget
-                                        .personalizationConfig
-                                        .showBottomStrip)
-                                      Positioned(
-                                        left:
-                                            constraints.maxWidth *
-                                            (widget
-                                                    .personalizationConfig
-                                                    .nameX /
-                                                100),
-                                        top:
-                                            constraints.maxHeight *
-                                            (widget
-                                                    .personalizationConfig
-                                                    .nameY /
-                                                100),
-                                        child: Transform.translate(
-                                          offset: const Offset(-80, -16),
-                                          child: SizedBox(
-                                            width: 160,
-                                            child: _legacyAwareText(
-                                              text: resolvedName,
-                                              fontFamily: displayNameFontFamily,
-                                              maxLines: 1,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w800,
-                                                fontSize: 18,
-                                                shadows: const <Shadow>[
-                                                  Shadow(
-                                                    color: Color(0xCC000000),
-                                                    blurRadius: 4,
-                                                    offset: Offset(0, 1),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (widget.personalizationConfig.showBottomStrip)
+                buildPosterVisual(),
+                if (widget.personalizationConfig.showBottomStrip &&
+                    !preserveOriginalCanvasBounds)
                   _buildPosterBottomStrip(
                     resolvedName: resolvedName,
                     resolvedDesignation: resolvedDesignation,

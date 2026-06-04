@@ -345,10 +345,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
 
   Future<void> _pickImage() async {
     final strings = context.strings;
-    final XFile? picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
-    );
+    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked == null) {
       return;
     }

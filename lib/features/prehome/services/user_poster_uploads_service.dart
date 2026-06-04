@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -50,6 +52,43 @@ class UserPosterUploadsService {
     Duration(milliseconds: 350),
     Duration(milliseconds: 900),
   ];
+
+  static Future<(int width, int height)?> _readImageDimensions(
+    Uint8List bytes,
+  ) async {
+    final completer = Completer<(int width, int height)?>();
+    ui.decodeImageFromList(bytes, (ui.Image image) {
+      try {
+        completer.complete((image.width, image.height));
+      } finally {
+        image.dispose();
+      }
+    });
+    return completer.future;
+  }
+
+  static String _normalizedImageExtension(String path) {
+    final fileName = path.split(Platform.pathSeparator).last.trim();
+    final dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == fileName.length - 1) {
+      return 'jpg';
+    }
+    return switch (fileName.substring(dotIndex + 1).toLowerCase()) {
+      'png' => 'png',
+      'webp' => 'webp',
+      'jpeg' => 'jpg',
+      'jpg' => 'jpg',
+      _ => 'jpg',
+    };
+  }
+
+  static String _contentTypeForExtension(String extension) {
+    return switch (extension) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+  }
 
   String _hiddenUploadsKey(String uid) =>
       'mana_poster_hidden_user_uploads_v1::$uid';
@@ -224,6 +263,8 @@ class UserPosterUploadsService {
       final now = DateTime.now().millisecondsSinceEpoch;
       final appVisibleFromAt = resolveApplicableFromMillis();
       final profile = await PosterProfileService.load();
+      final imageBytes = await imageFile.readAsBytes();
+      final imageDimensions = await _readImageDimensions(imageBytes);
       final userName = profile.activeName.trim().isNotEmpty
           ? profile.activeName.trim()
           : (user.displayName?.trim().isNotEmpty == true
@@ -231,11 +272,13 @@ class UserPosterUploadsService {
                 : 'User');
       final userMobile = profile.activeWhatsappNumber.trim();
       final doc = _firestore.collection('userPosterUploads').doc();
-      final imagePath = 'users/${user.uid}/community_uploads/${doc.id}.jpg';
+      final imageExtension = _normalizedImageExtension(imageFile.path);
+      final imagePath =
+          'users/${user.uid}/community_uploads/${doc.id}.$imageExtension';
       final imageRef = _storage.ref(imagePath);
       await imageRef.putFile(
         imageFile,
-        SettableMetadata(contentType: 'image/jpeg'),
+        SettableMetadata(contentType: _contentTypeForExtension(imageExtension)),
       );
       final imageUrl = await imageRef.getDownloadURL();
 
@@ -259,6 +302,8 @@ class UserPosterUploadsService {
         'updatedAt': now,
         'expiresAt': now + retentionMillis,
         'appVisibleFromAt': appVisibleFromAt,
+        'widthPx': imageDimensions?.$1 ?? 0,
+        'heightPx': imageDimensions?.$2 ?? 0,
       });
       return UserPosterUploadSubmitResult.success();
     } catch (error) {
