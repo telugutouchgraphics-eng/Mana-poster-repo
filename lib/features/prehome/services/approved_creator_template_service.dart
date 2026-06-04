@@ -802,6 +802,17 @@ class ApprovedCreatorTemplateService {
       photoX: _parseDouble(source['photoX'], 50),
       photoY: _parseDouble(source['photoY'], 45),
       photoScale: _parseDouble(source['photoScale'], 36),
+      showVideoExtraPhoto: source['showVideoExtraPhoto'] as bool? ?? false,
+      videoExtraPhotoShape: _parsePhotoShape(source['videoExtraPhotoShape']),
+      videoExtraPhotoRenderMode: _parseRenderMode(
+        source['videoExtraPhotoRenderMode'],
+      ),
+      videoExtraPhotoEdgeStyle: _parseEdgeStyle(
+        source['videoExtraPhotoEdgeStyle'],
+      ),
+      videoExtraPhotoX: _parseDouble(source['videoExtraPhotoX'], 24),
+      videoExtraPhotoY: _parseDouble(source['videoExtraPhotoY'], 44),
+      videoExtraPhotoScale: _parseDouble(source['videoExtraPhotoScale'], 28),
       nameX: _parseDouble(source['nameX'], 50),
       nameY: _parseDouble(source['nameY'], 82),
       showBottomStrip: source['showBottomStrip'] is bool

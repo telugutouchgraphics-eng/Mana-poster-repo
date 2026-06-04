@@ -97,15 +97,16 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadPosterProfile() async {
     try {
-      final profile = await PosterProfileService.load();
+      final localProfile = await PosterProfileService.loadLocal();
       if (!mounted) {
         return;
       }
       setState(() {
-        _posterProfile = profile;
+        _posterProfile = localProfile;
         _loadingProfile = false;
       });
-      _warmPosterProfileImage(profile);
+      _warmPosterProfileImage(localProfile);
+      unawaited(_refreshPosterProfileInBackground(localProfile));
     } catch (error, stackTrace) {
       developer.log(
         'Profile load failed: $error',
@@ -117,6 +118,32 @@ class _ProfileScreenState extends State<ProfileScreen>
         return;
       }
       setState(() => _loadingProfile = false);
+    }
+  }
+
+  Future<void> _refreshPosterProfileInBackground(
+    PosterProfileData currentProfile,
+  ) async {
+    try {
+      final refreshedProfile = await PosterProfileService.load();
+      if (!mounted) {
+        return;
+      }
+      if (refreshedProfile == currentProfile) {
+        _warmPosterProfileImage(refreshedProfile);
+        return;
+      }
+      setState(() {
+        _posterProfile = refreshedProfile;
+      });
+      _warmPosterProfileImage(refreshedProfile);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Profile background refresh skipped: $error',
+        name: 'profile.screen',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

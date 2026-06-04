@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image/image.dart' as img;
 
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
@@ -16,10 +17,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, kProfileMode;
+import 'package:flutter/foundation.dart'
+    show compute, kDebugMode, kIsWeb, kProfileMode;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:video_player/video_player.dart';
@@ -40,6 +44,7 @@ import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
+import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
@@ -317,6 +322,62 @@ class _PosterPhotoUserAdjustment {
 
   String get effectiveShape => preset?.shape ?? '';
   String get effectivePhotoRenderMode => preset?.photoRenderMode ?? '';
+}
+
+class _PosterExtraPhotoSelection {
+  const _PosterExtraPhotoSelection({
+    required this.originalPhotoPath,
+    required this.cutoutPhotoPath,
+  });
+
+  final String originalPhotoPath;
+  final String cutoutPhotoPath;
+
+  bool get hasPhoto =>
+      originalPhotoPath.trim().isNotEmpty || cutoutPhotoPath.trim().isNotEmpty;
+
+  PosterProfileData asPosterProfileData() {
+    return PosterProfileData(
+      nameTelugu: 'Add Photo',
+      nameEnglish: 'Add Photo',
+      whatsappNumber: '',
+      nameFontFamily: 'Anek Telugu Condensed Bold',
+      displayNameMode: PosterDisplayNameMode.auto,
+      photoPath: cutoutPhotoPath,
+      photoUrl: '',
+      originalPhotoPath: originalPhotoPath,
+      originalPhotoUrl: '',
+    );
+  }
+}
+
+Uint8List _optimizeAdditionalPosterPhotoBytes(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) {
+    return bytes;
+  }
+
+  const targetMaxDimension = 1920;
+  final longest = decoded.width > decoded.height
+      ? decoded.width
+      : decoded.height;
+  img.Image output = decoded;
+
+  if (longest > targetMaxDimension) {
+    final scale = targetMaxDimension / longest;
+    final width = ((decoded.width * scale).round()).clamp(320, 1920);
+    final height = ((decoded.height * scale).round()).clamp(320, 1920);
+    output = img.copyResize(decoded, width: width, height: height);
+  }
+
+  if (output.hasAlpha) {
+    return Uint8List.fromList(img.encodePng(output));
+  }
+  return Uint8List.fromList(img.encodeJpg(output, quality: 92));
+}
+
+Uint8List _prepareAdditionalPosterPhotoRemovalBytes(Uint8List bytes) {
+  return _optimizeAdditionalPosterPhotoBytes(bytes);
 }
 
 class _CategoryChipData {
@@ -2707,6 +2768,13 @@ class _HomeScreenState extends State<HomeScreen>
       'photoX': config.photoX,
       'photoY': config.photoY,
       'photoScale': config.photoScale,
+      'showVideoExtraPhoto': config.showVideoExtraPhoto,
+      'videoExtraPhotoShape': config.videoExtraPhotoShape,
+      'videoExtraPhotoRenderMode': config.videoExtraPhotoRenderMode,
+      'videoExtraPhotoEdgeStyle': config.videoExtraPhotoEdgeStyle,
+      'videoExtraPhotoX': config.videoExtraPhotoX,
+      'videoExtraPhotoY': config.videoExtraPhotoY,
+      'videoExtraPhotoScale': config.videoExtraPhotoScale,
       'nameX': config.nameX,
       'nameY': config.nameY,
       'showBottomStrip': config.showBottomStrip,
@@ -2743,6 +2811,20 @@ class _HomeScreenState extends State<HomeScreen>
       photoX: (data['photoX'] as num?)?.toDouble() ?? 78,
       photoY: (data['photoY'] as num?)?.toDouble() ?? 42,
       photoScale: (data['photoScale'] as num?)?.toDouble() ?? 44,
+      showVideoExtraPhoto: data['showVideoExtraPhoto'] as bool? ?? false,
+      videoExtraPhotoShape:
+          (data['videoExtraPhotoShape'] as String?)?.trim() ?? 'circle',
+      videoExtraPhotoRenderMode:
+          (data['videoExtraPhotoRenderMode'] as String?)?.trim() ?? 'cutout',
+      videoExtraPhotoEdgeStyle:
+          (data['videoExtraPhotoEdgeStyle'] as String?)?.trim() ??
+          'soft_fade',
+      videoExtraPhotoX:
+          (data['videoExtraPhotoX'] as num?)?.toDouble() ?? 24,
+      videoExtraPhotoY:
+          (data['videoExtraPhotoY'] as num?)?.toDouble() ?? 44,
+      videoExtraPhotoScale:
+          (data['videoExtraPhotoScale'] as num?)?.toDouble() ?? 28,
       nameX: (data['nameX'] as num?)?.toDouble() ?? 50,
       nameY: (data['nameY'] as num?)?.toDouble() ?? 82,
       showBottomStrip: data['showBottomStrip'] as bool? ?? true,
@@ -6350,6 +6432,8 @@ class _TemplateFeedItem extends StatefulWidget {
 
 class _TemplateFeedItemState extends State<_TemplateFeedItem>
     with AutomaticKeepAliveClientMixin<_TemplateFeedItem> {
+  static const OfflineBackgroundRemovalService _backgroundRemovalService =
+      OfflineBackgroundRemovalService();
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
   static const List<String> _randomPosterNameFonts = <String>[
@@ -6369,6 +6453,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   final GlobalKey _posterCaptureKey = GlobalKey();
   final ScreenshotController _posterScreenshotController =
       ScreenshotController();
+  final ImagePicker _imagePicker = ImagePicker();
   final ValueNotifier<bool> _showPosterPhotoNotifier = ValueNotifier<bool>(
     true,
   );
@@ -6403,7 +6488,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
 
   _PosterPhotoUserAdjustment _photoUserAdjustment =
       _PosterPhotoUserAdjustment.none;
+  _PosterExtraPhotoSelection? _extraPhotoSelection;
+  Future<void>? _backgroundRemoverInitialization;
   bool _photoDragInProgress = false;
+  bool _additionalPhotoBusy = false;
 
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
@@ -6489,7 +6577,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _posterSignature({required bool isPhotoVisible}) {
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-$posterRenderCycle-$isPhotoVisible';
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-$posterRenderCycle-$isPhotoVisible';
   }
 
   bool _beginAction(String action) {
@@ -6514,6 +6602,271 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       unawaited(
         File(existingPath).delete().catchError((_) => File(existingPath)),
       );
+    }
+  }
+
+  Future<void> _ensureBackgroundRemoverReady() {
+    return _backgroundRemoverInitialization ??=
+        _backgroundRemovalService.ensureReady();
+  }
+
+  Future<File> _stagePickedImageForCrop(
+    XFile picked, {
+    required String filePrefix,
+  }) async {
+    final Directory tempDir = await getTemporaryDirectory();
+    final String extension =
+        picked.name.contains('.')
+            ? picked.name.substring(picked.name.lastIndexOf('.'))
+            : '.png';
+    final String targetPath =
+        '${tempDir.path}${Platform.pathSeparator}'
+        '${filePrefix}_${DateTime.now().microsecondsSinceEpoch}$extension';
+    final File targetFile = File(targetPath);
+    await targetFile.writeAsBytes(await picked.readAsBytes(), flush: true);
+    return targetFile;
+  }
+
+  Future<void> _deleteFileSilently(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteAdditionalPhotoAssets() async {
+    final selection = _extraPhotoSelection;
+    if (selection == null) {
+      return;
+    }
+    final paths = <String>{
+      selection.originalPhotoPath.trim(),
+      selection.cutoutPhotoPath.trim(),
+    }.where((path) => path.isNotEmpty);
+    for (final path in paths) {
+      await _deleteFileSilently(File(path));
+    }
+  }
+
+  Future<Uint8List?> _removeAdditionalPhotoBackground(
+    Uint8List optimizedOriginalBytes,
+  ) async {
+    Future<Uint8List?> attempt(Uint8List sourceBytes, Duration timeout) async {
+      await _ensureBackgroundRemoverReady();
+      final removedResult = await _backgroundRemovalService
+          .removeBackground(sourceBytes)
+          .timeout(timeout);
+      return removedResult.pngBytes;
+    }
+
+    try {
+      return await attempt(optimizedOriginalBytes, const Duration(seconds: 30));
+    } catch (_) {
+      try {
+        final smallerBytes = await compute(
+          _prepareAdditionalPosterPhotoRemovalBytes,
+          optimizedOriginalBytes,
+        );
+        return await attempt(smallerBytes, const Duration(seconds: 30));
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  Future<BuildContext> _showAdditionalPhotoProcessingDialog() async {
+    final strings = context.strings;
+    final completer = Completer<BuildContext>();
+    unawaited(
+      showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierLabel: 'additional-photo-processing',
+        barrierColor: Colors.black.withValues(alpha: 0.16),
+        pageBuilder: (dialogContext, animation, secondaryAnimation) {
+          if (!completer.isCompleted) {
+            completer.complete(dialogContext);
+          }
+          return Material(
+            type: MaterialType.transparency,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 18,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.42),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      strings.localized(
+                        telugu: 'బ్యాక్‌గ్రౌండ్ తొలగిస్తోంది...',
+                        english: 'Removing background...',
+                      ),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    return completer.future;
+  }
+
+  Future<void> _pickAdditionalPosterPhoto() async {
+    final personalizationConfig = item.personalizationConfig;
+    if (_additionalPhotoBusy ||
+        personalizationConfig == null ||
+        !personalizationConfig.showVideoExtraPhoto) {
+      return;
+    }
+    setState(() => _additionalPhotoBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.strings;
+    File? stagedCropSourceFile;
+    var processingDialogOpen = false;
+    try {
+      final XFile? picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 95,
+      );
+      if (picked == null) {
+        return;
+      }
+      stagedCropSourceFile = await _stagePickedImageForCrop(
+        picked,
+        filePrefix: 'poster_additional_photo_pick',
+      );
+      final CroppedFile? cropped = await ImageCropper().cropImage(
+        sourcePath: stagedCropSourceFile.path,
+        compressFormat: ImageCompressFormat.png,
+        compressQuality: 95,
+        uiSettings: <PlatformUiSettings>[
+          AndroidUiSettings(
+            toolbarTitle: strings.localized(
+              telugu: 'ఫోటో క్రాప్ చేయండి',
+              english: 'Crop Photo',
+            ),
+            toolbarColor: const Color(0xFF0F172A),
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: const Color(0xFF0F172A),
+            activeControlsWidgetColor: const Color(0xFF2563EB),
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: strings.localized(
+              telugu: 'ఫోటో క్రాప్ చేయండి',
+              english: 'Crop Photo',
+            ),
+            aspectRatioLockEnabled: false,
+            rotateButtonsHidden: false,
+          ),
+        ],
+      );
+      if (cropped == null) {
+        return;
+      }
+      final originalBytes = await File(cropped.path).readAsBytes();
+      final optimizedOriginalBytes = await compute(
+        _optimizeAdditionalPosterPhotoBytes,
+        originalBytes,
+      );
+      BuildContext? processingDialogContext;
+      if (mounted) {
+        processingDialogContext = await _showAdditionalPhotoProcessingDialog();
+        processingDialogOpen = true;
+      }
+      final Uint8List? cutoutBytes = await _removeAdditionalPhotoBackground(
+        optimizedOriginalBytes,
+      );
+      if (processingDialogOpen &&
+          processingDialogContext != null &&
+          processingDialogContext.mounted) {
+        Navigator.of(processingDialogContext).pop();
+        processingDialogOpen = false;
+      }
+
+      final Directory dir = await getApplicationDocumentsDirectory();
+      final String stamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String originalTargetPath =
+          '${dir.path}${Platform.pathSeparator}'
+          'poster_additional_original_photo_$stamp.png';
+      final File originalLocalFile = File(originalTargetPath);
+      await originalLocalFile.writeAsBytes(optimizedOriginalBytes, flush: true);
+      var cutoutTargetPath = '';
+      if (cutoutBytes != null) {
+        cutoutTargetPath =
+            '${dir.path}${Platform.pathSeparator}'
+            'poster_additional_photo_$stamp.png';
+        await File(cutoutTargetPath).writeAsBytes(cutoutBytes, flush: true);
+      }
+      await _deleteAdditionalPhotoAssets();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _extraPhotoSelection = _PosterExtraPhotoSelection(
+          originalPhotoPath: originalTargetPath,
+          cutoutPhotoPath: cutoutTargetPath,
+        );
+      });
+      _invalidatePreparedPosterCache();
+      _schedulePosterWarmup(force: true);
+      if (cutoutBytes == null && mounted) {
+        _showSnack(
+          messenger,
+          strings.localized(
+            telugu:
+                'ఫోటో జోడించాం, కానీ background remove పూర్తిగా కాలేదు. ఇప్పటికి original photo వాడుతున్నాం.',
+            english:
+                'Photo was added, but background removal did not complete. Using the original photo for now.',
+          ),
+        );
+      }
+    } catch (_) {
+      if (processingDialogOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).maybePop();
+      }
+      if (mounted) {
+        _showSnack(
+          messenger,
+          strings.localized(
+            telugu: 'అదనపు ఫోటో జోడించలేకపోయాం.',
+            english: 'Could not add the extra photo.',
+          ),
+        );
+      }
+    } finally {
+      if (stagedCropSourceFile != null) {
+        unawaited(_deleteFileSilently(stagedCropSourceFile));
+      }
+      if (mounted) {
+        setState(() => _additionalPhotoBusy = false);
+      }
     }
   }
 
@@ -6950,6 +7303,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Future<void> _ensurePosterCaptureResourcesReady() async {
     await _precacheCurrentPosterImage();
     await _precacheCurrentPosterProfileImage();
+    await _precacheCurrentPosterAdditionalPhoto();
     await WidgetsBinding.instance.endOfFrame;
   }
 
@@ -7018,6 +7372,43 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       );
       _homeDebugLogStack(
         'poster profile image precache skipped: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _precacheCurrentPosterAdditionalPhoto() async {
+    final personalizationConfig = item.personalizationConfig;
+    final selection = _extraPhotoSelection;
+    if (personalizationConfig == null ||
+        !personalizationConfig.showVideoExtraPhoto ||
+        selection == null ||
+        !selection.hasPhoto) {
+      return;
+    }
+    final posterContext = _posterCaptureKey.currentContext;
+    if (posterContext == null) {
+      return;
+    }
+    final profile = selection.asPosterProfileData();
+    final imageProvider = PosterProfileService.resolveImageProvider(
+      profile,
+      preferOriginalPersonalPhoto:
+          personalizationConfig.videoExtraPhotoRenderMode == 'original',
+      allowOriginalFallbackWhenCutoutUnavailable: true,
+    );
+    if (imageProvider == null) {
+      return;
+    }
+    try {
+      await precacheImage(imageProvider, posterContext);
+    } catch (error, stackTrace) {
+      _recordPosterCaptureTrace(
+        'poster additional photo precache skipped',
+        details: <String, Object?>{'error': error.toString()},
+      );
+      _homeDebugLogStack(
+        'poster additional photo precache skipped: $error',
         stackTrace,
       );
     }
@@ -7171,6 +7562,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
             photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             onPhotoTap: _applyPosterPhotoPresetTap,
+            additionalPhotoSelection: _extraPhotoSelection,
+            onAdditionalPhotoTap:
+                personalizationConfig.showVideoExtraPhoto
+                    ? () => unawaited(_pickAdditionalPosterPhoto())
+                    : null,
             onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
             onPhotoDragStateChanged: _setPhotoDragInProgress,
             onPosterReadyChanged: onPosterReadyChanged,
@@ -9184,6 +9580,8 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.photoXOffsetPercent,
     required this.photoYOffsetPercent,
     required this.onPhotoTap,
+    required this.additionalPhotoSelection,
+    required this.onAdditionalPhotoTap,
     required this.onPhotoDragDeltaPercent,
     required this.onPhotoDragStateChanged,
     this.onPosterReadyChanged,
@@ -9207,6 +9605,8 @@ class _CreatorPosterPreview extends StatefulWidget {
   final double photoXOffsetPercent;
   final double photoYOffsetPercent;
   final VoidCallback onPhotoTap;
+  final _PosterExtraPhotoSelection? additionalPhotoSelection;
+  final VoidCallback? onAdditionalPhotoTap;
   final void Function({
     required double deltaXPercent,
     required double deltaYPercent,
@@ -9880,6 +10280,38 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                 final maskAspectRatio = _photoMaskAspectRatio(
                                   effectivePhotoShape,
                                 );
+                                final additionalPhotoProfile =
+                                    widget.additionalPhotoSelection
+                                        ?.asPosterProfileData();
+                                final showAdditionalPhotoSlot =
+                                    widget.personalizationConfig
+                                        .showVideoExtraPhoto;
+                                final additionalPhotoShape = widget
+                                    .personalizationConfig
+                                    .videoExtraPhotoShape;
+                                final additionalPhotoRenderMode = widget
+                                    .personalizationConfig
+                                    .videoExtraPhotoRenderMode;
+                                final additionalPhotoWidth =
+                                    constraints.maxWidth *
+                                    (widget.personalizationConfig
+                                            .videoExtraPhotoScale /
+                                        100);
+                                final additionalPhotoHeight =
+                                    additionalPhotoWidth /
+                                    _photoMaskAspectRatio(additionalPhotoShape);
+                                final additionalPhotoLeft =
+                                    (constraints.maxWidth *
+                                        (widget.personalizationConfig
+                                                .videoExtraPhotoX /
+                                            100)) -
+                                    (additionalPhotoWidth / 2);
+                                final additionalPhotoTop =
+                                    (baseImageHeight *
+                                        (widget.personalizationConfig
+                                                .videoExtraPhotoY /
+                                            100)) -
+                                    (additionalPhotoHeight / 2);
                                 final width =
                                     constraints.maxWidth * visualScale;
                                 final height = width / maskAspectRatio;
@@ -10009,6 +10441,80 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                         ),
                                       ),
                                     ),
+                                    if (showAdditionalPhotoSlot)
+                                      Positioned(
+                                        left: additionalPhotoLeft,
+                                        top: additionalPhotoTop,
+                                        width: additionalPhotoWidth,
+                                        height: additionalPhotoHeight,
+                                        child: GestureDetector(
+                                          onTap: widget.onAdditionalPhotoTap,
+                                          behavior: HitTestBehavior.opaque,
+                                          child: additionalPhotoProfile != null
+                                              ? _PhotoShapeFrame(
+                                                  shape: additionalPhotoShape,
+                                                  edgeStyle: widget
+                                                      .personalizationConfig
+                                                      .videoExtraPhotoEdgeStyle,
+                                                  photoRenderMode:
+                                                      additionalPhotoRenderMode,
+                                                  isBusinessLogo: false,
+                                                  child: PosterIdentityVisual(
+                                                    profile:
+                                                        additionalPhotoProfile,
+                                                    fit:
+                                                        additionalPhotoRenderMode ==
+                                                            'cutout'
+                                                        ? BoxFit.contain
+                                                        : BoxFit.cover,
+                                                    preferOriginalPersonalPhoto:
+                                                        additionalPhotoRenderMode ==
+                                                        'original',
+                                                    allowOriginalFallbackWhenCutoutUnavailable:
+                                                        true,
+                                                  ),
+                                                )
+                                              : Container(
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.white
+                                                        .withValues(
+                                                          alpha: 0.18,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: Colors.white,
+                                                      width: 2.4,
+                                                    ),
+                                                    boxShadow: const <BoxShadow>[
+                                                      BoxShadow(
+                                                        color: Color(
+                                                          0x55000000,
+                                                        ),
+                                                        blurRadius: 10,
+                                                        offset: Offset(0, 4),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      context.strings.localized(
+                                                        telugu: 'Add Photo',
+                                                        english: 'Add Photo',
+                                                      ),
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        height: 1.15,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
                                     if (!widget
                                         .personalizationConfig
                                         .showBottomStrip)

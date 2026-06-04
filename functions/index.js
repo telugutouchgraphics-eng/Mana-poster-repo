@@ -2575,6 +2575,19 @@ async function pickImageForReminder(keywords, seed = "") {
   return getPrimaryBannerImage();
 }
 
+async function pickStrictImageForReminderCategory(categoryKey, seed = "") {
+  const strictMatches = await getApprovedPosterImagesForReminderCategory(
+      categoryKey,
+  );
+  if (strictMatches.length === 0) {
+    return "";
+  }
+  const index = stableHashNumber(
+      `${reminderCategoryKey(categoryKey)}-${seed || Date.now()}-strict-only`,
+  ) % strictMatches.length;
+  return strictMatches[index] || "";
+}
+
 async function runWithConcurrency(items, limit, worker) {
   const safeLimit = Math.max(1, Number(limit) || 1);
   let index = 0;
@@ -2677,7 +2690,18 @@ async function sendThreeKindsToFcmToken(fcmToken, uidHint = "") {
   ];
   const results = [];
   for (const job of jobs) {
-    const imageUrl = await pickImageForReminder(job.keywords);
+    const imageUrl = await pickStrictImageForReminderCategory(
+        job.categoryKey,
+        `${job.categoryKey}-manual-${Date.now()}`,
+    );
+    if (!imageUrl) {
+      results.push({
+        categoryKey: job.categoryKey,
+        skipped: true,
+        reason: "no_category_poster",
+      });
+      continue;
+    }
     const copy = reminderCopyLocalized(
         job.categoryKey,
         profile.preferredLanguage,
@@ -2735,10 +2759,17 @@ async function sendDailyPersonalizedReminder({
   const now = new Date();
   const dayKey = getIstDayKey(now);
   const resolvedSeed = normalizeText(reminderSeed) || "default";
-  const imageUrl = await pickImageForReminder(
-      keywords,
+  const imageUrl = await pickStrictImageForReminderCategory(
+      categoryKey,
       `${categoryKey}-${dayKey}-${resolvedSeed}`,
   );
+  if (!imageUrl) {
+    logger.info("daily personalized reminder skipped: no category poster", {
+      categoryKey,
+      reminderSeed: resolvedSeed,
+    });
+    return;
+  }
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
@@ -2920,14 +2951,17 @@ async function sendLocalizedGreetingReminder({
   reminderKind,
 }) {
   const now = new Date();
-  const imageKeywords =
-      reminderKind === "evening" ?
-      ["good night", "night", "evening"] :
-      [categoryKey];
-  const imageUrl = await pickImageForReminder(
-      imageKeywords,
+  const imageUrl = await pickStrictImageForReminderCategory(
+      categoryKey,
       `${categoryKey}-${reminderKind}-${getIstDayKey(now)}`,
   );
+  if (!imageUrl) {
+    logger.info("localized greeting reminder skipped: no category poster", {
+      categoryKey,
+      reminderKind,
+    });
+    return;
+  }
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
   const seenTokens = new Set();

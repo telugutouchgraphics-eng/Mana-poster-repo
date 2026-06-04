@@ -183,6 +183,17 @@ class PremiumTemplateRemoteService {
       photoX: _readDouble(source, 'photoX', 50),
       photoY: _readDouble(source, 'photoY', 45),
       photoScale: _readDouble(source, 'photoScale', 36),
+      showVideoExtraPhoto: source['showVideoExtraPhoto'] as bool? ?? false,
+      videoExtraPhotoShape: _parsePhotoShape(source['videoExtraPhotoShape']),
+      videoExtraPhotoRenderMode: _parseRenderMode(
+        source['videoExtraPhotoRenderMode'],
+      ),
+      videoExtraPhotoEdgeStyle: _parseEdgeStyle(
+        source['videoExtraPhotoEdgeStyle'],
+      ),
+      videoExtraPhotoX: _readDouble(source, 'videoExtraPhotoX', 24),
+      videoExtraPhotoY: _readDouble(source, 'videoExtraPhotoY', 44),
+      videoExtraPhotoScale: _readDouble(source, 'videoExtraPhotoScale', 28),
       nameX: _readDouble(source, 'nameX', 50),
       nameY: _readDouble(source, 'nameY', 82),
       showBottomStrip:

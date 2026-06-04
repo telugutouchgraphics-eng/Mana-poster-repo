@@ -18,12 +18,12 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import android.os.Bundle
-import androidx.core.view.WindowCompat
+import androidx.activity.enableEdgeToEdge
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val screenSecurityChannelName = "mana_poster/screen_security"
     private val mediaExportChannelName = "mana_poster/media_export"
     private val installSourceChannelName = "mana_poster/install_source"
@@ -37,7 +37,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }

@@ -6,6 +6,13 @@ class CreatorPosterPersonalization {
     required this.photoX,
     required this.photoY,
     required this.photoScale,
+    this.showVideoExtraPhoto = false,
+    this.videoExtraPhotoShape = 'circle',
+    this.videoExtraPhotoRenderMode = 'cutout',
+    this.videoExtraPhotoEdgeStyle = 'soft_fade',
+    this.videoExtraPhotoX = 24,
+    this.videoExtraPhotoY = 44,
+    this.videoExtraPhotoScale = 28,
     required this.nameX,
     required this.nameY,
     required this.showBottomStrip,
@@ -32,6 +39,13 @@ class CreatorPosterPersonalization {
         photoX: 78,
         photoY: 42,
         photoScale: 44,
+        showVideoExtraPhoto: false,
+        videoExtraPhotoShape: 'circle',
+        videoExtraPhotoRenderMode: 'cutout',
+        videoExtraPhotoEdgeStyle: 'soft_fade',
+        videoExtraPhotoX: 24,
+        videoExtraPhotoY: 44,
+        videoExtraPhotoScale: 28,
         nameX: 50,
         nameY: 82,
         showBottomStrip: true,
@@ -56,6 +70,13 @@ class CreatorPosterPersonalization {
   final double photoX;
   final double photoY;
   final double photoScale;
+  final bool showVideoExtraPhoto;
+  final String videoExtraPhotoShape;
+  final String videoExtraPhotoRenderMode;
+  final String videoExtraPhotoEdgeStyle;
+  final double videoExtraPhotoX;
+  final double videoExtraPhotoY;
+  final double videoExtraPhotoScale;
   final double nameX;
   final double nameY;
   final bool showBottomStrip;
@@ -83,6 +104,13 @@ class CreatorPosterPersonalization {
             other.photoX == photoX &&
             other.photoY == photoY &&
             other.photoScale == photoScale &&
+            other.showVideoExtraPhoto == showVideoExtraPhoto &&
+            other.videoExtraPhotoShape == videoExtraPhotoShape &&
+            other.videoExtraPhotoRenderMode == videoExtraPhotoRenderMode &&
+            other.videoExtraPhotoEdgeStyle == videoExtraPhotoEdgeStyle &&
+            other.videoExtraPhotoX == videoExtraPhotoX &&
+            other.videoExtraPhotoY == videoExtraPhotoY &&
+            other.videoExtraPhotoScale == videoExtraPhotoScale &&
             other.nameX == nameX &&
             other.nameY == nameY &&
             other.showBottomStrip == showBottomStrip &&
@@ -109,6 +137,13 @@ class CreatorPosterPersonalization {
     photoX,
     photoY,
     photoScale,
+    showVideoExtraPhoto,
+    videoExtraPhotoShape,
+    videoExtraPhotoRenderMode,
+    videoExtraPhotoEdgeStyle,
+    videoExtraPhotoX,
+    videoExtraPhotoY,
+    videoExtraPhotoScale,
     nameX,
     nameY,
     showBottomStrip,
