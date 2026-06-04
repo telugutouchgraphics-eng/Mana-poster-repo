@@ -9,6 +9,17 @@ const _supportedProductIds = <String>{
   'mana_poster_premium_monthly_149',
 };
 
+bool _isExpiryActive(String? expiryTime) {
+  if (expiryTime == null || expiryTime.trim().isEmpty) {
+    return false;
+  }
+  final expiryDate = DateTime.tryParse(expiryTime);
+  if (expiryDate == null) {
+    return false;
+  }
+  return expiryDate.isAfter(DateTime.now());
+}
+
 Future<void> main() async {
   final entitlements = <String, Map<String, dynamic>>{};
   final server = await HttpServer.bind(_host, _port);
@@ -95,26 +106,49 @@ Future<void> _handleVerify(
   final hasToken = token.isNotEmpty;
   final hasSource = source.isNotEmpty;
   final isValid = hasProduct && hasToken && hasSource;
+  final existingEntry = entitlements[uid];
+  final existingProductId = (existingEntry?['productId']?.toString() ?? '').trim();
+  final existingStartDate = existingEntry?['startDate']?.toString();
+  final existingExpiryDate = existingEntry?['expiryTime']?.toString();
+  final shouldReuseDates =
+      existingEntry != null &&
+      existingProductId == productId &&
+      existingStartDate != null &&
+      existingStartDate.isNotEmpty &&
+      existingExpiryDate != null &&
+      existingExpiryDate.isNotEmpty;
   final now = DateTime.now();
-  final expiryDate = now.add(const Duration(days: 30)).toIso8601String();
-  final startDate = now.toIso8601String();
+  final startDate =
+      shouldReuseDates ? existingStartDate : now.toIso8601String();
+  final expiryDate = shouldReuseDates
+      ? existingExpiryDate
+      : now.add(const Duration(days: 30)).toIso8601String();
+  final isActive = isValid && _isExpiryActive(expiryDate);
+  final status = isActive ? 'active' : 'expired';
+
+  stdout.writeln(
+    shouldReuseDates
+        ? 'Mock verify: reusing saved expiry for uid=$uid productId=$productId expiry=$expiryDate'
+        : 'Mock verify: creating new expiry for uid=$uid productId=$productId expiry=$expiryDate',
+  );
 
   entitlements[uid] = <String, dynamic>{
-    'isPro': isValid,
-    'status': isValid ? 'active' : 'expired',
+    'isPro': isActive,
+    'status': status,
     'startDate': startDate,
     'expiryTime': expiryDate,
+    'productId': productId,
   };
 
   await _writeJson(
-    response,
-    statusCode: HttpStatus.ok,
-    body: <String, dynamic>{
-      'isPro': isValid,
-      'message': isValid
+      response,
+      statusCode: HttpStatus.ok,
+      body: <String, dynamic>{
+      'isPro': isActive,
+      'message': isActive
           ? 'Mock verification success'
           : 'Mock verification failed (product/token/source check)',
-      'status': isValid ? 'active' : 'expired',
+      'status': status,
       'startDate': startDate,
       'expiryTime': expiryDate,
       'uid': uid,
@@ -149,16 +183,21 @@ Future<void> _handleStatus(
         'startDate': null,
         'expiryTime': null,
       };
-  final isPro = entry['isPro'] == true;
+  final expiryTime = entry['expiryTime']?.toString();
+  final isPro = entry['isPro'] == true && _isExpiryActive(expiryTime);
+  final status = isPro ? 'active' : 'expired';
+  stdout.writeln(
+    'Mock status: uid=$uid status=$status expiry=$expiryTime',
+  );
   await _writeJson(
     response,
     statusCode: HttpStatus.ok,
     body: <String, dynamic>{
       'isPro': isPro,
       'message': isPro ? 'Entitlement active' : 'Entitlement inactive',
-      'status': entry['status'],
+      'status': status,
       'startDate': entry['startDate'],
-      'expiryTime': entry['expiryTime'],
+      'expiryTime': expiryTime,
       'uid': uid,
     },
   );

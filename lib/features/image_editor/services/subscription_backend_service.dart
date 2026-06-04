@@ -3,7 +3,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show ValueNotifier, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show ValueNotifier, kIsWeb;
 
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/features/image_editor/services/play_billing_account_binding_service.dart';
@@ -24,6 +25,7 @@ class SubscriptionBackendResult {
     required this.state,
     this.message,
     this.status,
+    this.productId,
     this.startDate,
     this.expiryTime,
     this.autoRenewing,
@@ -35,6 +37,7 @@ class SubscriptionBackendResult {
   final SubscriptionBackendState state;
   final String? message;
   final SubscriptionPlanStatus? status;
+  final String? productId;
   final DateTime? startDate;
   final DateTime? expiryTime;
   final bool? autoRenewing;
@@ -363,6 +366,7 @@ class SubscriptionBackendService {
           isPro: isPro,
           subscriptionState: decoded['subscriptionState'],
         ),
+        productId: decoded['productId']?.toString(),
         startDate: startDate,
         expiryTime: expiryTime,
         autoRenewing: _parseBool(decoded['autoRenewing']),

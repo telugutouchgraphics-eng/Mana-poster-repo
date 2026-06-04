@@ -56,6 +56,12 @@ const playRtdnTopic =
     String(process.env.MANA_POSTER_PLAY_RTDN_TOPIC || "play-billing-rtdn")
         .trim();
 const manaReminderToolKey = String(process.env.MANA_REMINDER_TOOL_KEY || "").trim();
+const manualLifetimeWhitelistSource = "manual_lifetime_whitelist";
+const manualLifetimeWhitelistedEmails = new Set([
+  "manaposter2026@gmail.com",
+  "shaikvaseema62@gmail.com",
+  "babuy2045@gmail.com",
+]);
 const allowedCorsOrigins = parseAllowedOrigins(
     process.env.MANA_POSTER_ALLOWED_ORIGINS || process.env.ALLOW_ORIGIN || "*",
 );
@@ -176,6 +182,98 @@ function activeTemplatePurchaseState(purchaseState) {
   return Number(purchaseState) === 0;
 }
 
+function parseValidDateTimeOrNull(value) {
+  const candidate = String(value || "").trim();
+  if (!candidate) {
+    return null;
+  }
+  const date = new Date(candidate);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function subscriptionLineItemBasePlanId(item) {
+  return String(
+      item?.autoRenewingPlan?.basePlanId ||
+      item?.offerDetails?.basePlanId ||
+      item?.basePlanId ||
+      "",
+  ).trim();
+}
+
+function subscriptionLineItemOfferId(item) {
+  return String(
+      item?.offerDetails?.offerId ||
+      item?.autoRenewingPlan?.offerId ||
+      item?.offerId ||
+      "",
+  ).trim();
+}
+
+function subscriptionLineItemRecurringPriceUnits(item) {
+  return String(
+      item?.autoRenewingPlan?.recurringPrice?.units ||
+      item?.autoRenewingPlan?.price?.units ||
+      "",
+  ).trim();
+}
+
+function looksLikeTrialOrIntroLineItem(item) {
+  const offerId = subscriptionLineItemOfferId(item).toLowerCase();
+  const basePlanId = subscriptionLineItemBasePlanId(item).toLowerCase();
+  const offerTags = Array.isArray(item?.offerDetails?.offerTags) ?
+    item.offerDetails.offerTags.map((tag) => String(tag || "").toLowerCase()) :
+    [];
+  const marker = [offerId, basePlanId, ...offerTags].join(" ");
+  if (marker.includes("trial") || marker.includes("intro")) {
+    return true;
+  }
+  const expiryDate = parseValidDateTimeOrNull(item?.expiryTime);
+  const startDate = parseValidDateTimeOrNull(item?.startTime);
+  if (!expiryDate || !startDate) {
+    return false;
+  }
+  const durationDays = (expiryDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+  return durationDays > 0 && durationDays <= 3.1;
+}
+
+function isPreferredMonthlyBasePlanLineItem(item, productIdHint) {
+  const productId = String(item?.productId || "").trim();
+  if (!productIdHint || productId !== productIdHint) {
+    return false;
+  }
+  const recurringPriceUnits = subscriptionLineItemRecurringPriceUnits(item);
+  if (recurringPriceUnits && recurringPriceUnits !== String(subscriptionPlanConfig.monthlyPrice)) {
+    return false;
+  }
+  if (looksLikeTrialOrIntroLineItem(item)) {
+    return false;
+  }
+  return !!item?.autoRenewingPlan;
+}
+
+function selectSubscriptionEntitlementLineItem(lineItems, productIdHint = "") {
+  const normalizedHint = String(productIdHint || "").trim();
+  const candidates = lineItems.filter((item) => parseValidDateTimeOrNull(item?.expiryTime));
+  if (!candidates.length) {
+    return null;
+  }
+  const matchingProductItems = normalizedHint ?
+    candidates.filter((item) => String(item?.productId || "").trim() === normalizedHint) :
+    candidates;
+  const productScopedItems = matchingProductItems.length ? matchingProductItems : candidates;
+  const monthlyBasePlanItems = productScopedItems.filter((item) =>
+    isPreferredMonthlyBasePlanLineItem(item, normalizedHint),
+  );
+  const selectionPool = monthlyBasePlanItems.length ? monthlyBasePlanItems : productScopedItems;
+  return selectionPool
+      .slice()
+      .sort((left, right) => {
+        const rightExpiry = parseValidDateTimeOrNull(right?.expiryTime)?.getTime() || 0;
+        const leftExpiry = parseValidDateTimeOrNull(left?.expiryTime)?.getTime() || 0;
+        return rightExpiry - leftExpiry;
+      })[0];
+}
+
 async function verifySubscriptionPurchaseWithGoogle({
   purchaseToken,
 }) {
@@ -192,10 +290,13 @@ async function verifySubscriptionPurchaseWithGoogle({
   const productIds = lineItems
       .map((item) => String(item.productId || "").trim())
       .filter((item) => item.length > 0);
-  const primaryProductId = productIds[0] || "";
-  const expiryTime = firstValidDateTimeString(
-      lineItems.map((item) => item.expiryTime),
+  const hintedProductId = productIds.find((item) => playSubscriptionProductIds.has(item)) || "";
+  const primaryProductId = hintedProductId || productIds[0] || "";
+  const selectedLineItem = selectSubscriptionEntitlementLineItem(
+      lineItems,
+      primaryProductId || subscriptionPlanConfig.primaryMonthlyProductId,
   );
+  const expiryTime = firstValidDateTimeString([selectedLineItem?.expiryTime]);
   const autoRenewing = lineItems.some((item) => {
     const autoPlan = item && item.autoRenewingPlan;
     if (!autoPlan || typeof autoPlan !== "object") {
@@ -209,10 +310,12 @@ async function verifySubscriptionPurchaseWithGoogle({
   const latestOrderId = firstNonEmptyString([
     payload.latestOrderId,
     payload.latestSuccessfulOrderId,
+    selectedLineItem?.latestSuccessfulOrderId,
     ...lineItems.map((item) => item.latestSuccessfulOrderId),
   ]);
   const startTime = firstValidDateTimeString([
     payload.startTime,
+    selectedLineItem?.startTime,
     ...lineItems.map((item) => item.startTime),
   ]);
   return {
@@ -519,13 +622,20 @@ async function recordPaidReferralForSubscriber({
 }
 
 function buildSubscriptionMetadataPatch(verification) {
-  return {
-    startTime: toFirestoreTimestamp(verification.startTime),
-    expiryTime: toFirestoreTimestamp(verification.expiryTime),
+  const patch = {
     autoRenewing: verification.autoRenewing === true,
     latestOrderId: verification.latestOrderId || null,
     lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  const startTime = toFirestoreTimestamp(verification.startTime);
+  if (startTime) {
+    patch.startTime = startTime;
+  }
+  const expiryTime = toFirestoreTimestamp(verification.expiryTime);
+  if (expiryTime) {
+    patch.expiryTime = expiryTime;
+  }
+  return patch;
 }
 
 function deriveEntitlementStatus({isPro, subscriptionState, expiryTime}) {
@@ -3075,6 +3185,14 @@ function daysUntilEvent(month, day, now = new Date()) {
   return Math.floor(ms / (24 * 60 * 60 * 1000));
 }
 
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isManualLifetimeWhitelistedEmail(email) {
+  return manualLifetimeWhitelistedEmails.has(normalizeEmail(email));
+}
+
 async function verifyAuth(req) {
   const auth = req.headers.authorization || "";
   if (!auth.startsWith("Bearer ")) {
@@ -3666,6 +3784,43 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
   try {
     const decoded = await verifyAuth(req);
     const uid = decoded.uid;
+    const email = normalizeEmail(decoded.email);
+
+    if (isManualLifetimeWhitelistedEmail(email)) {
+      logger.info("subscriptionStatus manual whitelist override", {
+        uid,
+        source: manualLifetimeWhitelistSource,
+        emailHash: sha256(email).slice(0, 12),
+      });
+      const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
+      await entitlementRef.set({
+        isPro: true,
+        status: "active",
+        source: manualLifetimeWhitelistSource,
+        productId: "manual_lifetime_whitelist",
+        subscriptionState: manualLifetimeWhitelistSource,
+        autoRenewing: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      res.status(200).json({
+        isPro: true,
+        hasAccess: true,
+        message: "Entitlement active",
+        status: "active",
+        source: manualLifetimeWhitelistSource,
+        productId: "manual_lifetime_whitelist",
+        subscriptionState: manualLifetimeWhitelistSource,
+        startDate: null,
+        expiryTime: null,
+        autoRenewing: false,
+        latestOrderId: null,
+        referralRewardActive: false,
+        referralRewardStartsAt: null,
+        referralRewardExpiresAt: null,
+        lastSyncedAt: new Date().toISOString(),
+      });
+      return;
+    }
 
     const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
     const snap = await entitlementRef.get();

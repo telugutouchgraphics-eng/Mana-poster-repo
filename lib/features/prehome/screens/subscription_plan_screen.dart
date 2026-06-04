@@ -149,6 +149,10 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
   }
 
+  Future<void> _refreshStatus() async {
+    await _loadStatus();
+  }
+
   Future<void> _runDeferredAutoAction(Future<void> Function() action) async {
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) {
@@ -780,7 +784,21 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     if (expiryDate == null) {
       return null;
     }
-    final formatted = _formatDate(expiryDate);
+    final bool showNextPaymentDate =
+        _isSubscriptionActive && (_backendResult?.autoRenewing == true);
+    final DateTime displayDate =
+        showNextPaymentDate ? (_stableDisplayRenewalDate() ?? expiryDate) : expiryDate;
+    final formatted = _formatDate(displayDate);
+    if (showNextPaymentDate) {
+      return _t(
+        telugu: 'తదుపరి చెల్లింపు తేదీ: $formatted',
+        english: 'Next payment date: $formatted',
+        hindi: 'अगली भुगतान तिथि: $formatted',
+        tamil: 'அடுத்த கட்டண தேதி: $formatted',
+        kannada: 'ಮುಂದಿನ ಪಾವತಿ ದಿನಾಂಕ: $formatted',
+        malayalam: 'അടുത്ത പേയ്മെന്റ് തീയതി: $formatted',
+      );
+    }
     return _t(
       telugu: 'గడువు ముగిసే తేదీ: $formatted',
       english: 'Expires on: $formatted',
@@ -789,6 +807,48 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       kannada: 'ಅವಧಿ ಮುಗಿಯುವ ದಿನಾಂಕ: $formatted',
       malayalam: 'കാലാവധി തീരുന്ന തീയതി: $formatted',
     );
+  }
+
+  DateTime? _stableDisplayRenewalDate() {
+    final result = _backendResult;
+    if (result == null) {
+      return null;
+    }
+    if (!_isSubscriptionActive || result.autoRenewing != true) {
+      return null;
+    }
+    final normalizedProductId = result.productId?.trim();
+    if (normalizedProductId != 'mana_poster_premium_monthly_149') {
+      return null;
+    }
+    final startDate = result.startDate;
+    if (startDate == null) {
+      return null;
+    }
+    return _addCalendarMonth(startDate);
+  }
+
+  DateTime _addCalendarMonth(DateTime value) {
+    final year = value.year + (value.month == DateTime.december ? 1 : 0);
+    final month = value.month == DateTime.december ? 1 : value.month + 1;
+    final day = value.day.clamp(1, _daysInMonth(year, month));
+    return DateTime(
+      year,
+      month,
+      day,
+      value.hour,
+      value.minute,
+      value.second,
+      value.millisecond,
+      value.microsecond,
+    );
+  }
+
+  int _daysInMonth(int year, int month) {
+    if (month == DateTime.december) {
+      return DateTime(year + 1, 1, 0).day;
+    }
+    return DateTime(year, month + 1, 0).day;
   }
 
   Color get _statusColor {
@@ -916,9 +976,12 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-          children: <Widget>[
+        child: RefreshIndicator(
+          onRefresh: _refreshStatus,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            children: <Widget>[
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
@@ -1216,7 +1279,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
