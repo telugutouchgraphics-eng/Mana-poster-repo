@@ -248,7 +248,7 @@ class _LegalCopy {
         telugu:
             'మేము మీ email address, పేరు, Firebase UID, Google Sign-In వివరాలు, profile photo, logo, poster profile details, business name, WhatsApp number, notification token, subscription status, referral code, referral attribution details మరియు purchase verification కోసం అవసరమైన billing సమాచారాన్ని సేకరిస్తాము.',
         english:
-            'We collect your email address, name, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, notification token, subscription status, referral code, referral attribution details, and billing information needed for purchase verification.',
+            'We collect your email address, name, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, selected State/Union Territory, selected app language, selected political party categories, notification token, subscription status, referral code, referral attribution details, and billing information needed for purchase verification.',
       ),
     ),
     _LegalSection(
@@ -260,7 +260,19 @@ class _LegalCopy {
         telugu:
             'ఈ సమాచారాన్ని login, account security, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention మరియు customer support కోసం ఉపయోగిస్తాము.',
         english:
-            'We use this data for login, account security, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention, and customer support.',
+            'We use this data for login, account security, region-based language selection, showing relevant poster categories, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention, and customer support.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'ప్రాంతం, భాష మరియు రాజకీయ వర్గాల ఎంపికలు',
+        english: 'Region, Language, and Political Category Choices',
+      ),
+      strings.localized(
+        telugu:
+            'మీరు State/Union Territory ఎంచుకున్నప్పుడు యాప్ ఆ ప్రాంతానికి సంబంధించిన primary language ను apply చేయవచ్చు. మీరు ఎంచుకున్న ప్రాంతం, language మరియు political party category preferences ను local device లో మరియు signed-in account తో sync చేయడానికి server లో save చేయవచ్చు. ఇవి home categories, dashboard uploads matching, personalization మరియు support కోసం ఉపయోగించబడతాయి. మీరు settings/profile లో ఈ ఎంపికలను మార్చవచ్చు.',
+        english:
+            'When you select a State or Union Territory, the app may apply the primary language for that region. Your selected region, language, and political party category preferences may be saved locally and synced with your signed-in account. These choices are used for home categories, dashboard upload matching, personalization, and support. You can update these choices from settings/profile.',
       ),
     ),
     _LegalSection(
@@ -272,7 +284,7 @@ class _LegalCopy {
         telugu:
             'Users poster images ను manager review కోసం upload చేయవచ్చు. Upload చేసిన image, selected category, upload time, applicable visibility date, review status, rejection reason, share/download contribution counts మరియు related moderation history ను process చేయవచ్చు. Approved upload related category లో ఇతర users కు కనిపించవచ్చు. Pending, rejected లేదా policy-violating uploads ను review, reject, remove లేదా retain చేయడానికి managers/admins కు హక్కు ఉంటుంది.',
         english:
-            'Users may upload poster images for manager review. We may process the uploaded image, selected category, upload time, applicable visibility date, review status, rejection reason, contribution share/download counts, and related moderation history. Approved uploads may become visible to other users in the related category. Managers and admins may review, reject, remove, or retain pending, rejected, or policy-violating uploads as part of moderation and record-keeping.',
+            'Users may upload poster images or videos for manager review. We may process the uploaded media, selected region, selected category, political party category where applicable, upload time, applicable visibility date, review status, rejection reason, contribution share/download counts, and related moderation history. Approved uploads may become visible to other users in the related category. Managers and admins may review, reject, remove, or retain pending, rejected, or policy-violating uploads as part of moderation and record-keeping.',
       ),
     ),
     _LegalSection(
@@ -288,10 +300,7 @@ class _LegalCopy {
       ),
     ),
     _LegalSection(
-      strings.localized(
-        telugu: 'డేటా షేరింగ్',
-        english: 'Data Sharing',
-      ),
+      strings.localized(telugu: 'డేటా షేరింగ్', english: 'Data Sharing'),
       strings.localized(
         telugu:
             'మేము personal data ను అమ్మము. Data essential service providers, lawful authorities, billing/review partners లేదా legal/security obligations కోసం అవసరమైనప్పుడు మాత్రమే share చేయవచ్చు.',
@@ -388,9 +397,21 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'మీ login వివరాలు భద్రంగా ఉంచాలి. మీరు upload చేసే photos, text, logos లేదా poster materials ను ఉపయోగించే హక్కు మీకే ఉండాలి. చట్టవిరుద్ధం, మోసపూరితం, ద్వేషపూరితం, అసభ్యం లేదా ఇతరుల హక్కులను ఉల్లంఘించే content నిషేధించబడుతుంది. యాప్‌లో ఇతర users కు కనిపించే posters publication కు ముందు review చేయబడతాయి.',
+            'మీ login వివరాలు భద్రంగా ఉంచాలి. మీరు upload చేసే photos, text, videos, logos లేదా poster materials ను ఉపయోగించే హక్కు మీకే ఉండాలి. చట్టవిరుద్ధం, మోసపూరితం, ద్వేషపూరితం, అసభ్యం లేదా ఇతరుల హక్కులను ఉల్లంఘించే content నిషేధించబడుతుంది. యాప్‌లో ఇతర users కు కనిపించే posters/videos publication కు ముందు review చేయబడతాయి.',
         english:
-            'You must keep your login details secure. You must have the right to use any photos, text, logos, or poster materials you upload. Illegal, deceptive, hateful, obscene, or infringing content is prohibited. Posters shown to other users in the app are reviewed before publication.',
+            'You must keep your login details secure. You must have the right to use any photos, text, videos, logos, or poster materials you upload. Illegal, deceptive, hateful, obscene, or infringing content is prohibited. Posters or videos shown to other users in the app are reviewed before publication.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'రాజకీయ వర్గాలు మరియు ప్రజా గుర్తులు',
+        english: 'Political Categories and Public Symbols',
+      ),
+      strings.localized(
+        telugu:
+            'Political party categories, party names, party symbols/logos, State/Union Territory emblems మరియు public identifiers యాప్‌లో category navigation, regional relevance మరియు poster discovery కోసం మాత్రమే చూపించబడవచ్చు. ఇవి Mana Poster Ai ద్వారా endorsement, affiliation, sponsorship లేదా political claim గా పరిగణించరాదు. Users రాజకీయ లేదా public-interest content తయారు చేసే సమయంలో వర్తించే laws, election rules, platform policies, copyright/trademark rights మరియు factual accuracy కి బాధ్యత వహించాలి.',
+        english:
+            'Political party categories, party names, party symbols/logos, State/Union Territory emblems, and public identifiers may be shown only for category navigation, regional relevance, and poster discovery. They do not imply endorsement, affiliation, sponsorship, or any political claim by Mana Poster Ai. Users creating political or public-interest content are responsible for complying with applicable laws, election rules, platform policies, copyright/trademark rights, and factual accuracy.',
       ),
     ),
     _LegalSection(
@@ -462,7 +483,7 @@ class _LegalCopy {
         telugu:
             'Users manager review కోసం posters upload చేయవచ్చు. Copyright లేకుండా third-party content upload చేయడం, ఇతరులుగా నటించడం, abusive/offensive content, deceptive political misuse, spam uploads, repeated low-quality uploads, illegal notices, fake claims లేదా rights లేని material నిషేధించబడుతుంది. Managers/admins uploads ను approve, reject, customize, delay, unpublish లేదా remove చేయవచ్చు. Rejected uploads కు reason ఇవ్వవచ్చు. Abuse లేదా infringement report చేయడానికి app support flow లేదా ${AppPublicInfo.supportEmail} ఉపయోగించవచ్చు.',
         english:
-            'Users may upload posters for manager review. Uploading third-party content without rights, impersonation, abusive or offensive content, deceptive political misuse, spam uploads, repeated low-quality uploads, illegal notices, fake claims, or material you do not have rights to use is prohibited. Managers and admins may approve, reject, customize, delay, unpublish, or remove uploads. Rejected uploads may include a reason. Abusive or infringing content can be reported through the app support flow or by emailing ${AppPublicInfo.supportEmail}.',
+            'Users may upload posters or videos for manager review. Uploading third-party content without rights, impersonation, abusive or offensive content, deceptive political misuse, spam uploads, repeated low-quality uploads, illegal notices, fake claims, or material you do not have rights to use is prohibited. Managers and admins may approve, reject, customize, delay, unpublish, or remove uploads. Rejected uploads may include a reason. Abusive or infringing content can be reported through the app support flow or by emailing ${AppPublicInfo.supportEmail}.',
       ),
     ),
     _LegalSection(

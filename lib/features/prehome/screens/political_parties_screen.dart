@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -473,18 +474,31 @@ class _PartyLogo extends StatelessWidget {
           : ClipOval(
               child: Padding(
                 padding: const EdgeInsets.all(8),
-                child: Image.asset(
-                  logoAssetPath,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => Text(
-                    party.shortName.characters.first,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 22,
-                    ),
-                  ),
-                ),
+                child: logoAssetPath.endsWith('.svg')
+                    ? SvgPicture.asset(
+                        logoAssetPath,
+                        fit: BoxFit.contain,
+                        placeholderBuilder: (_) => Text(
+                          party.shortName.characters.first,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                          ),
+                        ),
+                      )
+                    : Image.asset(
+                        logoAssetPath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => Text(
+                          party.shortName.characters.first,
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                          ),
+                        ),
+                      ),
               ),
             ),
     );

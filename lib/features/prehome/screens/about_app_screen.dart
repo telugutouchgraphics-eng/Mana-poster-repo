@@ -89,10 +89,7 @@ class _AboutAppScreenState extends State<AboutAppScreen> {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Color(0xFFE8F4EE),
-                      Color(0xFFFFFFFF),
-                    ],
+                    colors: <Color>[Color(0xFFE8F4EE), Color(0xFFFFFFFF)],
                   ),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
@@ -695,6 +692,20 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
+          'State/Union Territory ఎంచుకున్న తర్వాత యాప్ ఆ ప్రాంత భాషకు మారి, సంబంధిత categories మరియు political party categories చూపిస్తుంది.',
+      english:
+          'After selecting a State or Union Territory, the app switches to the region language and shows relevant categories, including political party categories.',
+      hindi:
+          'राज्य या केंद्रशासित प्रदेश चुनने के बाद ऐप उस क्षेत्र की भाषा में बदलता है और संबंधित राजनीतिक पार्टी श्रेणियों सहित उपयुक्त श्रेणियाँ दिखाता है।',
+      tamil:
+          'மாநிலம் அல்லது யூனியன் பிரதேசம் தேர்ந்தெடுத்த பிறகு, ஆப் அந்த பகுதி மொழிக்கு மாறி, அரசியல் கட்சி பிரிவுகள் உட்பட தொடர்புடைய பிரிவுகளை காட்டும்.',
+      kannada:
+          'ರಾಜ್ಯ ಅಥವಾ ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶ ಆಯ್ಕೆ ಮಾಡಿದ ನಂತರ ಆಪ್ ಆ ಪ್ರದೇಶದ ಭಾಷೆಗೆ ಬದಲಾಗುತ್ತದೆ ಮತ್ತು ರಾಜಕೀಯ ಪಕ್ಷಗಳ ವಿಭಾಗಗಳೊಂದಿಗೆ ಸಂಬಂಧಿತ ವಿಭಾಗಗಳನ್ನು ತೋರಿಸುತ್ತದೆ.',
+      malayalam:
+          'സംസ്ഥാനം അല്ലെങ്കിൽ കേന്ദ്രഭരണ പ്രദേശം തിരഞ്ഞെടുത്ത ശേഷം ആപ്പ് ആ പ്രദേശത്തിന്റെ ഭാഷയിലേക്ക് മാറി, രാഷ്ട്രീയ പാർട്ടി വിഭാഗങ്ങൾ ഉൾപ്പെടെയുള്ള അനുയോജ്യ വിഭാഗങ്ങൾ കാണിക്കും.',
+    ),
+    strings.localized(
+      telugu:
           'పోస్టర్ ప్రొఫైల్, వ్యాపార పేరు, ఫోటో, వాట్సాప్ వివరాలు సేవ్ చేసుకోవచ్చు.',
       english:
           'Save poster profile, business name, photo, and WhatsApp details.',
@@ -906,6 +917,20 @@ class _AboutCopy {
           'ಇದನ್ನು ಇಂಗ್ಲಿಷ್, ಹಿಂದಿ, ತಮಿಳು, ಕನ್ನಡ ಮತ್ತು ಮಲಯಾಳಂ ಭಾಷೆಗಳಲ್ಲಿಯೂ ಬಳಸಬಹುದು.',
       malayalam:
           'ഇത് ഇംഗ്ലീഷ്, ഹിന്ദി, തമിഴ്, ಕನ್ನಡ, മലയാളം ഭാഷകളിലും ഉപയോഗിക്കാം.',
+    ),
+    strings.localized(
+      telugu:
+          'State/Union Territory ఎంపిక ఆధారంగా supported regional language apply అవుతుంది; పూర్తి UI support లేని చోట English fallback కనిపించవచ్చు.',
+      english:
+          'The supported regional language is applied from the selected State or Union Territory; English fallback may appear where full UI support is not available.',
+      hindi:
+          'चुने गए राज्य या केंद्रशासित प्रदेश के आधार पर समर्थित क्षेत्रीय भाषा लागू होती है; जहाँ पूरा UI समर्थन उपलब्ध नहीं है वहाँ English fallback दिख सकता है।',
+      tamil:
+          'தேர்ந்தெடுத்த மாநிலம் அல்லது யூனியன் பிரதேசத்தின் அடிப்படையில் ஆதரிக்கப்படும் பிராந்திய மொழி பயன்படுத்தப்படும்; முழு UI ஆதரவு இல்லாத இடங்களில் English fallback தோன்றலாம்.',
+      kannada:
+          'ಆಯ್ದ ರಾಜ್ಯ ಅಥವಾ ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶದ ಆಧಾರದ ಮೇಲೆ ಬೆಂಬಲಿತ ಪ್ರಾದೇಶಿಕ ಭಾಷೆ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ; ಸಂಪೂರ್ಣ UI ಬೆಂಬಲ ಇಲ್ಲದ ಕಡೆ English fallback ಕಾಣಬಹುದು.',
+      malayalam:
+          'തിരഞ്ഞെടുത്ത സംസ്ഥാനം അല്ലെങ്കിൽ കേന്ദ്രഭരണ പ്രദേശത്തെ അടിസ്ഥാനമാക്കി പിന്തുണയ്ക്കുന്ന പ്രാദേശിക ഭാഷ പ്രയോഗിക്കും; പൂർണ്ണ UI പിന്തുണ ഇല്ലാത്തിടത്ത് English fallback കാണാം.',
     ),
   ];
 

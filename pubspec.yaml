@@ -98,6 +98,7 @@ flutter:
     - assets/audio/onboarding/
     - assets/elements/political/logos/
     - assets/elements/political/party_logos/
+    - assets/elements/regions/logos/
 
   fonts:
     - family: Anek Telugu Condensed Bold

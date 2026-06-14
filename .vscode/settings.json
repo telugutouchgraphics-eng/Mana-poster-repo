@@ -1,3 +1,15 @@
 {
-    "android-studio-lite.sdkPath": "C:\\Users\\telug\\AppData\\Local\\Android\\Sdk"
+    "android-studio-lite.sdkPath": "C:\\Users\\telug\\AppData\\Local\\Android\\Sdk",
+    "dart.analysisExcludedFolders": [
+        "flutter"
+    ],
+    "files.exclude": {
+        "flutter": true
+    },
+    "files.watcherExclude": {
+        "flutter/**": true
+    },
+    "search.exclude": {
+        "flutter": true
+    }
 }

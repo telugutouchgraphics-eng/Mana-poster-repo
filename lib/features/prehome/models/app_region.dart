@@ -19,6 +19,8 @@ class AppRegion {
   final AppRegionType type;
   final AppLanguage appLanguage;
 
+  String get logoAssetPath => 'assets/elements/regions/logos/$id.png';
+
   bool matches(String query) {
     final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) {

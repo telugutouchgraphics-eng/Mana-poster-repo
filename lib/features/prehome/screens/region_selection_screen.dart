@@ -274,19 +274,39 @@ class _RegionTile extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Container(
-                width: 44,
-                height: 44,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.22),
+                    width: 1.2,
+                  ),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x140F172A),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  region.name.characters.first,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: Image.asset(
+                    region.logoAssetPath,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Center(
+                      child: Text(
+                        region.name.characters.first,
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
