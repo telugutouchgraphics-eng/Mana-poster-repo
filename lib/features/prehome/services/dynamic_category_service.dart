@@ -229,8 +229,8 @@ class DynamicCategoryService {
   }
 
   String _weekdayLabel(int weekday, AppLanguage language) {
-    switch (language) {
-      case AppLanguage.telugu:
+    switch (language.supportedUiLanguage) {
+      case SupportedUiLanguage.telugu:
         return switch (weekday) {
           DateTime.monday => 'సోమవారం స్పెషల్',
           DateTime.tuesday => 'మంగళవారం స్పెషల్',
@@ -240,7 +240,7 @@ class DynamicCategoryService {
           DateTime.saturday => 'శనివారం స్పెషల్',
           _ => 'ఆదివారం స్పెషల్',
         };
-      case AppLanguage.hindi:
+      case SupportedUiLanguage.hindi:
         return switch (weekday) {
           DateTime.monday => 'सोमवार स्पेशल',
           DateTime.tuesday => 'मंगलवार स्पेशल',
@@ -250,7 +250,7 @@ class DynamicCategoryService {
           DateTime.saturday => 'शनिवार स्पेशल',
           _ => 'रविवार स्पेशल',
         };
-      case AppLanguage.tamil:
+      case SupportedUiLanguage.tamil:
         return switch (weekday) {
           DateTime.monday => 'திங்கட்கிழமை சிறப்பு',
           DateTime.tuesday => 'செவ்வாய்க்கிழமை சிறப்பு',
@@ -260,7 +260,7 @@ class DynamicCategoryService {
           DateTime.saturday => 'சனிக்கிழமை சிறப்பு',
           _ => 'ஞாயிற்றுக்கிழமை சிறப்பு',
         };
-      case AppLanguage.kannada:
+      case SupportedUiLanguage.kannada:
         return switch (weekday) {
           DateTime.monday => 'ಸೋಮವಾರ ವಿಶೇಷ',
           DateTime.tuesday => 'ಮಂಗಳವಾರ ವಿಶೇಷ',
@@ -270,7 +270,7 @@ class DynamicCategoryService {
           DateTime.saturday => 'ಶನಿವಾರ ವಿಶೇಷ',
           _ => 'ಭಾನುವಾರ ವಿಶೇಷ',
         };
-      case AppLanguage.malayalam:
+      case SupportedUiLanguage.malayalam:
         return switch (weekday) {
           DateTime.monday => 'തിങ്കളാഴ്ച സ്പെഷ്യൽ',
           DateTime.tuesday => 'ചൊവ്വാഴ്ച സ്പെഷ്യൽ',
@@ -280,7 +280,7 @@ class DynamicCategoryService {
           DateTime.saturday => 'ശനിയാഴ്ച സ്പെഷ്യൽ',
           _ => 'ഞായറാഴ്ച സ്പെഷ്യൽ',
         };
-      case AppLanguage.english:
+      case SupportedUiLanguage.english:
         return switch (weekday) {
           DateTime.monday => 'Monday Special',
           DateTime.tuesday => 'Tuesday Special',

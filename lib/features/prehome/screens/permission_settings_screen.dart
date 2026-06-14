@@ -287,53 +287,59 @@ class _PermissionCopy {
 
   final AppLanguage language;
 
-  String get settingsTitle => switch (language) {
-    AppLanguage.telugu => 'అనుమతులు',
-    AppLanguage.hindi => 'अनुमतियां',
-    AppLanguage.english => 'Permissions',
-    AppLanguage.tamil => 'அனுமதிகள்',
-    AppLanguage.kannada => 'ಅನುಮತಿಗಳು',
-    AppLanguage.malayalam => 'അനുമതികൾ',
+  String get settingsTitle => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu => 'అనుమతులు',
+    SupportedUiLanguage.hindi => 'अनुमतियां',
+    SupportedUiLanguage.english => 'Permissions',
+    SupportedUiLanguage.tamil => 'அனுமதிகள்',
+    SupportedUiLanguage.kannada => 'ಅನುಮತಿಗಳು',
+    SupportedUiLanguage.malayalam => 'അനുമതികൾ',
   };
 
-  String get openSettingsLabel => switch (language) {
-    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరువు',
-    AppLanguage.hindi => 'ऐप सेटिंग्स खोलें',
-    AppLanguage.english => 'Open App Settings',
-    AppLanguage.tamil => 'ஆப் அமைப்புகளை திற',
-    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಿರಿ',
-    AppLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറക്കുക',
+  String get openSettingsLabel => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరువు',
+    SupportedUiLanguage.hindi => 'ऐप सेटिंग्स खोलें',
+    SupportedUiLanguage.english => 'Open App Settings',
+    SupportedUiLanguage.tamil => 'ஆப் அமைப்புகளை திற',
+    SupportedUiLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಿರಿ',
+    SupportedUiLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറക്കുക',
   };
 
-  String get fallbackInfo => switch (language) {
-    AppLanguage.telugu =>
+  String get fallbackInfo => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu =>
       'స్టేటస్ రిఫ్రెష్ కాలేదు. కిందికి లాగి మళ్లీ ప్రయత్నించండి.',
-    AppLanguage.hindi => 'स्टेटस रीफ्रेश नहीं हुआ। नीचे खींचकर फिर कोशिश करें।',
-    AppLanguage.english => 'Could not refresh status. Pull down to retry.',
-    AppLanguage.tamil =>
+    SupportedUiLanguage.hindi =>
+      'स्टेटस रीफ्रेश नहीं हुआ। नीचे खींचकर फिर कोशिश करें।',
+    SupportedUiLanguage.english =>
+      'Could not refresh status. Pull down to retry.',
+    SupportedUiLanguage.tamil =>
       'நிலை புதுப்பிக்கப்படவில்லை. கீழே இழுத்து மீண்டும் முயற்சிக்கவும்.',
-    AppLanguage.kannada => 'ಸ್ಥಿತಿ ನವೀಕರಿಸಲಿಲ್ಲ. ಕೆಳಗೆ ಎಳೆದು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-    AppLanguage.malayalam =>
+    SupportedUiLanguage.kannada =>
+      'ಸ್ಥಿತಿ ನವೀಕರಿಸಲಿಲ್ಲ. ಕೆಳಗೆ ಎಳೆದು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    SupportedUiLanguage.malayalam =>
       'സ്ഥിതി പുതുക്കാനായില്ല. താഴേക്ക് വലിച്ച് വീണ്ടും ശ്രമിക്കുക.',
   };
 
-  String get settingsOpened => switch (language) {
-    AppLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరుచుకున్నాయి.',
-    AppLanguage.hindi => 'ऐप सेटिंग्स खुल गई हैं।',
-    AppLanguage.english => 'App settings opened.',
-    AppLanguage.tamil => 'ஆப் அமைப்புகள் திறக்கப்பட்டன.',
-    AppLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಿದೆ.',
-    AppLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറന്നു.',
+  String get settingsOpened => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరుచుకున్నాయి.',
+    SupportedUiLanguage.hindi => 'ऐप सेटिंग्स खुल गई हैं।',
+    SupportedUiLanguage.english => 'App settings opened.',
+    SupportedUiLanguage.tamil => 'ஆப் அமைப்புகள் திறக்கப்பட்டன.',
+    SupportedUiLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಿದೆ.',
+    SupportedUiLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറന്നു.',
   };
 
-  String get settingsOpenFailed => switch (language) {
-    AppLanguage.telugu => 'సెట్టింగ్స్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
-    AppLanguage.hindi => 'सेटिंग्स नहीं खुलीं। फिर कोशिश करें।',
-    AppLanguage.english => 'Could not open settings. Please try again.',
-    AppLanguage.tamil =>
+  String get settingsOpenFailed => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu =>
+      'సెట్టింగ్స్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+    SupportedUiLanguage.hindi => 'सेटिंग्स नहीं खुलीं। फिर कोशिश करें।',
+    SupportedUiLanguage.english => 'Could not open settings. Please try again.',
+    SupportedUiLanguage.tamil =>
       'அமைப்புகளை திறக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
-    AppLanguage.kannada => 'ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-    AppLanguage.malayalam => 'ക്രമീകരണങ്ങൾ തുറക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+    SupportedUiLanguage.kannada =>
+      'ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    SupportedUiLanguage.malayalam =>
+      'ക്രമീകരണങ്ങൾ തുറക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
   };
 
   String permissionGranted(AppPermissionType type) => switch (type) {
@@ -412,13 +418,13 @@ class _PermissionCopy {
   }
 
   String _localized({required String telugu, required String english}) =>
-      switch (language) {
-        AppLanguage.telugu => telugu,
-        AppLanguage.hindi => english,
-        AppLanguage.english => english,
-        AppLanguage.tamil => english,
-        AppLanguage.kannada => english,
-        AppLanguage.malayalam => english,
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu => telugu,
+        SupportedUiLanguage.hindi => english,
+        SupportedUiLanguage.english => english,
+        SupportedUiLanguage.tamil => english,
+        SupportedUiLanguage.kannada => english,
+        SupportedUiLanguage.malayalam => english,
       };
 }
 

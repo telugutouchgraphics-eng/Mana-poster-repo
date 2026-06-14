@@ -7,7 +7,12 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb, kProfileMode, kReleaseMode;
+    show
+        TargetPlatform,
+        defaultTargetPlatform,
+        kIsWeb,
+        kProfileMode,
+        kReleaseMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -22,6 +27,7 @@ import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/services/app_temporary_cleanup_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/app/navigation/web_url_strategy.dart';
@@ -213,6 +219,11 @@ Future<void> _runPostLaunchInitialization() async {
     'sync_stored_language',
     AppFlowService.syncStoredLanguageToRemote,
     delay: const Duration(seconds: 5),
+  );
+  _scheduleStartupTask(
+    'sync_stored_party_preferences',
+    AppPartyPreferenceService.syncStoredSelectionToRemote,
+    delay: const Duration(seconds: 6),
   );
   _subscriptionLifecycleListener ??= AppLifecycleListener(
     onResume: () {

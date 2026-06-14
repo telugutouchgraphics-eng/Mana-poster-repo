@@ -9,6 +9,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 
@@ -126,6 +127,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
       } catch (_) {}
       if (nextUid != null) {
         unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());
+        unawaited(AppPartyPreferenceService.syncStoredSelectionToRemote());
         try {
           await PosterProfileService.refreshFromRemote();
         } catch (_) {}

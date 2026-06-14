@@ -48,57 +48,64 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                '${strings.currentLanguageLabel}: ${strings.languageName(currentLanguage)}',
-                style: const TextStyle(
-                  color: Color(0xFF475569),
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  children: <Widget>[
+                    Text(
+                      '${strings.currentLanguageLabel}: ${strings.languageName(currentLanguage)}',
+                      style: const TextStyle(
+                        color: Color(0xFF475569),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...languages.map((language) {
+                      final selected = _selected == language;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: InkWell(
+                          onTap: () => setState(() => _selected = language),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Ink(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? const Color(0xFFE8F0FF)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: selected
+                                    ? const Color(0xFF1E3A8A)
+                                    : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    strings.languageName(language),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (selected)
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Color(0xFF1E3A8A),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-              ...languages.map((language) {
-                final selected = _selected == language;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: InkWell(
-                    onTap: () => setState(() => _selected = language),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Ink(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFFE8F0FF)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: selected
-                              ? const Color(0xFF1E3A8A)
-                              : const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              strings.languageName(language),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          if (selected)
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF1E3A8A),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-              const Spacer(),
               FilledButton(
                 onPressed: () async {
                   final saved = await AppFlowService.persistLanguageSelection(
@@ -113,7 +120,8 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
                         content: Text(
                           strings.localized(
                             telugu: 'భాష సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
-                            english: 'Could not save language. Please try again.',
+                            english:
+                                'Could not save language. Please try again.',
                           ),
                         ),
                       ),

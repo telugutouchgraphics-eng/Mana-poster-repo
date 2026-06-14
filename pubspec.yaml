@@ -97,6 +97,7 @@ flutter:
     - assets/branding/whatsapp_icon.png
     - assets/audio/onboarding/
     - assets/elements/political/logos/
+    - assets/elements/political/party_logos/
 
   fonts:
     - family: Anek Telugu Condensed Bold

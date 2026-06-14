@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
+import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 
@@ -193,199 +195,212 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
     ];
 
     return Scaffold(
-      body: GradientShell(
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 24,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 48,
-                  ),
-                  child: Center(
+      body: Stack(
+        children: <Widget>[
+          GradientShell(
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 72, 20, 24),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: const <BoxShadow>[
-                            BoxShadow(
-                              color: Color(0x120F172A),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(999),
-                                gradient: const LinearGradient(
-                                  colors: <Color>[
-                                    Color(0xFFF59E0B),
-                                    Color(0xFF10B981),
-                                    Color(0xFF3B82F6),
-                                  ],
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 96,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                              boxShadow: const <BoxShadow>[
+                                BoxShadow(
+                                  color: Color(0x120F172A),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 10),
                                 ),
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 18),
-                            Text(
-                              strings.localized(
-                                telugu: 'మీ మతాన్ని ఎంచుకోండి',
-                                english: 'Select your religion',
-                                hindi: 'अपना धर्म चुनें',
-                                tamil: 'உங்கள் மதத்தை தேர்வு செய்யவும்',
-                                kannada: 'ನಿಮ್ಮ ಧರ್ಮವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ',
-                                malayalam: 'നിങ്ങളുടെ മതം തിരഞ്ഞെടുക്കുക',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              strings.localized(
-                                telugu:
-                                    'మీరు ఎంచుకున్న దానికి సరిపోయే కేటగిరీలు మాత్రమే హోమ్‌లో కనిపిస్తాయి.',
-                                english:
-                                    'Home will show the categories that match your selection.',
-                                hindi:
-                                    'होम में आपकी पसंद के अनुसार कैटेगरी दिखाई जाएंगी।',
-                                tamil:
-                                    'நீங்கள் தேர்வு செய்ததற்கேற்ற வகைகள் மட்டும் ஹோமில் காணப்படும்.',
-                                kannada:
-                                    'ನೀವು ಆಯ್ಕೆ ಮಾಡಿದಕ್ಕೆ ಹೊಂದುವ ವರ್ಗಗಳು ಮಾತ್ರ ಹೋಮ್‌ನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.',
-                                malayalam:
-                                    'നിങ്ങളുടെ തിരഞ്ഞെടുപ്പിന് അനുയോജ്യമായ വിഭാഗങ്ങൾ മാത്രം ഹോമിൽ കാണിക്കും.',
-                              ),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                            if (showGuideAudio) ...<Widget>[
-                              const SizedBox(height: 8),
-                              Align(
-                                alignment: Alignment.center,
-                                child: TextButton.icon(
-                                  onPressed: () {
-                                    unawaited(
-                                      _onboardingAudio.replayIfSupported(
-                                        language: context.currentLanguage,
-                                        cue: OnboardingAudioCue
-                                            .religionSelection,
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.volume_up_rounded),
-                                  label: Text(
-                                    strings.localized(
-                                      telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
-                                      english: 'Replay voice guide',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 18),
-                            ...options.map((item) {
-                              final selected = item.preference == _selected;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: InkWell(
-                                  onTap: () => setState(
-                                    () => _selected = item.preference,
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: Ink(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? item.background
-                                          : Colors.white,
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: selected
-                                            ? item.color
-                                            : const Color(0xFFE2E8F0),
-                                        width: selected ? 1.4 : 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: <Widget>[
-                                        Container(
-                                          width: 42,
-                                          height: 42,
-                                          decoration: BoxDecoration(
-                                            color: item.background,
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            item.title.substring(0, 1),
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
-                                              color: item.color,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Text(
-                                            item.title,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                        Icon(
-                                          selected
-                                              ? Icons.check_circle_rounded
-                                              : Icons
-                                                    .radio_button_unchecked_rounded,
-                                          color: selected
-                                              ? item.color
-                                              : const Color(0xFF94A3B8),
-                                        ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: <Widget>[
+                                Container(
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(999),
+                                    gradient: const LinearGradient(
+                                      colors: <Color>[
+                                        Color(0xFFF59E0B),
+                                        Color(0xFF10B981),
+                                        Color(0xFF3B82F6),
                                       ],
                                     ),
                                   ),
                                 ),
-                              );
-                            }),
-                            const SizedBox(height: 8),
-                            PrimaryButton(
-                              label: strings.continueLabel,
-                              loading: _saving,
-                              onPressed: _saving ? null : _continue,
+                                const SizedBox(height: 18),
+                                Text(
+                                  strings.localized(
+                                    telugu: 'మీ మతాన్ని ఎంచుకోండి',
+                                    english: 'Select your religion',
+                                    hindi: 'अपना धर्म चुनें',
+                                    tamil: 'உங்கள் மதத்தை தேர்வு செய்யவும்',
+                                    kannada: 'ನಿಮ್ಮ ಧರ್ಮವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ',
+                                    malayalam: 'നിങ്ങളുടെ മതം തിരഞ്ഞെടുക്കുക',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  strings.localized(
+                                    telugu:
+                                        'మీరు ఎంచుకున్న దానికి సరిపోయే కేటగిరీలు మాత్రమే హోమ్‌లో కనిపిస్తాయి.',
+                                    english:
+                                        'Home will show the categories that match your selection.',
+                                    hindi:
+                                        'होम में आपकी पसंद के अनुसार कैटेगरी दिखाई जाएंगी।',
+                                    tamil:
+                                        'நீங்கள் தேர்வு செய்ததற்கேற்ற வகைகள் மட்டும் ஹோமில் காணப்படும்.',
+                                    kannada:
+                                        'ನೀವು ಆಯ್ಕೆ ಮಾಡಿದಕ್ಕೆ ಹೊಂದುವ ವರ್ಗಗಳು ಮಾತ್ರ ಹೋಮ್‌ನಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.',
+                                    malayalam:
+                                        'നിങ്ങളുടെ തിരഞ്ഞെടുപ്പിന് അനുയോജ്യമായ വിഭാഗങ്ങൾ മാത്രം ഹോമിൽ കാണിക്കും.',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (showGuideAudio) ...<Widget>[
+                                  const SizedBox(height: 8),
+                                  Align(
+                                    alignment: Alignment.center,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        unawaited(
+                                          _onboardingAudio.replayIfSupported(
+                                            language: context.currentLanguage,
+                                            cue: OnboardingAudioCue
+                                                .religionSelection,
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.volume_up_rounded),
+                                      label: Text(
+                                        strings.localized(
+                                          telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
+                                          english: 'Replay voice guide',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 18),
+                                ...options.map((item) {
+                                  final selected = item.preference == _selected;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: InkWell(
+                                      onTap: () => setState(
+                                        () => _selected = item.preference,
+                                      ),
+                                      borderRadius: BorderRadius.circular(18),
+                                      child: Ink(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: selected
+                                              ? item.background
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                          border: Border.all(
+                                            color: selected
+                                                ? item.color
+                                                : const Color(0xFFE2E8F0),
+                                            width: selected ? 1.4 : 1,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: <Widget>[
+                                            Container(
+                                              width: 42,
+                                              height: 42,
+                                              decoration: BoxDecoration(
+                                                color: item.background,
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                item.title.substring(0, 1),
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: item.color,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14),
+                                            Expanded(
+                                              child: Text(
+                                                item.title,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Icon(
+                                              selected
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons
+                                                        .radio_button_unchecked_rounded,
+                                              color: selected
+                                                  ? item.color
+                                                  : const Color(0xFF94A3B8),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                const SizedBox(height: 8),
+                                PrimaryButton(
+                                  label: strings.continueLabel,
+                                  loading: _saving,
+                                  onPressed: _saving ? null : _continue,
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
-        ),
+          const Positioned(
+            left: 16,
+            top: 0,
+            child: SafeArea(
+              child: AppScreenBackButton(fallbackRoute: AppRoutes.login),
+            ),
+          ),
+        ],
       ),
     );
   }

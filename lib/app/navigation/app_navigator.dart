@@ -19,6 +19,7 @@ class AppNavigator {
     AppRoutes.imageEditor,
     AppRoutes.login,
     AppRoutes.religion,
+    AppRoutes.politicalParties,
     AppRoutes.profileSetup,
     AppRoutes.language,
     AppRoutes.notificationUnavailable,

@@ -31,13 +31,13 @@ class DynamicLocalizedTitle {
   final String hindi;
 
   String resolve(AppLanguage language) {
-    return switch (language) {
-      AppLanguage.telugu => telugu,
-      AppLanguage.hindi => hindi,
-      AppLanguage.english ||
-      AppLanguage.tamil ||
-      AppLanguage.kannada ||
-      AppLanguage.malayalam => english,
+    return switch (language.supportedUiLanguage) {
+      SupportedUiLanguage.telugu => telugu,
+      SupportedUiLanguage.hindi => hindi,
+      SupportedUiLanguage.english ||
+      SupportedUiLanguage.tamil ||
+      SupportedUiLanguage.kannada ||
+      SupportedUiLanguage.malayalam => english,
     };
   }
 }

@@ -6,10 +6,11 @@ import 'package:mana_poster/features/image_editor/screens/image_editor_screen_we
     if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
-import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
+import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
+import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
 import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
@@ -17,6 +18,7 @@ import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 class AppRoutes {
   static const splash = '/';
   static const language = '/language';
+  static const politicalParties = '/political-parties';
   static const login = '/login';
   static const permissions = '/permissions';
   static const religion = '/religion';
@@ -48,19 +50,22 @@ class AppRoutes {
   static Widget startupScreenFor(String routeName) {
     switch (routeName) {
       case language:
-        return _readyEntry(const LanguageSelectionScreen());
+        return _readyEntry(const RegionSelectionScreen());
+      case politicalParties:
+        return _readyEntry(const PoliticalPartiesScreen());
       case login:
         return _readyEntry(const LoginScreen());
       case home:
         return _readyEntry(const HomeScreen());
       default:
-        return _readyEntry(const LanguageSelectionScreen());
+        return _readyEntry(const RegionSelectionScreen());
     }
   }
 
   static final Map<String, WidgetBuilder> map = <String, WidgetBuilder>{
     splash: (_) => _webEntry(const SplashScreen()),
-    language: (_) => _readyEntry(const LanguageSelectionScreen()),
+    language: (_) => _readyEntry(const RegionSelectionScreen()),
+    politicalParties: (_) => _readyEntry(const PoliticalPartiesScreen()),
     login: (_) => _readyEntry(const LoginScreen()),
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),
@@ -118,9 +123,7 @@ class AppRoutes {
         if (id.isEmpty) {
           screen = _readyEntry(const NotificationUnavailableScreen());
         } else {
-          screen = _readyEntry(
-            ImageEditorScreen(templateDocumentSource: id),
-          );
+          screen = _readyEntry(ImageEditorScreen(templateDocumentSource: id));
         }
         break;
       default:

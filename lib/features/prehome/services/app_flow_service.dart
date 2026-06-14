@@ -14,6 +14,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class AppFlowSnapshot {
@@ -100,9 +101,9 @@ class AppFlowService {
     final snapshot = await preloadStartupSnapshot();
     final currentUser = await _resolveInitialCurrentUser();
     final cachedAuthUid = await loadLastKnownAuthUid();
-    final hasAuthenticatedUser =
-        currentUser?.uid.trim().isNotEmpty == true;
-    final resolvedRoute = !snapshot.languageSelected
+    final hasAuthenticatedUser = currentUser?.uid.trim().isNotEmpty == true;
+    final hasSelectedRegion = await AppRegionService.hasSelection();
+    final resolvedRoute = !hasSelectedRegion
         ? AppRoutes.language
         : (!hasAuthenticatedUser ? AppRoutes.login : AppRoutes.home);
 
@@ -117,7 +118,9 @@ class AppFlowService {
     );
   }
 
-  static Future<AppFlowSnapshot> loadSnapshot({SharedPreferences? prefs}) async {
+  static Future<AppFlowSnapshot> loadSnapshot({
+    SharedPreferences? prefs,
+  }) async {
     if (prefs == null) {
       final cached = _cachedSnapshot;
       if (cached != null) {
@@ -158,7 +161,9 @@ class AppFlowService {
       });
       await prefs.setString(_selectedLanguageKey, language.name);
       await prefs.setBool(_languageSelectedKey, true);
-      final secureLanguage = await _secureStorage.read(key: _selectedLanguageKey);
+      final secureLanguage = await _secureStorage.read(
+        key: _selectedLanguageKey,
+      );
       final secureFlag = await _secureStorage.read(key: _languageSelectedKey);
       final storedLanguage = prefs.getString(_selectedLanguageKey);
       final storedFlag = prefs.getBool(_languageSelectedKey) ?? false;
@@ -284,6 +289,14 @@ class AppFlowService {
         : AppRoutes.profileSetup;
   }
 
+  static Future<String> resolvePostRegionEntryRoute() async {
+    final currentUser = await _resolveInitialCurrentUser();
+    if (currentUser?.uid.trim().isNotEmpty != true) {
+      return AppRoutes.login;
+    }
+    return resolveAuthenticatedEntryRoute();
+  }
+
   static Future<String> resolveAuthenticatedEntryRouteForStartup({
     bool includeReligionGate = true,
     String? startupUidHint,
@@ -386,8 +399,10 @@ class AppFlowService {
     Map<String, Object?>? fileState,
     Map<String, Object?>? nativeState,
   }) async {
-    final resolvedNativeState = nativeState ?? await NativeStartupStateStore.readAll();
+    final resolvedNativeState =
+        nativeState ?? await NativeStartupStateStore.readAll();
     final resolvedFileState = fileState ?? await _readStartupStateFile();
+    final selectedRegion = await AppRegionService.loadSelection(prefs: prefs);
     final String? secureLanguage = await _secureStorage.read(
       key: _selectedLanguageKey,
     );
@@ -410,12 +425,17 @@ class AppFlowService {
         ? prefsLanguage
         : (nativeLanguage.isNotEmpty
               ? nativeLanguage
-              : (fileLanguage.isNotEmpty ? fileLanguage : (secureLanguage ?? '')));
+              : (fileLanguage.isNotEmpty
+                    ? fileLanguage
+                    : (secureLanguage ??
+                          selectedRegion?.appLanguage.name ??
+                          '')));
     final bool languageSelected =
         prefsLanguageSelected ||
         nativeLanguageSelected ||
         fileLanguageSelected ||
-        secureFlag;
+        secureFlag ||
+        selectedRegion != null;
     final AppLanguage language = _readLanguage(resolvedLanguageRaw);
 
     if (prefsLanguage != language.name) {
@@ -425,19 +445,28 @@ class AppFlowService {
       await prefs.setBool(_languageSelectedKey, true);
     }
     if ((secureLanguage ?? '') != language.name) {
-      await _secureStorage.write(key: _selectedLanguageKey, value: language.name);
+      await _secureStorage.write(
+        key: _selectedLanguageKey,
+        value: language.name,
+      );
     }
     if (languageSelected && !secureFlag) {
       await _secureStorage.write(key: _languageSelectedKey, value: 'true');
     }
-    await NativeStartupStateStore.writeEntries(<String, Object?>{
-      _selectedLanguageKey: language.name,
-      _languageSelectedKey: languageSelected,
-    });
-    await _writeStartupStateFile(<String, Object?>{
-      _selectedLanguageKey: language.name,
-      _languageSelectedKey: languageSelected,
-    });
+    if (nativeLanguage != language.name ||
+        nativeLanguageSelected != languageSelected) {
+      await NativeStartupStateStore.writeEntries(<String, Object?>{
+        _selectedLanguageKey: language.name,
+        _languageSelectedKey: languageSelected,
+      });
+    }
+    if (fileLanguage != language.name ||
+        fileLanguageSelected != languageSelected) {
+      await _writeStartupStateFile(<String, Object?>{
+        _selectedLanguageKey: language.name,
+        _languageSelectedKey: languageSelected,
+      });
+    }
 
     if (languageSelected) {
       _memoryLanguage = language;
@@ -448,8 +477,7 @@ class AppFlowService {
       language: language,
       languageSelected: languageSelected || _memoryLanguageSelected,
       permissionsStepHandled: prefs.getBool(_permissionsHandledKey) ?? false,
-      initialSetupCompleted:
-          prefs.getBool(_initialSetupCompletedKey) ?? false,
+      initialSetupCompleted: prefs.getBool(_initialSetupCompletedKey) ?? false,
     );
   }
 
@@ -462,15 +490,16 @@ class AppFlowService {
     Map<String, Object?>? fileState,
     Map<String, Object?>? nativeState,
   }) async {
-    final resolvedNativeState = nativeState ?? await NativeStartupStateStore.readAll();
+    final resolvedNativeState =
+        nativeState ?? await NativeStartupStateStore.readAll();
     final resolvedFileState = fileState ?? await _readStartupStateFile();
     final prefsUid = (prefs.getString(_lastKnownAuthUidKey) ?? '').trim();
-    final secureUid = (await _secureStorage.read(key: _lastKnownAuthUidKey) ?? '')
-        .trim();
+    final secureUid =
+        (await _secureStorage.read(key: _lastKnownAuthUidKey) ?? '').trim();
     final nativeUid =
         (resolvedNativeState[_lastKnownAuthUidKey] as String? ?? '').trim();
-    final fileUid =
-        (resolvedFileState[_lastKnownAuthUidKey] as String? ?? '').trim();
+    final fileUid = (resolvedFileState[_lastKnownAuthUidKey] as String? ?? '')
+        .trim();
     final resolved = prefsUid.isNotEmpty
         ? prefsUid
         : (nativeUid.isNotEmpty
@@ -512,7 +541,9 @@ class AppFlowService {
     return <String, Object?>{};
   }
 
-  static Future<void> _writeStartupStateFile(Map<String, Object?> updates) async {
+  static Future<void> _writeStartupStateFile(
+    Map<String, Object?> updates,
+  ) async {
     try {
       final current = await _readStartupStateFile();
       current.addAll(updates);
@@ -525,7 +556,9 @@ class AppFlowService {
 
   static Future<File> _startupStateFile() async {
     final directory = await getApplicationSupportDirectory();
-    return File('${directory.path}${Platform.pathSeparator}$_startupStateFileName');
+    return File(
+      '${directory.path}${Platform.pathSeparator}$_startupStateFileName',
+    );
   }
 
   static Future<User?> _resolveInitialCurrentUser() async {

@@ -450,7 +450,7 @@ class PosterProfileService {
                   _scopedKey(_nameTeluguKey, fallbackUid: fallbackUid),
                 ) ??
                 '')
-        .trim();
+            .trim();
     final legacyEnglishName =
         (resolvedPrefs.getString(
                   _scopedKey(_nameEnglishKey, fallbackUid: fallbackUid),
@@ -517,13 +517,13 @@ class PosterProfileService {
                     _scopedKey(_businessNameKey, fallbackUid: fallbackUid),
                   ) ??
                   '')
-          .trim(),
+              .trim(),
       businessTagline:
           (resolvedPrefs.getString(
                     _scopedKey(_businessTaglineKey, fallbackUid: fallbackUid),
                   ) ??
                   '')
-          .trim(),
+              .trim(),
       businessWhatsappNumber:
           (resolvedPrefs.getString(
                     _scopedKey(_businessWhatsappKey, fallbackUid: fallbackUid),
@@ -541,7 +541,7 @@ class PosterProfileService {
                     _scopedKey(_businessLogoUrlKey, fallbackUid: fallbackUid),
                   ) ??
                   '')
-          .trim(),
+              .trim(),
       businessLogoStyleId:
           (resolvedPrefs.getString(
                     _scopedKey(_businessLogoStyleKey, fallbackUid: fallbackUid),
@@ -1194,8 +1194,7 @@ class PosterProfileService {
   static Future<void> _migrateLegacyProfileKeysIfNeeded(
     SharedPreferences prefs, {
     String? fallbackUid,
-  }
-  ) async {
+  }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? fallbackUid;
     if (uid == null || uid.trim().isEmpty) {
       return;
@@ -1794,13 +1793,13 @@ class _NameScriptConverter {
       if (override != null) {
         return override;
       }
-      return switch (language) {
-        AppLanguage.telugu => _toTelugu(word),
-        AppLanguage.hindi => _toHindi(word),
-        AppLanguage.english => word,
-        AppLanguage.tamil => _toTamil(word),
-        AppLanguage.kannada => _toKannada(word),
-        AppLanguage.malayalam => _toMalayalam(word),
+      return switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu => _toTelugu(word),
+        SupportedUiLanguage.hindi => _toHindi(word),
+        SupportedUiLanguage.english => word,
+        SupportedUiLanguage.tamil => _toTamil(word),
+        SupportedUiLanguage.kannada => _toKannada(word),
+        SupportedUiLanguage.malayalam => _toMalayalam(word),
       };
     });
   }

@@ -169,13 +169,13 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     final formatted = UserPosterUploadsService.formatIstDateLabelFromMillis(
       date.millisecondsSinceEpoch,
     );
-    return switch (language) {
-      AppLanguage.telugu => 'ఈవెంట్ డేట్: $formatted',
-      AppLanguage.hindi => 'इवेंट डेट: $formatted',
-      AppLanguage.english ||
-      AppLanguage.tamil ||
-      AppLanguage.kannada ||
-      AppLanguage.malayalam => 'Event date: $formatted',
+    return switch (language.supportedUiLanguage) {
+      SupportedUiLanguage.telugu => 'ఈవెంట్ డేట్: $formatted',
+      SupportedUiLanguage.hindi => 'इवेंट डेट: $formatted',
+      SupportedUiLanguage.english ||
+      SupportedUiLanguage.tamil ||
+      SupportedUiLanguage.kannada ||
+      SupportedUiLanguage.malayalam => 'Event date: $formatted',
     };
   }
 

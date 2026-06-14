@@ -16,7 +16,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
-    show compute, kDebugMode, kIsWeb, kProfileMode;
+    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -46,6 +46,7 @@ import 'package:mana_poster/features/image_editor/services/background_removal_se
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/models/political_party.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
@@ -53,6 +54,7 @@ import 'package:mana_poster/features/prehome/services/poster_downloads_service.d
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
@@ -296,13 +298,13 @@ class _TemplateItem {
       mediaType == 'video' && (videoUrl?.trim().isNotEmpty ?? false);
 
   String titleFor(AppLanguage language) =>
-      _repairLegacyUiText(switch (language) {
-        AppLanguage.telugu => titleTe,
-        AppLanguage.hindi => titleHi,
-        AppLanguage.english ||
-        AppLanguage.tamil ||
-        AppLanguage.kannada ||
-        AppLanguage.malayalam => titleEn,
+      _repairLegacyUiText(switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu => titleTe,
+        SupportedUiLanguage.hindi => titleHi,
+        SupportedUiLanguage.english ||
+        SupportedUiLanguage.tamil ||
+        SupportedUiLanguage.kannada ||
+        SupportedUiLanguage.malayalam => titleEn,
       });
 }
 
@@ -706,7 +708,9 @@ _TemplateItem _mapApprovedCreatorTemplateWorker(
         creatorId == 'community_user' ||
         _shouldPreferOriginalPosterQualitySource(template.imageStoragePath) ||
         _shouldPreferOriginalPosterQualitySource(template.imageUrl) ||
-        _shouldPreferOriginalPosterQualitySource(template.thumbnailStoragePath) ||
+        _shouldPreferOriginalPosterQualitySource(
+          template.thumbnailStoragePath,
+        ) ||
         _shouldPreferOriginalPosterQualitySource(template.thumbnailUrl),
   );
 }
@@ -1259,6 +1263,7 @@ class _HomeScreenState extends State<HomeScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategorySlug = _allCategorySlug;
+  Set<String> _selectedPoliticalPartyIds = <String>{};
   AppReligionPreference _religionPreference = AppReligionPreference.all;
   PosterProfileData _viewerPosterProfile = const PosterProfileData(
     nameTelugu: 'User',
@@ -1286,6 +1291,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _manualEventCategoriesLoadFuture;
+  Future<void>? _partyPreferenceLoadFuture;
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
@@ -1371,6 +1377,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_hidePhoneNavigationButtons());
       unawaited(ScreenSecurityService.enableSecure());
       unawaited(_loadReligionPreference());
+      unawaited(_loadPartyPreference());
       _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 40),
         _loadStartupTemplateSnapshot,
@@ -1474,9 +1481,8 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) {
         return;
       }
-      final categories = await _manualEventCategoryService.fetchVisibleCategories(
-        language: context.currentLanguage,
-      );
+      final categories = await _manualEventCategoryService
+          .fetchVisibleCategories(language: context.currentLanguage);
       if (!mounted) {
         return;
       }
@@ -1505,7 +1511,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _startupPermissionPromptQueued = true;
     try {
-      final alreadyHandled = await AppFlowService.resolvePermissionsStepHandled();
+      final alreadyHandled =
+          await AppFlowService.resolvePermissionsStepHandled();
       final permissionService = PermissionService();
       final snapshot = await permissionService.getSnapshot();
       if (!mounted) {
@@ -1584,6 +1591,7 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_hidePhoneNavigationButtons());
     unawaited(ScreenSecurityService.enableSecure());
     unawaited(_loadViewerPosterProfile());
+    unawaited(_loadPartyPreference());
     unawaited(
       _TemplateFeedItem.subscriptionBackendService
           .refreshEntitlementInBackground(forceRefresh: true),
@@ -1600,6 +1608,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshHomeFeedTimeSlotIfNeeded();
+      unawaited(_loadPartyPreference());
       unawaited(PlayEngagementService.instance.handleAppResume());
       unawaited(
         _TemplateFeedItem.subscriptionBackendService
@@ -1621,6 +1630,34 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_restorePhoneNavigationButtons());
     unawaited(ScreenSecurityService.disableSecure());
     super.dispose();
+  }
+
+  Future<void> _loadPartyPreference() async {
+    final inFlight = _partyPreferenceLoadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      final selection = await AppPartyPreferenceService.loadSelection();
+      if (!mounted || setEquals(_selectedPoliticalPartyIds, selection)) {
+        return;
+      }
+      setState(() {
+        _selectedPoliticalPartyIds = selection;
+        _categoryListCache = null;
+        _categoryListIdentity = null;
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
+      });
+    }();
+    _partyPreferenceLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_partyPreferenceLoadFuture, future)) {
+        _partyPreferenceLoadFuture = null;
+      }
+    }
   }
 
   Future<void> _loadReligionPreference() async {
@@ -1786,10 +1823,12 @@ class _HomeScreenState extends State<HomeScreen>
   Set<String> _timeSlotSignals(HomeFeedTimeSlot slot) {
     return switch (slot) {
       HomeFeedTimeSlot.morning => const <String>{'good_morning', 'morning'},
-      HomeFeedTimeSlot.afternoon =>
-        const <String>{'good_afternoon', 'afternoon'},
-      HomeFeedTimeSlot.evening || HomeFeedTimeSlot.funEvening =>
-        const <String>{'good_evening', 'evening'},
+      HomeFeedTimeSlot.afternoon => const <String>{
+        'good_afternoon',
+        'afternoon',
+      },
+      HomeFeedTimeSlot.evening ||
+      HomeFeedTimeSlot.funEvening => const <String>{'good_evening', 'evening'},
       HomeFeedTimeSlot.night => const <String>{'good_night', 'night'},
     };
   }
@@ -2011,14 +2050,13 @@ class _HomeScreenState extends State<HomeScreen>
         _normalizeTag(item.slug),
         ...item.tags.map(_normalizeTag),
       }.where((value) => value.isNotEmpty).toSet();
-      final hasLoadedCategoryKey =
-          loadedTemplateCategoryKeys.intersection(categorySignalKeys).isNotEmpty;
+      final hasLoadedCategoryKey = loadedTemplateCategoryKeys
+          .intersection(categorySignalKeys)
+          .isNotEmpty;
       debugStates.add(
         '$slug(local=$hasLocalTemplates,server=$hasServerTemplates,loaded=$hasLoadedCategoryKey)',
       );
-      if (!hasLocalTemplates &&
-          !hasServerTemplates &&
-          !hasLoadedCategoryKey) {
+      if (!hasLocalTemplates && !hasServerTemplates && !hasLoadedCategoryKey) {
         continue;
       }
       merged[item.slug] = _CategoryChipData(
@@ -2165,18 +2203,20 @@ class _HomeScreenState extends State<HomeScreen>
   void _scheduleDynamicCategoryAvailabilityChecks(
     List<DynamicCategory> activeCalendarCategories,
   ) {
-    final normalizedSlugs = activeCalendarCategories
-        .map((item) => _normalizeTag(item.slug))
-        .where((slug) => slug.isNotEmpty)
-        .toList(growable: false)
-      ..sort();
-    final remotePresenceSignatureParts = _remoteApprovedTemplates
-        .expand((template) => _templateCategoryPresenceSignals(template))
-        .map(_normalizeTag)
-        .where((tag) => tag.isNotEmpty)
-        .toSet()
-        .toList(growable: false)
-      ..sort();
+    final normalizedSlugs =
+        activeCalendarCategories
+            .map((item) => _normalizeTag(item.slug))
+            .where((slug) => slug.isNotEmpty)
+            .toList(growable: false)
+          ..sort();
+    final remotePresenceSignatureParts =
+        _remoteApprovedTemplates
+            .expand((template) => _templateCategoryPresenceSignals(template))
+            .map(_normalizeTag)
+            .where((tag) => tag.isNotEmpty)
+            .toSet()
+            .toList(growable: false)
+          ..sort();
     final signature =
         '${normalizedSlugs.join(",")}|remote=${remotePresenceSignatureParts.join(",")}';
     if (signature != _dynamicCategoryAvailabilitySignature) {
@@ -2184,20 +2224,22 @@ class _HomeScreenState extends State<HomeScreen>
       _dynamicCategoryAvailabilityBySlug.clear();
     }
 
-    final pending = activeCalendarCategories.where((item) {
-      final slug = _normalizeTag(item.slug);
-      if (slug.isEmpty) {
-        return false;
-      }
-      if (_hasVisibleTemplateForCategoryChip(item)) {
-        _dynamicCategoryAvailabilityBySlug[slug] = true;
-        return false;
-      }
-      if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
-        return false;
-      }
-      return !_dynamicCategoryAvailabilityInFlight.contains(slug);
-    }).toList(growable: false);
+    final pending = activeCalendarCategories
+        .where((item) {
+          final slug = _normalizeTag(item.slug);
+          if (slug.isEmpty) {
+            return false;
+          }
+          if (_hasVisibleTemplateForCategoryChip(item)) {
+            _dynamicCategoryAvailabilityBySlug[slug] = true;
+            return false;
+          }
+          if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
+            return false;
+          }
+          return !_dynamicCategoryAvailabilityInFlight.contains(slug);
+        })
+        .toList(growable: false);
     if (pending.isEmpty) {
       return;
     }
@@ -2212,7 +2254,9 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Future<void> _checkDynamicCategoryAvailability(DynamicCategory category) async {
+  Future<void> _checkDynamicCategoryAvailability(
+    DynamicCategory category,
+  ) async {
     final slug = _normalizeTag(category.slug);
     if (slug.isEmpty || _dynamicCategoryAvailabilityInFlight.contains(slug)) {
       return;
@@ -2419,9 +2463,45 @@ class _HomeScreenState extends State<HomeScreen>
     }, growable: false);
   }
 
+  List<_CategoryChipData> _buildSelectedPartyCategories(AppLanguage language) {
+    if (_selectedPoliticalPartyIds.isEmpty) {
+      return const <_CategoryChipData>[];
+    }
+    final knownParties = politicalParties
+        .where((party) => _selectedPoliticalPartyIds.contains(party.id))
+        .toList(growable: false);
+    final knownPartyIds = knownParties.map((party) => party.id).toSet();
+    final unknownPartyIds =
+        _selectedPoliticalPartyIds.difference(knownPartyIds).toList()..sort();
+
+    return <_CategoryChipData>[
+      for (final party in knownParties)
+        _CategoryChipData(
+          slug: 'party_${party.id}',
+          label: party.nameFor(language),
+          matchTags: <String>[
+            party.id,
+            party.shortName,
+            party.name,
+            'political',
+            'politics',
+          ],
+          presenceTags: <String>[party.id, party.shortName, party.name],
+        ),
+      for (final partyId in unknownPartyIds)
+        _CategoryChipData(
+          slug: 'party_$partyId',
+          label: partyId.replaceAll(RegExp(r'[_-]+'), ' ').trim(),
+          matchTags: <String>[partyId],
+          presenceTags: <String>[partyId],
+        ),
+    ];
+  }
+
   List<_CategoryChipData> _mergeCategories(
     List<_CategoryChipData> staticCategories,
     List<_CategoryChipData> dynamicCategories,
+    List<_CategoryChipData> partyCategories,
   ) {
     final merged = <_CategoryChipData>[];
     final seenSlugs = <String>{};
@@ -2438,6 +2518,9 @@ class _HomeScreenState extends State<HomeScreen>
       addChip(_allCategoryChip());
     }
 
+    for (final chip in partyCategories) {
+      addChip(chip);
+    }
     for (final chip in dynamicCategories) {
       addChip(chip);
     }
@@ -2814,12 +2897,9 @@ class _HomeScreenState extends State<HomeScreen>
       videoExtraPhotoRenderMode:
           (data['videoExtraPhotoRenderMode'] as String?)?.trim() ?? 'cutout',
       videoExtraPhotoEdgeStyle:
-          (data['videoExtraPhotoEdgeStyle'] as String?)?.trim() ??
-          'soft_fade',
-      videoExtraPhotoX:
-          (data['videoExtraPhotoX'] as num?)?.toDouble() ?? 24,
-      videoExtraPhotoY:
-          (data['videoExtraPhotoY'] as num?)?.toDouble() ?? 44,
+          (data['videoExtraPhotoEdgeStyle'] as String?)?.trim() ?? 'soft_fade',
+      videoExtraPhotoX: (data['videoExtraPhotoX'] as num?)?.toDouble() ?? 24,
+      videoExtraPhotoY: (data['videoExtraPhotoY'] as num?)?.toDouble() ?? 44,
       videoExtraPhotoScale:
           (data['videoExtraPhotoScale'] as num?)?.toDouble() ?? 28,
       nameX: (data['nameX'] as num?)?.toDouble() ?? 50,
@@ -3313,7 +3393,9 @@ class _HomeScreenState extends State<HomeScreen>
     _scheduleProgressiveTemplateHydration();
   }
 
-  Future<void> _loadApprovedCreatorTemplates({bool forceRefresh = false}) async {
+  Future<void> _loadApprovedCreatorTemplates({
+    bool forceRefresh = false,
+  }) async {
     final inFlight = _approvedTemplatesLoadFuture;
     if (inFlight != null) {
       return inFlight;
@@ -3367,10 +3449,11 @@ class _HomeScreenState extends State<HomeScreen>
     final hadVisibleTemplates = _remoteApprovedTemplates.isNotEmpty;
     if (forceRefresh) {
       try {
-        final page = await _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
-          pageSize: _templatesPageSize,
-          source: Source.server,
-        );
+        final page = await _approvedCreatorTemplateService
+            .fetchApprovedTemplatesPage(
+              pageSize: _templatesPageSize,
+              source: Source.server,
+            );
         if (!mounted) {
           return;
         }
@@ -4326,8 +4409,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
     final availabilityIdentity = Object.hashAll(
-      _dynamicCategoryAvailabilityBySlug.entries
-          .toList(growable: false)
+      _dynamicCategoryAvailabilityBySlug.entries.toList(growable: false)
         ..sort((a, b) => a.key.compareTo(b.key)),
     );
     final manualCategoryIdentity = Object.hashAll(
@@ -4342,6 +4424,9 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesLoading,
       _religionPreference,
       _religionSelectionReady,
+      Object.hashAll(
+        _selectedPoliticalPartyIds.toList(growable: false)..sort(),
+      ),
       availabilityIdentity,
       manualCategoryIdentity,
       _startupSnapshotHydrationDeferred,
@@ -4366,12 +4451,14 @@ class _HomeScreenState extends State<HomeScreen>
       ...templateDrivenDynamicCategories,
       ...scheduledDynamicCategories,
     ];
+    final partyCategories = _buildSelectedPartyCategories(language);
     _homeDebugLog(
       '[DynamicCategoryList] template=${templateDrivenDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")} '
-      'scheduled=${scheduledDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")}',
+      'scheduled=${scheduledDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")} '
+      'parties=${partyCategories.map((item) => _normalizeTag(item.slug)).join(",")}',
     );
     final categories = _religionSelectionReady
-        ? _mergeCategories(staticCategories, dynamicCategories)
+        ? _mergeCategories(staticCategories, dynamicCategories, partyCategories)
         : <_CategoryChipData>[_allCategoryChip()];
     _homeDebugLog(
       '[CategoryList] slugs=${categories.map((item) => _normalizeTag(item.slug)).join(",")}',
@@ -4946,7 +5033,11 @@ class _HomeScreenState extends State<HomeScreen>
       language,
       templatesLoading: _templatesLoading,
     );
-    final categories = _mergeCategories(staticCategories, dynamicCategories);
+    final categories = _mergeCategories(
+      staticCategories,
+      dynamicCategories,
+      _buildSelectedPartyCategories(language),
+    );
     return categories.firstWhere(
       (chip) => chip.slug == slug,
       orElse: () => _CategoryChipData(
@@ -5179,10 +5270,10 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       )
-      else
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(vertical: 0),
-          sliver: SliverList(
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(vertical: 0),
+                        sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
                               final entry = feedEntries[index];
@@ -6603,8 +6694,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<void> _ensureBackgroundRemoverReady() {
-    return _backgroundRemoverInitialization ??=
-        _backgroundRemovalService.ensureReady();
+    return _backgroundRemoverInitialization ??= _backgroundRemovalService
+        .ensureReady();
   }
 
   Future<File> _stagePickedImageForCrop(
@@ -6612,10 +6703,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     required String filePrefix,
   }) async {
     final Directory tempDir = await getTemporaryDirectory();
-    final String extension =
-        picked.name.contains('.')
-            ? picked.name.substring(picked.name.lastIndexOf('.'))
-            : '.png';
+    final String extension = picked.name.contains('.')
+        ? picked.name.substring(picked.name.lastIndexOf('.'))
+        : '.png';
     final String targetPath =
         '${tempDir.path}${Platform.pathSeparator}'
         '${filePrefix}_${DateTime.now().microsecondsSinceEpoch}$extension';
@@ -7147,7 +7237,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<String?> _ensurePreparedPosterFile() async {
-    return _ensurePreparedPosterFileForVisibility(_showPosterPhotoNotifier.value);
+    return _ensurePreparedPosterFileForVisibility(
+      _showPosterPhotoNotifier.value,
+    );
   }
 
   Future<String?> _ensurePreparedPosterFileForVisibility(
@@ -7512,14 +7604,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 imageAssetPath: item.imageAssetPath,
                 imageUrl: item.imageUrl ?? '',
                 imageStoragePath: item.imageStoragePath,
-              thumbnailStoragePath: item.thumbnailStoragePath,
-              thumbnailUrl: item.thumbnailUrl,
-              posterIdForDebug: item.templateId,
-              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
-              preferUltraLightDecode: preferUltraLightImage,
-              onFirstFrameReady: () => onPosterReadyChanged?.call(true),
-            ),
-          )
+                thumbnailStoragePath: item.thumbnailStoragePath,
+                thumbnailUrl: item.thumbnailUrl,
+                posterIdForDebug: item.templateId,
+                preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+                preferUltraLightDecode: preferUltraLightImage,
+                onFirstFrameReady: () => onPosterReadyChanged?.call(true),
+              ),
+            )
           : _ResolvedTemplatePosterImage(
               imageAssetPath: item.imageAssetPath,
               imageUrl: item.imageUrl ?? '',
@@ -7565,10 +7657,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             onPhotoTap: _applyPosterPhotoPresetTap,
             additionalPhotoSelection: _extraPhotoSelection,
-            onAdditionalPhotoTap:
-                personalizationConfig.showVideoExtraPhoto
-                    ? () => unawaited(_pickAdditionalPosterPhoto())
-                    : null,
+            onAdditionalPhotoTap: personalizationConfig.showVideoExtraPhoto
+                ? () => unawaited(_pickAdditionalPosterPhoto())
+                : null,
             onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
             onPhotoDragStateChanged: _setPhotoDragInProgress,
             onPosterReadyChanged: onPosterReadyChanged,
@@ -8076,9 +8167,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final safeWidth = size.width <= 0 ? 1080.0 : size.width;
     final safeHeight = size.height <= 0 ? 1350.0 : size.height;
     final widthPx = 1080;
-    final heightPx = ((widthPx / safeWidth) * safeHeight)
-        .round()
-        .clamp(320, 4000);
+    final heightPx = ((widthPx / safeWidth) * safeHeight).round().clamp(
+      320,
+      4000,
+    );
     return EditorPageConfig(
       name: 'Poster Editor',
       widthPx: widthPx,
@@ -8097,8 +8189,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final tempDirectory = await getTemporaryDirectory();
     final fileName =
         'poster_editor_template_${item.templateId ?? item.titleEn.hashCode.abs()}.json';
-    final filePath =
-        '${tempDirectory.path}${Platform.pathSeparator}$fileName';
+    final filePath = '${tempDirectory.path}${Platform.pathSeparator}$fileName';
     final pageConfig = _editorPageConfigForPoster();
     final templateDocument = <String, Object?>{
       'templateId': item.templateId ?? 'poster_editor',
@@ -8119,7 +8210,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         },
       ],
     };
-    await File(filePath).writeAsString(jsonEncode(templateDocument), flush: true);
+    await File(
+      filePath,
+    ).writeAsString(jsonEncode(templateDocument), flush: true);
     return filePath;
   }
 
@@ -8489,8 +8582,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               builder: (context, activeAction, _) {
                 final isBusy = activeAction == 'poster_editor';
                 return OutlinedButton.icon(
-                  onPressed:
-                      deferRichPosterPreview || activeAction != null
+                  onPressed: deferRichPosterPreview || activeAction != null
                       ? null
                       : () => unawaited(_openPosterPhotoEditor(context)),
                   icon: isBusy
@@ -8501,10 +8593,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         )
                       : const Icon(Icons.add_photo_alternate_rounded, size: 18),
                   label: Text(
-                    strings.localized(
-                      telugu: 'ఎడిట్',
-                      english: 'Edit',
-                    ),
+                    strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -8683,11 +8772,7 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
     if (widget.preferOriginalPosterQuality) {
       return baseProvider;
     }
-    return ResizeImage.resizeIfNeeded(
-      decodeWidth,
-      null,
-      baseProvider,
-    );
+    return ResizeImage.resizeIfNeeded(decodeWidth, null, baseProvider);
   }
 
   ImageProvider<Object> _mainProviderFor(String url, int decodeWidth) {
@@ -10395,14 +10480,16 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                       final maskAspectRatio = _photoMaskAspectRatio(
                         effectivePhotoShape,
                       );
-                      final additionalPhotoProfile =
-                          widget.additionalPhotoSelection?.asPosterProfileData();
+                      final additionalPhotoProfile = widget
+                          .additionalPhotoSelection
+                          ?.asPosterProfileData();
                       final showAdditionalPhotoSlot =
                           widget.personalizationConfig.showVideoExtraPhoto;
                       final additionalPhotoShape =
                           widget.personalizationConfig.videoExtraPhotoShape;
-                      final additionalPhotoRenderMode =
-                          widget.personalizationConfig.videoExtraPhotoRenderMode;
+                      final additionalPhotoRenderMode = widget
+                          .personalizationConfig
+                          .videoExtraPhotoRenderMode;
                       final additionalPhotoWidth =
                           constraints.maxWidth *
                           (widget.personalizationConfig.videoExtraPhotoScale /
@@ -10479,7 +10566,8 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                                 );
                                         instance.onLongPressMoveUpdate =
                                             (
-                                              LongPressMoveUpdateDetails details,
+                                              LongPressMoveUpdateDetails
+                                              details,
                                             ) => _updatePhotoDrag(
                                               globalPosition:
                                                   details.globalPosition,

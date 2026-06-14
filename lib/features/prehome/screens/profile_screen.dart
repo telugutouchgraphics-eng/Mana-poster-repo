@@ -17,6 +17,7 @@ import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
+import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -248,9 +249,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _openReligionSelection(_ProfileCopy copy) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => const ReligionSelectionScreen(
-          returnToPreviousOnSave: true,
-        ),
+        builder: (_) =>
+            const ReligionSelectionScreen(returnToPreviousOnSave: true),
       ),
     );
     if (!mounted || changed != true) {
@@ -273,6 +273,21 @@ class _ProfileScreenState extends State<ProfileScreen>
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openPoliticalPartySelection(_ProfileCopy copy) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            const PoliticalPartiesScreen(returnToPreviousOnSave: true),
+      ),
+    );
+    if (!mounted || changed != true) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(copy.politicalPartySavedMessage)));
   }
 
   @override
@@ -320,6 +335,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (_) => _ProfileMoreScreen(
                   copy: copy,
                   onShareApp: () => _shareApp(copy),
+                  onOpenPoliticalPartySelection: () =>
+                      _openPoliticalPartySelection(copy),
                   onOpenReligionSelection: () => _openReligionSelection(copy),
                   onLogout: () => _logout(copy),
                   showAdPrivacyChoices: _privacyChoicesVisible,
@@ -518,6 +535,7 @@ class _ProfileMoreScreen extends StatelessWidget {
   const _ProfileMoreScreen({
     required this.copy,
     required this.onShareApp,
+    required this.onOpenPoliticalPartySelection,
     required this.onOpenReligionSelection,
     required this.onLogout,
     required this.showAdPrivacyChoices,
@@ -525,6 +543,7 @@ class _ProfileMoreScreen extends StatelessWidget {
 
   final _ProfileCopy copy;
   final Future<void> Function() onShareApp;
+  final Future<void> Function() onOpenPoliticalPartySelection;
   final Future<void> Function() onOpenReligionSelection;
   final Future<void> Function() onLogout;
   final bool showAdPrivacyChoices;
@@ -617,6 +636,12 @@ class _ProfileMoreScreen extends StatelessWidget {
                       ),
                     );
                   },
+                ),
+                _ProfileItemData(
+                  icon: Icons.how_to_vote_rounded,
+                  title: copy.politicalPartyTitle,
+                  subtitle: copy.politicalPartySubtitle,
+                  onTap: () => unawaited(onOpenPoliticalPartySelection()),
                 ),
                 _ProfileItemData(
                   icon: Icons.account_balance_rounded,
@@ -1093,17 +1118,14 @@ class _ProfileCopy {
   String get moreSubtitle =>
       _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
   String get settingsTitle => _isTelugu ? 'సెట్టింగ్స్' : 'Settings';
-  String get religionTitle =>
-      _isTelugu ? 'మతం మార్చండి' : 'Change religion';
+  String get religionTitle => _isTelugu ? 'మతం మార్చండి' : 'Change religion';
   String get religionSubtitle => _isTelugu
       ? 'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి'
       : 'Update which categories appear in home';
-  String get religionSavedHinduMessage => _isTelugu
-      ? 'హిందూ ఎంపిక సేవ్ అయింది'
-      : 'Hindu preference saved';
-  String get religionSavedMuslimMessage => _isTelugu
-      ? 'ముస్లిం ఎంపిక సేవ్ అయింది'
-      : 'Muslim preference saved';
+  String get religionSavedHinduMessage =>
+      _isTelugu ? 'హిందూ ఎంపిక సేవ్ అయింది' : 'Hindu preference saved';
+  String get religionSavedMuslimMessage =>
+      _isTelugu ? 'ముస్లిం ఎంపిక సేవ్ అయింది' : 'Muslim preference saved';
   String get religionSavedChristianMessage => _isTelugu
       ? 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది'
       : 'Christian preference saved';
@@ -1115,6 +1137,14 @@ class _ProfileCopy {
       _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;
   String? get languageSubtitle =>
       _isTelugu ? 'యాప్ భాష మార్చండి' : 'Change app language';
+  String get politicalPartyTitle =>
+      _isTelugu ? 'రాజకీయ పార్టీలు' : 'Political parties';
+  String get politicalPartySubtitle => _isTelugu
+      ? 'హోమ్‌లో కనిపించే పార్టీ కేటగిరీలను మార్చండి'
+      : 'Update political party categories shown in home';
+  String get politicalPartySavedMessage => _isTelugu
+      ? 'రాజకీయ పార్టీలు అప్డేట్ అయ్యాయి'
+      : 'Political parties updated';
 
   String get subscriptionTitle =>
       _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;

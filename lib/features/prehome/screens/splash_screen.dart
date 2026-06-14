@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
-import 'package:mana_poster/features/prehome/screens/language_selection_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -60,13 +60,6 @@ class _SplashScreenState extends State<SplashScreen>
       Navigator.of(context).pushReplacement(
         _buildImmediateRoute(builder(context), routeName: _nextRoute),
       );
-    } else if (_nextRoute == AppRoutes.language) {
-      Navigator.of(context).pushReplacement(
-        _buildImmediateRoute(
-          const LanguageSelectionScreen(),
-          routeName: AppRoutes.language,
-        ),
-      );
     } else {
       Navigator.of(context).pushReplacementNamed(_nextRoute);
     }
@@ -74,9 +67,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _prepareNextRoute() async {
     try {
-      unawaited(
-        FirebaseBootstrap.ensureInitialized(activateAppCheck: false),
-      );
+      unawaited(FirebaseBootstrap.ensureInitialized(activateAppCheck: false));
       SharedPreferences? startupPrefs;
       try {
         startupPrefs = await SharedPreferences.getInstance();
@@ -91,7 +82,10 @@ class _SplashScreenState extends State<SplashScreen>
       final String? storedAuthUid = await AppFlowService.loadLastKnownAuthUid(
         prefs: startupPrefs,
       );
-      if (!snapshot.languageSelected) {
+      final hasSelectedRegion = await AppRegionService.hasSelection(
+        prefs: startupPrefs,
+      );
+      if (!hasSelectedRegion) {
         if (!mounted) {
           return;
         }
