@@ -195,7 +195,7 @@ class AppLocationService {
       return;
     }
 
-    final permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.deniedForever) {
       return;
     }
@@ -204,11 +204,13 @@ class AppLocationService {
       if (prefs.getBool(_homePromptAttemptedKey) ?? false) {
         return;
       }
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
+      await prefs.setBool(_homePromptAttemptedKey, true);
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        await _setLocationEnabled(false);
         return;
       }
-      await prefs.setBool(_homePromptAttemptedKey, true);
     }
 
     await requestAndSyncApproxLocation();

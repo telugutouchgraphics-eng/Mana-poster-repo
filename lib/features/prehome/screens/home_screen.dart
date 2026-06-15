@@ -1223,6 +1223,8 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
   static const String _homeReferralPromptKeyPrefix =
       'mana_poster_home_referral_prompt_dismissed_';
+  static const String _homeNotificationPromptAttemptedKey =
+      'mana_poster_home_notification_prompt_attempted_v1';
   static const List<String> _staticCategorySlugs = <String>[
     'all',
     'good_morning',
@@ -1434,6 +1436,10 @@ class _HomeScreenState extends State<HomeScreen>
         _requestStartupPermissionsIfNeeded,
       );
       _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 2500),
+        _requestHomeNotificationPermissionIfNeeded,
+      );
+      _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 2800),
         _requestHomeLocationPermissionIfNeeded,
       );
@@ -1557,6 +1563,38 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (error, stackTrace) {
       _homeDebugLogStack(
         'startup permission request skipped: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _requestHomeNotificationPermissionIfNeeded() async {
+    if (kIsWeb || !mounted) {
+      return;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_homeNotificationPromptAttemptedKey) ?? false) {
+        await NotificationService.instance.syncCurrentPreferences();
+        return;
+      }
+      final status = await Permission.notification.status;
+      if (status.isGranted || status.isLimited || status.isPermanentlyDenied) {
+        await NotificationService.instance.syncCurrentPreferences();
+        return;
+      }
+      await _awaitStartupUiSettled(
+        minimumDelay: const Duration(milliseconds: 180),
+      );
+      if (!mounted) {
+        return;
+      }
+      await prefs.setBool(_homeNotificationPromptAttemptedKey, true);
+      await Permission.notification.request();
+      await NotificationService.instance.syncCurrentPreferences();
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'home notification permission request skipped: $error',
         stackTrace,
       );
     }
