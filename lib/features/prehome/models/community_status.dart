@@ -22,6 +22,7 @@ class CommunityStatus {
     required this.reactionCount,
     required this.viewerReaction,
     required this.viewerHasLiked,
+    required this.viewerHasViewed,
   });
 
   final String id;
@@ -46,6 +47,7 @@ class CommunityStatus {
   final int reactionCount;
   final String viewerReaction;
   final bool viewerHasLiked;
+  final bool viewerHasViewed;
 
   bool get hasImage => imageUrl.isNotEmpty;
   bool get hasText => text.isNotEmpty;
@@ -108,6 +110,8 @@ class CommunityStatus {
       viewerReaction: viewerReaction,
       viewerHasLiked:
           safeViewerUserId.isNotEmpty && likesByUser[safeViewerUserId] == true,
+      viewerHasViewed:
+          safeViewerUserId.isNotEmpty && viewsByUser[safeViewerUserId] == true,
     );
   }
 }
