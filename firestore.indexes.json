@@ -89,6 +89,10 @@
         {
           "fieldPath": "religionPreference",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     }

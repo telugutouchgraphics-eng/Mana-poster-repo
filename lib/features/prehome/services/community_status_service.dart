@@ -286,6 +286,7 @@ class CommunityStatusService {
           .collection('communityStatuses')
           .where('regionId', isEqualTo: scope.region.id)
           .where('religionPreference', isEqualTo: religionName)
+          .orderBy('createdAt', descending: true)
           .limit(150);
       subscriptions.add(
         query.snapshots().listen((snapshot) {
