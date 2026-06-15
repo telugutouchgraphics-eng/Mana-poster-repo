@@ -75,6 +75,8 @@ class AppLocationService {
   static const String _enabledKey = 'mana_poster_location_enabled';
   static const String _areaKey = 'mana_poster_location_area';
   static const String _feedSeedKey = 'mana_poster_status_feed_seed';
+  static const String _homePromptAttemptedKey =
+      'mana_poster_location_home_prompt_attempted_v1';
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -185,6 +187,31 @@ class AppLocationService {
       }
       return AppLocationSyncResult.failed;
     }
+  }
+
+  Future<void> syncFromHomeStartupIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_enabledKey) ?? false) {
+      return;
+    }
+
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    if (permission == LocationPermission.denied) {
+      if (prefs.getBool(_homePromptAttemptedKey) ?? false) {
+        return;
+      }
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return;
+      }
+      await prefs.setBool(_homePromptAttemptedKey, true);
+    }
+
+    await requestAndSyncApproxLocation();
   }
 
   Future<void> _saveAndSyncArea(AppLocationArea area) async {

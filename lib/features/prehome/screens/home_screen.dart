@@ -56,6 +56,7 @@ import 'package:mana_poster/features/prehome/services/poster_downloads_service.d
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
+import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/community_status_service.dart';
@@ -1432,6 +1433,10 @@ class _HomeScreenState extends State<HomeScreen>
         const Duration(milliseconds: 2200),
         _requestStartupPermissionsIfNeeded,
       );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 2800),
+        _requestHomeLocationPermissionIfNeeded,
+      );
       _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
         if (!mounted || _adFallbackSlotEnabled) {
           return;
@@ -1552,6 +1557,26 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (error, stackTrace) {
       _homeDebugLogStack(
         'startup permission request skipped: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _requestHomeLocationPermissionIfNeeded() async {
+    if (kIsWeb || !mounted) {
+      return;
+    }
+    try {
+      await _awaitStartupUiSettled(
+        minimumDelay: const Duration(milliseconds: 220),
+      );
+      if (!mounted) {
+        return;
+      }
+      await AppLocationService.instance.syncFromHomeStartupIfNeeded();
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'home location permission request skipped: $error',
         stackTrace,
       );
     }
