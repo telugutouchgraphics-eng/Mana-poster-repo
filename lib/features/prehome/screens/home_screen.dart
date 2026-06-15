@@ -5630,12 +5630,9 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
       builder: (context, snapshot) {
         final statuses = snapshot.data ?? const <CommunityStatus>[];
         final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
-        final myStatuses = statuses
-            .where((status) => status.userId == currentUserId)
-            .toList(growable: false);
-        final myStatus = myStatuses.isNotEmpty ? myStatuses.first : null;
-        final otherStatuses = statuses
-            .where((status) => status.userId != currentUserId)
+        final myStatuses = _statusGroupItemsForUser(statuses, currentUserId);
+        final otherGroups = _statusGroups(statuses)
+            .where((group) => group.userId != currentUserId)
             .toList(growable: false);
         return SizedBox(
           height: 104,
@@ -5643,7 +5640,12 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             scrollDirection: Axis.horizontal,
             itemBuilder: (context, index) {
-              final status = index == 0 ? myStatus : otherStatuses[index - 1];
+              final group = index == 0
+                  ? (myStatuses.isEmpty
+                        ? null
+                        : _CommunityStatusGroup(statuses: myStatuses))
+                  : otherGroups[index - 1];
+              final status = group?.latestStatus;
               final isMyStatus = index == 0;
               return _HomeCommunityStatusBubble(
                 label: isMyStatus
@@ -5651,8 +5653,8 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
                         telugu: 'My Status',
                         english: 'My Status',
                       )
-                    : (status?.userName.isNotEmpty == true
-                          ? status!.userName
+                    : (group?.displayName.isNotEmpty == true
+                          ? group!.displayName
                           : 'User'),
                 imageUrl: status?.imageUrl ?? '',
                 previewText: status?.text ?? '',
@@ -5664,14 +5666,14 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
                     : Icons.format_quote_rounded,
                 onTap: status == null
                     ? onAddStatus
-                    : () => _showCommunityStatusDialog(context, status),
+                    : () => _showCommunityStatusDialog(context, group!),
                 accentColor: status == null
                     ? const Color(0xFF0F766E)
                     : const Color(0xFFD81B60),
               );
             },
             separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemCount: 1 + otherStatuses.length,
+            itemCount: 1 + otherGroups.length,
           ),
         );
       },
@@ -5680,21 +5682,78 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
 
   void _showCommunityStatusDialog(
     BuildContext context,
-    CommunityStatus status,
+    _CommunityStatusGroup group,
   ) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => _CommunityStatusViewerScreen(initialStatus: status),
+        builder: (_) => _CommunityStatusViewerScreen(initialGroup: group),
       ),
     );
   }
 }
 
-class _CommunityStatusViewerScreen extends StatefulWidget {
-  const _CommunityStatusViewerScreen({required this.initialStatus});
+class _CommunityStatusGroup {
+  const _CommunityStatusGroup({required this.statuses});
 
-  final CommunityStatus initialStatus;
+  final List<CommunityStatus> statuses;
+
+  String get userId => statuses.isEmpty ? '' : statuses.first.userId;
+  CommunityStatus get latestStatus => statuses.last;
+  String get displayName {
+    for (final status in statuses) {
+      if (status.userName.trim().isNotEmpty) {
+        return status.userName.trim();
+      }
+    }
+    return '';
+  }
+}
+
+List<CommunityStatus> _statusGroupItemsForUser(
+  List<CommunityStatus> statuses,
+  String? userId,
+) {
+  final safeUserId = userId?.trim() ?? '';
+  if (safeUserId.isEmpty) {
+    return const <CommunityStatus>[];
+  }
+  final items =
+      statuses
+          .where((status) => status.userId == safeUserId)
+          .toList(growable: false)
+        ..sort((a, b) => a.createdAtMillis.compareTo(b.createdAtMillis));
+  return items;
+}
+
+List<_CommunityStatusGroup> _statusGroups(List<CommunityStatus> statuses) {
+  final byUser = <String, List<CommunityStatus>>{};
+  for (final status in statuses) {
+    final userId = status.userId.trim();
+    if (userId.isEmpty) {
+      continue;
+    }
+    byUser.putIfAbsent(userId, () => <CommunityStatus>[]).add(status);
+  }
+  final groups = byUser.values
+      .map((items) {
+        items.sort((a, b) => a.createdAtMillis.compareTo(b.createdAtMillis));
+        return _CommunityStatusGroup(
+          statuses: List<CommunityStatus>.unmodifiable(items),
+        );
+      })
+      .toList(growable: false);
+  return groups..sort(
+    (a, b) => b.latestStatus.createdAtMillis.compareTo(
+      a.latestStatus.createdAtMillis,
+    ),
+  );
+}
+
+class _CommunityStatusViewerScreen extends StatefulWidget {
+  const _CommunityStatusViewerScreen({required this.initialGroup});
+
+  final _CommunityStatusGroup initialGroup;
 
   @override
   State<_CommunityStatusViewerScreen> createState() =>
@@ -5711,6 +5770,8 @@ class _CommunityStatusViewerScreenState
   bool _isDeleting = false;
   bool _showingReplies = false;
   bool _isHoldPaused = false;
+  int _currentIndex = 0;
+  String _lastRecordedStatusId = '';
 
   @override
   void initState() {
@@ -5721,7 +5782,7 @@ class _CommunityStatusViewerScreenState
           duration: _viewDuration,
         )..addStatusListener((status) {
           if (status == AnimationStatus.completed && mounted && !_isDeleting) {
-            Navigator.of(context).maybePop();
+            _goToNextOrClose(widget.initialGroup.statuses);
           }
         });
     unawaited(
@@ -5730,9 +5791,7 @@ class _CommunityStatusViewerScreenState
         overlays: SystemUiOverlay.values,
       ),
     );
-    unawaited(
-      CommunityStatusService.instance.recordView(widget.initialStatus.id),
-    );
+    _recordActiveView(widget.initialGroup.statuses.first);
     _progressController.forward();
   }
 
@@ -5760,6 +5819,45 @@ class _CommunityStatusViewerScreenState
     }
     Navigator.of(context).pop();
     unawaited(CommunityStatusService.instance.deleteStatus(status));
+  }
+
+  void _recordActiveView(CommunityStatus status) {
+    if (_lastRecordedStatusId == status.id) {
+      return;
+    }
+    _lastRecordedStatusId = status.id;
+    unawaited(CommunityStatusService.instance.recordView(status.id));
+  }
+
+  void _goToNextOrClose(List<CommunityStatus> statuses) {
+    if (_currentIndex < statuses.length - 1) {
+      setState(() {
+        _currentIndex += 1;
+      });
+      _progressController
+        ..reset()
+        ..forward();
+      _recordActiveView(statuses[_currentIndex]);
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
+  void _goToPrevious(List<CommunityStatus> statuses) {
+    if (_currentIndex <= 0) {
+      _progressController
+        ..reset()
+        ..forward();
+      _recordActiveView(statuses.first);
+      return;
+    }
+    setState(() {
+      _currentIndex -= 1;
+    });
+    _progressController
+      ..reset()
+      ..forward();
+    _recordActiveView(statuses[_currentIndex]);
   }
 
   Future<void> _showRepliesSheet(CommunityStatus status) async {
@@ -5813,22 +5911,38 @@ class _CommunityStatusViewerScreenState
     }
   }
 
+  double _progressValueForIndex(int index, int total) {
+    if (total <= 1) {
+      return _progressController.value;
+    }
+    final safeIndex = index.clamp(0, total - 1);
+    return ((safeIndex + _progressController.value) / total).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<CommunityStatus?>(
-      stream: CommunityStatusService.instance.watchStatus(
-        widget.initialStatus.id,
+    return StreamBuilder<List<CommunityStatus>>(
+      stream: CommunityStatusService.instance.watchVisibleStatuses().map(
+        (statuses) =>
+            _statusGroupItemsForUser(statuses, widget.initialGroup.userId),
       ),
-      initialData: widget.initialStatus,
+      initialData: widget.initialGroup.statuses,
       builder: (context, snapshot) {
-        if (snapshot.data == null && !_isDeleting) {
+        final statuses = snapshot.data ?? widget.initialGroup.statuses;
+        if (statuses.isEmpty && !_isDeleting) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
               Navigator.of(context).maybePop();
             }
           });
         }
-        final status = snapshot.data ?? widget.initialStatus;
+        if (_currentIndex >= statuses.length && statuses.isNotEmpty) {
+          _currentIndex = statuses.length - 1;
+        }
+        final status = statuses.isEmpty
+            ? widget.initialGroup.latestStatus
+            : statuses[_currentIndex];
+        _recordActiveView(status);
         final isOwner =
             FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
         final statusTitle = isOwner
@@ -5846,6 +5960,14 @@ class _CommunityStatusViewerScreenState
             onTapDown: (_) => _pauseProgressForHold(),
             onTapUp: (_) => _resumeProgressAfterHold(),
             onTapCancel: _resumeProgressAfterHold,
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -220) {
+                _goToNextOrClose(statuses);
+              } else if (velocity > 220) {
+                _goToPrevious(statuses);
+              }
+            },
             onVerticalDragEnd: isOwner
                 ? (details) {
                     final velocity = details.primaryVelocity ?? 0;
@@ -5888,7 +6010,10 @@ class _CommunityStatusViewerScreenState
                     animation: _progressController,
                     builder: (context, _) {
                       return LinearProgressIndicator(
-                        value: _progressController.value,
+                        value: _progressValueForIndex(
+                          _currentIndex,
+                          statuses.length,
+                        ),
                         minHeight: 3,
                         backgroundColor: Colors.white.withValues(alpha: 0.22),
                         valueColor: const AlwaysStoppedAnimation<Color>(
