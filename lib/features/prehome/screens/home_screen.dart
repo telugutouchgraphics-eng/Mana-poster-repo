@@ -5659,6 +5659,7 @@ class _HomeCommunityStatusStrip extends StatelessWidget {
                 imageUrl: status?.imageUrl ?? '',
                 previewText: status?.text ?? '',
                 previewBackgroundColor: status?.backgroundColor ?? 0,
+                statusCount: group?.statuses.length ?? 0,
                 icon: status == null
                     ? Icons.add_rounded
                     : status.hasImage
@@ -6954,6 +6955,7 @@ class _HomeCommunityStatusBubble extends StatelessWidget {
     required this.icon,
     required this.onTap,
     required this.accentColor,
+    required this.statusCount,
     this.imageUrl = '',
     this.previewText = '',
     this.previewBackgroundColor = 0,
@@ -6963,6 +6965,7 @@ class _HomeCommunityStatusBubble extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
   final Color accentColor;
+  final int statusCount;
   final String imageUrl;
   final String previewText;
   final int previewBackgroundColor;
@@ -6977,29 +6980,42 @@ class _HomeCommunityStatusBubble extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Container(
-              width: 62,
-              height: 62,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: <Color>[accentColor, const Color(0xFFF59E0B)],
+            SizedBox(
+              width: 66,
+              height: 66,
+              child: CustomPaint(
+                painter: _StatusBubbleRingPainter(
+                  color: accentColor,
+                  segmentCount: statusCount,
                 ),
-              ),
-              child: ClipOval(
-                child: imageUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, _, _) => _StatusIcon(icon: icon),
-                      )
-                    : previewText.isNotEmpty
-                    ? _StatusTextPreview(
-                        text: previewText,
-                        backgroundColor: previewBackgroundColor,
-                      )
-                    : _StatusIcon(icon: icon),
+                child: Center(
+                  child: Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        width: 2,
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, _, _) => _StatusIcon(icon: icon),
+                            )
+                          : previewText.isNotEmpty
+                          ? _StatusTextPreview(
+                              text: previewText,
+                              backgroundColor: previewBackgroundColor,
+                            )
+                          : _StatusIcon(icon: icon),
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 6),
@@ -7018,6 +7034,46 @@ class _HomeCommunityStatusBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _StatusBubbleRingPainter extends CustomPainter {
+  const _StatusBubbleRingPainter({
+    required this.color,
+    required this.segmentCount,
+  });
+
+  final Color color;
+  final int segmentCount;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (math.min(size.width, size.height) - 5) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    if (segmentCount <= 1) {
+      canvas.drawCircle(center, radius, paint);
+      return;
+    }
+    final visibleSegments = segmentCount.clamp(2, 12);
+    final gap = visibleSegments <= 3 ? 0.22 : 0.14;
+    final sweep = ((math.pi * 2) / visibleSegments) - gap;
+    var start = -math.pi / 2;
+    for (var index = 0; index < visibleSegments; index += 1) {
+      canvas.drawArc(rect, start, sweep, false, paint);
+      start += sweep + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StatusBubbleRingPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.segmentCount != segmentCount;
   }
 }
 
