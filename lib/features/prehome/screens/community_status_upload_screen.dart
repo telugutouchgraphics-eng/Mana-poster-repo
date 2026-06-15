@@ -209,6 +209,18 @@ class _CommunityStatusUploadScreenState
         telugu: 'Status image 12MB లేదా దానికంటే తక్కువ ఉండాలి',
         english: 'Status image must be 12MB or less',
       ),
+      CommunityStatusSubmitCode.imageDailyLimitReached => strings.localized(
+        telugu:
+            '24 గంటల్లో 2 image statuses మాత్రమే పెట్టవచ్చు. Old image status delete చేసి మళ్లీ పెట్టండి.',
+        english:
+            'You can upload only 2 image statuses in 24 hours. Delete an old image status to upload again.',
+      ),
+      CommunityStatusSubmitCode.textDailyLimitReached => strings.localized(
+        telugu:
+            '24 గంటల్లో 5 text statuses మాత్రమే పెట్టవచ్చు. Old text status delete చేసి మళ్లీ పెట్టండి.',
+        english:
+            'You can upload only 5 text statuses in 24 hours. Delete an old text status to upload again.',
+      ),
       CommunityStatusSubmitCode.uploadFailed => strings.localized(
         telugu: 'Status upload విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
         english: 'Status upload failed. Please try again.',

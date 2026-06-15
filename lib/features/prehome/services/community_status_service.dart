@@ -21,6 +21,8 @@ enum CommunityStatusSubmitCode {
   contentRequired,
   textTooLong,
   imageTooLarge,
+  imageDailyLimitReached,
+  textDailyLimitReached,
   uploadFailed,
 }
 
@@ -52,6 +54,8 @@ class CommunityStatusService {
   static const int maxTextLength = 300;
   static const int maxCommentLength = 220;
   static const int maxReportDetailsLength = 500;
+  static const int maxActiveImageStatuses = 2;
+  static const int maxActiveTextStatuses = 5;
   static const int statusLifetimeMillis = 24 * 60 * 60 * 1000;
   static const List<int> _compressionDimensions = <int>[
     1920,
@@ -196,6 +200,38 @@ class CommunityStatusService {
       return value.round();
     }
     return fallback;
+  }
+
+  Future<CommunityStatusSubmitCode?> _activeStatusLimitError({
+    required String userId,
+    required bool isImageStatus,
+    required int now,
+  }) async {
+    final snapshot = await _firestore
+        .collection('communityStatuses')
+        .where('userId', isEqualTo: userId)
+        .where('expiresAt', isGreaterThan: now)
+        .limit(40)
+        .get()
+        .timeout(const Duration(seconds: 5));
+    var activeImageCount = 0;
+    var activeTextCount = 0;
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final imageUrl = (data['imageUrl'] ?? '').toString().trim();
+      if (imageUrl.isNotEmpty) {
+        activeImageCount += 1;
+      } else {
+        activeTextCount += 1;
+      }
+    }
+    if (isImageStatus && activeImageCount >= maxActiveImageStatuses) {
+      return CommunityStatusSubmitCode.imageDailyLimitReached;
+    }
+    if (!isImageStatus && activeTextCount >= maxActiveTextStatuses) {
+      return CommunityStatusSubmitCode.textDailyLimitReached;
+    }
+    return null;
   }
 
   Future<({AppRegion region, AppReligionPreference religion})?>
@@ -359,9 +395,27 @@ class CommunityStatusService {
       );
     }
 
+    final now = DateTime.now().millisecondsSinceEpoch;
+    try {
+      final limitError = await _activeStatusLimitError(
+        userId: user.uid,
+        isImageStatus: imageFile != null,
+        now: now,
+      );
+      if (limitError != null) {
+        return CommunityStatusSubmitResult.failure(limitError);
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('CommunityStatusService.statusLimitCheck failed: $error');
+      }
+      return CommunityStatusSubmitResult.failure(
+        CommunityStatusSubmitCode.uploadFailed,
+      );
+    }
+
     File? temporaryImageFile;
     try {
-      final now = DateTime.now().millisecondsSinceEpoch;
       final doc = _firestore.collection('communityStatuses').doc();
       var imagePath = '';
       var imageUrl = '';
