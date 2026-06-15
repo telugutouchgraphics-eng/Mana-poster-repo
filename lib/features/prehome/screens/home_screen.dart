@@ -5941,8 +5941,8 @@ class _CommunityStatusViewerScreenState
       _recordActiveView(groups[_currentGroupIndex].statuses.first);
       return;
     }
-    _progressController.value = 1;
     _progressController.stop();
+    Navigator.of(context).maybePop();
   }
 
   void _goToPrevious(List<_CommunityStatusGroup> groups) {
