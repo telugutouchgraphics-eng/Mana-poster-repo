@@ -159,21 +159,22 @@ class AppLocationService {
       ).timeout(const Duration(seconds: 8));
       final first = placemarks.isEmpty ? const Placemark() : placemarks.first;
       final now = DateTime.now().millisecondsSinceEpoch;
-      final city =
-          ((first.locality ?? '').trim().isNotEmpty
-              ? first.locality
-              : first.subLocality) ??
-          '';
-      final district =
-          ((first.subAdministrativeArea ?? '').trim().isNotEmpty
-              ? first.subAdministrativeArea
-              : city) ??
-          '';
+      final city = _firstPlacemarkValue(
+        placemarks,
+        (item) => item.locality,
+      ).ifEmpty(_firstPlacemarkValue(placemarks, (item) => item.subLocality));
+      final district = _firstExactDistrict(placemarks);
       final area = AppLocationArea(
-        state: (first.administrativeArea ?? '').trim(),
-        district: district.trim(),
-        city: city.trim(),
-        countryCode: (first.isoCountryCode ?? '').trim(),
+        state: _firstPlacemarkValue(
+          placemarks,
+          (item) => item.administrativeArea,
+        ).ifEmpty(first.administrativeArea ?? ''),
+        district: district,
+        city: city,
+        countryCode: _firstPlacemarkValue(
+          placemarks,
+          (item) => item.isoCountryCode,
+        ).ifEmpty(first.isoCountryCode ?? ''),
         updatedAtMillis: now,
       );
       await _saveAndSyncArea(area);
@@ -243,4 +244,31 @@ class AppLocationService {
       // Local seed is enough for feed mixing; remote sync can retry later.
     }
   }
+
+  static String _firstPlacemarkValue(
+    List<Placemark> placemarks,
+    String? Function(Placemark item) read,
+  ) {
+    for (final item in placemarks) {
+      final value = (read(item) ?? '').trim();
+      if (value.isNotEmpty) {
+        return value;
+      }
+    }
+    return '';
+  }
+
+  static String _firstExactDistrict(List<Placemark> placemarks) {
+    for (final item in placemarks) {
+      final district = (item.subAdministrativeArea ?? '').trim();
+      if (district.isNotEmpty) {
+        return district;
+      }
+    }
+    return '';
+  }
+}
+
+extension on String {
+  String ifEmpty(String fallback) => trim().isEmpty ? fallback.trim() : trim();
 }
