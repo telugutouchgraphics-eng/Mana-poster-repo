@@ -6212,35 +6212,19 @@ class _StatusRepliesSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Expanded(
-                              flex: 4,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: Text(
-                                  comment.userName.isNotEmpty
-                                      ? comment.userName
-                                      : 'User',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14,
-                                  ),
-                                ),
+                              child: _StatusInlineComment(
+                                userName: comment.userName.isNotEmpty
+                                    ? comment.userName
+                                    : 'User',
+                                text: comment.text,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 6,
-                              child: _StatusCommentBubble(text: comment.text),
-                            ),
-                            const SizedBox(width: 4),
                             PopupMenuButton<String>(
                               tooltip: 'More',
                               icon: const Icon(
                                 Icons.more_vert_rounded,
-                                color: Colors.white70,
-                                size: 20,
+                                color: Colors.white54,
+                                size: 18,
                               ),
                               color: const Color(0xFF111827),
                               padding: EdgeInsets.zero,
@@ -6509,66 +6493,67 @@ Future<void> _showCommunityStatusReportSheet(
   detailsController.dispose();
 }
 
-class _StatusCommentBubble extends StatefulWidget {
-  const _StatusCommentBubble({required this.text});
+class _StatusInlineComment extends StatefulWidget {
+  const _StatusInlineComment({required this.userName, required this.text});
 
+  final String userName;
   final String text;
 
   @override
-  State<_StatusCommentBubble> createState() => _StatusCommentBubbleState();
+  State<_StatusInlineComment> createState() => _StatusInlineCommentState();
 }
 
-class _StatusCommentBubbleState extends State<_StatusCommentBubble> {
+class _StatusInlineCommentState extends State<_StatusInlineComment> {
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
+    final userName = widget.userName.trim().isEmpty
+        ? 'User'
+        : widget.userName.trim();
     final text = widget.text.trim();
     final showReadMore = !_expanded && text.length > 70;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              text,
-              maxLines: _expanded ? null : 2,
-              overflow: _expanded
-                  ? TextOverflow.visible
-                  : TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                height: 1.24,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        RichText(
+          maxLines: _expanded ? null : 2,
+          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+          text: TextSpan(
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13.5,
+              height: 1.28,
+              fontWeight: FontWeight.w500,
             ),
-            if (showReadMore) ...<Widget>[
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () => setState(() => _expanded = true),
-                borderRadius: BorderRadius.circular(10),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 2),
-                  child: Text(
-                    'Read more',
-                    style: TextStyle(
-                      color: Color(0xFF25D366),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
-                  ),
+            children: <InlineSpan>[
+              TextSpan(
+                text: '$userName  ',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              TextSpan(text: text),
+            ],
+          ),
+        ),
+        if (showReadMore) ...<Widget>[
+          const SizedBox(height: 3),
+          InkWell(
+            onTap: () => setState(() => _expanded = true),
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 2),
+              child: Text(
+                'Read more',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
                 ),
               ),
-            ],
-          ],
-        ),
-      ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
