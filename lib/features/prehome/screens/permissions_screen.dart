@@ -34,6 +34,10 @@ class _PermissionsScreenState extends State<PermissionsScreen>
       type: AppPermissionType.notifications,
       status: PermissionStatus.denied,
     ),
+    location: AppPermissionState(
+      type: AppPermissionType.location,
+      status: PermissionStatus.denied,
+    ),
   );
 
   @override
@@ -208,6 +212,18 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                                   title: strings.notifications,
                                   subtitle: copy.notificationsSubtitle,
                                   granted: _snapshot.notifications.isGranted,
+                                ),
+                                const SizedBox(height: 12),
+                                _PermissionRow(
+                                  icon: Icons.location_on_outlined,
+                                  iconColor: const Color(0xFF16A34A),
+                                  badgeColor: const Color(0xFFDCFCE7),
+                                  title: strings.localized(
+                                    telugu: 'లొకేషన్',
+                                    english: 'Location',
+                                  ),
+                                  subtitle: copy.locationSubtitle,
+                                  granted: _snapshot.location.isGranted,
                                 ),
                                 const SizedBox(height: 14),
                                 Text(
@@ -398,6 +414,15 @@ class _PermissionIntroCopy {
     SupportedUiLanguage.tamil => 'புதிய தகவல்களுக்கு.',
     SupportedUiLanguage.kannada => 'ಅಪ್ಡೇಟ್‌ಗಳಿಗಾಗಿ.',
     SupportedUiLanguage.malayalam => 'അപ്ഡേറ്റുകൾക്കായി.',
+  };
+
+  String get locationSubtitle => switch (language.supportedUiLanguage) {
+    SupportedUiLanguage.telugu => 'దగ్గరలోని స్టేటస్‌లు చూపడానికి.',
+    SupportedUiLanguage.english => 'To show nearby statuses.',
+    SupportedUiLanguage.hindi => 'Nearby statuses दिखाने के लिए।',
+    SupportedUiLanguage.tamil => 'Nearby statuses காட்ட.',
+    SupportedUiLanguage.kannada => 'Nearby statuses ತೋರಿಸಲು.',
+    SupportedUiLanguage.malayalam => 'Nearby statuses കാണിക്കാൻ.',
   };
 
   String get footerHint => switch (language.supportedUiLanguage) {

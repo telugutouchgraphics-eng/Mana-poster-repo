@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:permission_handler/permission_handler.dart';
 
-enum AppPermissionType { photos, camera, notifications }
+enum AppPermissionType { photos, camera, notifications, location }
 
 class AppPermissionState {
   const AppPermissionState({required this.type, required this.status});
@@ -25,16 +25,19 @@ class PermissionSnapshot {
     required this.photos,
     required this.camera,
     required this.notifications,
+    required this.location,
   });
 
   final AppPermissionState photos;
   final AppPermissionState camera;
   final AppPermissionState notifications;
+  final AppPermissionState location;
 
   List<AppPermissionState> get items => <AppPermissionState>[
     photos,
     camera,
     notifications,
+    location,
   ];
 
   bool get allGranted =>
@@ -68,6 +71,10 @@ class PermissionService {
         type: AppPermissionType.notifications,
         status: PermissionStatus.denied,
       ),
+      location: AppPermissionState(
+        type: AppPermissionType.location,
+        status: PermissionStatus.denied,
+      ),
     );
   }
 
@@ -77,6 +84,7 @@ class PermissionService {
     final PermissionStatus cameraStatus = await _safeStatus(cameraPermission);
     final PermissionStatus notificationsStatus =
         await _resolveNotificationStatus();
+    final PermissionStatus locationStatus = await _resolveLocationStatus();
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -90,6 +98,10 @@ class PermissionService {
       notifications: AppPermissionState(
         type: AppPermissionType.notifications,
         status: notificationsStatus,
+      ),
+      location: AppPermissionState(
+        type: AppPermissionType.location,
+        status: locationStatus,
       ),
     );
   }
@@ -100,6 +112,7 @@ class PermissionService {
     final PermissionStatus cameraStatus = await _safeRequest(cameraPermission);
     final PermissionStatus notificationsStatus =
         await _requestNotificationStatus();
+    final PermissionStatus locationStatus = await _requestLocationStatus();
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -113,6 +126,10 @@ class PermissionService {
       notifications: AppPermissionState(
         type: AppPermissionType.notifications,
         status: notificationsStatus,
+      ),
+      location: AppPermissionState(
+        type: AppPermissionType.location,
+        status: locationStatus,
       ),
     );
   }
@@ -125,6 +142,8 @@ class PermissionService {
         return _safeRequest(await _resolveCameraPermission());
       case AppPermissionType.notifications:
         return _requestNotificationStatus();
+      case AppPermissionType.location:
+        return _requestLocationStatus();
     }
   }
 
@@ -136,6 +155,10 @@ class PermissionService {
 
   Future<Permission> _resolveNotificationPermission() async {
     return Permission.notification;
+  }
+
+  Future<Permission> _resolveLocationPermission() async {
+    return Permission.locationWhenInUse;
   }
 
   Future<int?> _loadAndroidSdkInt() async {
@@ -231,5 +254,19 @@ class PermissionService {
       }
     }
     return _safeRequest(await _resolveNotificationPermission());
+  }
+
+  Future<PermissionStatus> _resolveLocationStatus() async {
+    if (kIsWeb) {
+      return PermissionStatus.granted;
+    }
+    return _safeStatus(await _resolveLocationPermission());
+  }
+
+  Future<PermissionStatus> _requestLocationStatus() async {
+    if (kIsWeb) {
+      return PermissionStatus.granted;
+    }
+    return _safeRequest(await _resolveLocationPermission());
   }
 }

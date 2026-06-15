@@ -29,6 +29,10 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
       type: AppPermissionType.notifications,
       status: PermissionStatus.denied,
     ),
+    location: AppPermissionState(
+      type: AppPermissionType.location,
+      status: PermissionStatus.denied,
+    ),
   );
   bool _loading = true;
   bool _openingSettings = false;
@@ -204,6 +208,18 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
                 onAction: () =>
                     _handlePermissionAction(_snapshot.notifications),
               ),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              _PermissionTile(
+                icon: Icons.location_on_outlined,
+                title: context.strings.localized(
+                  telugu: 'లొకేషన్',
+                  english: 'Location',
+                ),
+                statusLabel: copy.statusLabel(_snapshot.location),
+                statusColor: copy.statusColor(_snapshot.location),
+                actionLabel: copy.actionLabel(_snapshot.location),
+                onAction: () => _handlePermissionAction(_snapshot.location),
+              ),
               const SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: _openingSettings ? null : _openSettings,
@@ -355,6 +371,10 @@ class _PermissionCopy {
       telugu: 'నోటిఫికేషన్ అనుమతి ఇచ్చారు.',
       english: 'Notifications access granted.',
     ),
+    AppPermissionType.location => _localized(
+      telugu: 'లొకేషన్ అనుమతి ఇచ్చారు.',
+      english: 'Location access granted.',
+    ),
   };
 
   String permissionDenied(AppPermissionType type) => switch (type) {
@@ -370,6 +390,10 @@ class _PermissionCopy {
       telugu: 'నోటిఫికేషన్లు ఆఫ్‌లో ఉన్నాయి.',
       english: 'Notifications are off.',
     ),
+    AppPermissionType.location => _localized(
+      telugu: 'లొకేషన్ అనుమతి ఆఫ్‌లో ఉంది.',
+      english: 'Location access is off.',
+    ),
   };
 
   String permissionNeedsSettings(AppPermissionType type) => switch (type) {
@@ -384,6 +408,10 @@ class _PermissionCopy {
     AppPermissionType.notifications => _localized(
       telugu: 'సెట్టింగ్స్‌లో నోటిఫికేషన్లు అనుమతించండి.',
       english: 'Allow notifications from settings.',
+    ),
+    AppPermissionType.location => _localized(
+      telugu: 'సెట్టింగ్స్‌లో లొకేషన్ అనుమతించండి.',
+      english: 'Allow location from settings.',
     ),
   };
 

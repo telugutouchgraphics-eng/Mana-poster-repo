@@ -586,7 +586,28 @@ class _ProfileMoreScreen extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(copy.locationTitle),
-          content: Text(copy.locationDialogMessage),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(copy.locationDialogMessage),
+              const SizedBox(height: 8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () {
+                  _openExternalPublicUrl(
+                    dialogContext,
+                    AppPublicInfo.privacyPolicyUrl,
+                  );
+                },
+                child: Text(copy.privacyPolicyTitle),
+              ),
+            ],
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -1200,8 +1221,8 @@ class _ProfileCopy {
       ? 'మీ city/district ఆధారంగా దగ్గరలోని స్టేటస్‌లకు ప్రాధాన్యం ఇవ్వండి'
       : 'Prioritize nearby city/district statuses';
   String get locationDialogMessage => _isTelugu
-      ? 'మీ precise location backend లో save చేయము. App మీ approximate city, district, state మాత్రమే save చేసి status feed ని మెరుగుపరుస్తుంది. Permission deny చేసినా app normal గా పనిచేస్తుంది.'
-      : 'We do not store your precise GPS location in the backend. The app saves only approximate city, district, and state to improve the status feed. The app still works normally if you deny permission.';
+      ? 'దగ్గరలోని స్టేటస్‌ల కోసం లొకేషన్ అనుమతి ఇవ్వండి.'
+      : 'Allow location to show nearby statuses.';
   String get locationSavedMessage => _isTelugu
       ? 'లొకేషన్ స్టేటస్ సూచనలు ఆన్ అయ్యాయి'
       : 'Location-based status suggestions enabled';
