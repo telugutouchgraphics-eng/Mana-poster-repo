@@ -8,11 +8,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 
 class HelpSupportScreen extends StatefulWidget {
-  const HelpSupportScreen({
-    super.key,
-    this.initialSubject,
-    this.initialBody,
-  });
+  const HelpSupportScreen({super.key, this.initialSubject, this.initialBody});
 
   final String? initialSubject;
   final String? initialBody;
@@ -34,12 +30,10 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     final defaultBody = selected == null
         ? copy.defaultBody
         : '${copy.defaultBody}\n\n${copy.contextLabel}: ${selected.question}\n';
-    final subject =
-        widget.initialSubject?.trim().isNotEmpty == true
+    final subject = widget.initialSubject?.trim().isNotEmpty == true
         ? widget.initialSubject!.trim()
         : defaultSubject;
-    final body =
-        widget.initialBody?.trim().isNotEmpty == true
+    final body = widget.initialBody?.trim().isNotEmpty == true
         ? widget.initialBody!.trim()
         : defaultBody;
 
@@ -140,10 +134,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: <Color>[
-                        Color(0xFFEAF2FF),
-                        Color(0xFFFFFFFF),
-                      ],
+                      colors: <Color>[Color(0xFFEAF2FF), Color(0xFFFFFFFF)],
                     ),
                     border: Border.all(color: const Color(0xD9E3EDF6)),
                     boxShadow: const <BoxShadow>[
@@ -317,10 +308,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: <Color>[
-                        Color(0xFFEEF4FB),
-                        Color(0xFFFFFFFF),
-                      ],
+                      colors: <Color>[Color(0xFFEEF4FB), Color(0xFFFFFFFF)],
                     ),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: const Color(0xFFDDE6F2)),
@@ -604,9 +592,14 @@ class _HelpSupportCopy {
                 '1) ఇంటర్నెట్ కనెక్షన్ సరిగ్గా ఉందో చూడండి.\n2) ఇమెయిల్, పాస్‌వర్డ్ సరిగా ఇచ్చారో పరిశీలించండి.\n3) అవసరమైతే Forgot Password ఉపయోగించండి.\n4) Google Sign-In అయితే account permission ఇవ్వబడిందో చూడండి.',
           ),
           _HelpFaqItem(
-            question: 'ఫోటో ఎంపిక లేదా అప్‌లోడ్ కావడం లేకపోతే?',
+            question: 'Community image/quote upload పనిచేయకపోతే?',
             answer:
-                '1) Photos లేదా media permission ఇచ్చారో చూడండి.\n2) Permission deny చేసి ఉంటే App Settings నుంచి enable చేయండి.\n3) చాలా పెద్ద image అయితే మరో చిన్న ఫైల్‌తో ప్రయత్నించండి.\n4) యాప్‌ను మళ్లీ ఓపెన్ చేసి మరోసారి ప్రయత్నించండి.',
+                '1) Image upload అయితే Photos లేదా media permission ఇచ్చారో చూడండి.\n2) Quote-only అయితే text ఖాళీగా లేకుండా ఉందో చూడండి.\n3) చాలా పెద్ద image అయితే చిన్న ఫైల్‌తో ప్రయత్నించండి.\n4) Submit అయిన తర్వాత manager review పూర్తయ్యాక మాత్రమే poster app category లో కనిపిస్తుంది.',
+          ),
+          _HelpFaqItem(
+            question: 'Status upload/replies ఎలా పని చేస్తాయి?',
+            answer:
+                '1) Status లో text, image లేదా caption upload చేయవచ్చు.\n2) Status same State/Union Territory మరియు matching religion scope users కు మాత్రమే చూపబడుతుంది.\n3) Image status upload ముందు file size తగ్గించడానికి compress అవుతుంది.\n4) Other users reply/comment పంపవచ్చు; status owner status screen లో up swipe చేస్తే replies చూడవచ్చు.\n5) Status, image, replies/comments 24 గంటల expiry తర్వాత backend cleanup ద్వారా delete అవుతాయి. Cleanup scheduled కాబట్టి exact second కు delete కాకపోవచ్చు.\n6) Private information, OTP, passwords, addresses, hateful/illegal/spam content status లేదా reply లో పెట్టకండి.',
           ),
           _HelpFaqItem(
             question: 'పోస్టర్ సేవ్ లేదా ఎగుమతి విఫలమైతే?',
@@ -631,9 +624,14 @@ class _HelpSupportCopy {
                 '1) Check your internet connection.\n2) Confirm the email and password.\n3) Use Forgot Password if needed.\n4) For Google Sign-In, make sure account permissions are granted.',
           ),
           _HelpFaqItem(
-            question: 'What if image upload or import is not working?',
+            question: 'What if community image/quote upload is not working?',
             answer:
-                '1) Check photos or media permission.\n2) If permission was denied, enable it from App Settings.\n3) Try a smaller image file.\n4) Reopen the app and try again.',
+                '1) For image upload, check photos or media permission.\n2) For quote-only upload, make sure the text is not empty.\n3) Try a smaller image file if needed.\n4) After submit, the poster appears in the app category only after manager review.',
+          ),
+          _HelpFaqItem(
+            question: 'How do Status uploads and replies work?',
+            answer:
+                '1) A status can be text, image, or image with caption.\n2) Status visibility is limited to users in the same State/Union Territory and matching religion scope.\n3) Image status files are compressed before upload to reduce file size.\n4) Other users can reply/comment; the status owner can swipe up on the status screen to read replies.\n5) Statuses, images, and replies/comments are deleted by backend cleanup after the 24-hour expiry. Because cleanup is scheduled, deletion may not happen at the exact second.\n6) Do not post private information, OTPs, passwords, addresses, hateful/illegal/spam content in a status or reply.',
           ),
           _HelpFaqItem(
             question: 'What if save or export fails?',

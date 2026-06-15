@@ -33,7 +33,9 @@ enum UserPosterUploadSubmitCode {
   success,
   loginRequired,
   categoryRequired,
+  contentRequired,
   imageTooLarge,
+  quoteTooLong,
   uploadFailed,
 }
 
@@ -41,6 +43,7 @@ class UserPosterUploadsService {
   UserPosterUploadsService._();
 
   static const int maxUploadBytes = 500 * 1024;
+  static const int maxQuoteLength = 600;
   static const int retentionMillis = 7 * 24 * 60 * 60 * 1000;
   static const int _uploadCutoffHourIst = 22;
   static final UserPosterUploadsService instance = UserPosterUploadsService._();
@@ -235,7 +238,8 @@ class UserPosterUploadsService {
   }
 
   Future<UserPosterUploadSubmitResult> submitUpload({
-    required File imageFile,
+    required File? imageFile,
+    required String quoteText,
     required String categoryId,
     required String categoryLabel,
   }) async {
@@ -252,7 +256,18 @@ class UserPosterUploadsService {
         UserPosterUploadSubmitCode.categoryRequired,
       );
     }
-    final fileSize = await imageFile.length();
+    final safeQuoteText = quoteText.trim();
+    if (imageFile == null && safeQuoteText.isEmpty) {
+      return UserPosterUploadSubmitResult.failure(
+        UserPosterUploadSubmitCode.contentRequired,
+      );
+    }
+    if (safeQuoteText.length > maxQuoteLength) {
+      return UserPosterUploadSubmitResult.failure(
+        UserPosterUploadSubmitCode.quoteTooLong,
+      );
+    }
+    final fileSize = imageFile == null ? 0 : await imageFile.length();
     if (fileSize > maxUploadBytes) {
       return UserPosterUploadSubmitResult.failure(
         UserPosterUploadSubmitCode.imageTooLarge,
@@ -263,8 +278,12 @@ class UserPosterUploadsService {
       final now = DateTime.now().millisecondsSinceEpoch;
       final appVisibleFromAt = resolveApplicableFromMillis();
       final profile = await PosterProfileService.load();
-      final imageBytes = await imageFile.readAsBytes();
-      final imageDimensions = await _readImageDimensions(imageBytes);
+      final imageBytes = imageFile == null
+          ? null
+          : await imageFile.readAsBytes();
+      final imageDimensions = imageBytes == null
+          ? null
+          : await _readImageDimensions(imageBytes);
       final userName = profile.activeName.trim().isNotEmpty
           ? profile.activeName.trim()
           : (user.displayName?.trim().isNotEmpty == true
@@ -272,15 +291,26 @@ class UserPosterUploadsService {
                 : 'User');
       final userMobile = profile.activeWhatsappNumber.trim();
       final doc = _firestore.collection('userPosterUploads').doc();
-      final imageExtension = _normalizedImageExtension(imageFile.path);
-      final imagePath =
-          'users/${user.uid}/community_uploads/${doc.id}.$imageExtension';
-      final imageRef = _storage.ref(imagePath);
-      await imageRef.putFile(
-        imageFile,
-        SettableMetadata(contentType: _contentTypeForExtension(imageExtension)),
-      );
-      final imageUrl = await imageRef.getDownloadURL();
+      var imagePath = '';
+      var imageUrl = '';
+      if (imageFile != null) {
+        final imageExtension = _normalizedImageExtension(imageFile.path);
+        imagePath =
+            'users/${user.uid}/community_uploads/${doc.id}.$imageExtension';
+        final imageRef = _storage.ref(imagePath);
+        await imageRef.putFile(
+          imageFile,
+          SettableMetadata(
+            contentType: _contentTypeForExtension(imageExtension),
+          ),
+        );
+        imageUrl = await imageRef.getDownloadURL();
+      }
+      final submissionType = imageUrl.isNotEmpty && safeQuoteText.isNotEmpty
+          ? 'image_quote'
+          : imageUrl.isNotEmpty
+          ? 'image'
+          : 'quote';
 
       await doc.set(<String, dynamic>{
         'id': doc.id,
@@ -291,6 +321,9 @@ class UserPosterUploadsService {
         'userMobile': userMobile,
         'imageUrl': imageUrl,
         'imagePath': imagePath,
+        'quoteText': safeQuoteText,
+        'submissionType': submissionType,
+        'hasImage': imageUrl.isNotEmpty,
         'categoryId': safeCategoryId,
         'categoryLabel': safeCategoryLabel,
         'status': 'pending',

@@ -47,6 +47,7 @@ class UserPosterUploadsScreen extends StatefulWidget {
 class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
+  final TextEditingController _quoteController = TextEditingController();
   late final TabController _tabController;
   late final Stream<List<UserPosterUpload>> _uploadsStream;
   List<UserPosterUpload> _lastVisibleUploads = const <UserPosterUpload>[];
@@ -100,6 +101,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     unawaited(ScreenSecurityService.disableSecure());
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
+    _quoteController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -395,13 +397,14 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   Future<void> _submit() async {
     final strings = context.strings;
     final image = _selectedImageFile;
-    if (image == null) {
+    final quoteText = _quoteController.text.trim();
+    if (image == null && quoteText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             strings.localized(
-              telugu: 'దయచేసి ఇమేజ్ ఎంపిక చేయండి',
-              english: 'Please select image',
+              telugu: 'దయచేసి ఇమేజ్ లేదా quote ఇవ్వండి',
+              english: 'Please select an image or write a quote',
             ),
           ),
         ),
@@ -415,6 +418,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     try {
       final result = await UserPosterUploadsService.instance.submitUpload(
         imageFile: image,
+        quoteText: quoteText,
         categoryId: _selectedCategoryId,
         categoryLabel: _selectedCategoryLabel,
       );
@@ -430,6 +434,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       setState(() {
         _selectedImageFile = null;
         _selectedImageBytes = 0;
+        _quoteController.clear();
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -486,10 +491,20 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
           telugu: 'కేటగిరీ అవసరం',
           english: 'Category is required',
         );
+      case UserPosterUploadSubmitCode.contentRequired:
+        return strings.localized(
+          telugu: 'ఇమేజ్ లేదా quote అవసరం',
+          english: 'Image or quote is required',
+        );
       case UserPosterUploadSubmitCode.imageTooLarge:
         return strings.localized(
           telugu: 'ఇమేజ్ సైజ్ 500KB లేదా దానికంటే తక్కువ ఉండాలి',
           english: 'Image size must be 500KB or less',
+        );
+      case UserPosterUploadSubmitCode.quoteTooLong:
+        return strings.localized(
+          telugu: 'Quote 600 అక్షరాల లోపు ఉండాలి',
+          english: 'Quote must be 600 characters or less',
         );
       case UserPosterUploadSubmitCode.uploadFailed:
         return strings.localized(
@@ -505,19 +520,9 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         UserPosterUploadsService.formatIstDateLabelFromMillis(
           UserPosterUploadsService.resolveApplicableFromMillis(),
         );
-    final istNow = IstTimeService.now();
-    if (istNow.hour < 22) {
-      return strings.localized(
-        telugu:
-            'రాత్రి 10:00 IST ముందు -> అదే రోజు పబ్లిష్ డేట్ ($applicableDate)',
-        english:
-            'Before 10:00 PM IST -> same day publish date ($applicableDate)',
-      );
-    }
     return strings.localized(
-      telugu:
-          'రాత్రి 10:00 IST తర్వాత -> తదుపరి రోజు పబ్లిష్ డేట్ ($applicableDate)',
-      english: 'After 10:00 PM IST -> next day publish date ($applicableDate)',
+      telugu: 'Upload timing: 10:00 PM IST లోపు. Date: $applicableDate',
+      english: 'Upload timing: before 10:00 PM IST. Date: $applicableDate',
     );
   }
 
@@ -561,10 +566,6 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       _selectedCategoryId = categoryOptions.first.id;
       _selectedCategoryLabel = categoryOptions.first.label;
     }
-    final applicableDateLabel =
-        UserPosterUploadsService.formatIstDateLabelFromMillis(
-          UserPosterUploadsService.resolveApplicableFromMillis(),
-        );
     final selectedCategoryOption = _selectedCategoryOptionFor(categoryOptions);
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -584,29 +585,9 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               ),
               const SizedBox(height: 10),
               Text(
-                strings.localized(
-                  telugu: 'గరిష్ట సైజ్: 500KB',
-                  english: 'Max size: 500KB',
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
                 _uploadWindowMessage(),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF0F766E),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                strings.localized(
-                  telugu: 'యాప్‌లో కనిపించే డేట్: $applicableDateLabel',
-                  english: 'App visible date: $applicableDateLabel',
-                ),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: const Color(0xFF475569),
-                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (_selectedImageFile != null) ...<Widget>[
@@ -626,6 +607,41 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   child: Image.file(_selectedImageFile!, fit: BoxFit.contain),
                 ),
               ],
+              const SizedBox(height: 16),
+              Text(
+                strings.localized(
+                  telugu: 'మీ quote రాయండి (optional)',
+                  english: 'Write your quote (optional)',
+                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _quoteController,
+                enabled: !_submitting,
+                minLines: 4,
+                maxLines: 7,
+                maxLength: UserPosterUploadsService.maxQuoteLength,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: strings.localized(
+                    telugu: 'ఇక్కడ మీ quote లేదా message రాయండి...',
+                    english: 'Write your quote or message here...',
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
               Text(
                 strings.localized(telugu: 'కేటగిరీ', english: 'Category'),
@@ -764,23 +780,35 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(
-                        width: 74,
-                        height: 110,
-                        child: Image.network(
-                          upload.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, error, stackTrace) => Container(
-                            color: const Color(0xFFF1F5F9),
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.broken_image_outlined,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
+                    SizedBox(
+                      width: 74,
+                      height: 110,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: upload.imageUrl.isNotEmpty
+                            ? Image.network(
+                                upload.imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, error, stackTrace) =>
+                                    Container(
+                                      color: const Color(0xFFF1F5F9),
+                                      alignment: Alignment.center,
+                                      child: const Icon(
+                                        Icons.broken_image_outlined,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                              )
+                            : Container(
+                                color: const Color(0xFFF8FAFC),
+                                alignment: Alignment.center,
+                                padding: const EdgeInsets.all(8),
+                                child: const Icon(
+                                  Icons.format_quote_rounded,
+                                  color: Color(0xFF64748B),
+                                  size: 30,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -828,6 +856,19 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 4),
+                          if (upload.quoteText.isNotEmpty) ...<Widget>[
+                            Text(
+                              upload.quoteText,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: const Color(0xFF334155),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
                           Text(
                             strings.localized(
                               telugu:
@@ -864,17 +905,6 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                                 const SizedBox(width: 4),
                                 Text('${upload.shareCount}'),
                               ],
-                            ),
-                          ],
-                          if (detailedStatusView &&
-                              upload.isPending) ...<Widget>[
-                            const SizedBox(height: 8),
-                            Text(
-                              strings.localized(
-                                telugu: 'మేనేజర్ రివ్యూ కోసం వేచి ఉంది',
-                                english: 'Waiting for manager review',
-                              ),
-                              style: const TextStyle(color: Color(0xFF92400E)),
                             ),
                           ],
                         ],

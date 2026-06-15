@@ -130,37 +130,33 @@ service cloud.firestore {
     }
 
     function validUserRootWrite(userId) {
-      return (
-          resource == null
-              ? request.resource.data.keys().hasOnly([
-                  "preferredLanguage",
-                  "religionPreference",
-                  "updatedAt",
-                ])
-              : request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                  "preferredLanguage",
-                  "religionPreference",
-                  "updatedAt",
-                ])
-        ) &&
-        (!("preferredLanguage" in request.resource.data) ||
-          (request.resource.data.preferredLanguage is string &&
-            request.resource.data.preferredLanguage in [
-              "telugu",
-              "english",
-              "hindi",
-              "tamil",
-              "kannada",
-              "malayalam",
-            ])) &&
-        (!("religionPreference" in request.resource.data) ||
-          (request.resource.data.religionPreference is string &&
-            request.resource.data.religionPreference in [
-              "hindu",
-              "muslim",
-              "christian",
-              "all",
-            ]));
+      return resource == null
+        ? request.resource.data.keys().hasOnly([
+            "preferredLanguage",
+            "religionPreference",
+            "selectedRegion",
+            "selectedRegionName",
+            "selectedRegionLanguage",
+            "selectedRegionLanguageCode",
+            "locationEnabled",
+            "locationArea",
+            "locationUpdatedAt",
+            "statusFeedSeed",
+            "updatedAt",
+          ])
+        : request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "preferredLanguage",
+            "religionPreference",
+            "selectedRegion",
+            "selectedRegionName",
+            "selectedRegionLanguage",
+            "selectedRegionLanguageCode",
+            "locationEnabled",
+            "locationArea",
+            "locationUpdatedAt",
+            "statusFeedSeed",
+            "updatedAt",
+          ]);
     }
 
     function validActiveSessionWrite(userId) {
@@ -195,6 +191,9 @@ service cloud.firestore {
           "userMobile",
           "imageUrl",
           "imagePath",
+          "quoteText",
+          "submissionType",
+          "hasImage",
           "categoryId",
           "categoryLabel",
           "status",
@@ -206,6 +205,8 @@ service cloud.firestore {
           "updatedAt",
           "expiresAt",
           "appVisibleFromAt",
+          "widthPx",
+          "heightPx",
         ]) &&
         request.resource.data.id is string &&
         request.resource.data.id.size() > 0 &&
@@ -216,9 +217,45 @@ service cloud.firestore {
         request.resource.data.userEmail is string &&
         request.resource.data.userMobile is string &&
         request.resource.data.imageUrl is string &&
-        request.resource.data.imageUrl.size() > 0 &&
         request.resource.data.imagePath is string &&
-        request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/community_uploads/.*") &&
+        (
+          (
+            !("quoteText" in request.resource.data) &&
+            !("submissionType" in request.resource.data) &&
+            !("hasImage" in request.resource.data) &&
+            request.resource.data.imageUrl.size() > 0 &&
+            request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/community_uploads/.*")
+          ) ||
+          (
+            request.resource.data.quoteText is string &&
+            request.resource.data.quoteText.size() <= 600 &&
+            request.resource.data.submissionType in ["image", "quote", "image_quote"] &&
+            request.resource.data.hasImage is bool &&
+            (
+              (
+                request.resource.data.hasImage == true &&
+                request.resource.data.imageUrl.size() > 0 &&
+                request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/community_uploads/.*") &&
+                request.resource.data.submissionType in ["image", "image_quote"]
+              ) ||
+              (
+                request.resource.data.hasImage == false &&
+                request.resource.data.imageUrl == "" &&
+                request.resource.data.imagePath == "" &&
+                request.resource.data.submissionType == "quote"
+              )
+            ) &&
+            (
+              request.resource.data.imageUrl.size() > 0 ||
+              request.resource.data.quoteText.size() > 0
+            ) &&
+            (
+              (request.resource.data.submissionType == "image" && request.resource.data.quoteText == "") ||
+              (request.resource.data.submissionType == "quote" && request.resource.data.quoteText.size() > 0) ||
+              (request.resource.data.submissionType == "image_quote" && request.resource.data.quoteText.size() > 0)
+            )
+          )
+        ) &&
         request.resource.data.categoryId is string &&
         request.resource.data.categoryId.size() > 0 &&
         request.resource.data.categoryLabel is string &&
@@ -231,7 +268,11 @@ service cloud.firestore {
         request.resource.data.createdAt is int &&
         request.resource.data.updatedAt is int &&
         request.resource.data.expiresAt is int &&
-        request.resource.data.appVisibleFromAt is int;
+        request.resource.data.appVisibleFromAt is int &&
+        (!("widthPx" in request.resource.data) ||
+          request.resource.data.widthPx is int) &&
+        (!("heightPx" in request.resource.data) ||
+          request.resource.data.heightPx is int);
     }
 
     function validOwnerUserPosterUploadCounterUpdate() {
@@ -250,6 +291,267 @@ service cloud.firestore {
         request.resource.data.shareCount >= resource.data.shareCount &&
         request.resource.data.downloadCount >= resource.data.downloadCount &&
         request.resource.data.updatedAt is int;
+    }
+
+    function validCommunityStatusCreate() {
+      return request.resource.data.keys().hasOnly([
+          "id",
+          "userId",
+          "userName",
+          "userPhotoUrl",
+          "imageUrl",
+          "imagePath",
+          "text",
+          "statusType",
+          "regionId",
+          "regionName",
+          "religionPreference",
+          "locationState",
+          "locationDistrict",
+          "locationCity",
+          "backgroundColor",
+          "viewCount",
+          "likeCount",
+          "reactionCount",
+          "viewsByUser",
+          "likesByUser",
+          "reactionsByUser",
+          "createdAt",
+          "updatedAt",
+          "expiresAt",
+        ]) &&
+        request.resource.data.id is string &&
+        request.resource.data.id.size() > 0 &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.userName is string &&
+        request.resource.data.userName.size() > 0 &&
+        request.resource.data.userName.size() <= 120 &&
+        request.resource.data.userPhotoUrl is string &&
+        request.resource.data.userPhotoUrl.size() <= 2000 &&
+        request.resource.data.imageUrl is string &&
+        request.resource.data.imageUrl.size() <= 2000 &&
+        request.resource.data.imagePath is string &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() <= 300 &&
+        request.resource.data.statusType in ["image", "text", "image_text"] &&
+        request.resource.data.regionId is string &&
+        request.resource.data.regionId.size() > 0 &&
+        request.resource.data.regionId.size() <= 80 &&
+        request.resource.data.regionName is string &&
+        request.resource.data.regionName.size() <= 120 &&
+        request.resource.data.religionPreference in [
+          "hindu",
+          "muslim",
+          "christian",
+          "all",
+        ] &&
+        request.resource.data.locationState is string &&
+        request.resource.data.locationState.size() <= 120 &&
+        request.resource.data.locationDistrict is string &&
+        request.resource.data.locationDistrict.size() <= 120 &&
+        request.resource.data.locationCity is string &&
+        request.resource.data.locationCity.size() <= 120 &&
+        request.resource.data.backgroundColor is int &&
+        request.resource.data.viewCount is int &&
+        request.resource.data.viewCount == 0 &&
+        request.resource.data.likeCount is int &&
+        request.resource.data.likeCount == 0 &&
+        request.resource.data.reactionCount is int &&
+        request.resource.data.reactionCount == 0 &&
+        request.resource.data.viewsByUser is map &&
+        request.resource.data.viewsByUser.size() == 0 &&
+        request.resource.data.likesByUser is map &&
+        request.resource.data.likesByUser.size() == 0 &&
+        request.resource.data.reactionsByUser is map &&
+        request.resource.data.reactionsByUser.size() == 0 &&
+        (
+          (
+            request.resource.data.statusType == "text" &&
+            request.resource.data.imageUrl == "" &&
+            request.resource.data.imagePath == "" &&
+            request.resource.data.text.size() > 0
+          ) ||
+          (
+            request.resource.data.statusType == "image" &&
+            request.resource.data.imageUrl.size() > 0 &&
+            request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/status_uploads/.*") &&
+            request.resource.data.text == ""
+          ) ||
+          (
+            request.resource.data.statusType == "image_text" &&
+            request.resource.data.imageUrl.size() > 0 &&
+            request.resource.data.imagePath.matches("^users/" + request.auth.uid + "/status_uploads/.*") &&
+            request.resource.data.text.size() > 0
+          )
+        ) &&
+        request.resource.data.createdAt is int &&
+        request.resource.data.updatedAt is int &&
+        request.resource.data.expiresAt is int &&
+        request.resource.data.expiresAt > request.resource.data.createdAt;
+    }
+
+    function validCommunityStatusEngagementUpdate() {
+      return signedIn() &&
+        canReadCommunityStatus() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "viewCount",
+          "likeCount",
+          "reactionCount",
+          "viewsByUser",
+          "likesByUser",
+          "reactionsByUser",
+          "updatedAt",
+        ]) &&
+        request.resource.data.viewCount is int &&
+        request.resource.data.viewCount >= 0 &&
+        request.resource.data.likeCount is int &&
+        request.resource.data.likeCount >= 0 &&
+        request.resource.data.reactionCount is int &&
+        request.resource.data.reactionCount >= 0 &&
+        request.resource.data.viewsByUser is map &&
+        request.resource.data.likesByUser is map &&
+        request.resource.data.reactionsByUser is map &&
+        request.resource.data.updatedAt is int;
+    }
+
+    function validCommunityStatusCommentCreate(statusId) {
+      let status = get(/databases/$(database)/documents/communityStatuses/$(statusId)).data;
+      return signedIn() &&
+        canReadCommunityStatusData(status) &&
+        status.userId != request.auth.uid &&
+        request.resource.data.keys().hasOnly([
+          "id",
+          "statusId",
+          "statusOwnerId",
+          "userId",
+          "userName",
+          "text",
+          "createdAt",
+        ]) &&
+        request.resource.data.id is string &&
+        request.resource.data.id.size() > 0 &&
+        request.resource.data.statusId == statusId &&
+        request.resource.data.statusOwnerId == status.userId &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.userName is string &&
+        request.resource.data.userName.size() > 0 &&
+        request.resource.data.userName.size() <= 120 &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 220 &&
+        request.resource.data.createdAt is int;
+    }
+
+    function canReadCommunityStatusData(status) {
+      let viewer = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return signedIn() &&
+        status.regionId == viewer.selectedRegion &&
+        (
+          viewer.religionPreference == "all" ||
+          status.religionPreference == "all" ||
+          status.religionPreference == viewer.religionPreference ||
+          status.userId == request.auth.uid
+        );
+    }
+
+    function canDeleteCommunityStatus() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function canReadCommunityStatus() {
+      return canReadCommunityStatusData(resource.data);
+    }
+
+    function canReadCommunityStatusComment(statusId) {
+      let status = get(/databases/$(database)/documents/communityStatuses/$(statusId)).data;
+      return signedIn() &&
+        canReadCommunityStatusData(status) &&
+        (
+          status.userId == request.auth.uid ||
+          resource.data.userId == request.auth.uid
+        );
+    }
+
+    function validCommunityContentReportCreate() {
+      return signedIn() &&
+        request.resource.data.keys().hasOnly([
+          "id",
+          "contentType",
+          "statusId",
+          "commentId",
+          "reportedUserId",
+          "reportedUserName",
+          "reporterUserId",
+          "reporterName",
+          "reporterEmail",
+          "reason",
+          "details",
+          "statusTextPreview",
+          "commentTextPreview",
+          "statusImagePath",
+          "regionId",
+          "regionName",
+          "religionPreference",
+          "locationState",
+          "locationDistrict",
+          "locationCity",
+          "statusCreatedAt",
+          "reportedAt",
+          "reviewStatus",
+        ]) &&
+        request.resource.data.id is string &&
+        request.resource.data.id.size() > 0 &&
+        request.resource.data.contentType in ["status", "comment"] &&
+        request.resource.data.statusId is string &&
+        request.resource.data.statusId.size() > 0 &&
+        request.resource.data.commentId is string &&
+        request.resource.data.commentId.size() <= 160 &&
+        request.resource.data.reportedUserId is string &&
+        request.resource.data.reportedUserId.size() > 0 &&
+        request.resource.data.reportedUserId != request.auth.uid &&
+        request.resource.data.reportedUserName is string &&
+        request.resource.data.reportedUserName.size() <= 120 &&
+        request.resource.data.reporterUserId == request.auth.uid &&
+        request.resource.data.reporterName is string &&
+        request.resource.data.reporterName.size() > 0 &&
+        request.resource.data.reporterName.size() <= 120 &&
+        request.resource.data.reporterEmail is string &&
+        request.resource.data.reporterEmail.size() <= 320 &&
+        request.resource.data.reason in [
+          "Harassment or bullying",
+          "Hate speech or discrimination",
+          "Sexual or adult content",
+          "Violence or dangerous content",
+          "Spam, scam, or fake content",
+          "Misinformation or deceptive political content",
+          "Privacy violation or personal information",
+          "Copyright or trademark issue",
+          "Illegal content",
+          "Other safety issue",
+        ] &&
+        request.resource.data.details is string &&
+        request.resource.data.details.size() <= 500 &&
+        request.resource.data.statusTextPreview is string &&
+        request.resource.data.statusTextPreview.size() <= 300 &&
+        request.resource.data.commentTextPreview is string &&
+        request.resource.data.commentTextPreview.size() <= 220 &&
+        request.resource.data.statusImagePath is string &&
+        request.resource.data.statusImagePath.size() <= 2000 &&
+        request.resource.data.regionId is string &&
+        request.resource.data.regionId.size() <= 80 &&
+        request.resource.data.regionName is string &&
+        request.resource.data.regionName.size() <= 120 &&
+        request.resource.data.religionPreference is string &&
+        request.resource.data.religionPreference.size() <= 40 &&
+        request.resource.data.locationState is string &&
+        request.resource.data.locationState.size() <= 120 &&
+        request.resource.data.locationDistrict is string &&
+        request.resource.data.locationDistrict.size() <= 120 &&
+        request.resource.data.locationCity is string &&
+        request.resource.data.locationCity.size() <= 120 &&
+        request.resource.data.statusCreatedAt is int &&
+        request.resource.data.reportedAt is int &&
+        request.resource.data.reviewStatus == "pending";
     }
 
     // Direct client access to subscription entitlements is read-only for owner.
@@ -337,6 +639,31 @@ service cloud.firestore {
       // Manager/Admin can review (approve/reject) and update status fields.
       allow update: if isModerator();
       allow delete: if false;
+    }
+
+    // Short-lived community statuses visible only inside matching region/religion scope.
+    match /communityStatuses/{statusId} {
+      allow read: if canReadCommunityStatus();
+      allow create: if signedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        validCommunityStatusCreate();
+      allow update: if validCommunityStatusEngagementUpdate();
+      allow delete: if canDeleteCommunityStatus();
+
+      match /comments/{commentId} {
+        allow read: if canReadCommunityStatusComment(statusId);
+        allow create: if validCommunityStatusCommentCreate(statusId);
+        allow update: if false;
+        allow delete: if signedIn() &&
+          get(/databases/$(database)/documents/communityStatuses/$(statusId)).data.userId == request.auth.uid;
+      }
+    }
+
+    // User safety reports for community statuses and status replies.
+    // Users can submit reports; only moderators can read or resolve them.
+    match /communityContentReports/{reportId} {
+      allow create: if validCommunityContentReportCreate();
+      allow read, update, delete: if isModerator();
     }
 
     // Website/landing pages are intentionally not connected to app portals.

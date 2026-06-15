@@ -7,6 +7,8 @@ class UserPosterUpload {
     required this.userMobile,
     required this.imageUrl,
     required this.imagePath,
+    required this.quoteText,
+    required this.submissionType,
     required this.categoryId,
     required this.categoryLabel,
     required this.status,
@@ -27,6 +29,8 @@ class UserPosterUpload {
   final String userMobile;
   final String imageUrl;
   final String imagePath;
+  final String quoteText;
+  final String submissionType;
   final String categoryId;
   final String categoryLabel;
   final String status;
@@ -64,6 +68,8 @@ class UserPosterUpload {
       userMobile: _readString(map['userMobile']),
       imageUrl: _readString(map['imageUrl']),
       imagePath: _readString(map['imagePath']),
+      quoteText: _readString(map['quoteText']),
+      submissionType: _readString(map['submissionType']),
       categoryId: _readString(map['categoryId']),
       categoryLabel: _readString(map['categoryLabel']),
       status: _readString(map['status']),

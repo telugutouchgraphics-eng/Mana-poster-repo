@@ -44,6 +44,7 @@ class AppRegionService {
       }
       await _mirrorLocalSelection(region, resolvedPrefs);
       _memoryRegion = region;
+      unawaited(_syncToRemote(region));
       return region;
     } catch (_) {
       return _memoryRegion;

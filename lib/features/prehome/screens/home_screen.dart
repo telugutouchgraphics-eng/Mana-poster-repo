@@ -45,8 +45,10 @@ import 'package:mana_poster/features/image_editor/screens/image_editor_screen.da
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
+import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
+import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
@@ -56,6 +58,7 @@ import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/prehome/services/community_status_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
@@ -137,7 +140,8 @@ bool _posterStringLooksDirectHttpDownloadUrl(String raw) {
   }
   final lower = s.toLowerCase();
   return (lower.startsWith('http://') || lower.startsWith('https://')) &&
-      !lower.startsWith('gs://');
+      !lower.startsWith('gs://') &&
+      !_posterStringLooksFirebaseResolvable(s);
 }
 
 /// Looks like a Storage object path for [FirebaseStorage.ref], not http(s).
@@ -205,7 +209,7 @@ List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
   bool isGsUrl(String value) => value.trim().toLowerCase().startsWith('gs://');
 
   addPath(imageStoragePath);
-  if (isGsUrl(imageUrl)) {
+  if (isGsUrl(imageUrl) || _posterStringLooksFirebaseResolvable(imageUrl)) {
     addUrl(imageUrl);
   } else if (_posterStringLooksFirebaseStorageRelativePath(imageUrl)) {
     addPath(imageUrl);
@@ -216,7 +220,8 @@ List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
   final tTrim = thumbnailUrl.trim();
   final iTrim = imageUrl.trim();
   if (tTrim.isNotEmpty && tTrim != iTrim) {
-    if (isGsUrl(thumbnailUrl)) {
+    if (isGsUrl(thumbnailUrl) ||
+        _posterStringLooksFirebaseResolvable(thumbnailUrl)) {
       addUrl(thumbnailUrl);
     } else if (_posterStringLooksFirebaseStorageRelativePath(thumbnailUrl)) {
       addPath(thumbnailUrl);
@@ -4815,6 +4820,7 @@ class _HomeScreenState extends State<HomeScreen>
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -4831,48 +4837,100 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
 
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () => unawaited(openUploadPoster()),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFD81B60),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 16,
-                      ),
-                      shape: const StadiumBorder(),
+        Future<void> openUploadStatus() async {
+          Navigator.of(sheetContext).pop();
+          if (!mounted) {
+            return;
+          }
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const CommunityStatusUploadScreen(),
+            ),
+          );
+        }
+
+        Widget action({
+          required String label,
+          required IconData icon,
+          required Color color,
+          required VoidCallback onTap,
+        }) {
+          return InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 9,
                     ),
-                    icon: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(
-                        color: Colors.white24,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.add_rounded, size: 18),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.58),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                    label: Text(
-                      strings.localized(
-                        telugu: 'పోస్టర్ అప్‌లోడ్',
-                        english: 'Upload Poster',
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 28),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: action(
+                    icon: Icons.cloud_upload_rounded,
+                    color: const Color(0xFFD81B60),
+                    label: strings.localized(
+                      telugu: 'Upload Poster',
+                      english: 'Upload Poster',
+                    ),
+                    onTap: () => unawaited(openUploadPoster()),
+                  ),
                 ),
-                const SizedBox(height: 6),
-                TextButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: Text(
-                    strings.localized(telugu: 'రద్దు', english: 'Cancel'),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: action(
+                    icon: Icons.auto_awesome_rounded,
+                    color: const Color(0xFF0F766E),
+                    label: strings.localized(
+                      telugu: 'Upload Status',
+                      english: 'Upload Status',
+                    ),
+                    onTap: () => unawaited(openUploadStatus()),
                   ),
                 ),
               ],
@@ -5201,6 +5259,15 @@ class _HomeScreenState extends State<HomeScreen>
                                 },
                               ),
                             ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _HomeCommunityStatusStrip(
+                        onAddStatus: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const CommunityStatusUploadScreen(),
                           ),
                         ),
                       ),
@@ -5537,6 +5604,1343 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _HomeCommunityStatusStrip extends StatelessWidget {
+  const _HomeCommunityStatusStrip({required this.onAddStatus});
+
+  final VoidCallback onAddStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    return StreamBuilder<List<CommunityStatus>>(
+      stream: CommunityStatusService.instance.watchVisibleStatuses(),
+      builder: (context, snapshot) {
+        final statuses = snapshot.data ?? const <CommunityStatus>[];
+        final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
+        final myStatuses = statuses
+            .where((status) => status.userId == currentUserId)
+            .toList(growable: false);
+        final myStatus = myStatuses.isNotEmpty ? myStatuses.first : null;
+        final otherStatuses = statuses
+            .where((status) => status.userId != currentUserId)
+            .toList(growable: false);
+        return SizedBox(
+          height: 104,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            scrollDirection: Axis.horizontal,
+            itemBuilder: (context, index) {
+              final status = index == 0 ? myStatus : otherStatuses[index - 1];
+              final isMyStatus = index == 0;
+              return _HomeCommunityStatusBubble(
+                label: isMyStatus
+                    ? strings.localized(
+                        telugu: 'My Status',
+                        english: 'My Status',
+                      )
+                    : (status?.userName.isNotEmpty == true
+                          ? status!.userName
+                          : 'User'),
+                imageUrl: status?.imageUrl ?? '',
+                previewText: status?.text ?? '',
+                previewBackgroundColor: status?.backgroundColor ?? 0,
+                icon: status == null
+                    ? Icons.add_rounded
+                    : status.hasImage
+                    ? Icons.image_rounded
+                    : Icons.format_quote_rounded,
+                onTap: status == null
+                    ? onAddStatus
+                    : () => _showCommunityStatusDialog(context, status),
+                accentColor: status == null
+                    ? const Color(0xFF0F766E)
+                    : const Color(0xFFD81B60),
+              );
+            },
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
+            itemCount: 1 + otherStatuses.length,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCommunityStatusDialog(
+    BuildContext context,
+    CommunityStatus status,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => _CommunityStatusViewerScreen(initialStatus: status),
+      ),
+    );
+  }
+}
+
+class _CommunityStatusViewerScreen extends StatefulWidget {
+  const _CommunityStatusViewerScreen({required this.initialStatus});
+
+  final CommunityStatus initialStatus;
+
+  @override
+  State<_CommunityStatusViewerScreen> createState() =>
+      _CommunityStatusViewerScreenState();
+}
+
+class _CommunityStatusViewerScreenState
+    extends State<_CommunityStatusViewerScreen>
+    with SingleTickerProviderStateMixin {
+  static const Duration _viewDuration = Duration(seconds: 7);
+  static const List<String> _reactions = <String>['🔥', '👏', '😍', '🙏', '😠'];
+
+  late final AnimationController _progressController;
+  bool _isDeleting = false;
+  bool _showingReplies = false;
+  bool _isHoldPaused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController =
+        AnimationController(
+          vsync: this,
+          duration: _viewDuration,
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed && mounted && !_isDeleting) {
+            Navigator.of(context).maybePop();
+          }
+        });
+    unawaited(
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: SystemUiOverlay.values,
+      ),
+    );
+    unawaited(
+      CommunityStatusService.instance.recordView(widget.initialStatus.id),
+    );
+    _progressController.forward();
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    unawaited(
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual,
+        overlays: <SystemUiOverlay>[SystemUiOverlay.top],
+      ),
+    );
+    super.dispose();
+  }
+
+  Future<void> _deleteStatus(CommunityStatus status) async {
+    if (_isDeleting) {
+      return;
+    }
+    setState(() => _isDeleting = true);
+    _progressController.stop();
+    await Future<void>.delayed(const Duration(milliseconds: 520));
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+    unawaited(CommunityStatusService.instance.deleteStatus(status));
+  }
+
+  Future<void> _showRepliesSheet(CommunityStatus status) async {
+    if (_showingReplies || _isDeleting) {
+      return;
+    }
+    setState(() => _showingReplies = true);
+    _progressController.stop();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _StatusRepliesSheet(status: status),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _showingReplies = false);
+    if (!_isDeleting && _progressController.value < 1) {
+      unawaited(_progressController.forward());
+    }
+  }
+
+  void _pauseProgressForInput() {
+    if (!_isDeleting) {
+      _progressController.stop();
+    }
+  }
+
+  void _resumeProgressAfterInput() {
+    if (!_isDeleting && !_showingReplies && _progressController.value < 1) {
+      unawaited(_progressController.forward());
+    }
+  }
+
+  void _pauseProgressForHold() {
+    if (_isDeleting || _showingReplies || _progressController.value >= 1) {
+      return;
+    }
+    _isHoldPaused = true;
+    _progressController.stop();
+  }
+
+  void _resumeProgressAfterHold() {
+    if (!_isHoldPaused) {
+      return;
+    }
+    _isHoldPaused = false;
+    if (!_isDeleting && !_showingReplies && _progressController.value < 1) {
+      unawaited(_progressController.forward());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<CommunityStatus?>(
+      stream: CommunityStatusService.instance.watchStatus(
+        widget.initialStatus.id,
+      ),
+      initialData: widget.initialStatus,
+      builder: (context, snapshot) {
+        if (snapshot.data == null && !_isDeleting) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).maybePop();
+            }
+          });
+        }
+        final status = snapshot.data ?? widget.initialStatus;
+        final isOwner =
+            FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
+        final statusTitle = isOwner
+            ? 'My Status'
+            : (status.userName.isNotEmpty ? status.userName : 'User');
+        final statusColor = Color(
+          status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
+        );
+        return Scaffold(
+          backgroundColor: status.imageUrl.isEmpty
+              ? statusColor
+              : const Color(0xFF050505),
+          body: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTapDown: (_) => _pauseProgressForHold(),
+            onTapUp: (_) => _resumeProgressAfterHold(),
+            onTapCancel: _resumeProgressAfterHold,
+            onVerticalDragEnd: isOwner
+                ? (details) {
+                    final velocity = details.primaryVelocity ?? 0;
+                    if (velocity < -220) {
+                      unawaited(_showRepliesSheet(status));
+                    }
+                  }
+                : null,
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: AnimatedSlide(
+                    offset: _isDeleting
+                        ? const Offset(0.42, -0.42)
+                        : Offset.zero,
+                    duration: const Duration(milliseconds: 520),
+                    curve: Curves.easeInBack,
+                    child: AnimatedScale(
+                      scale: _isDeleting ? 0.08 : 1,
+                      duration: const Duration(milliseconds: 520),
+                      curve: Curves.easeInBack,
+                      child: AnimatedRotation(
+                        turns: _isDeleting ? -0.06 : 0,
+                        duration: const Duration(milliseconds: 520),
+                        curve: Curves.easeInBack,
+                        child: AnimatedOpacity(
+                          opacity: _isDeleting ? 0.12 : 1,
+                          duration: const Duration(milliseconds: 520),
+                          child: _StatusFullScreenContent(status: status),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedBuilder(
+                    animation: _progressController,
+                    builder: (context, _) {
+                      return LinearProgressIndicator(
+                        value: _progressController.value,
+                        minHeight: 3,
+                        backgroundColor: Colors.white.withValues(alpha: 0.22),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 12,
+                  right: 12,
+                  child: Row(
+                    children: <Widget>[
+                      IconButton.filled(
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withValues(alpha: 0.35),
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          statusTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: isOwner
+                                ? FontWeight.w700
+                                : FontWeight.w900,
+                            fontSize: 16,
+                            shadows: isOwner
+                                ? null
+                                : const <Shadow>[
+                                    Shadow(
+                                      color: Colors.black87,
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                          ),
+                        ),
+                      ),
+                      if (isOwner) ...<Widget>[
+                        const SizedBox(width: 8),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          decoration: BoxDecoration(
+                            color: _isDeleting
+                                ? Colors.redAccent.withValues(alpha: 0.9)
+                                : Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                          ),
+                          child: IconButton(
+                            color: Colors.white,
+                            onPressed: _isDeleting
+                                ? null
+                                : () => unawaited(_deleteStatus(status)),
+                            icon: const Icon(Icons.delete_rounded),
+                          ),
+                        ),
+                      ] else ...<Widget>[
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          tooltip: 'More',
+                          icon: const Icon(
+                            Icons.more_vert_rounded,
+                            color: Colors.white,
+                          ),
+                          color: const Color(0xFF111827),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          onSelected: (value) {
+                            if (value == 'report') {
+                              unawaited(
+                                _showCommunityStatusReportSheet(
+                                  context,
+                                  status: status,
+                                ),
+                              );
+                            }
+                          },
+                          itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                            PopupMenuItem<String>(
+                              value: 'report',
+                              child: Text(
+                                'Report',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).padding.bottom + 20,
+                  child: _StatusEngagementPanel(
+                    status: status,
+                    isOwner: isOwner,
+                    reactions: _reactions,
+                    onPauseProgress: _pauseProgressForInput,
+                    onResumeProgress: _resumeProgressAfterInput,
+                    onOpenReplies: isOwner
+                        ? () => unawaited(_showRepliesSheet(status))
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatusRepliesSheet extends StatelessWidget {
+  const _StatusRepliesSheet({required this.status});
+
+  final CommunityStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.62,
+      minChildSize: 0.36,
+      maxChildSize: 0.92,
+      builder: (context, scrollController) {
+        return DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Color(0xFF101418),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            children: <Widget>[
+              const SizedBox(height: 10),
+              Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Replies',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: StreamBuilder<List<CommunityStatusComment>>(
+                  stream: CommunityStatusService.instance.watchComments(
+                    status.id,
+                  ),
+                  builder: (context, snapshot) {
+                    final comments =
+                        snapshot.data ?? const <CommunityStatusComment>[];
+                    if (comments.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No replies yet',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: comments.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Expanded(
+                              flex: 4,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Text(
+                                  comment.userName.isNotEmpty
+                                      ? comment.userName
+                                      : 'User',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 6,
+                              child: _StatusCommentBubble(text: comment.text),
+                            ),
+                            const SizedBox(width: 4),
+                            PopupMenuButton<String>(
+                              tooltip: 'More',
+                              icon: const Icon(
+                                Icons.more_vert_rounded,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
+                              color: const Color(0xFF111827),
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              onSelected: (value) {
+                                if (value == 'report') {
+                                  unawaited(
+                                    _showCommunityStatusReportSheet(
+                                      context,
+                                      status: status,
+                                      comment: comment,
+                                    ),
+                                  );
+                                }
+                              },
+                              itemBuilder: (_) =>
+                                  const <PopupMenuEntry<String>>[
+                                    PopupMenuItem<String>(
+                                      value: 'report',
+                                      child: Text(
+                                        'Report',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+const List<String> _communityReportReasons = <String>[
+  'Harassment or bullying',
+  'Hate speech or discrimination',
+  'Sexual or adult content',
+  'Violence or dangerous content',
+  'Spam, scam, or fake content',
+  'Misinformation or deceptive political content',
+  'Privacy violation or personal information',
+  'Copyright or trademark issue',
+  'Illegal content',
+  'Other safety issue',
+];
+
+Future<void> _showCommunityStatusReportSheet(
+  BuildContext context, {
+  required CommunityStatus status,
+  CommunityStatusComment? comment,
+}) async {
+  final detailsController = TextEditingController();
+  var selectedReason = _communityReportReasons.first;
+  var submitting = false;
+  final reportedLabel = comment == null ? 'status' : 'reply';
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Color(0xFF101418),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Report $reportedLabel',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: <Widget>[
+                              for (final reason in _communityReportReasons)
+                                ChoiceChip(
+                                  label: Text(reason),
+                                  selected: selectedReason == reason,
+                                  onSelected: submitting
+                                      ? null
+                                      : (_) => setSheetState(
+                                          () => selectedReason = reason,
+                                        ),
+                                  selectedColor: const Color(0xFFFFD166),
+                                  labelStyle: TextStyle(
+                                    color: selectedReason == reason
+                                        ? const Color(0xFF111827)
+                                        : Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.10,
+                                  ),
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: detailsController,
+                        enabled: !submitting,
+                        maxLength: CommunityStatusService.maxReportDetailsLength,
+                        maxLines: 3,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: InputDecoration(
+                          counterStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                          ),
+                          hintText: 'Add details optional',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: submitting
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: submitting
+                                  ? null
+                                  : () async {
+                                      setSheetState(() => submitting = true);
+                                      final ok = await CommunityStatusService
+                                          .instance
+                                          .submitReport(
+                                            status: status,
+                                            comment: comment,
+                                            reason: selectedReason,
+                                            details: detailsController.text,
+                                          );
+                                      if (!context.mounted) {
+                                        return;
+                                      }
+                                      Navigator.of(sheetContext).pop();
+                                      ScaffoldMessenger.of(context)
+                                        ..hideCurrentSnackBar()
+                                        ..showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              ok
+                                                  ? 'Report submitted. Thank you.'
+                                                  : 'Report failed. Please try again.',
+                                            ),
+                                          ),
+                                        );
+                                    },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFD166),
+                                foregroundColor: const Color(0xFF111827),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              icon: submitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF111827),
+                                      ),
+                                    )
+                                  : const Icon(Icons.flag_rounded),
+                              label: Text(submitting ? 'Sending' : 'Submit'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+  detailsController.dispose();
+}
+
+class _StatusCommentBubble extends StatefulWidget {
+  const _StatusCommentBubble({required this.text});
+
+  final String text;
+
+  @override
+  State<_StatusCommentBubble> createState() => _StatusCommentBubbleState();
+}
+
+class _StatusCommentBubbleState extends State<_StatusCommentBubble> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = widget.text.trim();
+    final showReadMore = !_expanded && text.length > 70;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              text,
+              maxLines: _expanded ? null : 2,
+              overflow: _expanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                height: 1.24,
+              ),
+            ),
+            if (showReadMore) ...<Widget>[
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => setState(() => _expanded = true),
+                borderRadius: BorderRadius.circular(10),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    'Read more',
+                    style: TextStyle(
+                      color: Color(0xFF25D366),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusFullScreenContent extends StatelessWidget {
+  const _StatusFullScreenContent({required this.status});
+
+  final CommunityStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    if (status.imageUrl.isNotEmpty) {
+      return Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          CachedNetworkImage(
+            imageUrl: status.imageUrl,
+            fit: BoxFit.contain,
+            placeholder: (_, _) =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            errorWidget: (_, _, _) => const Center(
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white70,
+                size: 44,
+              ),
+            ),
+          ),
+          if (status.text.isNotEmpty)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 132),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.48),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      status.text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        height: 1.22,
+                        fontWeight: FontWeight.w800,
+                        shadows: <Shadow>[
+                          Shadow(color: Colors.black87, blurRadius: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          status.text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 34,
+            height: 1.16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusEngagementPanel extends StatelessWidget {
+  const _StatusEngagementPanel({
+    required this.status,
+    required this.isOwner,
+    required this.reactions,
+    required this.onPauseProgress,
+    required this.onResumeProgress,
+    this.onOpenReplies,
+  });
+
+  final CommunityStatus status;
+  final bool isOwner;
+  final List<String> reactions;
+  final VoidCallback onPauseProgress;
+  final VoidCallback onResumeProgress;
+  final VoidCallback? onOpenReplies;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: <Widget>[
+                _StatusMetric(
+                  icon: Icons.visibility_rounded,
+                  value: status.viewCount,
+                ),
+                _StatusMetric(
+                  icon: Icons.favorite_rounded,
+                  value: status.likeCount,
+                ),
+                _StatusMetric(
+                  icon: Icons.emoji_emotions_rounded,
+                  value: status.reactionCount,
+                ),
+              ],
+            ),
+            if (isOwner && onOpenReplies != null) ...<Widget>[
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: onOpenReplies,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const <Widget>[
+                      Icon(
+                        Icons.keyboard_double_arrow_up_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Swipe up for replies',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (!isOwner) ...<Widget>[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  _StatusLikeButton(status: status),
+                  const SizedBox(width: 12),
+                  for (final reaction in reactions)
+                    _StatusReactionButton(status: status, reaction: reaction),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _StatusReplyInput(
+                status: status,
+                onFocusStart: onPauseProgress,
+                onFocusEnd: onResumeProgress,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusReplyInput extends StatefulWidget {
+  const _StatusReplyInput({
+    required this.status,
+    required this.onFocusStart,
+    required this.onFocusEnd,
+  });
+
+  final CommunityStatus status;
+  final VoidCallback onFocusStart;
+  final VoidCallback onFocusEnd;
+
+  @override
+  State<_StatusReplyInput> createState() => _StatusReplyInputState();
+}
+
+class _StatusReplyInputState extends State<_StatusReplyInput> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (_focusNode.hasFocus) {
+      widget.onFocusStart();
+    } else {
+      widget.onFocusEnd();
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (_sending || text.isEmpty) {
+      return;
+    }
+    setState(() => _sending = true);
+    final ok = await CommunityStatusService.instance.submitComment(
+      widget.status,
+      text,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _sending = false);
+    if (ok) {
+      _controller.clear();
+      FocusScope.of(context).unfocus();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reply sent')));
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Reply failed. Try again.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            enabled: !_sending,
+            minLines: 1,
+            maxLines: 3,
+            maxLength: CommunityStatusService.maxCommentLength,
+            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: 'Reply...',
+              hintStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontWeight: FontWeight.w700,
+              ),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.14),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          style: IconButton.styleFrom(
+            backgroundColor: const Color(0xFF25D366),
+            foregroundColor: const Color(0xFF06251A),
+          ),
+          onPressed: _sending ? null : () => unawaited(_send()),
+          icon: _sending
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF06251A),
+                  ),
+                )
+              : const Icon(Icons.send_rounded),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusMetric extends StatelessWidget {
+  const _StatusMetric({required this.icon, required this.value});
+
+  final IconData icon;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, color: Colors.white, size: 20),
+        const SizedBox(width: 6),
+        Text(
+          value.toString(),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusLikeButton extends StatelessWidget {
+  const _StatusLikeButton({required this.status});
+
+  final CommunityStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filled(
+      style: IconButton.styleFrom(
+        backgroundColor: status.viewerHasLiked
+            ? const Color(0xFFE91E63)
+            : Colors.white.withValues(alpha: 0.18),
+        foregroundColor: Colors.white,
+      ),
+      onPressed: () =>
+          unawaited(CommunityStatusService.instance.toggleLike(status.id)),
+      icon: const Icon(Icons.favorite_rounded),
+    );
+  }
+}
+
+class _StatusReactionButton extends StatelessWidget {
+  const _StatusReactionButton({required this.status, required this.reaction});
+
+  final CommunityStatus status;
+  final String reaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = status.viewerReaction == reaction;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: InkWell(
+        onTap: () => unawaited(
+          CommunityStatusService.instance.setReaction(status.id, reaction),
+        ),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.32)
+                : Colors.white.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: Text(reaction, style: const TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeCommunityStatusBubble extends StatelessWidget {
+  const _HomeCommunityStatusBubble({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.accentColor,
+    this.imageUrl = '',
+    this.previewText = '',
+    this.previewBackgroundColor = 0,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color accentColor;
+  final String imageUrl;
+  final String previewText;
+  final int previewBackgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 62,
+              height: 62,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: <Color>[accentColor, const Color(0xFFF59E0B)],
+                ),
+              ),
+              child: ClipOval(
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, _, _) => _StatusIcon(icon: icon),
+                      )
+                    : previewText.isNotEmpty
+                    ? _StatusTextPreview(
+                        text: previewText,
+                        backgroundColor: previewBackgroundColor,
+                      )
+                    : _StatusIcon(icon: icon),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusTextPreview extends StatelessWidget {
+  const _StatusTextPreview({required this.text, required this.backgroundColor});
+
+  final String text;
+  final int backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Color(backgroundColor == 0 ? 0xFF4CAF50 : backgroundColor);
+    return Container(
+      color: color,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          height: 1.05,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusIcon extends StatelessWidget {
+  const _StatusIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Icon(icon, color: const Color(0xFF0F766E), size: 28),
     );
   }
 }
@@ -8738,10 +10142,23 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
             _aspectRatioSource == sourceKey) {
           return;
         }
-        setState(() {
-          _resolvedAspectRatio = nextAspectRatio;
-        });
-        _detachAspectRatioListener();
+        void applyAspectRatio() {
+          if (!mounted || _aspectRatioSource != sourceKey) {
+            return;
+          }
+          setState(() {
+            _resolvedAspectRatio = nextAspectRatio;
+          });
+          _detachAspectRatioListener();
+        }
+
+        if (synchronousCall) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            applyAspectRatio();
+          });
+        } else {
+          applyAspectRatio();
+        }
       },
       onError: (_, _) {
         if (_aspectRatioSource == sourceKey) {
@@ -8924,32 +10341,79 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   child: const _ImageLoadingState(),
                 );
               },
-              errorBuilder:
-                  (BuildContext context, Object error, StackTrace? stackTrace) {
-                    final strings = context.strings;
-                    final failed = resolvedUrl.trim();
-                    final thumb = placeholderUrl;
-                    if (thumb.isNotEmpty && thumb != failed) {
-                      return buildNetworkPosterImage(
-                        resolvedUrl: thumb,
-                        decodeWidth: decodeWidth.clamp(360, 960),
-                        notifyWhenLoaded: true,
+              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+                final strings = context.strings;
+                final failed = resolvedUrl.trim();
+                final thumb = placeholderUrl;
+                if (thumb.isNotEmpty && thumb != failed) {
+                  return buildNetworkPosterImage(
+                    resolvedUrl: thumb,
+                    decodeWidth: decodeWidth.clamp(360, 960),
+                    notifyWhenLoaded: true,
+                  );
+                }
+                if (failed.startsWith('http://') ||
+                    failed.startsWith('https://')) {
+                  unawaited(
+                    PosterNetworkImageCache.instance.removeFile(failed),
+                  );
+                  return Image.network(
+                    failed,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.topCenter,
+                    gaplessPlayback: true,
+                    filterQuality: widget.preferOriginalPosterQuality
+                        ? FilterQuality.high
+                        : FilterQuality.low,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) {
+                          if (wasSynchronouslyLoaded || frame != null) {
+                            if (notifyWhenLoaded &&
+                                widget.onFirstFrameReady != null) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                widget.onFirstFrameReady!.call();
+                              });
+                            }
+                            return child;
+                          }
+                          return SizedBox(
+                            width: double.infinity,
+                            height: posterPlaceholderHeight,
+                            child: const _ImageLoadingState(),
+                          );
+                        },
+                    errorBuilder: (_, _, _) {
+                      schedulePosterReady();
+                      return _ImageErrorState(
+                        title: strings.localized(
+                          telugu:
+                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                          english: 'Template image unavailable',
+                        ),
+                        subtitle: strings.localized(
+                          telugu:
+                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                          english: 'Please refresh or try another template.',
+                        ),
                       );
-                    }
-                    schedulePosterReady();
-                    return _ImageErrorState(
-                      title: strings.localized(
-                        telugu:
-                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                        english: 'Template image unavailable',
-                      ),
-                      subtitle: strings.localized(
-                        telugu:
-                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                        english: 'Please refresh or try another template.',
-                      ),
-                    );
-                  },
+                    },
+                  );
+                }
+                schedulePosterReady();
+                return _ImageErrorState(
+                  title: strings.localized(
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    english: 'Template image unavailable',
+                  ),
+                  subtitle: strings.localized(
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    english: 'Please refresh or try another template.',
+                  ),
+                );
+              },
             );
           }
 
@@ -11240,12 +12704,14 @@ class _PhotoShapeFrame extends StatelessWidget {
                 Color(0xFFFFFFFF),
                 Color(0xFFFFFFFF),
                 Color(0xF2FFFFFF),
-                Color(0xB8FFFFFF),
-                Color(0x54FFFFFF),
-                Color(0x12FFFFFF),
+                Color(0xCCFFFFFF),
+                Color(0x7AFFFFFF),
+                Color(0x30FFFFFF),
+                Color(0x08FFFFFF),
+                Color(0x00FFFFFF),
                 Color(0x00FFFFFF),
               ],
-              stops: <double>[0.0, 0.5, 0.62, 0.74, 0.84, 0.92, 1.0],
+              stops: <double>[0.0, 0.4, 0.52, 0.62, 0.72, 0.8, 0.86, 0.9, 1.0],
             ).createShader(bounds);
           },
           child: layer,

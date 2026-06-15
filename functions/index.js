@@ -4613,6 +4613,87 @@ exports.cleanupExpiredCreatorPosters = onSchedule(
     },
 );
 
+exports.cleanupExpiredCommunityStatuses = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "every 60 minutes",
+      timeZone: "Asia/Kolkata",
+      timeoutSeconds: 300,
+      memory: "256MiB",
+    },
+    async () => {
+      async function deleteCommunityStatusComments(statusRef) {
+        let deletedCount = 0;
+        while (true) {
+          const commentsSnap = await statusRef
+              .collection("comments")
+              .limit(200)
+              .get();
+          if (commentsSnap.empty) {
+            break;
+          }
+          const commentsBatch = db.batch();
+          for (const commentDoc of commentsSnap.docs) {
+            commentsBatch.delete(commentDoc.ref);
+          }
+          await commentsBatch.commit();
+          deletedCount += commentsSnap.size;
+          if (commentsSnap.size < 200) {
+            break;
+          }
+        }
+        return deletedCount;
+      }
+
+      const now = Date.now();
+      const snapshot = await db
+          .collection("communityStatuses")
+          .where("expiresAt", "<=", now)
+          .limit(200)
+          .get();
+
+      if (snapshot.empty) {
+        logger.info("cleanupExpiredCommunityStatuses completed", {
+          deletedCount: 0,
+          imageDeleteCount: 0,
+        });
+        return;
+      }
+
+      const imagePaths = [];
+      let commentDeleteCount = 0;
+      const batch = db.batch();
+      for (const doc of snapshot.docs) {
+        const data = doc.data() || {};
+        const imagePath = String(data.imagePath || "").trim();
+        if (imagePath) {
+          imagePaths.push(imagePath);
+        }
+        commentDeleteCount += await deleteCommunityStatusComments(doc.ref);
+        batch.delete(doc.ref);
+      }
+      await batch.commit();
+
+      const bucket = admin.storage().bucket();
+      await Promise.all(imagePaths.map(async (imagePath) => {
+        try {
+          await bucket.file(imagePath).delete({ignoreNotFound: true});
+        } catch (error) {
+          logger.warn("Community status image cleanup failed", {
+            imagePath,
+            error: error.message || error,
+          });
+        }
+      }));
+
+      logger.info("cleanupExpiredCommunityStatuses completed", {
+        deletedCount: snapshot.size,
+        commentDeleteCount,
+        imageDeleteCount: imagePaths.length,
+      });
+    },
+);
+
 exports.retryPendingSubscriptionAcknowledgements = onSchedule(
     {
       region: "asia-south1",

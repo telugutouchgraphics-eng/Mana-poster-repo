@@ -706,6 +706,34 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
+          'Community upload లో image, quote లేదా రెండూ manager review కోసం పంపవచ్చు; approved poster సరైన category లో కనిపిస్తుంది.',
+      english:
+          'Community upload lets users send an image, quote, or both for manager review; approved posters appear in the appropriate category.',
+      hindi:
+          'Community upload में उपयोगकर्ता manager review के लिए image, quote या दोनों भेज सकते हैं; approved poster सही category में दिखाई देता है।',
+      tamil:
+          'Community upload மூலம் image, quote அல்லது இரண்டையும் manager review க்கு அனுப்பலாம்; approved poster பொருத்தமான category யில் காட்டப்படும்.',
+      kannada:
+          'Community upload ನಲ್ಲಿ image, quote ಅಥವಾ ಎರಡನ್ನೂ manager review ಗಾಗಿ ಕಳುಹಿಸಬಹುದು; approved poster ಸರಿಯಾದ category ಯಲ್ಲಿ ಕಾಣುತ್ತದೆ.',
+      malayalam:
+          'Community upload വഴി image, quote അല്ലെങ്കിൽ രണ്ടും manager review ന് അയയ്ക്കാം; approved poster ശരിയായ category യിൽ കാണിക്കും.',
+    ),
+    strings.localized(
+      telugu:
+          'Status feature లో text, image లేదా caption తో short-lived status upload చేయవచ్చు; అదే region/religion scope users కు కనిపిస్తుంది, 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
+      english:
+          'The Status feature lets users upload short-lived text, image, or caption statuses; they are shown within the matching region/religion scope, deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
+      hindi:
+          'Status feature में short-lived text, image या caption status upload किया जा सकता है; यह matching region/religion scope में दिखता है, 24 घंटे बाद backend cleanup से delete होता है, और replies status owner पढ़ सकता है।',
+      tamil:
+          'Status feature இல் text, image அல்லது caption status upload செய்யலாம்; அது matching region/religion scope இல் காட்டப்படும், 24 மணி நேரத்திற்கு பிறகு backend cleanup மூலம் delete ஆகும், replies ஐ status owner படிக்கலாம்.',
+      kannada:
+          'Status feature ನಲ್ಲಿ text, image ಅಥವಾ caption status upload ಮಾಡಬಹುದು; matching region/religion scope ನಲ್ಲಿ ಕಾಣುತ್ತದೆ, 24 ಗಂಟೆಗಳ ನಂತರ backend cleanup ಮೂಲಕ delete ಆಗುತ್ತದೆ, replies ಅನ್ನು status owner ಓದಬಹುದು.',
+      malayalam:
+          'Status feature ൽ text, image അല്ലെങ്കിൽ caption status upload ചെയ്യാം; matching region/religion scope ൽ കാണിക്കും, 24 മണിക്കൂറിന് ശേഷം backend cleanup വഴി delete ചെയ്യും, replies status owner വായിക്കാം.',
+    ),
+    strings.localized(
+      telugu:
           'పోస్టర్ ప్రొఫైల్, వ్యాపార పేరు, ఫోటో, వాట్సాప్ వివరాలు సేవ్ చేసుకోవచ్చు.',
       english:
           'Save poster profile, business name, photo, and WhatsApp details.',
@@ -785,6 +813,34 @@ class _AboutCopy {
           'ಪ್ರೊಫೈಲ್ ವಿಭಾಗದಲ್ಲಿ ನಿಮ್ಮ ಹೆಸರು, ಫೋಟೋ ಮತ್ತು ವ್ಯವಹಾರದ ವಿವರಗಳನ್ನು ಮೊದಲು ಉಳಿಸಬಹುದು.',
       malayalam:
           'പ്രൊഫൈൽ വിഭാഗത്തിൽ നിങ്ങളുടെ പേര്, ഫോട്ടോ, ബിസിനസ് വിവരങ്ങൾ എന്നിവ ആദ്യം സംരക്ഷിക്കാം.',
+    ),
+    strings.localized(
+      telugu:
+          'Community upload లో పంపిన quote/image ను manager review చేసి, అవసరమైతే customize చేసి సరైన category లో publish చేయవచ్చు.',
+      english:
+          'Community quote/image submissions are reviewed by a manager, who may customize and publish the poster in the correct category.',
+      hindi:
+          'Community quote/image submissions को manager review करता है और जरूरत होने पर customize करके सही category में publish कर सकता है।',
+      tamil:
+          'Community quote/image submissions ஐ manager review செய்து, தேவைப்பட்டால் customize செய்து சரியான category யில் publish செய்யலாம்.',
+      kannada:
+          'Community quote/image submissions ಅನ್ನು manager review ಮಾಡಿ, ಬೇಕಾದರೆ customize ಮಾಡಿ ಸರಿಯಾದ category ಯಲ್ಲಿ publish ಮಾಡಬಹುದು.',
+      malayalam:
+          'Community quote/image submissions manager review ചെയ്ത്, ആവശ്യമെങ്കിൽ customize ചെയ്ത് ശരിയായ category യിൽ publish ചെയ്യാം.',
+    ),
+    strings.localized(
+      telugu:
+          'Status upload చేస్తే అది temporary గా backend లో save అయి same region/religion users కు చూపబడుతుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
+      english:
+          'When a status is uploaded, it is stored temporarily in the backend and shown to same-region/religion users; other users can reply/comment, and the owner can swipe up to view replies.',
+      hindi:
+          'Status upload होने पर वह backend में temporarily save होकर same region/religion users को दिखता है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
+      tamil:
+          'Status upload செய்தால் அது backend இல் temporarily save ஆகி same region/religion users க்கு காட்டப்படும்; மற்ற users reply/comment அனுப்பலாம், owner swipe up செய்து replies பார்க்கலாம்.',
+      kannada:
+          'Status upload ಮಾಡಿದರೆ ಅದು backend ನಲ್ಲಿ temporarily save ಆಗಿ same region/religion users ಗೆ ಕಾಣುತ್ತದೆ; ಬೇರೆ users reply/comment ಕಳುಹಿಸಬಹುದು, owner swipe up ಮಾಡಿ replies ನೋಡಬಹುದು.',
+      malayalam:
+          'Status upload ചെയ്താൽ backend ൽ temporarily save ചെയ്ത് same region/religion users ന് കാണിക്കും; മറ്റു users reply/comment അയയ്ക്കാം, owner swipe up ചെയ്ത് replies കാണാം.',
     ),
     strings.localized(
       telugu:

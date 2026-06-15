@@ -25,6 +25,7 @@ import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
+import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -579,6 +580,48 @@ class _ProfileMoreScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _enableLocationSuggestions(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(copy.locationTitle),
+          content: Text(copy.locationDialogMessage),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(copy.cancelAction),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(copy.allowAction),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+    final result = await AppLocationService.instance
+        .requestAndSyncApproxLocation();
+    if (!context.mounted) {
+      return;
+    }
+    final message = switch (result) {
+      AppLocationSyncResult.synced => copy.locationSavedMessage,
+      AppLocationSyncResult.serviceDisabled =>
+        copy.locationServiceDisabledMessage,
+      AppLocationSyncResult.permissionDenied ||
+      AppLocationSyncResult.permanentlyDenied =>
+        copy.locationPermissionDeniedMessage,
+      AppLocationSyncResult.failed => copy.locationFailedMessage,
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -648,6 +691,12 @@ class _ProfileMoreScreen extends StatelessWidget {
                   title: copy.religionTitle,
                   subtitle: copy.religionSubtitle,
                   onTap: () => unawaited(onOpenReligionSelection()),
+                ),
+                _ProfileItemData(
+                  icon: Icons.location_on_outlined,
+                  title: copy.locationTitle,
+                  subtitle: copy.locationSubtitle,
+                  onTap: () => unawaited(_enableLocationSuggestions(context)),
                 ),
                 _ProfileItemData(
                   icon: Icons.card_membership_rounded,
@@ -1145,6 +1194,28 @@ class _ProfileCopy {
   String get politicalPartySavedMessage => _isTelugu
       ? 'రాజకీయ పార్టీలు అప్డేట్ అయ్యాయి'
       : 'Political parties updated';
+  String get locationTitle =>
+      _isTelugu ? 'లొకేషన్ ఆధారిత స్టేటస్' : 'Location-based status';
+  String get locationSubtitle => _isTelugu
+      ? 'మీ city/district ఆధారంగా దగ్గరలోని స్టేటస్‌లకు ప్రాధాన్యం ఇవ్వండి'
+      : 'Prioritize nearby city/district statuses';
+  String get locationDialogMessage => _isTelugu
+      ? 'మీ precise location backend లో save చేయము. App మీ approximate city, district, state మాత్రమే save చేసి status feed ని మెరుగుపరుస్తుంది. Permission deny చేసినా app normal గా పనిచేస్తుంది.'
+      : 'We do not store your precise GPS location in the backend. The app saves only approximate city, district, and state to improve the status feed. The app still works normally if you deny permission.';
+  String get locationSavedMessage => _isTelugu
+      ? 'లొకేషన్ స్టేటస్ సూచనలు ఆన్ అయ్యాయి'
+      : 'Location-based status suggestions enabled';
+  String get locationPermissionDeniedMessage => _isTelugu
+      ? 'లొకేషన్ permission ఇవ్వలేదు. Settings నుంచి ఎప్పుడైనా ఆన్ చేయవచ్చు'
+      : 'Location permission was not allowed. You can enable it later from settings.';
+  String get locationServiceDisabledMessage => _isTelugu
+      ? 'ఫోన్‌లో location service off ఉంది'
+      : 'Location service is turned off on this phone.';
+  String get locationFailedMessage => _isTelugu
+      ? 'లొకేషన్ update కాలేదు. మళ్లీ ప్రయత్నించండి'
+      : 'Location could not be updated. Please try again.';
+  String get cancelAction => _isTelugu ? 'వద్దు' : 'Cancel';
+  String get allowAction => _isTelugu ? 'Allow చేయండి' : 'Allow';
 
   String get subscriptionTitle =>
       _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;

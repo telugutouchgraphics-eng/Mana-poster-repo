@@ -314,9 +314,7 @@ class _CanvasWorkspace extends StatelessWidget {
         : backgroundBlurAmount.clamp(0, 40) / 6.5;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: showCanvasBackground
-            ? Colors.white
-            : Colors.transparent,
+        color: showCanvasBackground ? Colors.white : Colors.transparent,
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -416,7 +414,8 @@ class _CanvasWorkspace extends StatelessWidget {
                                       ? pageSize
                                       : _fitPhotoLayerSize(
                                           pageSize: pageSize,
-                                          photoAspectRatio: layer.photoAspectRatio,
+                                          photoAspectRatio:
+                                              layer.photoAspectRatio,
                                         ))
                                 : Size.zero;
                             final transformLayerSize = layer.isPhoto
@@ -908,10 +907,11 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                   onSelectedTextPointerDown,
                                                               onPointerMove:
                                                                   onSelectedTextPointerMove,
-                                                              onPointerUp:
-                                                                  (_) => onSelectedTextPointerCancel(),
+                                                              onPointerUp: (_) =>
+                                                                  onSelectedTextPointerCancel(),
                                                               onPointerCancel:
-                                                                  (_) => onSelectedTextPointerCancel(),
+                                                                  (_) =>
+                                                                      onSelectedTextPointerCancel(),
                                                               child: GestureDetector(
                                                                 behavior:
                                                                     HitTestBehavior
@@ -924,8 +924,8 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                     onSelectedLayerInteractionStart,
                                                                 onScaleUpdate:
                                                                     onSelectedLayerScaleUpdate,
-                                                                onScaleEnd:
-                                                                    (_) => onSelectedLayerInteractionEnd(),
+                                                                onScaleEnd: (_) =>
+                                                                    onSelectedLayerInteractionEnd(),
                                                                 child: Center(
                                                                   child:
                                                                       effectiveTextChild,
@@ -1612,12 +1612,14 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
                 Color(0xFFFFFFFF),
                 Color(0xFFFFFFFF),
                 Color(0xF2FFFFFF),
-                Color(0xB8FFFFFF),
-                Color(0x54FFFFFF),
-                Color(0x12FFFFFF),
+                Color(0xCCFFFFFF),
+                Color(0x7AFFFFFF),
+                Color(0x30FFFFFF),
+                Color(0x08FFFFFF),
+                Color(0x00FFFFFF),
                 Color(0x00FFFFFF),
               ],
-              stops: <double>[0.0, 0.5, 0.62, 0.74, 0.84, 0.92, 1.0],
+              stops: <double>[0.0, 0.4, 0.52, 0.62, 0.72, 0.8, 0.86, 0.9, 1.0],
             ).createShader(bounds);
           },
           child: layer,
@@ -2087,20 +2089,14 @@ EdgeInsets _textVisualOverflowPadding({
       ? math.max(10.0, fontSize * 0.24)
       : 0.0;
   final descenderPad = math.max(4.0, fontSize * 0.12);
-  final underlinePad = isTextUnderline
-      ? math.max(2.0, fontSize * 0.04)
-      : 0.0;
+  final underlinePad = isTextUnderline ? math.max(2.0, fontSize * 0.04) : 0.0;
   final horizontalPad = math.max(2.0, strokePad);
   final topPad = math.max(2.0, strokePad);
-  final bottomPad = math.max(descenderPad + underlinePad, strokePad) +
+  final bottomPad =
+      math.max(descenderPad + underlinePad, strokePad) +
       shadowBottom +
       legacyBottomPad;
-  return EdgeInsets.fromLTRB(
-    horizontalPad,
-    topPad,
-    horizontalPad,
-    bottomPad,
-  );
+  return EdgeInsets.fromLTRB(horizontalPad, topPad, horizontalPad, bottomPad);
 }
 
 class _FixedSelectionHandleOverlay extends StatelessWidget {
@@ -2420,10 +2416,7 @@ class _CanvasTextLayerView extends StatelessWidget {
     final hasBackground = textBackgroundOpacity > 0.001;
     final foreground = Opacity(
       opacity: textOpacity.clamp(0.15, 1),
-      child: Padding(
-        padding: overflowPadding,
-        child: constrainedTextView,
-      ),
+      child: Padding(padding: overflowPadding, child: constrainedTextView),
     );
     if (!hasBackground) {
       return foreground;

@@ -77,6 +77,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "communityStatuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "regionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "religionPreference",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
