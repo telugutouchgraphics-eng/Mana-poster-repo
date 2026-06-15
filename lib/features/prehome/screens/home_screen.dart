@@ -5772,6 +5772,7 @@ class _CommunityStatusViewerScreenState
   bool _showingReplies = false;
   bool _isHoldPaused = false;
   int _currentIndex = 0;
+  DateTime? _tapStartedAt;
   String _lastRecordedStatusId = '';
 
   @override
@@ -5912,12 +5913,38 @@ class _CommunityStatusViewerScreenState
     }
   }
 
-  double _progressValueForIndex(int index, int total) {
-    if (total <= 1) {
+  double _progressValueForSegment(int index) {
+    if (index < _currentIndex) {
+      return 1;
+    }
+    if (index == _currentIndex) {
       return _progressController.value;
     }
-    final safeIndex = index.clamp(0, total - 1);
-    return ((safeIndex + _progressController.value) / total).clamp(0.0, 1.0);
+    return 0;
+  }
+
+  void _handleViewerTapUp(
+    TapUpDetails details,
+    List<CommunityStatus> statuses,
+  ) {
+    final startedAt = _tapStartedAt;
+    _tapStartedAt = null;
+    final tapDuration = startedAt == null
+        ? Duration.zero
+        : DateTime.now().difference(startedAt);
+    _resumeProgressAfterHold();
+    if (_isDeleting ||
+        _showingReplies ||
+        tapDuration > const Duration(milliseconds: 280)) {
+      return;
+    }
+    final width = MediaQuery.sizeOf(context).width;
+    final dx = details.localPosition.dx;
+    if (dx < width * 0.42) {
+      _goToPrevious(statuses);
+    } else if (dx > width * 0.58) {
+      _goToNextOrClose(statuses);
+    }
   }
 
   @override
@@ -5958,9 +5985,15 @@ class _CommunityStatusViewerScreenState
               : const Color(0xFF050505),
           body: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTapDown: (_) => _pauseProgressForHold(),
-            onTapUp: (_) => _resumeProgressAfterHold(),
-            onTapCancel: _resumeProgressAfterHold,
+            onTapDown: (_) {
+              _tapStartedAt = DateTime.now();
+              _pauseProgressForHold();
+            },
+            onTapUp: (details) => _handleViewerTapUp(details, statuses),
+            onTapCancel: () {
+              _tapStartedAt = null;
+              _resumeProgressAfterHold();
+            },
             onHorizontalDragEnd: (details) {
               final velocity = details.primaryVelocity ?? 0;
               if (velocity < -220) {
@@ -6010,16 +6043,9 @@ class _CommunityStatusViewerScreenState
                   child: AnimatedBuilder(
                     animation: _progressController,
                     builder: (context, _) {
-                      return LinearProgressIndicator(
-                        value: _progressValueForIndex(
-                          _currentIndex,
-                          statuses.length,
-                        ),
-                        minHeight: 3,
-                        backgroundColor: Colors.white.withValues(alpha: 0.22),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
+                      return _StatusSegmentProgressBar(
+                        itemCount: statuses.length,
+                        valueForIndex: _progressValueForSegment,
                       );
                     },
                   ),
@@ -6555,6 +6581,42 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _StatusSegmentProgressBar extends StatelessWidget {
+  const _StatusSegmentProgressBar({
+    required this.itemCount,
+    required this.valueForIndex,
+  });
+
+  final int itemCount;
+  final double Function(int index) valueForIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = math.max(1, itemCount);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Row(
+        children: List<Widget>.generate(count, (index) {
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: index == 0 ? 0 : 3),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: itemCount <= 0 ? 0 : valueForIndex(index),
+                  minHeight: 3,
+                  backgroundColor: Colors.white.withValues(alpha: 0.28),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
