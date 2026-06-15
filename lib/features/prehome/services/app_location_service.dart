@@ -159,14 +159,20 @@ class AppLocationService {
       ).timeout(const Duration(seconds: 8));
       final first = placemarks.isEmpty ? const Placemark() : placemarks.first;
       final now = DateTime.now().millisecondsSinceEpoch;
+      final city =
+          ((first.locality ?? '').trim().isNotEmpty
+              ? first.locality
+              : first.subLocality) ??
+          '';
+      final district =
+          ((first.subAdministrativeArea ?? '').trim().isNotEmpty
+              ? first.subAdministrativeArea
+              : city) ??
+          '';
       final area = AppLocationArea(
         state: (first.administrativeArea ?? '').trim(),
-        district: (first.subAdministrativeArea ?? '').trim(),
-        city:
-            ((first.locality ?? '').trim().isNotEmpty
-                ? first.locality
-                : first.subLocality) ??
-            '',
+        district: district.trim(),
+        city: city.trim(),
         countryCode: (first.isoCountryCode ?? '').trim(),
         updatedAtMillis: now,
       );

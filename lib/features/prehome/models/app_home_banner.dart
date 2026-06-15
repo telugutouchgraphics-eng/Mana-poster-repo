@@ -7,6 +7,9 @@ class AppHomeBanner {
     required this.ctaLabel,
     required this.ctaTarget,
     required this.placement,
+    required this.targetState,
+    required this.targetDistrict,
+    required this.targetCity,
     required this.sortOrder,
     required this.active,
   });
@@ -18,6 +21,9 @@ class AppHomeBanner {
   final String ctaLabel;
   final String ctaTarget;
   final String placement;
+  final String targetState;
+  final String targetDistrict;
+  final String targetCity;
   final int sortOrder;
   final bool active;
 }

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
+import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 
 class AppHomeBannerService {
   const AppHomeBannerService({FirebaseFirestore? firestore})
@@ -27,7 +28,7 @@ class AppHomeBannerService {
           .orderBy('sortOrder')
           .limit(maxItems)
           .get(const GetOptions(source: Source.server));
-      return _mapSnapshot(snapshot);
+      return _filterForArea(_mapSnapshot(snapshot));
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBanners failed: $error',
@@ -40,7 +41,7 @@ class AppHomeBannerService {
             .orderBy('sortOrder')
             .limit(maxItems)
             .get();
-        return _mapSnapshot(fallbackSnapshot);
+        return _filterForArea(_mapSnapshot(fallbackSnapshot));
       } catch (_) {
         return const <AppHomeBanner>[];
       }
@@ -55,7 +56,7 @@ class AppHomeBannerService {
           .orderBy('sortOrder')
           .limit(maxItems)
           .get(const GetOptions(source: Source.cache));
-      return _mapSnapshot(snapshot);
+      return _filterForArea(_mapSnapshot(snapshot));
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBannersFromCache failed: $error',
@@ -63,6 +64,57 @@ class AppHomeBannerService {
       );
       return const <AppHomeBanner>[];
     }
+  }
+
+  Future<List<AppHomeBanner>> _filterForArea(
+    List<AppHomeBanner> banners,
+  ) async {
+    final area = await AppLocationService.instance.loadLocationArea();
+    final filtered = banners
+        .where((banner) {
+          final hasTarget =
+              banner.targetState.isNotEmpty ||
+              banner.targetDistrict.isNotEmpty ||
+              banner.targetCity.isNotEmpty;
+          if (!hasTarget) {
+            return true;
+          }
+          if (area == null) {
+            return false;
+          }
+          return _areaMatches(
+            localState: area.state,
+            localDistrict: area.district,
+            localCity: area.city,
+            targetState: banner.targetState,
+            targetDistrict: banner.targetDistrict,
+            targetCity: banner.targetCity,
+          );
+        })
+        .toList(growable: false);
+    filtered.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return filtered;
+  }
+
+  bool _areaMatches({
+    required String localState,
+    required String localDistrict,
+    required String localCity,
+    required String targetState,
+    required String targetDistrict,
+    required String targetCity,
+  }) {
+    bool same(String local, String target) {
+      return target.trim().isEmpty ||
+          local.trim().toLowerCase() == target.trim().toLowerCase();
+    }
+
+    return same(localState, targetState) &&
+        same(
+          localDistrict.isNotEmpty ? localDistrict : localCity,
+          targetDistrict,
+        ) &&
+        same(localCity, targetCity);
   }
 
   List<AppHomeBanner> _mapSnapshot(
@@ -92,6 +144,9 @@ class AppHomeBannerService {
       ctaLabel: (data['ctaLabel'] as String? ?? '').trim(),
       ctaTarget: (data['ctaTarget'] as String? ?? '').trim(),
       placement: (data['placement'] as String? ?? '').trim(),
+      targetState: (data['targetState'] as String? ?? '').trim(),
+      targetDistrict: (data['targetDistrict'] as String? ?? '').trim(),
+      targetCity: (data['targetCity'] as String? ?? '').trim(),
       sortOrder: _toInt(data['sortOrder']),
       active: data['active'] is bool ? data['active'] as bool : true,
     );

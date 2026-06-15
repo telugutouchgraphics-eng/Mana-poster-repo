@@ -4151,7 +4151,10 @@ class _HomeScreenState extends State<HomeScreen>
           a.subtitle != b.subtitle ||
           a.ctaLabel != b.ctaLabel ||
           a.ctaTarget != b.ctaTarget ||
-          a.placement != b.placement) {
+          a.placement != b.placement ||
+          a.targetState != b.targetState ||
+          a.targetDistrict != b.targetDistrict ||
+          a.targetCity != b.targetCity) {
         return false;
       }
     }
@@ -6265,7 +6268,8 @@ Future<void> _showCommunityStatusReportSheet(
                       TextField(
                         controller: detailsController,
                         enabled: !submitting,
-                        maxLength: CommunityStatusService.maxReportDetailsLength,
+                        maxLength:
+                            CommunityStatusService.maxReportDetailsLength,
                         maxLines: 3,
                         style: const TextStyle(
                           color: Colors.white,
