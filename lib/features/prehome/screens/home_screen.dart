@@ -1223,8 +1223,6 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
   static const String _homeReferralPromptKeyPrefix =
       'mana_poster_home_referral_prompt_dismissed_';
-  static const String _homeNotificationPromptAttemptedKey =
-      'mana_poster_home_notification_prompt_attempted_v1';
   static const List<String> _staticCategorySlugs = <String>[
     'all',
     'good_morning',
@@ -1435,14 +1433,6 @@ class _HomeScreenState extends State<HomeScreen>
         const Duration(milliseconds: 2200),
         _requestStartupPermissionsIfNeeded,
       );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2500),
-        _requestHomeNotificationPermissionIfNeeded,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2800),
-        _requestHomeLocationPermissionIfNeeded,
-      );
       _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
         if (!mounted || _adFallbackSlotEnabled) {
           return;
@@ -1537,6 +1527,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (snapshot.allGranted) {
         await AppFlowService.markPermissionsStepHandled();
         await NotificationService.instance.syncCurrentPreferences();
+        await AppLocationService.instance.requestAndSyncApproxLocation();
         return;
       }
       final bool shouldRecoverStaleHandledState =
@@ -1557,64 +1548,16 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) {
         return;
       }
-      await permissionService.requestEssentialPermissions();
+      final updatedSnapshot = await permissionService
+          .requestEssentialPermissions();
       await AppFlowService.markPermissionsStepHandled();
       await NotificationService.instance.syncCurrentPreferences();
+      if (updatedSnapshot.location.isGranted) {
+        await AppLocationService.instance.requestAndSyncApproxLocation();
+      }
     } catch (error, stackTrace) {
       _homeDebugLogStack(
         'startup permission request skipped: $error',
-        stackTrace,
-      );
-    }
-  }
-
-  Future<void> _requestHomeNotificationPermissionIfNeeded() async {
-    if (kIsWeb || !mounted) {
-      return;
-    }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool(_homeNotificationPromptAttemptedKey) ?? false) {
-        await NotificationService.instance.syncCurrentPreferences();
-        return;
-      }
-      final status = await Permission.notification.status;
-      if (status.isGranted || status.isLimited || status.isPermanentlyDenied) {
-        await NotificationService.instance.syncCurrentPreferences();
-        return;
-      }
-      await _awaitStartupUiSettled(
-        minimumDelay: const Duration(milliseconds: 180),
-      );
-      if (!mounted) {
-        return;
-      }
-      await prefs.setBool(_homeNotificationPromptAttemptedKey, true);
-      await Permission.notification.request();
-      await NotificationService.instance.syncCurrentPreferences();
-    } catch (error, stackTrace) {
-      _homeDebugLogStack(
-        'home notification permission request skipped: $error',
-        stackTrace,
-      );
-    }
-  }
-
-  Future<void> _requestHomeLocationPermissionIfNeeded() async {
-    if (kIsWeb || !mounted) {
-      return;
-    }
-    try {
-      await _awaitStartupUiSettled(
-        minimumDelay: const Duration(milliseconds: 220),
-      );
-      if (!mounted) {
-        return;
-      }
-      await AppLocationService.instance.syncFromHomeStartupIfNeeded();
-    } catch (error, stackTrace) {
-      _homeDebugLogStack(
-        'home location permission request skipped: $error',
         stackTrace,
       );
     }

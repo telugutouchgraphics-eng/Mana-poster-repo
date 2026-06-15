@@ -107,12 +107,30 @@ class PermissionService {
   }
 
   Future<PermissionSnapshot> requestEssentialPermissions() async {
-    final PermissionStatus photosStatus = await _requestPhotosStatus();
+    final bool needsPhotos = await _needsPhotosPermission();
+    final Permission photosPermission = await _resolvePhotosPermission();
     final Permission cameraPermission = await _resolveCameraPermission();
-    final PermissionStatus cameraStatus = await _safeRequest(cameraPermission);
+    final Permission notificationPermission =
+        await _resolveNotificationPermission();
+    final Permission locationPermission = await _resolveLocationPermission();
+
+    final permissions = <Permission>[
+      if (needsPhotos) photosPermission,
+      cameraPermission,
+      if (await _shouldRequestNotificationPermission()) notificationPermission,
+      if (!kIsWeb) locationPermission,
+    ];
+    if (permissions.isNotEmpty) {
+      await _safeRequestMany(permissions);
+    }
+
+    final PermissionStatus photosStatus = needsPhotos
+        ? await _safeStatus(photosPermission)
+        : PermissionStatus.granted;
+    final PermissionStatus cameraStatus = await _safeStatus(cameraPermission);
     final PermissionStatus notificationsStatus =
-        await _requestNotificationStatus();
-    final PermissionStatus locationStatus = await _requestLocationStatus();
+        await _resolveNotificationStatus();
+    final PermissionStatus locationStatus = await _resolveLocationStatus();
 
     return PermissionSnapshot(
       photos: AppPermissionState(
@@ -230,6 +248,16 @@ class PermissionService {
     }
   }
 
+  Future<Map<Permission, PermissionStatus>> _safeRequestMany(
+    List<Permission> permissions,
+  ) async {
+    try {
+      return await permissions.request();
+    } catch (_) {
+      return <Permission, PermissionStatus>{};
+    }
+  }
+
   Future<PermissionStatus> _resolveNotificationStatus() async {
     if (kIsWeb) {
       return PermissionStatus.granted;
@@ -241,6 +269,17 @@ class PermissionService {
       }
     }
     return _safeStatus(await _resolveNotificationPermission());
+  }
+
+  Future<bool> _shouldRequestNotificationPermission() async {
+    if (kIsWeb) {
+      return false;
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final int? sdkInt = await _loadAndroidSdkInt();
+      return sdkInt == null || sdkInt >= 33;
+    }
+    return true;
   }
 
   Future<PermissionStatus> _requestNotificationStatus() async {
