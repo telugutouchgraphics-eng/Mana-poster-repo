@@ -74,22 +74,6 @@ service cloud.firestore {
         request.resource.data.businessLogoStyleId.size() <= 40;
     }
 
-    function tokenKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
-        "token",
-        "platform",
-        "uid",
-        "createdAt",
-        "updatedAt",
-        "welcomeSent",
-        "welcomeSentAt",
-        "allNotifications",
-        "newPosters",
-        "offersUpdates",
-        "subscriptionReminders",
-      ]);
-    }
-
     function validNotificationPreferenceFlags() {
       return (!("allNotifications" in request.resource.data) ||
           request.resource.data.allNotifications is bool) &&
@@ -101,35 +85,14 @@ service cloud.firestore {
           request.resource.data.subscriptionReminders is bool);
     }
 
-    function validUserTokenWrite(userId, tokenId) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "token",
-          "platform",
-          "uid",
-          "createdAt",
-          "updatedAt",
-          "welcomeSent",
-          "welcomeSentAt",
-          "allNotifications",
-          "newPosters",
-          "offersUpdates",
-          "subscriptionReminders",
-        ]) &&
-        request.resource.data.token is string &&
-        request.resource.data.token.size() > 40 &&
-        validPlatform(request.resource.data.platform) &&
-        request.resource.data.uid == userId &&
-        validNotificationPreferenceFlags();
-    }
-
-    function validPublicTokenWrite(tokenId) {
+    function validPublicTokenWrite() {
       return request.resource.data.token is string &&
         request.resource.data.token.size() > 40 &&
         validPlatform(request.resource.data.platform) &&
         validNotificationPreferenceFlags();
     }
 
-    function validUserRootWrite(userId) {
+    function validUserRootWrite() {
       return resource == null
         ? request.resource.data.keys().hasOnly([
             "preferredLanguage",
@@ -138,6 +101,8 @@ service cloud.firestore {
             "selectedRegionName",
             "selectedRegionLanguage",
             "selectedRegionLanguageCode",
+            "selectedPartyIds",
+            "selectedParties",
             "locationEnabled",
             "locationArea",
             "locationUpdatedAt",
@@ -151,6 +116,8 @@ service cloud.firestore {
             "selectedRegionName",
             "selectedRegionLanguage",
             "selectedRegionLanguageCode",
+            "selectedPartyIds",
+            "selectedParties",
             "locationEnabled",
             "locationArea",
             "locationUpdatedAt",
@@ -177,10 +144,6 @@ service cloud.firestore {
         validPlatform(request.resource.data.platform);
     }
 
-    function validUserUploadStatus(value) {
-      return value in ["pending", "approved", "rejected"];
-    }
-
     function validUserPosterUploadCreate() {
       return request.resource.data.keys().hasOnly([
           "id",
@@ -196,6 +159,8 @@ service cloud.firestore {
           "hasImage",
           "categoryId",
           "categoryLabel",
+          "regionId",
+          "regionName",
           "status",
           "rejectionReason",
           "approvedPosterTemplateId",
@@ -260,6 +225,13 @@ service cloud.firestore {
         request.resource.data.categoryId.size() > 0 &&
         request.resource.data.categoryLabel is string &&
         request.resource.data.categoryLabel.size() > 0 &&
+        request.resource.data.regionId is string &&
+        request.resource.data.regionId.size() > 0 &&
+        request.resource.data.regionName is string &&
+        request.resource.data.regionName.size() > 0 &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        request.resource.data.regionId ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion &&
         request.resource.data.status == "pending" &&
         request.resource.data.rejectionReason == "" &&
         request.resource.data.approvedPosterTemplateId == "" &&
@@ -387,7 +359,8 @@ service cloud.firestore {
         request.resource.data.createdAt is int &&
         request.resource.data.updatedAt is int &&
         request.resource.data.expiresAt is int &&
-        request.resource.data.expiresAt > request.resource.data.createdAt;
+        request.resource.data.expiresAt > request.resource.data.createdAt &&
+        request.resource.data.expiresAt <= request.resource.data.createdAt + 86400000;
     }
 
     function validCommunityStatusEngagementUpdate() {
@@ -577,7 +550,7 @@ service cloud.firestore {
     // User root document stores lightweight app-owned preferences like language.
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && validUserRootWrite(userId);
+      allow create, update: if isOwner(userId) && validUserRootWrite();
       allow delete: if false;
     }
 
@@ -599,13 +572,20 @@ service cloud.firestore {
 
     // App-open token capture before login to send welcome push.
     match /publicDeviceTokens/{tokenId} {
-      allow create, update: if validPublicTokenWrite(tokenId);
+      allow create, update: if validPublicTokenWrite();
       allow read, delete: if false;
     }
 
-    // Free feed can read only manager-approved creator posters.
+    // Free feed can read only manager-approved creator posters for the user's
+    // selected State/Union Territory, so dashboard uploads never cross regions.
     match /creatorPosters/{posterId} {
-      allow read: if resource.data.status == "approved";
+      allow read: if signedIn() &&
+        resource.data.status == "approved" &&
+        resource.data.regionId is string &&
+        resource.data.regionId.size() > 0 &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        resource.data.regionId ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion;
       allow create, update, delete: if false;
     }
 

@@ -599,7 +599,13 @@ class _HelpSupportCopy {
           _HelpFaqItem(
             question: 'Status upload/replies ఎలా పని చేస్తాయి?',
             answer:
-                '1) Status లో text, image లేదా caption upload చేయవచ్చు.\n2) Status same State/Union Territory మరియు matching religion scope users కు మాత్రమే చూపబడుతుంది.\n3) Image status upload ముందు file size తగ్గించడానికి compress అవుతుంది.\n4) Other users reply/comment పంపవచ్చు; status owner status screen లో up swipe చేస్తే replies చూడవచ్చు.\n5) Status, image, replies/comments 24 గంటల expiry తర్వాత backend cleanup ద్వారా delete అవుతాయి. Cleanup scheduled కాబట్టి exact second కు delete కాకపోవచ్చు.\n6) Private information, OTP, passwords, addresses, hateful/illegal/spam content status లేదా reply లో పెట్టకండి.',
+                '1) Status లో text, image లేదా image + caption upload చేయవచ్చు.\n'
+                '2) 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు active గా ఉంచవచ్చు. పాత active status delete చేస్తే లేదా expire అయితే మళ్లీ limit లోపల upload చేయవచ్చు.\n'
+                '3) Status same State/Union Territory మరియు matching religion scope users కు మాత్రమే చూపబడుతుంది.\n'
+                '4) Image status upload ముందు file size తగ్గించడానికి compress అవుతుంది.\n'
+                '5) Other users reply/comment పంపవచ్చు; status owner status screen లో up swipe చేస్తే replies చూడవచ్చు.\n'
+                '6) Status, image, replies/comments 24 గంటల expiry తర్వాత backend cleanup ద్వారా delete అవుతాయి. Cleanup scheduled కాబట్టి exact second కు delete కాకపోవచ్చు.\n'
+                '7) Private information, OTP, passwords, addresses, hateful/illegal/spam content status లేదా reply లో పెట్టకండి.',
           ),
           _HelpFaqItem(
             question: 'పోస్టర్ సేవ్ లేదా ఎగుమతి విఫలమైతే?',
@@ -631,7 +637,13 @@ class _HelpSupportCopy {
           _HelpFaqItem(
             question: 'How do Status uploads and replies work?',
             answer:
-                '1) A status can be text, image, or image with caption.\n2) Status visibility is limited to users in the same State/Union Territory and matching religion scope.\n3) Image status files are compressed before upload to reduce file size.\n4) Other users can reply/comment; the status owner can swipe up on the status screen to read replies.\n5) Statuses, images, and replies/comments are deleted by backend cleanup after the 24-hour expiry. Because cleanup is scheduled, deletion may not happen at the exact second.\n6) Do not post private information, OTPs, passwords, addresses, hateful/illegal/spam content in a status or reply.',
+                '1) A status can be text, image, or image with caption.\n'
+                '2) A user can keep up to 5 text statuses and 2 image/image + caption statuses active in 24 hours. Deleting an old active status or waiting for expiry frees the limit again.\n'
+                '3) Status visibility is limited to users in the same State/Union Territory and matching religion scope.\n'
+                '4) Image status files are compressed before upload to reduce file size.\n'
+                '5) Other users can reply/comment; the status owner can swipe up on the status screen to read replies.\n'
+                '6) Statuses, images, and replies/comments are deleted by backend cleanup after the 24-hour expiry. Because cleanup is scheduled, deletion may not happen at the exact second.\n'
+                '7) Do not post private information, OTPs, passwords, addresses, hateful/illegal/spam content in a status or reply.',
           ),
           _HelpFaqItem(
             question: 'What if save or export fails?',

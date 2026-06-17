@@ -12,7 +12,9 @@ import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 
 class RegionSelectionScreen extends StatefulWidget {
-  const RegionSelectionScreen({super.key});
+  const RegionSelectionScreen({super.key, this.returnToPreviousOnSave = false});
+
+  final bool returnToPreviousOnSave;
 
   @override
   State<RegionSelectionScreen> createState() => _RegionSelectionScreenState();
@@ -60,6 +62,10 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
       return;
     }
     context.languageController.setLanguage(region.appLanguage);
+    if (widget.returnToPreviousOnSave) {
+      Navigator.of(context).pop(true);
+      return;
+    }
     Navigator.of(context).pushNamedAndRemoveUntil(
       AppRoutes.politicalParties,
       (Route<dynamic> route) => false,

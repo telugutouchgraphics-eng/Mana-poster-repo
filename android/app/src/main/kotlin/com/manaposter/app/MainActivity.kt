@@ -275,7 +275,6 @@ class MainActivity : FlutterFragmentActivity() {
                 else -> value?.toString()
             }
         }
-        Log.d("ManaPosterStartupState", "readState=$state")
         return state
     }
 
@@ -295,7 +294,6 @@ class MainActivity : FlutterFragmentActivity() {
             }
         }
         val committed = editor.commit()
-        Log.d("ManaPosterStartupState", "writeState entries=$entries committed=$committed final=${prefs.all}")
         return committed
     }
 

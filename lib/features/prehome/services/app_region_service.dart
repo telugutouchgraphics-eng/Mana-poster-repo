@@ -59,16 +59,20 @@ class AppRegionService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await _mirrorLocalSelection(region, prefs);
-      final stored = await loadSelection(prefs: prefs);
-      if (stored?.id != region.id) {
-        return false;
-      }
       _memoryRegion = region;
       unawaited(_syncToRemote(region));
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  static Future<void> ensureRemoteSelectionSynced([AppRegion? region]) async {
+    final resolvedRegion = region ?? await loadSelection();
+    if (resolvedRegion == null) {
+      return;
+    }
+    await _syncToRemote(resolvedRegion);
   }
 
   static Future<void> _mirrorLocalSelection(

@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class UserPosterUploadSubmitResult {
@@ -256,6 +257,13 @@ class UserPosterUploadsService {
         UserPosterUploadSubmitCode.categoryRequired,
       );
     }
+    final region = await AppRegionService.loadSelection();
+    if (region == null) {
+      return UserPosterUploadSubmitResult.failure(
+        UserPosterUploadSubmitCode.categoryRequired,
+      );
+    }
+    await AppRegionService.ensureRemoteSelectionSynced(region);
     final safeQuoteText = quoteText.trim();
     if (imageFile == null && safeQuoteText.isEmpty) {
       return UserPosterUploadSubmitResult.failure(
@@ -326,6 +334,8 @@ class UserPosterUploadsService {
         'hasImage': imageUrl.isNotEmpty,
         'categoryId': safeCategoryId,
         'categoryLabel': safeCategoryLabel,
+        'regionId': region.id,
+        'regionName': region.name,
         'status': 'pending',
         'rejectionReason': '',
         'approvedPosterTemplateId': '',

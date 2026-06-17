@@ -64,7 +64,7 @@ class AppPartyPreferenceService {
     final prefs = await SharedPreferences.getInstance();
     final partyIds = await loadSelection(prefs: prefs);
     final region = await AppRegionService.loadSelection(prefs: prefs);
-    if (partyIds.isEmpty || region == null) {
+    if (region == null) {
       return;
     }
     final partiesById = <String, PoliticalParty>{

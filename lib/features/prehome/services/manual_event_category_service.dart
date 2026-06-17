@@ -6,6 +6,8 @@ import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
+const bool _verboseManualEventCategoryLogs = false;
+
 class ManualEventCategoryService {
   const ManualEventCategoryService({FirebaseFirestore? firestore})
     : _firestore = firestore;
@@ -17,7 +19,7 @@ class ManualEventCategoryService {
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   void _debugLog(String message) {
-    if (!kDebugMode && !kProfileMode) {
+    if (!_verboseManualEventCategoryLogs || (!kDebugMode && !kProfileMode)) {
       return;
     }
     // ignore: avoid_print
@@ -34,17 +36,18 @@ class ManualEventCategoryService {
           .where('active', isEqualTo: true)
           .get(GetOptions(source: source));
       final now = IstTimeService.nowEpochMillis();
-      final categories = snapshot.docs
-          .map((doc) => _mapDoc(doc, language: language, now: now))
-          .whereType<DynamicCategory>()
-          .toList(growable: false)
-        ..sort((left, right) {
-          final priorityCompare = right.priority.compareTo(left.priority);
-          if (priorityCompare != 0) {
-            return priorityCompare;
-          }
-          return left.slug.compareTo(right.slug);
-        });
+      final categories =
+          snapshot.docs
+              .map((doc) => _mapDoc(doc, language: language, now: now))
+              .whereType<DynamicCategory>()
+              .toList(growable: false)
+            ..sort((left, right) {
+              final priorityCompare = right.priority.compareTo(left.priority);
+              if (priorityCompare != 0) {
+                return priorityCompare;
+              }
+              return left.slug.compareTo(right.slug);
+            });
       _debugLog(
         '[ManualCategories] docs=${snapshot.docs.length} visible=${categories.map((item) => item.slug).join(",")} now=$now source=$source',
       );

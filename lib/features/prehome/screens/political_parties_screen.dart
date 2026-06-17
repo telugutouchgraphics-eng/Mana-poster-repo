@@ -108,6 +108,13 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     }
     setState(() => _skipping = true);
     await AppPartyPreferenceService.persistSelection(<String>{});
+    if (!mounted) {
+      return;
+    }
+    if (widget.returnToPreviousOnSave) {
+      Navigator.of(context).pop(false);
+      return;
+    }
     final route = await AppFlowService.resolvePostRegionEntryRoute();
     if (!mounted) {
       return;

@@ -23,6 +23,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
     super.key,
     required this.initialProfile,
     this.accountEmail = '',
+    this.accountSubtitle = '',
     this.completeToHomeOnSave = false,
     this.openPersonalPhotoPickerOnStart = false,
     this.embeddedInProfileScreen = false,
@@ -32,6 +33,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
 
   final PosterProfileData initialProfile;
   final String accountEmail;
+  final String accountSubtitle;
   final bool completeToHomeOnSave;
   final bool openPersonalPhotoPickerOnStart;
   final bool embeddedInProfileScreen;
@@ -1032,6 +1034,20 @@ class _PosterProfileDetailsScreenState
                         color: Color(0xFF64748B),
                       ),
                     ),
+                    if (widget.accountSubtitle.trim().isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.accountSubtitle.trim(),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 22),
                   if (showGuideAudio) ...<Widget>[

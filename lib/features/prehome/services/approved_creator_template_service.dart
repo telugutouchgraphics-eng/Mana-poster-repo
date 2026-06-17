@@ -5,8 +5,11 @@ import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
+
+const bool _verboseApprovedTemplateLogs = false;
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -44,7 +47,7 @@ class ApprovedCreatorTemplateService {
   }
 
   void _debugLog(String message) {
-    if (!kDebugMode && !kProfileMode) {
+    if (!_verboseApprovedTemplateLogs || (!kDebugMode && !kProfileMode)) {
       return;
     }
     // ignore: avoid_print
@@ -52,6 +55,12 @@ class ApprovedCreatorTemplateService {
   }
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
+
+  Future<String> _selectedRegionId() async {
+    final region = await AppRegionService.loadSelection();
+    await AppRegionService.ensureRemoteSelectionSynced(region);
+    return region?.id.trim() ?? '';
+  }
 
   Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplates({
     int maxItems = 40,
@@ -66,7 +75,8 @@ class ApprovedCreatorTemplateService {
     int scanLimit = 800,
   }) async {
     final target = _normalizeTag(categoryId);
-    if (target.isEmpty) {
+    final regionId = await _selectedRegionId();
+    if (target.isEmpty || regionId.isEmpty) {
       return const <ApprovedCreatorTemplate>[];
     }
     try {
@@ -83,6 +93,7 @@ class ApprovedCreatorTemplateService {
         final snapshot = await firestore
             .collection('creatorPosters')
             .where('status', isEqualTo: 'approved')
+            .where('regionId', isEqualTo: regionId)
             .where('categoryId', isEqualTo: candidate)
             .orderBy('createdAt', descending: true)
             .limit(scanLimit)
@@ -109,6 +120,7 @@ class ApprovedCreatorTemplateService {
 
       final fallbackDocs = await _scanApprovedTemplatesForCategory(
         categoryId: target,
+        regionId: regionId,
         limit: scanLimit,
         source: source,
       );
@@ -139,7 +151,8 @@ class ApprovedCreatorTemplateService {
     Source source = Source.serverAndCache,
   }) async {
     final normalizedTarget = _normalizeTag(categoryId);
-    if (normalizedTarget.isEmpty) {
+    final regionId = await _selectedRegionId();
+    if (normalizedTarget.isEmpty || regionId.isEmpty) {
       return false;
     }
     try {
@@ -154,6 +167,7 @@ class ApprovedCreatorTemplateService {
         final snapshot = await firestore
             .collection('creatorPosters')
             .where('status', isEqualTo: 'approved')
+            .where('regionId', isEqualTo: regionId)
             .where('categoryId', isEqualTo: candidate)
             .orderBy('createdAt', descending: true)
             .limit(8)
@@ -168,6 +182,7 @@ class ApprovedCreatorTemplateService {
       if (docs.isEmpty) {
         final fallbackDocs = await _scanApprovedTemplatesForCategory(
           categoryId: normalizedTarget,
+          regionId: regionId,
           limit: 8,
           source: source,
         );
@@ -191,6 +206,7 @@ class ApprovedCreatorTemplateService {
 
       final fallbackDocs = await _scanApprovedTemplatesForCategory(
         categoryId: normalizedTarget,
+        regionId: regionId,
         limit: 8,
         source: source,
       );
@@ -220,6 +236,14 @@ class ApprovedCreatorTemplateService {
     bool allowFallbackMerge = true,
   }) async {
     try {
+      final regionId = await _selectedRegionId();
+      if (regionId.isEmpty) {
+        return const ApprovedCreatorTemplatePage(
+          templates: <ApprovedCreatorTemplate>[],
+          lastDocument: null,
+          hasMore: false,
+        );
+      }
       final totalStopwatch = Stopwatch()..start();
       final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
       final maxQueryPages = source == Source.cache
@@ -244,6 +268,7 @@ class ApprovedCreatorTemplateService {
         Query<Map<String, dynamic>> query = firestore
             .collection('creatorPosters')
             .where('status', isEqualTo: 'approved')
+            .where('regionId', isEqualTo: regionId)
             .orderBy('createdAt', descending: true)
             .limit(queryLimit);
         if (cursor != null) {
@@ -291,7 +316,8 @@ class ApprovedCreatorTemplateService {
       final filteredTemplates = mergedVisible.length <= pageSize
           ? mergedVisible
           : mergedVisible.take(pageSize).toList(growable: false);
-      final fallbackMergeMs = totalStopwatch.elapsedMilliseconds - queryMs - mappingMs;
+      final fallbackMergeMs =
+          totalStopwatch.elapsedMilliseconds - queryMs - mappingMs;
       _debugLog(
         '[PosterFetch] final mergedDocs=$scannedDocs '
         'filteredTemplates=${filteredTemplates.length} '
@@ -352,6 +378,7 @@ class ApprovedCreatorTemplateService {
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
   _scanApprovedTemplatesForCategory({
     required String categoryId,
+    required String regionId,
     required int limit,
     required Source source,
   }) async {
@@ -364,7 +391,8 @@ class ApprovedCreatorTemplateService {
         Query<Map<String, dynamic>> query = firestore
             .collection('creatorPosters')
             .where('status', isEqualTo: 'approved')
-            .orderBy(FieldPath.documentId)
+            .where('regionId', isEqualTo: regionId)
+            .orderBy('createdAt', descending: true)
             .limit(pageSize);
         if (cursor != null) {
           query = query.startAfterDocument(cursor);

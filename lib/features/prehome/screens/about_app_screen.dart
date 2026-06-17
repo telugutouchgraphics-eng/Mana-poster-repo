@@ -720,17 +720,17 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status feature లో text, image లేదా caption తో short-lived status upload చేయవచ్చు; అదే region/religion scope users కు కనిపిస్తుంది, 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
+          'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; అదే region/religion scope users కు కనిపిస్తుంది, 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
       english:
-          'The Status feature lets users upload short-lived text, image, or caption statuses; they are shown within the matching region/religion scope, deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
+          'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; they are shown within the matching region/religion scope, deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
       hindi:
-          'Status feature में short-lived text, image या caption status upload किया जा सकता है; यह matching region/religion scope में दिखता है, 24 घंटे बाद backend cleanup से delete होता है, और replies status owner पढ़ सकता है।',
+          'Status feature में 24 घंटे में 5 text statuses और 2 image/image + caption statuses तक upload किए जा सकते हैं; यह matching region/religion scope में दिखता है, 24 घंटे बाद backend cleanup से delete होता है, और replies status owner पढ़ सकता है।',
       tamil:
-          'Status feature இல் text, image அல்லது caption status upload செய்யலாம்; அது matching region/religion scope இல் காட்டப்படும், 24 மணி நேரத்திற்கு பிறகு backend cleanup மூலம் delete ஆகும், replies ஐ status owner படிக்கலாம்.',
+          'Status feature இல் 24 மணி நேரத்தில் 5 text statuses மற்றும் 2 image/image + caption statuses வரை upload செய்யலாம்; அது matching region/religion scope இல் காட்டப்படும், 24 மணி நேரத்திற்கு பிறகு backend cleanup மூலம் delete ஆகும், replies ஐ status owner படிக்கலாம்.',
       kannada:
-          'Status feature ನಲ್ಲಿ text, image ಅಥವಾ caption status upload ಮಾಡಬಹುದು; matching region/religion scope ನಲ್ಲಿ ಕಾಣುತ್ತದೆ, 24 ಗಂಟೆಗಳ ನಂತರ backend cleanup ಮೂಲಕ delete ಆಗುತ್ತದೆ, replies ಅನ್ನು status owner ಓದಬಹುದು.',
+          'Status feature ನಲ್ಲಿ 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text statuses ಮತ್ತು 2 image/image + caption statuses ವರೆಗೆ upload ಮಾಡಬಹುದು; matching region/religion scope ನಲ್ಲಿ ಕಾಣುತ್ತದೆ, 24 ಗಂಟೆಗಳ ನಂತರ backend cleanup ಮೂಲಕ delete ಆಗುತ್ತದೆ, replies ಅನ್ನು status owner ಓದಬಹುದು.',
       malayalam:
-          'Status feature ൽ text, image അല്ലെങ്കിൽ caption status upload ചെയ്യാം; matching region/religion scope ൽ കാണിക്കും, 24 മണിക്കൂറിന് ശേഷം backend cleanup വഴി delete ചെയ്യും, replies status owner വായിക്കാം.',
+          'Status feature ൽ 24 മണിക്കൂറിൽ 5 text statuses ഉം 2 image/image + caption statuses ഉം വരെ upload ചെയ്യാം; matching region/religion scope ൽ കാണിക്കും, 24 മണിക്കൂറിന് ശേഷം backend cleanup വഴി delete ചെയ്യും, replies status owner വായിക്കാം.',
     ),
     strings.localized(
       telugu:
@@ -830,17 +830,17 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status upload చేస్తే అది temporary గా backend లో save అయి same region/religion users కు చూపబడుతుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
+          'Status upload చేస్తే అది temporary గా backend లో save అయి same region/religion users కు చూపబడుతుంది; 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
       english:
-          'When a status is uploaded, it is stored temporarily in the backend and shown to same-region/religion users; other users can reply/comment, and the owner can swipe up to view replies.',
+          'When a status is uploaded, it is stored temporarily in the backend and shown to same-region/religion users; active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
       hindi:
-          'Status upload होने पर वह backend में temporarily save होकर same region/religion users को दिखता है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
+          'Status upload होने पर वह backend में temporarily save होकर same region/religion users को दिखता है; 24 घंटे में 5 text और 2 image/image + caption active statuses की limit रहती है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
       tamil:
-          'Status upload செய்தால் அது backend இல் temporarily save ஆகி same region/religion users க்கு காட்டப்படும்; மற்ற users reply/comment அனுப்பலாம், owner swipe up செய்து replies பார்க்கலாம்.',
+          'Status upload செய்தால் அது backend இல் temporarily save ஆகி same region/religion users க்கு காட்டப்படும்; 24 மணி நேரத்தில் 5 text மற்றும் 2 image/image + caption active statuses limit இருக்கும்; மற்ற users reply/comment அனுப்பலாம், owner swipe up செய்து replies பார்க்கலாம்.',
       kannada:
-          'Status upload ಮಾಡಿದರೆ ಅದು backend ನಲ್ಲಿ temporarily save ಆಗಿ same region/religion users ಗೆ ಕಾಣುತ್ತದೆ; ಬೇರೆ users reply/comment ಕಳುಹಿಸಬಹುದು, owner swipe up ಮಾಡಿ replies ನೋಡಬಹುದು.',
+          'Status upload ಮಾಡಿದರೆ ಅದು backend ನಲ್ಲಿ temporarily save ಆಗಿ same region/religion users ಗೆ ಕಾಣುತ್ತದೆ; 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text ಮತ್ತು 2 image/image + caption active statuses limit ಇರುತ್ತದೆ; ಬೇರೆ users reply/comment ಕಳುಹಿಸಬಹುದು, owner swipe up ಮಾಡಿ replies ನೋಡಬಹುದು.',
       malayalam:
-          'Status upload ചെയ്താൽ backend ൽ temporarily save ചെയ്ത് same region/religion users ന് കാണിക്കും; മറ്റു users reply/comment അയയ്ക്കാം, owner swipe up ചെയ്ത് replies കാണാം.',
+          'Status upload ചെയ്താൽ backend ൽ temporarily save ചെയ്ത് same region/religion users ന് കാണിക്കും; 24 മണിക്കൂറിൽ 5 text ഉം 2 image/image + caption active statuses ഉം limit ആയിരിക്കും; മറ്റു users reply/comment അയയ്ക്കാം, owner swipe up ചെയ്ത് replies കാണാം.',
     ),
     strings.localized(
       telugu:

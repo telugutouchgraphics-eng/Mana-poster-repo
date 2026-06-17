@@ -77,8 +77,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const bool _verboseHomeDebugLogs = false;
+
 void _homeDebugLog(String message) {
-  if (!kDebugMode && !kProfileMode) {
+  if (!_verboseHomeDebugLogs || (!kDebugMode && !kProfileMode)) {
     return;
   }
   // ignore: avoid_print
@@ -6084,6 +6086,7 @@ class _CommunityStatusViewerScreenState
       }),
       initialData: widget.initialGroups,
       builder: (context, snapshot) {
+        final strings = context.strings;
         final groups = _orderedGroups(snapshot.data ?? widget.initialGroups);
         _latestViewerGroups = groups;
         if (groups.isEmpty && !_isDeleting) {
@@ -6112,7 +6115,7 @@ class _CommunityStatusViewerScreenState
         final isOwner =
             FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
         final statusTitle = isOwner
-            ? 'My Status'
+            ? strings.localized(telugu: 'నా స్టేటస్', english: 'My Status')
             : (status.userName.isNotEmpty ? status.userName : 'User');
         final statusColor = Color(
           status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
@@ -6249,7 +6252,10 @@ class _CommunityStatusViewerScreenState
                       ] else ...<Widget>[
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
-                          tooltip: 'More',
+                          tooltip: strings.localized(
+                            telugu: 'మరిన్ని',
+                            english: 'More',
+                          ),
                           icon: const Icon(
                             Icons.more_vert_rounded,
                             color: Colors.white,
@@ -6268,12 +6274,15 @@ class _CommunityStatusViewerScreenState
                               );
                             }
                           },
-                          itemBuilder: (_) => const <PopupMenuEntry<String>>[
+                          itemBuilder: (_) => <PopupMenuEntry<String>>[
                             PopupMenuItem<String>(
                               value: 'report',
                               child: Text(
-                                'Report',
-                                style: TextStyle(
+                                strings.localized(
+                                  telugu: 'రిపోర్ట్',
+                                  english: 'Report',
+                                ),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -6316,6 +6325,7 @@ class _StatusRepliesSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return DraggableScrollableSheet(
       initialChildSize: 0.62,
       minChildSize: 0.36,
@@ -6338,9 +6348,9 @@ class _StatusRepliesSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Replies',
-                style: TextStyle(
+              Text(
+                strings.localized(telugu: 'రిప్లైలు', english: 'Replies'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
@@ -6356,10 +6366,13 @@ class _StatusRepliesSheet extends StatelessWidget {
                     final comments =
                         snapshot.data ?? const <CommunityStatusComment>[];
                     if (comments.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Text(
-                          'No replies yet',
-                          style: TextStyle(
+                          strings.localized(
+                            telugu: 'ఇంకా రిప్లైలు లేవు',
+                            english: 'No replies yet',
+                          ),
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontWeight: FontWeight.w700,
                           ),
@@ -6368,9 +6381,9 @@ class _StatusRepliesSheet extends StatelessWidget {
                     }
                     return ListView.separated(
                       controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      padding: const EdgeInsets.fromLTRB(18, 8, 12, 24),
                       itemCount: comments.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final comment = comments[index];
                         return Row(
@@ -6385,11 +6398,14 @@ class _StatusRepliesSheet extends StatelessWidget {
                               ),
                             ),
                             PopupMenuButton<String>(
-                              tooltip: 'More',
+                              tooltip: strings.localized(
+                                telugu: 'మరిన్ని',
+                                english: 'More',
+                              ),
                               icon: const Icon(
                                 Icons.more_vert_rounded,
                                 color: Colors.white54,
-                                size: 18,
+                                size: 17,
                               ),
                               color: const Color(0xFF111827),
                               padding: EdgeInsets.zero,
@@ -6407,19 +6423,21 @@ class _StatusRepliesSheet extends StatelessWidget {
                                   );
                                 }
                               },
-                              itemBuilder: (_) =>
-                                  const <PopupMenuEntry<String>>[
-                                    PopupMenuItem<String>(
-                                      value: 'report',
-                                      child: Text(
-                                        'Report',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
+                              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                                PopupMenuItem<String>(
+                                  value: 'report',
+                                  child: Text(
+                                    strings.localized(
+                                      telugu: 'రిపోర్ట్',
+                                      english: 'Report',
                                     ),
-                                  ],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         );
@@ -6449,15 +6467,64 @@ const List<String> _communityReportReasons = <String>[
   'Other safety issue',
 ];
 
+String _localizedCommunityReportReason(BuildContext context, String reason) {
+  final strings = context.strings;
+  return switch (reason) {
+    'Harassment or bullying' => strings.localized(
+      telugu: 'వేధింపు లేదా బెదిరింపు',
+      english: 'Harassment or bullying',
+    ),
+    'Hate speech or discrimination' => strings.localized(
+      telugu: 'ద్వేష ప్రసంగం లేదా వివక్ష',
+      english: 'Hate speech or discrimination',
+    ),
+    'Sexual or adult content' => strings.localized(
+      telugu: 'లైంగిక లేదా పెద్దల కంటెంట్',
+      english: 'Sexual or adult content',
+    ),
+    'Violence or dangerous content' => strings.localized(
+      telugu: 'హింస లేదా ప్రమాదకర కంటెంట్',
+      english: 'Violence or dangerous content',
+    ),
+    'Spam, scam, or fake content' => strings.localized(
+      telugu: 'స్పామ్, మోసం లేదా నకిలీ కంటెంట్',
+      english: 'Spam, scam, or fake content',
+    ),
+    'Misinformation or deceptive political content' => strings.localized(
+      telugu: 'తప్పుడు సమాచారం లేదా మోసపూరిత రాజకీయ కంటెంట్',
+      english: 'Misinformation or deceptive political content',
+    ),
+    'Privacy violation or personal information' => strings.localized(
+      telugu: 'ప్రైవసీ ఉల్లంఘన లేదా వ్యక్తిగత సమాచారం',
+      english: 'Privacy violation or personal information',
+    ),
+    'Copyright or trademark issue' => strings.localized(
+      telugu: 'కాపీరైట్ లేదా ట్రేడ్‌మార్క్ సమస్య',
+      english: 'Copyright or trademark issue',
+    ),
+    'Illegal content' => strings.localized(
+      telugu: 'చట్టవిరుద్ధ కంటెంట్',
+      english: 'Illegal content',
+    ),
+    _ => strings.localized(
+      telugu: 'ఇతర సేఫ్టీ సమస్య',
+      english: 'Other safety issue',
+    ),
+  };
+}
+
 Future<void> _showCommunityStatusReportSheet(
   BuildContext context, {
   required CommunityStatus status,
   CommunityStatusComment? comment,
 }) async {
   final detailsController = TextEditingController();
+  final strings = context.strings;
   var selectedReason = _communityReportReasons.first;
   var submitting = false;
-  final reportedLabel = comment == null ? 'status' : 'reply';
+  final reportedLabel = comment == null
+      ? strings.localized(telugu: 'స్టేటస్', english: 'status')
+      : strings.localized(telugu: 'రిప్లై', english: 'reply');
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -6494,7 +6561,10 @@ Future<void> _showCommunityStatusReportSheet(
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Report $reportedLabel',
+                        strings.localized(
+                          telugu: '$reportedLabel రిపోర్ట్ చేయండి',
+                          english: 'Report $reportedLabel',
+                        ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -6502,9 +6572,14 @@ Future<void> _showCommunityStatusReportSheet(
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
-                        style: TextStyle(
+                      Text(
+                        strings.localized(
+                          telugu:
+                              'దగ్గరగా సరిపోయే కారణం ఎంచుకోండి. రిపోర్ట్స్ community safety కోసం team review చేయవచ్చు.',
+                          english:
+                              'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
+                        ),
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontWeight: FontWeight.w600,
                           height: 1.25,
@@ -6519,7 +6594,12 @@ Future<void> _showCommunityStatusReportSheet(
                             children: <Widget>[
                               for (final reason in _communityReportReasons)
                                 ChoiceChip(
-                                  label: Text(reason),
+                                  label: Text(
+                                    _localizedCommunityReportReason(
+                                      context,
+                                      reason,
+                                    ),
+                                  ),
                                   selected: selectedReason == reason,
                                   onSelected: submitting
                                       ? null
@@ -6559,7 +6639,10 @@ Future<void> _showCommunityStatusReportSheet(
                           counterStyle: TextStyle(
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
-                          hintText: 'Add details optional',
+                          hintText: strings.localized(
+                            telugu: 'వివరాలు optional',
+                            english: 'Add details optional',
+                          ),
                           hintStyle: TextStyle(
                             color: Colors.white.withValues(alpha: 0.55),
                             fontWeight: FontWeight.w700,
@@ -6589,7 +6672,12 @@ Future<void> _showCommunityStatusReportSheet(
                                   vertical: 14,
                                 ),
                               ),
-                              child: const Text('Cancel'),
+                              child: Text(
+                                strings.localized(
+                                  telugu: 'రద్దు',
+                                  english: 'Cancel',
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -6617,8 +6705,18 @@ Future<void> _showCommunityStatusReportSheet(
                                           SnackBar(
                                             content: Text(
                                               ok
-                                                  ? 'Report submitted. Thank you.'
-                                                  : 'Report failed. Please try again.',
+                                                  ? strings.localized(
+                                                      telugu:
+                                                          'రిపోర్ట్ submit అయింది. ధన్యవాదాలు.',
+                                                      english:
+                                                          'Report submitted. Thank you.',
+                                                    )
+                                                  : strings.localized(
+                                                      telugu:
+                                                          'రిపోర్ట్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+                                                      english:
+                                                          'Report failed. Please try again.',
+                                                    ),
                                             ),
                                           ),
                                         );
@@ -6640,7 +6738,17 @@ Future<void> _showCommunityStatusReportSheet(
                                       ),
                                     )
                                   : const Icon(Icons.flag_rounded),
-                              label: Text(submitting ? 'Sending' : 'Submit'),
+                              label: Text(
+                                submitting
+                                    ? strings.localized(
+                                        telugu: 'పంపుతోంది',
+                                        english: 'Sending',
+                                      )
+                                    : strings.localized(
+                                        telugu: 'సమర్పించండి',
+                                        english: 'Submit',
+                                      ),
+                              ),
                             ),
                           ),
                         ],
@@ -6673,6 +6781,7 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     final userName = widget.userName.trim().isEmpty
         ? 'User'
         : widget.userName.trim();
@@ -6687,14 +6796,14 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
           text: TextSpan(
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 13.5,
-              height: 1.28,
-              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              height: 1.25,
+              fontWeight: FontWeight.w400,
             ),
             children: <InlineSpan>[
               TextSpan(
                 text: '$userName  ',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               TextSpan(text: text),
             ],
@@ -6705,14 +6814,14 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
           InkWell(
             onTap: () => setState(() => _expanded = true),
             borderRadius: BorderRadius.circular(8),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 2),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                'Read more',
-                style: TextStyle(
+                strings.localized(telugu: 'మరింత చదవండి', english: 'Read more'),
+                style: const TextStyle(
                   color: Colors.white70,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -6855,6 +6964,7 @@ class _StatusEngagementPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.38),
@@ -6894,16 +7004,19 @@ class _StatusEngagementPanel extends StatelessWidget {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const <Widget>[
-                      Icon(
+                    children: <Widget>[
+                      const Icon(
                         Icons.keyboard_double_arrow_up_rounded,
                         color: Colors.white,
                         size: 20,
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
-                        'Swipe up for replies',
-                        style: TextStyle(
+                        strings.localized(
+                          telugu: 'రిప్లైలు చూడడానికి పైకి swipe చేయండి',
+                          english: 'Swipe up for replies',
+                        ),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
@@ -6981,6 +7094,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
   }
 
   Future<void> _send() async {
+    final strings = context.strings;
     final text = _controller.text.trim();
     if (_sending || text.isEmpty) {
       return;
@@ -6997,18 +7111,33 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
     if (ok) {
       _controller.clear();
       FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Reply sent')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            strings.localized(
+              telugu: 'రిప్లై పంపబడింది',
+              english: 'Reply sent',
+            ),
+          ),
+        ),
+      );
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Reply failed. Try again.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          strings.localized(
+            telugu: 'రిప్లై విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+            english: 'Reply failed. Try again.',
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Row(
       children: <Widget>[
         Expanded(
@@ -7028,7 +7157,10 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
             ),
             decoration: InputDecoration(
               counterText: '',
-              hintText: 'Reply...',
+              hintText: strings.localized(
+                telugu: 'రిప్లై...',
+                english: 'Reply...',
+              ),
               hintStyle: TextStyle(
                 color: Colors.white.withValues(alpha: 0.65),
                 fontWeight: FontWeight.w700,

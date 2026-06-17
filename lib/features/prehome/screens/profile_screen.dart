@@ -19,6 +19,7 @@ import 'package:mana_poster/features/prehome/screens/notifications_settings_scre
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
+import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
@@ -26,7 +27,9 @@ import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dar
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
@@ -80,12 +83,22 @@ class _ProfileScreenState extends State<ProfileScreen>
   );
   bool _loadingProfile = true;
   bool _privacyChoicesVisible = false;
+  String _selectedRegionName = '';
 
   @override
   void initState() {
     super.initState();
     _loadPosterProfile();
+    unawaited(_loadSelectedRegionName());
     unawaited(_loadPrivacyChoicesVisibility());
+  }
+
+  Future<void> _loadSelectedRegionName() async {
+    final selection = await AppRegionService.loadSelection();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _selectedRegionName = selection?.name ?? '');
   }
 
   Future<void> _loadPrivacyChoicesVisibility() async {
@@ -291,6 +304,49 @@ class _ProfileScreenState extends State<ProfileScreen>
     ).showSnackBar(SnackBar(content: Text(copy.politicalPartySavedMessage)));
   }
 
+  Future<void> _openRegionSelection(_ProfileCopy copy) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            const RegionSelectionScreen(returnToPreviousOnSave: true),
+      ),
+    );
+    if (!mounted || changed != true) {
+      return;
+    }
+
+    await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
+    final selection = await AppRegionService.loadSelection();
+    if (!mounted || selection == null) {
+      return;
+    }
+
+    context.languageController.setLanguage(selection.appLanguage);
+    setState(() => _selectedRegionName = selection.name);
+    await AppPartyPreferenceService.persistSelection(<String>{});
+    if (!mounted) {
+      return;
+    }
+    final partiesChanged = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            const PoliticalPartiesScreen(returnToPreviousOnSave: true),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          partiesChanged == true
+              ? copy.politicalPartySavedMessage
+              : copy.stateSavedMessage,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
@@ -306,6 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return PosterProfileDetailsScreen(
       initialProfile: _posterProfile,
       accountEmail: FirebaseAuth.instance.currentUser?.email?.trim() ?? '',
+      accountSubtitle: _selectedRegionName,
       embeddedInProfileScreen: true,
       onSaved: (profile) {
         setState(() => _posterProfile = profile);
@@ -336,6 +393,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (_) => _ProfileMoreScreen(
                   copy: copy,
                   onShareApp: () => _shareApp(copy),
+                  onOpenRegionSelection: () => _openRegionSelection(copy),
                   onOpenPoliticalPartySelection: () =>
                       _openPoliticalPartySelection(copy),
                   onOpenReligionSelection: () => _openReligionSelection(copy),
@@ -536,6 +594,7 @@ class _ProfileMoreScreen extends StatelessWidget {
   const _ProfileMoreScreen({
     required this.copy,
     required this.onShareApp,
+    required this.onOpenRegionSelection,
     required this.onOpenPoliticalPartySelection,
     required this.onOpenReligionSelection,
     required this.onLogout,
@@ -544,6 +603,7 @@ class _ProfileMoreScreen extends StatelessWidget {
 
   final _ProfileCopy copy;
   final Future<void> Function() onShareApp;
+  final Future<void> Function() onOpenRegionSelection;
   final Future<void> Function() onOpenPoliticalPartySelection;
   final Future<void> Function() onOpenReligionSelection;
   final Future<void> Function() onLogout;
@@ -700,6 +760,12 @@ class _ProfileMoreScreen extends StatelessWidget {
                       ),
                     );
                   },
+                ),
+                _ProfileItemData(
+                  icon: Icons.map_rounded,
+                  title: copy.stateTitle,
+                  subtitle: copy.stateSubtitle,
+                  onTap: () => unawaited(onOpenRegionSelection()),
                 ),
                 _ProfileItemData(
                   icon: Icons.how_to_vote_rounded,
@@ -1207,6 +1273,14 @@ class _ProfileCopy {
       _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;
   String? get languageSubtitle =>
       _isTelugu ? 'యాప్ భాష మార్చండి' : 'Change app language';
+  String get stateTitle =>
+      _isTelugu ? 'రాష్ట్రం మార్చండి' : 'Change State / UT';
+  String get stateSubtitle => _isTelugu
+      ? 'యాప్ భాష మరియు రాష్ట్ర కేటగిరీలు అప్డేట్ అవుతాయి'
+      : 'Update app language and state categories';
+  String get stateSavedMessage => _isTelugu
+      ? 'రాష్ట్రం అప్డేట్ అయింది. రాజకీయ పార్టీలు మళ్లీ ఎంచుకోండి'
+      : 'State updated. Please review political parties';
   String get politicalPartyTitle =>
       _isTelugu ? 'రాజకీయ పార్టీలు' : 'Political parties';
   String get politicalPartySubtitle => _isTelugu
