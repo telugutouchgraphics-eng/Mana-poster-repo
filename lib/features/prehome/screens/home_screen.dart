@@ -1395,11 +1395,20 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_hidePhoneNavigationButtons());
       unawaited(ScreenSecurityService.enableSecure());
-      unawaited(_loadReligionPreference());
-      unawaited(_loadRegionSelection());
-      unawaited(_loadPartyPreference());
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 40),
+        const Duration(milliseconds: 350),
+        _loadReligionPreference,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 500),
+        _loadRegionSelection,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 650),
+        _loadPartyPreference,
+      );
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1200),
         _loadStartupTemplateSnapshot,
       );
       _homeDebugLog(
@@ -1412,39 +1421,39 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 120),
+        const Duration(milliseconds: 2200),
         _loadApprovedCreatorTemplatesAfterStartup,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 140),
+        const Duration(milliseconds: 2800),
         _loadManualEventCategories,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 900),
+        const Duration(milliseconds: 3800),
         _loadViewerPosterProfile,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 300),
+        const Duration(milliseconds: 1200),
         _loadPromoCardPreferences,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 700),
+        const Duration(milliseconds: 1800),
         _loadInstalledAppVersion,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1300),
+        const Duration(milliseconds: 5600),
         _handlePlayStoreEngagementOnHomeOpen,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1100),
+        const Duration(milliseconds: 4600),
         _loadHomeBanners,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1600),
+        const Duration(milliseconds: 6200),
         _showReferralPromptIfNeeded,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2200),
+        const Duration(milliseconds: 7200),
         _requestStartupPermissionsIfNeeded,
       );
       _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
@@ -4494,6 +4503,22 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_CategoryChipData> _buildCategoriesForHome(AppLanguage language) {
+    if (!_religionSelectionReady) {
+      final identity = Object.hash(
+        language,
+        _religionPreference,
+        _religionSelectionReady,
+      );
+      final cached = _categoryListCache;
+      if (cached != null && _categoryListIdentity == identity) {
+        return cached;
+      }
+      final categories = <_CategoryChipData>[_allCategoryChip()];
+      _categoryListCache = categories;
+      _categoryListIdentity = identity;
+      return categories;
+    }
+
     final availabilityIdentity = Object.hashAll(
       _dynamicCategoryAvailabilityBySlug.entries.toList(growable: false)
         ..sort((a, b) => a.key.compareTo(b.key)),
@@ -4543,9 +4568,11 @@ class _HomeScreenState extends State<HomeScreen>
       'scheduled=${scheduledDynamicCategories.map((item) => _normalizeTag(item.slug)).join(",")} '
       'parties=${partyCategories.map((item) => _normalizeTag(item.slug)).join(",")}',
     );
-    final categories = _religionSelectionReady
-        ? _mergeCategories(staticCategories, dynamicCategories, partyCategories)
-        : <_CategoryChipData>[_allCategoryChip()];
+    final categories = _mergeCategories(
+      staticCategories,
+      dynamicCategories,
+      partyCategories,
+    );
     _homeDebugLog(
       '[CategoryList] slugs=${categories.map((item) => _normalizeTag(item.slug)).join(",")}',
     );
