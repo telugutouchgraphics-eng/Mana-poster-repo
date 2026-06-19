@@ -264,7 +264,10 @@ class CommunityStatusService {
     return (region: region, religion: religion);
   }
 
-  Stream<List<CommunityStatus>> watchVisibleStatuses() async* {
+  Stream<List<CommunityStatus>> watchVisibleStatuses({
+    int maxStatuses = 60,
+  }) async* {
+    final safeLimit = maxStatuses < 1 ? 1 : maxStatuses;
     final scope = await _currentVisibilityScope();
     final user = _auth.currentUser;
     if (scope == null || user == null) {
@@ -313,7 +316,10 @@ class CommunityStatusService {
         return b.status.createdAtMillis.compareTo(a.status.createdAtMillis);
       });
       controller.add(
-        ranked.map((item) => item.status).take(60).toList(growable: false),
+        ranked
+            .map((item) => item.status)
+            .take(safeLimit)
+            .toList(growable: false),
       );
     }
 
@@ -323,7 +329,7 @@ class CommunityStatusService {
           .where('regionId', isEqualTo: scope.region.id)
           .where('religionPreference', isEqualTo: religionName)
           .orderBy('createdAt', descending: true)
-          .limit(150);
+          .limit(safeLimit);
       subscriptions.add(
         query.snapshots().listen((snapshot) {
           for (final change in snapshot.docChanges) {
@@ -358,6 +364,37 @@ class CommunityStatusService {
       }
     };
     yield* controller.stream;
+  }
+
+  Stream<List<CommunityStatus>> watchMyActiveStatuses({int limit = 8}) {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return Stream<List<CommunityStatus>>.value(const <CommunityStatus>[]);
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final safeLimit = limit < 1 ? 1 : limit;
+    return _firestore
+        .collection('communityStatuses')
+        .where('userId', isEqualTo: user.uid)
+        .where('expiresAt', isGreaterThan: now)
+        .limit(safeLimit)
+        .snapshots()
+        .map((snapshot) {
+          final statuses =
+              snapshot.docs
+                  .map(
+                    (doc) => CommunityStatus.fromMap(
+                      doc.id,
+                      doc.data(),
+                      viewerUserId: user.uid,
+                    ),
+                  )
+                  .toList(growable: false)
+                ..sort(
+                  (a, b) => b.createdAtMillis.compareTo(a.createdAtMillis),
+                );
+          return statuses;
+        });
   }
 
   Future<CommunityStatusSubmitResult> submitStatus({

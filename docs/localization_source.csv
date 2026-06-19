@@ -1,0 +1,617 @@
+﻿key,english
+ui_0001,10-digit number
+ui_0002,3-day trial plan
+ui_0003,A few permissions are needed
+ui_0004,A last autosaved project was found. Do you want to restore it?
+ui_0005,A new app update is ready
+ui_0006,A newer version is available on the Play Store. Update now for the latest improvements.
+ui_0007,A Telugu-first app for creating posters with ease
+ui_0008,About App
+ui_0009,Account
+ui_0010,Account and Content Responsibility
+ui_0011,Account deleted successfully.
+ui_0012,Account deletion
+ui_0013,Account Deletion and Device Access
+ui_0014,Account deletion failed.
+ui_0015,Activate subscription to share or download posters.
+ui_0016,Active
+ui_0017,Add a caption
+ui_0018,Add details optional
+ui_0019,Add Photo
+ui_0020,Add Text
+ui_0021,Adjust
+ui_0022,Adjust mode
+ui_0023,Ads and Third-Party Services
+ui_0024,"After choosing a poster, it can be customized in the editor."
+ui_0025,"After login, the home screen shows poster categories and designs."
+ui_0026,"After selecting a State or Union Territory, the app switches to the region language and shows relevant categories, including political party categories."
+ui_0027,"After you confirm deletion, the app starts removing your sign-in access, profile photo, poster identity details, and app-linked personal data. Play Store or Apple billing records may remain separately for legal or accounting purposes."
+ui_0028,AI is processing the selected photo layer
+ui_0029,Alignment & Shadow
+ui_0030,All
+ui_0031,Allow
+ui_0032,Allow camera from settings.
+ui_0033,Allow from Settings
+ui_0034,Allow gallery permission and try exporting again
+ui_0035,Allow location from settings.
+ui_0036,Allow notifications from settings.
+ui_0037,Allow photos from settings.
+ui_0038,Allowed
+ui_0039,Already have an account?
+ui_0040,An account already exists with this email.
+ui_0041,An active plan was restored from the backend
+ui_0042,and
+ui_0043,Another payment is already in progress.
+ui_0044,App details and version info
+ui_0045,App Settings
+ui_0046,App settings opened.
+ui_0047,Apply
+ui_0048,Applying eraser
+ui_0049,Applying magic wand
+ui_0050,Applying...
+ui_0051,Approved
+ui_0052,Authentication is not configured on this build.
+ui_0053,Auto-renewal
+ui_0054,Available languages
+ui_0055,Back
+ui_0056,Background
+ui_0057,Background Colors
+ui_0058,Background Opacity
+ui_0059,Background remove processing
+ui_0060,"Background tool: choose White, Color, Gradient, or Image."
+ui_0061,Banner unavailable
+ui_0062,Billing service is unavailable
+ui_0063,Blur
+ui_0064,Border
+ui_0065,Brightness
+ui_0066,Bring front
+ui_0067,Browse posters by category and quickly choose a suitable design.
+ui_0068,Brush
+ui_0069,Build
+ui_0070,Business
+ui_0071,Business Details
+ui_0072,Business logo update failed
+ui_0073,Business Name
+ui_0074,Business preview
+ui_0075,Business Tagline
+ui_0076,Business WhatsApp Number
+ui_0077,Buy
+ui_0078,"By continuing, you agree to our Privacy Policy and Terms & Conditions."
+ui_0079,Camera
+ui_0080,Camera access granted.
+ui_0081,Camera access is off.
+ui_0082,Cancel
+ui_0083,Canvas is empty
+ui_0084,Capture failed. Please try again.
+ui_0085,Category
+ui_0086,Category is required
+ui_0087,Center
+ui_0088,Change logo
+ui_0089,Change photo
+ui_0090,Check
+ui_0091,Checking plan status...
+ui_0092,Checking subscription status...
+ui_0093,Children's Privacy
+ui_0094,Choose and share with your name
+ui_0095,Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.
+ui_0096,Choose the language you want in the app. You can change it later too.
+ui_0097,Choose your app language
+ui_0098,Choose your language
+ui_0099,Christian
+ui_0100,Close
+ui_0101,Color
+ui_0102,Community Contribution
+ui_0103,"Community quote/image submissions are reviewed by a manager, who may customize and publish the poster in the correct category."
+ui_0104,"Community Status, Replies, and 24-Hour Retention"
+ui_0105,"Community Status, Replies, and Temporary Content"
+ui_0106,"Community upload lets users send an image, quote, or both for manager review; approved posters appear in the appropriate category."
+ui_0107,Community Uploads and Review
+ui_0108,"Community Uploads, Moderation, and Reporting"
+ui_0109,Confirm account deletion
+ui_0110,Congratulations! You received 30 days Premium free.
+ui_0111,Contact Information
+ui_0112,Continue
+ui_0113,Continue with Google
+ui_0114,Contrast
+ui_0115,Control alerts and updates
+ui_0116,Copyright or trademark issue
+ui_0117,Corner Radius
+ui_0118,Could not add the extra photo.
+ui_0119,Could not load downloads.
+ui_0120,Could not open editor. Please try again.
+ui_0121,Could not open settings. Please try again.
+ui_0122,Could not open the link. Please try again.
+ui_0123,Could not open the mail app. Please try again.
+ui_0124,Could not open the Play Store. Please try again.
+ui_0125,Could not refresh status. Pull down to retry.
+ui_0126,Could not save language. Please try again.
+ui_0127,Could not save parties. Please try again.
+ui_0128,Could not save your selection. Please try again.
+ui_0129,Create
+ui_0130,Create & Share
+ui_0131,Crop
+ui_0132,Crop failed
+ui_0133,Crop Logo
+ui_0134,Crop mode
+ui_0135,Crop Photo
+ui_0136,Current language
+ui_0137,Custom
+ui_0138,"Customize the selected template in the editor, then save or share it."
+ui_0139,Data Protection
+ui_0140,Data Sharing
+ui_0141,Delete
+ui_0142,Delete account
+ui_0143,Delete layer
+ui_0144,Delete my account
+ui_0145,Delete selected
+ui_0146,Designation
+ui_0147,Device Access and Sessions
+ui_0148,Display Name
+ui_0149,Don't have an account?
+ui_0150,Download
+ui_0151,Download failed. Please try again.
+ui_0152,Draft save failed
+ui_0153,Draft saved in app storage
+ui_0154,Drafts
+ui_0155,Drag on the photo to erase
+ui_0156,Duplicate selected
+ui_0157,Edit
+ui_0158,Edit Text
+ui_0159,Editor is not available on web. Use the mobile app to create posters.
+ui_0160,Effects
+ui_0161,Elements
+ui_0162,Email address
+ui_0163,Enter a referral code if you have one.
+ui_0164,Enter business name
+ui_0165,Enter referral code
+ui_0166,Enter valid email
+ui_0167,Enter your designation
+ui_0168,Enter your name
+ui_0169,Erase
+ui_0170,Eraser
+ui_0171,Export
+ui_0172,Export boundary not ready
+ui_0173,Export is already in progress
+ui_0174,Exporting poster
+ui_0175,Father's Day
+ui_0176,"Features, pricing, designs, ads, and these terms may change over time. Some features may become temporarily unavailable because of technical issues, platform restrictions, or third-party failures. To the extent permitted by law, the app is not liable for indirect loss, data loss, or missed business opportunities."
+ui_0177,File save failed. Please try again.
+ui_0178,Fill
+ui_0179,Fill Colors
+ui_0180,"Finally, the completed poster can be saved or shared."
+ui_0181,"Firebase, Analytics, and Ads"
+ui_0182,Font
+ui_0183,Font Size
+ui_0184,Fonts
+ui_0185,"For account security, one account may remain active on only one primary device session at a time. If the same account is activated on another primary device, the previous session may be signed out. This helps reduce account misuse and unauthorized access."
+ui_0186,For updates.
+ui_0187,Forgot Password
+ui_0188,Free
+ui_0189,Friendship Day
+ui_0190,Front
+ui_0191,Gallery
+ui_0192,Gallery permission was denied.
+ui_0193,Get help and contact support
+ui_0194,Glow
+ui_0195,Good Afternoon
+ui_0196,Good Morning
+ui_0197,Good Night
+ui_0198,Google Sign-In failed. Please try again.
+ui_0199,Google Sign-In is not available on this device right now.
+ui_0200,Google Sign-In is not supported on this build.
+ui_0201,Google Sign-In popup was blocked. Allow popups and try again.
+ui_0202,Google Sign-In setup is incomplete. Please try again later.
+ui_0203,Google Sign-In was canceled before completing sign-in.
+ui_0204,Google Sign-In was interrupted. Please try again.
+ui_0205,Gradient
+ui_0206,Harassment or bullying
+ui_0207,Hardness
+ui_0208,Hate speech or discrimination
+ui_0209,Height
+ui_0210,Help & Support
+ui_0211,Hide this item?
+ui_0212,Hindu
+ui_0213,Home will show the categories that match your selection.
+ui_0214,How the app works
+ui_0215,How We Use Data
+ui_0216,Illegal content
+ui_0217,Image
+ui_0218,Image Editor
+ui_0219,Image or quote is required
+ui_0220,Image or text is required
+ui_0221,Image size must be 500KB or less
+ui_0222,Inches
+ui_0223,Includes poster/stage background
+ui_0224,Incorrect email or password.
+ui_0225,"It can also be used in English, Hindi, Tamil, Kannada, and Malayalam."
+ui_0226,JPG
+ui_0227,Language
+ui_0228,Language Settings
+ui_0229,"Last updated: June 15, 2026"
+ui_0230,Later
+ui_0231,Layers
+ui_0232,Left
+ui_0233,Letter Spacing
+ui_0234,Line Spacing
+ui_0235,Location
+ui_0236,Location access granted.
+ui_0237,Location access is off.
+ui_0238,Login
+ui_0239,Login required
+ui_0240,Login with Email
+ui_0241,Login with Google or Email and start your poster journey.
+ui_0242,Logo Style
+ui_0243,Logout
+ui_0244,Magic
+ui_0245,Magic wand
+ui_0246,Main features
+ui_0247,Mana Business
+ui_0248,Mana Poster Ai Featured Banner
+ui_0249,"Mana Poster Ai helps users quickly choose, personalize, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app is built around a simple mobile workflow for browsing, editing, and sharing in one place."
+ui_0250,"Mana Poster Ai is intended for personal, business, and promotional poster creation. You must use the app lawfully and responsibly."
+ui_0251,Manage current plan and upgrades
+ui_0252,Minimum 6 characters required
+ui_0253,Misinformation or deceptive political content
+ui_0254,Monthly
+ui_0255,Monthly plan
+ui_0256,More
+ui_0257,Mother's Day
+ui_0258,Move backward
+ui_0259,Move forward
+ui_0260,Move to back
+ui_0261,Move to front
+ui_0262,Muslim
+ui_0263,My Downloads
+ui_0264,My Status
+ui_0265,My Uploads
+ui_0266,National
+ui_0267,Need help from support?
+ui_0268,Network issue. Please check your internet connection.
+ui_0269,New Poster
+ui_0270,No
+ui_0271,No account found for this email.
+ui_0272,No logged-in user found.
+ui_0273,No matching region found.
+ui_0274,No new statuses yet
+ui_0275,No posters are available in this section
+ui_0276,No replies yet
+ui_0277,No saved drafts yet
+ui_0278,No subscription found to restore
+ui_0279,No uploads yet
+ui_0280,None
+ui_0281,Not active
+ui_0282,Not allowed
+ui_0283,Not available on web.
+ui_0284,Notification
+ui_0285,Notifications
+ui_0286,Notifications access granted.
+ui_0287,Notifications are off.
+ui_0288,"Notifications, permissions, help, privacy policy, and terms are available inside the app."
+ui_0289,Object selected
+ui_0290,OK
+ui_0291,"Once a design is selected, it can be edited and personalized in the editor."
+ui_0292,Opacity
+ui_0293,Open App Settings
+ui_0294,Open Home
+ui_0295,Optional now
+ui_0296,Optional short line
+ui_0297,Options
+ui_0298,Other safety issue
+ui_0299,Page Setup
+ui_0300,Paint Target
+ui_0301,Password
+ui_0302,Password is required
+ui_0303,Password reset will be available soon.
+ui_0304,Payment failed
+ui_0305,Payment is pending. Pro access will unlock after Google Play confirms it.
+ui_0306,Payment response timed out. Please try again.
+ui_0307,Payment was cancelled
+ui_0308,Pending
+ui_0309,Permissions
+ui_0310,"Permissions are needed to choose photos, save posters, and receive important updates."
+ui_0311,"Permissions are requested only for photo selection, poster saving, status image selection, and optional notifications. You can manage them from device settings. You remain responsible for any content you upload, export, upload as a status, comment/reply to, or share. The app may temporarily cache media files and remove them when they are no longer needed. Status images may be compressed before upload; temporary compressed files may be removed after device or backend processing is complete."
+ui_0312,Permissions request could not be completed. Please try again.
+ui_0313,Personal
+ui_0314,Personal Details
+ui_0315,Personal photo update failed
+ui_0316,Photo
+ui_0317,Photo quick actions
+ui_0318,Photo selected
+ui_0319,Photo tool: add from Gallery or Camera.
+ui_0320,"Photo was added, but background removal did not complete. Using the original photo for now."
+ui_0321,"Photo was saved, but background removal did not complete. Please try again after some time."
+ui_0322,Photos access granted.
+ui_0323,Photos access is off.
+ui_0324,"Photos, Permissions, and Storage"
+ui_0325,"Photos, storage and other access"
+ui_0326,Photos/Gallery
+ui_0327,"Pick size and background, then start your design."
+ui_0328,"Pick size and background, then start."
+ui_0329,Pixels
+ui_0330,Plan info mode
+ui_0331,Please add an image or text
+ui_0332,Please log in again and retry account deletion.
+ui_0333,Please refresh or try another template.
+ui_0334,Please select an image or write a quote
+ui_0335,Please select State/Union Territory first
+ui_0336,Please try again shortly.
+ui_0337,Please try again.
+ui_0338,"Please wait, current editor job is still running"
+ui_0339,PNG
+ui_0340,PNG with Background
+ui_0341,Political Categories and Public Symbols
+ui_0342,Political Parties
+ui_0343,"Political party categories, party names, party symbols/logos, State/Union Territory emblems, and public identifiers may be shown only for category navigation, regional relevance, and poster discovery. They do not imply endorsement, affiliation, sponsorship, or any political claim by Mana Poster Ai. Users creating political or public-interest content are responsible for complying with applicable laws, election rules, platform policies, copyright/trademark rights, and factual accuracy."
+ui_0344,Poster access and export features follow the active subscription plan.
+ui_0345,Poster is not ready yet. Please try again.
+ui_0346,Poster Profile
+ui_0347,Poster saved to gallery.
+ui_0348,Poster workspace
+ui_0349,Posters you download appear here.
+ui_0350,Premium Gift
+ui_0351,Preparing your photo. Please wait.
+ui_0352,Preparing...
+ui_0353,Preview
+ui_0354,Privacy Policy
+ui_0355,Privacy violation or personal information
+ui_0356,Profile & Settings
+ui_0357,Profile details could not be saved
+ui_0358,Profile preview
+ui_0359,Profile saved
+ui_0360,Purchase Membership
+ui_0361,Quick setup
+ui_0362,Quote must be 600 characters or less
+ui_0363,Rate App
+ui_0364,Rate Mana Poster Ai
+ui_0365,Read deletion policy
+ui_0366,Read more
+ui_0367,Ready
+ui_0368,Recent statuses
+ui_0369,Recover Draft
+ui_0370,Redo
+ui_0371,Referral code
+ui_0372,Referral code apply failed. Please try again.
+ui_0373,Referral code could not be applied
+ui_0374,Referral Rewards
+ui_0375,"Refund, Cancellation, and Auto-Renewal"
+ui_0376,"Region, Language, and Political Category Choices"
+ui_0377,Rejected
+ui_0378,Remove BG
+ui_0379,Remove from my list
+ui_0380,Removing background
+ui_0381,Removing background...
+ui_0382,Removing the selected color region
+ui_0383,Removing...
+ui_0384,Rendering and saving the final output
+ui_0385,Rendering and sharing the final output
+ui_0386,Renew Membership
+ui_0387,Replay voice guide
+ui_0388,Replies
+ui_0389,reply
+ui_0390,Reply failed. Try again.
+ui_0391,Reply sent
+ui_0392,Reply...
+ui_0393,Report
+ui_0394,Report failed. Please try again.
+ui_0395,Report submitted. Thank you.
+ui_0396,Reporting and Abusive Content
+ui_0397,Reset
+ui_0398,Restore
+ui_0399,Restore subscriptions
+ui_0400,"Restore succeeded, but Pro access is not updated yet. Please try again."
+ui_0401,Restore to refresh your verified subscription status
+ui_0402,Right
+ui_0403,Rounded
+ui_0404,Saturation
+ui_0405,Save / Apply
+ui_0406,Save Current
+ui_0407,"Save poster profile, business name, photo, and WhatsApp details."
+ui_0408,Saving...
+ui_0409,Search elements
+ui_0410,Search templates
+ui_0411,Select a photo first
+ui_0412,Select a photo layer for crop
+ui_0413,Select Category
+ui_0414,Select category
+ui_0415,Select Image
+ui_0416,Select your religion
+ui_0417,Selected photo
+ui_0418,Send back
+ui_0419,Sending
+ui_0420,Service Changes and Limitation of Liability
+ui_0421,Sexual or adult content
+ui_0422,Shadow
+ui_0423,Shadow Blur
+ui_0424,Shadow Offset Y
+ui_0425,Shadow Opacity
+ui_0426,Share
+ui_0427,Share boundary not ready
+ui_0428,"Share failed, please try again"
+ui_0429,Share failed. Please try again.
+ui_0430,Share is already in progress
+ui_0431,Share WhatsApp
+ui_0432,Sharing poster
+ui_0433,Sign out logic can be connected later
+ui_0434,Sign Up
+ui_0435,Sign Up with Email
+ui_0436,Signed-in account mismatch. Please sign in again.
+ui_0437,Size
+ui_0438,Skip
+ui_0439,Smaller file size
+ui_0440,Soft
+ui_0441,Softly removing the brushed photo area
+ui_0442,Source photo unavailable for Remove BG
+ui_0443,"Spam, scam, or fake content"
+ui_0444,Special
+ui_0445,Start Design
+ui_0446,State
+ui_0447,Status
+ui_0448,status
+ui_0449,Status check failed
+ui_0450,Status image must be 12MB or less
+ui_0451,Status information unavailable
+ui_0452,Status text must be 300 characters or less
+ui_0453,Status upload failed. Please try again.
+ui_0454,Status upload is supported on mobile app only
+ui_0455,Status uploaded
+ui_0456,Statuses
+ui_0457,statuses
+ui_0458,Stickers
+ui_0459,Store product not found. Check product id.
+ui_0460,Strength
+ui_0461,Stroke
+ui_0462,Stroke Color
+ui_0463,Stroke Width
+ui_0464,Style
+ui_0465,Submit
+ui_0466,Submitting...
+ui_0467,Subscribe
+ui_0468,"Subscribe for downloads, sharing, and membership benefits."
+ui_0469,Subscribe Now
+ui_0470,Subscribe now to create and share unlimited posters in the app.
+ui_0471,Subscription
+ui_0472,Subscription / Plans
+ui_0473,Subscription activated
+ui_0474,"Subscription cancellation is generally managed through your Play Store or App Store subscription settings. After cancelling, access may continue until the current billing period ends. Refund eligibility is determined by Google Play or Apple policies."
+ui_0475,Subscription details
+ui_0476,Subscription expired
+ui_0477,Subscription is not active
+ui_0478,Subscription Plan
+ui_0479,Subscription Required
+ui_0480,Subscription restored
+ui_0481,Subscription verification failed
+ui_0482,Subscription verification is unavailable. Please try again later.
+ui_0483,Subscriptions and Billing
+ui_0484,Subscriptions and Premium Access
+ui_0485,Support
+ui_0486,Support and contact
+ui_0487,Swipe up for replies
+ui_0488,Tap inside the selected photo
+ui_0489,Tap the color you want to remove
+ui_0490,Tap to add a status
+ui_0491,Telugu-first experience
+ui_0492,Template failed to load. Please try again.
+ui_0493,Template image unavailable
+ui_0494,Template layers failed to load. Please try again.
+ui_0495,Terms
+ui_0496,Terms & Conditions
+ui_0497,Text
+ui_0498,Text Colors
+ui_0499,Text Opacity
+ui_0500,Text selected
+ui_0501,Text Style
+ui_0502,Text styling
+ui_0503,"Text tool: tap Add Text, then style it."
+ui_0504,Text tools
+ui_0505,Thank You
+ui_0506,Thanks
+ui_0507,"The app may display AdMob ads. Ad availability, ad-skip timing, billing services, Google sign-in, notifications, or Firebase services may depend on third-party providers. The app does not guarantee uninterrupted availability of third-party services."
+ui_0508,"The app provides an account deletion request option. After deletion, login access, poster profile data, and linked app data may be removed. Some billing or platform-required records may be retained for a limited period."
+ui_0509,"The app uses Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing, and AdMob. These services support app performance, crash diagnostics, notifications, billing verification, and ad delivery. AdMob may collect device identifiers, IP address, and usage data to provide personalized or non-personalized ads."
+ui_0510,"The in-app Status feature allows a user to upload a text status, an image status, or an image with a caption. A user may keep up to 5 text statuses and 2 image/image + caption statuses active within a 24-hour active window; deleting an old active status or waiting for expiry frees that limit again. An image with a caption counts toward the image status limit. These limits may change for abuse prevention, storage cost control, performance, moderation, or security reasons. Status visibility is limited based on the user-selected State/Union Territory and religion preference; generally, a status is shown only to signed-in users in the same region and same or compatible religion scope. If the user enables optional location access, we use Android native location permission and store only approximate city, district, state, country code, update time, and a random feed seed to prioritize nearby statuses, show area-relevant banners, support area-targeted admin push notifications, and provide privacy-safe admin insights. We do not store or display exact GPS latitude/longitude for this feature. Denying location permission does not block normal app use. When a status is uploaded, we may process the status text, caption, background color, compressed image file, image storage path, user ID, user display name, user photo URL, region ID/name, religion preference, approximate location fields if enabled, created time, expiry time, view count, like count, reaction count, viewers map, likes map, reactions map, and related technical metadata.
+
+When an image status is uploaded, the app may compress the file to reduce file size. Compression is used to reduce storage/bandwidth cost and improve loading speed; we do not promise to retain the original image as a permanent archive. Status media is stored temporarily in backend storage. Each status is assigned a 24-hour expiry time. Expired statuses are processed by backend scheduled cleanup for permanent deletion of the Firestore document, related comments/replies subcollection, and uploaded status image storage file. Because cleanup runs on a schedule, deletion is not guaranteed at the exact second of expiry; it normally occurs in the next cleanup cycle after expiry.
+
+Other users may send a reply/comment to a status owner. A reply/comment may store the commenter user ID, display name, comment text, status ID, status owner ID, and created time. The app is designed so that only the status owner can view replies for their own status in the replies screen; limited records may also remain available for the commenter's own use or enforcement. Comments are not intended as public feed comments; they are for response/feedback to the status owner only. Comments must not contain abusive, illegal, hateful, threatening, sexually explicit, misleading, spam, impersonation, copyright/trademark infringing, election/political misuse, or privacy-violating content. If there is a policy violation, safety issue, legal request, abuse investigation, or technical requirement, comments/status records may need to be reviewed, restricted, deleted, retained, or disclosed.
+
+The status viewer processes view counts, likes, reactions, and replies for the app experience. If a user taps/opens a status, a view record may be updated. If a user sends a like/reaction, account-level reaction data may be updated in backend maps. These interactions are not anonymous to the backend because user-linked records may be required for fraud prevention, abuse prevention, count accuracy, security, moderation, and user safety."
+ui_0511,"The Status feature is intended only for short-lived community sharing. A user may upload a text, image, or image + caption status. A user may keep up to 5 text statuses and 2 image/image + caption statuses active within a 24-hour active window; deleting an old active status or waiting for expiry frees the quota again. An image + caption status counts toward the image status limit. A status is generally visible only to users in the same or compatible scope based on the selected State/Union Territory and religion preference. Region/religion filtering is used for app experience and safety; if a user selects the wrong region/religion, visibility may change accordingly. Optional location access may be used only to prioritize nearby city/district statuses, show area-relevant banners, support area-targeted admin push notifications, and show aggregate admin insights. Exact GPS coordinates are not stored or shown in dashboards; approximate city/district/state fields may be stored with the user/status/report records when enabled. Status content is stored in the backend with a 24-hour expiry and is processed by scheduled cleanup for permanent deletion of the status document, related replies/comments, and status image. Exact-second deletion is not guaranteed; cleanup may occur in the next scheduled cycle.
+
+Before upload, status images may be compressed by the app to reduce file size. Compression reduces storage/bandwidth usage; the original full-size image is not guaranteed to be retained. When a user opens a status, a view count may be updated. Other users may send likes, reactions, and replies. The status owner can read replies in the replies screen; reply text may appear as a 2-line preview in the app UI and expand through Read more. The replying user is responsible for their message. Do not post private, confidential, financial, medical, legal, password, OTP, address, personal ID, sensitive political/religious targeting, or another person's private information in a status or reply.
+
+Mana Poster Ai does not treat statuses, replies, likes, reactions, or views as public endorsements, official communications, or guaranteed delivery channels. Status/reply sending, viewing, counting, deletion, or display behavior may change because of network delay, moderation, security checks, backend cleanup, device issue, app update, account restriction, or policy enforcement. Users may report abusive, illegal, spam, privacy-violating, impersonating, copyright/trademark infringing, or deceptive political status/reply content through the in-app report option; report reason, optional details, reported content preview, reporter UID, and moderation metadata may be retained for safety and legal review. If there is abuse, spam, harassment, impersonation, copyright/trademark issue, illegal political misuse, misinformation risk, user safety concern, law enforcement request, or legal obligation, Mana Poster Ai may restrict, remove, preserve, review, disclose, or disable statuses/replies. Repeated misuse may lead to account restrictions."
+ui_0512,"The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; they are shown within the matching region/religion scope, deleted by backend cleanup after 24 hours, and replies can be read by the status owner."
+ui_0513,The subscription plan supports poster creation and exports.
+ui_0514,The supported regional language is applied from the selected State or Union Territory; English fallback may appear where full UI support is not available.
+ui_0515,There are no design layers. Do you still want to export only the background?
+ui_0516,There are no posters for this category right now. Pull down to refresh and check again.
+ui_0517,Thin Black
+ui_0518,Thin White
+ui_0519,This account has been disabled.
+ui_0520,This app is designed with Telugu as the primary experience.
+ui_0521,This app is not intended for children under the age of 13.
+ui_0522,"This app is useful for people who share daily greetings, create posters for small businesses, publish devotional or occasion-based posts, or want personalized posters with their own name or business identity."
+ui_0523,This content was removed or is no longer available. Open Home to see the latest posters.
+ui_0524,This domain is not authorized in Firebase Authentication.
+ui_0525,This email is already linked to Google Sign-In. Continue with Google.
+ui_0526,This email is registered with Google Sign-In. Continue with Google.
+ui_0527,"This is a poster creation app where users can choose ready-made designs and personalize them with their photo, business name, WhatsApp details, and other relevant information. Templates, profile details, subscription information, help, and legal access are available in one place."
+ui_0528,This item was removed from your list
+ui_0529,This notification content is unavailable
+ui_0530,"This page contains the rules for using Mana Poster Ai, including subscriptions, payments, ads, account responsibility, and service limitations."
+ui_0531,"This page explains how Mana Poster Ai handles your data, subscriptions, ads, account deletion, and Firebase-powered services."
+ui_0532,This sign-in method is not enabled yet.
+ui_0533,This will be removed only from your My Uploads list. It will not be deleted for other users.
+ui_0534,Tip: Select a layer to unlock tool actions. Tap empty canvas to deselect.
+ui_0535,To capture your photo.
+ui_0536,To save posters.
+ui_0537,To show nearby statuses.
+ui_0538,Too many attempts. Please wait and try again.
+ui_0539,Tools
+ui_0540,"Tools: Crop, Erase, Layers, Stickers, and Border."
+ui_0541,Transparent
+ui_0542,"Transparent background, best for Remove BG"
+ui_0543,Trial
+ui_0544,Type text here
+ui_0545,Unable to open legal page. Please try again.
+ui_0546,Undo
+ui_0547,Unlock more posters with membership
+ui_0548,Unlock share & download
+ui_0549,Update App
+ui_0550,Upload failed. Please try again.
+ui_0551,Upload is supported on mobile app only
+ui_0552,Upload Poster
+ui_0553,Upload Status
+ui_0554,Upload submitted for review
+ui_0555,Usage Terms
+ui_0556,"Use this email for login problems, photo selection or upload issues, save or export problems, subscription questions, or general app support. Privacy Policy and Terms & Conditions are also available inside the app."
+ui_0557,User
+ui_0558,"Users may submit an image, quote text, or both for manager review. We may process the uploaded media, quote text, selected region, selected or manager-corrected category, political party category where applicable, upload time, applicable visibility date, review status, rejection reason, contribution share/download counts, and related moderation history. Quote-only submissions are not guaranteed to be published as raw text; a manager may use the quote as reference, create or customize a poster image, and upload it to the appropriate category. Approved posters may become visible to other users in the selected or manager-corrected category. Managers and admins may review, reject, edit, delay, remove, or retain pending, rejected, or policy-violating uploads as part of moderation and record-keeping."
+ui_0559,Using the App
+ui_0560,Verification data is missing. Try restore.
+ui_0561,Verification failed
+ui_0562,Version
+ui_0563,Vertical Spacing
+ui_0564,Video unavailable
+ui_0565,View Privacy Policy
+ui_0566,View Terms & Conditions
+ui_0567,Violence or dangerous content
+ui_0568,Watch the full ad to unlock Telugu fonts
+ui_0569,Watch the full ad to use Remove BG
+ui_0570,"We collect your email address, name, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, selected State/Union Territory, selected app language, selected political party categories, notification token, subscription status, referral code, referral attribution details, and billing information needed for purchase verification."
+ui_0571,"We do not sell personal data. Data may be shared only with essential service providers, lawful authorities, or where reasonably necessary for billing, moderation, fraud prevention, security, or legal compliance."
+ui_0572,"We use this data for login, account security, region-based language selection, showing relevant poster categories, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention, and customer support."
+ui_0573,Welcome to Mana Poster Ai
+ui_0574,What this app does
+ui_0575,What We Collect
+ui_0576,"When a status is uploaded, it is stored temporarily in the backend and shown to same-region/religion users; active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies."
+ui_0577,"When you select a State or Union Territory, the app may apply the primary language for that region. Your selected region, language, and political party category preferences may be saved locally and synced with your signed-in account. These choices are used for home categories, dashboard upload matching, personalization, and support. You can update these choices from settings/profile."
+ui_0578,White
+ui_0579,Who it is for
+ui_0580,Width
+ui_0581,World First Aid Day
+ui_0582,World Habitat Day
+ui_0583,World Laughter Day
+ui_0584,World Pangolin Day
+ui_0585,World Rivers Day
+ui_0586,Write your quote (optional)
+ui_0587,Write your quote or message here...
+ui_0588,"Yes, export"
+ui_0589,You can allow them later in settings.
+ui_0590,You can enable permissions later from Settings as well.
+ui_0591,"You can first save your name, photo, and business details in the profile section."
+ui_0592,You can submit your account deletion request here
+ui_0593,You can upload only 2 image statuses in 24 hours. Delete an old image status to upload again.
+ui_0594,You can upload only 5 text statuses in 24 hours. Delete an old text status to upload again.
+ui_0595,"You must keep your login details secure. You must have the right to use any photos, quote text, status images, status captions, status replies/comments, videos, logos, or poster materials you upload. By submitting a quote or image, you give Mana Poster Ai non-exclusive permission to review, edit/customize, correct the category, and publish the resulting poster in the app. By uploading text/image/caption as a status, you give temporary permission to show it within the selected region/religion scope. By sending a status reply/comment, you give permission to show that reply/comment to the status owner and to process it for safety, moderation, and security purposes. Illegal, deceptive, hateful, obscene, threatening, harassing, privacy-violating, or infringing content is prohibited. Posters or videos shown to other users in the app are reviewed before publication; statuses/replies are short-lived but remain subject to policy and security review."
+ui_0596,Your afternoon poster is ready. Share it now.
+ui_0597,Your Choices and Account Deletion
+ui_0598,"Your login, poster profile, and subscription-related access records will be removed. This cannot be undone."
+ui_0599,Your membership is expiring soon
+ui_0600,Your morning poster is ready. Share it now.
+ui_0601,Your night poster is ready. Share it now.
+ui_0602,Your plan details
+ui_0603,Your plan ends within the next 3 days. Renew now to keep using posters without interruption.
+ui_0604,Your posters are ready. Open now.
+ui_0605,Your rating and review help more people discover the app.
+ui_0606,Your subscription is confirmed. You can now create your posters with confidence.

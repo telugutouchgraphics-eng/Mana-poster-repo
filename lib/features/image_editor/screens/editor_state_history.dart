@@ -133,8 +133,8 @@ extension _EditorHistoryState on _ImageEditorScreenState {
   }) async {
     if (_activeCommitJobKey != null) {
       if (showBusyMessage && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               context.strings.localized(
                 telugu: 'ప్రస్తుత ఎడిటర్ పని పూర్తయ్యే వరకు వేచి ఉండండి',
@@ -757,10 +757,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
                 english:
                     'A last autosaved project was found. Do you want to restore it?',
               ),
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                height: 1.4,
-              ),
+              style: const TextStyle(color: Color(0xFF475569), height: 1.4),
             ),
             actions: <Widget>[
               TextButton(
@@ -805,8 +802,8 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       final file = await _draftStorageService.createManualDraftFile();
       await file.writeAsString(jsonEncode(_serializeEditorDraft()));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'డ్రాఫ్ట్ యాప్ స్టోరేజీలో సేవ్ అయింది',
@@ -817,8 +814,8 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'డ్రాఫ్ట్ సేవ్ కాలేదు',

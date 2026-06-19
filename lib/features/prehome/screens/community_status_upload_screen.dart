@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -73,8 +74,8 @@ class _CommunityStatusUploadScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'Status upload మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
@@ -91,8 +92,8 @@ class _CommunityStatusUploadScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'Status image 12MB లేదా దానికంటే తక్కువ ఉండాలి',
@@ -124,8 +125,8 @@ class _CommunityStatusUploadScreenState
     final image = _selectedImageFile;
     final text = _textController.text.trim();
     if (image == null && text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'Image లేదా text లో ఒకటి ఇవ్వండి',
@@ -147,13 +148,13 @@ class _CommunityStatusUploadScreenState
         return;
       }
       if (!result.ok) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(_messageFor(result.code))));
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: Text(_messageFor(result.code))),
+        );
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'Status upload అయింది',

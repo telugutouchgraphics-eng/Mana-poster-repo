@@ -183,6 +183,7 @@ class PremiumTemplateRemoteService {
       photoX: _readDouble(source, 'photoX', 50),
       photoY: _readDouble(source, 'photoY', 45),
       photoScale: _readDouble(source, 'photoScale', 36),
+      photoAnimation: _parseVideoPhotoAnimation(source['photoAnimation']),
       showVideoExtraPhoto: source['showVideoExtraPhoto'] as bool? ?? false,
       videoExtraPhotoShape: _parsePhotoShape(source['videoExtraPhotoShape']),
       videoExtraPhotoRenderMode: _parseRenderMode(
@@ -190,6 +191,9 @@ class PremiumTemplateRemoteService {
       ),
       videoExtraPhotoEdgeStyle: _parseEdgeStyle(
         source['videoExtraPhotoEdgeStyle'],
+      ),
+      videoExtraPhotoAnimation: _parseVideoPhotoAnimation(
+        source['videoExtraPhotoAnimation'],
       ),
       videoExtraPhotoX: _readDouble(source, 'videoExtraPhotoX', 24),
       videoExtraPhotoY: _readDouble(source, 'videoExtraPhotoY', 44),
@@ -250,6 +254,21 @@ class PremiumTemplateRemoteService {
   String _parseEdgeStyle(Object? raw) {
     final value = (raw as String? ?? '').trim().toLowerCase();
     return value == 'sharp' ? 'sharp' : 'soft_fade';
+  }
+
+  String _parseVideoPhotoAnimation(Object? raw) {
+    final value = (raw as String? ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'top_to_place':
+      case 'bottom_to_place':
+      case 'left_to_place':
+      case 'right_to_place':
+      case 'zoom_in':
+      case 'zoom_out':
+        return value;
+      default:
+        return 'none';
+    }
   }
 
   String _parsePhotoShape(Object? raw) {

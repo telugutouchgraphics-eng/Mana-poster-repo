@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
@@ -57,8 +58,8 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen>
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   String _localizedResultMessage(AccountDeletionResult result) {
@@ -348,4 +349,3 @@ class _DeletionTile extends StatelessWidget {
     );
   }
 }
-

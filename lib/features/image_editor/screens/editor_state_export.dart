@@ -252,8 +252,8 @@ extension _EditorExportState on _ImageEditorScreenState {
         },
       );
       if (sharedBytes == null && mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(shareInProgressMessage)),
+        messenger.showTopSnackBar(
+          AppSnackBar.build(content: Text(shareInProgressMessage)),
         );
       }
     } catch (error, stackTrace) {
@@ -261,8 +261,10 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+        ),
       );
     }
   }
@@ -587,8 +589,8 @@ extension _EditorExportState on _ImageEditorScreenState {
             }
             if (mounted) {
               final isSuccess = saveResult.success;
-              messenger.showSnackBar(
-                SnackBar(
+              messenger.showTopSnackBar(
+                AppSnackBar.build(
                   content: Text(
                     _exportResultMessage(
                       isSuccess: isSuccess,
@@ -627,8 +629,8 @@ extension _EditorExportState on _ImageEditorScreenState {
         },
       );
       if (exportedBytes == null && mounted) {
-        messenger.showSnackBar(
-          SnackBar(
+        messenger.showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               strings.localized(
                 telugu: 'ఎగుమతి ఇప్పటికే జరుగుతోంది',
@@ -643,8 +645,8 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(error.toString().replaceFirst('Exception: ', '')),
         ),
       );
@@ -773,8 +775,8 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'Share fail ayindi, malli prayatninchandi',

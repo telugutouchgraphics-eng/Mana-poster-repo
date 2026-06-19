@@ -132,6 +132,11 @@ service cloud.firestore {
           "uid",
           "email",
           "platform",
+          "regionId",
+          "regionName",
+          "regionLanguage",
+          "appVersion",
+          "buildNumber",
           "updatedAt",
         ]) &&
         request.resource.data.activeDeviceId is string &&
@@ -141,6 +146,16 @@ service cloud.firestore {
         (!("email" in request.resource.data) ||
           request.resource.data.email == null ||
           request.resource.data.email is string) &&
+        (!("regionId" in request.resource.data) ||
+          request.resource.data.regionId is string) &&
+        (!("regionName" in request.resource.data) ||
+          request.resource.data.regionName is string) &&
+        (!("regionLanguage" in request.resource.data) ||
+          request.resource.data.regionLanguage is string) &&
+        (!("appVersion" in request.resource.data) ||
+          request.resource.data.appVersion is string) &&
+        (!("buildNumber" in request.resource.data) ||
+          request.resource.data.buildNumber is string) &&
         validPlatform(request.resource.data.platform);
     }
 
@@ -262,6 +277,31 @@ service cloud.firestore {
         request.resource.data.downloadCount is int &&
         request.resource.data.shareCount >= resource.data.shareCount &&
         request.resource.data.downloadCount >= resource.data.downloadCount &&
+        request.resource.data.updatedAt is int;
+    }
+
+    function validCreatorPosterEngagementUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "shareCount",
+          "downloadCount",
+          "engagementCount",
+          "updatedAt",
+        ]) &&
+        resource.data.status == "approved" &&
+        resource.data.regionId is string &&
+        resource.data.regionId.size() > 0 &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        resource.data.regionId ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion &&
+        request.resource.data.shareCount is int &&
+        request.resource.data.downloadCount is int &&
+        request.resource.data.engagementCount is int &&
+        (!("shareCount" in resource.data) ||
+          request.resource.data.shareCount >= resource.data.shareCount) &&
+        (!("downloadCount" in resource.data) ||
+          request.resource.data.downloadCount >= resource.data.downloadCount) &&
+        (!("engagementCount" in resource.data) ||
+          request.resource.data.engagementCount >= resource.data.engagementCount) &&
         request.resource.data.updatedAt is int;
     }
 
@@ -418,12 +458,16 @@ service cloud.firestore {
     function canReadCommunityStatusData(status) {
       let viewer = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return signedIn() &&
-        status.regionId == viewer.selectedRegion &&
         (
-          viewer.religionPreference == "all" ||
-          status.religionPreference == "all" ||
-          status.religionPreference == viewer.religionPreference ||
-          status.userId == request.auth.uid
+          status.userId == request.auth.uid ||
+          (
+            status.regionId == viewer.selectedRegion &&
+            (
+              viewer.religionPreference == "all" ||
+              status.religionPreference == "all" ||
+              status.religionPreference == viewer.religionPreference
+            )
+          )
         );
     }
 
@@ -586,7 +630,8 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         resource.data.regionId ==
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion;
-      allow create, update, delete: if false;
+      allow update: if signedIn() && validCreatorPosterEngagementUpdate();
+      allow create, delete: if false;
     }
 
     // Public app banners for home/category promotional surfaces.

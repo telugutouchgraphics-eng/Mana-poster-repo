@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -55,11 +56,11 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
     try {
       final path = item.absolutePath;
       if (path.trim().isEmpty) {
-        messenger?.showSnackBar(SnackBar(content: Text(failed)));
+        messenger?.showTopSnackBar(AppSnackBar.build(content: Text(failed)));
         return;
       }
       if (!await File(path).exists()) {
-        messenger?.showSnackBar(SnackBar(content: Text(failed)));
+        messenger?.showTopSnackBar(AppSnackBar.build(content: Text(failed)));
         return;
       }
       if (!mounted) {
@@ -77,9 +78,9 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
             : box.localToGlobal(Offset.zero) & box.size,
       );
     } on MediaShareException {
-      messenger?.showSnackBar(SnackBar(content: Text(failed)));
+      messenger?.showTopSnackBar(AppSnackBar.build(content: Text(failed)));
     } catch (_) {
-      messenger?.showSnackBar(SnackBar(content: Text(failed)));
+      messenger?.showTopSnackBar(AppSnackBar.build(content: Text(failed)));
     }
   }
 

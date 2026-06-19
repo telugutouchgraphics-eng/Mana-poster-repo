@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 const bool _verboseManualEventCategoryLogs = false;
@@ -31,6 +32,8 @@ class ManualEventCategoryService {
     Source source = Source.serverAndCache,
   }) async {
     try {
+      final selectedRegionId =
+          (await AppRegionService.loadSelection())?.id.trim() ?? '';
       final snapshot = await firestore
           .collection('manualEventCategories')
           .where('active', isEqualTo: true)
@@ -40,6 +43,12 @@ class ManualEventCategoryService {
           snapshot.docs
               .map((doc) => _mapDoc(doc, language: language, now: now))
               .whereType<DynamicCategory>()
+              .where(
+                (category) =>
+                    selectedRegionId.isEmpty ||
+                    category.regionIds.isEmpty ||
+                    category.regionIds.contains(selectedRegionId),
+              )
               .toList(growable: false)
             ..sort((left, right) {
               final priorityCompare = right.priority.compareTo(left.priority);
@@ -66,6 +75,7 @@ class ManualEventCategoryService {
     final data = doc.data();
     final id = (data['id'] as String?)?.trim() ?? doc.id.trim();
     final rawLabel = (data['label'] as String?)?.trim() ?? id;
+    final regionId = (data['regionId'] as String?)?.trim() ?? '';
     final startAt = _toMillis(data['startAt']);
     final endAt = _toMillis(data['endAt']);
     if (id.isEmpty || rawLabel.isEmpty || startAt <= 0 || endAt <= 0) {
@@ -97,6 +107,7 @@ class ManualEventCategoryService {
         'important_day',
       ],
       isBlinking: true,
+      regionIds: regionId.isEmpty ? const <String>{} : <String>{regionId},
     );
   }
 

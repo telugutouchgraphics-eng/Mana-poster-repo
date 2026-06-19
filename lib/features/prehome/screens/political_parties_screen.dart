@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -73,8 +74,8 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     }
     if (!saved) {
       setState(() => _continuing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'పార్టీలు సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',

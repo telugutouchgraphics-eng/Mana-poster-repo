@@ -1,4 +1,5 @@
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/services/regional_dynamic_event_seed.dart';
 
 const List<List<Object>> _fixedGregorianSeedRows = <List<Object>>[
   [
@@ -4524,6 +4525,7 @@ List<DynamicCalendarEvent> buildCsvBackedDynamicEvents() {
   }
 
   output.addAll(_floatingGregorianEvents);
+  output.addAll(buildRegionalDynamicEvents());
 
   return output;
 }

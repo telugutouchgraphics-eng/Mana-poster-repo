@@ -14,9 +14,12 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart'
-    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals;
+    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals, ValueListenable;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -29,6 +32,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/config/category_display_helper.dart';
 import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
@@ -58,12 +62,15 @@ import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_home_banner_service.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/community_status_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
+import 'package:mana_poster/features/prehome/services/personalized_video_export_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
@@ -108,9 +115,9 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
   }
   final messenger = ScaffoldMessenger.of(context);
   messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
+    ..hideCurrentTopSnackBar()
+    ..showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           context.strings.localized(
             telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
@@ -388,6 +395,7 @@ class _CategoryChipData {
     this.matchTags = const <String>[],
     this.presenceTags = const <String>[],
     this.isDynamic = false,
+    this.iconAssetPath,
   });
 
   final String slug;
@@ -395,6 +403,7 @@ class _CategoryChipData {
   final List<String> matchTags;
   final List<String> presenceTags;
   final bool isDynamic;
+  final String? iconAssetPath;
 }
 
 enum _HomePromoCardType { subscribe, renewalReminder, update, rate }
@@ -1272,6 +1281,7 @@ class _HomeScreenState extends State<HomeScreen>
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategorySlug = _allCategorySlug;
   Set<String> _selectedPoliticalPartyIds = <String>{};
+  String _selectedRegionId = '';
   AppReligionPreference _religionPreference = AppReligionPreference.all;
   PosterProfileData _viewerPosterProfile = const PosterProfileData(
     nameTelugu: 'User',
@@ -1300,6 +1310,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _manualEventCategoriesLoadFuture;
   Future<void>? _partyPreferenceLoadFuture;
+  Future<void>? _regionSelectionLoadFuture;
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
@@ -1385,6 +1396,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_hidePhoneNavigationButtons());
       unawaited(ScreenSecurityService.enableSecure());
       unawaited(_loadReligionPreference());
+      unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
       _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 40),
@@ -1604,6 +1616,7 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_hidePhoneNavigationButtons());
     unawaited(ScreenSecurityService.enableSecure());
     unawaited(_loadViewerPosterProfile());
+    unawaited(_loadRegionSelection());
     unawaited(_loadPartyPreference());
     unawaited(
       _TemplateFeedItem.subscriptionBackendService
@@ -1621,6 +1634,7 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshHomeFeedTimeSlotIfNeeded();
+      unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
       unawaited(PlayEngagementService.instance.handleAppResume());
       unawaited(
@@ -1669,6 +1683,35 @@ class _HomeScreenState extends State<HomeScreen>
     } finally {
       if (identical(_partyPreferenceLoadFuture, future)) {
         _partyPreferenceLoadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _loadRegionSelection() async {
+    final inFlight = _regionSelectionLoadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      final region = await AppRegionService.loadSelection();
+      final regionId = region?.id ?? '';
+      if (!mounted || _selectedRegionId == regionId) {
+        return;
+      }
+      setState(() {
+        _selectedRegionId = regionId;
+        _categoryListCache = null;
+        _categoryListIdentity = null;
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
+      });
+    }();
+    _regionSelectionLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_regionSelectionLoadFuture, future)) {
+        _regionSelectionLoadFuture = null;
       }
     }
   }
@@ -2043,7 +2086,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final activeCalendarCategories = <DynamicCategory>[
-      ..._dynamicCategoryService.categoriesForDate(now, language: language),
+      ..._dynamicCategoryService.categoriesForDate(
+        now,
+        language: language,
+        selectedRegionId: _selectedRegionId,
+      ),
       ..._manualEventCategories,
     ];
     _scheduleDynamicCategoryAvailabilityChecks(activeCalendarCategories);
@@ -2492,6 +2539,7 @@ class _HomeScreenState extends State<HomeScreen>
         _CategoryChipData(
           slug: 'party_${party.id}',
           label: party.nameFor(language),
+          iconAssetPath: party.logoAssetPath,
           matchTags: <String>[
             party.id,
             party.shortName,
@@ -2642,9 +2690,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final strings = context.strings;
     ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu:
@@ -2861,10 +2909,12 @@ class _HomeScreenState extends State<HomeScreen>
       'photoX': config.photoX,
       'photoY': config.photoY,
       'photoScale': config.photoScale,
+      'photoAnimation': config.photoAnimation,
       'showVideoExtraPhoto': config.showVideoExtraPhoto,
       'videoExtraPhotoShape': config.videoExtraPhotoShape,
       'videoExtraPhotoRenderMode': config.videoExtraPhotoRenderMode,
       'videoExtraPhotoEdgeStyle': config.videoExtraPhotoEdgeStyle,
+      'videoExtraPhotoAnimation': config.videoExtraPhotoAnimation,
       'videoExtraPhotoX': config.videoExtraPhotoX,
       'videoExtraPhotoY': config.videoExtraPhotoY,
       'videoExtraPhotoScale': config.videoExtraPhotoScale,
@@ -2904,6 +2954,9 @@ class _HomeScreenState extends State<HomeScreen>
       photoX: (data['photoX'] as num?)?.toDouble() ?? 78,
       photoY: (data['photoY'] as num?)?.toDouble() ?? 42,
       photoScale: (data['photoScale'] as num?)?.toDouble() ?? 44,
+      photoAnimation: _normalizeVideoPhotoAnimation(
+        data['photoAnimation'] as String?,
+      ),
       showVideoExtraPhoto: data['showVideoExtraPhoto'] as bool? ?? false,
       videoExtraPhotoShape:
           (data['videoExtraPhotoShape'] as String?)?.trim() ?? 'circle',
@@ -2911,6 +2964,9 @@ class _HomeScreenState extends State<HomeScreen>
           (data['videoExtraPhotoRenderMode'] as String?)?.trim() ?? 'cutout',
       videoExtraPhotoEdgeStyle:
           (data['videoExtraPhotoEdgeStyle'] as String?)?.trim() ?? 'soft_fade',
+      videoExtraPhotoAnimation: _normalizeVideoPhotoAnimation(
+        data['videoExtraPhotoAnimation'] as String?,
+      ),
       videoExtraPhotoX: (data['videoExtraPhotoX'] as num?)?.toDouble() ?? 24,
       videoExtraPhotoY: (data['videoExtraPhotoY'] as num?)?.toDouble() ?? 44,
       videoExtraPhotoScale:
@@ -2936,6 +2992,20 @@ class _HomeScreenState extends State<HomeScreen>
       edgeStyle: (data['edgeStyle'] as String?)?.trim() ?? 'soft_fade',
       showSafeAreas: data['showSafeAreas'] as bool? ?? true,
     );
+  }
+
+  String _normalizeVideoPhotoAnimation(String? raw) {
+    switch ((raw ?? '').trim().toLowerCase()) {
+      case 'top_to_place':
+      case 'bottom_to_place':
+      case 'left_to_place':
+      case 'right_to_place':
+      case 'zoom_in':
+      case 'zoom_out':
+        return raw!.trim().toLowerCase();
+      default:
+        return 'none';
+    }
   }
 
   Map<String, Object?> _serializeTemplateSnapshotItem(_TemplateItem item) {
@@ -4747,9 +4817,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final messenger = ScaffoldMessenger.of(context);
     messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'Play Store తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
@@ -5211,6 +5281,11 @@ class _HomeScreenState extends State<HomeScreen>
           RepaintBoundary(
             child: _HomeHeader(
               onCreateTap: _onCreateTap,
+              onStatusTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const _CommunityStatusGridScreen(),
+                ),
+              ),
               onProfileTap: _openProfile,
               viewerPosterProfile: _viewerPosterProfile,
               searchController: _searchController,
@@ -5274,15 +5349,6 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: _HomeCommunityStatusStrip(
-                        onAddStatus: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const CommunityStatusUploadScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
                     if (_homeBanners.isNotEmpty) ...<Widget>[
                       const SliverToBoxAdapter(child: SizedBox(height: 14)),
                       SliverToBoxAdapter(
@@ -5341,10 +5407,15 @@ class _HomeScreenState extends State<HomeScreen>
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _HomeFeedState(
+                          child: _EmptyPosterGameState(
+                            key: ValueKey<String>(
+                              'empty-poster-game-$activeCategorySlug',
+                            ),
                             icon: Icons.collections_outlined,
                             title: strings.homeEmptyPostersTitle,
                             subtitle: strings.homeEmptyPostersSubtitle,
+                            categorySlug: selectedCategory.slug,
+                            categoryLabel: selectedCategory.label,
                           ),
                         ),
                       )
@@ -5619,102 +5690,6 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
   }
 }
 
-class _HomeCommunityStatusStrip extends StatelessWidget {
-  const _HomeCommunityStatusStrip({required this.onAddStatus});
-
-  final VoidCallback onAddStatus;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    return StreamBuilder<List<CommunityStatus>>(
-      stream: CommunityStatusService.instance.watchVisibleStatuses(),
-      builder: (context, snapshot) {
-        final statuses = snapshot.data ?? const <CommunityStatus>[];
-        final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
-        final myStatuses = _statusGroupItemsForUser(statuses, currentUserId);
-        final otherGroups =
-            _statusGroups(statuses)
-                .where((group) => group.userId != currentUserId)
-                .toList(growable: false)
-              ..sort(_compareStatusGroupsForHome);
-        final viewerGroups = <_CommunityStatusGroup>[
-          if (myStatuses.isNotEmpty)
-            _CommunityStatusGroup(statuses: myStatuses),
-          ...otherGroups,
-        ];
-        return SizedBox(
-          height: 104,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (context, index) {
-              final group = index == 0
-                  ? (myStatuses.isEmpty
-                        ? null
-                        : _CommunityStatusGroup(statuses: myStatuses))
-                  : otherGroups[index - 1];
-              final status = group?.latestStatus;
-              final isMyStatus = index == 0;
-              return _HomeCommunityStatusBubble(
-                label: isMyStatus
-                    ? strings.localized(
-                        telugu: 'My Status',
-                        english: 'My Status',
-                      )
-                    : (group?.displayName.isNotEmpty == true
-                          ? group!.displayName
-                          : 'User'),
-                imageUrl: status?.imageUrl ?? '',
-                previewText: status?.text ?? '',
-                previewBackgroundColor: status?.backgroundColor ?? 0,
-                statusCount: group?.statuses.length ?? 0,
-                isSeen: group != null && !group.hasUnseenStatus,
-                icon: status == null
-                    ? Icons.add_rounded
-                    : status.hasImage
-                    ? Icons.image_rounded
-                    : Icons.format_quote_rounded,
-                onTap: status == null
-                    ? onAddStatus
-                    : () => _showCommunityStatusDialog(
-                        context,
-                        viewerGroups,
-                        viewerGroups.indexWhere(
-                          (item) => item.userId == group!.userId,
-                        ),
-                      ),
-                accentColor: status == null
-                    ? const Color(0xFF0F766E)
-                    : const Color(0xFFD81B60),
-              );
-            },
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemCount: 1 + otherGroups.length,
-          ),
-        );
-      },
-    );
-  }
-
-  void _showCommunityStatusDialog(
-    BuildContext context,
-    List<_CommunityStatusGroup> groups,
-    int initialGroupIndex,
-  ) {
-    final safeIndex = initialGroupIndex < 0 ? 0 : initialGroupIndex;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => _CommunityStatusViewerScreen(
-          initialGroups: groups,
-          initialGroupIndex: safeIndex,
-        ),
-      ),
-    );
-  }
-}
-
 class _CommunityStatusGroup {
   const _CommunityStatusGroup({required this.statuses});
 
@@ -5730,6 +5705,816 @@ class _CommunityStatusGroup {
       }
     }
     return '';
+  }
+}
+
+class _CommunityStatusGridScreen extends StatefulWidget {
+  const _CommunityStatusGridScreen();
+
+  @override
+  State<_CommunityStatusGridScreen> createState() =>
+      _CommunityStatusGridScreenState();
+}
+
+class _CommunityStatusGridScreenState
+    extends State<_CommunityStatusGridScreen> {
+  static const int _pageSize = 30;
+
+  final ScrollController _scrollController = ScrollController();
+  final ScrollController _statusBubbleScrollController = ScrollController();
+  late Stream<List<CommunityStatus>> _statusesStream;
+  List<CommunityStatus> _lastStatuses = const <CommunityStatus>[];
+  String _selectedRegionId = '';
+  int _statusLimit = _pageSize;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  bool _loadCheckScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusesStream = CommunityStatusService.instance.watchVisibleStatuses(
+      maxStatuses: _statusLimit,
+    );
+    _scrollController.addListener(_handleScroll);
+    _statusBubbleScrollController.addListener(_handleStatusBubbleScroll);
+    unawaited(_loadSelectedRegion());
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    _statusBubbleScrollController
+      ..removeListener(_handleStatusBubbleScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (_scrollController.position.extentAfter < 520) {
+      _loadMoreStatuses();
+    }
+  }
+
+  void _handleStatusBubbleScroll() {
+    if (_statusBubbleScrollController.position.extentAfter < 360) {
+      _loadMoreStatuses();
+    }
+  }
+
+  Future<void> _loadSelectedRegion() async {
+    final region = await AppRegionService.loadSelection();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _selectedRegionId = region?.id ?? '');
+  }
+
+  void _loadMoreStatuses() {
+    if (_loadingMore || !_hasMore) {
+      return;
+    }
+    setState(() {
+      _loadingMore = true;
+      _statusLimit += _pageSize;
+      _statusesStream = CommunityStatusService.instance.watchVisibleStatuses(
+        maxStatuses: _statusLimit,
+      );
+    });
+  }
+
+  void _scheduleLoadCheck() {
+    if (_loadCheckScheduled || _loadingMore || !_hasMore) {
+      return;
+    }
+    _loadCheckScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCheckScheduled = false;
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+      if (_scrollController.position.extentAfter < 520) {
+        _loadMoreStatuses();
+      }
+    });
+  }
+
+  Future<void> _openUpload() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const CommunityStatusUploadScreen(),
+      ),
+    );
+  }
+
+  void _openViewer(List<_CommunityStatusGroup> groups, int initialGroupIndex) {
+    if (groups.isEmpty || initialGroupIndex < 0) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => _CommunityStatusViewerScreen(
+          initialGroups: groups,
+          initialGroupIndex: initialGroupIndex,
+          visibleStatusLimit: _statusLimit,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: <Widget>[
+          const Positioned.fill(child: ColoredBox(color: Colors.white)),
+          SafeArea(
+            child: StreamBuilder<List<CommunityStatus>>(
+              stream: _statusesStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  _lastStatuses = snapshot.data!;
+                  _hasMore = _lastStatuses.length >= _statusLimit;
+                  _loadingMore = false;
+                  _scheduleLoadCheck();
+                }
+                final statuses = snapshot.data ?? _lastStatuses;
+                final myStatuses = _statusGroupItemsForUser(
+                  statuses,
+                  currentUserId,
+                );
+                final otherGroups =
+                    _statusGroups(statuses)
+                        .where((group) => group.userId != currentUserId)
+                        .toList(growable: false)
+                      ..sort(_compareStatusGroupsForHome);
+                final viewerGroups = <_CommunityStatusGroup>[
+                  if (myStatuses.isNotEmpty)
+                    _CommunityStatusGroup(statuses: myStatuses),
+                  ...otherGroups,
+                ];
+                final calendarEvents = _statusCalendarEvents(
+                  context.currentLanguage,
+                  _selectedRegionId,
+                );
+
+                return CustomScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  slivers: <Widget>[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                        child: Row(
+                          children: <Widget>[
+                            Material(
+                              color: Colors.white,
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(Icons.arrow_back_rounded),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                strings.localized(
+                                  telugu: 'స్టేటస్లు',
+                                  english: 'Statuses',
+                                  hindi: 'स्टेटस',
+                                  tamil: 'நிலைகள்',
+                                  kannada: 'ಸ್ಟೇಟಸ್‌ಗಳು',
+                                  malayalam: 'സ്റ്റാറ്റസുകൾ',
+                                ),
+                                style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            Material(
+                              color: const Color(0xFFD81B60),
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                tooltip: 'Add Status',
+                                onPressed: () => unawaited(_openUpload()),
+                                icon: const Icon(
+                                  Icons.add_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 18),
+                        child: SizedBox(
+                          height: 116,
+                          child: ListView.separated(
+                            controller: _statusBubbleScrollController,
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: 1 + otherGroups.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 14),
+                            itemBuilder: (context, index) {
+                              if (index == 0) {
+                                return _StatusBubbleCard(
+                                  group: myStatuses.isEmpty
+                                      ? null
+                                      : _CommunityStatusGroup(
+                                          statuses: myStatuses,
+                                        ),
+                                  label: strings.localized(
+                                    telugu: 'నా స్టేటస్',
+                                    english: 'My Status',
+                                    hindi: 'मेरा स्टेटस',
+                                    tamil: 'என் நிலை',
+                                    kannada: 'ನನ್ನ ಸ್ಟೇಟಸ್',
+                                    malayalam: 'എന്റെ സ്റ്റാറ്റസ്',
+                                  ),
+                                  isMine: true,
+                                  onAdd: () => unawaited(_openUpload()),
+                                  onOpen: () => _openViewer(viewerGroups, 0),
+                                );
+                              }
+                              final group = otherGroups[index - 1];
+                              final viewerIndex = viewerGroups.indexWhere(
+                                (item) => item.userId == group.userId,
+                              );
+                              return _StatusBubbleCard(
+                                group: group,
+                                label: group.displayName.isEmpty
+                                    ? strings.localized(
+                                        telugu: 'వినియోగదారు',
+                                        english: 'User',
+                                        hindi: 'उपयोगकर्ता',
+                                        tamil: 'பயனர்',
+                                        kannada: 'ಬಳಕೆದಾರ',
+                                        malayalam: 'ഉപയോക്താവ്',
+                                      )
+                                    : group.displayName,
+                                onOpen: () =>
+                                    _openViewer(viewerGroups, viewerIndex),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        statuses.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          child: _SocialMediaCalendarRail(
+                            events: calendarEvents,
+                            monthLabel: _statusCalendarMonthLabel(
+                              IstTimeService.now(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_loadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBubbleCard extends StatelessWidget {
+  const _StatusBubbleCard({
+    required this.group,
+    required this.label,
+    required this.onOpen,
+    this.isMine = false,
+    this.onAdd,
+  });
+
+  final _CommunityStatusGroup? group;
+  final String label;
+  final VoidCallback onOpen;
+  final bool isMine;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = group?.latestStatus;
+    final hasStatus = status != null;
+    final ringGradient = hasStatus && (group?.hasUnseenStatus ?? false);
+    return SizedBox(
+      width: 82,
+      child: InkWell(
+        onTap: hasStatus ? onOpen : onAdd,
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          children: <Widget>[
+            Container(
+              width: 74,
+              height: 74,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: ringGradient
+                    ? const LinearGradient(
+                        colors: <Color>[
+                          Color(0xFFFFD60A),
+                          Color(0xFFFF4D8D),
+                          Color(0xFF7C3AED),
+                        ],
+                      )
+                    : null,
+                color: ringGradient ? null : const Color(0xFFCBD5E1),
+              ),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: hasStatus
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          _StatusGridPreview(status: status),
+                          if (group!.statuses.length > 1)
+                            Positioned(
+                              right: 3,
+                              bottom: 3,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.58),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '${group!.statuses.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : const ColoredBox(
+                        color: Color(0xFFF8FAFC),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: Color(0xFFD81B60),
+                          size: 30,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isMine
+                    ? const Color(0xFFD81B60)
+                    : const Color(0xFF0F172A),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusCalendarEvent {
+  const _StatusCalendarEvent({
+    required this.title,
+    required this.date,
+    required this.monthLabel,
+    required this.type,
+  });
+
+  final String title;
+  final DateTime date;
+  final String monthLabel;
+  final DynamicCategoryType type;
+}
+
+class _SocialMediaCalendarRail extends StatefulWidget {
+  const _SocialMediaCalendarRail({
+    required this.events,
+    required this.monthLabel,
+  });
+
+  final List<_StatusCalendarEvent> events;
+  final String monthLabel;
+
+  @override
+  State<_SocialMediaCalendarRail> createState() =>
+      _SocialMediaCalendarRailState();
+}
+
+class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
+  final ScrollController _controller = ScrollController();
+  Timer? _timer;
+  bool _paused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoScroll();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SocialMediaCalendarRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.events.length != widget.events.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_controller.hasClients) {
+          _controller.jumpTo(0);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 80), (_) {
+      if (_paused || !_controller.hasClients || widget.events.length < 4) {
+        return;
+      }
+      final max = _controller.position.maxScrollExtent;
+      if (max <= 0) {
+        return;
+      }
+      final next = _controller.offset + 0.85;
+      if (next >= max) {
+        _controller.jumpTo(0);
+      } else {
+        _controller.jumpTo(next);
+      }
+    });
+  }
+
+  void _togglePaused() {
+    setState(() => _paused = !_paused);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final events = widget.events;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _togglePaused,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD81B60).withValues(alpha: 0.11),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Color(0xFFD81B60),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        strings.localized(
+                          telugu: 'సోషల్ మీడియా క్యాలెండర్',
+                          english: 'Social Media Calendar',
+                          hindi: 'Social Media Calendar',
+                          tamil: 'Social Media Calendar',
+                          kannada: 'Social Media Calendar',
+                          malayalam: 'Social Media Calendar',
+                        ),
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        widget.monthLabel,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                  color: const Color(0xFF64748B),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 360,
+              child: events.isEmpty
+                  ? Center(
+                      child: Text(
+                        strings.localized(
+                          telugu: 'ఈ నెలలో events లేవు',
+                          english: 'No events for this month',
+                          hindi: 'इस महीने कोई event नहीं है',
+                          tamil: 'இந்த மாதத்தில் events இல்லை',
+                          kannada: 'ಈ ತಿಂಗಳಲ್ಲಿ events ಇಲ್ಲ',
+                          malayalam: 'ഈ മാസത്തിൽ events ഇല്ല',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: _controller,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: events.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) =>
+                          _StatusCalendarEventTile(event: events[index]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusCalendarEventTile extends StatelessWidget {
+  const _StatusCalendarEventTile({required this.event});
+
+  final _StatusCalendarEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _statusCalendarTypeColor(event.type);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x0F0F172A),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 56,
+            height: 58,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  event.date.day.toString().padLeft(2, '0'),
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  event.monthLabel,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              event.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 14,
+                height: 1.25,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<_StatusCalendarEvent> _statusCalendarEvents(
+  AppLanguage language,
+  String selectedRegionId,
+) {
+  final now = IstTimeService.now();
+  final schedules = const DynamicEventScheduleService().schedulesForYear(
+    now.year,
+    daysBeforeEvent: 0,
+  );
+  return schedules
+      .where((item) => item.occursInMonth(now.month))
+      .where(
+        (item) => _statusCalendarEventMatchesRegion(item, selectedRegionId),
+      )
+      .map(
+        (item) => _StatusCalendarEvent(
+          title: item.event.title.resolve(language),
+          date: item.startDate,
+          monthLabel: _statusCalendarMonthShort(item.startDate.month),
+          type: item.event.type,
+        ),
+      )
+      .toList(growable: false);
+}
+
+bool _statusCalendarEventMatchesRegion(
+  ResolvedDynamicEventSchedule item,
+  String selectedRegionId,
+) {
+  final region = _statusCalendarNormalize(selectedRegionId);
+  final event = item.event;
+  if (event.regionIds.isNotEmpty) {
+    return event.regionIds.map(_statusCalendarNormalize).contains(region);
+  }
+  switch (event.scope) {
+    case DynamicEventScope.global:
+    case DynamicEventScope.india:
+      return true;
+    case DynamicEventScope.andhraPradesh:
+      return region == 'andhra_pradesh';
+    case DynamicEventScope.telangana:
+      return region == 'telangana';
+    case DynamicEventScope.bothTeluguStates:
+      return region == 'andhra_pradesh' || region == 'telangana';
+  }
+}
+
+String _statusCalendarNormalize(String value) {
+  return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+}
+
+Color _statusCalendarTypeColor(DynamicCategoryType type) {
+  return switch (type) {
+    DynamicCategoryType.festival => const Color(0xFFD97706),
+    DynamicCategoryType.jayanthi => const Color(0xFF2563EB),
+    DynamicCategoryType.vardhanthi => const Color(0xFF64748B),
+    DynamicCategoryType.importantDay => const Color(0xFFD81B60),
+    DynamicCategoryType.weekdaySpecial => const Color(0xFF16A34A),
+    DynamicCategoryType.regionalSpecial => const Color(0xFF7C3AED),
+  };
+}
+
+String _statusCalendarMonthLabel(DateTime date) {
+  return '${_statusCalendarMonthShort(date.month)} ${date.year}';
+}
+
+String _statusCalendarMonthShort(int month) {
+  const labels = <String>[
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+  if (month < 1 || month > 12) {
+    return '';
+  }
+  return labels[month - 1];
+}
+
+class _StatusGridPreview extends StatelessWidget {
+  const _StatusGridPreview({required this.status});
+
+  final CommunityStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    if (status.hasImage) {
+      return CachedNetworkImage(
+        imageUrl: status.imageUrl,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => const ColoredBox(
+          color: Color(0xFFE2E8F0),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+        errorWidget: (_, _, _) => const ColoredBox(
+          color: Color(0xFFF1F5F9),
+          child: Icon(Icons.broken_image_rounded, color: Color(0xFF64748B)),
+        ),
+      );
+    }
+    final color = Color(
+      status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
+    );
+    return ColoredBox(
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Center(
+          child: Text(
+            status.text,
+            maxLines: 6,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -5789,10 +6574,12 @@ class _CommunityStatusViewerScreen extends StatefulWidget {
   const _CommunityStatusViewerScreen({
     required this.initialGroups,
     required this.initialGroupIndex,
+    this.visibleStatusLimit = 60,
   });
 
   final List<_CommunityStatusGroup> initialGroups;
   final int initialGroupIndex;
+  final int visibleStatusLimit;
 
   @override
   State<_CommunityStatusViewerScreen> createState() =>
@@ -6069,21 +6856,24 @@ class _CommunityStatusViewerScreenState
   Widget build(BuildContext context) {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
     return StreamBuilder<List<_CommunityStatusGroup>>(
-      stream: CommunityStatusService.instance.watchVisibleStatuses().map((
-        statuses,
-      ) {
-        final myStatuses = _statusGroupItemsForUser(statuses, currentUserId);
-        final otherGroups =
-            _statusGroups(statuses)
-                .where((group) => group.userId != currentUserId)
-                .toList(growable: false)
-              ..sort(_compareStatusGroupsForHome);
-        return <_CommunityStatusGroup>[
-          if (myStatuses.isNotEmpty)
-            _CommunityStatusGroup(statuses: myStatuses),
-          ...otherGroups,
-        ];
-      }),
+      stream: CommunityStatusService.instance
+          .watchVisibleStatuses(maxStatuses: widget.visibleStatusLimit)
+          .map((statuses) {
+            final myStatuses = _statusGroupItemsForUser(
+              statuses,
+              currentUserId,
+            );
+            final otherGroups =
+                _statusGroups(statuses)
+                    .where((group) => group.userId != currentUserId)
+                    .toList(growable: false)
+                  ..sort(_compareStatusGroupsForHome);
+            return <_CommunityStatusGroup>[
+              if (myStatuses.isNotEmpty)
+                _CommunityStatusGroup(statuses: myStatuses),
+              ...otherGroups,
+            ];
+          }),
       initialData: widget.initialGroups,
       builder: (context, snapshot) {
         final strings = context.strings;
@@ -6700,9 +7490,9 @@ Future<void> _showCommunityStatusReportSheet(
                                       }
                                       Navigator.of(sheetContext).pop();
                                       ScaffoldMessenger.of(context)
-                                        ..hideCurrentSnackBar()
-                                        ..showSnackBar(
-                                          SnackBar(
+                                        ..hideCurrentTopSnackBar()
+                                        ..showTopSnackBar(
+                                          AppSnackBar.build(
                                             content: Text(
                                               ok
                                                   ? strings.localized(
@@ -7111,8 +7901,8 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
     if (ok) {
       _controller.clear();
       FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'రిప్లై పంపబడింది',
@@ -7123,8 +7913,8 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           strings.localized(
             telugu: 'రిప్లై విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
@@ -7281,195 +8071,10 @@ class _StatusReactionButton extends StatelessWidget {
   }
 }
 
-class _HomeCommunityStatusBubble extends StatelessWidget {
-  const _HomeCommunityStatusBubble({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    required this.accentColor,
-    required this.statusCount,
-    required this.isSeen,
-    this.imageUrl = '',
-    this.previewText = '',
-    this.previewBackgroundColor = 0,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color accentColor;
-  final int statusCount;
-  final bool isSeen;
-  final String imageUrl;
-  final String previewText;
-  final int previewBackgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SizedBox(
-              width: 66,
-              height: 66,
-              child: CustomPaint(
-                painter: _StatusBubbleRingPainter(
-                  color: accentColor,
-                  isSeen: isSeen,
-                  segmentCount: statusCount,
-                ),
-                child: Center(
-                  child: Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        width: 2,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: imageUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, _, _) => _StatusIcon(icon: icon),
-                            )
-                          : previewText.isNotEmpty
-                          ? _StatusTextPreview(
-                              text: previewText,
-                              backgroundColor: previewBackgroundColor,
-                            )
-                          : _StatusIcon(icon: icon),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBubbleRingPainter extends CustomPainter {
-  const _StatusBubbleRingPainter({
-    required this.color,
-    required this.isSeen,
-    required this.segmentCount,
-  });
-
-  final Color color;
-  final bool isSeen;
-  final int segmentCount;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (math.min(size.width, size.height) - 5) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..shader =
-          (isSeen
-                  ? const LinearGradient(
-                      colors: <Color>[Color(0xFF9CA3AF), Color(0xFFD1D5DB)],
-                    )
-                  : LinearGradient(
-                      colors: <Color>[color, const Color(0xFFF59E0B)],
-                    ))
-              .createShader(rect);
-    if (segmentCount <= 1) {
-      canvas.drawCircle(center, radius, paint);
-      return;
-    }
-    final visibleSegments = segmentCount.clamp(2, 12);
-    final gap = visibleSegments <= 3 ? 0.22 : 0.14;
-    final sweep = ((math.pi * 2) / visibleSegments) - gap;
-    var start = -math.pi / 2;
-    for (var index = 0; index < visibleSegments; index += 1) {
-      canvas.drawArc(rect, start, sweep, false, paint);
-      start += sweep + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StatusBubbleRingPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.isSeen != isSeen ||
-        oldDelegate.segmentCount != segmentCount;
-  }
-}
-
-class _StatusTextPreview extends StatelessWidget {
-  const _StatusTextPreview({required this.text, required this.backgroundColor});
-
-  final String text;
-  final int backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(backgroundColor == 0 ? 0xFF4CAF50 : backgroundColor);
-    return Container(
-      color: color,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(8),
-      child: Text(
-        text,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          height: 1.05,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      alignment: Alignment.center,
-      child: Icon(icon, color: const Color(0xFF0F766E), size: 28),
-    );
-  }
-}
-
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.onCreateTap,
+    required this.onStatusTap,
     required this.onProfileTap,
     required this.viewerPosterProfile,
     required this.searchController,
@@ -7479,6 +8084,7 @@ class _HomeHeader extends StatelessWidget {
   });
 
   final VoidCallback onCreateTap;
+  final VoidCallback onStatusTap;
   final VoidCallback onProfileTap;
   final PosterProfileData viewerPosterProfile;
   final TextEditingController searchController;
@@ -7522,6 +8128,18 @@ class _HomeHeader extends StatelessWidget {
                   ),
                 ),
               ),
+              Tooltip(
+                message: strings.localized(
+                  telugu: 'స్టేటస్లు',
+                  english: 'Statuses',
+                ),
+                child: InkWell(
+                  onTap: onStatusTap,
+                  customBorder: const CircleBorder(),
+                  child: const _HeaderStatusShortcut(),
+                ),
+              ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: onProfileTap,
                 customBorder: const CircleBorder(),
@@ -7913,6 +8531,97 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
   }
 }
 
+class _HeaderStatusShortcut extends StatelessWidget {
+  const _HeaderStatusShortcut();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<CommunityStatus>>(
+      stream: CommunityStatusService.instance.watchMyActiveStatuses(limit: 8),
+      builder: (context, snapshot) {
+        final statuses = snapshot.data ?? const <CommunityStatus>[];
+        final latest = statuses.isEmpty ? null : statuses.first;
+        final hasStatus = latest != null;
+        return SizedBox(
+          width: 50,
+          height: 50,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: hasStatus
+                        ? const SweepGradient(
+                            colors: <Color>[
+                              Color(0xFFFFD60A),
+                              Color(0xFFFF4D8D),
+                              Color(0xFF7C3AED),
+                              Color(0xFFFFD60A),
+                            ],
+                          )
+                        : null,
+                    color: hasStatus
+                        ? null
+                        : Colors.white.withValues(alpha: 0.92),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(1.5),
+                        child: ClipOval(
+                          child: ColoredBox(
+                            color: hasStatus
+                                ? Colors.white
+                                : const Color(0xFFFFF7ED),
+                            child: hasStatus
+                                ? _StatusGridPreview(status: latest)
+                                : const Icon(
+                                    Icons.auto_stories_rounded,
+                                    color: Color(0xFFD81B60),
+                                    size: 24,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (!hasStatus)
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _PromoAccentBadge extends StatelessWidget {
   const _PromoAccentBadge({required this.icon, required this.backgroundColor});
 
@@ -8276,6 +8985,7 @@ class _CategoryChip extends StatelessWidget {
     final data = this.data;
     final isSelected = this.isSelected;
     final isAll = data.slug == _HomeScreenState._allCategorySlug;
+    final iconAssetPath = data.iconAssetPath;
     const selectedChipColor = Color(0xFF6D28D9);
     const selectedChipBorder = Color(0xFF5B21B6);
     const allChipColor = Color(0xFF25D366);
@@ -8322,22 +9032,76 @@ class _CategoryChip extends StatelessWidget {
               ),
             ],
           ),
-          child: Text(
-            data.label,
-            maxLines: 1,
-            overflow: TextOverflow.fade,
-            softWrap: false,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected || isAll
-                  ? FontWeight.w700
-                  : FontWeight.w600,
-              color: textColor,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (iconAssetPath != null) ...<Widget>[
+                _CategoryChipAssetIcon(assetPath: iconAssetPath),
+                const SizedBox(width: 7),
+              ],
+              Text(
+                iconAssetPath == null
+                    ? CategoryDisplayHelper.withIcon(data.slug, data.label)
+                    : data.label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected || isAll
+                      ? FontWeight.w700
+                      : FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _CategoryChipAssetIcon extends StatelessWidget {
+  const _CategoryChipAssetIcon({required this.assetPath});
+
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSvg = assetPath.toLowerCase().endsWith('.svg');
+    return Container(
+      width: 22,
+      height: 22,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: isSvg
+          ? SvgPicture.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              placeholderBuilder: (_) => const _CategoryChipFallbackIcon(),
+            )
+          : Image.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  const _CategoryChipFallbackIcon(),
+            ),
+    );
+  }
+}
+
+class _CategoryChipFallbackIcon extends StatelessWidget {
+  const _CategoryChipFallbackIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text('🗳️', style: TextStyle(fontSize: 12)));
   }
 }
 
@@ -8475,11 +9239,22 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   final ValueNotifier<String?> _activeActionNotifier = ValueNotifier<String?>(
     null,
   );
+  final ValueNotifier<bool> _videoExportReadyNotifier = ValueNotifier<bool>(
+    false,
+  );
+  final ValueNotifier<int> _videoReplayTickNotifier = ValueNotifier<int>(0);
   Uint8List? _preparedPosterBytes;
   String? _preparedPosterSignature;
   String? _preparedPosterFilePath;
   Future<void>? _preparePosterFuture;
   Future<Uint8List?>? _posterCaptureFuture;
+  String? _preparedVideoSignature;
+  String? _preparedVideoFilePath;
+  Future<String?>? _prepareVideoFuture;
+  String? _prepareVideoFutureSignature;
+  int _videoExportGeneration = 0;
+  bool _videoWarmupQueued = false;
+  String? _queuedVideoWarmupSignature;
   bool _posterWarmupQueued = false;
   String? _queuedPosterWarmupSignature;
   static bool _globalAutoPosterWarmupActive = false;
@@ -8520,6 +9295,40 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       _TemplateFeedItem.subscriptionBackendService;
 
   @override
+  void initState() {
+    super.initState();
+    if (item.isVideo) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _scheduleVideoWarmup(requireReady: false);
+        _scheduleVideoWarmupRetries();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _TemplateFeedItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.videoUrl != widget.item.videoUrl ||
+        oldWidget.viewerPosterProfile != widget.viewerPosterProfile ||
+        oldWidget.language != widget.language ||
+        oldWidget.posterRenderCycle != widget.posterRenderCycle) {
+      _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
+      if (item.isVideo) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            return;
+          }
+          _scheduleVideoWarmup(requireReady: false);
+          _scheduleVideoWarmupRetries();
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
     if (_photoDragInProgress) {
       widget.onPosterPhotoDragStateChanged(false);
@@ -8528,6 +9337,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _showPosterPhotoNotifier.dispose();
     _posterReadyNotifier.dispose();
     _activeActionNotifier.dispose();
+    _videoExportReadyNotifier.dispose();
+    _videoReplayTickNotifier.dispose();
     super.dispose();
   }
 
@@ -8606,12 +9417,28 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _activeActionNotifier.value = null;
   }
 
-  void _invalidatePreparedPosterCache() {
+  void _invalidatePreparedPosterCache({bool cancelVideoExport = false}) {
     final existingPath = _preparedPosterFilePath;
+    final shouldCancelVideoExport =
+        cancelVideoExport && item.isVideo && _prepareVideoFuture != null;
     _preparedPosterBytes = null;
     _preparedPosterSignature = null;
     _preparedPosterFilePath = null;
+    _preparedVideoSignature = null;
+    _preparedVideoFilePath = null;
+    _prepareVideoFuture = null;
+    _prepareVideoFutureSignature = null;
+    _videoExportGeneration += 1;
+    _queuedVideoWarmupSignature = null;
+    _videoWarmupQueued = false;
+    if (item.isVideo) {
+      _videoExportReadyNotifier.value = false;
+    }
     _queuedPosterWarmupSignature = null;
+    if (shouldCancelVideoExport) {
+      _homeDebugLog('video export stale in-flight cancelled');
+      unawaited(FFmpegKit.cancel());
+    }
     if (existingPath != null) {
       unawaited(
         File(existingPath).delete().catchError((_) => File(existingPath)),
@@ -8844,7 +9671,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           cutoutPhotoPath: cutoutTargetPath,
         );
       });
-      _invalidatePreparedPosterCache();
+      _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
       _schedulePosterWarmup(force: true);
       if (cutoutBytes == null && mounted) {
         _showSnack(
@@ -8937,7 +9764,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     if (!_canInteractWithPosterPhoto) {
       return;
     }
-    _invalidatePreparedPosterCache();
+    _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
     setState(() {
       final nextPreset = _pickNextPosterPhotoPreset();
       _photoUserAdjustment = _PosterPhotoUserAdjustment(
@@ -8977,14 +9804,18 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
     _photoDragInProgress = value;
     if (!value) {
-      _invalidatePreparedPosterCache();
+      _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
       _schedulePosterWarmup(force: true);
     }
     widget.onPosterPhotoDragStateChanged(value);
   }
 
   void _schedulePosterWarmup({bool force = false}) {
-    if (item.isVideo || !_posterReadyNotifier.value) {
+    if (item.isVideo) {
+      _scheduleVideoWarmup();
+      return;
+    }
+    if (!_posterReadyNotifier.value) {
       return;
     }
     final signature = _posterSignature(
@@ -9038,6 +9869,69 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         }
       }
     });
+  }
+
+  void _scheduleVideoWarmup({bool requireReady = true}) {
+    if (!item.isVideo || (requireReady && !_posterReadyNotifier.value)) {
+      return;
+    }
+    final signature = _posterSignature(
+      isPhotoVisible: _showPosterPhotoNotifier.value,
+    );
+    if (_prepareVideoFuture != null ||
+        (_videoWarmupQueued && _queuedVideoWarmupSignature == signature)) {
+      return;
+    }
+    final existingPath = _preparedVideoFilePath;
+    if (_preparedVideoSignature == signature &&
+        existingPath != null &&
+        File(existingPath).existsSync()) {
+      if (!_videoExportReadyNotifier.value) {
+        _videoExportReadyNotifier.value = true;
+      }
+      return;
+    }
+    if (_videoExportReadyNotifier.value) {
+      _videoExportReadyNotifier.value = false;
+    }
+    _videoWarmupQueued = true;
+    _queuedVideoWarmupSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        if (!mounted || (requireReady && !_posterReadyNotifier.value)) {
+          return;
+        }
+        await _ensurePreparedVideoFile(isWarmup: true);
+      } finally {
+        _videoWarmupQueued = false;
+        if (_queuedVideoWarmupSignature == signature) {
+          _queuedVideoWarmupSignature = null;
+        }
+      }
+    });
+  }
+
+  void _scheduleVideoWarmupRetries() {
+    if (!item.isVideo) {
+      return;
+    }
+    const retryDelays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 180),
+      Duration(milliseconds: 450),
+      Duration(milliseconds: 1200),
+      Duration(milliseconds: 2500),
+      Duration(seconds: 5),
+      Duration(seconds: 9),
+    ];
+    for (final delay in retryDelays) {
+      Future<void>.delayed(delay, () {
+        if (!mounted || !item.isVideo || _videoExportReadyNotifier.value) {
+          return;
+        }
+        _scheduleVideoWarmup(requireReady: false);
+      });
+    }
   }
 
   Future<void> _prepareLegacyTextForExport() async {
@@ -9186,6 +10080,104 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return null;
   }
 
+  Future<String?> _ensurePreparedVideoFile({bool isWarmup = false}) async {
+    final videoUrl = item.videoUrl?.trim() ?? '';
+    if (!item.isVideo || videoUrl.isEmpty) {
+      return null;
+    }
+    final startedAt = DateTime.now();
+    final personalization =
+        item.personalizationConfig ?? CreatorPosterPersonalization.defaults;
+    final signature = _posterSignature(
+      isPhotoVisible: _showPosterPhotoNotifier.value,
+    );
+    final existingPath = _preparedVideoFilePath;
+    if (_preparedVideoSignature == signature &&
+        existingPath != null &&
+        await File(existingPath).exists()) {
+      if (!_videoExportReadyNotifier.value) {
+        _videoExportReadyNotifier.value = true;
+      }
+      if (kDebugMode) {
+        _homeDebugLog(
+          'video export ${isWarmup ? "warmup" : "action"} cache hit in '
+          '${DateTime.now().difference(startedAt).inMilliseconds}ms '
+          'title=${item.titleEn}',
+        );
+      }
+      return existingPath;
+    }
+    final inFlight = _prepareVideoFuture;
+    if (inFlight != null && _prepareVideoFutureSignature == signature) {
+      if (kDebugMode) {
+        _homeDebugLog(
+          'video export ${isWarmup ? "warmup" : "action"} joined in-flight '
+          'title=${item.titleEn}',
+        );
+      }
+      return inFlight;
+    }
+    final generation = _videoExportGeneration;
+    final future = () async {
+      try {
+        if (kDebugMode) {
+          _homeDebugLog(
+            'video export ${isWarmup ? "warmup" : "action"} start '
+            'title=${item.titleEn}',
+          );
+        }
+        final outputPath = await const PersonalizedVideoExportService().export(
+          videoUrl: videoUrl,
+          profile: viewerPosterProfile,
+          personalization: personalization,
+          language: language,
+          extraPhotoProfile:
+              personalization.showVideoExtraPhoto &&
+                  (_extraPhotoSelection?.hasPhoto ?? false)
+              ? _extraPhotoSelection!.asPosterProfileData()
+              : null,
+          title: item.titleFor(language),
+          previewSeed: item.imageUrl ?? item.imageAssetPath ?? 'poster',
+        );
+        if (_videoExportGeneration == generation) {
+          _preparedVideoSignature = signature;
+          _preparedVideoFilePath = outputPath;
+        }
+        if (mounted &&
+            _videoExportGeneration == generation &&
+            !_videoExportReadyNotifier.value) {
+          _videoExportReadyNotifier.value = true;
+        }
+        if (kDebugMode) {
+          _homeDebugLog(
+            'video export ${isWarmup ? "warmup" : "action"} ready in '
+            '${DateTime.now().difference(startedAt).inMilliseconds}ms '
+            'title=${item.titleEn}',
+          );
+        }
+        return outputPath;
+      } catch (error, stackTrace) {
+        if (mounted &&
+            _videoExportGeneration == generation &&
+            _videoExportReadyNotifier.value) {
+          _videoExportReadyNotifier.value = false;
+        }
+        _homeDebugLogStack('video export failed: $error', stackTrace);
+        return null;
+      }
+    }();
+    _prepareVideoFuture = future;
+    _prepareVideoFutureSignature = signature;
+    try {
+      return await future;
+    } finally {
+      if (identical(_prepareVideoFuture, future)) {
+        _prepareVideoFuture = null;
+        _prepareVideoFutureSignature = null;
+      }
+    }
+  }
+
   bool _hasImmediateSubscriptionAccess() {
     if (InAppPurchaseGateway.playStoreProActive) {
       unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
@@ -9226,6 +10218,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     _posterReadyNotifier.value = ready;
+    if (ready && item.isVideo) {
+      _scheduleVideoWarmup();
+      _scheduleVideoWarmupRetries();
+    }
   }
 
   Future<Uint8List?> _capturePosterBytes() async {
@@ -9551,15 +10547,61 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             );
     }
     return item.isVideo
-        ? _FeedTapToPlayVideoPoster(
-            videoUrl: item.videoUrl!,
-            imageAssetPath: item.imageAssetPath,
-            imageUrl: item.imageUrl,
-            imageStoragePath: item.imageStoragePath,
-            thumbnailStoragePath: item.thumbnailStoragePath,
-            thumbnailUrl: item.thumbnailUrl,
-            onReady: () => onPosterReadyChanged?.call(true),
-          )
+        ? personalizationConfig != null
+              ? _CreatorPosterPreview(
+                  imageAssetPath: item.imageAssetPath,
+                  imageUrl: item.imageUrl,
+                  imageStoragePath: item.imageStoragePath,
+                  thumbnailStoragePath: item.thumbnailStoragePath,
+                  thumbnailUrl: item.thumbnailUrl,
+                  pageConfig: item.pageConfig,
+                  basePosterBuilder: (VoidCallback onReady) =>
+                      _FeedTapToPlayVideoPoster(
+                        videoUrl: item.videoUrl!,
+                        imageAssetPath: item.imageAssetPath,
+                        imageUrl: item.imageUrl,
+                        imageStoragePath: item.imageStoragePath,
+                        thumbnailStoragePath: item.thumbnailStoragePath,
+                        thumbnailUrl: item.thumbnailUrl,
+                        onReady: onReady,
+                        onReplay: () {
+                          _videoReplayTickNotifier.value =
+                              _videoReplayTickNotifier.value + 1;
+                        },
+                      ),
+                  videoReplayTickListenable: _videoReplayTickNotifier,
+                  personalizationConfig: personalizationConfig,
+                  preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+                  viewerPosterProfile: viewerPosterProfile,
+                  language: language,
+                  showProfilePhoto: isPhotoVisible,
+                  deferLegacyTextPrime: deferRichPosterPreview,
+                  posterRenderCycle: posterRenderCycle,
+                  interactivePhotoEnabled: false,
+                  photoShapeOverride: _photoUserAdjustment.effectiveShape,
+                  photoRenderModeOverride:
+                      _photoUserAdjustment.effectivePhotoRenderMode,
+                  photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
+                  photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
+                  onPhotoTap: _applyPosterPhotoPresetTap,
+                  additionalPhotoSelection: _extraPhotoSelection,
+                  onAdditionalPhotoTap:
+                      personalizationConfig.showVideoExtraPhoto
+                      ? () => unawaited(_pickAdditionalPosterPhoto())
+                      : null,
+                  onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
+                  onPhotoDragStateChanged: _setPhotoDragInProgress,
+                  onPosterReadyChanged: onPosterReadyChanged,
+                )
+              : _FeedTapToPlayVideoPoster(
+                  videoUrl: item.videoUrl!,
+                  imageAssetPath: item.imageAssetPath,
+                  imageUrl: item.imageUrl,
+                  imageStoragePath: item.imageStoragePath,
+                  thumbnailStoragePath: item.thumbnailStoragePath,
+                  thumbnailUrl: item.thumbnailUrl,
+                  onReady: () => onPosterReadyChanged?.call(true),
+                )
         : personalizationConfig != null
         ? _CreatorPosterPreview(
             imageAssetPath: item.imageAssetPath,
@@ -9638,7 +10680,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   void _showSnack(ScaffoldMessengerState messenger, String message) {
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    messenger.showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   Future<bool> _resolveLatestSubscriptionAccess() async {
@@ -9933,6 +10975,47 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(messenger, galleryPermissionMessage);
         return;
       }
+      if (item.isVideo) {
+        final preparedVideoPath = await _ensurePreparedVideoFile();
+        if (preparedVideoPath == null) {
+          result = false;
+          _showSnack(messenger, posterNotReadyMessage);
+          return;
+        }
+        final fileName =
+            'mana_poster_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+        final saveResult =
+            await MediaExportService.saveVideoFileToGalleryDetailed(
+              preparedVideoPath,
+              fileName: fileName,
+            );
+        result = saveResult.success;
+        if (result) {
+          final posterId = item.templateId?.trim();
+          if (posterId != null && posterId.isNotEmpty) {
+            unawaited(
+              ApprovedCreatorTemplateService().incrementPosterEngagementCount(
+                posterId: posterId,
+                isShare: false,
+              ),
+            );
+            unawaited(
+              UserPosterUploadsService.instance
+                  .incrementApprovedContributionCountForPoster(
+                    approvedPosterTemplateId: posterId,
+                    isShare: false,
+                  ),
+            );
+          }
+          _showSnack(messenger, posterSavedMessage);
+          return;
+        }
+        if (!context.mounted) {
+          return;
+        }
+        _showSnack(messenger, _downloadSaveFailureMessage(context, saveResult));
+        return;
+      }
       final preparedPath = await _ensurePreparedPosterFile();
       if (preparedPath == null) {
         result = false;
@@ -9958,6 +11041,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         }
         final posterId = item.templateId?.trim();
         if (posterId != null && posterId.isNotEmpty) {
+          unawaited(
+            ApprovedCreatorTemplateService().incrementPosterEngagementCount(
+              posterId: posterId,
+              isShare: false,
+            ),
+          );
           unawaited(
             UserPosterUploadsService.instance
                 .incrementApprovedContributionCountForPoster(
@@ -10028,6 +11117,44 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         result = false;
         return;
       }
+      if (item.isVideo) {
+        final preparedVideoPath = await _ensurePreparedVideoFile();
+        if (preparedVideoPath == null) {
+          result = false;
+          _showSnack(messenger, posterNotReadyMessage);
+          return;
+        }
+        if (!context.mounted) {
+          result = false;
+          return;
+        }
+        final box = context.findRenderObject() as RenderBox?;
+        await MediaExportService.shareVideoFile(
+          preparedVideoPath,
+          text: shareText,
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        );
+        final posterId = item.templateId?.trim();
+        if (posterId != null && posterId.isNotEmpty) {
+          unawaited(
+            ApprovedCreatorTemplateService().incrementPosterEngagementCount(
+              posterId: posterId,
+              isShare: true,
+            ),
+          );
+          unawaited(
+            UserPosterUploadsService.instance
+                .incrementApprovedContributionCountForPoster(
+                  approvedPosterTemplateId: posterId,
+                  isShare: true,
+                ),
+          );
+        }
+        result = true;
+        return;
+      }
       final preparedPath = await _ensurePreparedPosterFile();
       if (preparedPath == null) {
         result = false;
@@ -10052,6 +11179,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       );
       final posterId = item.templateId?.trim();
       if (posterId != null && posterId.isNotEmpty) {
+        unawaited(
+          ApprovedCreatorTemplateService().incrementPosterEngagementCount(
+            posterId: posterId,
+            isShare: true,
+          ),
+        );
         unawaited(
           UserPosterUploadsService.instance
               .incrementApprovedContributionCountForPoster(
@@ -10222,14 +11355,23 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 isPhotoVisible: isPhotoVisible,
                 onPosterReadyChanged: _handlePosterReadyState,
               );
+              final framedPreview = item.isVideo
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: preview,
+                    )
+                  : preview;
               if (deferRichPosterPreview) {
-                return KeyedSubtree(key: _posterCaptureKey, child: preview);
+                return KeyedSubtree(
+                  key: _posterCaptureKey,
+                  child: framedPreview,
+                );
               }
               return KeyedSubtree(
                 key: _posterCaptureKey,
                 child: Screenshot(
                   controller: _posterScreenshotController,
-                  child: preview,
+                  child: framedPreview,
                 ),
               );
             },
@@ -10299,7 +11441,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                 onChanged: deferRichPosterPreview
                                     ? null
                                     : (bool value) {
-                                        _invalidatePreparedPosterCache();
+                                        _invalidatePreparedPosterCache(
+                                          cancelVideoExport: item.isVideo,
+                                        );
                                         _showPosterPhotoNotifier.value = value;
                                         _schedulePosterWarmup(force: true);
                                       },
@@ -10323,10 +11467,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   builder: (context, activeAction, _) {
                     final isBusy = activeAction == 'share';
                     return OutlinedButton.icon(
-                      onPressed:
-                          deferRichPosterPreview ||
-                              item.isVideo ||
-                              activeAction != null
+                      onPressed: deferRichPosterPreview || activeAction != null
                           ? null
                           : () => unawaited(_onShareTap(context)),
                       icon: isBusy
@@ -10391,7 +11532,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         onPressed: deferRichPosterPreview
                             ? null
                             : () {
-                                _invalidatePreparedPosterCache();
+                                _invalidatePreparedPosterCache(
+                                  cancelVideoExport: item.isVideo,
+                                );
                                 _showPosterPhotoNotifier.value =
                                     !isPhotoVisible;
                                 _schedulePosterWarmup(force: true);
@@ -10450,10 +11593,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   builder: (context, activeAction, _) {
                     final isBusy = activeAction == 'download';
                     return FilledButton.icon(
-                      onPressed:
-                          deferRichPosterPreview ||
-                              item.isVideo ||
-                              activeAction != null
+                      onPressed: deferRichPosterPreview || activeAction != null
                           ? null
                           : () => unawaited(_onDownloadTap(context)),
                       icon: isBusy
@@ -11532,6 +12672,7 @@ class _FeedTapToPlayVideoPoster extends StatefulWidget {
     this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.onReady,
+    this.onReplay,
   });
 
   final String videoUrl;
@@ -11541,6 +12682,7 @@ class _FeedTapToPlayVideoPoster extends StatefulWidget {
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final VoidCallback? onReady;
+  final VoidCallback? onReplay;
 
   @override
   State<_FeedTapToPlayVideoPoster> createState() =>
@@ -11548,7 +12690,7 @@ class _FeedTapToPlayVideoPoster extends StatefulWidget {
 }
 
 class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
-  bool _playing = false;
+  bool _playing = true;
 
   bool get _hasStillFrame =>
       (widget.imageAssetPath?.trim().isNotEmpty ?? false) ||
@@ -11573,6 +12715,7 @@ class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
       return _TemplateVideoPlayer(
         videoUrl: widget.videoUrl,
         onReady: widget.onReady,
+        onReplay: widget.onReplay,
       );
     }
     return GestureDetector(
@@ -11612,10 +12755,15 @@ class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
 }
 
 class _TemplateVideoPlayer extends StatefulWidget {
-  const _TemplateVideoPlayer({required this.videoUrl, this.onReady});
+  const _TemplateVideoPlayer({
+    required this.videoUrl,
+    this.onReady,
+    this.onReplay,
+  });
 
   final String videoUrl;
   final VoidCallback? onReady;
+  final VoidCallback? onReplay;
 
   @override
   State<_TemplateVideoPlayer> createState() => _TemplateVideoPlayerState();
@@ -11625,6 +12773,9 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
   VideoPlayerController? _controller;
   bool _hasError = false;
   bool _readyNotified = false;
+  bool _showPlayOverlay = false;
+  Duration _lastPosition = Duration.zero;
+  DateTime? _lastReplayNotificationAt;
 
   @override
   void initState() {
@@ -11638,15 +12789,47 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     if (oldWidget.videoUrl != widget.videoUrl) {
       _readyNotified = false;
       _hasError = false;
+      _showPlayOverlay = false;
+      _lastPosition = Duration.zero;
+      _lastReplayNotificationAt = null;
       unawaited(_disposeController());
       _initialize();
     }
+  }
+
+  void _handlePlaybackTick() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+    final value = controller.value;
+    final duration = value.duration;
+    final position = value.position;
+    if (duration.inMilliseconds <= 0) {
+      _lastPosition = position;
+      return;
+    }
+    final loopedToStart =
+        position <= const Duration(milliseconds: 450) &&
+        _lastPosition >= duration * 0.72 &&
+        position < _lastPosition;
+    if (loopedToStart) {
+      final now = DateTime.now();
+      final lastNotified = _lastReplayNotificationAt;
+      if (lastNotified == null ||
+          now.difference(lastNotified) > const Duration(milliseconds: 900)) {
+        _lastReplayNotificationAt = now;
+        widget.onReplay?.call();
+      }
+    }
+    _lastPosition = position;
   }
 
   Future<void> _disposeController() async {
     final controller = _controller;
     _controller = null;
     if (controller != null) {
+      controller.removeListener(_handlePlaybackTick);
       await controller.dispose();
     }
   }
@@ -11664,7 +12847,8 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     try {
       await controller.initialize();
       await controller.setLooping(true);
-      await controller.setVolume(0);
+      await controller.setVolume(1.0);
+      controller.addListener(_handlePlaybackTick);
       await controller.play();
       if (!mounted) {
         return;
@@ -11675,10 +12859,29 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       }
       setState(() {});
     } catch (_) {
+      controller.removeListener(_handlePlaybackTick);
       if (!mounted) {
         return;
       }
       setState(() => _hasError = true);
+    }
+  }
+
+  Future<void> _togglePlayback() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+    if (controller.value.isPlaying) {
+      await controller.pause();
+      if (mounted) {
+        setState(() => _showPlayOverlay = true);
+      }
+      return;
+    }
+    await controller.play();
+    if (mounted) {
+      setState(() => _showPlayOverlay = false);
     }
   }
 
@@ -11705,53 +12908,49 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       );
     }
     if (!controller.value.isInitialized) {
-      return const _ImageLoadingState();
+      return const AspectRatio(
+        aspectRatio: 9 / 16,
+        child: _ImageLoadingState(),
+      );
     }
-    return AspectRatio(
-      aspectRatio: controller.value.aspectRatio > 0
-          ? controller.value.aspectRatio
-          : 9 / 16,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+    final videoSize = controller.value.size;
+    final videoWidth = videoSize.width > 0 ? videoSize.width : 9.0;
+    final videoHeight = videoSize.height > 0 ? videoSize.height : 16.0;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => unawaited(_togglePlayback()),
+      child: AspectRatio(
+        aspectRatio: 9 / 16,
         child: Stack(
           fit: StackFit.expand,
+          alignment: Alignment.center,
           children: <Widget>[
-            VideoPlayer(controller),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const <Widget>[
-                      Icon(
-                        Icons.play_circle_fill_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Video',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+            ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: videoWidth,
+                    height: videoHeight,
+                    child: VideoPlayer(controller),
                   ),
                 ),
               ),
             ),
+            if (_showPlayOverlay)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.play_circle_rounded,
+                    size: 64,
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -11768,6 +12967,8 @@ class _CreatorPosterPreview extends StatefulWidget {
     this.thumbnailStoragePath,
     this.thumbnailUrl,
     this.pageConfig,
+    this.basePosterBuilder,
+    this.videoReplayTickListenable,
     this.preferOriginalPosterQuality = false,
     required this.personalizationConfig,
     required this.viewerPosterProfile,
@@ -11794,6 +12995,8 @@ class _CreatorPosterPreview extends StatefulWidget {
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
   final EditorPageConfig? pageConfig;
+  final Widget Function(VoidCallback onReady)? basePosterBuilder;
+  final ValueListenable<int>? videoReplayTickListenable;
   final bool preferOriginalPosterQuality;
   final CreatorPosterPersonalization personalizationConfig;
   final PosterProfileData viewerPosterProfile;
@@ -11856,6 +13059,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   final Set<String> _legacyTextRequestsInFlight = <String>{};
   Timer? _baseImageReadyFallbackTimer;
   Offset? _activePhotoDragLastGlobalPosition;
+  int _videoReplayTick = 0;
 
   void _scheduleBaseImageReadyFallback() {
     _baseImageReadyFallbackTimer?.cancel();
@@ -11868,17 +13072,28 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     });
   }
 
+  void _handleVideoReplayTick() {
+    final nextTick = widget.videoReplayTickListenable?.value ?? 0;
+    if (_videoReplayTick == nextTick) {
+      return;
+    }
+    setState(() => _videoReplayTick = nextTick);
+  }
+
   @override
   void initState() {
     super.initState();
     if (!widget.deferLegacyTextPrime) {
       _scheduleLegacyPrime();
     }
+    _videoReplayTick = widget.videoReplayTickListenable?.value ?? 0;
+    widget.videoReplayTickListenable?.addListener(_handleVideoReplayTick);
     _scheduleBaseImageReadyFallback();
   }
 
   @override
   void dispose() {
+    widget.videoReplayTickListenable?.removeListener(_handleVideoReplayTick);
     _baseImageReadyFallbackTimer?.cancel();
     super.dispose();
   }
@@ -11886,6 +13101,14 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   @override
   void didUpdateWidget(covariant _CreatorPosterPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.videoReplayTickListenable !=
+        widget.videoReplayTickListenable) {
+      oldWidget.videoReplayTickListenable?.removeListener(
+        _handleVideoReplayTick,
+      );
+      _videoReplayTick = widget.videoReplayTickListenable?.value ?? 0;
+      widget.videoReplayTickListenable?.addListener(_handleVideoReplayTick);
+    }
     if (oldWidget.imageUrl != widget.imageUrl ||
         oldWidget.imageAssetPath != widget.imageAssetPath ||
         oldWidget.imageStoragePath != widget.imageStoragePath ||
@@ -12408,7 +13631,14 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       return Stack(
         clipBehavior: Clip.none,
         children: <Widget>[
-          if (widget.pageConfig != null)
+          if (widget.basePosterBuilder != null && widget.pageConfig != null)
+            AspectRatio(
+              aspectRatio: widget.pageConfig!.aspectRatio,
+              child: widget.basePosterBuilder!(_handleBasePosterReady),
+            )
+          else if (widget.basePosterBuilder != null)
+            widget.basePosterBuilder!(_handleBasePosterReady)
+          else if (widget.pageConfig != null)
             AspectRatio(
               aspectRatio: widget.pageConfig!.aspectRatio,
               child: _ResolvedTemplatePosterImage(
@@ -12444,7 +13674,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                           widget.personalizationConfig.photoScale / 100;
                       final baseImageHeight = math.max(
                         1.0,
-                        constraints.maxHeight - stripOverflowAllowance,
+                        constraints.maxHeight,
                       );
                       final totalCanvasHeight = math.max(
                         1.0,
@@ -12507,6 +13737,73 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                           (height / 2) +
                           (totalCanvasHeight *
                               (widget.photoYOffsetPercent / 100));
+                      Widget animatedOverlay({
+                        required Widget child,
+                        required String animation,
+                        required double overlayWidth,
+                        required double overlayHeight,
+                      }) {
+                        final normalizedAnimation = animation
+                            .trim()
+                            .toLowerCase();
+                        return TweenAnimationBuilder<double>(
+                          key: ValueKey<String>(
+                            '$normalizedAnimation-$overlayWidth-$overlayHeight-$_videoReplayTick',
+                          ),
+                          tween: Tween<double>(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 1150),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, progress, child) {
+                            var offset = Offset.zero;
+                            var scale = 1.0;
+                            switch (normalizedAnimation) {
+                              case 'top_to_place':
+                                offset = Offset(
+                                  0,
+                                  (-baseImageHeight - overlayHeight) *
+                                      (1 - progress),
+                                );
+                                break;
+                              case 'bottom_to_place':
+                                offset = Offset(
+                                  0,
+                                  (baseImageHeight + overlayHeight) *
+                                      (1 - progress),
+                                );
+                                break;
+                              case 'left_to_place':
+                                offset = Offset(
+                                  (-constraints.maxWidth - overlayWidth) *
+                                      (1 - progress),
+                                  0,
+                                );
+                                break;
+                              case 'right_to_place':
+                                offset = Offset(
+                                  (constraints.maxWidth + overlayWidth) *
+                                      (1 - progress),
+                                  0,
+                                );
+                                break;
+                              case 'zoom_in':
+                                scale = 0.22 + (0.78 * progress);
+                                break;
+                              case 'zoom_out':
+                                scale = 1.35 - (0.35 * progress);
+                                break;
+                            }
+                            return Transform.translate(
+                              offset: offset,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: child,
+                        );
+                      }
+
                       return Stack(
                         clipBehavior: Clip.none,
                         children: <Widget>[
@@ -12515,86 +13812,94 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                             top: top,
                             width: width,
                             height: height,
-                            child: RawGestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              gestures: <Type, GestureRecognizerFactory>{
-                                TapGestureRecognizer:
-                                    GestureRecognizerFactoryWithHandlers<
-                                      TapGestureRecognizer
-                                    >(TapGestureRecognizer.new, (
-                                      TapGestureRecognizer instance,
-                                    ) {
-                                      instance.onTap =
-                                          widget.interactivePhotoEnabled
-                                          ? widget.onPhotoTap
-                                          : null;
-                                    }),
-                                LongPressGestureRecognizer:
-                                    GestureRecognizerFactoryWithHandlers<
-                                      LongPressGestureRecognizer
-                                    >(
-                                      () => LongPressGestureRecognizer(
-                                        duration: const Duration(seconds: 2),
+                            child: animatedOverlay(
+                              animation:
+                                  widget.personalizationConfig.photoAnimation,
+                              overlayWidth: width,
+                              overlayHeight: height,
+                              child: RawGestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                gestures: <Type, GestureRecognizerFactory>{
+                                  TapGestureRecognizer:
+                                      GestureRecognizerFactoryWithHandlers<
+                                        TapGestureRecognizer
+                                      >(TapGestureRecognizer.new, (
+                                        TapGestureRecognizer instance,
+                                      ) {
+                                        instance.onTap =
+                                            widget.interactivePhotoEnabled
+                                            ? widget.onPhotoTap
+                                            : null;
+                                      }),
+                                  LongPressGestureRecognizer:
+                                      GestureRecognizerFactoryWithHandlers<
+                                        LongPressGestureRecognizer
+                                      >(
+                                        () => LongPressGestureRecognizer(
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                        (LongPressGestureRecognizer instance) {
+                                          if (!widget.interactivePhotoEnabled) {
+                                            instance
+                                              ..onLongPressStart = null
+                                              ..onLongPressMoveUpdate = null
+                                              ..onLongPressEnd = null
+                                              ..onLongPressCancel = null;
+                                            return;
+                                          }
+                                          instance.onLongPressStart =
+                                              (LongPressStartDetails details) =>
+                                                  _startPhotoDrag(
+                                                    details.globalPosition,
+                                                  );
+                                          instance.onLongPressMoveUpdate =
+                                              (
+                                                LongPressMoveUpdateDetails
+                                                details,
+                                              ) => _updatePhotoDrag(
+                                                globalPosition:
+                                                    details.globalPosition,
+                                                currentLeft: left,
+                                                currentTop: top,
+                                                maxWidth: constraints.maxWidth,
+                                                totalCanvasHeight:
+                                                    totalCanvasHeight,
+                                                photoWidth: width,
+                                                photoHeight: height,
+                                              );
+                                          instance.onLongPressEnd =
+                                              (LongPressEndDetails _) =>
+                                                  _endPhotoDrag();
+                                          instance.onLongPressCancel =
+                                              _endPhotoDrag;
+                                        },
                                       ),
-                                      (LongPressGestureRecognizer instance) {
-                                        if (!widget.interactivePhotoEnabled) {
-                                          instance
-                                            ..onLongPressStart = null
-                                            ..onLongPressMoveUpdate = null
-                                            ..onLongPressEnd = null
-                                            ..onLongPressCancel = null;
-                                          return;
-                                        }
-                                        instance.onLongPressStart =
-                                            (LongPressStartDetails details) =>
-                                                _startPhotoDrag(
-                                                  details.globalPosition,
-                                                );
-                                        instance.onLongPressMoveUpdate =
-                                            (
-                                              LongPressMoveUpdateDetails
-                                              details,
-                                            ) => _updatePhotoDrag(
-                                              globalPosition:
-                                                  details.globalPosition,
-                                              currentLeft: left,
-                                              currentTop: top,
-                                              maxWidth: constraints.maxWidth,
-                                              totalCanvasHeight:
-                                                  totalCanvasHeight,
-                                              photoWidth: width,
-                                              photoHeight: height,
-                                            );
-                                        instance.onLongPressEnd =
-                                            (LongPressEndDetails _) =>
-                                                _endPhotoDrag();
-                                        instance.onLongPressCancel =
-                                            _endPhotoDrag;
-                                      },
-                                    ),
-                              },
-                              child: _PhotoShapeFrame(
-                                shape: effectivePhotoShape,
-                                edgeStyle:
-                                    widget.personalizationConfig.edgeStyle,
-                                photoRenderMode: effectivePhotoRenderMode,
-                                isBusinessLogo: isBusinessProfile,
-                                child: PosterIdentityVisual(
-                                  profile: widget.viewerPosterProfile,
-                                  fit: isBusinessProfile
-                                      ? BoxFit.contain
-                                      : effectivePhotoRenderMode == 'cutout'
-                                      ? BoxFit.contain
-                                      : BoxFit.cover,
-                                  preferOriginalPersonalPhoto:
-                                      effectivePhotoRenderMode == 'original',
-                                  allowOriginalFallbackWhenCutoutUnavailable:
-                                      effectivePhotoRenderMode == 'original',
-                                  textScale:
-                                      widget.viewerPosterProfile.identityMode ==
-                                          PosterIdentityMode.business
-                                      ? 0.84
-                                      : 1.0,
+                                },
+                                child: _PhotoShapeFrame(
+                                  shape: effectivePhotoShape,
+                                  edgeStyle:
+                                      widget.personalizationConfig.edgeStyle,
+                                  photoRenderMode: effectivePhotoRenderMode,
+                                  isBusinessLogo: isBusinessProfile,
+                                  child: PosterIdentityVisual(
+                                    profile: widget.viewerPosterProfile,
+                                    fit: isBusinessProfile
+                                        ? BoxFit.contain
+                                        : effectivePhotoRenderMode == 'cutout'
+                                        ? BoxFit.contain
+                                        : BoxFit.cover,
+                                    preferOriginalPersonalPhoto:
+                                        effectivePhotoRenderMode == 'original',
+                                    allowOriginalFallbackWhenCutoutUnavailable:
+                                        effectivePhotoRenderMode == 'original',
+                                    textScale:
+                                        widget
+                                                .viewerPosterProfile
+                                                .identityMode ==
+                                            PosterIdentityMode.business
+                                        ? 0.84
+                                        : 1.0,
+                                  ),
                                 ),
                               ),
                             ),
@@ -12608,63 +13913,66 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                               child: GestureDetector(
                                 onTap: widget.onAdditionalPhotoTap,
                                 behavior: HitTestBehavior.opaque,
-                                child: additionalPhotoProfile != null
-                                    ? _PhotoShapeFrame(
-                                        shape: additionalPhotoShape,
-                                        edgeStyle: widget
-                                            .personalizationConfig
-                                            .videoExtraPhotoEdgeStyle,
-                                        photoRenderMode:
-                                            additionalPhotoRenderMode,
-                                        isBusinessLogo: false,
-                                        child: PosterIdentityVisual(
-                                          profile: additionalPhotoProfile,
-                                          fit:
-                                              additionalPhotoRenderMode ==
-                                                  'cutout'
-                                              ? BoxFit.contain
-                                              : BoxFit.cover,
-                                          preferOriginalPersonalPhoto:
-                                              additionalPhotoRenderMode ==
-                                              'original',
-                                          allowOriginalFallbackWhenCutoutUnavailable:
-                                              true,
-                                        ),
-                                      )
-                                    : Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.18,
+                                child: animatedOverlay(
+                                  animation: widget
+                                      .personalizationConfig
+                                      .videoExtraPhotoAnimation,
+                                  overlayWidth: additionalPhotoWidth,
+                                  overlayHeight: additionalPhotoHeight,
+                                  child: additionalPhotoProfile != null
+                                      ? _PhotoShapeFrame(
+                                          shape: additionalPhotoShape,
+                                          edgeStyle: widget
+                                              .personalizationConfig
+                                              .videoExtraPhotoEdgeStyle,
+                                          photoRenderMode:
+                                              additionalPhotoRenderMode,
+                                          isBusinessLogo: false,
+                                          child: PosterIdentityVisual(
+                                            profile: additionalPhotoProfile,
+                                            fit:
+                                                additionalPhotoRenderMode ==
+                                                    'cutout'
+                                                ? BoxFit.contain
+                                                : BoxFit.cover,
+                                            preferOriginalPersonalPhoto:
+                                                additionalPhotoRenderMode ==
+                                                'original',
+                                            allowOriginalFallbackWhenCutoutUnavailable:
+                                                true,
                                           ),
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2.4,
+                                        )
+                                      : Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.18,
+                                            ),
+                                            boxShadow: const <BoxShadow>[
+                                              BoxShadow(
+                                                color: Color(0x55000000),
+                                                blurRadius: 10,
+                                                offset: Offset(0, 4),
+                                              ),
+                                            ],
                                           ),
-                                          boxShadow: const <BoxShadow>[
-                                            BoxShadow(
-                                              color: Color(0x55000000),
-                                              blurRadius: 10,
-                                              offset: Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            context.strings.localized(
-                                              telugu: 'Add Photo',
-                                              english: 'Add Photo',
-                                            ),
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              height: 1.15,
+                                          child: Center(
+                                            child: Text(
+                                              context.strings.localized(
+                                                telugu: 'Add Photo',
+                                                english: 'Add Photo',
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                height: 1.15,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
+                                ),
                               ),
                             ),
                           if (!widget.personalizationConfig.showBottomStrip)
@@ -12723,6 +14031,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               children: <Widget>[
                 buildPosterVisual(),
                 if (widget.personalizationConfig.showBottomStrip &&
+                    (widget.basePosterBuilder == null || _basePosterReady) &&
                     !preserveOriginalCanvasBounds)
                   _buildPosterBottomStrip(
                     resolvedName: resolvedName,
@@ -13003,14 +14312,7 @@ class _PhotoShapeFrame extends StatelessWidget {
     }
     switch (currentShape) {
       case 'circle':
-        return BoxDecoration(
-          color: Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.78),
-            width: 2.2,
-          ),
-        );
+        return BoxDecoration(color: Colors.transparent, shape: BoxShape.circle);
       case 'scallop_circle':
         return const BoxDecoration(
           gradient: LinearGradient(
@@ -13078,13 +14380,7 @@ class _PhotoShapeFrame extends StatelessWidget {
           ),
         );
       case 'square':
-        return BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.76),
-            width: 2.0,
-          ),
-        );
+        return const BoxDecoration(color: Colors.transparent);
       default:
         return const BoxDecoration(
           gradient: LinearGradient(
@@ -13268,13 +14564,9 @@ class _PhotoShapeFrame extends StatelessWidget {
 
     if (isBusinessLogo) {
       return DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.86),
-            width: 1.4,
-          ),
-          boxShadow: const <BoxShadow>[
+          boxShadow: <BoxShadow>[
             BoxShadow(
               color: Color(0x33000000),
               blurRadius: 8,
@@ -13775,6 +15067,775 @@ class _HomeFeedState extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EmptyPosterGameState extends StatefulWidget {
+  const _EmptyPosterGameState({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.categorySlug,
+    required this.categoryLabel,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String categorySlug;
+  final String categoryLabel;
+
+  @override
+  State<_EmptyPosterGameState> createState() => _EmptyPosterGameStateState();
+}
+
+class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
+  Timer? _countdownTimer;
+  int _secondsLeft = 3;
+  bool _gameStarted = false;
+  bool _gameDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        return;
+      }
+      if (_secondsLeft <= 1) {
+        timer.cancel();
+        setState(() {
+          _secondsLeft = 0;
+          _gameStarted = true;
+        });
+        return;
+      }
+      setState(() => _secondsLeft--);
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    return Column(
+      children: <Widget>[
+        _HomeFeedState(
+          icon: widget.icon,
+          title: widget.title,
+          subtitle: widget.subtitle,
+        ),
+        const SizedBox(height: 12),
+        if (!_gameDismissed)
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            child: _gameStarted
+                ? _SnakePosterGameCard(
+                    key: ValueKey<String>(
+                      'snake-${widget.categorySlug}-${widget.categoryLabel}',
+                    ),
+                    onExit: () => setState(() => _gameDismissed = true),
+                  )
+                : _SnakeCountdownCard(
+                    key: const ValueKey<String>('snake-countdown'),
+                    secondsLeft: _secondsLeft,
+                    label: strings.localized(
+                      telugu: 'Snake game $_secondsLeft సెకన్లలో మొదలవుతుంది',
+                      english: 'Snake game starts in $_secondsLeft seconds',
+                      hindi: 'Snake game $_secondsLeft सेकंड में शुरू होगा',
+                      tamil: 'Snake game $_secondsLeft விநாடிகளில் தொடங்கும்',
+                      kannada:
+                          'Snake game $_secondsLeft ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಆರಂಭವಾಗುತ್ತದೆ',
+                      malayalam: 'Snake game $_secondsLeft സെക്കൻഡിൽ തുടങ്ങും',
+                    ),
+                  ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SnakeCountdownCard extends StatelessWidget {
+  const _SnakeCountdownCard({
+    super.key,
+    required this.secondsLeft,
+    required this.label,
+  });
+
+  final int secondsLeft;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              secondsLeft.toString(),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF2563EB),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _SnakeDirection { up, right, down, left }
+
+class _SnakePosterGameCard extends StatefulWidget {
+  const _SnakePosterGameCard({super.key, required this.onExit});
+
+  final VoidCallback onExit;
+
+  @override
+  State<_SnakePosterGameCard> createState() => _SnakePosterGameCardState();
+}
+
+class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
+  static const int _gridSize = 14;
+  static const Duration _tickDuration = Duration(milliseconds: 230);
+  final math.Random _random = math.Random();
+  Timer? _timer;
+  List<math.Point<int>> _snake = const <math.Point<int>>[
+    math.Point<int>(6, 7),
+    math.Point<int>(5, 7),
+    math.Point<int>(4, 7),
+  ];
+  math.Point<int> _food = const math.Point<int>(10, 7);
+  _SnakeDirection _direction = _SnakeDirection.right;
+  _SnakeDirection _nextDirection = _SnakeDirection.right;
+  int _score = 0;
+  bool _gameOver = false;
+  bool _isPaused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(_tickDuration, (_) => _tick());
+  }
+
+  void _tick() {
+    if (!mounted || _gameOver || _isPaused) {
+      return;
+    }
+    final head = _snake.first;
+    final direction = _nextDirection;
+    final nextHead = switch (direction) {
+      _SnakeDirection.up => math.Point<int>(head.x, head.y - 1),
+      _SnakeDirection.right => math.Point<int>(head.x + 1, head.y),
+      _SnakeDirection.down => math.Point<int>(head.x, head.y + 1),
+      _SnakeDirection.left => math.Point<int>(head.x - 1, head.y),
+    };
+    final wrappedHead = math.Point<int>(
+      (nextHead.x + _gridSize) % _gridSize,
+      (nextHead.y + _gridSize) % _gridSize,
+    );
+    final ateFood = wrappedHead == _food;
+    final nextSnake = <math.Point<int>>[wrappedHead, ..._snake];
+    if (!ateFood) {
+      nextSnake.removeLast();
+    }
+    final hitSelf = nextSnake.skip(1).contains(wrappedHead);
+    if (hitSelf) {
+      setState(() => _gameOver = true);
+      _timer?.cancel();
+      return;
+    }
+    setState(() {
+      _direction = direction;
+      _snake = nextSnake;
+      if (ateFood) {
+        _score++;
+        _food = _newFood(nextSnake);
+      }
+    });
+  }
+
+  math.Point<int> _newFood(List<math.Point<int>> occupied) {
+    if (occupied.length >= _gridSize * _gridSize) {
+      return const math.Point<int>(0, 0);
+    }
+    while (true) {
+      final point = math.Point<int>(
+        _random.nextInt(_gridSize),
+        _random.nextInt(_gridSize),
+      );
+      if (!occupied.contains(point)) {
+        return point;
+      }
+    }
+  }
+
+  void _setDirection(_SnakeDirection direction) {
+    final opposite = switch (_direction) {
+      _SnakeDirection.up => _SnakeDirection.down,
+      _SnakeDirection.right => _SnakeDirection.left,
+      _SnakeDirection.down => _SnakeDirection.up,
+      _SnakeDirection.left => _SnakeDirection.right,
+    };
+    if (direction == opposite) {
+      return;
+    }
+    setState(() => _nextDirection = direction);
+  }
+
+  void _handleDrag(DragEndDetails details) {
+    final velocity = details.velocity.pixelsPerSecond;
+    if (velocity.distance < 80) {
+      return;
+    }
+    if (velocity.dx.abs() > velocity.dy.abs()) {
+      _setDirection(
+        velocity.dx > 0 ? _SnakeDirection.right : _SnakeDirection.left,
+      );
+    } else {
+      _setDirection(
+        velocity.dy > 0 ? _SnakeDirection.down : _SnakeDirection.up,
+      );
+    }
+  }
+
+  void _restart() {
+    setState(() {
+      _snake = const <math.Point<int>>[
+        math.Point<int>(6, 7),
+        math.Point<int>(5, 7),
+        math.Point<int>(4, 7),
+      ];
+      _food = const math.Point<int>(10, 7);
+      _direction = _SnakeDirection.right;
+      _nextDirection = _SnakeDirection.right;
+      _score = 0;
+      _gameOver = false;
+      _isPaused = false;
+    });
+    _startTimer();
+  }
+
+  void _togglePause() {
+    if (_gameOver) {
+      _restart();
+      return;
+    }
+    setState(() => _isPaused = !_isPaused);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[Color(0xFF07111F), Color(0xFF0F766E)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x240F172A),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.videogame_asset_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  strings.localized(
+                    telugu: 'Snake Game',
+                    english: 'Snake Game',
+                    hindi: 'Snake Game',
+                    tamil: 'Snake Game',
+                    kannada: 'Snake Game',
+                    malayalam: 'Snake Game',
+                  ),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _SnakeScorePill(score: _score),
+              const SizedBox(width: 8),
+              _SnakePauseButton(isPaused: _isPaused, onTap: _togglePause),
+              const SizedBox(width: 8),
+              _SnakeExitButton(onTap: widget.onExit),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragEnd: _handleDrag,
+            onVerticalDragEnd: _handleDrag,
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF02131C),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Stack(
+                  children: <Widget>[
+                    CustomPaint(
+                      painter: _SnakeBoardPainter(
+                        gridSize: _gridSize,
+                        snake: _snake,
+                        food: _food,
+                        direction: _direction,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                    if (_gameOver)
+                      Positioned.fill(
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.48),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                strings.localized(
+                                  telugu: 'Game Over',
+                                  english: 'Game Over',
+                                  hindi: 'Game Over',
+                                  tamil: 'Game Over',
+                                  kannada: 'Game Over',
+                                  malayalam: 'Game Over',
+                                ),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextButton(
+                                onPressed: _restart,
+                                style: TextButton.styleFrom(
+                                  backgroundColor: const Color(0xFF22C55E),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                ),
+                                child: Text(
+                                  strings.localized(
+                                    telugu: 'మళ్ళీ ఆడు',
+                                    english: 'Play again',
+                                    hindi: 'Play again',
+                                    tamil: 'Play again',
+                                    kannada: 'Play again',
+                                    malayalam: 'Play again',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if (_isPaused && !_gameOver)
+                      Positioned.fill(
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.38),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.pause_circle_filled_rounded,
+                                color: Colors.white,
+                                size: 44,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                strings.localized(
+                                  telugu: 'Paused',
+                                  english: 'Paused',
+                                  hindi: 'Paused',
+                                  tamil: 'Paused',
+                                  kannada: 'Paused',
+                                  malayalam: 'Paused',
+                                ),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _SnakeControlButton(
+                icon: Icons.keyboard_arrow_left_rounded,
+                onTap: () => _setDirection(_SnakeDirection.left),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                children: <Widget>[
+                  _SnakeControlButton(
+                    icon: Icons.keyboard_arrow_up_rounded,
+                    onTap: () => _setDirection(_SnakeDirection.up),
+                  ),
+                  const SizedBox(height: 8),
+                  _SnakeControlButton(
+                    icon: Icons.keyboard_arrow_down_rounded,
+                    onTap: () => _setDirection(_SnakeDirection.down),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              _SnakeControlButton(
+                icon: Icons.keyboard_arrow_right_rounded,
+                onTap: () => _setDirection(_SnakeDirection.right),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnakeScorePill extends StatelessWidget {
+  const _SnakeScorePill({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'Score $score',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _SnakePauseButton extends StatelessWidget {
+  const _SnakePauseButton({required this.isPaused, required this.onTap});
+
+  final bool isPaused;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(
+            isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SnakeExitButton extends StatelessWidget {
+  const _SnakeExitButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: const SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(Icons.close_rounded, color: Colors.white, size: 24),
+        ),
+      ),
+    );
+  }
+}
+
+class _SnakeControlButton extends StatelessWidget {
+  const _SnakeControlButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.13),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 46,
+          height: 42,
+          child: Icon(icon, color: Colors.white, size: 30),
+        ),
+      ),
+    );
+  }
+}
+
+class _SnakeBoardPainter extends CustomPainter {
+  const _SnakeBoardPainter({
+    required this.gridSize,
+    required this.snake,
+    required this.food,
+    required this.direction,
+  });
+
+  final int gridSize;
+  final List<math.Point<int>> snake;
+  final math.Point<int> food;
+  final _SnakeDirection direction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cell = size.width / gridSize;
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.035)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    for (var index = 1; index < gridSize; index++) {
+      final offset = index * cell;
+      canvas.drawLine(
+        Offset(offset, 0),
+        Offset(offset, size.height),
+        gridPaint,
+      );
+      canvas.drawLine(Offset(0, offset), Offset(size.width, offset), gridPaint);
+    }
+
+    final foodCenter = Offset(
+      food.x * cell + cell / 2,
+      food.y * cell + cell / 2,
+    );
+    canvas
+      ..drawCircle(
+        foodCenter,
+        cell * 0.34,
+        Paint()..color = const Color(0xFFEF4444),
+      )
+      ..drawCircle(
+        foodCenter.translate(-cell * 0.1, -cell * 0.11),
+        cell * 0.11,
+        Paint()..color = Colors.white.withValues(alpha: 0.45),
+      )
+      ..drawOval(
+        Rect.fromCenter(
+          center: foodCenter.translate(cell * 0.13, -cell * 0.35),
+          width: cell * 0.3,
+          height: cell * 0.16,
+        ),
+        Paint()..color = const Color(0xFF22C55E),
+      );
+
+    for (var index = snake.length - 1; index >= 0; index--) {
+      final part = snake[index];
+      final isHead = index == 0;
+      final center = Offset(part.x * cell + cell / 2, part.y * cell + cell / 2);
+      final radius = isHead ? cell * 0.43 : cell * (0.34 + index * 0.002);
+      canvas.drawCircle(
+        center.translate(0, cell * 0.05),
+        radius,
+        Paint()..color = Colors.black.withValues(alpha: 0.16),
+      );
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = ui.Gradient.radial(
+            center.translate(-cell * 0.14, -cell * 0.18),
+            radius * 1.4,
+            isHead
+                ? const <Color>[Color(0xFFBBF7D0), Color(0xFF16A34A)]
+                : const <Color>[Color(0xFF99F6E4), Color(0xFF0D9488)],
+          ),
+      );
+      if (!isHead && index.isOdd) {
+        canvas.drawCircle(
+          center.translate(-cell * 0.06, -cell * 0.06),
+          cell * 0.07,
+          Paint()..color = Colors.white.withValues(alpha: 0.16),
+        );
+      }
+      if (isHead) {
+        _paintSnakeFace(canvas, center, cell);
+      }
+    }
+  }
+
+  void _paintSnakeFace(Canvas canvas, Offset center, double cell) {
+    final eyePaint = Paint()..color = const Color(0xFF06220F);
+    final shinePaint = Paint()..color = Colors.white.withValues(alpha: 0.85);
+    final tonguePaint = Paint()
+      ..color = const Color(0xFFEF4444)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final offsets = switch (direction) {
+      _SnakeDirection.up => (
+        Offset(-cell * 0.15, -cell * 0.14),
+        Offset(cell * 0.15, -cell * 0.14),
+        Offset(0, -cell * 0.44),
+      ),
+      _SnakeDirection.right => (
+        Offset(cell * 0.14, -cell * 0.15),
+        Offset(cell * 0.14, cell * 0.15),
+        Offset(cell * 0.44, 0),
+      ),
+      _SnakeDirection.down => (
+        Offset(-cell * 0.15, cell * 0.14),
+        Offset(cell * 0.15, cell * 0.14),
+        Offset(0, cell * 0.44),
+      ),
+      _SnakeDirection.left => (
+        Offset(-cell * 0.14, -cell * 0.15),
+        Offset(-cell * 0.14, cell * 0.15),
+        Offset(-cell * 0.44, 0),
+      ),
+    };
+    final firstEye = center + offsets.$1;
+    final secondEye = center + offsets.$2;
+    canvas
+      ..drawCircle(firstEye, cell * 0.06, eyePaint)
+      ..drawCircle(secondEye, cell * 0.06, eyePaint)
+      ..drawCircle(
+        firstEye.translate(cell * 0.015, -cell * 0.018),
+        cell * 0.018,
+        shinePaint,
+      )
+      ..drawCircle(
+        secondEye.translate(cell * 0.015, -cell * 0.018),
+        cell * 0.018,
+        shinePaint,
+      );
+
+    final tongueStart = center + offsets.$3 * 0.72;
+    final tongueEnd = center + offsets.$3;
+    canvas.drawLine(tongueStart, tongueEnd, tonguePaint);
+    final forkA = switch (direction) {
+      _SnakeDirection.up || _SnakeDirection.down => Offset(-cell * 0.07, 0),
+      _SnakeDirection.left || _SnakeDirection.right => Offset(0, -cell * 0.07),
+    };
+    canvas
+      ..drawLine(tongueEnd, tongueEnd + forkA, tonguePaint)
+      ..drawLine(tongueEnd, tongueEnd - forkA, tonguePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SnakeBoardPainter oldDelegate) =>
+      oldDelegate.snake != snake ||
+      oldDelegate.food != food ||
+      oldDelegate.direction != direction;
 }
 
 class _PosterFeedSkeletonSliver extends StatelessWidget {

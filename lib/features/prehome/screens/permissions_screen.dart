@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -86,8 +87,8 @@ class _PermissionsScreenState extends State<PermissionsScreen>
         return;
       }
       setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'Permissions request పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.',

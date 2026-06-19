@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
 import 'package:mana_poster/features/prehome/models/app_region.dart';
+import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 
 class AppRegionService {
   AppRegionService._();
@@ -138,6 +139,7 @@ class AppRegionService {
           }, SetOptions(merge: true))
           .timeout(const Duration(seconds: 4));
       await prefs.setString(_lastRemoteSyncKey, syncValue);
+      unawaited(DeviceSessionService.instance.refreshRegionSession(region));
     } catch (_) {
       // Local startup state is the source of truth for this flow.
     }

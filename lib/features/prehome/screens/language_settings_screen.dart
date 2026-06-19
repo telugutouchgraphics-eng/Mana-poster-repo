@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -115,8 +116,8 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
                     return;
                   }
                   if (!saved) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
+                    ScaffoldMessenger.of(context).showTopSnackBar(
+                      AppSnackBar.build(
                         content: Text(
                           strings.localized(
                             telugu: 'భాష సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',

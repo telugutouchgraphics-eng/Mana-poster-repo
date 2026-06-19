@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
@@ -50,7 +51,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     if (!launched) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(copy.emailOpenFailed)));
+      ).showTopSnackBar(AppSnackBar.build(content: Text(copy.emailOpenFailed)));
     }
   }
 
@@ -68,8 +69,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           context.strings.localized(
             telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
@@ -87,7 +88,7 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(copy.emailCopied)));
+    ).showTopSnackBar(AppSnackBar.build(content: Text(copy.emailCopied)));
   }
 
   @override

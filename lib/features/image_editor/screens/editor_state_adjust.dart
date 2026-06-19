@@ -4,8 +4,8 @@ extension _EditorAdjustState on _ImageEditorScreenState {
   void _openAdjustPanel() {
     final layer = _selectedLayer;
     if (layer == null || !layer.isPhoto) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',

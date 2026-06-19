@@ -16,9 +16,11 @@ class DynamicCategoryService {
     DateTime now, {
     AppLanguage language = AppLanguage.telugu,
     Set<DynamicEventScope>? allowedScopes,
+    String? selectedRegionId,
   }) {
     final today = DateTime(now.year, now.month, now.day);
     final scopes = allowedScopes ?? DynamicEventScope.values.toSet();
+    final regionId = _normalizeToken(selectedRegionId ?? '');
     final seenSlugs = <String>{};
     final output = <DynamicCategory>[];
 
@@ -29,6 +31,7 @@ class DynamicCategoryService {
             .loadEvents()
             .where((event) => event.enabled)
             .where((event) => scopes.contains(event.scope))
+            .where((event) => _eventMatchesRegion(event, regionId))
             .where((event) => _isEventActive(event, today))
             .toList(growable: false)
           ..sort(_compareEvents);
@@ -200,6 +203,7 @@ class DynamicCategoryService {
       priority: 10,
       sortOrder: 10000,
       tags: <String>['weekday_special', 'today_special', slug],
+      regionIds: const <String>{},
     );
   }
 
@@ -225,7 +229,24 @@ class DynamicCategoryService {
       priority: event.priority,
       sortOrder: event.sortOrder,
       tags: tags,
+      regionIds: event.regionIds,
     );
+  }
+
+  bool _eventMatchesRegion(DynamicCalendarEvent event, String regionId) {
+    if (regionId.isEmpty) {
+      return true;
+    }
+    if (event.regionIds.isNotEmpty) {
+      return event.regionIds.map(_normalizeToken).contains(regionId);
+    }
+    return switch (event.scope) {
+      DynamicEventScope.global || DynamicEventScope.india => true,
+      DynamicEventScope.andhraPradesh => regionId == 'andhra_pradesh',
+      DynamicEventScope.telangana => regionId == 'telangana',
+      DynamicEventScope.bothTeluguStates =>
+        regionId == 'andhra_pradesh' || regionId == 'telangana',
+    };
   }
 
   String _weekdayLabel(int weekday, AppLanguage language) {

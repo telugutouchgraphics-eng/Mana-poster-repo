@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -56,8 +57,8 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
   if (!context.mounted) {
     return;
   }
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
+  ScaffoldMessenger.of(context).showTopSnackBar(
+    AppSnackBar.build(
       content: Text(
         context.strings.localized(
           telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
@@ -205,9 +206,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(copy.logoutFailedMessage)));
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(content: Text(copy.logoutFailedMessage)),
+      );
     }
   }
 
@@ -254,9 +255,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(copy.shareAppFailedMessage)));
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(content: Text(copy.shareAppFailedMessage)),
+      );
     }
   }
 
@@ -286,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   Future<void> _openPoliticalPartySelection(_ProfileCopy copy) async {
@@ -299,9 +300,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted || changed != true) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(copy.politicalPartySavedMessage)));
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(content: Text(copy.politicalPartySavedMessage)),
+    );
   }
 
   Future<void> _openRegionSelection(_ProfileCopy copy) async {
@@ -336,8 +337,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           partiesChanged == true
               ? copy.politicalPartySavedMessage
@@ -700,7 +701,7 @@ class _ProfileMoreScreen extends StatelessWidget {
     };
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ).showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   @override
@@ -978,8 +979,8 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(widget.copy.referralCodeCopiedMessage)),
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(content: Text(widget.copy.referralCodeCopiedMessage)),
     );
   }
 
@@ -997,8 +998,8 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
         _applying = false;
         _statusFuture = _service.fetchStatus();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             result.accepted
                 ? widget.copy.referralCodeAppliedMessage
@@ -1013,8 +1014,10 @@ class _ReferralRewardsDialogState extends State<_ReferralRewardsDialog> {
         return;
       }
       setState(() => _applying = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.copy.referralCodeApplyFailedMessage)),
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
+          content: Text(widget.copy.referralCodeApplyFailedMessage),
+        ),
       );
     }
   }

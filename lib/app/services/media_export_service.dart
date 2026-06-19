@@ -5,11 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 class MediaExportResult {
-  const MediaExportResult({
-    required this.success,
-    this.code,
-    this.message,
-  });
+  const MediaExportResult({required this.success, this.code, this.message});
 
   final bool success;
   final String? code;
@@ -32,10 +28,7 @@ class MediaExportResult {
 }
 
 class MediaShareException implements Exception {
-  const MediaShareException({
-    required this.code,
-    required this.message,
-  });
+  const MediaShareException({required this.code, required this.message});
 
   final String code;
   final String message;
@@ -118,16 +111,20 @@ class MediaExportService {
         );
         return MediaExportResult.fromMap(fallbackSaved);
       } catch (error, stackTrace) {
-        _debugLogStack('saveImageFileToGallery native error: $error', stackTrace);
+        _debugLogStack(
+          'saveImageFileToGallery native error: $error',
+          stackTrace,
+        );
         try {
-          final fallbackSaved = await _channel.invokeMapMethod<dynamic, dynamic>(
-            'saveImageBytesToGallery',
-            <String, dynamic>{
-              'bytes': fileBytes,
-              'fileName': fileName,
-              'mimeType': mimeType,
-            },
-          );
+          final fallbackSaved = await _channel
+              .invokeMapMethod<dynamic, dynamic>(
+                'saveImageBytesToGallery',
+                <String, dynamic>{
+                  'bytes': fileBytes,
+                  'fileName': fileName,
+                  'mimeType': mimeType,
+                },
+              );
           return MediaExportResult.fromMap(fallbackSaved);
         } catch (fallbackError, fallbackStackTrace) {
           _debugLogStack(
@@ -140,6 +137,48 @@ class MediaExportService {
             message: fallbackError.toString(),
           );
         }
+      }
+    }
+    return const MediaExportResult(
+      success: false,
+      code: 'unsupported_platform',
+      message: 'Gallery save is not supported on this platform.',
+    );
+  }
+
+  static Future<MediaExportResult> saveVideoFileToGalleryDetailed(
+    String filePath, {
+    required String fileName,
+    String mimeType = 'video/mp4',
+  }) async {
+    if (kIsWeb) {
+      return const MediaExportResult(
+        success: false,
+        code: 'unsupported_platform',
+        message: 'Gallery save is not supported on web.',
+      );
+    }
+    if (Platform.isAndroid) {
+      try {
+        final saved = await _channel.invokeMapMethod<dynamic, dynamic>(
+          'saveVideoFileToGallery',
+          <String, dynamic>{
+            'filePath': filePath,
+            'fileName': fileName,
+            'mimeType': mimeType,
+          },
+        );
+        return MediaExportResult.fromMap(saved);
+      } catch (error, stackTrace) {
+        _debugLogStack(
+          'saveVideoFileToGallery native error: $error',
+          stackTrace,
+        );
+        return MediaExportResult(
+          success: false,
+          code: 'platform_exception',
+          message: error.toString(),
+        );
       }
     }
     return const MediaExportResult(
@@ -208,6 +247,28 @@ class MediaExportService {
       }
     } finally {
       _debugLog('shareImageFile result=$result');
+    }
+  }
+
+  static Future<void> shareVideoFile(
+    String filePath, {
+    String? text,
+    Rect? sharePositionOrigin,
+  }) async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[XFile(filePath, mimeType: 'video/mp4')],
+          text: text,
+          sharePositionOrigin: sharePositionOrigin,
+        ),
+      );
+    } catch (error, stackTrace) {
+      _debugLogStack('shareVideoFile error: $error', stackTrace);
+      throw MediaShareException(
+        code: 'share_failed',
+        message: error.toString(),
+      );
     }
   }
 }

@@ -5,11 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 
 class DeviceSessionService {
@@ -28,6 +31,7 @@ class DeviceSessionService {
   _remoteSessionSubscription;
   bool _started = false;
   bool _forcingLogout = false;
+  PackageInfo? _packageInfo;
 
   Future<void> start() async {
     if (_started) {
@@ -85,6 +89,8 @@ class DeviceSessionService {
 
   Future<void> _pushSessionOwnership(User user) async {
     final installationId = await _installationId();
+    final region = await _loadLocalRegion();
+    final packageInfo = await _loadPackageInfo();
     await _firestore
         .collection('users')
         .doc(user.uid)
@@ -95,8 +101,43 @@ class DeviceSessionService {
           'uid': user.uid,
           'email': user.email,
           'platform': _platformLabel(),
+          'regionId': region?.id ?? '',
+          'regionName': region?.name ?? '',
+          'regionLanguage': region?.primaryLanguage ?? '',
+          'appVersion': packageInfo?.version ?? '',
+          'buildNumber': packageInfo?.buildNumber ?? '',
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+  }
+
+  Future<void> refreshRegionSession(AppRegion region) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return;
+    }
+    try {
+      final installationId = await _installationId();
+      final packageInfo = await _loadPackageInfo();
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection(_sessionCollection)
+          .doc('current')
+          .set(<String, dynamic>{
+            'activeDeviceId': installationId,
+            'uid': user.uid,
+            'email': user.email,
+            'platform': _platformLabel(),
+            'regionId': region.id,
+            'regionName': region.name,
+            'regionLanguage': region.primaryLanguage,
+            'appVersion': packageInfo?.version ?? '',
+            'buildNumber': packageInfo?.buildNumber ?? '',
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    } catch (_) {
+      // Analytics should never block state selection or app navigation.
+    }
   }
 
   Future<void> _enforceSingleDevice(
@@ -143,8 +184,8 @@ class DeviceSessionService {
       final messenger = currentContext == null || !currentContext.mounted
           ? null
           : ScaffoldMessenger.maybeOf(currentContext);
-      messenger?.showSnackBar(
-        const SnackBar(
+      messenger?.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             'This account was logged in on another device. You were signed out from this device.',
           ),
@@ -164,7 +205,8 @@ class DeviceSessionService {
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final random = Random.secure().nextInt(1 << 32);
-    final generated = 'dev_${now.toRadixString(16)}_${random.toRadixString(16)}';
+    final generated =
+        'dev_${now.toRadixString(16)}_${random.toRadixString(16)}';
     await prefs.setString(_deviceIdKey, generated);
     return generated;
   }
@@ -174,5 +216,28 @@ class DeviceSessionService {
       return 'web';
     }
     return defaultTargetPlatform.name;
+  }
+
+  Future<PackageInfo?> _loadPackageInfo() async {
+    final cached = _packageInfo;
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _packageInfo = info;
+      return info;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<AppRegion?> _loadLocalRegion() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return appRegionById(prefs.getString('selected_region_v1'));
+    } catch (_) {
+      return null;
+    }
   }
 }

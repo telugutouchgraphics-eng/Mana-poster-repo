@@ -107,6 +107,22 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         result.success(saveImageBytesToGallery(bytes, fileName, mimeType))
                     }
+                    "saveVideoFileToGallery" -> {
+                        val filePath = call.argument<String>("filePath")
+                        val fileName = call.argument<String>("fileName")
+                        val mimeType = call.argument<String>("mimeType") ?: "video/mp4"
+                        if (filePath.isNullOrBlank() || fileName.isNullOrBlank()) {
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "code" to "invalid_arguments",
+                                    "message" to "filePath and fileName are required",
+                                )
+                            )
+                            return@setMethodCallHandler
+                        }
+                        result.success(saveVideoFileToGallery(filePath, fileName, mimeType))
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -452,6 +468,86 @@ class MainActivity : FlutterFragmentActivity() {
             }
         } catch (t: Throwable) {
             Log.e("ManaPosterSave", "saveImageBytesToGallery failed", t)
+            mapOf(
+                "success" to false,
+                "code" to "save_failed",
+                "message" to (t.message ?: t.javaClass.simpleName),
+            )
+        }
+    }
+
+    private fun saveVideoFileToGallery(filePath: String, fileName: String, mimeType: String): Map<String, Any?> {
+        return try {
+            val sourceFile = File(filePath)
+            if (!sourceFile.exists()) {
+                return mapOf(
+                    "success" to false,
+                    "code" to "file_missing",
+                    "message" to "Source file does not exist: $filePath",
+                )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = applicationContext.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+                    put(MediaStore.Video.Media.MIME_TYPE, mimeType)
+                    put(MediaStore.Video.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MOVIES}/Mana Poster")
+                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: return mapOf(
+                        "success" to false,
+                        "code" to "media_insert_failed",
+                        "message" to "MediaStore insert returned null",
+                    )
+                resolver.openOutputStream(uri)?.use { output ->
+                    FileInputStream(sourceFile).use { input ->
+                        input.copyTo(output)
+                    }
+                } ?: return mapOf(
+                    "success" to false,
+                    "code" to "open_output_failed",
+                    "message" to "Unable to open MediaStore output stream",
+                )
+                values.clear()
+                values.put(MediaStore.Video.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved video to gallery successfully",
+                )
+            } else {
+                val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                val appDir = File(moviesDir, "Mana Poster")
+                if (!appDir.exists() && !appDir.mkdirs()) {
+                    return mapOf(
+                        "success" to false,
+                        "code" to "directory_create_failed",
+                        "message" to "Unable to create gallery directory: ${appDir.absolutePath}",
+                    )
+                }
+                val targetFile = File(appDir, fileName)
+                FileInputStream(sourceFile).use { input ->
+                    FileOutputStream(targetFile).use { output ->
+                        input.copyTo(output)
+                        output.flush()
+                    }
+                }
+                MediaScannerConnection.scanFile(
+                    applicationContext,
+                    arrayOf(targetFile.absolutePath),
+                    arrayOf(mimeType),
+                    null,
+                )
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved video to gallery successfully",
+                )
+            }
+        } catch (t: Throwable) {
+            Log.e("ManaPosterSave", "saveVideoFileToGallery failed", t)
             mapOf(
                 "success" to false,
                 "code" to "save_failed",

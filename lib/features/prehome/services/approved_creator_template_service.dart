@@ -90,25 +90,32 @@ class ApprovedCreatorTemplateService {
       var scannedDocs = 0;
 
       for (final candidate in directCandidates) {
-        final snapshot = await firestore
-            .collection('creatorPosters')
-            .where('status', isEqualTo: 'approved')
-            .where('regionId', isEqualTo: regionId)
-            .where('categoryId', isEqualTo: candidate)
-            .orderBy('createdAt', descending: true)
-            .limit(scanLimit)
-            .get(GetOptions(source: source));
-        queriedDocs += snapshot.docs.length;
-        scannedDocs += snapshot.docs.length;
-        for (final doc in snapshot.docs) {
-          if (seenIds.add(doc.id)) {
-            docs.add(doc);
+        try {
+          final snapshot = await firestore
+              .collection('creatorPosters')
+              .where('status', isEqualTo: 'approved')
+              .where('regionId', isEqualTo: regionId)
+              .where('categoryId', isEqualTo: candidate)
+              .orderBy('createdAt', descending: true)
+              .limit(scanLimit)
+              .get(GetOptions(source: source));
+          queriedDocs += snapshot.docs.length;
+          scannedDocs += snapshot.docs.length;
+          for (final doc in snapshot.docs) {
+            if (seenIds.add(doc.id)) {
+              docs.add(doc);
+            }
           }
+        } catch (error, stackTrace) {
+          _debugLogStack(
+            'ApprovedCreatorTemplateService category direct query failed: $error',
+            stackTrace,
+          );
         }
       }
 
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(mapped, docs, scanLimit);
+      final filtered = _filterPublished(mapped, docs, scanLimit, regionId);
       if (filtered.isNotEmpty) {
         _debugLog(
           '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
@@ -129,6 +136,7 @@ class ApprovedCreatorTemplateService {
         fallbackMapped,
         fallbackDocs,
         scanLimit,
+        regionId,
       );
       _debugLog(
         '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
@@ -142,7 +150,19 @@ class ApprovedCreatorTemplateService {
         'ApprovedCreatorTemplateService.fetchAllApprovedTemplatesForCategory failed: $error',
         stackTrace,
       );
-      return const <ApprovedCreatorTemplate>[];
+      final fallbackDocs = await _scanApprovedTemplatesForCategory(
+        categoryId: target,
+        regionId: regionId,
+        limit: scanLimit,
+        source: source,
+      );
+      final fallbackMapped = _mapSortedTemplates(fallbackDocs);
+      return _filterPublished(
+        fallbackMapped,
+        fallbackDocs,
+        scanLimit,
+        regionId,
+      );
     }
   }
 
@@ -194,12 +214,13 @@ class ApprovedCreatorTemplateService {
           fallbackMapped,
           fallbackDocs,
           8,
+          regionId,
         );
         return fallbackFiltered.isNotEmpty;
       }
 
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(mapped, docs, 8);
+      final filtered = _filterPublished(mapped, docs, 8, regionId);
       if (filtered.isNotEmpty) {
         return true;
       }
@@ -218,6 +239,7 @@ class ApprovedCreatorTemplateService {
         fallbackMapped,
         fallbackDocs,
         8,
+        regionId,
       );
       return fallbackFiltered.isNotEmpty;
     } catch (error, stackTrace) {
@@ -297,6 +319,7 @@ class ApprovedCreatorTemplateService {
           _mapSortedTemplates(snapshot.docs),
           snapshot.docs,
           queryLimit,
+          regionId,
         );
         mappingMs += mappingStopwatch.elapsedMilliseconds;
         for (final template in batchVisible) {
@@ -417,8 +440,43 @@ class ApprovedCreatorTemplateService {
         'matched=${matched.length} scanned=$scanned limit=$limit source=$source',
       );
       return matched;
-    } catch (_) {
-      return const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService category ordered fallback failed: $error',
+        stackTrace,
+      );
+      try {
+        final page = await firestore
+            .collection('creatorPosters')
+            .where('regionId', isEqualTo: regionId)
+            .limit((limit * 4).clamp(120, 800))
+            .get(GetOptions(source: source));
+        final matched = page.docs
+            .where((doc) {
+              final data = doc.data();
+              return data['status'] == 'approved' &&
+                  _docMatchesCategory(data, categoryId);
+            })
+            .toList(growable: false);
+        matched.sort((left, right) {
+          final leftCreatedAt = _toMillis(left.data()['createdAt']) ?? 0;
+          final rightCreatedAt = _toMillis(right.data()['createdAt']) ?? 0;
+          return rightCreatedAt.compareTo(leftCreatedAt);
+        });
+        _debugLog(
+          '[PosterFetch] categoryRegionFallback target=$categoryId '
+          'matched=${matched.length} scanned=${page.docs.length} source=$source',
+        );
+        return matched.length <= limit
+            ? matched
+            : matched.take(limit).toList(growable: false);
+      } catch (fallbackError, fallbackStackTrace) {
+        _debugLogStack(
+          'ApprovedCreatorTemplateService category region fallback failed: $fallbackError',
+          fallbackStackTrace,
+        );
+        return const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      }
     }
   }
 
@@ -550,10 +608,14 @@ class ApprovedCreatorTemplateService {
     List<ApprovedCreatorTemplate> templates,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     int maxItems,
+    String selectedRegionId,
   ) {
     final now = IstTimeService.nowEpochMillis();
     final nowDate = IstTimeService.now();
-    final activeDynamicTags = _activeDynamicTagsForDate(nowDate);
+    final activeDynamicTags = _activeDynamicTagsForDate(
+      nowDate,
+      selectedRegionId,
+    );
     final knownDynamicTags = _knownDynamicTags();
     final publishMap = <String, int>{};
     final eventEndMap = <String, int>{};
@@ -809,6 +871,27 @@ class ApprovedCreatorTemplateService {
     );
   }
 
+  Future<void> incrementPosterEngagementCount({
+    required String posterId,
+    required bool isShare,
+  }) async {
+    final safePosterId = posterId.trim();
+    if (safePosterId.isEmpty) {
+      return;
+    }
+    try {
+      final firestore = _firestore ?? FirebaseFirestore.instance;
+      await firestore.collection('creatorPosters').doc(safePosterId).update({
+        isShare ? 'shareCount' : 'downloadCount': FieldValue.increment(1),
+        'engagementCount': FieldValue.increment(1),
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (error, stackTrace) {
+      _debugLogStack('poster engagement update failed: $error', stackTrace);
+      // Best-effort analytics only; sharing/downloading must never be blocked.
+    }
+  }
+
   CreatorPosterPersonalization _parsePersonalization(Object? raw) {
     final Map<String, dynamic> source;
     if (raw is Map<String, dynamic>) {
@@ -830,6 +913,7 @@ class ApprovedCreatorTemplateService {
       photoX: _parseDouble(source['photoX'], 50),
       photoY: _parseDouble(source['photoY'], 45),
       photoScale: _parseDouble(source['photoScale'], 36),
+      photoAnimation: _parseVideoPhotoAnimation(source['photoAnimation']),
       showVideoExtraPhoto: source['showVideoExtraPhoto'] as bool? ?? false,
       videoExtraPhotoShape: _parsePhotoShape(source['videoExtraPhotoShape']),
       videoExtraPhotoRenderMode: _parseRenderMode(
@@ -837,6 +921,9 @@ class ApprovedCreatorTemplateService {
       ),
       videoExtraPhotoEdgeStyle: _parseEdgeStyle(
         source['videoExtraPhotoEdgeStyle'],
+      ),
+      videoExtraPhotoAnimation: _parseVideoPhotoAnimation(
+        source['videoExtraPhotoAnimation'],
       ),
       videoExtraPhotoX: _parseDouble(source['videoExtraPhotoX'], 24),
       videoExtraPhotoY: _parseDouble(source['videoExtraPhotoY'], 44),
@@ -898,6 +985,21 @@ class ApprovedCreatorTemplateService {
     return value == 'sharp' ? 'sharp' : 'soft_fade';
   }
 
+  String _parseVideoPhotoAnimation(Object? raw) {
+    final value = (raw as String? ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'top_to_place':
+      case 'bottom_to_place':
+      case 'left_to_place':
+      case 'right_to_place':
+      case 'zoom_in':
+      case 'zoom_out':
+        return value;
+      default:
+        return 'none';
+    }
+  }
+
   String _parsePhotoShape(Object? raw) {
     final value = (raw as String? ?? '').trim().toLowerCase();
     switch (value) {
@@ -947,13 +1049,16 @@ class ApprovedCreatorTemplateService {
     return activeDynamicTags.contains(normalized);
   }
 
-  Set<String> _activeDynamicTagsForDate(DateTime now) {
+  Set<String> _activeDynamicTagsForDate(DateTime now, String selectedRegionId) {
     final service = DynamicCategoryService(
       repository: _dynamicEventRepository,
       daysBeforeEvent: 3,
     );
     final output = <String>{};
-    for (final category in service.categoriesForDate(now)) {
+    for (final category in service.categoriesForDate(
+      now,
+      selectedRegionId: selectedRegionId,
+    )) {
       output.add(_normalizeTag(category.id));
       output.add(_normalizeTag(category.slug));
       output.addAll(category.tags.map(_normalizeTag));

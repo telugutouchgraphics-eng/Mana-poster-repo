@@ -19,7 +19,10 @@ class AppRegion {
   final AppRegionType type;
   final AppLanguage appLanguage;
 
-  String get logoAssetPath => 'assets/elements/regions/logos/$id.png';
+  String get logoAssetPath {
+    final assetId = id == 'andaman_nicobar' ? 'andaman_nicobar_islands' : id;
+    return 'assets/elements/regions/logos/$assetId.png';
+  }
 
   bool matches(String query) {
     final normalized = query.trim().toLowerCase();
@@ -297,7 +300,7 @@ const List<AppRegion> appRegions = <AppRegion>[
     appLanguage: AppLanguage.punjabi,
   ),
   AppRegion(
-    id: 'andaman_nicobar_islands',
+    id: 'andaman_nicobar',
     name: 'Andaman & Nicobar Islands',
     primaryLanguage: 'Hindi',
     primaryLanguageCode: 'hi',
@@ -327,8 +330,11 @@ AppRegion? appRegionById(String? id) {
   if (normalized.isEmpty) {
     return null;
   }
+  final canonicalId = normalized == 'andaman_nicobar_islands'
+      ? 'andaman_nicobar'
+      : normalized;
   for (final region in appRegions) {
-    if (region.id == normalized) {
+    if (region.id == canonicalId) {
       return region;
     }
   }

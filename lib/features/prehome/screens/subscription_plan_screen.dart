@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -325,8 +326,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
           if (!mounted) {
             return;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+          ScaffoldMessenger.of(context).showTopSnackBar(
+            AppSnackBar.build(
               content: Text(
                 _t(
                   telugu: 'బ్యాక్‌ఎండ్ నుంచి యాక్టివ్ ప్లాన్ రిస్టోర్ అయింది',
@@ -384,15 +385,17 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     if (outcome.result != PurchaseFlowResult.success) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(_messageForPurchaseResult(outcome.result))),
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
+          content: Text(_messageForPurchaseResult(outcome.result)),
+        ),
       );
       return false;
     }
 
     if (!_backendService.isConfigured) {
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             _t(
               telugu:
@@ -416,8 +419,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
     final evidence = outcome.evidence;
     if (evidence == null) {
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             _t(
               telugu: 'వెరిఫికేషన్ డేటా లేదు. రిస్టోర్ ప్రయత్నించండి.',
@@ -439,8 +442,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
 
     if (!verifyResult.hasAccess) {
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             verifyResult.message?.isNotEmpty == true
                 ? '${_t(telugu: 'వెరిఫికేషన్ విఫలమైంది', english: 'Verification failed', hindi: 'सत्यापन विफल हुआ', tamil: 'சரிபார்ப்பு தோல்வியடைந்தது', kannada: 'ಪರಿಶೀಲನೆ ವಿಫಲವಾಯಿತು', malayalam: 'പരിശോധന പരാജയപ്പെട്ടു')}: ${verifyResult.message}'
@@ -464,8 +467,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       return false;
     }
     if (!refreshed.hasAccess) {
-      messenger.showSnackBar(
-        SnackBar(
+      messenger.showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             _t(
               telugu:
@@ -486,7 +489,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       );
       return false;
     }
-    messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+    messenger.showTopSnackBar(AppSnackBar.build(content: Text(successMessage)));
     return true;
   }
 
@@ -571,7 +574,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
     final latestOrderId = result.latestOrderId?.trim() ?? '';
     final subscriptionState = result.subscriptionState?.trim() ?? '';
-    final startEpoch = result.startDate?.millisecondsSinceEpoch.toString() ?? '';
+    final startEpoch =
+        result.startDate?.millisecondsSinceEpoch.toString() ?? '';
     final expiryEpoch =
         result.expiryTime?.millisecondsSinceEpoch.toString() ?? '';
     final identity = <String>[
@@ -786,8 +790,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
     final bool showNextPaymentDate =
         _isSubscriptionActive && (_backendResult?.autoRenewing == true);
-    final DateTime displayDate =
-        showNextPaymentDate ? (_stableDisplayRenewalDate() ?? expiryDate) : expiryDate;
+    final DateTime displayDate = showNextPaymentDate
+        ? (_stableDisplayRenewalDate() ?? expiryDate)
+        : expiryDate;
     final formatted = _formatDate(displayDate);
     if (showNextPaymentDate) {
       return _t(
@@ -982,303 +987,305 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
             children: <Widget>[
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: <Color>[Color(0xFF4F46E5), Color(0xFF9333EA)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x224F46E5),
-                    blurRadius: 24,
-                    offset: Offset(0, 14),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: <Color>[Color(0xFF4F46E5), Color(0xFF9333EA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x224F46E5),
+                      blurRadius: 24,
+                      offset: Offset(0, 14),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _t(
+                          telugu: 'షేర్ & డౌన్‌లోడ్ అన్‌లాక్',
+                          english: 'Unlock share & download',
+                          hindi: 'शेयर और डाउनलोड अनलॉक करें',
+                          tamil: 'பகிர்வு மற்றும் பதிவிறக்கம் திறக்கவும்',
+                          kannada: 'ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ಲಾಕ್ ಮಾಡಿ',
+                          malayalam: 'ഷെയറും ഡൗൺലോഡും അൺലോക്ക് ചെയ്യുക',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                    child: Text(
+                    const SizedBox(height: 18),
+                    Text(
                       _t(
-                        telugu: 'షేర్ & డౌన్‌లోడ్ అన్‌లాక్',
-                        english: 'Unlock share & download',
-                        hindi: 'शेयर और डाउनलोड अनलॉक करें',
-                        tamil: 'பகிர்வு மற்றும் பதிவிறக்கம் திறக்கவும்',
-                        kannada: 'ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ಲಾಕ್ ಮಾಡಿ',
-                        malayalam: 'ഷെയറും ഡൗൺലോഡും അൺലോക്ക് ചെയ്യുക',
+                        telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
+                        english: 'Subscription Plan',
+                        hindi: 'सब्सक्रिप्शन प्लान',
+                        tamil: 'சந்தா திட்டம்',
+                        kannada: 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ',
+                        malayalam: 'സബ്സ്ക്രിപ്ഷൻ പ്ലാൻ',
                       ),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    _t(
-                      telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
-                      english: 'Subscription Plan',
-                      hindi: 'सब्सक्रिप्शन प्लान',
-                      tamil: 'சந்தா திட்டம்',
-                      kannada: 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ',
-                      malayalam: 'സബ്സ്ക്രിപ്ഷൻ പ്ലാൻ',
-                    ),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      height: 1.05,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _t(
-                      telugu:
-                          'రూ.4 తో 3 రోజుల ట్రయల్ ప్రారంభించి పోస్టర్ షేరింగ్ మరియు డౌన్‌లోడ్‌ను వెంటనే అన్‌లాక్ చేయండి.',
-                      english:
-                          'Start with a $_trialPriceLabel trial for $_trialDays days and instantly unlock poster sharing and downloads.',
-                      hindi:
-                          'Rs.4 के 3-दिन ट्रायल से शुरू करें और तुरंत पोस्टर शेयर और डाउनलोड अनलॉक करें।',
-                      tamil:
-                          'Rs.4 க்கு 3 நாள் சோதனையுடன் தொடங்கி போஸ்டர் பகிர்வு மற்றும் பதிவிறக்கத்தை உடனே திறக்கவும்.',
-                      kannada:
-                          'Rs.4 ಗೆ 3 ದಿನಗಳ ಟ್ರಯಲ್‌ನೊಂದಿಗೆ ಆರಂಭಿಸಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ನು ತಕ್ಷಣ ಅನ್ಲಾಕ್ ಮಾಡಿ.',
-                      malayalam:
-                          'Rs.4 ന് 3 ദിവസത്തെ ട്രയലോടെ ആരംഭിച്ച് പോസ്റ്റർ ഷെയറും ഡൗൺലോഡും ഉടൻ അൺലോക്ക് ചെയ്യൂ.',
-                    ),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: <Widget>[
-                      _PlanHighlightChip(
-                        icon: Icons.bolt_rounded,
-                        label: _trialOfferTitle,
-                      ),
-                      _PlanHighlightChip(
-                        icon: Icons.calendar_month_rounded,
-                        label: _t(
-                          telugu: 'నెలకు $_monthlyPriceLabel',
-                          english: '$_monthlyPriceLabel per month',
-                          hindi: '$_monthlyPriceLabel प्रति माह',
-                          tamil: 'மாதத்திற்கு $_monthlyPriceLabel',
-                          kannada: 'ತಿಂಗಳಿಗೆ $_monthlyPriceLabel',
-                          malayalam: 'മാസം $_monthlyPriceLabel',
-                        ),
-                      ),
-                      _PlanHighlightChip(
-                        icon: Icons.autorenew_rounded,
-                        label: _t(
-                          telugu: 'ఆటో రిన్యువల్',
-                          english: 'Auto-renewal',
-                          hindi: 'ऑटो-रिन्यूअल',
-                          tamil: 'தானியங்கி புதுப்பிப்பு',
-                          kannada: 'ಸ್ವಯಂ ನವೀಕರಣ',
-                          malayalam: 'ഓട്ടോ റിന്യൂവൽ',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            _SubscriptionStatusCard(
-              label: _subscriptionStatusLabel(),
-              helper: _statusLine(),
-              startLine: _subscriptionStartLine(),
-              expiryLine: _subscriptionExpiryLine(),
-              statusColor: _statusColor,
-              backgroundColor: _statusBackgroundColor,
-              borderColor: _statusBorderColor,
-            ),
-            const SizedBox(height: 18),
-            _PlanSection(
-              title: _t(
-                telugu: 'మీ ప్లాన్ వివరాలు',
-                english: 'Your plan details',
-                hindi: 'आपके प्लान की जानकारी',
-                tamil: 'உங்கள் திட்ட விவரங்கள்',
-                kannada: 'ನಿಮ್ಮ ಯೋಜನೆ ವಿವರಗಳು',
-                malayalam: 'നിങ്ങളുടെ പ്ലാൻ വിവരങ്ങൾ',
-              ),
-              details: planDetails,
-              buttonLabel: _t(
-                telugu: _isSubscriptionActive
-                    ? 'ఇప్పటికే యాక్టివ్'
-                    : 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
-                english: _isSubscriptionActive
-                    ? 'Already Active'
-                    : 'Subscribe now',
-                hindi: _isSubscriptionActive
-                    ? 'पहले से सक्रिय'
-                    : 'अभी सब्सक्राइब करें',
-                tamil: _isSubscriptionActive
-                    ? 'ஏற்கனவே செயலிலுள்ளது'
-                    : 'இப்போது சந்தா செய்யவும்',
-                kannada: _isSubscriptionActive
-                    ? 'ಈಗಾಗಲೇ ಸಕ್ರಿಯ'
-                    : 'ಈಗಲೇ ಚಂದಾದಾರರಾಗಿ',
-                malayalam: _isSubscriptionActive
-                    ? 'ഇതിനകം സജീവം'
-                    : 'ഇപ്പോൾ സബ്സ്ക്രൈബ് ചെയ്യൂ',
-              ),
-              onTap: _subscribeFreePlan,
-              busy: _busyFree,
-              accent: const Color(0xFF1D4ED8),
-              enabled: _canSubscribe,
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEEF2FF),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.restore_rounded,
-                          color: Color(0xFF4F46E5),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _t(
-                            telugu:
-                                'వెరిఫై అయిన సబ్‌స్క్రిప్షన్ స్థితిని రిఫ్రెష్ చేయడానికి రిస్టోర్ చేయండి',
-                            english:
-                                'Restore to refresh your verified subscription status',
-                            hindi:
-                                'सत्यापित सब्सक्रिप्शन स्थिति रीफ्रेश करने के लिए रिस्टोर करें',
-                            tamil:
-                                'உறுதிப்படுத்தப்பட்ட சந்தா நிலையை புதுப்பிக்க மீட்டெடுக்கவும்',
-                            kannada:
-                                'ಪರಿಶೀಲಿತ ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲು ಮರುಸ್ಥಾಪಿಸಿ',
-                            malayalam:
-                                'സ്ഥിരീകരിച്ച സബ്സ്ക്രിപ്ഷൻ നില പുതുക്കാൻ റിസ്റ്റോർ ചെയ്യുക',
-                          ),
-                          style: const TextStyle(
-                            color: Color(0xFF0F172A),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _busyRestore ? null : _restoreSubscriptions,
-                      icon: _busyRestore
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.history_rounded),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0F172A),
-                        side: const BorderSide(color: Color(0xFFD6DCE8)),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      label: Text(
-                        _t(
-                          telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
-                          english: 'Restore subscriptions',
-                          hindi: 'सब्सक्रिप्शन बहाल करें',
-                          tamil: 'சந்தாக்களை மீட்டெடுக்கவும்',
-                          kannada: 'ಚಂದಾದಾರಿಕೆಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ',
-                          malayalam: 'സബ്സ്ക്രിപ്ഷനുകൾ പുനഃസ്ഥാപിക്കുക',
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    color: Color(0xFFD97706),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
+                    const SizedBox(height: 10),
+                    Text(
                       _t(
                         telugu:
-                            '1st month trial plan రూ.4. అది ముగిసిన తర్వాత ప్లాన్ నెలకు రూ.149 తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
+                            'రూ.4 తో 3 రోజుల ట్రయల్ ప్రారంభించి పోస్టర్ షేరింగ్ మరియు డౌన్‌లోడ్‌ను వెంటనే అన్‌లాక్ చేయండి.',
                         english:
-                            'After the 3-day trial, the plan auto-renews at $_monthlyPriceLabel per month unless you unsubscribe or cancel. If you cancel within 3 days, the monthly charge does not apply. Benefits continue until the current plan expires.',
+                            'Start with a $_trialPriceLabel trial for $_trialDays days and instantly unlock poster sharing and downloads.',
                         hindi:
-                            '3-दिन ट्रायल के बाद, यदि आप अनसब्सक्राइब या रद्द नहीं करते हैं तो प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा। 3 दिनों के भीतर रद्द करने पर मासिक शुल्क लागू नहीं होगा। वर्तमान प्लान समाप्त होने तक लाभ जारी रहेंगे।',
+                            'Rs.4 के 3-दिन ट्रायल से शुरू करें और तुरंत पोस्टर शेयर और डाउनलोड अनलॉक करें।',
                         tamil:
-                            '3 நாள் சோதனைக்குப் பிறகு, நீங்கள் ரத்து செய்யாவிட்டால் திட்டம் $_monthlyPriceLabel மாதத்திற்கு தானாக புதுப்பிக்கும். 3 நாட்களுக்குள் ரத்து செய்தால் மாதாந்திர கட்டணம் வசூலிக்கப்படாது. தற்போதைய திட்டம் முடியும் வரை நன்மைகள் தொடரும்.',
+                            'Rs.4 க்கு 3 நாள் சோதனையுடன் தொடங்கி போஸ்டர் பகிர்வு மற்றும் பதிவிறக்கத்தை உடனே திறக்கவும்.',
                         kannada:
-                            '3 ದಿನಗಳ ಟ್ರಯಲ್ ನಂತರ ನೀವು unsubscribe ಅಥವಾ cancel ಮಾಡದಿದ್ದರೆ ಯೋಜನೆ $_monthlyPriceLabel ಪ್ರತಿ ತಿಂಗಳು ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ. 3 ದಿನಗಳ ಒಳಗೆ ರದ್ದುಗೊಳಿಸಿದರೆ ಮಾಸಿಕ ಶುಲ್ಕ ಅನ್ವಯಿಸುವುದಿಲ್ಲ. ಪ್ರಸ್ತುತ ಯೋಜನೆ ಮುಗಿಯುವವರೆಗೆ ಪ್ರಯೋಜನಗಳು ಮುಂದುವರೆಯುತ್ತವೆ.',
+                            'Rs.4 ಗೆ 3 ದಿನಗಳ ಟ್ರಯಲ್‌ನೊಂದಿಗೆ ಆರಂಭಿಸಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ನು ತಕ್ಷಣ ಅನ್ಲಾಕ್ ಮಾಡಿ.',
                         malayalam:
-                            '3 ദിവസത്തെ ട്രയലിന് ശേഷം നിങ്ങൾ unsubscribe ചെയ്യുകയോ cancel ചെയ്യുകയോ ഇല്ലെങ്കിൽ പ്ലാൻ $_monthlyPriceLabel മാസത്തിൽ ഓട്ടോ റിന്യൂവാകും. 3 ദിവസത്തിനുള്ളിൽ റദ്ദാക്കിയാൽ മാസചെലവ് ബാധകമല്ല. നിലവിലെ പ്ലാൻ അവസാനിക്കുന്നതുവരെ ആനുകൂല്യങ്ങൾ തുടരും.',
+                            'Rs.4 ന് 3 ദിവസത്തെ ട്രയലോടെ ആരംഭിച്ച് പോസ്റ്റർ ഷെയറും ഡൗൺലോഡും ഉടൻ അൺലോക്ക് ചെയ്യൂ.',
                       ),
-                      style: const TextStyle(
-                        color: Color(0xFF92400E),
-                        fontSize: 13.5,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w500,
-                        height: 1.45,
+                        height: 1.4,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: <Widget>[
+                        _PlanHighlightChip(
+                          icon: Icons.bolt_rounded,
+                          label: _trialOfferTitle,
+                        ),
+                        _PlanHighlightChip(
+                          icon: Icons.calendar_month_rounded,
+                          label: _t(
+                            telugu: 'నెలకు $_monthlyPriceLabel',
+                            english: '$_monthlyPriceLabel per month',
+                            hindi: '$_monthlyPriceLabel प्रति माह',
+                            tamil: 'மாதத்திற்கு $_monthlyPriceLabel',
+                            kannada: 'ತಿಂಗಳಿಗೆ $_monthlyPriceLabel',
+                            malayalam: 'മാസം $_monthlyPriceLabel',
+                          ),
+                        ),
+                        _PlanHighlightChip(
+                          icon: Icons.autorenew_rounded,
+                          label: _t(
+                            telugu: 'ఆటో రిన్యువల్',
+                            english: 'Auto-renewal',
+                            hindi: 'ऑटो-रिन्यूअल',
+                            tamil: 'தானியங்கி புதுப்பிப்பு',
+                            kannada: 'ಸ್ವಯಂ ನವೀಕರಣ',
+                            malayalam: 'ഓട്ടോ റിന്യൂവൽ',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 18),
+              _SubscriptionStatusCard(
+                label: _subscriptionStatusLabel(),
+                helper: _statusLine(),
+                startLine: _subscriptionStartLine(),
+                expiryLine: _subscriptionExpiryLine(),
+                statusColor: _statusColor,
+                backgroundColor: _statusBackgroundColor,
+                borderColor: _statusBorderColor,
+              ),
+              const SizedBox(height: 18),
+              _PlanSection(
+                title: _t(
+                  telugu: 'మీ ప్లాన్ వివరాలు',
+                  english: 'Your plan details',
+                  hindi: 'आपके प्लान की जानकारी',
+                  tamil: 'உங்கள் திட்ட விவரங்கள்',
+                  kannada: 'ನಿಮ್ಮ ಯೋಜನೆ ವಿವರಗಳು',
+                  malayalam: 'നിങ്ങളുടെ പ്ലാൻ വിവരങ്ങൾ',
+                ),
+                details: planDetails,
+                buttonLabel: _t(
+                  telugu: _isSubscriptionActive
+                      ? 'ఇప్పటికే యాక్టివ్'
+                      : 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
+                  english: _isSubscriptionActive
+                      ? 'Already Active'
+                      : 'Subscribe now',
+                  hindi: _isSubscriptionActive
+                      ? 'पहले से सक्रिय'
+                      : 'अभी सब्सक्राइब करें',
+                  tamil: _isSubscriptionActive
+                      ? 'ஏற்கனவே செயலிலுள்ளது'
+                      : 'இப்போது சந்தா செய்யவும்',
+                  kannada: _isSubscriptionActive
+                      ? 'ಈಗಾಗಲೇ ಸಕ್ರಿಯ'
+                      : 'ಈಗಲೇ ಚಂದಾದಾರರಾಗಿ',
+                  malayalam: _isSubscriptionActive
+                      ? 'ഇതിനകം സജീവം'
+                      : 'ഇപ്പോൾ സബ്സ്ക്രൈബ് ചെയ്യൂ',
+                ),
+                onTap: _subscribeFreePlan,
+                busy: _busyFree,
+                accent: const Color(0xFF1D4ED8),
+                enabled: _canSubscribe,
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEEF2FF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.restore_rounded,
+                            color: Color(0xFF4F46E5),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _t(
+                              telugu:
+                                  'వెరిఫై అయిన సబ్‌స్క్రిప్షన్ స్థితిని రిఫ్రెష్ చేయడానికి రిస్టోర్ చేయండి',
+                              english:
+                                  'Restore to refresh your verified subscription status',
+                              hindi:
+                                  'सत्यापित सब्सक्रिप्शन स्थिति रीफ्रेश करने के लिए रिस्टोर करें',
+                              tamil:
+                                  'உறுதிப்படுத்தப்பட்ட சந்தா நிலையை புதுப்பிக்க மீட்டெடுக்கவும்',
+                              kannada:
+                                  'ಪರಿಶೀಲಿತ ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲು ಮರುಸ್ಥಾಪಿಸಿ',
+                              malayalam:
+                                  'സ്ഥിരീകരിച്ച സബ്സ്ക്രിപ്ഷൻ നില പുതുക്കാൻ റിസ്റ്റോർ ചെയ്യുക',
+                            ),
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              height: 1.25,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _busyRestore ? null : _restoreSubscriptions,
+                        icon: _busyRestore
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.history_rounded),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF0F172A),
+                          side: const BorderSide(color: Color(0xFFD6DCE8)),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        label: Text(
+                          _t(
+                            telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
+                            english: 'Restore subscriptions',
+                            hindi: 'सब्सक्रिप्शन बहाल करें',
+                            tamil: 'சந்தாக்களை மீட்டெடுக்கவும்',
+                            kannada: 'ಚಂದಾದಾರಿಕೆಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ',
+                            malayalam: 'സബ്സ്ക്രിപ്ഷനുകൾ പുനഃസ്ഥാപിക്കുക',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _t(
+                          telugu:
+                              '1st month trial plan రూ.4. అది ముగిసిన తర్వాత ప్లాన్ నెలకు రూ.149 తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
+                          english:
+                              'After the 3-day trial, the plan auto-renews at $_monthlyPriceLabel per month unless you unsubscribe or cancel. If you cancel within 3 days, the monthly charge does not apply. Benefits continue until the current plan expires.',
+                          hindi:
+                              '3-दिन ट्रायल के बाद, यदि आप अनसब्सक्राइब या रद्द नहीं करते हैं तो प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा। 3 दिनों के भीतर रद्द करने पर मासिक शुल्क लागू नहीं होगा। वर्तमान प्लान समाप्त होने तक लाभ जारी रहेंगे।',
+                          tamil:
+                              '3 நாள் சோதனைக்குப் பிறகு, நீங்கள் ரத்து செய்யாவிட்டால் திட்டம் $_monthlyPriceLabel மாதத்திற்கு தானாக புதுப்பிக்கும். 3 நாட்களுக்குள் ரத்து செய்தால் மாதாந்திர கட்டணம் வசூலிக்கப்படாது. தற்போதைய திட்டம் முடியும் வரை நன்மைகள் தொடரும்.',
+                          kannada:
+                              '3 ದಿನಗಳ ಟ್ರಯಲ್ ನಂತರ ನೀವು unsubscribe ಅಥವಾ cancel ಮಾಡದಿದ್ದರೆ ಯೋಜನೆ $_monthlyPriceLabel ಪ್ರತಿ ತಿಂಗಳು ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ. 3 ದಿನಗಳ ಒಳಗೆ ರದ್ದುಗೊಳಿಸಿದರೆ ಮಾಸಿಕ ಶುಲ್ಕ ಅನ್ವಯಿಸುವುದಿಲ್ಲ. ಪ್ರಸ್ತುತ ಯೋಜನೆ ಮುಗಿಯುವವರೆಗೆ ಪ್ರಯೋಜನಗಳು ಮುಂದುವರೆಯುತ್ತವೆ.',
+                          malayalam:
+                              '3 ദിവസത്തെ ട്രയലിന് ശേഷം നിങ്ങൾ unsubscribe ചെയ്യുകയോ cancel ചെയ്യുകയോ ഇല്ലെങ്കിൽ പ്ലാൻ $_monthlyPriceLabel മാസത്തിൽ ഓട്ടോ റിന്യൂവാകും. 3 ദിവസത്തിനുള്ളിൽ റദ്ദാക്കിയാൽ മാസചെലവ് ബാധകമല്ല. നിലവിലെ പ്ലാൻ അവസാനിക്കുന്നതുവരെ ആനുകൂല്യങ്ങൾ തുടരും.',
+                        ),
+                        style: const TextStyle(
+                          color: Color(0xFF92400E),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

@@ -106,8 +106,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
     if (!_hasSelectedPhotoLayer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
@@ -124,8 +124,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _isAdjustMode = false;
       _adjustSessionLayerId = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           context.strings.localized(
             telugu: 'తొలగించాల్సిన రంగుపై ఒకసారి టాప్ చేయండి',
@@ -174,8 +174,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
         normalizedX > 1 ||
         normalizedY < 0 ||
         normalizedY > 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ఫోటో లోపల రంగుపై టాప్ చేయండి',
@@ -243,8 +243,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
     if (!_hasSelectedPhotoLayer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
@@ -967,8 +967,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
     final selectedId = _selectedLayerId;
     if (selectedId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
@@ -980,8 +980,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
     if (!_hasSelectedPhotoLayer) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ముందు ఒక ఫోటో ఎంచుకోండి',
@@ -1004,8 +1004,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
     final layer = _layers[initialLayerIndex];
     final sourceBytes = layer.bytes;
     if (sourceBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'బ్యాక్‌గ్రౌండ్ తీసేయడానికి సోర్స్ ఫోటో అందుబాటులో లేదు',
@@ -1065,8 +1065,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
       if (!mounted || taskId != _removeBackgroundTaskId) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'బ్యాక్‌గ్రౌండ్ తీసేయడానికి సోర్స్ ఫోటో అందుబాటులో లేదు',
@@ -1238,9 +1238,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
     _isPickingMedia = true;
     try {
-      final XFile? pickedFile = await _imagePicker.pickImage(
-        source: source,
-      );
+      final XFile? pickedFile = await _imagePicker.pickImage(source: source);
       if (!mounted || pickedFile == null) {
         return;
       }
@@ -1311,10 +1309,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
         );
       } else {
         final rawBytes = await effectiveFile.readAsBytes();
-        optimizedPhoto = await compute(
-          _optimizeEditorPhotoPayload,
-          rawBytes,
-        );
+        optimizedPhoto = await compute(_optimizeEditorPhotoPayload, rawBytes);
         processedBytes = optimizedPhoto.bytes;
       }
       if (!mounted) {

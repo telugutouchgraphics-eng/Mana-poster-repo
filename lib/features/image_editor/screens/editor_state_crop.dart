@@ -20,7 +20,7 @@ extension _EditorCropState on _ImageEditorScreenState {
     if (selectedId == null || !_hasSelectedPhotoLayer || _isCropApplying) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(selectPhotoMessage)));
+      ).showTopSnackBar(AppSnackBar.build(content: Text(selectPhotoMessage)));
       return;
     }
 
@@ -104,9 +104,9 @@ extension _EditorCropState on _ImageEditorScreenState {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$cropFailedPrefix: $error')));
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(content: Text('$cropFailedPrefix: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() {

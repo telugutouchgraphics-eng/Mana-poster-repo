@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
@@ -113,8 +114,8 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
     }
 
     ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   Future<void> _openSettings() async {
@@ -127,9 +128,9 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
 
     final _PermissionCopy copy = _copy(context);
     ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(
+        AppSnackBar.build(
           content: Text(opened ? copy.settingsOpened : copy.settingsOpenFailed),
         ),
       );

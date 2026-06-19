@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -77,8 +78,8 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
         return;
       }
       if (!saved) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               context.strings.localized(
                 telugu: 'ఎంపిక సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
@@ -112,8 +113,8 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ఎంపిక సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',

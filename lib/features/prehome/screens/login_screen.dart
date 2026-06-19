@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -176,15 +177,15 @@ class _LoginScreenState extends State<LoginScreen>
   void _showError(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   void _showSuccess(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
   Future<void> _showFirst150TrialDialogIfNeeded(AuthFlowResult result) async {
@@ -417,8 +418,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           context.strings.localized(
             telugu: 'లీగల్ పేజీ తెరవలేకపోయాము. మళ్లీ ప్రయత్నించండి.',

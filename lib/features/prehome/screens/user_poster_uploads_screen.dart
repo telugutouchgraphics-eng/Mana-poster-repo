@@ -4,13 +4,16 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:mana_poster/app/config/category_display_helper.dart';
 import 'package:mana_poster/app/config/home_category_catalog.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 import 'package:mana_poster/features/prehome/services/user_poster_uploads_service.dart';
@@ -60,6 +63,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   String _selectedCategoryId = '';
   String _selectedCategoryLabel = '';
   bool _submitting = false;
+  String _selectedRegionId = '';
+  Future<void>? _regionSelectionLoadFuture;
 
   static final List<HomeCategoryCatalogEntry> _uploadableCategories =
       HomeCategoryCatalog.uploadable;
@@ -87,6 +92,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       _selectedCategoryLabel = _uploadableCategories.first.label;
     }
     unawaited(_loadLocalHiddenUploads());
+    unawaited(_loadRegionSelection());
     unawaited(_refreshUploads(forceServer: true));
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!mounted) {
@@ -109,7 +115,33 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(_loadRegionSelection());
       unawaited(_refreshUploads(forceServer: true));
+    }
+  }
+
+  Future<void> _loadRegionSelection() async {
+    final inFlight = _regionSelectionLoadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      final region = await AppRegionService.loadSelection();
+      final regionId = region?.id ?? '';
+      if (!mounted || _selectedRegionId == regionId) {
+        return;
+      }
+      setState(() {
+        _selectedRegionId = regionId;
+      });
+    }();
+    _regionSelectionLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_regionSelectionLoadFuture, future)) {
+        _regionSelectionLoadFuture = null;
+      }
     }
   }
 
@@ -139,15 +171,19 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     }
 
     for (final entry in _uploadableCategories) {
-      addOption(entry.id, entry.label);
+      addOption(
+        entry.id,
+        CategoryDisplayHelper.withIcon(entry.id, entry.label),
+      );
     }
     for (final item in _dynamicCategoryService.categoriesForDate(
       IstTimeService.now(),
       language: language,
+      selectedRegionId: _selectedRegionId,
     )) {
       addOption(
         item.id,
-        item.label,
+        CategoryDisplayHelper.withIcon(item.id, item.label),
         eventDateLabel: dynamicEventDateById[_normalizeCategoryId(item.id)],
       );
     }
@@ -333,8 +369,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       _serverFreshUploads = _applyLocalVisibility(_serverFreshUploads);
       _lastVisibleUploads = _applyLocalVisibility(_lastVisibleUploads);
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           strings.localized(
             telugu: 'ఈ ఐటమ్ మీ లిస్ట్ నుంచి తొలగించబడింది',
@@ -355,8 +391,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'అప్‌లోడ్ మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
@@ -373,8 +409,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'ఇమేజ్ సైజ్ 500KB లేదా దానికంటే తక్కువ ఉండాలి',
@@ -399,8 +435,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     final image = _selectedImageFile;
     final quoteText = _quoteController.text.trim();
     if (image == null && quoteText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'దయచేసి ఇమేజ్ లేదా quote ఇవ్వండి',
@@ -426,8 +462,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         return;
       }
       if (!result.ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_submitResultMessage(result.code))),
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: Text(_submitResultMessage(result.code))),
         );
         return;
       }
@@ -436,8 +472,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         _selectedImageBytes = 0;
         _quoteController.clear();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'అప్‌లోడ్ రివ్యూ కోసం పంపబడింది',
@@ -586,9 +622,9 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               const SizedBox(height: 10),
               Text(
                 _uploadWindowMessage(),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF475569),
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: const Color(0xFF475569)),
               ),
               if (_selectedImageFile != null) ...<Widget>[
                 const SizedBox(height: 8),

@@ -36,16 +36,16 @@ extension AppLanguageSupportX on AppLanguage {
       AppLanguage.malayalam => SupportedUiLanguage.malayalam,
       AppLanguage.assamese ||
       AppLanguage.konkani ||
+      AppLanguage.gujarati ||
+      AppLanguage.marathi ||
       AppLanguage.meitei ||
       AppLanguage.mizo ||
       AppLanguage.odia ||
-      AppLanguage.bengali => SupportedUiLanguage.english,
-      AppLanguage.gujarati ||
-      AppLanguage.marathi ||
       AppLanguage.punjabi ||
       AppLanguage.nepali ||
+      AppLanguage.bengali ||
       AppLanguage.kashmiri ||
-      AppLanguage.ladakhi => SupportedUiLanguage.hindi,
+      AppLanguage.ladakhi => SupportedUiLanguage.english,
     };
   }
 }
@@ -1096,6 +1096,11 @@ class AppStrings {
   }
 
   String? _regionalFallback(String english) {
+    // Regional languages without complete reviewed coverage use one consistent
+    // English UI instead of mixing partial translations with English/Hindi.
+    if (language.supportedUiLanguage == SupportedUiLanguage.english) {
+      return null;
+    }
     if (language == AppLanguage.bengali) {
       return _regionalCommonFallbacks[language]?[english] ??
           _commonBengaliFallback(english);

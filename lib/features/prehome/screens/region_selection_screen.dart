@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
@@ -54,8 +55,8 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
     }
     if (!saved || !languageSaved) {
       setState(() => _savingRegionId = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text('Could not save region. Please try again.'),
         ),
       );

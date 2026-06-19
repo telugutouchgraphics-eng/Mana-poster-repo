@@ -53,6 +53,7 @@ class DynamicCategory {
     this.sortOrder = 0,
     this.tags = const <String>[],
     this.isBlinking = true,
+    this.regionIds = const <String>{},
   });
 
   final String id;
@@ -64,6 +65,7 @@ class DynamicCategory {
   final int sortOrder;
   final List<String> tags;
   final bool isBlinking;
+  final Set<String> regionIds;
 }
 
 class DynamicCalendarEvent {
@@ -86,6 +88,7 @@ class DynamicCalendarEvent {
     this.tags = const <String>[],
     this.enabled = true,
     this.sortOrder = 0,
+    this.regionIds = const <String>{},
   });
 
   final String id;
@@ -106,4 +109,5 @@ class DynamicCalendarEvent {
   final List<String> tags;
   final bool enabled;
   final int sortOrder;
+  final Set<String> regionIds;
 }

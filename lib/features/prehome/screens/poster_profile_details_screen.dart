@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -330,8 +331,8 @@ class _PosterProfileDetailsScreenState
         ),
       );
       if (finalPhotoBytes == null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               strings.localized(
                 telugu:
@@ -347,8 +348,8 @@ class _PosterProfileDetailsScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'వ్యక్తిగత ఫోటో అప్‌డేట్ కాలేదు',
@@ -544,8 +545,8 @@ class _PosterProfileDetailsScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             strings.localized(
               telugu: 'వ్యాపార లోగో అప్‌డేట్ కాలేదు',
@@ -640,8 +641,8 @@ class _PosterProfileDetailsScreenState
           _draftProfile = updated;
           _savedProfile = updated;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               context.strings.localized(
                 telugu: 'ప్రొఫైల్ సేవ్ అయింది',
@@ -661,8 +662,8 @@ class _PosterProfileDetailsScreenState
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'ప్రొఫైల్ వివరాలు సేవ్ కాలేదు',

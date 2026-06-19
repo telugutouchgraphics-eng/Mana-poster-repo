@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
@@ -508,9 +509,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => const SubscriptionPlanScreen(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const SubscriptionPlanScreen()),
     );
     if (!mounted) {
       return false;
@@ -568,7 +567,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (!granted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(failureMessage)));
+        ).showTopSnackBar(AppSnackBar.build(content: Text(failureMessage)));
         return false;
       }
       if (feature == _EditorRewardGateFeature.teluguFonts) {
@@ -646,9 +645,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
+      ..hideCurrentTopSnackBar()
+      ..showTopSnackBar(
+        AppSnackBar.build(
           content: Text(message),
           duration: const Duration(milliseconds: 1100),
           behavior: SnackBarBehavior.floating,
@@ -1567,8 +1566,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ),
       _ => strings.localized(telugu: 'వైట్', english: 'White'),
     };
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           strings.localized(
             telugu:
@@ -1744,8 +1743,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             context.strings.localized(
               telugu: 'టెంప్లేట్ లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి',
@@ -1893,8 +1892,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _layers
           ..clear()
           ..addAll(importedLayers);
-        _selectedLayerId = widget.autoSelectInitialLayers &&
-                importedLayers.isNotEmpty
+        _selectedLayerId =
+            widget.autoSelectInitialLayers && importedLayers.isNotEmpty
             ? importedLayers.last.id
             : null;
         _canvasBackgroundColor = const Color(0xFFFFFFFF);
@@ -1905,8 +1904,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       });
       await _applyInitialTemplatePersonalizationIfNeeded(pageSize);
       if (importedLayers.isEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
             content: Text(
               context.strings.localized(
                 telugu: 'టెంప్లేట్ లేయర్లు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి',
@@ -2065,7 +2064,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     final stripOverflowAllowance = personalization.showBottomStrip
         ? (isBusinessProfile ? 56.0 : 60.0)
         : 0.0;
-    final baseImageHeight = math.max(1.0, pageSize.height - stripOverflowAllowance);
+    final baseImageHeight = math.max(
+      1.0,
+      pageSize.height - stripOverflowAllowance,
+    );
     final pageCenter = Offset(pageSize.width / 2, pageSize.height / 2);
     final targetCenter = Offset(
       (pageSize.width * (personalization.photoX / 100)) +
@@ -2148,8 +2150,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     if (showErrors) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             'Subscription backend sync fail అయ్యింది. కొద్దిసేపటి తర్వాత మళ్లీ try చేయండి',
           ),
@@ -2167,8 +2169,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return true;
     }
     if (evidence == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             'Purchase verification data దొరకలేదు. Restore/Retry చేయండి',
           ),
@@ -2194,8 +2196,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (refreshed.isPro) {
         return true;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
           content: Text(
             'Purchase complete అయినా entitlement active కాలేదు. Support ని సంప్రదించండి',
           ),
@@ -2204,8 +2206,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return false;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(
         content: Text(
           result.message?.isNotEmpty == true
               ? 'Verification fail: ${result.message}'
@@ -2236,8 +2238,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 : _isPhotoEraserMode
                 ? _eraserBarHeight
                 : _bottomBarHeight;
-            final reservedTopInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
-            final reservedBottomInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
+            final reservedTopInset = widget.preferFullWidthCanvas
+                ? 8.0
+                : _canvasChromeInset;
+            final reservedBottomInset = widget.preferFullWidthCanvas
+                ? 8.0
+                : _canvasChromeInset;
             _lastCanvasSize = canvasSize;
             final workspaceHeight = math.max(
               canvasSize.height - reservedTopInset - reservedBottomInset,
