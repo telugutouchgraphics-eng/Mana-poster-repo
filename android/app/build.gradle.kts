@@ -7,8 +7,8 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import org.gradle.api.GradleException
 
-val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a")
-val unsupportedBundleAbis = listOf("x86", "x86_64")
+val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+val unsupportedBundleAbis = listOf("x86")
 
 plugins {
     id("com.android.application")
@@ -79,8 +79,8 @@ android {
 
     packaging {
         jniLibs {
-            // The app ships ONNX Runtime only for ARM ABIs. Excluding x86/x86_64
-            // prevents Play delivery from generating unsupported native splits.
+            // Flutter release builds do not ship 32-bit x86. Keep x86 excluded,
+            // but allow x86_64 so Play can support compatible tablets/Chromebooks.
             excludes += unsupportedBundleAbis.map { "**/$it/*.so" }
         }
     }
