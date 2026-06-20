@@ -7034,14 +7034,6 @@ class _CommunityStatusViewerScreenState
                                 ? FontWeight.w700
                                 : FontWeight.w900,
                             fontSize: 16,
-                            shadows: isOwner
-                                ? null
-                                : const <Shadow>[
-                                    Shadow(
-                                      color: Colors.black87,
-                                      blurRadius: 8,
-                                    ),
-                                  ],
                           ),
                         ),
                       ),
