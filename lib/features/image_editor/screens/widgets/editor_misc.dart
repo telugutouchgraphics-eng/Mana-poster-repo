@@ -776,6 +776,8 @@ class _AdvancedLayersFullscreenOverlayState
       title: strings.localized(telugu: 'లేయర్స్', english: 'Layers'),
       onDone: () => Navigator.of(context).pop(),
       onBack: () => Navigator.of(context).pop(),
+      blurSigma: 5,
+      scrimColor: const Color(0x33020617),
       child: Column(
         children: <Widget>[
           Padding(
@@ -823,13 +825,20 @@ class _AdvancedLayersFullscreenOverlayState
                   key: ValueKey<String>(layer.id),
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
+                    color: Colors.white.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: selected
                           ? const Color(0xFF60A5FA)
-                          : Colors.white.withValues(alpha: 0.08),
+                          : Colors.white.withValues(alpha: 0.16),
                     ),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x24020617),
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
                   ),
                   child: Material(
                     color: Colors.transparent,

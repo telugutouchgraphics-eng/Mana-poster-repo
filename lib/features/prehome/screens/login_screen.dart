@@ -343,6 +343,13 @@ class _LoginScreenState extends State<LoginScreen>
           telugu: 'ఈ build లో authentication setup పూర్తి కాలేదు.',
           english: 'Authentication is not configured on this build.',
         );
+      case 'google-timeout':
+        return strings.localized(
+          telugu:
+              'Google login ఎక్కువ సమయం తీసుకుంటోంది. ఇంటర్నెట్, Google Play Services చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
+          english:
+              'Google Sign-In is taking too long. Check internet and Google Play Services, then try again.',
+        );
       case 'google-sign-in-failed':
       case 'google-unknown-error':
         return strings.localized(

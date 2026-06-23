@@ -411,12 +411,6 @@ class _EditorSubToolsStrip extends StatelessWidget {
           onTap: () => unawaited(onToolsCropTap()),
         ),
         _ToolItem(
-          label: strings.localized(telugu: 'లేయర్స్', english: 'Layers'),
-          icon: Icons.layers_outlined,
-          compact: compact,
-          onTap: onToolsLayersTap,
-        ),
-        _ToolItem(
           label: strings.localized(telugu: 'స్టికర్స్', english: 'Stickers'),
           icon: Icons.emoji_emotions_outlined,
           compact: compact,

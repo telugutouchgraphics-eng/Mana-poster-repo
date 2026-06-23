@@ -168,7 +168,7 @@ class DeviceSessionService {
     _forcingLogout = true;
     try {
       try {
-        await GoogleSignIn.instance.signOut();
+        await GoogleSignIn().signOut();
       } catch (_) {}
       await _auth.signOut();
       await AppFlowService.persistLastKnownAuthUid(null);

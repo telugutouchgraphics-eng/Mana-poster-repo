@@ -719,11 +719,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     });
   }
 
-  Future<T?> _pushPremiumOverlay<T>(Widget child) {
+  Future<T?> _pushPremiumOverlay<T>(
+    Widget child, {
+    Color shellColor = const Color(0xF8F8FAFC),
+    EdgeInsets shellPadding = const EdgeInsets.all(8),
+    double shellBorderRadius = 18,
+    double shellBlurSigma = 14,
+    Color barrierColor = const Color(0x57000000),
+  }) {
     return Navigator.of(context).push<T>(
       PageRouteBuilder<T>(
         opaque: false,
-        barrierColor: Colors.black.withValues(alpha: 0.34),
+        barrierColor: barrierColor,
         pageBuilder:
             (
               BuildContext context,
@@ -736,14 +743,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   curve: Curves.easeOutCubic,
                 ),
                 child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  filter: ui.ImageFilter.blur(
+                    sigmaX: shellBlurSigma,
+                    sigmaY: shellBlurSigma,
+                  ),
                   child: SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: shellPadding,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(shellBorderRadius),
                         child: Material(
-                          color: const Color(0xF8F8FAFC),
+                          color: shellColor,
                           child: child,
                         ),
                       ),
@@ -860,6 +870,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         onMoveToFront: _moveLayerToFrontById,
         onMoveToBack: _moveLayerToBackById,
       ),
+      shellColor: Colors.transparent,
+      shellPadding: EdgeInsets.zero,
+      shellBorderRadius: 0,
+      shellBlurSigma: 0,
+      barrierColor: Colors.transparent,
     );
   }
 
@@ -2390,6 +2405,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       onDuplicateTap: _handleDuplicateSelectedLayer,
                       onBringFrontTap: _moveSelectedLayerToFront,
                       onSendBackTap: _moveSelectedLayerToBack,
+                      onLayersTap: _openLayersAdvancedOverlay,
+                      onAlignHorizontalCenterTap:
+                          _alignSelectedLayerHorizontalCenter,
+                      onAlignVerticalCenterTap:
+                          _alignSelectedLayerVerticalCenter,
                       canUndo: _canUndo,
                       canRedo: _canRedo,
                       isSharing: _isSharing,
@@ -2400,6 +2420,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           _selectedLayerIndex != -1 &&
                           _selectedLayerIndex < _layers.length - 1,
                       canSendBack: _selectedLayerIndex > 0,
+                      canAlignSelectedLayer:
+                          _selectedLayerId != null && !_isSelectedLayerLocked,
                     ),
                   ),
                 ),

@@ -12,6 +12,9 @@ class _TopBar extends StatelessWidget {
     required this.onDuplicateTap,
     required this.onBringFrontTap,
     required this.onSendBackTap,
+    required this.onLayersTap,
+    required this.onAlignHorizontalCenterTap,
+    required this.onAlignVerticalCenterTap,
     required this.canUndo,
     required this.canRedo,
     required this.isSharing,
@@ -20,6 +23,7 @@ class _TopBar extends StatelessWidget {
     required this.canDuplicate,
     required this.canBringFront,
     required this.canSendBack,
+    required this.canAlignSelectedLayer,
   });
 
   final double height;
@@ -32,6 +36,9 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onDuplicateTap;
   final VoidCallback onBringFrontTap;
   final VoidCallback onSendBackTap;
+  final VoidCallback onLayersTap;
+  final VoidCallback onAlignHorizontalCenterTap;
+  final VoidCallback onAlignVerticalCenterTap;
   final bool canUndo;
   final bool canRedo;
   final bool isSharing;
@@ -40,6 +47,7 @@ class _TopBar extends StatelessWidget {
   final bool canDuplicate;
   final bool canBringFront;
   final bool canSendBack;
+  final bool canAlignSelectedLayer;
 
   VoidCallback? _withHaptic(VoidCallback? callback) {
     if (callback == null) {
@@ -125,6 +133,12 @@ class _TopBar extends StatelessWidget {
               label: strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts'),
               onTap: onDraftsTap,
             ),
+            const SizedBox(width: 8),
+            _EditorIconButton(
+              icon: Icons.layers_rounded,
+              tooltip: strings.localized(telugu: 'లేయర్స్', english: 'Layers'),
+              onTap: _withHaptic(onLayersTap),
+            ),
             const SizedBox(width: 6),
             _EditorIconButton(
               icon: Icons.flip_to_back_rounded,
@@ -141,6 +155,26 @@ class _TopBar extends StatelessWidget {
                 english: 'Bring front',
               ),
               onTap: _withHaptic(canBringFront ? onBringFrontTap : null),
+            ),
+            _EditorIconButton(
+              icon: Icons.align_horizontal_center_rounded,
+              tooltip: strings.localized(
+                telugu: 'మధ్యకు అమర్చు',
+                english: 'Align center',
+              ),
+              onTap: _withHaptic(
+                canAlignSelectedLayer ? onAlignHorizontalCenterTap : null,
+              ),
+            ),
+            _EditorIconButton(
+              icon: Icons.align_vertical_center_rounded,
+              tooltip: strings.localized(
+                telugu: 'నిలువు మధ్యకు అమర్చు',
+                english: 'Align middle',
+              ),
+              onTap: _withHaptic(
+                canAlignSelectedLayer ? onAlignVerticalCenterTap : null,
+              ),
             ),
             _EditorIconButton(
               icon: Icons.control_point_duplicate_rounded,

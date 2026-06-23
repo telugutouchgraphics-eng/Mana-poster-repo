@@ -307,8 +307,8 @@ extension _EditorLayersState on _ImageEditorScreenState {
     if (previousPoint != null) {
       final minStep =
           (_eraserBrushSize / math.max(layerSize.width, layerSize.height)) *
-          0.18;
-      if ((nextPoint - previousPoint).distance < minStep.clamp(0.002, 0.02)) {
+          0.08;
+      if ((nextPoint - previousPoint).distance < minStep.clamp(0.001, 0.012)) {
         return;
       }
     }
@@ -1104,6 +1104,44 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _selectedLayerId = duplicated.id;
       _transformationController.value = Matrix4.copy(duplicated.transform);
     });
+  }
+
+  void _alignSelectedLayerToPageCenter({required bool horizontal}) {
+    if (_isSelectedLayerLocked) {
+      return;
+    }
+    final index = _selectedLayerIndex;
+    if (index == -1) {
+      return;
+    }
+    final beforeLayer = _layers[index];
+    final nextTransform = Matrix4.copy(beforeLayer.transform);
+    if (horizontal) {
+      nextTransform.storage[12] = 0;
+    } else {
+      nextTransform.storage[13] = 0;
+    }
+    if (_isSameMatrix(beforeLayer.transform, nextTransform)) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(transform: nextTransform);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[index] = afterLayer;
+      _transformationController.value = Matrix4.copy(nextTransform);
+      _snapGuideNotifier.value = _SnapGuideState(
+        showVerticalGuide: horizontal,
+        showHorizontalGuide: !horizontal,
+      );
+    });
+  }
+
+  void _alignSelectedLayerHorizontalCenter() {
+    _alignSelectedLayerToPageCenter(horizontal: true);
+  }
+
+  void _alignSelectedLayerVerticalCenter() {
+    _alignSelectedLayerToPageCenter(horizontal: false);
   }
 
   void _moveSelectedLayerToFront() {

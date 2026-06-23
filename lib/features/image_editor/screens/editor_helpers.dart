@@ -216,7 +216,7 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
   final clampedRadius = radius
       .clamp(2.0, math.min(width, height) / 2)
       .toDouble();
-  final hardRadius = clampedRadius * hardness;
+  final hardRadius = clampedRadius * (hardness * 0.72).clamp(0.0, 0.82);
   final softSpan = math.max(0.001, clampedRadius - hardRadius);
 
   void eraseAt(double normalizedX, double normalizedY) {
@@ -245,7 +245,8 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
         final strength = distance <= hardRadius
             ? 1.0
             : (1 - ((distance - hardRadius) / softSpan)).clamp(0.0, 1.0);
-        final easedStrength = 1 - math.pow(1 - strength, 2).toDouble();
+        final easedStrength =
+            strength * strength * (3 - (2 * strength)); // smoothstep feather
         final nextAlpha = (alpha * (1 - easedStrength)).round().clamp(0, 255);
         output.setPixelRgba(x, y, pixel.r, pixel.g, pixel.b, nextAlpha);
       }
@@ -266,7 +267,7 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
     final distance = math.sqrt((dx * dx) + (dy * dy));
     final steps = math.max(
       1,
-      (distance * math.max(width, height) / clampedRadius).ceil(),
+      (distance * math.max(width, height) / (clampedRadius * 0.28)).ceil(),
     );
     for (var step = 1; step < steps; step++) {
       final t = step / steps;

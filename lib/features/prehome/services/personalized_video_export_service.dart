@@ -492,7 +492,9 @@ class PersonalizedVideoExportService {
     String outputName,
   ) async {
     final shape = maskConfig.shape.trim().toLowerCase();
-    final renderMode = maskConfig.renderMode.trim().toLowerCase();
+    final renderMode = _isTransparentPhotoShape(shape)
+        ? 'cutout'
+        : maskConfig.renderMode.trim().toLowerCase();
     final edgeStyle = maskConfig.edgeStyle.trim().toLowerCase();
     final needsCircleMask =
         shape == 'circle' ||
@@ -511,17 +513,11 @@ class PersonalizedVideoExportService {
     if (decoded == null) {
       return source;
     }
-    var working = decoded.convert(numChannels: 4);
-    if (needsCircleMask) {
-      final side = working.width < working.height
-          ? working.width
-          : working.height;
-      final left = ((working.width - side) / 2).round();
-      final top = ((working.height - side) / 2).round();
-      working = img
-          .copyCrop(working, x: left, y: top, width: side, height: side)
-          .convert(numChannels: 4);
-    }
+    var working = _normalizePhotoToPreviewFrame(
+      decoded,
+      shape: shape,
+      renderMode: renderMode,
+    );
 
     final centerX = (working.width - 1) / 2;
     final centerY = (working.height - 1) / 2;
@@ -565,6 +561,98 @@ class PersonalizedVideoExportService {
     );
     await file.writeAsBytes(img.encodePng(working), flush: true);
     return file;
+  }
+
+  img.Image _normalizePhotoToPreviewFrame(
+    img.Image source, {
+    required String shape,
+    required String renderMode,
+  }) {
+    final frameAspectRatio = _photoMaskAspectRatio(shape);
+    final targetWidth = source.width.clamp(480, 1600);
+    final targetHeight = (targetWidth / frameAspectRatio).round().clamp(
+      480,
+      2000,
+    );
+    final frame = img.Image(
+      width: targetWidth,
+      height: targetHeight,
+      numChannels: 4,
+    );
+    img.fill(frame, color: img.ColorRgba8(0, 0, 0, 0));
+
+    final sourceAspectRatio = source.width / source.height;
+    final scale = sourceAspectRatio > frameAspectRatio
+        ? targetWidth / source.width
+        : targetHeight / source.height;
+    final resizedWidth = (source.width * scale).round().clamp(1, targetWidth);
+    final resizedHeight = (source.height * scale).round().clamp(
+      1,
+      targetHeight,
+    );
+    final resized = img.copyResize(
+      source.convert(numChannels: 4),
+      width: resizedWidth,
+      height: resizedHeight,
+      interpolation: img.Interpolation.linear,
+    );
+    final alignmentY = renderMode == 'cutout' ? _cutoutAlignmentY(shape) : 0.0;
+    final dx = ((targetWidth - resizedWidth) / 2).round();
+    final dy = (((targetHeight - resizedHeight) / 2) * (1 + alignmentY))
+        .round()
+        .clamp(0, targetHeight - resizedHeight);
+    img.compositeImage(frame, resized, dstX: dx, dstY: dy);
+    return frame.convert(numChannels: 4);
+  }
+
+  double _photoMaskAspectRatio(String shape) {
+    switch (shape) {
+      case 'transparent_bottom_fade':
+      case 'transparent_clean':
+      case 'vertical_rectangle':
+      case 'oval':
+      case 'blob':
+      case 'wave_bottom':
+      case 'arch':
+      case 'parallelogram':
+        return 4 / 5;
+      case 'custom_screen_fit':
+        return 16 / 9;
+      case 'custom_board_fit':
+        return 16 / 7;
+      case 'custom_frame_fit':
+        return 4 / 5;
+      case 'custom_polygon_fit':
+        return 4 / 3;
+      default:
+        return 1;
+    }
+  }
+
+  bool _isTransparentPhotoShape(String shape) {
+    return shape == 'transparent_bottom_fade' ||
+        shape == 'transparent_clean' ||
+        shape == 'transparent_soft_round' ||
+        shape == 'transparent_sharp_round';
+  }
+
+  double _cutoutAlignmentY(String shape) {
+    switch (shape) {
+      case 'flower':
+      case 'scallop_circle':
+      case 'soft_burst':
+      case 'sunburst':
+        return -0.16;
+      case 'badge':
+        return -0.14;
+      case 'oval':
+        return -0.20;
+      case 'circle':
+      case 'square':
+        return 0.12;
+      default:
+        return 0.12;
+    }
   }
 
   double _bottomFadeAlpha(double position) {

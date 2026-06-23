@@ -1216,21 +1216,30 @@ class _PhotoEraserPreviewPainter extends CustomPainter {
         normalizedPoint.dx * size.width,
         normalizedPoint.dy * size.height,
       );
-      final hardStop = hardness.clamp(0.001, 0.98);
+      final hardStop = (hardness * 0.72).clamp(0.001, 0.82);
       final paint = Paint()
-        ..blendMode = BlendMode.dstOut
         ..shader = ui.Gradient.radial(
           center,
           radius,
           <Color>[
-            Colors.white,
-            Colors.white.withValues(alpha: hardness > 0.98 ? 1 : 0.88),
-            Colors.white.withValues(alpha: 0),
+            const Color(0xFF31D67B).withValues(alpha: 0.30),
+            const Color(0xFF31D67B).withValues(
+              alpha: hardness > 0.98 ? 0.26 : 0.18,
+            ),
+            const Color(0xFF31D67B).withValues(alpha: 0),
           ],
           <double>[0, hardStop, 1],
         )
         ..style = PaintingStyle.fill;
       canvas.drawCircle(center, radius, paint);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color = const Color(0xFFB8FFD4).withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
     }
 
     for (var i = 0; i < preview.points.length; i++) {
@@ -1243,7 +1252,7 @@ class _PhotoEraserPreviewPainter extends CustomPainter {
       final dx = (point.dx - previous.dx) * size.width;
       final dy = (point.dy - previous.dy) * size.height;
       final distance = math.sqrt((dx * dx) + (dy * dy));
-      final steps = math.max(1, (distance / (radius * 0.45)).ceil());
+      final steps = math.max(1, (distance / (radius * 0.28)).ceil());
       for (var step = 1; step < steps; step++) {
         final t = step / steps;
         drawDab(
@@ -1315,6 +1324,14 @@ Size _fitPhotoLayerSize({
 
 double _editorPhotoMaskAspectRatio(String shape) {
   switch (shape) {
+    case 'transparent_bottom_fade':
+    case 'transparent_clean':
+    case 'vertical_rectangle':
+    case 'blob':
+    case 'wave_bottom':
+    case 'arch':
+    case 'parallelogram':
+      return 4 / 5;
     case 'custom_screen_fit':
       return 16 / 9;
     case 'custom_board_fit':

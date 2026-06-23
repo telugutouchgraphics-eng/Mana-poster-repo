@@ -163,18 +163,6 @@ bool _posterStringLooksFirebaseStorageRelativePath(String raw) {
   return true;
 }
 
-bool _shouldPreferOriginalPosterQualitySource(String? value) {
-  final raw = (value ?? '').trim().toLowerCase();
-  if (raw.isEmpty) {
-    return false;
-  }
-  return raw.contains('community_uploads') ||
-      raw.contains('creator_posters/') ||
-      raw.contains('creator-posters/') ||
-      raw.contains('portal_assets/admin_upload_posters/') ||
-      raw.contains('portal_assets/admin_app_posters/');
-}
-
 class _PosterFirebaseCandidate {
   const _PosterFirebaseCandidate.path(this.value) : urlMode = false;
   const _PosterFirebaseCandidate.url(this.value) : urlMode = true;
@@ -721,14 +709,10 @@ _TemplateItem _mapApprovedCreatorTemplateWorker(
     personalizationConfig: template.personalizationConfig,
     createdAtMillis: template.createdAtMillis,
     pageConfig: template.pageConfig,
-    preferOriginalPosterQuality:
-        creatorId == 'community_user' ||
-        _shouldPreferOriginalPosterQualitySource(template.imageStoragePath) ||
-        _shouldPreferOriginalPosterQualitySource(template.imageUrl) ||
-        _shouldPreferOriginalPosterQualitySource(
-          template.thumbnailStoragePath,
-        ) ||
-        _shouldPreferOriginalPosterQualitySource(template.thumbnailUrl),
+    // Web portal uploads must stay visually lossless in app preview/export.
+    // Thumbnails can still exist as fallback metadata, but approved posters
+    // should render from the original image source.
+    preferOriginalPosterQuality: true,
   );
 }
 
@@ -5348,30 +5332,20 @@ class _HomeScreenState extends State<HomeScreen>
                   slivers: <Widget>[
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 12),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                         child: RepaintBoundary(
-                          child: SizedBox(
-                            height: 46,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: categories.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 7),
-                              itemBuilder: (_, index) => _CategoryChip(
-                                data: categories[index],
-                                isSelected:
-                                    categories[index].slug ==
-                                    activeCategorySlug,
-                                onTap: () {
-                                  final nextSlug = categories[index].slug;
-                                  _selectCategory(nextSlug);
-                                },
-                              ),
-                            ),
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 7,
+                            children: <Widget>[
+                              for (final category in categories)
+                                _CategoryChip(
+                                  data: category,
+                                  isSelected:
+                                      category.slug == activeCategorySlug,
+                                  onTap: () => _selectCategory(category.slug),
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -6522,25 +6496,30 @@ class _StatusGridPreview extends StatelessWidget {
     final color = Color(
       status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
     );
-    return ColoredBox(
-      color: color,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Center(
-          child: Text(
-            status.text,
-            maxLines: 6,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              height: 1.2,
-              fontWeight: FontWeight.w800,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 64 || constraints.maxHeight < 64;
+        return ColoredBox(
+          color: color,
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 3 : 14),
+            child: Center(
+              child: Text(
+                status.text,
+                maxLines: compact ? 3 : 6,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 7.5 : 15,
+                  height: compact ? 1.0 : 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -8118,7 +8097,7 @@ class _HomeHeader extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(18, topInset + 16, 18, 18),
+      padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -8142,7 +8121,7 @@ class _HomeHeader extends StatelessWidget {
                   AppPublicInfo.appName,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -8158,13 +8137,13 @@ class _HomeHeader extends StatelessWidget {
                   child: const _HeaderStatusShortcut(),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               InkWell(
                 onTap: onProfileTap,
                 customBorder: const CircleBorder(),
                 child: SizedBox(
-                  width: 44,
-                  height: 44,
+                  width: 38,
+                  height: 38,
                   child: _HeaderProfileAvatar(
                     viewerPosterProfile: viewerPosterProfile,
                   ),
@@ -8172,17 +8151,17 @@ class _HomeHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Text(
             AppPublicInfo.appTagline,
             style: const TextStyle(
               color: Color(0xFFFFF4E6),
-              fontSize: 12,
+              fontSize: 11,
               height: 1.25,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Row(
             children: <Widget>[
               Expanded(
@@ -8194,32 +8173,37 @@ class _HomeHeader extends StatelessWidget {
                   onEditingComplete: () => unawaited(onSearchSubmitted()),
                   onSubmitted: (_) => unawaited(onSearchSubmitted()),
                   decoration: InputDecoration(
+                    isDense: true,
                     hintText: strings.searchTemplates,
                     prefixIcon: IconButton(
                       onPressed: () => unawaited(onSearchSubmitted()),
                       icon: const Icon(Icons.search_rounded),
                     ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 40,
+                    ),
                     fillColor: Colors.white,
                     filled: true,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
+                      horizontal: 12,
+                      vertical: 10,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(15),
                       borderSide: BorderSide.none,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               FilledButton(
                 onPressed: onCreateTap,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFFD81B60),
-                  minimumSize: const Size(74, 52),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(68, 42),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(strings.createLabel),
@@ -8562,8 +8546,8 @@ class _HeaderStatusShortcut extends StatelessWidget {
         final latest = statuses.isEmpty ? null : statuses.first;
         final hasStatus = latest != null;
         return SizedBox(
-          width: 50,
-          height: 50,
+          width: 42,
+          height: 42,
           child: Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
@@ -8586,15 +8570,15 @@ class _HeaderStatusShortcut extends StatelessWidget {
                         : Colors.white.withValues(alpha: 0.92),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(3),
+                    padding: const EdgeInsets.all(2.5),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(color: Colors.white, width: 1.8),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(1.5),
+                        padding: const EdgeInsets.all(1),
                         child: ClipOval(
                           child: ColoredBox(
                             color: hasStatus
@@ -8605,7 +8589,7 @@ class _HeaderStatusShortcut extends StatelessWidget {
                                 : const Icon(
                                     Icons.auto_stories_rounded,
                                     color: Color(0xFFD81B60),
-                                    size: 24,
+                                    size: 21,
                                   ),
                           ),
                         ),
@@ -8619,17 +8603,17 @@ class _HeaderStatusShortcut extends StatelessWidget {
                   right: -1,
                   bottom: -1,
                   child: Container(
-                    width: 18,
-                    height: 18,
+                    width: 16,
+                    height: 16,
                     decoration: BoxDecoration(
                       color: const Color(0xFF22C55E),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: 1.8),
                     ),
                     child: const Icon(
                       Icons.add_rounded,
                       color: Colors.white,
-                      size: 13,
+                      size: 11,
                     ),
                   ),
                 ),
@@ -9009,21 +8993,21 @@ class _CategoryChip extends StatelessWidget {
     const selectedChipBorder = Color(0xFF5B21B6);
     const allChipColor = Color(0xFF25D366);
     const allChipBorder = Color(0xFF1FAE54);
-    final chipTint = isAll
+    final chipTint = isAll && isSelected
         ? allChipColor
         : isSelected
         ? selectedChipColor
         : data.isDynamic
         ? const Color(0xFFFFF4DB)
         : Colors.white;
-    final borderColor = isAll
+    final borderColor = isAll && isSelected
         ? allChipBorder
         : isSelected
         ? selectedChipBorder
         : data.isDynamic
         ? const Color(0xFFF2C66D)
         : const Color(0xFFDCE6F3);
-    final textColor = isAll || isSelected
+    final textColor = isSelected
         ? Colors.white
         : data.isDynamic
         ? const Color(0xFF8A5A00)
@@ -9036,7 +9020,7 @@ class _CategoryChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
             color: chipTint,
             borderRadius: BorderRadius.circular(999),
@@ -9046,8 +9030,8 @@ class _CategoryChip extends StatelessWidget {
                 color: isSelected || isAll
                     ? const Color(0x140F172A)
                     : const Color(0x0A0F172A),
-                blurRadius: isSelected || isAll ? 10 : 8,
-                offset: const Offset(0, 3),
+                blurRadius: isSelected || isAll ? 8 : 5,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -9056,7 +9040,7 @@ class _CategoryChip extends StatelessWidget {
             children: <Widget>[
               if (iconAssetPath != null) ...<Widget>[
                 _CategoryChipAssetIcon(assetPath: iconAssetPath),
-                const SizedBox(width: 7),
+                const SizedBox(width: 5),
               ],
               Text(
                 iconAssetPath == null
@@ -9066,7 +9050,7 @@ class _CategoryChip extends StatelessWidget {
                 overflow: TextOverflow.fade,
                 softWrap: false,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10.8,
                   fontWeight: isSelected || isAll
                       ? FontWeight.w700
                       : FontWeight.w600,
@@ -9090,9 +9074,9 @@ class _CategoryChipAssetIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSvg = assetPath.toLowerCase().endsWith('.svg');
     return Container(
-      width: 22,
-      height: 22,
-      padding: const EdgeInsets.all(2),
+      width: 18,
+      height: 18,
+      padding: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -13637,12 +13621,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
     final bottomStripPadding = (widget.personalizationConfig.stripHeight * 0.3)
         .clamp(4.0, 8.0);
-    final preserveOriginalCanvasBounds = false;
-    final stripOverflowAllowance =
-        widget.personalizationConfig.showBottomStrip &&
-            !preserveOriginalCanvasBounds
-        ? (isBusinessProfile ? 56.0 : 60.0)
-        : 0.0;
+    final stripOverflowAllowance = 0.0;
 
     final showPhotoOverlay = _basePosterReady;
 
@@ -14050,8 +14029,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               children: <Widget>[
                 buildPosterVisual(),
                 if (widget.personalizationConfig.showBottomStrip &&
-                    (widget.basePosterBuilder == null || _basePosterReady) &&
-                    !preserveOriginalCanvasBounds)
+                    (widget.basePosterBuilder == null || _basePosterReady))
                   _buildPosterBottomStrip(
                     resolvedName: resolvedName,
                     resolvedDesignation: resolvedDesignation,
@@ -14758,6 +14736,14 @@ Widget _clipPhotoShape(String shape, Widget child) {
 
 double _photoMaskAspectRatio(String shape) {
   switch (shape) {
+    case 'transparent_bottom_fade':
+    case 'transparent_clean':
+    case 'vertical_rectangle':
+    case 'blob':
+    case 'wave_bottom':
+    case 'arch':
+    case 'parallelogram':
+      return 4 / 5;
     case 'custom_screen_fit':
       return 16 / 9;
     case 'custom_board_fit':
@@ -15109,35 +15095,8 @@ class _EmptyPosterGameState extends StatefulWidget {
 }
 
 class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
-  Timer? _countdownTimer;
-  int _secondsLeft = 3;
   bool _gameStarted = false;
   bool _gameDismissed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        return;
-      }
-      if (_secondsLeft <= 1) {
-        timer.cancel();
-        setState(() {
-          _secondsLeft = 0;
-          _gameStarted = true;
-        });
-        return;
-      }
-      setState(() => _secondsLeft--);
-    });
-  }
-
-  @override
-  void dispose() {
-    _countdownTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -15162,16 +15121,15 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                   )
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
-                    secondsLeft: _secondsLeft,
                     label: strings.localized(
-                      telugu: 'Snake game $_secondsLeft సెకన్లలో మొదలవుతుంది',
-                      english: 'Snake game starts in $_secondsLeft seconds',
-                      hindi: 'Snake game $_secondsLeft सेकंड में शुरू होगा',
-                      tamil: 'Snake game $_secondsLeft விநாடிகளில் தொடங்கும்',
-                      kannada:
-                          'Snake game $_secondsLeft ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಆರಂಭವಾಗುತ್ತದೆ',
-                      malayalam: 'Snake game $_secondsLeft സെക്കൻഡിൽ തുടങ്ങും',
+                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
+                      english: 'Play Snake while posters load',
+                      hindi: 'Posters आने तक Snake खेलें',
+                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
+                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
+                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
                     ),
+                    onPlay: () => setState(() => _gameStarted = true),
                   ),
           ),
       ],
@@ -15182,18 +15140,19 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
 class _SnakeCountdownCard extends StatelessWidget {
   const _SnakeCountdownCard({
     super.key,
-    required this.secondsLeft,
     required this.label,
+    required this.onPlay,
   });
 
-  final int secondsLeft;
   final String label;
+  final VoidCallback onPlay;
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -15209,13 +15168,10 @@ class _SnakeCountdownCard extends StatelessWidget {
               color: Color(0xFFEFF6FF),
               shape: BoxShape.circle,
             ),
-            child: Text(
-              secondsLeft.toString(),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF2563EB),
-              ),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: Color(0xFF2563EB),
+              size: 28,
             ),
           ),
           const SizedBox(width: 12),
@@ -15227,6 +15183,29 @@ class _SnakeCountdownCard extends StatelessWidget {
                 height: 1.35,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF334155),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.icon(
+            onPressed: onPlay,
+            icon: const Icon(Icons.sports_esports_rounded, size: 18),
+            label: Text(
+              strings.localized(
+                telugu: 'Play',
+                english: 'Play',
+                hindi: 'Play',
+                tamil: 'Play',
+                kannada: 'Play',
+                malayalam: 'Play',
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
           ),
