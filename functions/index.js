@@ -2549,14 +2549,15 @@ async function getRelatedPosterImagesByKeywords(keywords) {
     const matchedImages = [];
     for (const doc of snap.docs) {
       const data = doc.data() || {};
-      const categoryId = normalizeText(data.categoryId);
-      const categoryLabel = normalizeText(data.categoryLabel);
+      const categoryId = String(data.categoryId || "");
+      const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl) {
         continue;
       }
-      const haystack = `${categoryId} ${categoryLabel}`;
-      const matched = keyList.some((keyword) => haystack.includes(keyword));
+      const matched = keyList.some((keyword) =>
+        categoryMatchesStrictAlias(categoryId, categoryLabel, keyword),
+      );
       if (matched) {
         matchedImages.push(imageUrl);
       }
@@ -2698,10 +2699,6 @@ async function pickImageForReminder(keywords, seed = "") {
     return relatedMatches[index] || "";
   }
 
-  const randomPosterImage = await getRandomApprovedPosterImage();
-  if (randomPosterImage) {
-    return randomPosterImage;
-  }
   return getPrimaryBannerImage();
 }
 
