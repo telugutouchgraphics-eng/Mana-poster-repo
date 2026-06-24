@@ -2580,12 +2580,35 @@ function reminderCategoryAliases(input) {
     return ["good_night", "good night", "night", "evening", "ratri"];
   }
   if (category === "motivation") {
-    return ["motivational", "motivation", "inspiration", "quotes"];
+    return ["motivational", "motivation"];
   }
   if (category === "jokes") {
     return ["jokes", "joke", "funny", "humor", "comedy"];
   }
   return [];
+}
+
+function normalizeCategoryToken(value) {
+  return normalizeText(value)
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+}
+
+function compactCategoryToken(value) {
+  return normalizeCategoryToken(value).replace(/\s+/g, "");
+}
+
+function categoryMatchesStrictAlias(categoryId, categoryLabel, alias) {
+  const normalizedAlias = normalizeCategoryToken(alias);
+  const compactAlias = compactCategoryToken(alias);
+  const candidates = [categoryId, categoryLabel]
+      .map((item) => normalizeCategoryToken(item))
+      .filter((item) => item.length > 0);
+  return candidates.some((candidate) =>
+    candidate === normalizedAlias ||
+    compactCategoryToken(candidate) === compactAlias,
+  );
 }
 
 async function getApprovedPosterImagesForReminderCategory(categoryKey) {
@@ -2607,17 +2630,14 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey) {
     const matchedImages = [];
     for (const doc of snap.docs) {
       const data = doc.data() || {};
-      const categoryId = normalizeText(data.categoryId);
-      const categoryLabel = normalizeText(data.categoryLabel);
+      const categoryId = String(data.categoryId || "");
+      const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl) {
         continue;
       }
       const matched = aliases.some((alias) =>
-        categoryId === alias ||
-        categoryLabel === alias ||
-        categoryId.includes(alias) ||
-        categoryLabel.includes(alias),
+        categoryMatchesStrictAlias(categoryId, categoryLabel, alias),
       );
       if (matched) {
         matchedImages.push(imageUrl);

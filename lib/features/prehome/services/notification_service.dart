@@ -45,6 +45,7 @@ class NotificationService {
 
   /// Word joiner — non-empty so Android does not substitute app name for title.
   static const String _collapsedImageTitle = '\u2060';
+  static const String _homeNotificationPayload = 'home';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -202,10 +203,7 @@ class NotificationService {
           title: resolved.title,
           body: resolved.body,
         );
-    final payload =
-        (_readDataValue(message.data, 'route')).trim().toLowerCase() == 'home'
-        ? 'home'
-        : '';
+    const payload = _homeNotificationPayload;
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
     await plugin.show(
       id,
@@ -230,7 +228,8 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final String payload = response.payload ?? '';
-        if (payload.trim().toLowerCase() == 'home') {
+        if (payload.trim().isEmpty ||
+            payload.trim().toLowerCase() == _homeNotificationPayload) {
           _openHomeWithRetry();
         }
       },
@@ -455,7 +454,7 @@ class NotificationService {
       message.data,
       'route',
     ).trim().toLowerCase();
-    if (route == 'home') {
+    if (route.isEmpty || route == _homeNotificationPayload) {
       _openHomeWithRetry();
     }
   }
