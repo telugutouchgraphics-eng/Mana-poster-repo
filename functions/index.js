@@ -1068,7 +1068,26 @@ function notificationProfileFromData(data) {
 
 function sanitizeLanguage(value) {
   const normalized = normalizeText(value);
-  return new Set(["telugu", "hindi", "english", "tamil", "kannada", "malayalam"]).has(normalized) ?
+  return new Set([
+    "telugu",
+    "hindi",
+    "english",
+    "tamil",
+    "kannada",
+    "malayalam",
+    "assamese",
+    "konkani",
+    "gujarati",
+    "marathi",
+    "meitei",
+    "mizo",
+    "odia",
+    "punjabi",
+    "nepali",
+    "bengali",
+    "kashmiri",
+    "ladakhi",
+  ]).has(normalized) ?
     normalized :
     "";
 }
@@ -1171,11 +1190,218 @@ function defaultLanguageForName(name) {
   return /[\u0C00-\u0C7F]/.test(String(name || "")) ? "telugu" : "english";
 }
 
+function notificationDisplayName(userName, language) {
+  const fallbackByLanguage = {
+    telugu: "మిత్రమా",
+    hindi: "दोस्त",
+    english: "Friend",
+    tamil: "நண்பரே",
+    kannada: "ಸ್ನೇಹಿತರೆ",
+    malayalam: "സുഹൃത്തേ",
+    assamese: "বন্ধু",
+    konkani: "मोगाळा",
+    gujarati: "મિત્ર",
+    marathi: "मित्रा",
+    meitei: "মরুপ",
+    mizo: "Thian",
+    odia: "ବନ୍ଧୁ",
+    punjabi: "ਦੋਸਤ",
+    nepali: "साथी",
+    bengali: "বন্ধু",
+    kashmiri: "دوست",
+    ladakhi: "གྲོགས་པོ",
+  };
+  return pickFirstUsablePosterName(userName) ||
+    fallbackByLanguage[sanitizeLanguage(language) || "english"] ||
+    "Friend";
+}
+
+function buildNotificationCopy(kind, language, userName, extra = {}) {
+  const lang = sanitizeLanguage(language) || "english";
+  const name = notificationDisplayName(userName, lang);
+  const timing = String(extra.timing || "").trim();
+  const eventTitle = String(extra.eventTitle || "").trim();
+  const timingText = timing === "tomorrow" ? "tomorrow" : "today";
+  const map = {
+    telugu: {
+      welcome: ["Mana Poster కి స్వాగతం", `${name} గారు, మీ కోసం రోజువారీ పోస్టర్లు రెడీగా ఉన్నాయి.`],
+      morning: ["శుభోదయం", `${name} గారు, మీ గుడ్ మార్నింగ్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      afternoon: ["శుభ మధ్యాహ్నం", `${name} గారు, మీ మధ్యాహ్నం పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      night: ["శుభ రాత్రి", `${name} గారు, మీ గుడ్ నైట్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      motivation: ["మోటివేషన్ టైమ్", `${name} గారు, మీ మోటివేషన్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      jokes: ["జోక్స్ టైమ్", `${name} గారు, మీ జోక్స్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      dynamic_event: [eventTitle || "ఈవెంట్ రిమైండర్", `${name} గారు, ${eventTitle || "ఈవెంట్"} ${timing === "tomorrow" ? "రేపు" : "ఈ రోజు"} ఉంది. పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+    },
+    hindi: {
+      welcome: ["Mana Poster में आपका स्वागत है", `${name} जी, आपके लिए रोज़ाना पोस्टर तैयार हैं।`],
+      morning: ["सुप्रभात", `${name} जी, आपका गुड मॉर्निंग पोस्टर शेयर करने के लिए तैयार है।`],
+      afternoon: ["शुभ दोपहर", `${name} जी, आपका दोपहर पोस्टर शेयर करने के लिए तैयार है।`],
+      night: ["शुभ रात्रि", `${name} जी, आपका गुड नाइट पोस्टर शेयर करने के लिए तैयार है।`],
+      motivation: ["मोटिवेशन टाइम", `${name} जी, आपका मोटिवेशन पोस्टर शेयर करने के लिए तैयार है।`],
+      jokes: ["जोक्स टाइम", `${name} जी, आपका जोक्स पोस्टर शेयर करने के लिए तैयार है।`],
+      dynamic_event: [eventTitle || "इवेंट रिमाइंडर", `${name} जी, ${eventTitle || "इवेंट"} ${timing === "tomorrow" ? "कल" : "आज"} है। पोस्टर शेयर करने के लिए तैयार है।`],
+    },
+    english: {
+      welcome: ["Welcome to Mana Poster", `${name}, your daily posters are ready to share.`],
+      morning: ["Good Morning", `${name}, your good morning poster is ready to share.`],
+      afternoon: ["Good Afternoon", `${name}, your afternoon poster is ready to share.`],
+      night: ["Good Night", `${name}, your good night poster is ready to share.`],
+      motivation: ["Motivation Time", `${name}, your motivational poster is ready to share.`],
+      jokes: ["Jokes Time", `${name}, your jokes poster is ready to share.`],
+      dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} is ${timingText}. Your poster is ready to share.`],
+    },
+    tamil: {
+      welcome: ["Mana Posterக்கு வரவேற்கிறோம்", `${name} அவர்களே, தினசரி போஸ்டர்கள் பகிர தயாராக உள்ளன.`],
+      morning: ["காலை வணக்கம்", `${name} அவர்களே, உங்கள் காலை வணக்கம் போஸ்டர் பகிர தயாராக உள்ளது.`],
+      afternoon: ["மதிய வணக்கம்", `${name} அவர்களே, உங்கள் மதிய போஸ்டர் பகிர தயாராக உள்ளது.`],
+      night: ["இரவு வணக்கம்", `${name} அவர்களே, உங்கள் குட் நைட் போஸ்டர் பகிர தயாராக உள்ளது.`],
+      motivation: ["மோட்டிவேஷன் நேரம்", `${name} அவர்களே, உங்கள் மோட்டிவேஷன் போஸ்டர் பகிர தயாராக உள்ளது.`],
+      jokes: ["ஜோக்ஸ் நேரம்", `${name} அவர்களே, உங்கள் ஜோக்ஸ் போஸ்டர் பகிர தயாராக உள்ளது.`],
+      dynamic_event: [eventTitle || "நிகழ்வு நினைவூட்டல்", `${name} அவர்களே, ${eventTitle || "நிகழ்வு"} ${timing === "tomorrow" ? "நாளை" : "இன்று"} உள்ளது. போஸ்டர் பகிர தயாராக உள்ளது.`],
+    },
+    kannada: {
+      welcome: ["Mana Poster ಗೆ ಸ್ವಾಗತ", `${name} ಅವರೇ, ದಿನನಿತ್ಯದ ಪೋಸ್ಟರ್‌ಗಳು ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿವೆ.`],
+      morning: ["ಶುಭೋದಯ", `${name} ಅವರೇ, ನಿಮ್ಮ ಗುಡ್ ಮಾರ್ನಿಂಗ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      afternoon: ["ಶುಭ ಮಧ್ಯಾಹ್ನ", `${name} ಅವರೇ, ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      night: ["ಶುಭ ರಾತ್ರಿ", `${name} ಅವರೇ, ನಿಮ್ಮ ಗುಡ್ ನೈಟ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      motivation: ["ಮೋಟಿವೇಶನ್ ಸಮಯ", `${name} ಅವರೇ, ನಿಮ್ಮ ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      jokes: ["ಜೋಕ್ಸ್ ಸಮಯ", `${name} ಅವರೇ, ನಿಮ್ಮ ಜೋಕ್ಸ್ ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+      dynamic_event: [eventTitle || "ಈವೆಂಟ್ ರಿಮೈಂಡರ್", `${name} ಅವರೇ, ${eventTitle || "ಈವೆಂಟ್"} ${timing === "tomorrow" ? "ನಾಳೆ" : "ಇಂದು"} ಇದೆ. ಪೋಸ್ಟರ್ ಹಂಚಿಕೊಳ್ಳಲು ಸಿದ್ಧವಾಗಿದೆ.`],
+    },
+    malayalam: {
+      welcome: ["Mana Poster ലേക്ക് സ്വാഗതം", `${name}, ദിവസേന പോസ്റ്ററുകൾ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      morning: ["സുപ്രഭാതം", `${name}, നിങ്ങളുടെ ഗുഡ് മോണിംഗ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      afternoon: ["ശുഭ മധ്യാഹ്നം", `${name}, നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      night: ["ശുഭ രാത്രി", `${name}, നിങ്ങളുടെ ഗുഡ് നൈറ്റ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      motivation: ["മോട്ടിവേഷൻ സമയം", `${name}, നിങ്ങളുടെ മോട്ടിവേഷൻ പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      jokes: ["ജോക്സ് സമയം", `${name}, നിങ്ങളുടെ ജോക്സ് പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+      dynamic_event: [eventTitle || "ഇവന്റ് റിമൈൻഡർ", `${name}, ${eventTitle || "ഇവന്റ്"} ${timing === "tomorrow" ? "നാളെ" : "ഇന്ന്"} ആണ്. പോസ്റ്റർ ഷെയർ ചെയ്യാൻ തയ്യാറാണ്.`],
+    },
+    assamese: {
+      welcome: ["Mana Poster লৈ স্বাগতম", `${name}, দৈনিক পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      morning: ["শুভ ৰাতিপুৱা", `${name}, আপোনাৰ গুড মৰ্ণিং পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      afternoon: ["শুভ দুপৰীয়া", `${name}, আপোনাৰ দুপৰীয়াৰ পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      night: ["শুভ ৰাতি", `${name}, আপোনাৰ গুড নাইট পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      motivation: ["মোটিভেশন টাইম", `${name}, আপোনাৰ মোটিভেশন পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      jokes: ["জোকছ টাইম", `${name}, আপোনাৰ জোকছ পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+      dynamic_event: [eventTitle || "ইভেন্ট ৰিমাইন্ডাৰ", `${name}, ${eventTitle || "ইভেন্ট"} ${timing === "tomorrow" ? "কাইলৈ" : "আজি"} আছে। পোষ্টাৰ শ্বেয়াৰ কৰিবলৈ সাজু আছে।`],
+    },
+    konkani: {
+      welcome: ["Mana Poster कडेन येवकार", `${name}, दिसपट्टी पोस्टर शेअर करपाक तयार आसात.`],
+      morning: ["देव बरो सकाळ", `${name}, तुमचो गुड मॉर्निंग पोस्टर शेअर करपाक तयार आसा.`],
+      afternoon: ["शुभ दनपार", `${name}, तुमचो दनपार पोस्टर शेअर करपाक तयार आसा.`],
+      night: ["शुभ रात", `${name}, तुमचो गुड नाइट पोस्टर शेअर करपाक तयार आसा.`],
+      motivation: ["मोटिवेशन टाइम", `${name}, तुमचो मोटिवेशन पोस्टर शेअर करपाक तयार आसा.`],
+      jokes: ["जोक्स टाइम", `${name}, तुमचो जोक्स पोस्टर शेअर करपाक तयार आसा.`],
+      dynamic_event: [eventTitle || "इव्हेंट रिमाइंडर", `${name}, ${eventTitle || "इव्हेंट"} ${timing === "tomorrow" ? "फाल्या" : "आयज"} आसा. पोस्टर शेअर करपाक तयार आसा.`],
+    },
+    gujarati: {
+      welcome: ["Mana Poster માં આપનું સ્વાગત છે", `${name}, દૈનિક પોસ્ટર્સ શેર કરવા તૈયાર છે.`],
+      morning: ["સુપ્રભાત", `${name}, તમારું ગુડ મોર્નિંગ પોસ્ટર શેર કરવા તૈયાર છે.`],
+      afternoon: ["શુભ બપોર", `${name}, તમારું બપોરનું પોસ્ટર શેર કરવા તૈયાર છે.`],
+      night: ["શુભ રાત્રી", `${name}, તમારું ગુડ નાઈટ પોસ્ટર શેર કરવા તૈયાર છે.`],
+      motivation: ["મોટિવેશન ટાઈમ", `${name}, તમારું મોટિવેશન પોસ્ટર શેર કરવા તૈયાર છે.`],
+      jokes: ["જોક્સ ટાઈમ", `${name}, તમારું જોક્સ પોસ્ટર શેર કરવા તૈયાર છે.`],
+      dynamic_event: [eventTitle || "ઇવેન્ટ રિમાઇન્ડર", `${name}, ${eventTitle || "ઇવેન્ટ"} ${timing === "tomorrow" ? "કાલે" : "આજે"} છે. પોસ્ટર શેર કરવા તૈયાર છે.`],
+    },
+    marathi: {
+      welcome: ["Mana Poster मध्ये स्वागत", `${name}, रोजचे पोस्टर्स शेअर करण्यासाठी तयार आहेत.`],
+      morning: ["शुभ सकाळ", `${name}, तुमचा गुड मॉर्निंग पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      afternoon: ["शुभ दुपार", `${name}, तुमचा दुपारचा पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      night: ["शुभ रात्री", `${name}, तुमचा गुड नाईट पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      motivation: ["मोटिवेशन टाइम", `${name}, तुमचा मोटिवेशन पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      jokes: ["जोक्स टाइम", `${name}, तुमचा जोक्स पोस्टर शेअर करण्यासाठी तयार आहे.`],
+      dynamic_event: [eventTitle || "इव्हेंट रिमाइंडर", `${name}, ${eventTitle || "इव्हेंट"} ${timing === "tomorrow" ? "उद्या" : "आज"} आहे. पोस्टर शेअर करण्यासाठी तयार आहे.`],
+    },
+    meitei: {
+      welcome: ["Mana Poster দা তৌজরকপা", `${name}, নুমিৎ খুদিংগী poster share তৌনবা ready ওইরে.`],
+      morning: ["গুড মর্নিং", `${name}, নহাক্কী good morning poster share তৌনবা ready ওইরে.`],
+      afternoon: ["গুড আফটারনুন", `${name}, নহাক্কী afternoon poster share তৌনবা ready ওইরে.`],
+      night: ["গুড নাইট", `${name}, নহাক্কী good night poster share তৌনবা ready ওইরে.`],
+      motivation: ["Motivation Time", `${name}, নহাক্কী motivation poster share তৌনবা ready ওইরে.`],
+      jokes: ["Jokes Time", `${name}, নহাক্কী jokes poster share তৌনবা ready ওইরে.`],
+      dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "হয়েং" : "ঙসি"} লৈ. Poster share তৌনবা ready ওইরে.`],
+    },
+    mizo: {
+      welcome: ["Mana Poster-ah lo lawm a che", `${name}, ni tin poster share tur a inpeih tawh.`],
+      morning: ["Good Morning", `${name}, i good morning poster share tur a inpeih tawh.`],
+      afternoon: ["Good Afternoon", `${name}, i afternoon poster share tur a inpeih tawh.`],
+      night: ["Good Night", `${name}, i good night poster share tur a inpeih tawh.`],
+      motivation: ["Motivation Time", `${name}, i motivation poster share tur a inpeih tawh.`],
+      jokes: ["Jokes Time", `${name}, i jokes poster share tur a inpeih tawh.`],
+      dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "naktukah" : "vawiin"} a awm. Poster share tur a inpeih tawh.`],
+    },
+    odia: {
+      welcome: ["Mana Poster କୁ ସ୍ୱାଗତ", `${name}, ଦୈନିକ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      morning: ["ସୁପ୍ରଭାତ", `${name}, ଆପଣଙ୍କ ଗୁଡ୍ ମର୍ଣ୍ଣିଙ୍ଗ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      afternoon: ["ଶୁଭ ମଧ୍ୟାହ୍ନ", `${name}, ଆପଣଙ୍କ ମଧ୍ୟାହ୍ନ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      night: ["ଶୁଭ ରାତ୍ରି", `${name}, ଆପଣଙ୍କ ଗୁଡ୍ ନାଇଟ୍ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      motivation: ["ମୋଟିଭେସନ ଟାଇମ", `${name}, ଆପଣଙ୍କ ମୋଟିଭେସନ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      jokes: ["ଜୋକ୍ସ ଟାଇମ", `${name}, ଆପଣଙ୍କ ଜୋକ୍ସ ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+      dynamic_event: [eventTitle || "ଇଭେଣ୍ଟ ରିମାଇଣ୍ଡର", `${name}, ${eventTitle || "ଇଭେଣ୍ଟ"} ${timing === "tomorrow" ? "ଆସନ୍ତାକାଲି" : "ଆଜି"} ଅଛି। ପୋଷ୍ଟର ଶେୟାର ପାଇଁ ପ୍ରସ୍ତୁତ ଅଛି।`],
+    },
+    punjabi: {
+      welcome: ["Mana Poster ਵਿੱਚ ਸੁਆਗਤ ਹੈ", `${name}, ਰੋਜ਼ਾਨਾ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹਨ।`],
+      morning: ["ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ", `${name}, ਤੁਹਾਡਾ ਗੁੱਡ ਮਾਰਨਿੰਗ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      afternoon: ["ਸ਼ੁਭ ਦੁਪਹਿਰ", `${name}, ਤੁਹਾਡਾ ਦੁਪਹਿਰ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      night: ["ਸ਼ੁਭ ਰਾਤਰੀ", `${name}, ਤੁਹਾਡਾ ਗੁੱਡ ਨਾਈਟ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      motivation: ["ਮੋਟੀਵੇਸ਼ਨ ਟਾਈਮ", `${name}, ਤੁਹਾਡਾ ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      jokes: ["ਜੋਕਸ ਟਾਈਮ", `${name}, ਤੁਹਾਡਾ ਜੋਕਸ ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+      dynamic_event: [eventTitle || "ਇਵੈਂਟ ਰਿਮਾਈਂਡਰ", `${name}, ${eventTitle || "ਇਵੈਂਟ"} ${timing === "tomorrow" ? "ਕੱਲ੍ਹ" : "ਅੱਜ"} ਹੈ। ਪੋਸਟਰ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਤਿਆਰ ਹੈ।`],
+    },
+    nepali: {
+      welcome: ["Mana Poster मा स्वागत छ", `${name}, दैनिक पोस्टर शेयर गर्न तयार छन्।`],
+      morning: ["शुभ प्रभात", `${name}, तपाईंको गुड मर्निङ पोस्टर शेयर गर्न तयार छ।`],
+      afternoon: ["शुभ दिउँसो", `${name}, तपाईंको दिउँसोको पोस्टर शेयर गर्न तयार छ।`],
+      night: ["शुभ रात्री", `${name}, तपाईंको गुड नाइट पोस्टर शेयर गर्न तयार छ।`],
+      motivation: ["मोटिभेसन टाइम", `${name}, तपाईंको मोटिभेसन पोस्टर शेयर गर्न तयार छ।`],
+      jokes: ["जोक्स टाइम", `${name}, तपाईंको जोक्स पोस्टर शेयर गर्न तयार छ।`],
+      dynamic_event: [eventTitle || "इभेन्ट रिमाइन्डर", `${name}, ${eventTitle || "इभेन्ट"} ${timing === "tomorrow" ? "भोलि" : "आज"} छ। पोस्टर शेयर गर्न तयार छ।`],
+    },
+    bengali: {
+      welcome: ["Mana Poster-এ স্বাগতম", `${name}, দৈনিক পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      morning: ["সুপ্রভাত", `${name}, আপনার গুড মর্নিং পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      afternoon: ["শুভ দুপুর", `${name}, আপনার দুপুরের পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      night: ["শুভ রাত্রি", `${name}, আপনার গুড নাইট পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      motivation: ["মোটিভেশন টাইম", `${name}, আপনার মোটিভেশন পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      jokes: ["জোকস টাইম", `${name}, আপনার জোকস পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+      dynamic_event: [eventTitle || "ইভেন্ট রিমাইন্ডার", `${name}, ${eventTitle || "ইভেন্ট"} ${timing === "tomorrow" ? "আগামীকাল" : "আজ"} আছে। পোস্টার শেয়ার করার জন্য প্রস্তুত আছে।`],
+    },
+    kashmiri: {
+      welcome: ["Mana Poster منز خوش آمدید", `${name}, روزانہ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      morning: ["گڈ مارننگ", `${name}, توہند گڈ مارننگ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      afternoon: ["گڈ آفٹرنون", `${name}, توہند دوپہر پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      night: ["گڈ نائٹ", `${name}, توہند گڈ نائٹ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      motivation: ["موٹیویشن ٹائم", `${name}, توہند موٹیویشن پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      jokes: ["جوکس ٹائم", `${name}, توہند جوکس پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+      dynamic_event: [eventTitle || "ایونٹ ریمائنڈر", `${name}, ${eventTitle || "ایونٹ"} ${timing === "tomorrow" ? "پگاہ" : "از"} چھ۔ پوسٹر شیئر کرنہٕ خٲطرٕ تیار چھ۔`],
+    },
+    ladakhi: {
+      welcome: ["Mana Poster ལ་ཕེབས་པར་དགའ་བསུ", `${name}, ཉིན་རེའི་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      morning: ["ཞོགས་པ་བདེ་ལེགས", `${name}, ཁྱེད་ཀྱི་གུད་མོར་ནིང་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      afternoon: ["ཉིན་གུང་བདེ་ལེགས", `${name}, ཁྱེད་ཀྱི་ཉིན་གུང་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      night: ["མཚན་མོ་བདེ་ལེགས", `${name}, ཁྱེད་ཀྱི་གུད་ནཱའིཊ་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      motivation: ["Motivation Time", `${name}, ཁྱེད་ཀྱི་མོ་ཊི་ཝེ་ཤན་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      jokes: ["Jokes Time", `${name}, ཁྱེད་ཀྱི་ཇོཀས་པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+      dynamic_event: [eventTitle || "Event Reminder", `${name}, ${eventTitle || "event"} ${timing === "tomorrow" ? "སང་ཉིན" : "དེ་རིང"} ཡོད། པོསྚར་ཤེར་བྱེད་པར་གྲ་སྒྲིག་ཡོད།`],
+    },
+  };
+  const bucket = map[lang] || map.english;
+  const pair = bucket[kind] || bucket.welcome;
+  return {
+    title: pair[0],
+    body: pair[1],
+    header: pair[1],
+    footer: bucket === map.telugu ? "ఇప్పుడే షేర్ చేయండి" : "Share now",
+  };
+}
+
 function reminderCopy(kind, language, userName) {
   const displayName = pickFirstUsablePosterName(userName);
   const lang =
       sanitizeLanguage(language) ||
       (displayName ? defaultLanguageForName(displayName) : "english");
+  return buildNotificationCopy(kind, lang, displayName);
   const name = displayName;
   const map = {
     welcome: {
@@ -1504,6 +1730,7 @@ function reminderCopyVariants(kind, language, userName) {
   const lang =
       sanitizeLanguage(language) ||
       (displayName ? defaultLanguageForName(displayName) : "english");
+  return [buildNotificationCopy(kind, lang, displayName)];
   const name = displayName;
   const map = {
     morning: {
@@ -3017,10 +3244,13 @@ async function sendDirectReminderToEligibleTokens({
   title,
   body,
   imageUrl = "",
+  eventTitle = "",
+  eventTiming = "",
 }) {
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
   const seenTokens = new Set();
+  const profileCache = new Map();
   const jobs = [];
 
   for (const doc of userTokenSnap.docs) {
@@ -3030,10 +3260,14 @@ async function sendDirectReminderToEligibleTokens({
       continue;
     }
     seenTokens.add(token);
+    const userRef = doc.ref.parent && doc.ref.parent.parent;
+    const uid = userRef ? userRef.id : "";
     jobs.push({
       token,
+      uid,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      language: notificationLanguageFromTokenData(data),
     });
   }
 
@@ -3048,17 +3282,49 @@ async function sendDirectReminderToEligibleTokens({
       token,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      language: notificationLanguageFromTokenData(data),
     });
   }
 
-  await runWithConcurrency(jobs, 4, async ({token, ref, platform}) => {
+  await runWithConcurrency(jobs, 4, async ({token, uid, ref, platform, language}) => {
     try {
+      let resolvedTitle = title;
+      let resolvedBody = body;
+      let resolvedHeader = "";
+      let resolvedFooter = "";
+      let resolvedUserName = "";
+      let resolvedPhotoUrl = "";
+      if (eventTitle) {
+        let profile = uid ? profileCache.get(uid) : null;
+        if (uid && !profile) {
+          profile = await loadNotificationProfileForUid(uid);
+          profileCache.set(uid, profile);
+        }
+        const copy = buildNotificationCopy(
+            "dynamic_event",
+            profile?.preferredLanguage || language,
+            profile?.name || "Mana Poster User",
+            {eventTitle, timing: eventTiming},
+        );
+        resolvedTitle = copy.title;
+        resolvedBody = copy.body;
+        resolvedHeader = copy.header || "";
+        resolvedFooter = copy.footer || "";
+        resolvedUserName = profile?.name || "Mana Poster User";
+        resolvedPhotoUrl = profile?.photoUrl || "";
+      }
       await sendReminderToToken({
         token,
         platform,
-        title,
-        body,
+        title: resolvedTitle,
+        body: resolvedBody,
         imageUrl: imageUrl || null,
+        posterBaseImageUrl: imageUrl || "",
+        headerText: resolvedHeader,
+        footerText: resolvedFooter,
+        categoryKey,
+        userName: resolvedUserName,
+        userPhotoUrl: resolvedPhotoUrl,
       });
     } catch (error) {
       if (isMessagingTokenGoneError(error)) {
@@ -4547,12 +4813,17 @@ exports.dailyDynamicEventReminder = onSchedule(
         const eventTimingLabel = daysUntilEvent(event.month, event.day, now) === 1 ?
           "repu" :
           "ee roju";
+        const eventTiming = daysUntilEvent(event.month, event.day, now) === 1 ?
+          "tomorrow" :
+          "today";
 
         await sendDirectReminderToEligibleTokens({
           categoryKey: "dynamic_event",
           title: `${event.title} reminder`,
           body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
           imageUrl,
+          eventTitle: event.title,
+          eventTiming,
         });
 
         await sentRef.set({

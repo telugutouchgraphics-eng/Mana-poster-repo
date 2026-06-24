@@ -167,24 +167,14 @@ class NotificationService {
     final categoryKey = _readDataValue(message.data, 'categoryKey');
     final userName = _readDataValue(message.data, 'userName');
     final dataResolved = await _resolveMessageText(message.data);
-    final bool imageNotification = posterImageUrl.trim().isNotEmpty;
-    late final _ResolvedNotificationText resolved;
-    if (imageNotification) {
-      // Collapsed tray: omit duplicate title/subtitle lines; wording lives in the PNG header stripe.
-      resolved = const _ResolvedNotificationText(
-        title: _collapsedImageTitle,
-        body: _collapsedImageTitle,
-      );
-    } else {
-      resolved = _ResolvedNotificationText(
-        title: dataResolved.title.isNotEmpty
-            ? dataResolved.title
-            : _sanitizeNotificationText(message.notification?.title ?? ''),
-        body: dataResolved.body.isNotEmpty
-            ? dataResolved.body
-            : _sanitizeNotificationText(message.notification?.body ?? ''),
-      );
-    }
+    final resolved = _ResolvedNotificationText(
+      title: dataResolved.title.isNotEmpty
+          ? dataResolved.title
+          : _sanitizeNotificationText(message.notification?.title ?? ''),
+      body: dataResolved.body.isNotEmpty
+          ? dataResolved.body
+          : _sanitizeNotificationText(message.notification?.body ?? ''),
+    );
     if (resolved.title.isEmpty &&
         resolved.body.isEmpty &&
         posterImageUrl.isEmpty) {
@@ -475,6 +465,13 @@ class NotificationService {
     final snapshot = await AppFlowService.loadSnapshot();
     final titleKey = _readDataValue(data, 'title_key');
     final bodyKey = _readDataValue(data, 'body_key');
+    final directTitle = _sanitizeNotificationText(
+      _readDataValue(data, 'title'),
+    );
+    final directBody = _sanitizeNotificationText(_readDataValue(data, 'body'));
+    if (directTitle.isNotEmpty || directBody.isNotEmpty) {
+      return _ResolvedNotificationText(title: directTitle, body: directBody);
+    }
     if (titleKey.isNotEmpty || bodyKey.isNotEmpty) {
       final title = _localizedNotificationText(
         key: titleKey,
@@ -487,10 +484,6 @@ class NotificationService {
       return _ResolvedNotificationText(title: title, body: body);
     }
 
-    final directTitle = _sanitizeNotificationText(
-      _readDataValue(data, 'title'),
-    );
-    final directBody = _sanitizeNotificationText(_readDataValue(data, 'body'));
     return _ResolvedNotificationText(title: directTitle, body: directBody);
   }
 
@@ -638,8 +631,8 @@ class NotificationService {
         priority: Priority.high,
         styleInformation: BigPictureStyleInformation(
           FilePathAndroidBitmap(posterPath),
-          contentTitle: _collapsedImageTitle,
-          summaryText: _collapsedImageTitle,
+          contentTitle: title.isNotEmpty ? title : _collapsedImageTitle,
+          summaryText: body.isNotEmpty ? body : _collapsedImageTitle,
           htmlFormatContentTitle: false,
           htmlFormatSummaryText: false,
           largeIcon: collapsedHeaderPath != null
