@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'dart:io';
+import 'package:mana_poster/features/prehome/services/telugu_legacy_offline_converter.dart';
 
 class TeluguLegacyTextService {
   TeluguLegacyTextService._();
@@ -10,12 +9,14 @@ class TeluguLegacyTextService {
     String text, {
     required String fontFamily,
   }) async {
-    final normalized = text
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .replaceAll('\u200c', '')
-        .replaceAll('\u200d', '')
-        .trim();
+    return convertSync(text, fontFamily: fontFamily);
+  }
+
+  static String? convertSync(
+    String text, {
+    required String fontFamily,
+  }) {
+    final normalized = _normalize(text);
     if (normalized.isEmpty) {
       return normalized;
     }
@@ -27,29 +28,8 @@ class TeluguLegacyTextService {
       return cached;
     }
 
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10);
     try {
-      final request = await client.postUrl(
-        Uri.parse('https://www.andhracode.com/api/convert'),
-      );
-      request.headers.contentType = ContentType(
-        'application',
-        'x-www-form-urlencoded',
-        charset: 'utf-8',
-      );
-      request.write(
-        'input=${Uri.encodeQueryComponent(normalized)}'
-        '&replaceSpaces=false'
-        '&mapping=mappingA.json'
-        '&commentOutLines=true'
-        '&commentOutLineList=',
-      );
-      final response = await request.close();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return null;
-      }
-      final converted = await utf8.decodeStream(response);
+      final converted = TeluguLegacyOfflineConverter.convert(normalized);
       if (converted.trim().isEmpty) {
         return null;
       }
@@ -57,8 +37,6 @@ class TeluguLegacyTextService {
       return converted;
     } catch (_) {
       return null;
-    } finally {
-      client.close(force: true);
     }
   }
 
@@ -66,17 +44,21 @@ class TeluguLegacyTextService {
     String text, {
     required String fontFamily,
   }) {
-    final normalized = text
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\r', '\n')
-        .replaceAll('\u200c', '')
-        .replaceAll('\u200d', '')
-        .trim();
+    final normalized = _normalize(text);
     if (normalized.isEmpty) {
       return normalized;
     }
     final profile = _profileFor(fontFamily);
     return _cache['$profile::$normalized'];
+  }
+
+  static String _normalize(String text) {
+    return text
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll('\u200c', '')
+        .replaceAll('\u200d', '')
+        .trim();
   }
 
   static String _profileFor(String fontFamily) {

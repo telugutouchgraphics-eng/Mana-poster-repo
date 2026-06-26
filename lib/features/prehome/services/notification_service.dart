@@ -9,13 +9,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mana_poster/app/services/native_startup_state_store.dart';
 import 'package:image/image.dart' as img;
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -46,6 +48,8 @@ class NotificationService {
   /// Word joiner — non-empty so Android does not substitute app name for title.
   static const String _collapsedImageTitle = '\u2060';
   static const String _homeNotificationPayload = 'home';
+  static const String _nativeNotificationTapRouteKey = 'notificationTapRoute';
+  static const String _nativeNotificationTapAtKey = 'notificationTapAt';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -53,6 +57,8 @@ class NotificationService {
   StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
   StreamSubscription<String>? _tokenRefreshSubscription;
   StreamSubscription<User?>? _authStateSubscription;
+  AppLifecycleListener? _nativeNotificationTapLifecycleListener;
+  int? _lastHandledNativeNotificationTapAt;
 
   bool _initialized = false;
   Future<void>? _initializationFuture;
@@ -124,13 +130,28 @@ class NotificationService {
 
     _initialized = true;
     await _attachRealtimeListeners(messaging);
+    _attachNativeNotificationTapListener();
 
     final RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       _handleNotificationTap(initialMessage);
     }
+    await _consumeNativeNotificationTap();
 
     await _guardedRegisterCurrentToken();
+  }
+
+  void _attachNativeNotificationTapListener() {
+    if (kIsWeb ||
+        defaultTargetPlatform != TargetPlatform.android ||
+        _nativeNotificationTapLifecycleListener != null) {
+      return;
+    }
+    _nativeNotificationTapLifecycleListener = AppLifecycleListener(
+      onResume: () {
+        unawaited(_consumeNativeNotificationTap());
+      },
+    );
   }
 
   Future<void> _attachRealtimeListeners(FirebaseMessaging messaging) async {
@@ -423,6 +444,7 @@ class NotificationService {
     final Map<String, dynamic> preferencePayload =
         await _buildPreferenceSyncPayload();
     final AppFlowSnapshot snapshot = await AppFlowService.loadSnapshot();
+    final region = await AppRegionService.loadSelection();
     return <String, dynamic>{
       'token': token,
       'platform': Platform.isAndroid
@@ -432,6 +454,12 @@ class NotificationService {
           : 'other',
       if (uid != null && uid.trim().isNotEmpty) 'uid': uid.trim(),
       'preferredLanguage': snapshot.language.name,
+      if (region != null) ...<String, Object?>{
+        'selectedRegion': region.id,
+        'selectedRegionName': region.name,
+        'selectedRegionLanguage': region.primaryLanguage,
+        'selectedRegionLanguageCode': region.primaryLanguageCode,
+      },
       'updatedAt': FieldValue.serverTimestamp(),
       ...preferencePayload,
       if (includeCreatedAt) 'createdAt': FieldValue.serverTimestamp(),
@@ -449,6 +477,31 @@ class NotificationService {
     }
   }
 
+  Future<void> _consumeNativeNotificationTap() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    final state = await NativeStartupStateStore.readAll();
+    final route = (state[_nativeNotificationTapRouteKey]?.toString() ?? '')
+        .trim()
+        .toLowerCase();
+    final tappedAt = _readInt(state[_nativeNotificationTapAtKey]);
+    if (route.isEmpty || tappedAt <= 0) {
+      return;
+    }
+    if (_lastHandledNativeNotificationTapAt == tappedAt) {
+      return;
+    }
+    _lastHandledNativeNotificationTapAt = tappedAt;
+    await NativeStartupStateStore.writeEntries(<String, Object?>{
+      _nativeNotificationTapRouteKey: null,
+      _nativeNotificationTapAtKey: null,
+    });
+    if (route == _homeNotificationPayload) {
+      _openHomeWithRetry();
+    }
+  }
+
   static void _openHomeWithRetry([int attempt = 0]) {
     AppNavigator.openHome();
     if (AppNavigator.navigatorKey.currentState != null || attempt >= 6) {
@@ -457,6 +510,19 @@ class NotificationService {
     Future<void>.delayed(const Duration(milliseconds: 300), () {
       _openHomeWithRetry(attempt + 1);
     });
+  }
+
+  static int _readInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is double) {
+      return value.round();
+    }
+    if (value is String) {
+      return int.tryParse(value.trim()) ?? 0;
+    }
+    return 0;
   }
 
   static Future<_ResolvedNotificationText> _resolveMessageText(

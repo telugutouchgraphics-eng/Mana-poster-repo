@@ -26,6 +26,7 @@ final Map<String, String> _legacyConversionCache = <String, String>{};
 bool _legacyConversionCacheLoaded = false;
 Future<void>? _legacyConversionCacheLoadFuture;
 Timer? _legacyConversionCachePersistTimer;
+const String _legacyConversionVersion = 'offline-v2';
 
 const Map<String, _LegacyFontProfile> _legacyFontProfiles =
     <String, _LegacyFontProfile>{
@@ -232,7 +233,6 @@ String _normalizeUnicodeForLegacyProfile(
 Future<String?> _fetchLegacyConvertedText(
   String text, {
   required String fontFamily,
-  bool replaceSpaces = false,
 }) async {
   final profile = _legacyFontProfileForFamily(fontFamily);
   final normalized = _normalizeUnicodeForLegacyProfile(text, profile).trim();
@@ -243,14 +243,15 @@ Future<String?> _fetchLegacyConvertedText(
   final outputMode = _legacyProfileUsesModernOutput(profile)
       ? 'modern'
       : 'legacy';
-  final cacheKey = '${profile.name}::$outputMode::$fontFamily::$normalized';
+  final cacheKey =
+      '$_legacyConversionVersion::${profile.name}::$outputMode::$fontFamily::$normalized';
   final cached = _legacyConversionCache[cacheKey];
   if (cached != null) {
     return cached;
   }
   for (final siblingFamily in _legacyFamiliesForProfile(profile)) {
     final siblingKey =
-        '${profile.name}::$outputMode::$siblingFamily::$normalized';
+        '$_legacyConversionVersion::${profile.name}::$outputMode::$siblingFamily::$normalized';
     final siblingCached = _legacyConversionCache[siblingKey];
     if (siblingCached != null) {
       _legacyConversionCache[cacheKey] = siblingCached;
@@ -258,70 +259,23 @@ Future<String?> _fetchLegacyConvertedText(
     }
   }
 
-  final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
   try {
-    final convertRequest = await client.postUrl(
-      Uri.parse('https://www.andhracode.com/api/convert'),
+    final converted = await TeluguLegacyTextService.convert(
+      normalized,
+      fontFamily: fontFamily,
     );
-    convertRequest.headers.contentType = ContentType(
-      'application',
-      'x-www-form-urlencoded',
-      charset: 'utf-8',
-    );
-    final convertBody =
-        'input=${Uri.encodeQueryComponent(normalized)}'
-        '&replaceSpaces=$replaceSpaces'
-        '&mapping=mappingA.json'
-        '&commentOutLines=true'
-        '&commentOutLineList=';
-    convertRequest.write(convertBody);
-    final convertResponse = await convertRequest.close();
-    if (convertResponse.statusCode < 200 || convertResponse.statusCode >= 300) {
+    if (converted == null || converted.trim().isEmpty) {
       return null;
     }
-    final modernOutput = await utf8.decodeStream(convertResponse);
-    if (modernOutput.trim().isEmpty) {
-      return null;
-    }
-
-    if (_legacyProfileUsesModernOutput(profile)) {
-      _legacyConversionCache[cacheKey] = modernOutput;
-      for (final siblingFamily in _legacyFamiliesForProfile(profile)) {
-        _legacyConversionCache['${profile.name}::$outputMode::$siblingFamily::$normalized'] =
-            modernOutput;
-      }
-      _scheduleLegacyConversionCachePersist();
-      return modernOutput;
-    }
-
-    final legacyRequest = await client.postUrl(
-      Uri.parse('https://www.andhracode.com/api/legacy-convert'),
-    );
-    legacyRequest.headers.contentType = ContentType(
-      'application',
-      'x-www-form-urlencoded',
-      charset: 'utf-8',
-    );
-    legacyRequest.write('input=${Uri.encodeQueryComponent(modernOutput)}');
-    final legacyResponse = await legacyRequest.close();
-    if (legacyResponse.statusCode < 200 || legacyResponse.statusCode >= 300) {
-      return null;
-    }
-    final legacyOutput = await utf8.decodeStream(legacyResponse);
-    if (legacyOutput.isEmpty) {
-      return null;
-    }
-    _legacyConversionCache[cacheKey] = legacyOutput;
+    _legacyConversionCache[cacheKey] = converted;
     for (final siblingFamily in _legacyFamiliesForProfile(profile)) {
-      _legacyConversionCache['${profile.name}::$outputMode::$siblingFamily::$normalized'] =
-          legacyOutput;
+      _legacyConversionCache['$_legacyConversionVersion::${profile.name}::$outputMode::$siblingFamily::$normalized'] =
+          converted;
     }
     _scheduleLegacyConversionCachePersist();
-    return legacyOutput;
+    return converted;
   } catch (_) {
     return null;
-  } finally {
-    client.close(force: true);
   }
 }
 
@@ -340,13 +294,14 @@ bool _hasCachedLegacyRenderText({
   final outputMode = _legacyProfileUsesModernOutput(profile)
       ? 'modern'
       : 'legacy';
-  final cacheKey = '${profile.name}::$outputMode::$fontFamily::$normalized';
+  final cacheKey =
+      '$_legacyConversionVersion::${profile.name}::$outputMode::$fontFamily::$normalized';
   if (_legacyConversionCache.containsKey(cacheKey)) {
     return true;
   }
   for (final siblingFamily in _legacyFamiliesForProfile(profile)) {
     if (_legacyConversionCache.containsKey(
-      '${profile.name}::$outputMode::$siblingFamily::$normalized',
+      '$_legacyConversionVersion::${profile.name}::$outputMode::$siblingFamily::$normalized',
     )) {
       return true;
     }

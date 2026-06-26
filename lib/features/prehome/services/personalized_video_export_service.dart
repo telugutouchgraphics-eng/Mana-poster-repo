@@ -93,6 +93,7 @@ class PersonalizedVideoExportService {
     PosterProfileData? extraPhotoProfile,
     String title = 'Mana Poster',
     String previewSeed = 'poster',
+    int stripGradientTapOffset = 0,
   }) async {
     final cacheKey = _exportCacheKey(
       videoUrl: videoUrl,
@@ -102,6 +103,7 @@ class PersonalizedVideoExportService {
       language: language,
       title: title,
       previewSeed: previewSeed,
+      stripGradientTapOffset: stripGradientTapOffset,
     );
     final diskCachedFile = await _cachedOutputFile(cacheKey);
     if (await diskCachedFile.exists() && await diskCachedFile.length() > 0) {
@@ -129,6 +131,7 @@ class PersonalizedVideoExportService {
       language: language,
       title: title,
       previewSeed: previewSeed,
+      stripGradientTapOffset: stripGradientTapOffset,
       outputPath: diskCachedFile.path,
     );
     _exportCache[cacheKey] = future;
@@ -148,6 +151,7 @@ class PersonalizedVideoExportService {
     required AppLanguage language,
     required String title,
     required String previewSeed,
+    required int stripGradientTapOffset,
     required String outputPath,
   }) async {
     final workDir = await _createWorkDir();
@@ -182,6 +186,7 @@ class PersonalizedVideoExportService {
             workDir: workDir,
             title: title,
             previewSeed: previewSeed,
+            stripGradientTapOffset: stripGradientTapOffset,
           )
         : null;
     final outputFile = File(outputPath);
@@ -266,6 +271,7 @@ class PersonalizedVideoExportService {
     required AppLanguage language,
     required String title,
     required String previewSeed,
+    required int stripGradientTapOffset,
   }) {
     return <Object?>[
       videoUrl.trim(),
@@ -275,6 +281,7 @@ class PersonalizedVideoExportService {
       language.name,
       title,
       previewSeed,
+      stripGradientTapOffset,
       outputWidth,
       outputHeight,
       _exportLayoutVersion,
@@ -687,6 +694,7 @@ class PersonalizedVideoExportService {
     required Directory workDir,
     required String title,
     required String previewSeed,
+    required int stripGradientTapOffset,
   }) async {
     final stripHeight =
         (outputHeight * (personalization.stripHeight / 100) * 0.5)
@@ -701,15 +709,30 @@ class PersonalizedVideoExportService {
       previewSeed: previewSeed,
       stripHeight: personalization.stripHeight,
       resolvedName: profile.resolvedName(language: language),
+      stripGradientTapOffset: stripGradientTapOffset,
+    );
+    final stripModel = _resolvePosterStripModel(
+      previewSeed: previewSeed,
+      stripHeight: personalization.stripHeight,
+      resolvedName: profile.resolvedName(language: language),
     );
     canvas.drawRect(
       ui.Rect.fromLTWH(0, 0, outputWidth.toDouble(), stripHeight.toDouble()),
       ui.Paint()
         ..shader = ui.Gradient.linear(
           ui.Offset.zero,
-          ui.Offset(outputWidth.toDouble(), 0),
+          stripModel == 1
+              ? ui.Offset(outputWidth.toDouble(), stripHeight.toDouble())
+              : ui.Offset(outputWidth.toDouble(), 0),
           stripGradient,
         ),
+    );
+    _drawStripAccent(
+      canvas: canvas,
+      width: outputWidth.toDouble(),
+      height: stripHeight.toDouble(),
+      model: stripModel,
+      gradient: stripGradient,
     );
 
     final rawName = profile.resolvedName(language: language).trim();
@@ -754,8 +777,9 @@ class PersonalizedVideoExportService {
     final trailingFontSize = isBusinessProfile
         ? (trailingUsesTeluguLayout ? 54.0 : 40.5)
         : (trailingUsesTeluguLayout ? 60.0 : 40.5);
-    final leftPadding = outputWidth * 0.039;
-    final rightPadding = outputWidth * 0.039;
+    final horizontalInset = stripModel == 3 ? 0.058 : 0.039;
+    final leftPadding = outputWidth * horizontalInset;
+    final rightPadding = outputWidth * horizontalInset;
     final gap = outputWidth * 0.028;
     final dividerWidth = 4.5;
     final dividerX = outputWidth * 0.5;
@@ -954,20 +978,210 @@ class PersonalizedVideoExportService {
     required String previewSeed,
     required double stripHeight,
     required String resolvedName,
+    required int stripGradientTapOffset,
   }) {
     const gradients = <List<ui.Color>>[
-      <ui.Color>[ui.Color(0xFF5B2C83), ui.Color(0xFF8A4BC9)],
-      <ui.Color>[ui.Color(0xFF0F4C75), ui.Color(0xFF3282B8)],
-      <ui.Color>[ui.Color(0xFF8D153A), ui.Color(0xFFC84B68)],
-      <ui.Color>[ui.Color(0xFF5A3E2B), ui.Color(0xFF9C6B4A)],
-      <ui.Color>[ui.Color(0xFF374151), ui.Color(0xFF6B7280)],
+      <ui.Color>[
+        ui.Color(0xFF7C2D12),
+        ui.Color(0xFFEA580C),
+        ui.Color(0xFFC2410C),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF581C87),
+        ui.Color(0xFFBE185D),
+        ui.Color(0xFF9D174D),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF064E3B),
+        ui.Color(0xFF059669),
+        ui.Color(0xFF047857),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF7F1D1D),
+        ui.Color(0xFFDC2626),
+        ui.Color(0xFF991B1B),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF082F49),
+        ui.Color(0xFF0891B2),
+        ui.Color(0xFF0F766E),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF831843),
+        ui.Color(0xFFDB2777),
+        ui.Color(0xFFBE185D),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF4C1D95),
+        ui.Color(0xFF7C3AED),
+        ui.Color(0xFF5B21B6),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF134E4A),
+        ui.Color(0xFF0D9488),
+        ui.Color(0xFF115E59),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF3F1D38),
+        ui.Color(0xFFC026D3),
+        ui.Color(0xFFDB2777),
+      ],
+      <ui.Color>[
+        ui.Color(0xFF3B0764),
+        ui.Color(0xFF9333EA),
+        ui.Color(0xFF7E22CE),
+      ],
     ];
     final seedSource = '$previewSeed|$stripHeight|$resolvedName';
     var hash = 23;
     for (final codeUnit in seedSource.codeUnits) {
       hash = 41 * hash + codeUnit;
     }
-    return gradients[hash.abs() % gradients.length];
+    final baseIndex = hash.abs() % gradients.length;
+    final resolvedIndex =
+        (baseIndex + stripGradientTapOffset) % gradients.length;
+    return gradients[resolvedIndex];
+  }
+
+  int _resolvePosterStripModel({
+    required String previewSeed,
+    required double stripHeight,
+    required String resolvedName,
+  }) {
+    final seedSource = '$previewSeed|$stripHeight|model|$resolvedName';
+    var hash = 29;
+    for (final codeUnit in seedSource.codeUnits) {
+      hash = 43 * hash + codeUnit;
+    }
+    return hash.abs() % 10;
+  }
+
+  void _drawStripAccent({
+    required ui.Canvas canvas,
+    required double width,
+    required double height,
+    required int model,
+    required List<ui.Color> gradient,
+  }) {
+    switch (model) {
+      case 0:
+        final topPaint = ui.Paint()
+          ..color = const ui.Color(0x58FFFFFF)
+          ..strokeWidth = 4;
+        final bottomPaint = ui.Paint()
+          ..color = const ui.Color(0x33000000)
+          ..strokeWidth = 4;
+        canvas.drawLine(ui.Offset.zero, ui.Offset(width, 0), topPaint);
+        canvas.drawLine(
+          ui.Offset(0, height),
+          ui.Offset(width, height),
+          bottomPaint,
+        );
+        break;
+      case 1:
+        final paint = ui.Paint()..color = const ui.Color(0x2EFFFFFF);
+        final stripeWidth = width * 0.18;
+        for (
+          var start = -width;
+          start < width * 1.4;
+          start += stripeWidth * 1.55
+        ) {
+          final path = ui.Path()
+            ..moveTo(start, height)
+            ..lineTo(start + stripeWidth, height)
+            ..lineTo(start + stripeWidth + height * 0.7, 0)
+            ..lineTo(start + height * 0.7, 0)
+            ..close();
+          canvas.drawPath(path, paint);
+        }
+        break;
+      case 2:
+        final paint = ui.Paint()
+          ..color = gradient.last.withAlpha(220)
+          ..strokeWidth = 7;
+        canvas.drawLine(ui.Offset.zero, ui.Offset(width, 0), paint);
+        break;
+      case 3:
+        final paint = ui.Paint()..color = const ui.Color(0x1FFFFFFF);
+        final strokePaint = ui.Paint()
+          ..color = const ui.Color(0x3DFFFFFF)
+          ..style = ui.PaintingStyle.stroke
+          ..strokeWidth = 2;
+        final card = ui.RRect.fromRectAndRadius(
+          ui.Rect.fromLTWH(34, 12, width - 68, height - 24),
+          const ui.Radius.circular(30),
+        );
+        canvas.drawRRect(card, paint);
+        canvas.drawRRect(card, strokePaint);
+        break;
+      case 4:
+        final paint = ui.Paint()..color = const ui.Color(0x29FFFFFF);
+        canvas.drawRRect(
+          ui.RRect.fromRectAndCorners(
+            ui.Rect.fromLTWH(width * 0.58, 0, width * 0.42, height),
+            topLeft: const ui.Radius.circular(999),
+            bottomLeft: const ui.Radius.circular(999),
+          ),
+          paint,
+        );
+        break;
+      case 5:
+        final paint = ui.Paint()..color = const ui.Color(0x2EFFFFFF);
+        final gap = height * 0.36;
+        final radius = height * 0.035;
+        for (var x = gap * 0.8; x < width; x += gap) {
+          canvas.drawCircle(ui.Offset(x, height * 0.28), radius, paint);
+          canvas.drawCircle(
+            ui.Offset(x + gap * 0.45, height * 0.72),
+            radius,
+            paint,
+          );
+        }
+        break;
+      case 6:
+        final paint = ui.Paint()
+          ..color = const ui.Color(0x80FFFFFF)
+          ..strokeWidth = 5;
+        canvas.drawLine(ui.Offset(0, height), ui.Offset(width, height), paint);
+        break;
+      case 7:
+        final paint = ui.Paint()..color = const ui.Color(0x1F000000);
+        canvas.drawRRect(
+          ui.RRect.fromRectAndCorners(
+            ui.Rect.fromLTWH(0, 0, width * 0.34, height),
+            topRight: const ui.Radius.circular(999),
+            bottomRight: const ui.Radius.circular(999),
+          ),
+          paint,
+        );
+        break;
+      case 8:
+        final paint = ui.Paint()
+          ..color = const ui.Color(0x29FFFFFF)
+          ..style = ui.PaintingStyle.stroke
+          ..strokeWidth = 4;
+        final path = ui.Path()..moveTo(0, height * 0.55);
+        for (var x = 0.0; x <= width; x += width / 8) {
+          path.quadraticBezierTo(
+            x + width / 16,
+            height * 0.35,
+            x + width / 8,
+            height * 0.55,
+          );
+        }
+        canvas.drawPath(path, paint);
+        break;
+      default:
+        final paint = ui.Paint()
+          ..color = const ui.Color(0x38FFFFFF)
+          ..style = ui.PaintingStyle.stroke
+          ..strokeWidth = 3;
+        final outline = ui.RRect.fromRectAndRadius(
+          ui.Rect.fromLTWH(26, 10, width - 52, height - 20),
+          const ui.Radius.circular(999),
+        );
+        canvas.drawRRect(outline, paint);
+    }
   }
 
   String _resolveDesignationFontFamily(String text) {

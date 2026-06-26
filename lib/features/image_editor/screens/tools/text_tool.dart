@@ -198,6 +198,13 @@ class _TextEditorFullscreenOverlayState
       }
       return;
     }
+    final immediateConverted = TeluguLegacyTextService.convertSync(
+      text,
+      fontFamily: fontFamily,
+    );
+    if (immediateConverted != null && immediateConverted.isNotEmpty) {
+      _legacyPreviewText = immediateConverted;
+    }
     final revision = ++_legacyPreviewRevision;
     _legacyPreviewDebounce = Timer(const Duration(milliseconds: 260), () async {
       final converted = await _resolveLegacyRenderTextFor(

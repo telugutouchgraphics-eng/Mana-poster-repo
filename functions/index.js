@@ -1140,7 +1140,7 @@ function reminderGreetingPrefix(displayName, bodySentence) {
 
 async function loadNotificationProfileForUid(uid) {
   if (!uid) {
-    return {name: "", photoUrl: "", preferredLanguage: "english"};
+    return {name: "", photoUrl: "", preferredLanguage: "english", selectedRegion: ""};
   }
   try {
     let authUser = null;
@@ -1160,6 +1160,9 @@ async function loadNotificationProfileForUid(uid) {
         name: pickFirstUsablePosterName(authUser?.displayName),
         photoUrl: String(authUser?.photoURL || "").trim(),
         preferredLanguage,
+        selectedRegion: notificationRegionFromData(
+            userSnap.exists ? (userSnap.data() || {}) : {},
+        ),
       };
     }
     const baseProfile = notificationProfileFromData(snap.data() || {});
@@ -1179,10 +1182,13 @@ async function loadNotificationProfileForUid(uid) {
       name: resolvedName,
       photoUrl: String(profile.photoUrl || "").trim() ||
           String(authUser?.photoURL || "").trim(),
+      selectedRegion: notificationRegionFromData(
+          userSnap.exists ? (userSnap.data() || {}) : {},
+      ),
     };
   } catch (error) {
     logger.warn("loadNotificationProfileForUid failed", {uid, error});
-    return {name: "", photoUrl: "", preferredLanguage: "english"};
+    return {name: "", photoUrl: "", preferredLanguage: "english", selectedRegion: ""};
   }
 }
 
@@ -1868,6 +1874,27 @@ function notificationLanguageFromTokenData(data, fallback = "english") {
   return sanitizeLanguage(
       (data && (data.preferredLanguage || data.language || data.locale)) || "",
   ) || fallback;
+}
+
+function normalizeRegionId(value) {
+  return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, "and")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+}
+
+function notificationRegionFromData(data) {
+  return normalizeRegionId(
+      data && (
+        data.selectedRegion ||
+        data.regionId ||
+        data.stateId ||
+        data.state ||
+        data.selectedState
+      ),
+  );
 }
 
 function initialsSvgDataUri(name, palette) {
@@ -2757,11 +2784,12 @@ function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-async function getRelatedPosterImagesByKeywords(keywords) {
+async function getRelatedPosterImagesByKeywords(keywords, regionId = "") {
   const keyList = (keywords || [])
       .map((item) => normalizeText(item))
       .filter((item) => item.length > 0);
-  if (keyList.length === 0) {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  if (keyList.length === 0 || !resolvedRegionId) {
     return [];
   }
 
@@ -2769,6 +2797,7 @@ async function getRelatedPosterImagesByKeywords(keywords) {
     const snap = await db
         .collection("creatorPosters")
         .where("status", "==", "approved")
+        .where("regionId", "==", resolvedRegionId)
         .orderBy("createdAt", "desc")
         .limit(300)
         .get();
@@ -2839,11 +2868,12 @@ function categoryMatchesStrictAlias(categoryId, categoryLabel, alias) {
   );
 }
 
-async function getApprovedPosterImagesForReminderCategory(categoryKey) {
+async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId = "") {
   const aliases = reminderCategoryAliases(categoryKey)
       .map((item) => normalizeText(item))
       .filter((item) => item.length > 0);
-  if (aliases.length === 0) {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  if (aliases.length === 0 || !resolvedRegionId) {
     return [];
   }
 
@@ -2851,6 +2881,7 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey) {
     const snap = await db
         .collection("creatorPosters")
         .where("status", "==", "approved")
+        .where("regionId", "==", resolvedRegionId)
         .orderBy("createdAt", "desc")
         .limit(300)
         .get();
@@ -2875,6 +2906,7 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey) {
   } catch (error) {
     logger.warn("getApprovedPosterImagesForReminderCategory failed", {
       categoryKey,
+      regionId: resolvedRegionId,
       error,
     });
     return [];
@@ -2904,12 +2936,17 @@ async function getRandomApprovedPosterImage() {
   }
 }
 
-async function pickImageForReminder(keywords, seed = "") {
+async function pickImageForReminder(keywords, seed = "", regionId = "") {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  if (!resolvedRegionId) {
+    return "";
+  }
   const normalizedCategory = reminderCategoryKey(
       Array.isArray(keywords) ? keywords.join(" ") : keywords,
   );
   const strictMatches = await getApprovedPosterImagesForReminderCategory(
       normalizedCategory,
+      resolvedRegionId,
   );
   if (strictMatches.length > 0) {
     const index = stableHashNumber(
@@ -2918,7 +2955,7 @@ async function pickImageForReminder(keywords, seed = "") {
     return strictMatches[index] || "";
   }
 
-  const relatedMatches = await getRelatedPosterImagesByKeywords(keywords);
+  const relatedMatches = await getRelatedPosterImagesByKeywords(keywords, resolvedRegionId);
   if (relatedMatches.length > 0) {
     const index = stableHashNumber(
         `${normalizedCategory}-${seed || Date.now()}-related`,
@@ -2926,12 +2963,17 @@ async function pickImageForReminder(keywords, seed = "") {
     return relatedMatches[index] || "";
   }
 
-  return getPrimaryBannerImage();
+  return "";
 }
 
-async function pickStrictImageForReminderCategory(categoryKey, seed = "") {
+async function pickStrictImageForReminderCategory(categoryKey, seed = "", regionId = "") {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  if (!resolvedRegionId) {
+    return "";
+  }
   const strictMatches = await getApprovedPosterImagesForReminderCategory(
       categoryKey,
+      resolvedRegionId,
   );
   if (strictMatches.length === 0) {
     return "";
@@ -3025,6 +3067,7 @@ async function sendThreeKindsToFcmToken(fcmToken, uidHint = "") {
 
   let uid = String(uidHint || "").trim();
   let platform = "android";
+  let tokenRegionId = "";
   if (uid && fcmToken) {
     const snap = await db.collection("users").doc(uid).collection("deviceTokens")
         .where("token", "==", fcmToken)
@@ -3033,10 +3076,12 @@ async function sendThreeKindsToFcmToken(fcmToken, uidHint = "") {
     if (!snap.empty) {
       const data = snap.docs[0].data() || {};
       platform = String(data.platform || "android").trim() || "android";
+      tokenRegionId = notificationRegionFromData(data);
     }
   }
 
   const profile = await loadNotificationProfileForUid(uid);
+  const resolvedRegionId = normalizeRegionId(tokenRegionId || profile.selectedRegion);
   const jobs = [
     {categoryKey: "morning", keywords: morningKeywords},
     {categoryKey: "afternoon", keywords: afternoonKeywords},
@@ -3046,13 +3091,14 @@ async function sendThreeKindsToFcmToken(fcmToken, uidHint = "") {
   for (const job of jobs) {
     const imageUrl = await pickStrictImageForReminderCategory(
         job.categoryKey,
-        `${job.categoryKey}-manual-${Date.now()}`,
+        `${job.categoryKey}-manual-${Date.now()}-${resolvedRegionId}`,
+        resolvedRegionId,
     );
     if (!imageUrl) {
       results.push({
         categoryKey: job.categoryKey,
         skipped: true,
-        reason: "no_category_poster",
+        reason: resolvedRegionId ? "no_regional_category_poster" : "missing_region",
       });
       continue;
     }
@@ -3113,21 +3159,29 @@ async function sendDailyPersonalizedReminder({
   const now = new Date();
   const dayKey = getIstDayKey(now);
   const resolvedSeed = normalizeText(reminderSeed) || "default";
-  const imageUrl = await pickStrictImageForReminderCategory(
-      categoryKey,
-      `${categoryKey}-${dayKey}-${resolvedSeed}`,
-  );
-  if (!imageUrl) {
-    logger.info("daily personalized reminder skipped: no category poster", {
-      categoryKey,
-      reminderSeed: resolvedSeed,
-    });
-    return;
-  }
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
+  const imageCache = new Map();
   const userJobs = [];
+
+  async function imageForRegion(regionId) {
+    const resolvedRegionId = normalizeRegionId(regionId);
+    if (!resolvedRegionId) {
+      return "";
+    }
+    const cacheKey = `${resolvedRegionId}:${categoryKey}:${resolvedSeed}`;
+    if (imageCache.has(cacheKey)) {
+      return imageCache.get(cacheKey);
+    }
+    const imageUrl = await pickStrictImageForReminderCategory(
+        categoryKey,
+        `${categoryKey}-${dayKey}-${resolvedSeed}-${resolvedRegionId}`,
+        resolvedRegionId,
+    );
+    imageCache.set(cacheKey, imageUrl || "");
+    return imageUrl || "";
+  }
 
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
@@ -3143,16 +3197,27 @@ async function sendDailyPersonalizedReminder({
       uid,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      regionId: notificationRegionFromData(data),
     });
   }
 
-  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform}) => {
+  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform, regionId}) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
       profileCache.set(uid, profile);
     }
     try {
+      const resolvedRegionId = normalizeRegionId(regionId || profile.selectedRegion);
+      const imageUrl = await imageForRegion(resolvedRegionId);
+      if (!imageUrl) {
+        logger.info("personalized daily reminder skipped: no regional poster", {
+          uid,
+          categoryKey,
+          regionId: resolvedRegionId,
+        });
+        return;
+      }
       const copy = reminderCopyLocalized(
           categoryKey,
           profile.preferredLanguage,
@@ -3201,11 +3266,22 @@ async function sendDailyPersonalizedReminder({
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
       language: notificationLanguageFromTokenData(data),
+      regionId: notificationRegionFromData(data),
     });
   }
 
-  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language}) => {
+  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language, regionId}) => {
     try {
+      const resolvedRegionId = normalizeRegionId(regionId);
+      const imageUrl = await imageForRegion(resolvedRegionId);
+      if (!imageUrl) {
+        logger.info("public daily reminder skipped: no regional poster", {
+          tokenSuffix: String(token || "").slice(-12),
+          categoryKey,
+          regionId: resolvedRegionId,
+        });
+        return;
+      }
       const copy = reminderCopyLocalized(
           categoryKey,
           language,
@@ -3246,12 +3322,34 @@ async function sendDirectReminderToEligibleTokens({
   imageUrl = "",
   eventTitle = "",
   eventTiming = "",
+  eventKeywords = [],
 }) {
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
+  const imageCache = new Map();
   const jobs = [];
+
+  async function imageForRegion(regionId) {
+    const resolvedRegionId = normalizeRegionId(regionId);
+    if (!resolvedRegionId) {
+      return "";
+    }
+    const cacheKey = `${resolvedRegionId}:${categoryKey}:${eventTitle}`;
+    if (imageCache.has(cacheKey)) {
+      return imageCache.get(cacheKey);
+    }
+    const regionalImageUrl = eventTitle ?
+      await pickImageForReminder(
+          eventKeywords.length > 0 ? eventKeywords : [eventTitle],
+          `${eventTitle}-${eventTiming}-${resolvedRegionId}`,
+          resolvedRegionId,
+      ) :
+      String(imageUrl || "").trim();
+    imageCache.set(cacheKey, regionalImageUrl || "");
+    return regionalImageUrl || "";
+  }
 
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
@@ -3268,6 +3366,7 @@ async function sendDirectReminderToEligibleTokens({
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
       language: notificationLanguageFromTokenData(data),
+      regionId: notificationRegionFromData(data),
     });
   }
 
@@ -3283,10 +3382,11 @@ async function sendDirectReminderToEligibleTokens({
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
       language: notificationLanguageFromTokenData(data),
+      regionId: notificationRegionFromData(data),
     });
   }
 
-  await runWithConcurrency(jobs, 4, async ({token, uid, ref, platform, language}) => {
+  await runWithConcurrency(jobs, 4, async ({token, uid, ref, platform, language, regionId}) => {
     try {
       let resolvedTitle = title;
       let resolvedBody = body;
@@ -3294,12 +3394,14 @@ async function sendDirectReminderToEligibleTokens({
       let resolvedFooter = "";
       let resolvedUserName = "";
       let resolvedPhotoUrl = "";
+      let resolvedRegionId = normalizeRegionId(regionId);
       if (eventTitle) {
         let profile = uid ? profileCache.get(uid) : null;
         if (uid && !profile) {
           profile = await loadNotificationProfileForUid(uid);
           profileCache.set(uid, profile);
         }
+        resolvedRegionId = normalizeRegionId(resolvedRegionId || profile?.selectedRegion);
         const copy = buildNotificationCopy(
             "dynamic_event",
             profile?.preferredLanguage || language,
@@ -3313,13 +3415,23 @@ async function sendDirectReminderToEligibleTokens({
         resolvedUserName = profile?.name || "Mana Poster User";
         resolvedPhotoUrl = profile?.photoUrl || "";
       }
+      const resolvedImageUrl = await imageForRegion(resolvedRegionId);
+      if (!resolvedImageUrl) {
+        logger.info("direct reminder skipped: no regional poster", {
+          tokenSuffix: String(token || "").slice(-12),
+          categoryKey,
+          regionId: resolvedRegionId,
+          eventTitle,
+        });
+        return;
+      }
       await sendReminderToToken({
         token,
         platform,
         title: resolvedTitle,
         body: resolvedBody,
-        imageUrl: imageUrl || null,
-        posterBaseImageUrl: imageUrl || "",
+        imageUrl: resolvedImageUrl || null,
+        posterBaseImageUrl: resolvedImageUrl || "",
         headerText: resolvedHeader,
         footerText: resolvedFooter,
         categoryKey,
@@ -3344,22 +3456,31 @@ async function sendLocalizedGreetingReminder({
   reminderKind,
 }) {
   const now = new Date();
-  const imageUrl = await pickStrictImageForReminderCategory(
-      categoryKey,
-      `${categoryKey}-${reminderKind}-${getIstDayKey(now)}`,
-  );
-  if (!imageUrl) {
-    logger.info("localized greeting reminder skipped: no category poster", {
-      categoryKey,
-      reminderKind,
-    });
-    return;
-  }
+  const dayKey = getIstDayKey(now);
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
   const seenTokens = new Set();
   const profileCache = new Map();
+  const imageCache = new Map();
   const userJobs = [];
+
+  async function imageForRegion(regionId) {
+    const resolvedRegionId = normalizeRegionId(regionId);
+    if (!resolvedRegionId) {
+      return "";
+    }
+    const cacheKey = `${resolvedRegionId}:${categoryKey}:${reminderKind}`;
+    if (imageCache.has(cacheKey)) {
+      return imageCache.get(cacheKey);
+    }
+    const imageUrl = await pickStrictImageForReminderCategory(
+        categoryKey,
+        `${categoryKey}-${reminderKind}-${dayKey}-${resolvedRegionId}`,
+        resolvedRegionId,
+    );
+    imageCache.set(cacheKey, imageUrl || "");
+    return imageUrl || "";
+  }
 
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
@@ -3375,10 +3496,11 @@ async function sendLocalizedGreetingReminder({
       uid,
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
+      regionId: notificationRegionFromData(data),
     });
   }
 
-  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform}) => {
+  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform, regionId}) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
@@ -3390,6 +3512,17 @@ async function sendLocalizedGreetingReminder({
         now,
     );
     try {
+      const resolvedRegionId = normalizeRegionId(regionId || profile.selectedRegion);
+      const imageUrl = await imageForRegion(resolvedRegionId);
+      if (!imageUrl) {
+        logger.info("localized greeting reminder skipped: no regional poster", {
+          uid,
+          categoryKey,
+          reminderKind,
+          regionId: resolvedRegionId,
+        });
+        return;
+      }
       await sendReminderToToken({
         token,
         platform,
@@ -3427,12 +3560,24 @@ async function sendLocalizedGreetingReminder({
       ref: doc.ref,
       platform: String(data.platform || "").trim(),
       language: notificationLanguageFromTokenData(data),
+      regionId: notificationRegionFromData(data),
     });
   }
 
-  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language}) => {
+  await runWithConcurrency(publicJobs, 12, async ({token, ref, platform, language, regionId}) => {
     const copy = greetingReminderVariant(reminderKind, language, now);
     try {
+      const resolvedRegionId = normalizeRegionId(regionId);
+      const imageUrl = await imageForRegion(resolvedRegionId);
+      if (!imageUrl) {
+        logger.info("public localized greeting reminder skipped: no regional poster", {
+          tokenSuffix: String(token || "").slice(-12),
+          categoryKey,
+          reminderKind,
+          regionId: resolvedRegionId,
+        });
+        return;
+      }
       await sendReminderToToken({
         token,
         platform,
@@ -4808,8 +4953,6 @@ exports.dailyDynamicEventReminder = onSchedule(
           continue;
         }
 
-        const imageUrl = await pickImageForReminder(event.keywords || [event.title]);
-
         const eventTimingLabel = daysUntilEvent(event.month, event.day, now) === 1 ?
           "repu" :
           "ee roju";
@@ -4821,9 +4964,9 @@ exports.dailyDynamicEventReminder = onSchedule(
           categoryKey: "dynamic_event",
           title: `${event.title} reminder`,
           body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
-          imageUrl,
           eventTitle: event.title,
           eventTiming,
+          eventKeywords: event.keywords || [event.title],
         });
 
         await sentRef.set({

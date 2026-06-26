@@ -30,6 +30,8 @@ class MainActivity : FlutterFragmentActivity() {
     private val playEngagementChannelName = "mana_poster/play_engagement"
     private val startupStateChannelName = "mana_poster/startup_state"
     private val startupStatePrefsName = "mana_poster_startup_state_v1"
+    private val notificationTapRouteKey = "notificationTapRoute"
+    private val notificationTapAtKey = "notificationTapAt"
     private val appUpdateRequestCode = 3017
     private val appUpdateManager: AppUpdateManager by lazy {
         AppUpdateManagerFactory.create(this)
@@ -41,6 +43,13 @@ class MainActivity : FlutterFragmentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+        rememberNotificationLaunch(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        rememberNotificationLaunch(intent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -311,6 +320,22 @@ class MainActivity : FlutterFragmentActivity() {
         }
         val committed = editor.commit()
         return committed
+    }
+
+    private fun rememberNotificationLaunch(intent: Intent?) {
+        val route = intent
+            ?.getStringExtra("notification_route")
+            ?.trim()
+            .orEmpty()
+        if (route.isBlank()) {
+            return
+        }
+        writeStartupState(
+            mapOf(
+                notificationTapRouteKey to route,
+                notificationTapAtKey to System.currentTimeMillis(),
+            )
+        )
     }
 
     private fun isTrustedPlayInstall(): Boolean {

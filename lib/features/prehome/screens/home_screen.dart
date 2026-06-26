@@ -5230,6 +5230,23 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  Future<void> _scrollHomeFeedToTop() async {
+    _searchFocusNode.unfocus();
+    if (!_posterScrollController.hasClients) {
+      return;
+    }
+    final position = _posterScrollController.position;
+    if (!position.hasContentDimensions ||
+        position.pixels <= position.minScrollExtent) {
+      return;
+    }
+    await _posterScrollController.animateTo(
+      position.minScrollExtent,
+      duration: const Duration(milliseconds: 850),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final language = context.currentLanguage;
@@ -5291,6 +5308,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: <Widget>[
           RepaintBoundary(
             child: _HomeHeader(
+              onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
               onCreateTap: _onCreateTap,
               onStatusTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -8071,6 +8089,7 @@ class _StatusReactionButton extends StatelessWidget {
 
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
+    required this.onHeaderTap,
     required this.onCreateTap,
     required this.onStatusTap,
     required this.onProfileTap,
@@ -8081,6 +8100,7 @@ class _HomeHeader extends StatelessWidget {
     required this.onSearchSubmitted,
   });
 
+  final VoidCallback onHeaderTap;
   final VoidCallback onCreateTap;
   final VoidCallback onStatusTap;
   final VoidCallback onProfileTap;
@@ -8095,122 +8115,126 @@ class _HomeHeader extends StatelessWidget {
     final strings = context.strings;
     final topInset = MediaQuery.of(context).padding.top;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 12),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFFD81B60),
-            Color(0xFFFF6F3C),
-            Color(0xFFFFB703),
-          ],
-          stops: <double>[0.0, 0.58, 1.0],
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: onHeaderTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 12),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              Color(0xFFD81B60),
+              Color(0xFFFF6F3C),
+              Color(0xFFFFB703),
+            ],
+            stops: <double>[0.0, 0.58, 1.0],
+          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  AppPublicInfo.appName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    AppPublicInfo.appName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
-              Tooltip(
-                message: strings.localized(
-                  telugu: 'స్టేటస్లు',
-                  english: 'Statuses',
+                Tooltip(
+                  message: strings.localized(
+                    telugu: 'స్టేటస్లు',
+                    english: 'Statuses',
+                  ),
+                  child: InkWell(
+                    onTap: onStatusTap,
+                    customBorder: const CircleBorder(),
+                    child: const _HeaderStatusShortcut(),
+                  ),
                 ),
-                child: InkWell(
-                  onTap: onStatusTap,
+                const SizedBox(width: 6),
+                InkWell(
+                  onTap: onProfileTap,
                   customBorder: const CircleBorder(),
-                  child: const _HeaderStatusShortcut(),
-                ),
-              ),
-              const SizedBox(width: 6),
-              InkWell(
-                onTap: onProfileTap,
-                customBorder: const CircleBorder(),
-                child: SizedBox(
-                  width: 38,
-                  height: 38,
-                  child: _HeaderProfileAvatar(
-                    viewerPosterProfile: viewerPosterProfile,
+                  child: SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: _HeaderProfileAvatar(
+                      viewerPosterProfile: viewerPosterProfile,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Text(
-            AppPublicInfo.appTagline,
-            style: const TextStyle(
-              color: Color(0xFFFFF4E6),
-              fontSize: 11,
-              height: 1.25,
-              fontWeight: FontWeight.w500,
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: TextField(
-                  controller: searchController,
-                  focusNode: searchFocusNode,
-                  textInputAction: TextInputAction.search,
-                  onChanged: onSearchChanged,
-                  onEditingComplete: () => unawaited(onSearchSubmitted()),
-                  onSubmitted: (_) => unawaited(onSearchSubmitted()),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: strings.searchTemplates,
-                    prefixIcon: IconButton(
-                      onPressed: () => unawaited(onSearchSubmitted()),
-                      icon: const Icon(Icons.search_rounded),
-                    ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 42,
-                      minHeight: 40,
-                    ),
-                    fillColor: Colors.white,
-                    filled: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
+            const SizedBox(height: 3),
+            Text(
+              AppPublicInfo.appTagline,
+              style: const TextStyle(
+                color: Color(0xFFFFF4E6),
+                fontSize: 11,
+                height: 1.25,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: searchController,
+                    focusNode: searchFocusNode,
+                    textInputAction: TextInputAction.search,
+                    onChanged: onSearchChanged,
+                    onEditingComplete: () => unawaited(onSearchSubmitted()),
+                    onSubmitted: (_) => unawaited(onSearchSubmitted()),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: strings.searchTemplates,
+                      prefixIcon: IconButton(
+                        onPressed: () => unawaited(onSearchSubmitted()),
+                        icon: const Icon(Icons.search_rounded),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 42,
+                        minHeight: 40,
+                      ),
+                      fillColor: Colors.white,
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: onCreateTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFFD81B60),
-                  minimumSize: const Size(68, 42),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: onCreateTap,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFD81B60),
+                    minimumSize: const Size(68, 42),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(strings.createLabel),
                 ),
-                child: Text(strings.createLabel),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -9281,6 +9305,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   _PosterPhotoUserAdjustment _photoUserAdjustment =
       _PosterPhotoUserAdjustment.none;
   _PosterExtraPhotoSelection? _extraPhotoSelection;
+  int _stripGradientTapOffset = 0;
   Future<void>? _backgroundRemoverInitialization;
   bool _photoDragInProgress = false;
   bool _additionalPhotoBusy = false;
@@ -9405,7 +9430,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _posterSignature({required bool isPhotoVisible}) {
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-$posterRenderCycle-$isPhotoVisible';
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
+  }
+
+  void _cyclePosterStripGradient() {
+    setState(() {
+      _stripGradientTapOffset =
+          (_stripGradientTapOffset + 1) %
+          _CreatorPosterPreviewState.posterStripGradientCount;
+    });
+    _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
+    _schedulePosterWarmup(force: true);
   }
 
   bool _beginAction(String action) {
@@ -9874,7 +9909,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     });
   }
 
-  void _scheduleVideoWarmup({bool requireReady = true}) {
+  void _scheduleVideoWarmup({
+    bool requireReady = true,
+    bool allowScrollDeferral = true,
+  }) {
     if (!item.isVideo || (requireReady && !_posterReadyNotifier.value)) {
       return;
     }
@@ -9902,6 +9940,22 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         if (!mounted || (requireReady && !_posterReadyNotifier.value)) {
+          return;
+        }
+        if (allowScrollDeferral &&
+            Scrollable.recommendDeferredLoadingForContext(context)) {
+          await Future<void>.delayed(const Duration(milliseconds: 650));
+          if (!mounted || (requireReady && !_posterReadyNotifier.value)) {
+            return;
+          }
+          _videoWarmupQueued = false;
+          if (_queuedVideoWarmupSignature == signature) {
+            _queuedVideoWarmupSignature = null;
+          }
+          _scheduleVideoWarmup(
+            requireReady: requireReady,
+            allowScrollDeferral: false,
+          );
           return;
         }
         await _ensurePreparedVideoFile(isWarmup: true);
@@ -10141,6 +10195,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               : null,
           title: item.titleFor(language),
           previewSeed: item.imageUrl ?? item.imageAssetPath ?? 'poster',
+          stripGradientTapOffset: _stripGradientTapOffset,
         );
         if (_videoExportGeneration == generation) {
           _preparedVideoSignature = signature;
@@ -10587,6 +10642,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
                   photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
                   onPhotoTap: _applyPosterPhotoPresetTap,
+                  stripGradientTapOffset: _stripGradientTapOffset,
+                  onNameStripTap: _cyclePosterStripGradient,
                   additionalPhotoSelection: _extraPhotoSelection,
                   onAdditionalPhotoTap:
                       personalizationConfig.showVideoExtraPhoto
@@ -10627,6 +10684,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
             photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             onPhotoTap: _applyPosterPhotoPresetTap,
+            stripGradientTapOffset: _stripGradientTapOffset,
+            onNameStripTap: _cyclePosterStripGradient,
             additionalPhotoSelection: _extraPhotoSelection,
             onAdditionalPhotoTap: personalizationConfig.showVideoExtraPhoto
                 ? () => unawaited(_pickAdditionalPosterPhoto())
@@ -12783,7 +12842,9 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    _initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeWhenSettled();
+    });
   }
 
   @override
@@ -12796,8 +12857,23 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       _lastPosition = Duration.zero;
       _lastReplayNotificationAt = null;
       unawaited(_disposeController());
-      _initialize();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initializeWhenSettled();
+      });
     }
+  }
+
+  void _initializeWhenSettled([int attempt = 0]) {
+    if (!mounted || _controller != null) {
+      return;
+    }
+    if (Scrollable.recommendDeferredLoadingForContext(context) && attempt < 8) {
+      Future<void>.delayed(const Duration(milliseconds: 360), () {
+        _initializeWhenSettled(attempt + 1);
+      });
+      return;
+    }
+    unawaited(_initialize());
   }
 
   void _handlePlaybackTick() {
@@ -12985,6 +13061,8 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.photoXOffsetPercent,
     required this.photoYOffsetPercent,
     required this.onPhotoTap,
+    required this.stripGradientTapOffset,
+    this.onNameStripTap,
     required this.additionalPhotoSelection,
     required this.onAdditionalPhotoTap,
     required this.onPhotoDragDeltaPercent,
@@ -13013,6 +13091,8 @@ class _CreatorPosterPreview extends StatefulWidget {
   final double photoXOffsetPercent;
   final double photoYOffsetPercent;
   final VoidCallback onPhotoTap;
+  final int stripGradientTapOffset;
+  final VoidCallback? onNameStripTap;
   final _PosterExtraPhotoSelection? additionalPhotoSelection;
   final VoidCallback? onAdditionalPhotoTap;
   final void Function({
@@ -13049,12 +13129,18 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   ];
 
   static const List<List<Color>> _posterStripGradients = <List<Color>>[
-    <Color>[Color(0xFF5B2C83), Color(0xFF8A4BC9)],
-    <Color>[Color(0xFF0F4C75), Color(0xFF3282B8)],
-    <Color>[Color(0xFF8D153A), Color(0xFFC84B68)],
-    <Color>[Color(0xFF5A3E2B), Color(0xFF9C6B4A)],
-    <Color>[Color(0xFF374151), Color(0xFF6B7280)],
+    <Color>[Color(0xFF7C2D12), Color(0xFFEA580C), Color(0xFFC2410C)],
+    <Color>[Color(0xFF581C87), Color(0xFFBE185D), Color(0xFF9D174D)],
+    <Color>[Color(0xFF064E3B), Color(0xFF059669), Color(0xFF047857)],
+    <Color>[Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFF991B1B)],
+    <Color>[Color(0xFF082F49), Color(0xFF0891B2), Color(0xFF0F766E)],
+    <Color>[Color(0xFF831843), Color(0xFFDB2777), Color(0xFFBE185D)],
+    <Color>[Color(0xFF4C1D95), Color(0xFF7C3AED), Color(0xFF5B21B6)],
+    <Color>[Color(0xFF134E4A), Color(0xFF0D9488), Color(0xFF115E59)],
+    <Color>[Color(0xFF3F1D38), Color(0xFFC026D3), Color(0xFFDB2777)],
+    <Color>[Color(0xFF3B0764), Color(0xFF9333EA), Color(0xFF7E22CE)],
   ];
+  static int get posterStripGradientCount => _posterStripGradients.length;
 
   bool _basePosterReady = false;
   int _legacyPrimeGeneration = 0;
@@ -13255,17 +13341,29 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 41 * hash + codeUnit;
     }
-    return _posterStripGradients[hash.abs() % _posterStripGradients.length];
+    final baseIndex = hash.abs() % _posterStripGradients.length;
+    final resolvedIndex =
+        (baseIndex + widget.stripGradientTapOffset) %
+        _posterStripGradients.length;
+    return _posterStripGradients[resolvedIndex];
+  }
+
+  int _resolvePosterStripModel(String resolvedName) {
+    final seedSource =
+        '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
+        '|${widget.personalizationConfig.nameX}'
+        '|${widget.personalizationConfig.nameY}'
+        '|${widget.personalizationConfig.stripHeight}'
+        '|model|$resolvedName';
+    var hash = 29;
+    for (final codeUnit in seedSource.codeUnits) {
+      hash = 43 * hash + codeUnit;
+    }
+    return hash.abs() % 10;
   }
 
   Color _onStripColor(List<Color> colors) {
-    final averageLuminance =
-        colors.fold<double>(
-          0,
-          (double sum, Color color) => sum + color.computeLuminance(),
-        ) /
-        colors.length;
-    return averageLuminance > 0.45 ? const Color(0xFF1F2937) : Colors.white;
+    return Colors.white;
   }
 
   String _resolveEnglishPosterNameFontFamily(String resolvedName) {
@@ -13443,7 +13541,8 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     }
     final key = _legacyTextCacheKey(text, fontFamily);
     return _legacyTextOverrides[key] ??
-        TeluguLegacyTextService.cachedValue(text, fontFamily: fontFamily);
+        TeluguLegacyTextService.cachedValue(text, fontFamily: fontFamily) ??
+        TeluguLegacyTextService.convertSync(text, fontFamily: fontFamily);
   }
 
   bool _needsLegacyTextPrimeForCurrentState() {
@@ -13946,13 +14045,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                             color: Colors.white.withValues(
                                               alpha: 0.18,
                                             ),
-                                            boxShadow: const <BoxShadow>[
-                                              BoxShadow(
-                                                color: Color(0x55000000),
-                                                blurRadius: 10,
-                                                offset: Offset(0, 4),
-                                              ),
-                                            ],
                                           ),
                                           child: Center(
                                             child: Text(
@@ -14021,31 +14113,31 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       child: SizedBox(
         width: double.infinity,
         child: Stack(
-          clipBehavior: Clip.none,
+          clipBehavior: Clip.hardEdge,
           alignment: Alignment.topCenter,
           children: <Widget>[
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                buildPosterVisual(),
-                if (widget.personalizationConfig.showBottomStrip &&
-                    (widget.basePosterBuilder == null || _basePosterReady))
-                  _buildPosterBottomStrip(
-                    resolvedName: resolvedName,
-                    resolvedDesignation: resolvedDesignation,
-                    displayNameFontFamily: displayNameFontFamily,
-                    designationFontFamily: designationFontFamily,
-                    isBusinessProfile: isBusinessProfile,
-                    isTeluguName: isTeluguName,
-                    businessNameFontSize: businessNameFontSize,
-                    personalNameFontSize: personalNameFontSize,
-                    personalNameLineHeight: personalNameLineHeight,
-                    showPhoneInStrip: showPhoneInStrip,
-                    resolvedPhone: resolvedPhone,
-                    bottomStripPadding: bottomStripPadding,
-                  ),
-              ],
-            ),
+            buildPosterVisual(),
+            if (widget.personalizationConfig.showBottomStrip &&
+                (widget.basePosterBuilder == null || _basePosterReady))
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildPosterBottomStrip(
+                  resolvedName: resolvedName,
+                  resolvedDesignation: resolvedDesignation,
+                  displayNameFontFamily: displayNameFontFamily,
+                  designationFontFamily: designationFontFamily,
+                  isBusinessProfile: isBusinessProfile,
+                  isTeluguName: isTeluguName,
+                  businessNameFontSize: businessNameFontSize,
+                  personalNameFontSize: personalNameFontSize,
+                  personalNameLineHeight: personalNameLineHeight,
+                  showPhoneInStrip: showPhoneInStrip,
+                  resolvedPhone: resolvedPhone,
+                  bottomStripPadding: bottomStripPadding,
+                ),
+              ),
           ],
         ),
       ),
@@ -14067,6 +14159,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     required double bottomStripPadding,
   }) {
     final stripGradient = _resolvePosterStripGradient(resolvedName);
+    final stripModel = _resolvePosterStripModel(resolvedName);
     final stripTextColor = _onStripColor(stripGradient);
     final mutedStripTextColor = stripTextColor.withValues(alpha: 0.82);
     final dividerColor = Colors.white.withValues(alpha: 0.9);
@@ -14227,23 +14320,247 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       ],
     );
 
-    return Container(
+    Widget accentLayer() {
+      switch (stripModel) {
+        case 0:
+          return Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 1.4,
+                  ),
+                  bottom: BorderSide(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    width: 1.4,
+                  ),
+                ),
+              ),
+            ),
+          );
+        case 1:
+          return Positioned.fill(
+            child: CustomPaint(
+              painter: _DiagonalStripAccentPainter(
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+          );
+        case 2:
+          return Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: stripGradient.last.withValues(alpha: 0.86),
+                    width: 2.8,
+                  ),
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: stripGradient.last.withValues(alpha: 0.38),
+                    blurRadius: 20,
+                    spreadRadius: -6,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+            ),
+          );
+        case 3:
+          return Positioned(
+            left: 14,
+            right: 14,
+            top: 7,
+            bottom: 7,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+              ),
+            ),
+          );
+        case 4:
+          return Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FractionallySizedBox(
+                widthFactor: 0.42,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(999),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        case 5:
+          return Positioned.fill(
+            child: CustomPaint(
+              painter: _DotStripAccentPainter(
+                color: Colors.white.withValues(alpha: 0.18),
+              ),
+            ),
+          );
+        case 6:
+          return Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.50),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          );
+        case 7:
+          return Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: 0.34,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(999),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        case 8:
+          return Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: <Color>[
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.14),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                  stops: const <double>[0, 0.5, 1],
+                ),
+              ),
+            ),
+          );
+        default:
+          return Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+          );
+      }
+    }
+
+    final strip = Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+          begin: stripModel == 1 ? Alignment.topLeft : Alignment.centerLeft,
+          end: stripModel == 1 ? Alignment.bottomRight : Alignment.centerRight,
           colors: stripGradient,
         ),
       ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: bottomStripPadding,
-        ),
-        child: content,
+      child: Stack(
+        children: <Widget>[
+          accentLayer(),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: stripModel == 3 ? 24 : 14,
+              vertical: bottomStripPadding,
+            ),
+            child: content,
+          ),
+        ],
       ),
     );
+    final onTap = widget.onNameStripTap;
+    if (onTap == null) {
+      return strip;
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: strip,
+    );
+  }
+}
+
+class _DiagonalStripAccentPainter extends CustomPainter {
+  const _DiagonalStripAccentPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final stripeWidth = size.width * 0.18;
+    for (
+      var start = -size.width;
+      start < size.width * 1.4;
+      start += stripeWidth * 1.55
+    ) {
+      final path = Path()
+        ..moveTo(start, size.height)
+        ..lineTo(start + stripeWidth, size.height)
+        ..lineTo(start + stripeWidth + size.height * 0.7, 0)
+        ..lineTo(start + size.height * 0.7, 0)
+        ..close();
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DiagonalStripAccentPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
+class _DotStripAccentPainter extends CustomPainter {
+  const _DotStripAccentPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final gap = size.height * 0.36;
+    final radius = size.height * 0.035;
+    for (var x = gap * 0.8; x < size.width; x += gap) {
+      canvas.drawCircle(Offset(x, size.height * 0.28), radius, paint);
+      canvas.drawCircle(
+        Offset(x + gap * 0.45, size.height * 0.72),
+        radius,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotStripAccentPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }
 
@@ -14560,19 +14877,7 @@ class _PhotoShapeFrame extends StatelessWidget {
     }
 
     if (isBusinessLogo) {
-      return DecoratedBox(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipOval(clipBehavior: Clip.antiAlias, child: imageWidget),
-      );
+      return ClipOval(clipBehavior: Clip.antiAlias, child: imageWidget);
     }
 
     final preset = _presetForShape(shape);
