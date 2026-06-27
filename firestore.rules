@@ -620,16 +620,56 @@ service cloud.firestore {
       allow read, delete: if false;
     }
 
-    // Free feed can read only manager-approved creator posters for the user's
-    // selected State/Union Territory, so dashboard uploads never cross regions.
+    function isTeluguSharedContentRegion(regionId) {
+      return regionId is string && regionId in ["andhra_pradesh", "telangana"];
+    }
+
+    function isHindiSharedContentRegion(regionId) {
+      return regionId is string &&
+        regionId in [
+          "bihar",
+          "chhattisgarh",
+          "haryana",
+          "himachal_pradesh",
+          "jharkhand",
+          "madhya_pradesh",
+          "rajasthan",
+          "uttar_pradesh",
+          "uttarakhand",
+          "delhi",
+          "andaman_nicobar",
+        ];
+    }
+
+    function isPoliticalPosterCategory(categoryId) {
+      return categoryId is string && categoryId.matches("^party_.*");
+    }
+
+    function canReadCreatorPosterForSelectedRegion() {
+      let selectedRegion = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion;
+      return resource.data.regionId == selectedRegion ||
+        (
+          isTeluguSharedContentRegion(resource.data.regionId) &&
+          isTeluguSharedContentRegion(selectedRegion) &&
+          !isPoliticalPosterCategory(resource.data.categoryId)
+        ) ||
+        (
+          isHindiSharedContentRegion(resource.data.regionId) &&
+          isHindiSharedContentRegion(selectedRegion) &&
+          !isPoliticalPosterCategory(resource.data.categoryId)
+        );
+    }
+
+    // Free feed reads approved posters for the selected State/UT. Telugu and
+    // Hindi language groups share only non-political content; party categories
+    // stay state-specific.
     match /creatorPosters/{posterId} {
       allow read: if signedIn() &&
         resource.data.status == "approved" &&
         resource.data.regionId is string &&
         resource.data.regionId.size() > 0 &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        resource.data.regionId ==
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion;
+        canReadCreatorPosterForSelectedRegion();
       allow update: if signedIn() && validCreatorPosterEngagementUpdate();
       allow create, delete: if false;
     }

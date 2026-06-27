@@ -16,6 +16,7 @@ import 'package:image/image.dart' as img;
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
+import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
@@ -188,13 +189,17 @@ class NotificationService {
     final categoryKey = _readDataValue(message.data, 'categoryKey');
     final userName = _readDataValue(message.data, 'userName');
     final dataResolved = await _resolveMessageText(message.data);
-    final resolved = _ResolvedNotificationText(
+    final resolved = await _personalizeWelcomeNotificationText(
+      categoryKey: categoryKey,
+      userName: userName,
+      text: _ResolvedNotificationText(
       title: dataResolved.title.isNotEmpty
           ? dataResolved.title
           : _sanitizeNotificationText(message.notification?.title ?? ''),
       body: dataResolved.body.isNotEmpty
           ? dataResolved.body
           : _sanitizeNotificationText(message.notification?.body ?? ''),
+      ),
     );
     if (resolved.title.isEmpty &&
         resolved.body.isEmpty &&
@@ -468,13 +473,14 @@ class NotificationService {
   }
 
   void _handleNotificationTap(RemoteMessage message) {
-    final String route = _readDataValue(
-      message.data,
-      'route',
-    ).trim().toLowerCase();
-    if (route.isEmpty || route == _homeNotificationPayload) {
+    final String route = _normalizeNotificationRoute(
+      _readDataValue(message.data, 'route'),
+    );
+    if (_isHomeNotificationRoute(route)) {
       _openHomeWithRetry();
+      return;
     }
+    AppNavigator.openNotificationRoute(route);
   }
 
   Future<void> _consumeNativeNotificationTap() async {
@@ -482,9 +488,9 @@ class NotificationService {
       return;
     }
     final state = await NativeStartupStateStore.readAll();
-    final route = (state[_nativeNotificationTapRouteKey]?.toString() ?? '')
-        .trim()
-        .toLowerCase();
+    final route = _normalizeNotificationRoute(
+      state[_nativeNotificationTapRouteKey]?.toString() ?? '',
+    );
     final tappedAt = _readInt(state[_nativeNotificationTapAtKey]);
     if (route.isEmpty || tappedAt <= 0) {
       return;
@@ -497,9 +503,11 @@ class NotificationService {
       _nativeNotificationTapRouteKey: null,
       _nativeNotificationTapAtKey: null,
     });
-    if (route == _homeNotificationPayload) {
+    if (_isHomeNotificationRoute(route)) {
       _openHomeWithRetry();
+      return;
     }
+    AppNavigator.openNotificationRoute(route);
   }
 
   static void _openHomeWithRetry([int attempt = 0]) {
@@ -510,6 +518,23 @@ class NotificationService {
     Future<void>.delayed(const Duration(milliseconds: 300), () {
       _openHomeWithRetry(attempt + 1);
     });
+  }
+
+  static String _normalizeNotificationRoute(String route) {
+    final normalized = route.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return _homeNotificationPayload;
+    }
+    if (normalized == _homeNotificationPayload || normalized == '/home') {
+      return AppRoutes.home;
+    }
+    return normalized.startsWith('/') ? normalized : '/$normalized';
+  }
+
+  static bool _isHomeNotificationRoute(String route) {
+    return route.isEmpty ||
+        route == _homeNotificationPayload ||
+        route == AppRoutes.home;
   }
 
   static int _readInt(Object? value) {
@@ -624,6 +649,30 @@ class NotificationService {
     }
     final value = bucket[language] ?? bucket[AppLanguage.english] ?? '';
     return _sanitizeNotificationText(value);
+  }
+
+  static Future<_ResolvedNotificationText> _personalizeWelcomeNotificationText({
+    required String categoryKey,
+    required String userName,
+    required _ResolvedNotificationText text,
+  }) async {
+    if (categoryKey.trim().toLowerCase() != 'welcome') {
+      return text;
+    }
+    final name = userName.trim().isEmpty ? 'User' : userName.trim();
+    final language = (await AppFlowService.loadSnapshot()).language;
+    final suffix = switch (language.supportedUiLanguage) {
+      SupportedUiLanguage.telugu => '$name గారు, ',
+      SupportedUiLanguage.hindi => '$name जी, ',
+      _ => '$name, ',
+    };
+    if (text.body.trim().startsWith(name)) {
+      return text;
+    }
+    return _ResolvedNotificationText(
+      title: text.title,
+      body: '$suffix${text.body}',
+    );
   }
 
   static String _readDataValue(Map<String, dynamic> data, String key) {

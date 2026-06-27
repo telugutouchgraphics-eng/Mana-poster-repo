@@ -237,13 +237,37 @@ class DynamicCategoryService {
     if (regionId.isEmpty) {
       return true;
     }
+    const teluguSharedRegionIds = <String>{'andhra_pradesh', 'telangana'};
+    const hindiSharedRegionIds = <String>{
+      'bihar',
+      'chhattisgarh',
+      'haryana',
+      'himachal_pradesh',
+      'jharkhand',
+      'madhya_pradesh',
+      'rajasthan',
+      'uttar_pradesh',
+      'uttarakhand',
+      'delhi',
+      'andaman_nicobar',
+    };
+    final sharedRegionIds = teluguSharedRegionIds.contains(regionId)
+        ? teluguSharedRegionIds
+        : hindiSharedRegionIds.contains(regionId)
+        ? hindiSharedRegionIds
+        : <String>{regionId};
     if (event.regionIds.isNotEmpty) {
-      return event.regionIds.map(_normalizeToken).contains(regionId);
+      final eventRegions = event.regionIds.map(_normalizeToken).toSet();
+      if (eventRegions.intersection(sharedRegionIds).isNotEmpty) {
+        return true;
+      }
+      return eventRegions.contains(regionId);
     }
+    final isTeluguSharedRegion = teluguSharedRegionIds.contains(regionId);
     return switch (event.scope) {
       DynamicEventScope.global || DynamicEventScope.india => true,
-      DynamicEventScope.andhraPradesh => regionId == 'andhra_pradesh',
-      DynamicEventScope.telangana => regionId == 'telangana',
+      DynamicEventScope.andhraPradesh ||
+      DynamicEventScope.telangana => isTeluguSharedRegion,
       DynamicEventScope.bothTeluguStates =>
         regionId == 'andhra_pradesh' || regionId == 'telangana',
     };

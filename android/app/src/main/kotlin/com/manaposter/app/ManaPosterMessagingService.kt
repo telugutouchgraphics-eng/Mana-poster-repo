@@ -359,14 +359,14 @@ object ManaPosterNotificationRenderer {
             "welcome" -> if (isTelugu) {
                 ReminderCopy(
                     title = "Mana Poster \u0c15\u0c3f \u0c38\u0c4d\u0c35\u0c3e\u0c17\u0c24\u0c02",
-                    body = "\u0c2e\u0c40 \u0c15\u0c4b\u0c38\u0c02 \u0c30\u0c4b\u0c1c\u0c41\u0c35\u0c3e\u0c30\u0c40 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u0c32\u0c41 \u0c38\u0c3f\u0c26\u0c4d\u0c27\u0c02\u0c17\u0c3e \u0c09\u0c28\u0c4d\u0c28\u0c3e\u0c2f\u0c3f. \u0c2f\u0c3e\u0c2a\u0c4d \u0c13\u0c2a\u0c46\u0c28\u0c4d \u0c1a\u0c47\u0c38\u0c3f \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f.",
+                    body = "$name \u0c17\u0c3e\u0c30\u0c41, \u0c2e\u0c40 \u0c15\u0c4b\u0c38\u0c02 \u0c30\u0c4b\u0c1c\u0c41\u0c35\u0c3e\u0c30\u0c40 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d\u0c32\u0c41 \u0c38\u0c3f\u0c26\u0c4d\u0c27\u0c02\u0c17\u0c3e \u0c09\u0c28\u0c4d\u0c28\u0c3e\u0c2f\u0c3f. \u0c2f\u0c3e\u0c2a\u0c4d \u0c13\u0c2a\u0c46\u0c28\u0c4d \u0c1a\u0c47\u0c38\u0c3f \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f.",
                     header = "$name, \uD83D\uDC49 \u0c2e\u0c40 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c21\u0c3e\u0c28\u0c3f\u0c15\u0c3f \u0c38\u0c3f\u0c26\u0c4d\u0c27\u0c02\u0c17\u0c3e \u0c09\u0c02\u0c26\u0c3f",
                     footer = "\u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f",
                 )
             } else {
                 ReminderCopy(
                     title = "Welcome to Mana Poster",
-                    body = "Daily posters are ready for you. Open and share.",
+                    body = "$name, daily posters are ready for you. Open and share.",
                     header = "$name, your poster is ready to share",
                     footer = "Share",
                 )

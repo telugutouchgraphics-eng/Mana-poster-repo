@@ -101,9 +101,7 @@ public class ImageCropperDelegate implements PluginRegistry.ActivityResultListen
             cropper.withAspectRatio(ratioX.floatValue(), ratioY.floatValue());
         }
 
-        Intent cropIntent = cropper.getIntent(activity);
-        cropIntent.setClass(activity, EdgeToEdgeUCropActivity.class);
-        activity.startActivityForResult(cropIntent, UCrop.REQUEST_CROP);
+        activity.startActivityForResult(cropper.getIntent(activity), UCrop.REQUEST_CROP);
     }
 
     public void recoverImage(MethodCall call, MethodChannel.Result result) {

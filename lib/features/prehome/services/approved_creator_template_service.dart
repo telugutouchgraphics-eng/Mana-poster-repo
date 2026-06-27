@@ -10,6 +10,23 @@ import 'package:mana_poster/features/prehome/services/dynamic_category_service.d
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
 
 const bool _verboseApprovedTemplateLogs = false;
+const Set<String> _teluguSharedContentRegionIds = <String>{
+  'andhra_pradesh',
+  'telangana',
+};
+const Set<String> _hindiSharedContentRegionIds = <String>{
+  'bihar',
+  'chhattisgarh',
+  'haryana',
+  'himachal_pradesh',
+  'jharkhand',
+  'madhya_pradesh',
+  'rajasthan',
+  'uttar_pradesh',
+  'uttarakhand',
+  'delhi',
+  'andaman_nicobar',
+};
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -62,6 +79,119 @@ class ApprovedCreatorTemplateService {
     return region?.id.trim() ?? '';
   }
 
+  bool _isPoliticalCategory(String categoryId) {
+    return _normalizeTag(categoryId).startsWith('party_');
+  }
+
+  List<String> _posterLookupRegionIds({
+    required String selectedRegionId,
+    required String categoryId,
+  }) {
+    final regionId = selectedRegionId.trim();
+    if (regionId.isEmpty ||
+        categoryId.trim().isEmpty ||
+        _isPoliticalCategory(categoryId)) {
+      return regionId.isEmpty ? const <String>[] : <String>[regionId];
+    }
+    return _sharedContentRegionIdsFor(regionId).toList(growable: false);
+  }
+
+  Set<String> _sharedContentRegionIdsFor(String selectedRegionId) {
+    final regionId = selectedRegionId.trim();
+    if (_teluguSharedContentRegionIds.contains(regionId)) {
+      return _teluguSharedContentRegionIds;
+    }
+    if (_hindiSharedContentRegionIds.contains(regionId)) {
+      return _hindiSharedContentRegionIds;
+    }
+    return <String>{if (regionId.isNotEmpty) regionId};
+  }
+
+  List<String> _otherSharedContentRegionIds(String selectedRegionId) {
+    final regionId = selectedRegionId.trim();
+    return _sharedContentRegionIdsFor(
+      regionId,
+    ).where((item) => item != regionId).toList(growable: false);
+  }
+
+  List<List<T>> _chunked<T>(Iterable<T> values, int size) {
+    final chunks = <List<T>>[];
+    var chunk = <T>[];
+    for (final value in values) {
+      chunk.add(value);
+      if (chunk.length == size) {
+        chunks.add(chunk);
+        chunk = <T>[];
+      }
+    }
+    if (chunk.isNotEmpty) {
+      chunks.add(chunk);
+    }
+    return chunks;
+  }
+
+  Set<String> _sharedAllFeedCategoryIds(String selectedRegionId) {
+    final activeDynamicTags = _activeDynamicTagsForDate(
+      IstTimeService.now(),
+      selectedRegionId,
+    );
+    return <String>{
+      'good_morning',
+      'good_afternoon',
+      'good_night',
+      'motivational',
+      'love_quotes',
+      'today_special',
+      'birthdays',
+      'life_advice',
+      'gita_wisdom',
+      'devotional',
+      'mahabharata',
+      'anniversary',
+      'good_thoughts',
+      'bible',
+      'islam',
+      'jokes',
+      'new',
+      'weekday_monday_special',
+      'weekday_tuesday_special',
+      'weekday_wednesday_special',
+      'weekday_thursday_special',
+      'weekday_friday_special',
+      'weekday_saturday_special',
+      'weekday_sunday_special',
+      ...activeDynamicTags,
+    }.where((id) => id.isNotEmpty && !_isPoliticalCategory(id)).toSet();
+  }
+
+  Query<Map<String, dynamic>> _applyRegionScope(
+    Query<Map<String, dynamic>> query,
+    List<String> regionIds,
+  ) {
+    if (regionIds.length > 1) {
+      return query.where('regionId', whereIn: regionIds);
+    }
+    return query.where('regionId', isEqualTo: regionIds.first);
+  }
+
+  bool _posterMatchesSelectedRegion(
+    ApprovedCreatorTemplate template,
+    String selectedRegionId,
+  ) {
+    final posterRegionId = template.regionId.trim();
+    final selected = selectedRegionId.trim();
+    if (posterRegionId.isEmpty || selected.isEmpty) {
+      return false;
+    }
+    if (_isPoliticalCategory(template.categoryId)) {
+      return posterRegionId == selected;
+    }
+    if (_sharedContentRegionIdsFor(selected).contains(posterRegionId)) {
+      return true;
+    }
+    return posterRegionId == selected;
+  }
+
   Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplates({
     int maxItems = 40,
   }) async {
@@ -90,27 +220,32 @@ class ApprovedCreatorTemplateService {
       var scannedDocs = 0;
 
       for (final candidate in directCandidates) {
-        try {
-          final snapshot = await firestore
-              .collection('creatorPosters')
-              .where('status', isEqualTo: 'approved')
-              .where('regionId', isEqualTo: regionId)
-              .where('categoryId', isEqualTo: candidate)
-              .orderBy('createdAt', descending: true)
-              .limit(scanLimit)
-              .get(GetOptions(source: source));
-          queriedDocs += snapshot.docs.length;
-          scannedDocs += snapshot.docs.length;
-          for (final doc in snapshot.docs) {
-            if (seenIds.add(doc.id)) {
-              docs.add(doc);
+        for (final lookupRegionId in _posterLookupRegionIds(
+          selectedRegionId: regionId,
+          categoryId: target,
+        )) {
+          try {
+            final snapshot = await firestore
+                .collection('creatorPosters')
+                .where('status', isEqualTo: 'approved')
+                .where('regionId', isEqualTo: lookupRegionId)
+                .where('categoryId', isEqualTo: candidate)
+                .orderBy('createdAt', descending: true)
+                .limit(scanLimit)
+                .get(GetOptions(source: source));
+            queriedDocs += snapshot.docs.length;
+            scannedDocs += snapshot.docs.length;
+            for (final doc in snapshot.docs) {
+              if (seenIds.add(doc.id)) {
+                docs.add(doc);
+              }
             }
+          } catch (error, stackTrace) {
+            _debugLogStack(
+              'ApprovedCreatorTemplateService category direct query failed: $error',
+              stackTrace,
+            );
           }
-        } catch (error, stackTrace) {
-          _debugLogStack(
-            'ApprovedCreatorTemplateService category direct query failed: $error',
-            stackTrace,
-          );
         }
       }
 
@@ -184,17 +319,22 @@ class ApprovedCreatorTemplateService {
       }.where((value) => value.isNotEmpty).toList(growable: false);
 
       for (final candidate in directCandidates) {
-        final snapshot = await firestore
-            .collection('creatorPosters')
-            .where('status', isEqualTo: 'approved')
-            .where('regionId', isEqualTo: regionId)
-            .where('categoryId', isEqualTo: candidate)
-            .orderBy('createdAt', descending: true)
-            .limit(8)
-            .get(GetOptions(source: source));
-        for (final doc in snapshot.docs) {
-          if (seenIds.add(doc.id)) {
-            docs.add(doc);
+        for (final lookupRegionId in _posterLookupRegionIds(
+          selectedRegionId: regionId,
+          categoryId: normalizedTarget,
+        )) {
+          final snapshot = await firestore
+              .collection('creatorPosters')
+              .where('status', isEqualTo: 'approved')
+              .where('regionId', isEqualTo: lookupRegionId)
+              .where('categoryId', isEqualTo: candidate)
+              .orderBy('createdAt', descending: true)
+              .limit(8)
+              .get(GetOptions(source: source));
+          for (final doc in snapshot.docs) {
+            if (seenIds.add(doc.id)) {
+              docs.add(doc);
+            }
           }
         }
       }
@@ -287,12 +427,12 @@ class ApprovedCreatorTemplateService {
 
       while (queriedPages < maxQueryPages && mergedVisible.length < pageSize) {
         final queryStopwatch = Stopwatch()..start();
-        Query<Map<String, dynamic>> query = firestore
-            .collection('creatorPosters')
-            .where('status', isEqualTo: 'approved')
-            .where('regionId', isEqualTo: regionId)
-            .orderBy('createdAt', descending: true)
-            .limit(queryLimit);
+        Query<Map<String, dynamic>> query = _applyRegionScope(
+          firestore
+              .collection('creatorPosters')
+              .where('status', isEqualTo: 'approved'),
+          _posterLookupRegionIds(selectedRegionId: regionId, categoryId: ''),
+        ).orderBy('createdAt', descending: true).limit(queryLimit);
         if (cursor != null) {
           query = query.startAfterDocument(cursor);
         }
@@ -333,6 +473,30 @@ class ApprovedCreatorTemplateService {
         if (snapshot.docs.length < queryLimit) {
           hasExhaustedQuery = true;
           break;
+        }
+      }
+
+      if (allowFallbackMerge && startAfterDocument == null) {
+        final siblingDocs = await _fetchOtherSharedNonPoliticalDocs(
+          selectedRegionId: regionId,
+          limit: pageSize * 2,
+          source: source,
+        );
+        if (siblingDocs.isNotEmpty) {
+          final siblingVisible = _filterPublished(
+            _mapSortedTemplates(siblingDocs),
+            siblingDocs,
+            pageSize * 2,
+            regionId,
+          );
+          for (final template in siblingVisible) {
+            if (seenTemplateIds.add(template.id)) {
+              mergedVisible.add(template);
+            }
+          }
+          mergedVisible.sort(
+            (a, b) => b.createdAtMillis.compareTo(a.createdAtMillis),
+          );
         }
       }
 
@@ -399,6 +563,62 @@ class ApprovedCreatorTemplateService {
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _fetchOtherSharedNonPoliticalDocs({
+    required String selectedRegionId,
+    required int limit,
+    required Source source,
+  }) async {
+    final otherRegionIds = _otherSharedContentRegionIds(selectedRegionId);
+    if (otherRegionIds.isEmpty || limit <= 0) {
+      return const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    }
+    final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    final seenIds = <String>{};
+    final categoryIds = _sharedAllFeedCategoryIds(selectedRegionId);
+    for (final regionId in otherRegionIds) {
+      for (final chunk in _chunked(categoryIds, 10)) {
+        if (docs.length >= limit) {
+          break;
+        }
+        try {
+          final snapshot = await firestore
+              .collection('creatorPosters')
+              .where('status', isEqualTo: 'approved')
+              .where('regionId', isEqualTo: regionId)
+              .where('categoryId', whereIn: chunk)
+              .orderBy('createdAt', descending: true)
+              .limit(limit)
+              .get(GetOptions(source: source));
+          for (final doc in snapshot.docs) {
+            if (seenIds.add(doc.id)) {
+              docs.add(doc);
+              if (docs.length >= limit) {
+                break;
+              }
+            }
+          }
+        } catch (error, stackTrace) {
+          _debugLogStack(
+            'ApprovedCreatorTemplateService shared group fetch failed: $error',
+            stackTrace,
+          );
+        }
+      }
+      if (docs.length >= limit) {
+        break;
+      }
+    }
+    docs.sort((left, right) {
+      final leftCreatedAt = _toMillis(left.data()['createdAt']) ?? 0;
+      final rightCreatedAt = _toMillis(right.data()['createdAt']) ?? 0;
+      return rightCreatedAt.compareTo(leftCreatedAt);
+    });
+    return docs.length <= limit
+        ? docs
+        : docs.take(limit).toList(growable: false);
+  }
+
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
   _scanApprovedTemplatesForCategory({
     required String categoryId,
     required String regionId,
@@ -411,12 +631,12 @@ class ApprovedCreatorTemplateService {
       const pageSize = 120;
       var scanned = 0;
       while (matched.length < limit && scanned < limit * 4) {
-        Query<Map<String, dynamic>> query = firestore
-            .collection('creatorPosters')
-            .where('status', isEqualTo: 'approved')
-            .where('regionId', isEqualTo: regionId)
-            .orderBy('createdAt', descending: true)
-            .limit(pageSize);
+        Query<Map<String, dynamic>> query = _applyRegionScope(
+          firestore
+              .collection('creatorPosters')
+              .where('status', isEqualTo: 'approved'),
+          <String>[regionId],
+        ).orderBy('createdAt', descending: true).limit(pageSize);
         if (cursor != null) {
           query = query.startAfterDocument(cursor);
         }
@@ -446,11 +666,10 @@ class ApprovedCreatorTemplateService {
         stackTrace,
       );
       try {
-        final page = await firestore
-            .collection('creatorPosters')
-            .where('regionId', isEqualTo: regionId)
-            .limit((limit * 4).clamp(120, 800))
-            .get(GetOptions(source: source));
+        final page = await _applyRegionScope(
+          firestore.collection('creatorPosters'),
+          <String>[regionId],
+        ).limit((limit * 4).clamp(120, 800)).get(GetOptions(source: source));
         final matched = page.docs
             .where((doc) {
               final data = doc.data();
@@ -636,6 +855,9 @@ class ApprovedCreatorTemplateService {
     final dynamicHiddenByCategory = collectDebugCounts ? <String, int>{} : null;
     for (final template in templates) {
       final category = _normalizeTag(template.categoryId);
+      if (!_posterMatchesSelectedRegion(template, selectedRegionId)) {
+        continue;
+      }
       if (collectDebugCounts) {
         totalByCategory![category] = (totalByCategory[category] ?? 0) + 1;
       }
@@ -862,6 +1084,7 @@ class ApprovedCreatorTemplateService {
       videoUrl: videoUrl,
       categoryId: categoryId,
       categoryLabel: categoryLabel,
+      regionId: (data['regionId'] as String?)?.trim() ?? '',
       createdAtMillis: createdAtMillis,
       personalizationConfig: _parsePersonalization(
         data['personalizationConfig'] ?? data['personalization'],

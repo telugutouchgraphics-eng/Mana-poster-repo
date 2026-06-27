@@ -25,4 +25,6 @@
         <item name="colorPrimaryDark">#FFFFFF</item>
         <item name="colorAccent">#2563EB</item>
     </style>
+
+    <style name="Ucrop.CropTheme" parent="@style/UCropTheme" />
 </resources>

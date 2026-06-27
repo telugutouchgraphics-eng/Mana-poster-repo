@@ -187,6 +187,7 @@ class ApprovedCreatorTemplate {
     this.videoUrl = '',
     required this.categoryId,
     required this.categoryLabel,
+    this.regionId = '',
     required this.createdAtMillis,
     required this.personalizationConfig,
     this.creatorPublicId = '',
@@ -203,6 +204,7 @@ class ApprovedCreatorTemplate {
   final String videoUrl;
   final String categoryId;
   final String categoryLabel;
+  final String regionId;
   final int createdAtMillis;
   final CreatorPosterPersonalization personalizationConfig;
   final String creatorPublicId;
