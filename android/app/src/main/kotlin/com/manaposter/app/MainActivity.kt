@@ -132,6 +132,22 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                         result.success(saveVideoFileToGallery(filePath, fileName, mimeType))
                     }
+                    "saveFileToDownloads" -> {
+                        val filePath = call.argument<String>("filePath")
+                        val fileName = call.argument<String>("fileName")
+                        val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
+                        if (filePath.isNullOrBlank() || fileName.isNullOrBlank()) {
+                            result.success(
+                                mapOf(
+                                    "success" to false,
+                                    "code" to "invalid_arguments",
+                                    "message" to "filePath and fileName are required",
+                                )
+                            )
+                            return@setMethodCallHandler
+                        }
+                        result.success(saveFileToDownloads(filePath, fileName, mimeType))
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -141,6 +157,9 @@ class MainActivity : FlutterFragmentActivity() {
                 when (call.method) {
                     "isTrustedPlayInstall" -> {
                         result.success(isTrustedPlayInstall())
+                    }
+                    "isProbablyEmulator" -> {
+                        result.success(isProbablyEmulator())
                     }
                     else -> result.notImplemented()
                 }
@@ -352,6 +371,27 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun isProbablyEmulator(): Boolean {
+        val fingerprint = Build.FINGERPRINT.lowercase()
+        val model = Build.MODEL.lowercase()
+        val manufacturer = Build.MANUFACTURER.lowercase()
+        val brand = Build.BRAND.lowercase()
+        val device = Build.DEVICE.lowercase()
+        val product = Build.PRODUCT.lowercase()
+        val hardware = Build.HARDWARE.lowercase()
+        return fingerprint.startsWith("generic") ||
+            fingerprint.contains("emulator") ||
+            model.contains("emulator") ||
+            model.contains("android sdk built for") ||
+            model.contains("sdk_gphone") ||
+            manufacturer.contains("genymotion") ||
+            hardware.contains("goldfish") ||
+            hardware.contains("ranchu") ||
+            (brand.startsWith("generic") && device.startsWith("generic")) ||
+            product.contains("sdk_gphone") ||
+            product.contains("google_sdk")
+    }
+
     private fun saveImageFileToGallery(filePath: String, fileName: String, mimeType: String): Map<String, Any?> {
         return try {
             val sourceFile = File(filePath)
@@ -493,6 +533,86 @@ class MainActivity : FlutterFragmentActivity() {
             }
         } catch (t: Throwable) {
             Log.e("ManaPosterSave", "saveImageBytesToGallery failed", t)
+            mapOf(
+                "success" to false,
+                "code" to "save_failed",
+                "message" to (t.message ?: t.javaClass.simpleName),
+            )
+        }
+    }
+
+    private fun saveFileToDownloads(filePath: String, fileName: String, mimeType: String): Map<String, Any?> {
+        return try {
+            val sourceFile = File(filePath)
+            if (!sourceFile.exists()) {
+                return mapOf(
+                    "success" to false,
+                    "code" to "file_missing",
+                    "message" to "Source file does not exist: $filePath",
+                )
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = applicationContext.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Mana Poster")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return mapOf(
+                        "success" to false,
+                        "code" to "media_insert_failed",
+                        "message" to "MediaStore downloads insert returned null",
+                    )
+                resolver.openOutputStream(uri)?.use { output ->
+                    FileInputStream(sourceFile).use { input ->
+                        input.copyTo(output)
+                    }
+                } ?: return mapOf(
+                    "success" to false,
+                    "code" to "open_output_failed",
+                    "message" to "Unable to open downloads output stream",
+                )
+                values.clear()
+                values.put(MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved file to downloads successfully",
+                )
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val appDir = File(downloadsDir, "Mana Poster")
+                if (!appDir.exists() && !appDir.mkdirs()) {
+                    return mapOf(
+                        "success" to false,
+                        "code" to "directory_create_failed",
+                        "message" to "Unable to create downloads directory: ${appDir.absolutePath}",
+                    )
+                }
+                val targetFile = File(appDir, fileName)
+                FileInputStream(sourceFile).use { input ->
+                    FileOutputStream(targetFile).use { output ->
+                        input.copyTo(output)
+                        output.flush()
+                    }
+                }
+                MediaScannerConnection.scanFile(
+                    applicationContext,
+                    arrayOf(targetFile.absolutePath),
+                    arrayOf(mimeType),
+                    null,
+                )
+                mapOf(
+                    "success" to true,
+                    "code" to "saved",
+                    "message" to "Saved file to downloads successfully",
+                )
+            }
+        } catch (t: Throwable) {
+            Log.e("ManaPosterSave", "saveFileToDownloads failed", t)
             mapOf(
                 "success" to false,
                 "code" to "save_failed",

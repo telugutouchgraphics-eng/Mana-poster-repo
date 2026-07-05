@@ -15,6 +15,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
           ? null
           : Uint8List.fromList(_stageBackgroundImageBytes!),
       borderStyle: _borderStyle,
+      borderWidth: _borderWidth,
+      borderRadius: _borderRadius,
+      borderColor: _borderColor,
       borderTargetLayerId: _borderTargetLayerId,
       backgroundBlurAmount: _backgroundBlurAmount,
     );
@@ -130,6 +133,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     VoidCallback? onStart,
     VoidCallback? onFinish,
     bool showBusyMessage = true,
+    bool showCommitState = true,
   }) async {
     if (_activeCommitJobKey != null) {
       if (showBusyMessage && mounted) {
@@ -153,7 +157,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     } else {
       onStart?.call();
     }
-    _setCommitState(label, detail: detail);
+    if (showCommitState) {
+      _setCommitState(label, detail: detail);
+    }
 
     Future<T> runOperation() async => operation();
 
@@ -171,7 +177,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       if (_activeCommitJobKey == jobKey) {
         _activeCommitJobKey = null;
       }
-      _setCommitState(null);
+      if (showCommitState) {
+        _setCommitState(null);
+      }
     }
   }
 
@@ -213,18 +221,31 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     String? afterSelectedLayerId,
   }) {
     final beforeLayer = _layers[index];
+    if (beforeLayer.isLocked &&
+        beforeLayer.isLocked == afterLayer.isLocked &&
+        beforeLayer.isHidden == afterLayer.isHidden) {
+      return;
+    }
+    final boundedAfterLayer = afterLayer.copyWith(
+      transform: _clampLayerTransformToPageBounds(
+        afterLayer,
+        afterLayer.transform,
+      ),
+    );
     _pushLayerHistoryEntry(
       beforeLayer: beforeLayer,
-      afterLayer: afterLayer,
+      afterLayer: boundedAfterLayer,
       afterSelectedLayerId: afterSelectedLayerId,
     );
     setState(() {
-      _layers[index] = afterLayer;
+      _layers[index] = boundedAfterLayer;
       if (afterSelectedLayerId != null) {
         _selectedLayerId = afterSelectedLayerId;
       }
-      if (_selectedLayerId == afterLayer.id) {
-        _transformationController.value = Matrix4.copy(afterLayer.transform);
+      if (_selectedLayerId == boundedAfterLayer.id) {
+        _transformationController.value = Matrix4.copy(
+          boundedAfterLayer.transform,
+        );
       }
     });
   }
@@ -244,7 +265,10 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       _transformationController.value = Matrix4.identity();
       return;
     }
-    _transformationController.value = Matrix4.copy(layer.transform);
+    _transformationController.value = _clampLayerTransformToPageBounds(
+      layer,
+      layer.transform,
+    );
   }
 
   void _restoreSnapshot(_EditorSnapshot snapshot) {
@@ -258,6 +282,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         ? null
         : Uint8List.fromList(snapshot.stageBackgroundImageBytes!);
     _borderStyle = snapshot.borderStyle;
+    _borderWidth = snapshot.borderWidth;
+    _borderRadius = snapshot.borderRadius;
+    _borderColor = snapshot.borderColor;
     _borderTargetLayerId = snapshot.borderTargetLayerId;
     _backgroundBlurAmount = snapshot.backgroundBlurAmount;
     _syncControllerFromSelection();
@@ -265,6 +292,16 @@ extension _EditorHistoryState on _ImageEditorScreenState {
   }
 
   void _handleUndo() {
+    if (_isDrawBrushMode) {
+      if (_drawStrokes.isNotEmpty) {
+        _undoDrawStroke();
+      }
+      return;
+    }
+    if (_isPhotoStretchMode && _stretchLiveStrokes.isNotEmpty) {
+      _undoStretchLiveStroke();
+      return;
+    }
     if (!_canUndo) {
       return;
     }
@@ -315,6 +352,16 @@ extension _EditorHistoryState on _ImageEditorScreenState {
   }
 
   void _handleRedo() {
+    if (_isDrawBrushMode) {
+      if (_drawRedoStrokes.isNotEmpty) {
+        _redoDrawStroke();
+      }
+      return;
+    }
+    if (_isPhotoStretchMode && _stretchRedoStrokes.isNotEmpty) {
+      _redoStretchLiveStroke();
+      return;
+    }
     if (!_canRedo) {
       return;
     }
@@ -503,13 +550,16 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     return <String, dynamic>{
       'id': layer.id,
       'type': layer.type.name,
+      'layerName': layer.layerName,
       'bytes': layer.bytes == null ? null : base64Encode(layer.bytes!),
       'originalPhotoBytes': layer.originalPhotoBytes == null
           ? null
           : base64Encode(layer.originalPhotoBytes!),
       'text': layer.text,
       'legacyRenderText': layer.legacyRenderText,
+      'isParagraphText': layer.isParagraphText,
       'sticker': layer.sticker,
+      'stickerColor': layer.stickerColor.toARGB32(),
       'textColor': layer.textColor.toARGB32(),
       'textAlign': layer.textAlign.name,
       'textGradientIndex': layer.textGradientIndex,
@@ -521,6 +571,21 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'photoContrast': layer.photoContrast,
       'photoSaturation': layer.photoSaturation,
       'photoBlur': layer.photoBlur,
+      'photoSharpen': layer.photoSharpen,
+      'photoGrain': layer.photoGrain,
+      'photoVignette': layer.photoVignette,
+      'photoMotion': layer.photoMotion,
+      'photoTiltShift': layer.photoTiltShift,
+      'photoShadows': layer.photoShadows,
+      'photoHighlights': layer.photoHighlights,
+      'photoTemperature': layer.photoTemperature,
+      'photoTint': layer.photoTint,
+      'photoPerspectiveX': layer.photoPerspectiveX,
+      'photoPerspectiveY': layer.photoPerspectiveY,
+      'photoShadowOpacity': layer.photoShadowOpacity,
+      'photoShadowBlur': layer.photoShadowBlur,
+      'photoShadowOffsetY': layer.photoShadowOffsetY,
+      'photoShadowColor': layer.photoShadowColor.toARGB32(),
       'flipPhotoHorizontally': layer.flipPhotoHorizontally,
       'flipPhotoVertically': layer.flipPhotoVertically,
       'isLocked': layer.isLocked,
@@ -528,6 +593,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'textLineHeight': layer.textLineHeight,
       'textLetterSpacing': layer.textLetterSpacing,
       'textShadowOpacity': layer.textShadowOpacity,
+      'textShadowColor': layer.textShadowColor.toARGB32(),
       'textShadowBlur': layer.textShadowBlur,
       'textShadowOffsetY': layer.textShadowOffsetY,
       'isTextBold': layer.isTextBold,
@@ -539,11 +605,195 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'textBackgroundColor': layer.textBackgroundColor.toARGB32(),
       'textBackgroundOpacity': layer.textBackgroundOpacity,
       'textBackgroundRadius': layer.textBackgroundRadius,
+      'textBackgroundTopPadding': layer.textBackgroundTopPadding,
+      'textBackgroundBottomPadding': layer.textBackgroundBottomPadding,
       'photoAspectRatio': layer.photoAspectRatio,
+      'photoFixedWidth': layer.photoFixedWidth,
+      'photoFixedHeight': layer.photoFixedHeight,
+      'psdEditableText': layer.psdEditableText,
+      'psdEditableFontSize': layer.psdEditableFontSize,
+      'psdEditableFontFamily': layer.psdEditableFontFamily,
+      'psdEditableTextAlign': layer.psdEditableTextAlign?.name,
       'photoMaskShape': layer.photoMaskShape,
+      'photoMaskScale': layer.photoMaskScale,
+      'photoMaskOffsetX': layer.photoMaskOffsetX,
+      'photoMaskOffsetY': layer.photoMaskOffsetY,
+      'photoMaskFeather': layer.photoMaskFeather,
+      'photoFramePreset': layer.photoFramePreset,
+      'photoFrameColor': layer.photoFrameColor.toARGB32(),
+      'photoFrameThickness': layer.photoFrameThickness,
       'fillPageBounds': layer.fillPageBounds,
+      'clipsToLayerBelow': layer.clipsToLayerBelow,
+      'layerMaskEnabled': layer.layerMaskEnabled,
+      'layerMaskShape': layer.layerMaskShape,
+      'layerMaskInverted': layer.layerMaskInverted,
+      'layerMaskFeather': layer.layerMaskFeather,
+      'layerMaskBrushStrokes': layer.layerMaskBrushStrokes
+          .map(
+            (stroke) => <String, dynamic>{
+              'points': stroke.points
+                  .map(
+                    (point) => <double>[
+                      point.dx.clamp(0.0, 1.0).toDouble(),
+                      point.dy.clamp(0.0, 1.0).toDouble(),
+                    ],
+                  )
+                  .toList(growable: false),
+              'brushSize': stroke.brushSize,
+              'hardness': stroke.hardness,
+              'restores': stroke.restores,
+            },
+          )
+          .toList(growable: false),
+      'layerStyleOverlayColor': layer.layerStyleOverlayColor.toARGB32(),
+      'layerStyleOverlayOpacity': layer.layerStyleOverlayOpacity,
+      'layerStyleColorOverlayBlendMode': layer.layerStyleColorOverlayBlendMode,
+      'layerStyleStrokeColor': layer.layerStyleStrokeColor.toARGB32(),
+      'layerStyleStrokeWidth': layer.layerStyleStrokeWidth,
+      'layerStyleShadowColor': layer.layerStyleShadowColor.toARGB32(),
+      'layerStyleShadowOpacity': layer.layerStyleShadowOpacity,
+      'layerStyleShadowBlur': layer.layerStyleShadowBlur,
+      'layerStyleShadowSpread': layer.layerStyleShadowSpread,
+      'layerStyleShadowOffsetX': layer.layerStyleShadowOffsetX,
+      'layerStyleShadowOffsetY': layer.layerStyleShadowOffsetY,
+      'layerStyleShadowBlendMode': layer.layerStyleShadowBlendMode,
+      'layerStyleShadowContour': layer.layerStyleShadowContour,
+      'layerStyleShadowNoise': layer.layerStyleShadowNoise,
+      'layerStyleUseGlobalLight': layer.layerStyleUseGlobalLight,
+      'layerStyleGlobalLightAngle': layer.layerStyleGlobalLightAngle,
+      'layerStyleGlobalLightAltitude': layer.layerStyleGlobalLightAltitude,
+      'layerStyleBevelEnabled': layer.layerStyleBevelEnabled,
+      'layerStyleBevelStyle': layer.layerStyleBevelStyle,
+      'layerStyleBevelTechnique': layer.layerStyleBevelTechnique,
+      'layerStyleBevelDirection': layer.layerStyleBevelDirection,
+      'layerStyleBevelDepth': layer.layerStyleBevelDepth,
+      'layerStyleBevelSize': layer.layerStyleBevelSize,
+      'layerStyleBevelSoften': layer.layerStyleBevelSoften,
+      'layerStyleBevelAngle': layer.layerStyleBevelAngle,
+      'layerStyleBevelAltitude': layer.layerStyleBevelAltitude,
+      'layerStyleBevelHighlightColor': layer.layerStyleBevelHighlightColor
+          .toARGB32(),
+      'layerStyleBevelHighlightOpacity': layer.layerStyleBevelHighlightOpacity,
+      'layerStyleBevelShadowColor': layer.layerStyleBevelShadowColor.toARGB32(),
+      'layerStyleBevelShadowOpacity': layer.layerStyleBevelShadowOpacity,
+      'layerStyleContour': layer.layerStyleContour,
+      'layerStyleTextureEnabled': layer.layerStyleTextureEnabled,
+      'layerStyleTextureScale': layer.layerStyleTextureScale,
+      'layerStyleTextureDepth': layer.layerStyleTextureDepth,
+      'layerStyleStrokeOpacity': layer.layerStyleStrokeOpacity,
+      'layerStyleStrokePosition': layer.layerStyleStrokePosition,
+      'layerStyleStrokeBlendMode': layer.layerStyleStrokeBlendMode,
+      'layerStyleInnerShadowColor': layer.layerStyleInnerShadowColor.toARGB32(),
+      'layerStyleInnerShadowOpacity': layer.layerStyleInnerShadowOpacity,
+      'layerStyleInnerShadowBlur': layer.layerStyleInnerShadowBlur,
+      'layerStyleInnerShadowChoke': layer.layerStyleInnerShadowChoke,
+      'layerStyleInnerShadowDistance': layer.layerStyleInnerShadowDistance,
+      'layerStyleInnerShadowAngle': layer.layerStyleInnerShadowAngle,
+      'layerStyleInnerShadowBlendMode': layer.layerStyleInnerShadowBlendMode,
+      'layerStyleInnerShadowContour': layer.layerStyleInnerShadowContour,
+      'layerStyleInnerShadowNoise': layer.layerStyleInnerShadowNoise,
+      'layerStyleGradientOverlayEnabled':
+          layer.layerStyleGradientOverlayEnabled,
+      'layerStyleGradientOverlayIndex': layer.layerStyleGradientOverlayIndex,
+      'layerStyleGradientOverlayOpacity':
+          layer.layerStyleGradientOverlayOpacity,
+      'layerStyleGradientOverlayAngle': layer.layerStyleGradientOverlayAngle,
+      'layerStyleGradientOverlayStyle': layer.layerStyleGradientOverlayStyle,
+      'layerStyleGradientOverlayScale': layer.layerStyleGradientOverlayScale,
+      'layerStyleGradientOverlayBlendMode':
+          layer.layerStyleGradientOverlayBlendMode,
+      'layerStyleGradientOverlayReversed':
+          layer.layerStyleGradientOverlayReversed,
+      'layerStyleGradientOverlayDither': layer.layerStyleGradientOverlayDither,
+      'layerStyleOuterGlowColor': layer.layerStyleOuterGlowColor.toARGB32(),
+      'layerStyleOuterGlowOpacity': layer.layerStyleOuterGlowOpacity,
+      'layerStyleOuterGlowSize': layer.layerStyleOuterGlowSize,
+      'layerStyleOuterGlowSpread': layer.layerStyleOuterGlowSpread,
+      'layerStyleOuterGlowNoise': layer.layerStyleOuterGlowNoise,
+      'layerStyleOuterGlowContour': layer.layerStyleOuterGlowContour,
+      'layerStyleOuterGlowRange': layer.layerStyleOuterGlowRange,
+      'layerStyleOuterGlowJitter': layer.layerStyleOuterGlowJitter,
+      'layerStyleOuterGlowBlendMode': layer.layerStyleOuterGlowBlendMode,
+      'layerStyleInnerGlowColor': layer.layerStyleInnerGlowColor.toARGB32(),
+      'layerStyleInnerGlowOpacity': layer.layerStyleInnerGlowOpacity,
+      'layerStyleInnerGlowSize': layer.layerStyleInnerGlowSize,
+      'layerStyleInnerGlowSpread': layer.layerStyleInnerGlowSpread,
+      'layerStyleInnerGlowNoise': layer.layerStyleInnerGlowNoise,
+      'layerStyleInnerGlowSource': layer.layerStyleInnerGlowSource,
+      'layerStyleInnerGlowContour': layer.layerStyleInnerGlowContour,
+      'layerStyleInnerGlowRange': layer.layerStyleInnerGlowRange,
+      'layerStyleInnerGlowJitter': layer.layerStyleInnerGlowJitter,
+      'layerStyleInnerGlowBlendMode': layer.layerStyleInnerGlowBlendMode,
+      'layerStyleSatinColor': layer.layerStyleSatinColor.toARGB32(),
+      'layerStyleSatinOpacity': layer.layerStyleSatinOpacity,
+      'layerStyleSatinAngle': layer.layerStyleSatinAngle,
+      'layerStyleSatinDistance': layer.layerStyleSatinDistance,
+      'layerStyleSatinSize': layer.layerStyleSatinSize,
+      'layerStyleSatinInverted': layer.layerStyleSatinInverted,
+      'layerStyleSatinBlendMode': layer.layerStyleSatinBlendMode,
+      'layerStylePatternOverlayEnabled': layer.layerStylePatternOverlayEnabled,
+      'layerStylePatternOverlayOpacity': layer.layerStylePatternOverlayOpacity,
+      'layerStylePatternOverlayScale': layer.layerStylePatternOverlayScale,
+      'layerStylePatternOverlayBlendMode':
+          layer.layerStylePatternOverlayBlendMode,
+      'layerStylePatternOverlayPreset': layer.layerStylePatternOverlayPreset,
+      'isSmartObject': layer.isSmartObject,
+      'smartObjectSourceBytes': layer.smartObjectSourceBytes == null
+          ? null
+          : base64Encode(layer.smartObjectSourceBytes!),
+      'groupId': layer.groupId,
+      'groupName': layer.groupName,
+      'linkGroupId': layer.linkGroupId,
+      'blendMode': layer.blendMode.name,
       'transform': _matrixToList(layer.transform),
     };
+  }
+
+  List<_LayerMaskBrushStroke> _deserializeLayerMaskBrushStrokes(dynamic raw) {
+    if (raw is! List) {
+      return const <_LayerMaskBrushStroke>[];
+    }
+    final strokes = <_LayerMaskBrushStroke>[];
+    for (final strokeRaw in raw) {
+      if (strokeRaw is! Map) {
+        continue;
+      }
+      final rawPoints = strokeRaw['points'];
+      if (rawPoints is! List) {
+        continue;
+      }
+      final points = <Offset>[];
+      for (final pointRaw in rawPoints) {
+        if (pointRaw is List && pointRaw.length >= 2) {
+          final dx = pointRaw[0];
+          final dy = pointRaw[1];
+          if (dx is num && dy is num) {
+            points.add(
+              Offset(
+                dx.toDouble().clamp(0.0, 1.0),
+                dy.toDouble().clamp(0.0, 1.0),
+              ),
+            );
+          }
+        }
+      }
+      if (points.isEmpty) {
+        continue;
+      }
+      strokes.add(
+        _LayerMaskBrushStroke(
+          points: points,
+          brushSize: ((strokeRaw['brushSize'] as num?)?.toDouble() ?? 42)
+              .clamp(4.0, 220.0)
+              .toDouble(),
+          hardness: ((strokeRaw['hardness'] as num?)?.toDouble() ?? 0.35)
+              .clamp(0.0, 1.0)
+              .toDouble(),
+          restores: (strokeRaw['restores'] as bool?) ?? false,
+        ),
+      );
+    }
+    return List<_LayerMaskBrushStroke>.unmodifiable(strokes);
   }
 
   _CanvasLayer? _deserializeLayer(dynamic raw) {
@@ -562,11 +812,19 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         (item) => item.name == textAlignName,
         orElse: () => TextAlign.center,
       );
+      final psdTextAlignName = raw['psdEditableTextAlign'] as String?;
+      final psdTextAlign = psdTextAlignName == null
+          ? null
+          : TextAlign.values.firstWhere(
+              (item) => item.name == psdTextAlignName,
+              orElse: () => TextAlign.center,
+            );
       return _CanvasLayer(
         id:
             raw['id'] as String? ??
             'layer_${DateTime.now().millisecondsSinceEpoch}',
         type: type,
+        layerName: raw['layerName'] as String? ?? '',
         bytes: raw['bytes'] == null
             ? null
             : base64Decode(raw['bytes'] as String),
@@ -575,7 +833,11 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             : base64Decode(raw['originalPhotoBytes'] as String),
         text: raw['text'] as String?,
         legacyRenderText: raw['legacyRenderText'] as String?,
+        isParagraphText: raw['isParagraphText'] as bool? ?? true,
         sticker: raw['sticker'] as String?,
+        stickerColor: Color(
+          (raw['stickerColor'] as num?)?.toInt() ?? 0xFF111827,
+        ),
         textColor: Color((raw['textColor'] as num?)?.toInt() ?? 0xFF0F172A),
         textAlign: textAlign,
         textGradientIndex: (raw['textGradientIndex'] as num?)?.toInt() ?? -1,
@@ -588,6 +850,25 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         photoContrast: (raw['photoContrast'] as num?)?.toDouble() ?? 1,
         photoSaturation: (raw['photoSaturation'] as num?)?.toDouble() ?? 1,
         photoBlur: (raw['photoBlur'] as num?)?.toDouble() ?? 0,
+        photoSharpen: (raw['photoSharpen'] as num?)?.toDouble() ?? 0,
+        photoGrain: (raw['photoGrain'] as num?)?.toDouble() ?? 0,
+        photoVignette: (raw['photoVignette'] as num?)?.toDouble() ?? 0,
+        photoMotion: (raw['photoMotion'] as num?)?.toDouble() ?? 0,
+        photoTiltShift: (raw['photoTiltShift'] as num?)?.toDouble() ?? 0,
+        photoShadows: (raw['photoShadows'] as num?)?.toDouble() ?? 0,
+        photoHighlights: (raw['photoHighlights'] as num?)?.toDouble() ?? 0,
+        photoTemperature: (raw['photoTemperature'] as num?)?.toDouble() ?? 0,
+        photoTint: (raw['photoTint'] as num?)?.toDouble() ?? 0,
+        photoPerspectiveX: (raw['photoPerspectiveX'] as num?)?.toDouble() ?? 0,
+        photoPerspectiveY: (raw['photoPerspectiveY'] as num?)?.toDouble() ?? 0,
+        photoShadowOpacity:
+            (raw['photoShadowOpacity'] as num?)?.toDouble() ?? 0,
+        photoShadowBlur: (raw['photoShadowBlur'] as num?)?.toDouble() ?? 0,
+        photoShadowOffsetY:
+            (raw['photoShadowOffsetY'] as num?)?.toDouble() ?? 0,
+        photoShadowColor: Color(
+          (raw['photoShadowColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
         flipPhotoHorizontally: (raw['flipPhotoHorizontally'] as bool?) ?? false,
         flipPhotoVertically: (raw['flipPhotoVertically'] as bool?) ?? false,
         isLocked: (raw['isLocked'] as bool?) ?? false,
@@ -595,6 +876,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         textLineHeight: (raw['textLineHeight'] as num?)?.toDouble() ?? 1.15,
         textLetterSpacing: (raw['textLetterSpacing'] as num?)?.toDouble() ?? 0,
         textShadowOpacity: (raw['textShadowOpacity'] as num?)?.toDouble() ?? 0,
+        textShadowColor: Color(
+          (raw['textShadowColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
         textShadowBlur: (raw['textShadowBlur'] as num?)?.toDouble() ?? 0,
         textShadowOffsetY: (raw['textShadowOffsetY'] as num?)?.toDouble() ?? 0,
         isTextBold: (raw['isTextBold'] as bool?) ?? false,
@@ -613,9 +897,229 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['textBackgroundOpacity'] as num?)?.toDouble() ?? 0,
         textBackgroundRadius:
             (raw['textBackgroundRadius'] as num?)?.toDouble() ?? 0,
+        textBackgroundTopPadding:
+            (raw['textBackgroundTopPadding'] as num?)?.toDouble() ?? 8,
+        textBackgroundBottomPadding:
+            (raw['textBackgroundBottomPadding'] as num?)?.toDouble() ?? 8,
         photoAspectRatio: (raw['photoAspectRatio'] as num?)?.toDouble(),
+        photoFixedWidth: (raw['photoFixedWidth'] as num?)?.toDouble(),
+        photoFixedHeight: (raw['photoFixedHeight'] as num?)?.toDouble(),
+        psdEditableText: raw['psdEditableText'] as String?,
+        psdEditableFontSize: (raw['psdEditableFontSize'] as num?)?.toDouble(),
+        psdEditableFontFamily: raw['psdEditableFontFamily'] as String?,
+        psdEditableTextAlign: psdTextAlign,
         photoMaskShape: raw['photoMaskShape'] as String? ?? '',
+        photoMaskScale: (raw['photoMaskScale'] as num?)?.toDouble() ?? 1,
+        photoMaskOffsetX: (raw['photoMaskOffsetX'] as num?)?.toDouble() ?? 0,
+        photoMaskOffsetY: (raw['photoMaskOffsetY'] as num?)?.toDouble() ?? 0,
+        photoMaskFeather: (raw['photoMaskFeather'] as num?)?.toDouble() ?? 0,
+        photoFramePreset: raw['photoFramePreset'] as String? ?? '',
+        photoFrameColor: Color(
+          (raw['photoFrameColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
+        ),
+        photoFrameThickness:
+            (raw['photoFrameThickness'] as num?)?.toDouble() ?? 50,
         fillPageBounds: (raw['fillPageBounds'] as bool?) ?? false,
+        clipsToLayerBelow: (raw['clipsToLayerBelow'] as bool?) ?? false,
+        layerMaskEnabled: (raw['layerMaskEnabled'] as bool?) ?? false,
+        layerMaskShape: raw['layerMaskShape'] as String? ?? '',
+        layerMaskInverted: (raw['layerMaskInverted'] as bool?) ?? false,
+        layerMaskFeather: (raw['layerMaskFeather'] as num?)?.toDouble() ?? 0,
+        layerMaskBrushStrokes: _deserializeLayerMaskBrushStrokes(
+          raw['layerMaskBrushStrokes'],
+        ),
+        layerStyleOverlayColor: Color(
+          (raw['layerStyleOverlayColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
+        layerStyleOverlayOpacity:
+            (raw['layerStyleOverlayOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleColorOverlayBlendMode:
+            (raw['layerStyleColorOverlayBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleStrokeColor: Color(
+          (raw['layerStyleStrokeColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
+        ),
+        layerStyleStrokeWidth:
+            (raw['layerStyleStrokeWidth'] as num?)?.toDouble() ?? 0,
+        layerStyleShadowColor: Color(
+          (raw['layerStyleShadowColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
+        layerStyleShadowOpacity:
+            (raw['layerStyleShadowOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleShadowBlur:
+            (raw['layerStyleShadowBlur'] as num?)?.toDouble() ?? 12,
+        layerStyleShadowSpread:
+            (raw['layerStyleShadowSpread'] as num?)?.toDouble() ?? 0,
+        layerStyleShadowOffsetX:
+            (raw['layerStyleShadowOffsetX'] as num?)?.toDouble() ?? 0,
+        layerStyleShadowOffsetY:
+            (raw['layerStyleShadowOffsetY'] as num?)?.toDouble() ?? 6,
+        layerStyleShadowBlendMode:
+            (raw['layerStyleShadowBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleShadowContour:
+            (raw['layerStyleShadowContour'] as num?)?.toInt() ?? 0,
+        layerStyleShadowNoise:
+            (raw['layerStyleShadowNoise'] as num?)?.toDouble() ?? 0,
+        layerStyleUseGlobalLight:
+            (raw['layerStyleUseGlobalLight'] as bool?) ?? false,
+        layerStyleGlobalLightAngle:
+            (raw['layerStyleGlobalLightAngle'] as num?)?.toDouble() ?? 120,
+        layerStyleGlobalLightAltitude:
+            (raw['layerStyleGlobalLightAltitude'] as num?)?.toDouble() ?? 30,
+        layerStyleBevelEnabled:
+            (raw['layerStyleBevelEnabled'] as bool?) ?? false,
+        layerStyleBevelStyle:
+            (raw['layerStyleBevelStyle'] as num?)?.toInt() ?? 0,
+        layerStyleBevelTechnique:
+            (raw['layerStyleBevelTechnique'] as num?)?.toInt() ?? 0,
+        layerStyleBevelDirection:
+            (raw['layerStyleBevelDirection'] as num?)?.toInt() ?? 0,
+        layerStyleBevelDepth:
+            (raw['layerStyleBevelDepth'] as num?)?.toDouble() ?? 35,
+        layerStyleBevelSize:
+            (raw['layerStyleBevelSize'] as num?)?.toDouble() ?? 8,
+        layerStyleBevelSoften:
+            (raw['layerStyleBevelSoften'] as num?)?.toDouble() ?? 2,
+        layerStyleBevelAngle:
+            (raw['layerStyleBevelAngle'] as num?)?.toDouble() ?? 120,
+        layerStyleBevelAltitude:
+            (raw['layerStyleBevelAltitude'] as num?)?.toDouble() ?? 30,
+        layerStyleBevelHighlightColor: Color(
+          (raw['layerStyleBevelHighlightColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
+        ),
+        layerStyleBevelHighlightOpacity:
+            (raw['layerStyleBevelHighlightOpacity'] as num?)?.toDouble() ??
+            0.75,
+        layerStyleBevelShadowColor: Color(
+          (raw['layerStyleBevelShadowColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
+        layerStyleBevelShadowOpacity:
+            (raw['layerStyleBevelShadowOpacity'] as num?)?.toDouble() ?? 0.75,
+        layerStyleContour: (raw['layerStyleContour'] as num?)?.toInt() ?? 0,
+        layerStyleTextureEnabled:
+            (raw['layerStyleTextureEnabled'] as bool?) ?? false,
+        layerStyleTextureScale:
+            (raw['layerStyleTextureScale'] as num?)?.toDouble() ?? 36,
+        layerStyleTextureDepth:
+            (raw['layerStyleTextureDepth'] as num?)?.toDouble() ?? 18,
+        layerStyleStrokeOpacity:
+            (raw['layerStyleStrokeOpacity'] as num?)?.toDouble() ?? 1,
+        layerStyleStrokePosition:
+            (raw['layerStyleStrokePosition'] as num?)?.toInt() ?? 0,
+        layerStyleStrokeBlendMode:
+            (raw['layerStyleStrokeBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleInnerShadowColor: Color(
+          (raw['layerStyleInnerShadowColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
+        layerStyleInnerShadowOpacity:
+            (raw['layerStyleInnerShadowOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerShadowBlur:
+            (raw['layerStyleInnerShadowBlur'] as num?)?.toDouble() ?? 12,
+        layerStyleInnerShadowChoke:
+            (raw['layerStyleInnerShadowChoke'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerShadowDistance:
+            (raw['layerStyleInnerShadowDistance'] as num?)?.toDouble() ?? 8,
+        layerStyleInnerShadowAngle:
+            (raw['layerStyleInnerShadowAngle'] as num?)?.toDouble() ?? 120,
+        layerStyleInnerShadowBlendMode:
+            (raw['layerStyleInnerShadowBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleInnerShadowContour:
+            (raw['layerStyleInnerShadowContour'] as num?)?.toInt() ?? 0,
+        layerStyleInnerShadowNoise:
+            (raw['layerStyleInnerShadowNoise'] as num?)?.toDouble() ?? 0,
+        layerStyleGradientOverlayEnabled:
+            (raw['layerStyleGradientOverlayEnabled'] as bool?) ?? false,
+        layerStyleGradientOverlayIndex:
+            (raw['layerStyleGradientOverlayIndex'] as num?)?.toInt() ?? 0,
+        layerStyleGradientOverlayOpacity:
+            (raw['layerStyleGradientOverlayOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleGradientOverlayAngle:
+            (raw['layerStyleGradientOverlayAngle'] as num?)?.toDouble() ?? 0,
+        layerStyleGradientOverlayStyle:
+            (raw['layerStyleGradientOverlayStyle'] as num?)?.toInt() ?? 0,
+        layerStyleGradientOverlayScale:
+            (raw['layerStyleGradientOverlayScale'] as num?)?.toDouble() ?? 100,
+        layerStyleGradientOverlayBlendMode:
+            (raw['layerStyleGradientOverlayBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleGradientOverlayReversed:
+            (raw['layerStyleGradientOverlayReversed'] as bool?) ?? false,
+        layerStyleGradientOverlayDither:
+            (raw['layerStyleGradientOverlayDither'] as bool?) ?? false,
+        layerStyleOuterGlowColor: Color(
+          (raw['layerStyleOuterGlowColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
+        ),
+        layerStyleOuterGlowOpacity:
+            (raw['layerStyleOuterGlowOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleOuterGlowSize:
+            (raw['layerStyleOuterGlowSize'] as num?)?.toDouble() ?? 18,
+        layerStyleOuterGlowSpread:
+            (raw['layerStyleOuterGlowSpread'] as num?)?.toDouble() ?? 0,
+        layerStyleOuterGlowNoise:
+            (raw['layerStyleOuterGlowNoise'] as num?)?.toDouble() ?? 0,
+        layerStyleOuterGlowContour:
+            (raw['layerStyleOuterGlowContour'] as num?)?.toInt() ?? 0,
+        layerStyleOuterGlowRange:
+            (raw['layerStyleOuterGlowRange'] as num?)?.toDouble() ?? 50,
+        layerStyleOuterGlowJitter:
+            (raw['layerStyleOuterGlowJitter'] as num?)?.toDouble() ?? 0,
+        layerStyleOuterGlowBlendMode:
+            (raw['layerStyleOuterGlowBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleInnerGlowColor: Color(
+          (raw['layerStyleInnerGlowColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
+        ),
+        layerStyleInnerGlowOpacity:
+            (raw['layerStyleInnerGlowOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerGlowSize:
+            (raw['layerStyleInnerGlowSize'] as num?)?.toDouble() ?? 18,
+        layerStyleInnerGlowSpread:
+            (raw['layerStyleInnerGlowSpread'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerGlowNoise:
+            (raw['layerStyleInnerGlowNoise'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerGlowSource:
+            (raw['layerStyleInnerGlowSource'] as num?)?.toInt() ?? 0,
+        layerStyleInnerGlowContour:
+            (raw['layerStyleInnerGlowContour'] as num?)?.toInt() ?? 0,
+        layerStyleInnerGlowRange:
+            (raw['layerStyleInnerGlowRange'] as num?)?.toDouble() ?? 50,
+        layerStyleInnerGlowJitter:
+            (raw['layerStyleInnerGlowJitter'] as num?)?.toDouble() ?? 0,
+        layerStyleInnerGlowBlendMode:
+            (raw['layerStyleInnerGlowBlendMode'] as num?)?.toInt() ?? 0,
+        layerStyleSatinColor: Color(
+          (raw['layerStyleSatinColor'] as num?)?.toInt() ?? 0xFF000000,
+        ),
+        layerStyleSatinOpacity:
+            (raw['layerStyleSatinOpacity'] as num?)?.toDouble() ?? 0,
+        layerStyleSatinAngle:
+            (raw['layerStyleSatinAngle'] as num?)?.toDouble() ?? 20,
+        layerStyleSatinDistance:
+            (raw['layerStyleSatinDistance'] as num?)?.toDouble() ?? 12,
+        layerStyleSatinSize:
+            (raw['layerStyleSatinSize'] as num?)?.toDouble() ?? 18,
+        layerStyleSatinInverted:
+            (raw['layerStyleSatinInverted'] as bool?) ?? false,
+        layerStyleSatinBlendMode:
+            (raw['layerStyleSatinBlendMode'] as num?)?.toInt() ?? 0,
+        layerStylePatternOverlayEnabled:
+            (raw['layerStylePatternOverlayEnabled'] as bool?) ?? false,
+        layerStylePatternOverlayOpacity:
+            (raw['layerStylePatternOverlayOpacity'] as num?)?.toDouble() ?? 0,
+        layerStylePatternOverlayScale:
+            (raw['layerStylePatternOverlayScale'] as num?)?.toDouble() ?? 36,
+        layerStylePatternOverlayBlendMode:
+            (raw['layerStylePatternOverlayBlendMode'] as num?)?.toInt() ?? 0,
+        layerStylePatternOverlayPreset:
+            (raw['layerStylePatternOverlayPreset'] as num?)?.toInt() ?? 0,
+        isSmartObject: (raw['isSmartObject'] as bool?) ?? false,
+        smartObjectSourceBytes: raw['smartObjectSourceBytes'] == null
+            ? null
+            : base64Decode(raw['smartObjectSourceBytes'] as String),
+        groupId: raw['groupId'] as String? ?? '',
+        groupName: raw['groupName'] as String? ?? '',
+        linkGroupId: raw['linkGroupId'] as String? ?? '',
+        blendMode: BlendMode.values.firstWhere(
+          (mode) => mode.name == raw['blendMode'],
+          orElse: () => BlendMode.srcOver,
+        ),
         transform: _matrixFromList(raw['transform']),
       );
     } catch (_) {
@@ -633,6 +1137,9 @@ extension _EditorHistoryState on _ImageEditorScreenState {
           ? null
           : base64Encode(_stageBackgroundImageBytes!),
       'borderStyle': _borderStyle.name,
+      'borderWidth': _borderWidth,
+      'borderRadius': _borderRadius,
+      'borderColor': _borderColor.toARGB32(),
       'borderTargetLayerId': _borderTargetLayerId,
       'backgroundBlurAmount': _backgroundBlurAmount,
       'pageAspectRatio': _pageAspectRatio,
@@ -692,6 +1199,11 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       _borderStyle = _BorderStyle.values.firstWhere(
         (item) => item.name == (decoded['borderStyle'] as String?),
         orElse: () => _BorderStyle.none,
+      );
+      _borderWidth = (decoded['borderWidth'] as num?)?.toDouble() ?? 1.5;
+      _borderRadius = (decoded['borderRadius'] as num?)?.toDouble() ?? 0;
+      _borderColor = Color(
+        (decoded['borderColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
       );
       _borderTargetLayerId = decoded['borderTargetLayerId'] as String?;
       _backgroundBlurAmount =

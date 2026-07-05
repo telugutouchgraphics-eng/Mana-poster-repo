@@ -76,6 +76,9 @@ dependencies:
   geolocator: ^14.0.2
   geocoding: ^4.0.0
   ffmpeg_kit_flutter_new: ^4.2.1
+  file_picker: ^11.0.2
+  pdf: ^3.13.0
+  psd_sdk: ^0.2.3
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +105,13 @@ flutter:
     - assets/elements/political/logos/
     - assets/elements/political/party_logos/
     - assets/elements/regions/logos/
+    - assets/editor_ui/
+    - assets/editor_brushes/brushes/
+    - assets/editor_brushes/draw/
+    - assets/editor_brushes/brush_segments_settings.json
+    - assets/designpro_reference_full/assets/callouts/
+    - assets/designpro_reference_full/assets/shapes/
+    - assets/designpro_reference_full/res/drawable-xxhdpi-v4/
 
   fonts:
     - family: Anek Telugu Condensed Bold
@@ -469,6 +479,58 @@ flutter:
     - family: Caveat
       fonts:
         - asset: assets/fonts/english/caveat.variable.ttf
+    - family: Noto Sans Devanagari
+      fonts:
+        - asset: assets/fonts/hindi/noto-sans-devanagari.variable.ttf
+    - family: Noto Serif Devanagari
+      fonts:
+        - asset: assets/fonts/hindi/noto-serif-devanagari.variable.ttf
+    - family: Hind
+      fonts:
+        - asset: assets/fonts/hindi/hind.semibold.ttf
+          weight: 600
+    - family: Teko
+      fonts:
+        - asset: assets/fonts/hindi/teko.variable.ttf
+    - family: Rajdhani
+      fonts:
+        - asset: assets/fonts/hindi/rajdhani.semibold.ttf
+          weight: 600
+    - family: Baloo 2
+      fonts:
+        - asset: assets/fonts/hindi/baloo-2.variable.ttf
+    - family: Kalam
+      fonts:
+        - asset: assets/fonts/hindi/kalam.bold.ttf
+          weight: 700
+    - family: Yatra One
+      fonts:
+        - asset: assets/fonts/hindi/yatra-one.regular.ttf
+    - family: Gotu
+      fonts:
+        - asset: assets/fonts/hindi/gotu.regular.ttf
+    - family: Mukta
+      fonts:
+        - asset: assets/fonts/hindi/mukta.bold.ttf
+          weight: 700
+    - family: Arya
+      fonts:
+        - asset: assets/fonts/hindi/arya.bold.ttf
+          weight: 700
+    - family: Martel
+      fonts:
+        - asset: assets/fonts/hindi/martel.heavy.ttf
+          weight: 900
+    - family: Sarpanch
+      fonts:
+        - asset: assets/fonts/hindi/sarpanch.bold.ttf
+          weight: 700
+    - family: Kurale
+      fonts:
+        - asset: assets/fonts/hindi/kurale.regular.ttf
+    - family: Rozha One
+      fonts:
+        - asset: assets/fonts/hindi/rozha-one.regular.ttf
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

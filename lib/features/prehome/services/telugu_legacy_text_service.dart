@@ -12,10 +12,7 @@ class TeluguLegacyTextService {
     return convertSync(text, fontFamily: fontFamily);
   }
 
-  static String? convertSync(
-    String text, {
-    required String fontFamily,
-  }) {
+  static String? convertSync(String text, {required String fontFamily}) {
     final normalized = _normalize(text);
     if (normalized.isEmpty) {
       return normalized;
@@ -40,10 +37,19 @@ class TeluguLegacyTextService {
     }
   }
 
-  static String? cachedValue(
-    String text, {
-    required String fontFamily,
-  }) {
+  static String reverseConvertSync(String text) {
+    final normalized = _normalize(text);
+    if (normalized.isEmpty) {
+      return normalized;
+    }
+    try {
+      return TeluguLegacyOfflineConverter.reverseConvert(normalized);
+    } catch (_) {
+      return normalized;
+    }
+  }
+
+  static String? cachedValue(String text, {required String fontFamily}) {
     final normalized = _normalize(text);
     if (normalized.isEmpty) {
       return normalized;

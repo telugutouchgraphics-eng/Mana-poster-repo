@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
+import 'package:mana_poster/app/services/install_source_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
@@ -45,6 +48,10 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     'MANA_POSTER_SHOW_RASTER_CHECKERBOARD',
     defaultValue: false,
   );
+  static const bool _enableDebugFirebaseBindings = bool.fromEnvironment(
+    'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
+    defaultValue: false,
+  );
 
   late final AppLanguageController _languageController;
   late final ThemeData _appTheme;
@@ -70,10 +77,18 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     if (_firebaseBindingsAttached) {
       return;
     }
+    if (!kReleaseMode && !_enableDebugFirebaseBindings) {
+      return;
+    }
+    if (!await _shouldRunFirebaseBindingsForCurrentInstall()) {
+      return;
+    }
     try {
       await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 6));
     } catch (_) {}
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    await Future<void>.delayed(
+      kReleaseMode ? const Duration(seconds: 5) : const Duration(seconds: 12),
+    );
     if (!mounted) {
       return;
     }
@@ -86,13 +101,25 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
     }
   }
 
+  Future<bool> _shouldRunFirebaseBindingsForCurrentInstall() async {
+    if (!kReleaseMode || kIsWeb) {
+      return true;
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return true;
+    }
+    return InstallSourceService.isTrustedPlayInstall();
+  }
+
   bool _attachFirebaseBindingsIfReady() {
     if (_firebaseBindingsAttached || Firebase.apps.isEmpty) {
       return false;
     }
-    _analyticsObserver = FirebaseAnalyticsObserver(
-      analytics: FirebaseAnalytics.instance,
-    );
+    if (kReleaseMode) {
+      _analyticsObserver = FirebaseAnalyticsObserver(
+        analytics: FirebaseAnalytics.instance,
+      );
+    }
     _attachSubscriptionEntitlementToAuth();
     if (FirebaseAuth.instance.currentUser != null) {
       unawaited(ReferralRewardService().applyInstallReferrerIfAvailable());

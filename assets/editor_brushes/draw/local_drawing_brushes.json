@@ -1,0 +1,805 @@
+{
+  "version": 0,
+  "brushes": [
+    {
+      "name": "marker",
+      "display_name": "",
+      "id": 0,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "texture_1",
+      "display_name": "",
+      "id": 10,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 19,
+        "diameter": 40,
+        "size_jitter": 0.0,
+        "spacing": 4,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_2",
+      "display_name": "",
+      "id": 11,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 15,
+        "diameter": 60,
+        "size_jitter": 0.0,
+        "spacing":6,
+        "scatter": 0.0,
+        "angle": 90.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": true
+      }
+    },
+    {
+      "name": "texture_3",
+      "display_name": "",
+      "id": 12,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 30.0,
+        "size_jitter": 0.0,
+        "spacing": 99,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": false,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_4",
+      "display_name": "",
+      "id": 13,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 60.0,
+        "size_jitter": 0.0,
+        "spacing": 6,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 5,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_5",
+      "display_name": "",
+      "id": 14,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 19,
+        "diameter": 30.0,
+        "size_jitter": 0.3,
+        "spacing": 6,
+        "scatter": 50,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 10,
+        "vary_opacity": false,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_6",
+      "display_name": "",
+      "id": 15,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 10.0,
+        "size_jitter": 0.0,
+        "spacing": 6,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": false,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_7",
+      "display_name": "",
+      "id": 16,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 40.0,
+        "size_jitter": 0.0,
+        "spacing": 10,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "text",
+      "display_name": "",
+      "id": 23,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 128,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "texture_8",
+      "display_name": "",
+      "id": 17,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 11,
+        "diameter": 40.0,
+        "size_jitter": 0.0,
+        "spacing": 4,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_9",
+      "display_name": "",
+      "id": 18,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 58,
+        "diameter": 40.0,
+        "size_jitter": 0.0,
+        "spacing": 10,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 10,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_10",
+      "display_name": "",
+      "id": 19,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 58,
+        "diameter": 40.0,
+        "size_jitter": 0.0,
+        "spacing": 6,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 15,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_11",
+      "display_name": "",
+      "id": 20,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 78,
+        "diameter": 50.0,
+        "size_jitter": 0.0,
+        "spacing": 10,
+        "scatter": 5,
+        "angle": 0.0,
+        "angle_jitter": 25.0,
+        "squish": 1.0,
+        "hue_jitter": 10,
+        "vary_opacity": false,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_13",
+      "display_name": "",
+      "id": 31,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 60,
+        "diameter": 128.0,
+        "size_jitter": 0.0,
+        "spacing": 4,
+        "scatter": 9,
+        "angle": 0.0,
+        "angle_jitter": 140.0,
+        "squish": 1.0,
+        "hue_jitter": 20,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_14",
+      "display_name": "",
+      "id": 32,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 21,
+        "diameter": 50.0,
+        "size_jitter": 0.0,
+        "spacing": 10,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_15",
+      "display_name": "",
+      "id": 33,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12.0,
+        "size_jitter": 0.0,
+        "spacing": 6,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 113.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": false,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": true
+      }
+    },
+    {
+      "name": "texture_16",
+      "display_name": "",
+      "id": 34,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 20,
+        "diameter": 128.0,
+        "size_jitter": 0.0,
+        "spacing": 10,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 152.0,
+        "squish": 1.0,
+        "hue_jitter": 11,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_17",
+      "display_name": "",
+      "id": 35,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 80,
+        "diameter": 50.0,
+        "size_jitter": 0.5,
+        "spacing": 12,
+        "scatter": 10,
+        "angle": 135.0,
+        "angle_jitter": 143.0,
+        "squish": 1.0,
+        "hue_jitter": 35,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_18",
+      "display_name": "",
+      "id": 36,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 20,
+        "diameter": 100,
+        "size_jitter": 0.0,
+        "spacing": 4,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 0.64,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_19",
+      "display_name": "",
+      "id": 37,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 60.0,
+        "size_jitter": 0.0,
+        "spacing": 12,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": false,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_20",
+      "display_name": "",
+      "id": 38,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 128.0,
+        "size_jitter": 0.6,
+        "spacing": 18,
+        "scatter": 12,
+        "angle": 95.0,
+        "angle_jitter": 180.0,
+        "squish": 1.0,
+        "hue_jitter": 10,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_21",
+      "display_name": "",
+      "id": 39,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 32,
+        "diameter": 75.0,
+        "size_jitter": 0.38,
+        "spacing": 10,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 151.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_22",
+      "display_name": "",
+      "id": 40,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 119.0,
+        "size_jitter": 0.22,
+        "spacing": 18,
+        "scatter": 12,
+        "angle": 0.0,
+        "angle_jitter": 142.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": false
+      }
+    },
+    {
+      "name": "texture_23",
+      "display_name": "",
+      "id": 30,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 128.0,
+        "size_jitter": 0.0,
+        "spacing": 14,
+        "scatter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 64.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true,
+        "auto_orient": true
+      }
+    },
+    {
+      "name": "smoke",
+      "display_name": "",
+      "id": 5,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 80,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "smoke2",
+      "display_name": "",
+      "id": 6,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "shape",
+      "display_name": "",
+      "id": 22,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 6,
+        "opacity": 100,
+        "diameter": 76,
+        "spacing": 71,
+        "scatter": 0.0,
+        "size_jitter": 0.76,
+        "angle": 170,
+        "angle_jitter": 97,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "emboss",
+      "display_name": "",
+      "id": 2,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "neon",
+      "display_name": "",
+      "id": 7,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "weblink",
+      "display_name": "",
+      "id": 1,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 3,
+        "spacing": 150,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "drip",
+      "display_name": "",
+      "id": 4,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 12,
+        "spacing": 100,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    },
+    {
+      "name": "nightmare",
+      "display_name": "",
+      "id": 8,
+      "hidden": false,
+      "downloadable": false,
+      "is_premium": false,
+      "settings_parameters":
+      {
+        "texture_diameter": 12,
+        "opacity": 100,
+        "diameter": 1,
+        "spacing": 2,
+        "scatter": 0.0,
+        "size_jitter": 0.0,
+        "angle": 0.0,
+        "angle_jitter": 0.0,
+        "squish": 1.0,
+        "hue_jitter": 0.0,
+        "auto_orient": false,
+        "vary_opacity": true,
+        "zoomability": false,
+        "vary_diameter": true
+      }
+    }
+  ]
+}

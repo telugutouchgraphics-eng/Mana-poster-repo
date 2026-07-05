@@ -36,8 +36,14 @@ class _CropSessionOverlay extends StatelessWidget {
             frameHeight = maxHeight;
             frameWidth = frameHeight * frameAspectRatio;
           }
-          final horizontalGap = (constraints.maxWidth - frameWidth) / 2;
-          final verticalGap = (constraints.maxHeight - frameHeight) / 2;
+          final horizontalGap = math.max(
+            0.0,
+            (constraints.maxWidth - frameWidth) / 2,
+          );
+          final verticalGap = math.max(
+            0.0,
+            (constraints.maxHeight - frameHeight) / 2,
+          );
           return Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -83,24 +89,30 @@ class _CropSessionOverlay extends StatelessWidget {
                       RepaintBoundary(
                         key: boundaryKey,
                         child: ClipRect(
-                          child: InteractiveViewer(
-                            transformationController: controller,
-                            minScale: 0.5,
-                            maxScale: 6,
-                            panEnabled: true,
-                            scaleEnabled: true,
-                            constrained: false,
-                            clipBehavior: Clip.none,
-                            boundaryMargin: const EdgeInsets.all(240),
-                            child: SizedBox(
-                              width: frameWidth,
-                              height: frameHeight,
-                              child: FittedBox(
-                                fit: BoxFit.contain,
+                          child: ColoredBox(
+                            color: const Color(0xFF05070B),
+                            child: InteractiveViewer(
+                              transformationController: controller,
+                              minScale: 0.6,
+                              maxScale: 8,
+                              panEnabled: true,
+                              scaleEnabled: true,
+                              constrained: true,
+                              clipBehavior: Clip.hardEdge,
+                              boundaryMargin: const EdgeInsets.all(320),
+                              child: SizedBox.expand(
                                 child: Image.memory(
                                   imageBytes,
+                                  fit: BoxFit.contain,
                                   gaplessPlayback: true,
                                   filterQuality: FilterQuality.high,
+                                  errorBuilder: (_, _, _) => const Center(
+                                    child: Icon(
+                                      Icons.broken_image_rounded,
+                                      color: Colors.white70,
+                                      size: 42,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -210,10 +222,7 @@ class _CropInlineStrip extends StatelessWidget {
         height: height,
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
         decoration: BoxDecoration(
-          color: _editorChromeSurfaceStrong,
-          border: Border(
-            top: BorderSide(color: _editorChromeBorder),
-          ),
+          color: _editorChromeSurfaceStrong.withValues(alpha: 0.25),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -256,7 +265,10 @@ class _CropInlineStrip extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: _buildActionButton(
-                    label: strings.localized(telugu: 'వెనక్కి', english: 'Back'),
+                    label: strings.localized(
+                      telugu: 'వెనక్కి',
+                      english: 'Back',
+                    ),
                     onTap: onBack,
                     disabled: disabled,
                   ),
@@ -264,7 +276,10 @@ class _CropInlineStrip extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _buildActionButton(
-                    label: strings.localized(telugu: 'రిసెట్', english: 'Reset'),
+                    label: strings.localized(
+                      telugu: 'రిసెట్',
+                      english: 'Reset',
+                    ),
                     onTap: onReset,
                     disabled: disabled,
                   ),
@@ -277,10 +292,7 @@ class _CropInlineStrip extends StatelessWidget {
                             telugu: 'అప్లై అవుతోంది...',
                             english: 'Applying...',
                           )
-                        : strings.localized(
-                            telugu: 'అప్లై',
-                            english: 'Apply',
-                          ),
+                        : strings.localized(telugu: 'అప్లై', english: 'Apply'),
                     onTap: onApply,
                     disabled: disabled,
                     primary: true,
@@ -333,6 +345,3 @@ class _CropInlineStrip extends StatelessWidget {
     );
   }
 }
-
-
-

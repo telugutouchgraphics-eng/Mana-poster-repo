@@ -111,6 +111,7 @@ class PremiumTemplateRemoteService {
         name: titleEn,
         widthPx: widthPx,
         heightPx: heightPx,
+        dpi: (data['dpi'] as num?)?.toInt() ?? 300,
       ),
       category: category,
       categoryTags: _parseCategoryTags(data, category: category),

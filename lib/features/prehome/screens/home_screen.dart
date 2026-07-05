@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -19,7 +20,16 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart'
-    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals, ValueListenable;
+    show
+        TargetPlatform,
+        compute,
+        defaultTargetPlatform,
+        kDebugMode,
+        kIsWeb,
+        kProfileMode,
+        kReleaseMode,
+        setEquals,
+        ValueListenable;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -38,6 +48,7 @@ import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
+import 'package:mana_poster/app/services/install_source_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/play_engagement_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
@@ -85,6 +96,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const bool _verboseHomeDebugLogs = false;
+bool get _shouldRunFirebaseUiServices => Firebase.apps.isNotEmpty;
 
 void _homeDebugLog(String message) {
   if (!_verboseHomeDebugLogs || (!kDebugMode && !kProfileMode)) {
@@ -1251,6 +1263,13 @@ class _HomeScreenState extends State<HomeScreen>
     milliseconds: 450,
   );
   static const double _homeFeedCacheExtent = 48.0;
+  static const bool _enableDebugHomeStartupServices = bool.fromEnvironment(
+    'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
+    defaultValue: false,
+  );
+
+  bool get _shouldRunRemoteHomeStartupTasks =>
+      _remoteHomeStartupAllowed || _enableDebugHomeStartupServices;
 
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService(daysBeforeEvent: 7);
@@ -1309,6 +1328,8 @@ class _HomeScreenState extends State<HomeScreen>
   Object? _categoryListIdentity;
   AppLanguage? _manualCategoryLanguage;
   bool _adFallbackSlotEnabled = false;
+  bool _remoteHomeStartupAllowed = false;
+  bool _remoteHomeStartupScheduled = false;
   HomeFeedTimeSlot _activeHomeFeedTimeSlot = TimeSlotService.homeFeedSlot(
     IstTimeService.now(),
   );
@@ -1336,24 +1357,24 @@ class _HomeScreenState extends State<HomeScreen>
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
-      titleTe: 'à°¶à±à°­à±‹à°¦à°¯à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤—à¥à¤¡ à¤®à¥‰à¤°à¥à¤¨à¤¿à¤‚à¤— à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'శుభోదయం పోస్టర్',
+      titleHi: 'गुड मॉर्निंग पोस्टर',
       titleEn: 'Good Morning Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200',
       categoryTags: <String>['good_morning', 'today_special', 'new'],
     ),
     _TemplateItem(
-      titleTe: 'à°¬à°°à±à°¤à±â€Œà°¡à±‡ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤¬à¤°à¥à¤¥à¤¡à¥‡ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'బర్త్‌డే పోస్టర్',
+      titleHi: 'बर्थडे पोस्टर',
       titleEn: 'Birthday Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=1200',
       categoryTags: <String>['birthdays', 'anniversary', 'celebration'],
     ),
     _TemplateItem(
-      titleTe: 'à°­à°•à±à°¤à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤­à¤•à¥à¤¤à¤¿ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'భక్తి పోస్టర్',
+      titleHi: 'भक्ति पोस्टर',
       titleEn: 'Devotional Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200',
@@ -1377,22 +1398,21 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_hidePhoneNavigationButtons());
-      unawaited(ScreenSecurityService.enableSecure());
+      unawaited(_resolveAndScheduleRemoteHomeStartupTasks());
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 350),
+        const Duration(milliseconds: 900),
         _loadReligionPreference,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 500),
+        const Duration(milliseconds: 1150),
         _loadRegionSelection,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 650),
+        const Duration(milliseconds: 1400),
         _loadPartyPreference,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1200),
+        const Duration(milliseconds: 2100),
         _loadStartupTemplateSnapshot,
       );
       _homeDebugLog(
@@ -1405,47 +1425,13 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2200),
-        _loadApprovedCreatorTemplatesAfterStartup,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 2800),
-        _loadManualEventCategories,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 3800),
-        _loadViewerPosterProfile,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1200),
+        const Duration(milliseconds: 2600),
         _loadPromoCardPreferences,
       );
       _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 1800),
+        const Duration(milliseconds: 3400),
         _loadInstalledAppVersion,
       );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 5600),
-        _handlePlayStoreEngagementOnHomeOpen,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 4600),
-        _loadHomeBanners,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 6200),
-        _showReferralPromptIfNeeded,
-      );
-      _scheduleDeferredHomeStartupTask(
-        const Duration(milliseconds: 7200),
-        _requestStartupPermissionsIfNeeded,
-      );
-      _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
-        if (!mounted || _adFallbackSlotEnabled) {
-          return;
-        }
-        setState(() => _adFallbackSlotEnabled = true);
-      });
     });
   }
 
@@ -1460,6 +1446,75 @@ class _HomeScreenState extends State<HomeScreen>
       }
       await task();
     }());
+  }
+
+  Future<void> _resolveAndScheduleRemoteHomeStartupTasks() async {
+    if (_remoteHomeStartupScheduled) {
+      return;
+    }
+    final allowed = await _isRemoteHomeStartupAllowedForCurrentInstall();
+    if (!mounted || !allowed) {
+      return;
+    }
+    _remoteHomeStartupAllowed = true;
+    _remoteHomeStartupScheduled = true;
+    setState(() {});
+    unawaited(
+      Future<void>.delayed(
+        const Duration(milliseconds: 450),
+        _hidePhoneNavigationButtons,
+      ),
+    );
+    unawaited(
+      Future<void>.delayed(
+        const Duration(milliseconds: 700),
+        ScreenSecurityService.enableSecure,
+      ),
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 6200),
+      _loadApprovedCreatorTemplatesAfterStartup,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 7200),
+      _loadManualEventCategories,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 8200),
+      _loadViewerPosterProfile,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 9000),
+      _loadHomeBanners,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 9800),
+      _handlePlayStoreEngagementOnHomeOpen,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 10800),
+      _showReferralPromptIfNeeded,
+    );
+    _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 11800),
+      _requestStartupPermissionsIfNeeded,
+    );
+    _scheduleDeferredHomeStartupTask(const Duration(seconds: 12), () async {
+      if (!mounted || _adFallbackSlotEnabled) {
+        return;
+      }
+      setState(() => _adFallbackSlotEnabled = true);
+    });
+  }
+
+  Future<bool> _isRemoteHomeStartupAllowedForCurrentInstall() async {
+    if (!kReleaseMode || kIsWeb) {
+      return true;
+    }
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return true;
+    }
+    return InstallSourceService.isTrustedPlayInstall();
   }
 
   Future<void> _loadApprovedCreatorTemplatesAfterStartup() async {
@@ -1485,6 +1540,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadManualEventCategories() async {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
     final inFlight = _manualEventCategoriesLoadFuture;
     if (inFlight != null) {
       return inFlight;
@@ -1574,7 +1632,8 @@ class _HomeScreenState extends State<HomeScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final currentLanguage = context.currentLanguage;
-    if (_manualCategoryLanguage != currentLanguage) {
+    if (_shouldRunRemoteHomeStartupTasks &&
+        _manualCategoryLanguage != currentLanguage) {
       _manualCategoryLanguage = currentLanguage;
       unawaited(_loadManualEventCategories());
     }
@@ -1600,21 +1659,25 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void didPush() {
-    unawaited(_hidePhoneNavigationButtons());
-    unawaited(ScreenSecurityService.enableSecure());
+    if (_shouldRunRemoteHomeStartupTasks) {
+      unawaited(_hidePhoneNavigationButtons());
+      unawaited(ScreenSecurityService.enableSecure());
+    }
   }
 
   @override
   void didPopNext() {
-    unawaited(_hidePhoneNavigationButtons());
-    unawaited(ScreenSecurityService.enableSecure());
-    unawaited(_loadViewerPosterProfile());
-    unawaited(_loadRegionSelection());
-    unawaited(_loadPartyPreference());
-    unawaited(
-      _TemplateFeedItem.subscriptionBackendService
-          .refreshEntitlementInBackground(forceRefresh: true),
-    );
+    if (_shouldRunRemoteHomeStartupTasks) {
+      unawaited(_hidePhoneNavigationButtons());
+      unawaited(ScreenSecurityService.enableSecure());
+      unawaited(_loadViewerPosterProfile());
+      unawaited(_loadRegionSelection());
+      unawaited(_loadPartyPreference());
+      unawaited(
+        _TemplateFeedItem.subscriptionBackendService
+            .refreshEntitlementInBackground(forceRefresh: true),
+      );
+    }
   }
 
   @override
@@ -2310,6 +2373,9 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _checkDynamicCategoryAvailability(
     DynamicCategory category,
   ) async {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
     final slug = _normalizeTag(category.slug);
     if (slug.isEmpty || _dynamicCategoryAvailabilityInFlight.contains(slug)) {
       return;
@@ -2689,11 +2755,11 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'à°µà±†à°¬à±â€Œà°²à±‹ editor à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°ªà±‹à°¸à±à°Ÿà°°à± create à°šà±‡à°¯à°¾à°²à°‚à°Ÿà±‡ mobile app à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.',
+                  'వెబ్‌లో editor అందుబాటులో లేదు. పోస్టర్ create చేయాలంటే mobile app ఉపయోగించండి.',
               english:
                   'Editor is not available on web. Use the mobile app to create posters.',
               hindi:
-                  'à¤µà¥‡à¤¬ à¤ªà¤° editor à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ mobile app à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¥‡à¤‚à¥¤',
+                  'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
               tamil:
                   'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
               kannada:
@@ -3472,6 +3538,9 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadApprovedCreatorTemplates({
     bool forceRefresh = false,
   }) async {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
     final inFlight = _approvedTemplatesLoadFuture;
     if (inFlight != null) {
       return inFlight;
@@ -3490,6 +3559,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _triggerSelectedCategoryPrefetch() {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
     final slug = _selectedCategorySlug;
     if (slug == _allCategorySlug || !mounted) {
       return;
@@ -4804,6 +4876,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   bool _shouldShowHomeBannerAdFallback(SubscriptionBackendResult? entitlement) {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return false;
+    }
     if (!AppPublicInfo.hasHomeBannerAdUnitId) {
       return false;
     }
@@ -4811,6 +4886,9 @@ class _HomeScreenState extends State<HomeScreen>
       return false;
     }
     if (InAppPurchaseGateway.playStoreProActive) {
+      return false;
+    }
+    if (!_shouldRunFirebaseUiServices) {
       return false;
     }
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -5310,11 +5388,13 @@ class _HomeScreenState extends State<HomeScreen>
             child: _HomeHeader(
               onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
               onCreateTap: _onCreateTap,
-              onStatusTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const _CommunityStatusGridScreen(),
-                ),
-              ),
+              onStatusTap: _shouldRunRemoteHomeStartupTasks
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const _CommunityStatusGridScreen(),
+                      ),
+                    )
+                  : () {},
               onProfileTap: _openProfile,
               viewerPosterProfile: _viewerPosterProfile,
               searchController: _searchController,
@@ -5752,6 +5832,10 @@ class _CommunityStatusGridScreenState
   @override
   void initState() {
     super.initState();
+    if (!_shouldRunFirebaseUiServices) {
+      _statusesStream = const Stream<List<CommunityStatus>>.empty();
+      return;
+    }
     _statusesStream = CommunityStatusService.instance.watchVisibleStatuses(
       maxStatuses: _statusLimit,
     );
@@ -6878,6 +6962,12 @@ class _CommunityStatusViewerScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (!_shouldRunFirebaseUiServices) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF3F6FB),
+        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
     final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
     return StreamBuilder<List<_CommunityStatusGroup>>(
       stream: CommunityStatusService.instance
@@ -8558,11 +8648,64 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
   }
 }
 
-class _HeaderStatusShortcut extends StatelessWidget {
+class _HeaderStatusShortcut extends StatefulWidget {
   const _HeaderStatusShortcut();
 
   @override
+  State<_HeaderStatusShortcut> createState() => _HeaderStatusShortcutState();
+}
+
+class _HeaderStatusShortcutState extends State<_HeaderStatusShortcut> {
+  Timer? _firebaseReadyRetryTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleFirebaseReadyRetryIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    _firebaseReadyRetryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleFirebaseReadyRetryIfNeeded() {
+    if (_shouldRunFirebaseUiServices || _firebaseReadyRetryTimer != null) {
+      return;
+    }
+    _firebaseReadyRetryTimer = Timer.periodic(
+      const Duration(milliseconds: 350),
+      (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (_shouldRunFirebaseUiServices) {
+          timer.cancel();
+          _firebaseReadyRetryTimer = null;
+          setState(() {});
+        }
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_shouldRunFirebaseUiServices) {
+      _scheduleFirebaseReadyRetryIfNeeded();
+      return const SizedBox(
+        width: 42,
+        height: 42,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.add_rounded, color: Color(0xFF111827), size: 22),
+        ),
+      );
+    }
     return StreamBuilder<List<CommunityStatus>>(
       stream: CommunityStatusService.instance.watchMyActiveStatuses(limit: 8),
       builder: (context, snapshot) {
@@ -8832,12 +8975,12 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                   compact: true,
                   title: context.strings.localized(
                     telugu:
-                        'à°¬à±à°¯à°¾à°¨à°°à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'బ్యానర్ అందుబాటులో లేదు',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
                     telugu:
-                        'à°¦à°¯à°šà±‡à°¸à°¿ à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -10794,7 +10937,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       case 'permission_denied':
         return context.strings.localized(
           telugu:
-              'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
+              'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
           english: 'Gallery permission was denied.',
         );
       case 'file_missing':
@@ -10807,13 +10950,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       case 'empty_result':
         return context.strings.localized(
           telugu:
-              'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+              'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
           english: 'File save failed. Please try again.',
         );
       default:
         return context.strings.localized(
           telugu:
-              'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+              'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
           english: 'Download failed. Please try again.',
         );
     }
@@ -11002,27 +11145,27 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     bool result = false;
     final galleryPermissionMessage = context.strings.localized(
       telugu:
-          'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
+          'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
       english: 'Gallery permission was denied.',
     );
     final posterNotReadyMessage = context.strings.localized(
       telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Capture failed. Please try again.',
     );
     final posterSavedMessage = context.strings.localized(
       telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± à°—à±à°¯à°¾à°²à°°à±€à°²à±‹ à°¸à±‡à°µà± à°…à°¯à°¿à°‚à°¦à°¿.',
+          'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
       english: 'Poster saved to gallery.',
     );
     final fileSaveFailedMessage = context.strings.localized(
       telugu:
-          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'File save failed. Please try again.',
     );
     final downloadFailedMessage = context.strings.localized(
       telugu:
-          'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Download failed. Please try again.',
     );
     try {
@@ -11149,17 +11292,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     bool result = false;
     final posterNotReadyMessage = context.strings.localized(
       telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Capture failed. Please try again.',
     );
     final shareFailedMessage = context.strings.localized(
       telugu:
-          'à°·à±‡à°°à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Share failed. Please try again.',
     );
     final fileSaveFailedMessage = context.strings.localized(
       telugu:
-          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'File save failed. Please try again.',
     );
     final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
@@ -11480,7 +11623,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             const SizedBox(width: 4),
                             Text(
                               strings.localized(
-                                telugu: 'à°«à±‹à°Ÿà±‹',
+                                telugu: 'ఫోటో',
                                 english: 'Photo',
                               ),
                               style: TextStyle(
@@ -11554,11 +11697,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu: 'సిద్ధం...',
                                 english: 'Preparing...',
                               )
                             : strings.localized(
-                                telugu: 'à°·à±‡à°°à±',
+                                telugu: 'షేర్',
                                 english: 'Share',
                               ),
                         style: const TextStyle(
@@ -11612,7 +11755,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         ),
                         label: Text(
                           strings.localized(
-                            telugu: 'à°«à±‹à°Ÿà±‹',
+                            telugu: 'ఫోటో',
                             english: 'Photo',
                           ),
                           style: TextStyle(
@@ -11673,7 +11816,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu: 'సిద్ధం...',
                                 english: 'Preparing...',
                               )
                             : strings.downloadLabel,
@@ -12112,12 +12255,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                       return _ImageErrorState(
                         title: strings.localized(
                           telugu:
-                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                              'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                           english: 'Template image unavailable',
                         ),
                         subtitle: strings.localized(
                           telugu:
-                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                              'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                           english: 'Please refresh or try another template.',
                         ),
                       );
@@ -12128,12 +12271,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 return _ImageErrorState(
                   title: strings.localized(
                     telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
                     telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                     english: 'Please refresh or try another template.',
                   ),
                 );
@@ -12151,12 +12294,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 child: _ImageErrorState(
                   title: strings.localized(
                     telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
                     telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -12196,12 +12339,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     return _ImageErrorState(
                       title: context.strings.localized(
                         telugu:
-                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                            'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
                         telugu:
-                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                         english: 'Please refresh or try another template.',
                       ),
                     );
@@ -12332,6 +12475,12 @@ class _ResolvedTemplatePosterImageState
 
     if (candidates.isNotEmpty) {
       _resolvedImageUrl = _resolvedDownloadUrlCache[cacheKey];
+      if (!_shouldRunFirebaseUiServices) {
+        _resolvedImageUrl = direct.isNotEmpty
+            ? direct
+            : (thumb.isNotEmpty ? thumb : _resolvedImageUrl);
+        return;
+      }
       if (_failedResolveKeys.contains(cacheKey)) {
         _resolvedImageUrl = direct.isNotEmpty
             ? direct
@@ -12977,11 +13126,11 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       return _ImageErrorState(
         title: context.strings.localized(
           telugu:
-              'à°µà±€à°¡à°¿à°¯à±‹ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+              'వీడియో అందుబాటులో లేదు',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(
-          telugu: 'à°®à°³à±à°³à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          telugu: 'మళ్లీ ప్రయత్నించండి.',
           english: 'Please try again.',
         ),
       );

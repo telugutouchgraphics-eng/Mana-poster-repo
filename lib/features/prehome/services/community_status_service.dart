@@ -87,9 +87,9 @@ class CommunityStatusService {
     62,
   ];
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  FirebaseStorage get _storage => FirebaseStorage.instance;
 
   static int _stableHash(String value) {
     var hash = 0;

@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -34,10 +35,7 @@ class AppFlowSnapshot {
     if (!languageSelected) {
       return AppRoutes.language;
     }
-    if (!isAuthenticated) {
-      return AppRoutes.login;
-    }
-    return AppRoutes.religion;
+    return isAuthenticated ? AppRoutes.home : AppRoutes.politicalParties;
   }
 }
 
@@ -83,12 +81,12 @@ class AppFlowService {
     final prefs = await SharedPreferences.getInstance();
     final nativeState = await NativeStartupStateStore.readAll();
     final fileState = await _readStartupStateFile();
-    _cachedLastKnownAuthUid = await _loadStoredAuthUid(
+    _cachedLastKnownAuthUid = _loadFastStoredAuthUid(
       prefs: prefs,
       fileState: fileState,
       nativeState: nativeState,
     );
-    final snapshot = await _loadDurableSnapshot(
+    final snapshot = await _loadFastStartupSnapshot(
       prefs: prefs,
       fileState: fileState,
       nativeState: nativeState,
@@ -97,15 +95,63 @@ class AppFlowService {
     return snapshot;
   }
 
+  static Future<AppFlowSnapshot> _loadFastStartupSnapshot({
+    required SharedPreferences prefs,
+    required Map<String, Object?> fileState,
+    required Map<String, Object?> nativeState,
+  }) async {
+    final selectedRegion = await AppRegionService.loadSelection(prefs: prefs);
+    final String prefsLanguage = prefs.getString(_selectedLanguageKey) ?? '';
+    final bool prefsLanguageSelected =
+        prefs.getBool(_languageSelectedKey) ?? false;
+    final String fileLanguage =
+        (fileState[_selectedLanguageKey] as String? ?? '').trim();
+    final bool fileLanguageSelected = fileState[_languageSelectedKey] == true;
+    final String nativeLanguage =
+        (nativeState[_selectedLanguageKey] as String? ?? '').trim();
+    final bool nativeLanguageSelected =
+        nativeState[_languageSelectedKey] == true;
+    final String resolvedLanguageRaw = prefsLanguage.isNotEmpty
+        ? prefsLanguage
+        : (nativeLanguage.isNotEmpty
+              ? nativeLanguage
+              : (fileLanguage.isNotEmpty
+                    ? fileLanguage
+                    : (selectedRegion?.appLanguage.name ?? '')));
+    final bool languageSelected =
+        prefsLanguageSelected ||
+        nativeLanguageSelected ||
+        fileLanguageSelected ||
+        selectedRegion != null;
+    final language = _readLanguage(resolvedLanguageRaw);
+    if (languageSelected) {
+      _memoryLanguage = language;
+      _memoryLanguageSelected = true;
+    }
+    return AppFlowSnapshot(
+      language: language,
+      languageSelected: languageSelected || _memoryLanguageSelected,
+      permissionsStepHandled: prefs.getBool(_permissionsHandledKey) ?? false,
+      initialSetupCompleted: prefs.getBool(_initialSetupCompletedKey) ?? false,
+    );
+  }
+
   static Future<AppStartupResolution> resolveDeterministicStartupState() async {
     final snapshot = await preloadStartupSnapshot();
     final currentUser = await _resolveInitialCurrentUser();
     final cachedAuthUid = await loadLastKnownAuthUid();
-    final hasAuthenticatedUser = currentUser?.uid.trim().isNotEmpty == true;
-    final hasSelectedRegion = await AppRegionService.hasSelection();
-    final resolvedRoute = !hasSelectedRegion
-        ? AppRoutes.language
-        : (!hasAuthenticatedUser ? AppRoutes.login : AppRoutes.home);
+    final hasAuthenticatedUser =
+        currentUser?.uid.trim().isNotEmpty == true ||
+        (Firebase.apps.isEmpty && (cachedAuthUid?.trim().isNotEmpty ?? false));
+    final prefs = await SharedPreferences.getInstance();
+    final hasSelectedRegion = await AppRegionService.hasSelection(prefs: prefs);
+    final hasHandledParties =
+        await AppPartyPreferenceService.hasSelectionHandled(prefs: prefs);
+    final resolvedRoute = determineStartupRoute(
+      hasAuthenticatedUser: hasAuthenticatedUser,
+      hasSelectedRegion: hasSelectedRegion,
+      hasHandledPoliticalParties: hasHandledParties,
+    );
 
     return AppStartupResolution(
       language: snapshot.language,
@@ -116,6 +162,21 @@ class AppFlowService {
       cachedAuthUid: cachedAuthUid,
       resolvedRoute: resolvedRoute,
     );
+  }
+
+  static String? _loadFastStoredAuthUid({
+    required SharedPreferences prefs,
+    required Map<String, Object?> fileState,
+    required Map<String, Object?> nativeState,
+  }) {
+    final prefsUid = (prefs.getString(_lastKnownAuthUidKey) ?? '').trim();
+    final nativeUid = (nativeState[_lastKnownAuthUidKey] as String? ?? '')
+        .trim();
+    final fileUid = (fileState[_lastKnownAuthUidKey] as String? ?? '').trim();
+    final resolved = prefsUid.isNotEmpty
+        ? prefsUid
+        : (nativeUid.isNotEmpty ? nativeUid : fileUid);
+    return resolved.isEmpty ? null : resolved;
   }
 
   static Future<AppFlowSnapshot> loadSnapshot({
@@ -295,6 +356,47 @@ class AppFlowService {
       return AppRoutes.login;
     }
     return resolveAuthenticatedEntryRoute();
+  }
+
+  static Future<String> resolvePostSplashEntryRoute({
+    SharedPreferences? prefs,
+  }) async {
+    final SharedPreferences resolvedPrefs =
+        prefs ?? await SharedPreferences.getInstance();
+    final currentUser = await _resolveInitialCurrentUser();
+    final cachedAuthUid = await loadLastKnownAuthUid(prefs: resolvedPrefs);
+    final hasAuthenticatedUser =
+        currentUser?.uid.trim().isNotEmpty == true ||
+        (Firebase.apps.isEmpty && (cachedAuthUid?.trim().isNotEmpty ?? false));
+    final hasSelectedRegion = await AppRegionService.hasSelection(
+      prefs: resolvedPrefs,
+    );
+    final hasHandledParties =
+        await AppPartyPreferenceService.hasSelectionHandled(
+          prefs: resolvedPrefs,
+        );
+    return determineStartupRoute(
+      hasAuthenticatedUser: hasAuthenticatedUser,
+      hasSelectedRegion: hasSelectedRegion,
+      hasHandledPoliticalParties: hasHandledParties,
+    );
+  }
+
+  static String determineStartupRoute({
+    required bool hasAuthenticatedUser,
+    required bool hasSelectedRegion,
+    required bool hasHandledPoliticalParties,
+  }) {
+    if (hasAuthenticatedUser) {
+      return AppRoutes.home;
+    }
+    if (!hasSelectedRegion) {
+      return AppRoutes.language;
+    }
+    if (!hasHandledPoliticalParties) {
+      return AppRoutes.politicalParties;
+    }
+    return AppRoutes.login;
   }
 
   static Future<String> resolveAuthenticatedEntryRouteForStartup({

@@ -3,8 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart'
-    show ValueNotifier, kIsWeb;
+import 'package:flutter/foundation.dart' show ValueNotifier, kIsWeb;
 
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/features/image_editor/services/play_billing_account_binding_service.dart';
@@ -57,7 +56,7 @@ class SubscriptionBackendResult {
 
 class SubscriptionBackendService {
   SubscriptionBackendService({FirebaseAuth? firebaseAuth})
-    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuthOverride = firebaseAuth;
 
   static const String _verifyUrl = String.fromEnvironment(
     'MANA_POSTER_SUBSCRIPTION_VERIFY_URL',
@@ -74,7 +73,9 @@ class SubscriptionBackendService {
   static Future<void>? _pendingRecoveryFuture;
   static final ValueNotifier<SubscriptionBackendResult?> entitlementNotifier =
       ValueNotifier<SubscriptionBackendResult?>(null);
-  final FirebaseAuth _firebaseAuth;
+  final FirebaseAuth? _firebaseAuthOverride;
+  FirebaseAuth get _firebaseAuth =>
+      _firebaseAuthOverride ?? FirebaseAuth.instance;
 
   bool get isConfigured => _verifyUrl.isNotEmpty && _statusUrl.isNotEmpty;
   SubscriptionBackendResult? get cachedEntitlement => _cachedEntitlement;
@@ -215,9 +216,7 @@ class SubscriptionBackendService {
     }
     await evidence.completeStorePurchase();
     await PlayBillingAccountBindingService.instance
-        .clearPendingSubscriptionBinding(
-          reason: 'pending_purchase_recovered',
-        );
+        .clearPendingSubscriptionBinding(reason: 'pending_purchase_recovered');
     await fetchFreshEntitlementWithRetry();
   }
 

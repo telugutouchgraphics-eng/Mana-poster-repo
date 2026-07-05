@@ -32,7 +32,6 @@ import 'package:mana_poster/features/prehome/services/device_session_service.dar
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/app/navigation/web_url_strategy.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
-import 'package:mana_poster/app/routes/app_routes.dart';
 
 const bool _profileFrames = bool.fromEnvironment(
   'MANA_POSTER_PROFILE_FRAMES',
@@ -47,6 +46,16 @@ DateTime? _lastSubscriptionResumeRefreshAt;
 
 bool get _shouldRunNonEssentialStartupServices =>
     !kProfileMode || kReleaseMode || _enableNonEssentialProfileStartupServices;
+
+Future<bool> _shouldRunReleaseRemoteStartupServices() async {
+  if (!kReleaseMode || kIsWeb) {
+    return true;
+  }
+  if (defaultTargetPlatform != TargetPlatform.android) {
+    return true;
+  }
+  return InstallSourceService.isTrustedPlayInstall();
+}
 
 Future<bool> _shouldEnableFirebaseMonitoring() async {
   if (!kReleaseMode || kIsWeb) {
@@ -70,42 +79,10 @@ Future<void> main() async {
         _attachFrameProfiler();
       }
 
-      await FirebaseBootstrap.ensureInitialized(activateAppCheck: false);
-
-      AppLanguage initialLanguage = AppLanguage.telugu;
-      String resolvedRoute = AppRoutes.language;
-      try {
-        final startupResolution =
-            await AppFlowService.resolveDeterministicStartupState();
-        initialLanguage = startupResolution.language;
-        resolvedRoute = startupResolution.resolvedRoute;
-        developer.log(
-          'languageSelected=${startupResolution.languageSelected} '
-          'currentUserPresent=${startupResolution.hasAuthenticatedUser} '
-          'onboardingCompleted=${startupResolution.onboardingCompleted} '
-          'cachedAuthUid=${startupResolution.cachedAuthUid ?? 'null'} '
-          'resolvedRoute=$resolvedRoute',
-          name: 'startup.resolver',
-        );
-      } catch (error, stackTrace) {
-        developer.log(
-          'Deterministic startup resolution failed, falling back to language.',
-          name: 'startup.resolver',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-
-      runApp(
-        ManaPosterApp(
-          initialLanguage: initialLanguage,
-          forcedHome: AppRoutes.startupScreenFor(resolvedRoute),
-          forceSingleRoute: true,
-        ),
-      );
+      runApp(const ManaPosterApp(initialLanguage: AppLanguage.telugu));
       SchedulerBinding.instance.addPostFrameCallback((_) {
         FlutterNativeSplash.remove();
-        if (!kIsWeb) {
+        if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
           unawaited(_hideSystemUiAfterFirstFrame());
         }
         unawaited(_runDeferredPostSplashInitialization());
@@ -139,17 +116,25 @@ Future<void> _hideSystemUiAfterFirstFrame() async {
 }
 
 Future<void> _runDeferredPostSplashInitialization() async {
+  if (!_shouldRunNonEssentialStartupServices) {
+    return;
+  }
+  if (!await _shouldRunReleaseRemoteStartupServices()) {
+    return;
+  }
   try {
     await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 8));
   } catch (_) {}
-  await Future<void>.delayed(const Duration(milliseconds: 1500));
+  await Future<void>.delayed(
+    kReleaseMode ? const Duration(seconds: 5) : const Duration(seconds: 14),
+  );
   await _runPostFirstFrameInitialization();
 }
 
 Future<void> _runPostFirstFrameInitialization() async {
   await _runStartupTask(
     'firebase_bootstrap',
-    () => FirebaseBootstrap.ensureInitialized(),
+    () => FirebaseBootstrap.ensureInitialized(activateAppCheck: kReleaseMode),
   );
   unawaited(
     _runStartupTask('firebase_monitoring_gate', () async {
@@ -179,7 +164,7 @@ Future<void> _runPostLaunchInitialization() async {
     _scheduleStartupTask(
       'temp_directory_cleanup',
       AppTemporaryCleanup.runAfterColdStart,
-      delay: const Duration(seconds: 3),
+      delay: const Duration(seconds: 12),
     );
     if (_shouldRunNonEssentialStartupServices) {
       _scheduleUiReadyStartupTask(
@@ -188,7 +173,7 @@ Future<void> _runPostLaunchInitialization() async {
           NotificationService.registerBackgroundHandler();
           await NotificationService.instance.initialize();
         },
-        delay: const Duration(seconds: 8),
+        delay: const Duration(seconds: 24),
       );
     }
     if (_shouldRunNonEssentialStartupServices &&
@@ -198,64 +183,71 @@ Future<void> _runPostLaunchInitialization() async {
         if (await AdMobConsentService.instance.canRequestAds()) {
           await MobileAds.instance.initialize();
         }
-      }, delay: const Duration(seconds: 18));
+      }, delay: const Duration(seconds: 40));
     }
   }
 
-  _scheduleStartupTask(
-    'device_session_start',
-    DeviceSessionService.instance.start,
-    delay: const Duration(seconds: 2),
-  );
-  _scheduleStartupTask('subscription_refresh_post_launch', () async {
-    final service = SubscriptionBackendService();
-    await service.refreshEntitlementInBackground(
-      forceRefresh: true,
-      clearCacheFirst: false,
+  if (_shouldRunNonEssentialStartupServices) {
+    _scheduleUiReadyStartupTask(
+      'device_session_start',
+      DeviceSessionService.instance.start,
+      delay: const Duration(seconds: 8),
     );
-    await service.recoverPendingPurchaseInBackground();
-  }, delay: const Duration(seconds: 4));
-  _scheduleStartupTask(
-    'sync_stored_language',
-    AppFlowService.syncStoredLanguageToRemote,
-    delay: const Duration(seconds: 5),
-  );
-  _scheduleStartupTask(
-    'sync_stored_party_preferences',
-    AppPartyPreferenceService.syncStoredSelectionToRemote,
-    delay: const Duration(seconds: 6),
-  );
+    _scheduleUiReadyStartupTask('subscription_refresh_post_launch', () async {
+      final service = SubscriptionBackendService();
+      await service.refreshEntitlementInBackground(
+        forceRefresh: true,
+        clearCacheFirst: false,
+      );
+      await service.recoverPendingPurchaseInBackground();
+    }, delay: const Duration(seconds: 14));
+    _scheduleUiReadyStartupTask(
+      'sync_stored_language',
+      AppFlowService.syncStoredLanguageToRemote,
+      delay: const Duration(seconds: 20),
+    );
+    _scheduleUiReadyStartupTask(
+      'sync_stored_party_preferences',
+      AppPartyPreferenceService.syncStoredSelectionToRemote,
+      delay: const Duration(seconds: 24),
+    );
+  }
   _subscriptionLifecycleListener ??= AppLifecycleListener(
     onResume: () {
-      unawaited(
-        _runStartupTask(
+      unawaited(() async {
+        await Future<void>.delayed(const Duration(seconds: 3));
+        await _runStartupTask(
           'temp_directory_cleanup_resume',
           AppTemporaryCleanup.sweepEligibleTemporaryFiles,
-        ),
-      );
-      unawaited(
-        _runStartupTask(
-          'notification_preferences_resume_sync',
-          NotificationService.instance.syncCurrentPreferences,
-        ),
-      );
-      unawaited(
-        _runStartupTask('subscription_refresh_resume', () async {
-          final now = DateTime.now();
-          final lastRun = _lastSubscriptionResumeRefreshAt;
-          if (lastRun != null &&
-              now.difference(lastRun) < const Duration(minutes: 2)) {
-            return;
-          }
-          _lastSubscriptionResumeRefreshAt = now;
-          final service = SubscriptionBackendService();
-          await service.refreshEntitlementInBackground(
-            forceRefresh: true,
-            clearCacheFirst: false,
+        );
+      }());
+      if (_shouldRunNonEssentialStartupServices) {
+        unawaited(() async {
+          await Future<void>.delayed(const Duration(seconds: 8));
+          await _runStartupTask(
+            'notification_preferences_resume_sync',
+            NotificationService.instance.syncCurrentPreferences,
           );
-          await service.recoverPendingPurchaseInBackground();
-        }),
-      );
+        }());
+        unawaited(() async {
+          await Future<void>.delayed(const Duration(seconds: 10));
+          await _runStartupTask('subscription_refresh_resume', () async {
+            final now = DateTime.now();
+            final lastRun = _lastSubscriptionResumeRefreshAt;
+            if (lastRun != null &&
+                now.difference(lastRun) < const Duration(minutes: 2)) {
+              return;
+            }
+            _lastSubscriptionResumeRefreshAt = now;
+            final service = SubscriptionBackendService();
+            await service.refreshEntitlementInBackground(
+              forceRefresh: true,
+              clearCacheFirst: false,
+            );
+            await service.recoverPendingPurchaseInBackground();
+          });
+        }());
+      }
     },
   );
 }

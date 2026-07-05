@@ -11,6 +11,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
@@ -364,6 +365,8 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _continueAfterAuth() async {
     await _stabilizeBottomSystemUi();
     await AppFlowService.persistLastKnownAuthUid(_service.currentUser?.uid);
+    unawaited(AppRegionService.ensureRemoteSelectionSynced());
+    unawaited(AppPartyPreferenceService.syncStoredSelectionToRemote());
     await AppFlowService.loadSnapshot();
     await AppFlowService.syncInitialSetupCompletion(isAuthenticated: true);
     final String nextRoute =

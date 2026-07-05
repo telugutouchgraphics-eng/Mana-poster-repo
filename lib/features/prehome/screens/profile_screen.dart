@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
@@ -362,7 +363,9 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return PosterProfileDetailsScreen(
       initialProfile: _posterProfile,
-      accountEmail: FirebaseAuth.instance.currentUser?.email?.trim() ?? '',
+      accountEmail: Firebase.apps.isNotEmpty
+          ? FirebaseAuth.instance.currentUser?.email?.trim() ?? ''
+          : '',
       accountSubtitle: _selectedRegionName,
       embeddedInProfileScreen: true,
       onSaved: (profile) {

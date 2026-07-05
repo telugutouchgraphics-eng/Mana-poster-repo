@@ -116,9 +116,7 @@ class FirebaseBootstrap {
           if (provider == null) {
             return;
           }
-          await FirebaseAppCheck.instance.activate(
-            providerAndroid: provider,
-          );
+          await FirebaseAppCheck.instance.activate(providerAndroid: provider);
           return;
         case TargetPlatform.iOS:
         case TargetPlatform.macOS:
@@ -152,13 +150,26 @@ class FirebaseBootstrap {
       );
     }
 
-    final trustedPlayInstall = await InstallSourceService.isTrustedPlayInstall();
+    final trustedPlayInstall =
+        await InstallSourceService.isTrustedPlayInstall();
     if (trustedPlayInstall) {
       developer.log(
         'Using Play Integrity provider for trusted Play install.',
         name: 'bootstrap.firebase',
       );
       return const AndroidPlayIntegrityProvider();
+    }
+
+    if (await InstallSourceService.isProbablyAndroidEmulator()) {
+      developer.log(
+        'Using debug App Check provider for Android emulator validation.',
+        name: 'bootstrap.firebase',
+      );
+      return AndroidDebugProvider(
+        debugToken: _androidAppCheckDebugToken.isEmpty
+            ? null
+            : _androidAppCheckDebugToken,
+      );
     }
 
     developer.log(

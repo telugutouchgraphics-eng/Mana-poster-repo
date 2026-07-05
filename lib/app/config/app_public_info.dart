@@ -27,6 +27,12 @@ class AppPublicInfo {
     defaultValue: 'ca-app-pub-6393573098485696/9317248707',
   );
   static bool get hasHomeBannerAdUnitId => adMobHomeBannerAdUnitId.isNotEmpty;
+  static const String adMobEditorBannerAdUnitId = String.fromEnvironment(
+    'MANA_POSTER_EDITOR_BANNER_AD_UNIT_ID',
+    defaultValue: 'ca-app-pub-6393573098485696/1186695363',
+  );
+  static bool get hasEditorBannerAdUnitId =>
+      adMobEditorBannerAdUnitId.isNotEmpty;
   static const String adMobEditorRewardedAdUnitId = String.fromEnvironment(
     'MANA_POSTER_EDITOR_REWARDED_AD_UNIT_ID',
     defaultValue: 'ca-app-pub-6393573098485696/4602988395',
@@ -34,7 +40,9 @@ class AppPublicInfo {
   static bool get hasEditorRewardedAdUnitId =>
       adMobEditorRewardedAdUnitId.isNotEmpty;
   static bool get hasAnyAdMobConfig =>
-      hasHomeBannerAdUnitId || hasEditorRewardedAdUnitId;
+      hasHomeBannerAdUnitId ||
+      hasEditorBannerAdUnitId ||
+      hasEditorRewardedAdUnitId;
   static const String demoUrl = String.fromEnvironment(
     'MANA_POSTER_DEMO_URL',
     defaultValue: '',

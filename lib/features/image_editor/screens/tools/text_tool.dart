@@ -2,48 +2,6 @@ part of '../image_editor_screen.dart';
 
 // ignore_for_file: unused_element
 
-class _TextEditResult {
-  const _TextEditResult({
-    required this.text,
-    required this.textColor,
-    required this.textGradientIndex,
-    required this.fontFamily,
-    required this.fontSize,
-    required this.textLineHeight,
-    required this.textLetterSpacing,
-    required this.textAlign,
-    required this.textShadowOpacity,
-    required this.textShadowBlur,
-    required this.textShadowOffsetY,
-    required this.textOpacity,
-    required this.isTextBold,
-    required this.isTextItalic,
-    required this.isTextUnderline,
-    required this.textStrokeColor,
-    required this.textStrokeWidth,
-    required this.textStrokeGradientIndex,
-  });
-
-  final String text;
-  final Color textColor;
-  final int textGradientIndex;
-  final String fontFamily;
-  final double fontSize;
-  final double textLineHeight;
-  final double textLetterSpacing;
-  final TextAlign textAlign;
-  final double textShadowOpacity;
-  final double textShadowBlur;
-  final double textShadowOffsetY;
-  final double textOpacity;
-  final bool isTextBold;
-  final bool isTextItalic;
-  final bool isTextUnderline;
-  final Color textStrokeColor;
-  final double textStrokeWidth;
-  final int textStrokeGradientIndex;
-}
-
 class _TextColorSelection {
   const _TextColorSelection({
     required this.textColor,
@@ -52,1174 +10,6 @@ class _TextColorSelection {
 
   final Color textColor;
   final int textGradientIndex;
-}
-
-enum _TextEditorTab { text, colors, gradient, font }
-
-enum _TextPaintTarget { fill, stroke }
-
-class TextEditorFullscreenOverlay extends StatefulWidget {
-  const TextEditorFullscreenOverlay({
-    super.key,
-    required this.initialText,
-    required this.fontFamily,
-    required this.textColor,
-    required this.textGradientIndex,
-    required this.textOpacity,
-    required this.fontSize,
-    required this.textLineHeight,
-    required this.textLetterSpacing,
-    required this.textAlign,
-    required this.textShadowOpacity,
-    required this.textShadowBlur,
-    required this.textShadowOffsetY,
-    required this.isTextBold,
-    required this.isTextItalic,
-    required this.isTextUnderline,
-    required this.textStrokeColor,
-    required this.textStrokeWidth,
-    required this.textStrokeGradientIndex,
-    required this.textBackgroundColor,
-    required this.textBackgroundOpacity,
-    required this.textBackgroundRadius,
-    required this.colors,
-    required this.gradients,
-    required this.fontFamilies,
-  });
-
-  final String initialText;
-  final String fontFamily;
-  final Color textColor;
-  final int textGradientIndex;
-  final double textOpacity;
-  final double fontSize;
-  final double textLineHeight;
-  final double textLetterSpacing;
-  final TextAlign textAlign;
-  final double textShadowOpacity;
-  final double textShadowBlur;
-  final double textShadowOffsetY;
-  final bool isTextBold;
-  final bool isTextItalic;
-  final bool isTextUnderline;
-  final Color textStrokeColor;
-  final double textStrokeWidth;
-  final int textStrokeGradientIndex;
-  final Color textBackgroundColor;
-  final double textBackgroundOpacity;
-  final double textBackgroundRadius;
-  final List<Color> colors;
-  final List<List<Color>> gradients;
-  final List<String> fontFamilies;
-
-  @override
-  State<TextEditorFullscreenOverlay> createState() =>
-      _TextEditorFullscreenOverlayState();
-}
-
-class _TextEditorFullscreenOverlayState
-    extends State<TextEditorFullscreenOverlay> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialText,
-  );
-  late final FocusNode _inputFocusNode = FocusNode();
-
-  late Color _selectedColor = widget.textColor;
-  late int _selectedGradientIndex = widget.textGradientIndex;
-  late String _selectedFontFamily;
-  late double _fontSize = widget.fontSize.clamp(18, 96).toDouble();
-  late double _lineHeight = widget.textLineHeight.clamp(0.8, 2.2).toDouble();
-  late double _letterSpacing = widget.textLetterSpacing
-      .clamp(-1, 12)
-      .toDouble();
-  late TextAlign _textAlign = widget.textAlign;
-  late bool _shadowEnabled = widget.textShadowOpacity > 0.001;
-  late double _shadowOpacity = widget.textShadowOpacity.clamp(0, 1).toDouble();
-  late double _shadowBlur = widget.textShadowBlur.clamp(0, 24).toDouble();
-  late double _shadowOffsetY = widget.textShadowOffsetY.clamp(0, 20).toDouble();
-  late double _textOpacity = widget.textOpacity.clamp(0.15, 1).toDouble();
-  late bool _isTextBold = widget.isTextBold;
-  late bool _isTextItalic = widget.isTextItalic;
-  late bool _isTextUnderline = widget.isTextUnderline;
-  late Color _strokeColor = widget.textStrokeColor;
-  late double _strokeWidth = widget.textStrokeWidth.clamp(0, 8).toDouble();
-  late int _strokeGradientIndex = widget.textStrokeGradientIndex;
-  bool _fillPaintChangedByUser = false;
-  Timer? _legacyPreviewDebounce;
-  int _legacyPreviewRevision = 0;
-  String? _legacyPreviewText;
-  _TextPaintTarget _paintTarget = _TextPaintTarget.fill;
-  _TextEditorTab _activeTab = _TextEditorTab.text;
-
-  List<Color>? get _activeGradient =>
-      _selectedGradientIndex >= 0 &&
-          _selectedGradientIndex < widget.gradients.length
-      ? widget.gradients[_selectedGradientIndex]
-      : null;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedFontFamily = _initialTypingFontFamily(widget.fontFamily);
-    _controller.addListener(_handlePreviewSourceChanged);
-    _controller.selection = TextSelection.collapsed(
-      offset: _controller.text.length,
-    );
-    _scheduleLegacyPreviewRefresh();
-  }
-
-  @override
-  void dispose() {
-    _legacyPreviewDebounce?.cancel();
-    _controller.removeListener(_handlePreviewSourceChanged);
-    _inputFocusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handlePreviewSourceChanged() {
-    _scheduleLegacyPreviewRefresh();
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void _scheduleLegacyPreviewRefresh() {
-    _legacyPreviewDebounce?.cancel();
-    final text = _controller.text;
-    final fontFamily = _selectedFontFamily;
-    if (!_isLegacyTeluguFontFamily(fontFamily) || text.trim().isEmpty) {
-      if (_legacyPreviewText != null && mounted) {
-        setState(() {
-          _legacyPreviewText = null;
-        });
-      } else {
-        _legacyPreviewText = null;
-      }
-      return;
-    }
-    final immediateConverted = TeluguLegacyTextService.convertSync(
-      text,
-      fontFamily: fontFamily,
-    );
-    if (immediateConverted != null && immediateConverted.isNotEmpty) {
-      _legacyPreviewText = immediateConverted;
-    }
-    final revision = ++_legacyPreviewRevision;
-    _legacyPreviewDebounce = Timer(const Duration(milliseconds: 260), () async {
-      final converted = await _resolveLegacyRenderTextFor(
-        text: text,
-        fontFamily: fontFamily,
-      );
-      if (!mounted ||
-          revision != _legacyPreviewRevision ||
-          _selectedFontFamily != fontFamily ||
-          _controller.text != text) {
-        return;
-      }
-      setState(() {
-        _legacyPreviewText = converted;
-      });
-    });
-  }
-
-  void _saveAndClose() {
-    Navigator.of(context).pop(
-      _TextEditResult(
-        text: _controller.text,
-        textColor: _selectedColor,
-        textGradientIndex: _selectedGradientIndex,
-        fontFamily: _selectedFontFamily,
-        fontSize: _fontSize.clamp(18, 96).toDouble(),
-        textLineHeight: _lineHeight.clamp(0.8, 2.2).toDouble(),
-        textLetterSpacing: _letterSpacing.clamp(-1, 12).toDouble(),
-        textAlign: _textAlign,
-        textShadowOpacity: _shadowEnabled
-            ? _shadowOpacity.clamp(0, 1).toDouble()
-            : 0,
-        textShadowBlur: _shadowBlur.clamp(0, 24).toDouble(),
-        textShadowOffsetY: _shadowOffsetY.clamp(0, 20).toDouble(),
-        textOpacity: _textOpacity.clamp(0.15, 1).toDouble(),
-        isTextBold: _isTextBold,
-        isTextItalic: _isTextItalic,
-        isTextUnderline: _isTextUnderline,
-        textStrokeColor: _strokeColor,
-        textStrokeWidth: _strokeWidth.clamp(0, 8).toDouble(),
-        textStrokeGradientIndex: _strokeGradientIndex,
-      ),
-    );
-  }
-
-  Widget _buildRowLabel(String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: Text(
-        value,
-        style: const TextStyle(
-          color: Color(0xFFCBD5E1),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlRow({
-    required String label,
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-  }) {
-    return Padding(
-      padding: padding ?? const EdgeInsets.only(bottom: 9),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[_buildRowLabel(label), child],
-      ),
-    );
-  }
-
-  Widget _buildSliderRow({
-    required String label,
-    required String valueText,
-    required double value,
-    required double min,
-    required double max,
-    required ValueChanged<double> onChanged,
-  }) {
-    return _buildControlRow(
-      label: label,
-      child: Row(
-        children: <Widget>[
-          SizedBox(
-            width: 46,
-            child: Text(
-              valueText,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Color(0xFFE2E8F0),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 2.2,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 11),
-              ),
-              child: Slider(
-                value: value.clamp(min, max).toDouble(),
-                min: min,
-                max: max,
-                onChanged: onChanged,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlignAndEffectsRow(BuildContext context) {
-    final strings = context.strings;
-    Widget alignmentButton({
-      required IconData icon,
-      required TextAlign align,
-      required String tooltip,
-    }) {
-      final selected = _textAlign == align;
-      return Tooltip(
-        message: tooltip,
-        child: _PressableSurface(
-          onTap: () => setState(() {
-            _textAlign = align;
-          }),
-          borderRadius: BorderRadius.circular(999),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: selected
-                    ? Colors.white.withValues(alpha: 0.62)
-                    : Colors.white.withValues(alpha: 0.14),
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white.withValues(alpha: selected ? 0.98 : 0.72),
-              size: 18,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return _buildControlRow(
-      label: strings.localized(
-        telugu: 'అలైన్‌మెంట్ & షాడో',
-        english: 'Alignment & Shadow',
-      ),
-      padding: EdgeInsets.zero,
-      child: SizedBox(
-        height: 36,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: <Widget>[
-            alignmentButton(
-              icon: Icons.format_align_left_rounded,
-              align: TextAlign.left,
-              tooltip: strings.localized(telugu: 'ఎడమ', english: 'Left'),
-            ),
-            const SizedBox(width: 8),
-            alignmentButton(
-              icon: Icons.format_align_center_rounded,
-              align: TextAlign.center,
-              tooltip: strings.localized(telugu: 'మధ్య', english: 'Center'),
-            ),
-            const SizedBox(width: 8),
-            alignmentButton(
-              icon: Icons.format_align_right_rounded,
-              align: TextAlign.right,
-              tooltip: strings.localized(telugu: 'కుడి', english: 'Right'),
-            ),
-            const SizedBox(width: 14),
-            Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    strings.localized(telugu: 'షాడో', english: 'Shadow'),
-                    style: TextStyle(
-                      color: Color(0xFFCBD5E1),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Switch.adaptive(
-                    value: _shadowEnabled,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _shadowEnabled = value;
-                        if (_shadowEnabled && _shadowOpacity <= 0.001) {
-                          _shadowOpacity = 0.35;
-                          _shadowBlur = _shadowBlur <= 0.1 ? 8 : _shadowBlur;
-                          _shadowOffsetY = _shadowOffsetY <= 0.1
-                              ? 3
-                              : _shadowOffsetY;
-                        }
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabButton(_TextEditorTab tab, String label) {
-    final selected = _activeTab == tab;
-    return SizedBox(
-      width: 92,
-      child: _PressableSurface(
-        onTap: () {
-          if (tab == _TextEditorTab.font) {
-            unawaited(_openFontOverlay());
-            return;
-          }
-          setState(() {
-            _activeTab = tab;
-          });
-        },
-        borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.15)
-                : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: selected ? 0.96 : 0.75),
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openFontOverlay() async {
-    final previewText = _controller.text.trim().isEmpty
-        ? 'తెలుగు Poster Title'
-        : _controller.text.trim();
-    final selected = await Navigator.of(context).push<String>(
-      PageRouteBuilder<String>(
-        opaque: false,
-        barrierColor: Colors.transparent,
-        pageBuilder:
-            (
-              BuildContext context,
-              Animation<double> animation,
-              Animation<double> secondaryAnimation,
-            ) {
-              return TextFontFullscreenOverlay(
-                selectedFontFamily: _selectedFontFamily,
-                teluguFonts: widget.fontFamilies,
-                englishFonts: _englishTextFontFamilies,
-                previewText: previewText,
-              );
-            },
-      ),
-    );
-    if (!mounted || selected == null || selected.isEmpty) {
-      return;
-    }
-    setState(() {
-      _selectedFontFamily = selected;
-    });
-    _scheduleLegacyPreviewRefresh();
-  }
-
-  Widget _buildTextTab() {
-    final strings = context.strings;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        _buildSliderRow(
-          label: strings.localized(telugu: 'ఫాంట్ సైజ్', english: 'Font Size'),
-          valueText: _fontSize.toStringAsFixed(0),
-          value: _fontSize,
-          min: 18,
-          max: 96,
-          onChanged: (double value) {
-            setState(() {
-              _fontSize = value;
-            });
-          },
-        ),
-        _buildSliderRow(
-          label: strings.localized(
-            telugu: 'అక్షరాల అంతరం',
-            english: 'Letter Spacing',
-          ),
-          valueText: _letterSpacing.toStringAsFixed(1),
-          value: _letterSpacing,
-          min: -1,
-          max: 12,
-          onChanged: (double value) {
-            setState(() {
-              _letterSpacing = value;
-            });
-          },
-        ),
-        _buildSliderRow(
-          label: strings.localized(
-            telugu: 'లైన్ స్పేసింగ్',
-            english: 'Line Spacing',
-          ),
-          valueText: _lineHeight.toStringAsFixed(2),
-          value: _lineHeight,
-          min: 0.8,
-          max: 2.2,
-          onChanged: (double value) {
-            setState(() {
-              _lineHeight = value;
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-
-  void _ensureCollapsedSelectionAtStart() {
-    if (!_inputFocusNode.hasFocus) {
-      _inputFocusNode.requestFocus();
-    }
-    _controller.selection = const TextSelection.collapsed(offset: 0);
-  }
-
-  Widget _buildLivePreviewText(String text, double maxWidth) {
-    final previewText = text.isEmpty
-        ? context.strings.localized(
-            telugu: 'ఇక్కడ టెక్స్ట్ టైప్ చేయండి',
-            english: 'Type text here',
-          )
-        : text;
-    final renderText = text.isEmpty
-        ? previewText
-        : (_legacyPreviewText ??
-              _resolveTextRenderValue(
-                text: previewText,
-                fontFamily: _selectedFontFamily,
-              ));
-    final visibleRenderText = _materializeVisiblePreviewText(renderText);
-    final previewOpacity = text.isEmpty
-        ? 0.52
-        : _textOpacity.clamp(0.15, 1).toDouble();
-    final shouldLiftDefaultDarkFill =
-        !_fillPaintChangedByUser &&
-        _activeGradient == null &&
-        _selectedColor.computeLuminance() < 0.25;
-    final previewColor = text.isEmpty || shouldLiftDefaultDarkFill
-        ? Colors.white
-        : _selectedColor;
-    final previewGradient = text.isEmpty ? null : _activeGradient;
-    final previewStrokeWidth = text.isEmpty ? 0.0 : _strokeWidth;
-    final previewStrokeGradient = text.isEmpty
-        ? null
-        : (_strokeGradientIndex >= 0 &&
-                  _strokeGradientIndex < widget.gradients.length
-              ? widget.gradients[_strokeGradientIndex]
-              : null);
-    final previewNeedsLift =
-        text.isNotEmpty &&
-        !shouldLiftDefaultDarkFill &&
-        previewGradient == null &&
-        _selectedColor.computeLuminance() < 0.18;
-
-    return SizedBox(
-      width: maxWidth,
-      child: Align(
-        alignment: switch (_textAlign) {
-          TextAlign.left ||
-          TextAlign.start ||
-          TextAlign.justify => Alignment.centerLeft,
-          TextAlign.right || TextAlign.end => Alignment.centerRight,
-          TextAlign.center => Alignment.center,
-        },
-        child: _CanvasTextLayerView(
-          text: visibleRenderText,
-          textColor: previewColor,
-          textAlign: _textAlign,
-          fontSize: _fontSize.clamp(18, 96).toDouble(),
-          textOpacity: previewOpacity,
-          fontFamily: _legacyPreviewText != null
-              ? _selectedFontFamily
-              : _resolveTextRenderFontFamily(_selectedFontFamily),
-          textLineHeight: _lineHeight,
-          textLetterSpacing: _letterSpacing,
-          textShadowOpacity: _shadowEnabled ? _shadowOpacity : 0.0,
-          textShadowBlur: _shadowBlur,
-          textShadowOffsetY: _shadowOffsetY,
-          isTextBold: _isTextBold,
-          isTextItalic: _isTextItalic,
-          isTextUnderline: _isTextUnderline,
-          textStrokeColor: _strokeColor,
-          textStrokeWidth: previewStrokeWidth,
-          textStrokeGradient: previewStrokeGradient,
-          textBackgroundColor: widget.textBackgroundColor,
-          textBackgroundOpacity: widget.textBackgroundOpacity,
-          textBackgroundRadius: widget.textBackgroundRadius,
-          maxWidth: maxWidth,
-          textGradient: previewGradient,
-          editorAssistShadowColor: previewNeedsLift
-              ? Colors.white.withValues(alpha: 0.55)
-              : null,
-          editorAssistShadowBlur: previewNeedsLift ? 10 : 0,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSelectedFontPreview(double maxWidth) {
-    return const SizedBox.shrink();
-  }
-
-  double _measureEditableTextWidth(double maxWidth) {
-    final sampleText = _controller.text.isEmpty
-        ? context.strings.localized(
-            telugu: 'ఇక్కడ టెక్స్ట్ టైప్ చేయండి',
-            english: 'Type text here',
-          )
-        : _materializeVisiblePreviewText(_controller.text);
-    final painter = TextPainter(
-      text: TextSpan(
-        text: sampleText,
-        style: TextStyle(
-          fontSize: _fontSize.clamp(18, 96).toDouble(),
-          height: _editableInputLineHeight(),
-          letterSpacing: _editableInputLetterSpacing(),
-          fontFamily: _editableInputFontFamily(_selectedFontFamily),
-          fontWeight: _isTextBold ? FontWeight.w700 : FontWeight.w500,
-          fontStyle: _isTextItalic ? FontStyle.italic : FontStyle.normal,
-        ),
-      ),
-      textAlign: _textAlign,
-      textDirection: TextDirection.ltr,
-      maxLines: 8,
-    )..layout(maxWidth: maxWidth);
-    return (painter.width + 20).clamp(72.0, maxWidth).toDouble();
-  }
-
-  String _materializeVisiblePreviewText(String value) {
-    if (value.isEmpty) {
-      return value;
-    }
-    final normalized = value.replaceAll('\r\n', '\n');
-    return normalized
-        .split('\n')
-        .map((String line) => line.isEmpty ? '\u200B' : line)
-        .join('\n');
-  }
-
-  String _initialTypingFontFamily(String family) {
-    return family;
-  }
-
-  String _editableInputFontFamily(String family) {
-    if (_isLegacyTeluguFontFamily(family)) {
-      return 'Anek Telugu Condensed Regular';
-    }
-    return _resolveTextRenderFontFamily(family);
-  }
-
-  double _editableInputLineHeight() {
-    final resolved = _effectiveTextLineHeightForRender(
-      fontFamily: _selectedFontFamily,
-      textLineHeight: _lineHeight,
-    );
-    return _isLegacyTeluguFontFamily(_selectedFontFamily)
-        ? resolved.clamp(1.18, 2.4).toDouble()
-        : resolved;
-  }
-
-  double _editableInputLetterSpacing() {
-    return _isLegacyTeluguFontFamily(_selectedFontFamily)
-        ? 0
-        : _letterSpacing.clamp(-1, 12).toDouble();
-  }
-
-  Color _editableCursorColor() {
-    return const Color(0xFF2563EB);
-  }
-
-  Color _editableTypingColor() {
-    if (_activeGradient != null) {
-      return Colors.white;
-    }
-    if (_selectedColor.computeLuminance() < 0.18) {
-      return Colors.white;
-    }
-    return _selectedColor.withValues(alpha: _textOpacity.clamp(0.15, 1));
-  }
-
-  Widget _buildColorsTab() {
-    final colors = widget.colors.take(50).toList(growable: false);
-    return SizedBox(
-      height: 88,
-      child: GridView.builder(
-        physics: const BouncingScrollPhysics(),
-        itemCount: colors.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 10,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-          childAspectRatio: 1,
-        ),
-        itemBuilder: (BuildContext context, int index) {
-          final color = colors[index];
-          final selected = _paintTarget == _TextPaintTarget.fill
-              ? (_selectedGradientIndex == -1 &&
-                    _selectedColor.toARGB32() == color.toARGB32())
-              : (_strokeGradientIndex == -1 &&
-                    _strokeColor.toARGB32() == color.toARGB32());
-          return _PressableSurface(
-            onTap: () {
-              setState(() {
-                if (_paintTarget == _TextPaintTarget.fill) {
-                  _selectedColor = color;
-                  _selectedGradientIndex = -1;
-                  _fillPaintChangedByUser = true;
-                } else {
-                  _strokeColor = color;
-                  _strokeGradientIndex = -1;
-                  if (_strokeWidth < 0.5) {
-                    _strokeWidth = 1;
-                  }
-                }
-              });
-            },
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? Colors.white : Colors.white24,
-                  width: selected ? 2.2 : 1,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildGradientTab() {
-    final gradients = widget.gradients.take(50).toList(growable: false);
-    return SizedBox(
-      height: 92,
-      child: GridView.builder(
-        physics: const BouncingScrollPhysics(),
-        itemCount: gradients.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 1.8,
-        ),
-        itemBuilder: (BuildContext context, int index) {
-          final selected = _paintTarget == _TextPaintTarget.fill
-              ? _selectedGradientIndex == index
-              : _strokeGradientIndex == index;
-          return _PressableSurface(
-            onTap: () {
-              setState(() {
-                if (_paintTarget == _TextPaintTarget.fill) {
-                  _selectedGradientIndex = index;
-                  _fillPaintChangedByUser = true;
-                } else {
-                  _strokeGradientIndex = index;
-                  if (_strokeWidth < 0.5) {
-                    _strokeWidth = 1;
-                  }
-                }
-              });
-            },
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradients[index]),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: selected ? Colors.white : Colors.white24,
-                  width: selected ? 2 : 1,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildStyleToggle({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return _PressableSurface(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: 34,
-        height: 34,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? Colors.white.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.62)
-                : Colors.white.withValues(alpha: 0.14),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: selected ? 0.96 : 0.72),
-            fontWeight: FontWeight.w700,
-            fontStyle: label == 'I' ? FontStyle.italic : FontStyle.normal,
-            decoration: label == 'U'
-                ? TextDecoration.underline
-                : TextDecoration.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStyleTab() {
-    final strings = context.strings;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        _buildSliderRow(
-          label: strings.localized(telugu: 'ఒపాసిటీ', english: 'Opacity'),
-          valueText: _textOpacity.toStringAsFixed(2),
-          value: _textOpacity,
-          min: 0.15,
-          max: 1,
-          onChanged: (double value) {
-            setState(() {
-              _textOpacity = value;
-            });
-          },
-        ),
-        _buildAlignAndEffectsRow(context),
-        _buildControlRow(
-          label: strings.localized(
-            telugu: 'పెయింట్ టార్గెట్',
-            english: 'Paint Target',
-          ),
-          padding: const EdgeInsets.only(top: 2, bottom: 8),
-          child: Row(
-            children: <Widget>[
-              _buildPaintTargetButton(
-                label: strings.localized(telugu: 'ఫిల్', english: 'Fill'),
-                selected: _paintTarget == _TextPaintTarget.fill,
-                onTap: () => setState(() {
-                  _paintTarget = _TextPaintTarget.fill;
-                }),
-              ),
-              const SizedBox(width: 8),
-              _buildPaintTargetButton(
-                label: strings.localized(telugu: 'స్ట్రోక్', english: 'Stroke'),
-                selected: _paintTarget == _TextPaintTarget.stroke,
-                onTap: () => setState(() {
-                  _paintTarget = _TextPaintTarget.stroke;
-                }),
-              ),
-            ],
-          ),
-        ),
-        _buildSliderRow(
-          label: strings.localized(
-            telugu: 'స్ట్రోక్ వెడల్పు',
-            english: 'Stroke Width',
-          ),
-          valueText: _strokeWidth.toStringAsFixed(1),
-          value: _strokeWidth,
-          min: 0,
-          max: 8,
-          onChanged: (double value) {
-            setState(() {
-              _strokeWidth = value;
-              if (_strokeWidth > 0.01 && _strokeGradientIndex >= 0) {
-                _strokeColor = const Color(0xFFFFFFFF);
-              }
-            });
-          },
-        ),
-        _buildControlRow(
-          label: strings.localized(
-            telugu: 'టెక్స్ట్ స్టైల్',
-            english: 'Text Style',
-          ),
-          padding: EdgeInsets.zero,
-          child: Row(
-            children: <Widget>[
-              _buildStyleToggle(
-                label: 'B',
-                selected: _isTextBold,
-                onTap: () => setState(() {
-                  _isTextBold = !_isTextBold;
-                }),
-              ),
-              const SizedBox(width: 8),
-              _buildStyleToggle(
-                label: 'I',
-                selected: _isTextItalic,
-                onTap: () => setState(() {
-                  _isTextItalic = !_isTextItalic;
-                }),
-              ),
-              const SizedBox(width: 8),
-              _buildStyleToggle(
-                label: 'U',
-                selected: _isTextUnderline,
-                onTap: () => setState(() {
-                  _isTextUnderline = !_isTextUnderline;
-                }),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaintTargetButton({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return _PressableSurface(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 130),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected
-              ? Colors.white.withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.56)
-                : Colors.white.withValues(alpha: 0.14),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: selected ? 0.98 : 0.74),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabContent() {
-    switch (_activeTab) {
-      case _TextEditorTab.text:
-        return _buildTextTab();
-      case _TextEditorTab.colors:
-        return _buildColorsTab();
-      case _TextEditorTab.gradient:
-        return _buildGradientTab();
-      case _TextEditorTab.font:
-        return const SizedBox.shrink();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final insets = MediaQuery.viewInsetsOf(context);
-    final screenSize = MediaQuery.sizeOf(context);
-
-    return Material(
-      color: Colors.transparent,
-      child: EditorFullscreenOverlay(
-        title: context.strings.localized(telugu: 'టెక్స్ట్', english: 'Text'),
-        onBack: () {
-          Navigator.of(context).pop();
-        },
-        onDone: _saveAndClose,
-        bottom: SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            color: Colors.white.withValues(alpha: 0.03),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SizedBox(
-                  height: 34,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    children: <Widget>[
-                      _buildTabButton(_TextEditorTab.text, 'Text'),
-                      const SizedBox(width: 6),
-                      _buildTabButton(_TextEditorTab.colors, 'Colors'),
-                      const SizedBox(width: 6),
-                      _buildTabButton(_TextEditorTab.gradient, 'Gradient'),
-                      const SizedBox(width: 6),
-                      _buildTabButton(_TextEditorTab.font, 'Font'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 160),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: KeyedSubtree(
-                    key: ValueKey<String>(_activeTab.name),
-                    child: _buildTabContent(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.only(bottom: insets.bottom),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              children: <Widget>[
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: screenSize.width * 0.9,
-                      ),
-                      child: AnimatedBuilder(
-                        animation: _controller,
-                        builder: (BuildContext context, Widget? child) {
-                          final useLegacyPreviewInput =
-                              _isLegacyTeluguFontFamily(_selectedFontFamily);
-                          final textStyle = TextStyle(
-                            color: useLegacyPreviewInput
-                                ? Colors.transparent
-                                : (_controller.text.isEmpty
-                                      ? Colors.white.withValues(alpha: 0.52)
-                                      : _editableTypingColor()),
-                            fontSize: _fontSize.clamp(18, 96),
-                            height: _editableInputLineHeight(),
-                            letterSpacing: _editableInputLetterSpacing(),
-                            fontFamily: _editableInputFontFamily(
-                              _selectedFontFamily,
-                            ),
-                            fontWeight: _isTextBold
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            fontStyle: _isTextItalic
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                            decoration: _isTextUnderline
-                                ? TextDecoration.underline
-                                : TextDecoration.none,
-                            decorationColor: _editableTypingColor(),
-                          );
-                          return Theme(
-                            data: Theme.of(context).copyWith(
-                              textSelectionTheme: TextSelectionThemeData(
-                                selectionColor: const Color(
-                                  0xFF2563EB,
-                                ).withValues(alpha: 0.18),
-                                selectionHandleColor: _editableCursorColor(),
-                                cursorColor: _editableCursorColor(),
-                              ),
-                            ),
-                            child: SizedBox(
-                              width: screenSize.width * 0.9,
-                              child: LayoutBuilder(
-                                builder: (
-                                  BuildContext context,
-                                  BoxConstraints constraints,
-                                ) {
-                                  return SingleChildScrollView(
-                                    physics: const BouncingScrollPhysics(),
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        minHeight: constraints.maxHeight,
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          _buildSelectedFontPreview(
-                                            screenSize.width * 0.9,
-                                          ),
-                                          TextField(
-                                            controller: _controller,
-                                            focusNode: _inputFocusNode,
-                                            autofocus: true,
-                                            minLines: 1,
-                                            maxLines: 8,
-                                            keyboardType: TextInputType.multiline,
-                                            textInputAction:
-                                                TextInputAction.newline,
-                                            keyboardAppearance: Brightness.dark,
-                                            textAlign: _textAlign,
-                                            enableSuggestions: true,
-                                            autocorrect: true,
-                                            enableInteractiveSelection: true,
-                                            style: textStyle.copyWith(
-                                              color: _controller.text.isEmpty
-                                                  ? Colors.white.withValues(
-                                                      alpha: 0.52,
-                                                    )
-                                                  : _editableTypingColor(),
-                                              decorationColor:
-                                                  _editableTypingColor(),
-                                            ),
-                                            strutStyle: StrutStyle(
-                                              forceStrutHeight: true,
-                                              fontSize: _fontSize
-                                                  .clamp(18, 96)
-                                                  .toDouble(),
-                                              height: _editableInputLineHeight(),
-                                              fontFamily:
-                                                  _editableInputFontFamily(
-                                                    _selectedFontFamily,
-                                                  ),
-                                              fontWeight: _isTextBold
-                                                  ? FontWeight.w700
-                                                  : FontWeight.w500,
-                                              fontStyle: _isTextItalic
-                                                  ? FontStyle.italic
-                                                  : FontStyle.normal,
-                                            ),
-                                            cursorWidth: 2.2,
-                                            cursorHeight: _fontSize
-                                                    .clamp(18, 96)
-                                                    .toDouble() *
-                                                _editableInputLineHeight(),
-                                            cursorRadius:
-                                                const Radius.circular(999),
-                                            cursorColor: _editableCursorColor(),
-                                            decoration: null,
-                                            onChanged: (_) {
-                                              setState(() {});
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _TextColorPickerScreen extends StatefulWidget {
@@ -1245,12 +35,14 @@ class TextFontFullscreenOverlay extends StatefulWidget {
     required this.selectedFontFamily,
     required this.teluguFonts,
     required this.englishFonts,
+    required this.hindiFonts,
     required this.previewText,
   });
 
   final String selectedFontFamily;
   final List<String> teluguFonts;
   final List<String> englishFonts;
+  final List<String> hindiFonts;
   final String previewText;
 
   @override
@@ -1268,10 +60,16 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
   final Set<String> _favoriteFonts = <String>{};
   final List<String> _recentFonts = <String>[];
   String _query = '';
+  int _activeFontTab = 0;
 
   @override
   void initState() {
     super.initState();
+    if (widget.englishFonts.contains(widget.selectedFontFamily)) {
+      _activeFontTab = 1;
+    } else if (widget.hindiFonts.contains(widget.selectedFontFamily)) {
+      _activeFontTab = 2;
+    }
     _searchController.addListener(_handleSearchChanged);
     unawaited(_loadFavoriteFonts());
     unawaited(_loadRecentFonts());
@@ -1319,7 +117,7 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
       _favoriteFonts
         ..clear()
         ..addAll(
-          stored.where((String family) => widget.teluguFonts.contains(family)),
+          stored.where((String family) => _allOverlayFonts.contains(family)),
         );
     });
     unawaited(
@@ -1333,7 +131,7 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
   Future<void> _loadRecentFonts() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_recentFontsStorageKey) ?? <String>[];
-    final validFonts = <String>{...widget.teluguFonts, ...widget.englishFonts};
+    final validFonts = _allOverlayFonts;
     if (!mounted) {
       return;
     }
@@ -1395,40 +193,79 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
         .toList(growable: false);
   }
 
+  Set<String> get _allOverlayFonts => <String>{
+    ...widget.teluguFonts,
+    ...widget.englishFonts,
+    ...widget.hindiFonts,
+  };
+
+  List<String> _fontsForActiveTab() {
+    return switch (_activeFontTab) {
+      1 => widget.englishFonts,
+      2 => widget.hindiFonts,
+      _ => widget.teluguFonts,
+    };
+  }
+
+  String _activeTabLabel() {
+    return switch (_activeFontTab) {
+      1 => 'English Fonts',
+      2 => 'Hindi Fonts',
+      _ => 'Telugu Fonts',
+    };
+  }
+
+  String _sampleForFontFamily(String family) {
+    if (widget.hindiFonts.contains(family)) {
+      return 'हिंदी नमस्ते 123';
+    }
+    if (widget.englishFonts.contains(family)) {
+      return 'English Sample 123';
+    }
+    return 'తెలుగు శుభాకాంక్షలు 123';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final teluguFonts = _filteredFonts(widget.teluguFonts);
+    final tabFonts = _filteredFonts(_fontsForActiveTab());
     final recentFonts = _query.isEmpty
-        ? _recentFonts
-              .where(
-                (String family) =>
-                    teluguFonts.contains(family) ||
-                    widget.englishFonts.contains(family),
-              )
-              .toList(growable: false)
+        ? _recentFonts.where(tabFonts.contains).toList(growable: false)
         : _filteredFonts(_recentFonts);
-    final favoriteFonts = teluguFonts
+    final favoriteFonts = tabFonts
         .where((String family) => _favoriteFonts.contains(family))
         .toList(growable: false);
-    final unicodeTeluguFonts = teluguFonts
-        .where(
-          (String family) =>
-              _unicodeTeluguFontFamilies.contains(family) &&
-              !_favoriteFonts.contains(family) &&
-              !recentFonts.contains(family),
-        )
-        .toList(growable: false);
-    final legacyTeluguFonts = teluguFonts
-        .where(
-          (String family) =>
-              _isLegacyTeluguFontFamily(family) &&
-              !_favoriteFonts.contains(family) &&
-              !recentFonts.contains(family),
-        )
-        .toList(growable: false);
-    final englishFonts = _filteredFonts(widget.englishFonts)
-        .where((String family) => !recentFonts.contains(family))
-        .toList(growable: false);
+    final unicodeTeluguFonts = _activeFontTab == 0
+        ? tabFonts
+              .where(
+                (String family) =>
+                    _unicodeTeluguFontFamilies.contains(family) &&
+                    !_favoriteFonts.contains(family) &&
+                    !recentFonts.contains(family),
+              )
+              .toList(growable: false)
+        : const <String>[];
+    final legacyTeluguFonts = _activeFontTab == 0
+        ? tabFonts
+              .where(
+                (String family) =>
+                    _isLegacyTeluguFontFamily(family) &&
+                    !_favoriteFonts.contains(family) &&
+                    !recentFonts.contains(family),
+              )
+              .toList(growable: false)
+        : const <String>[];
+    final activeLanguageFonts = _activeFontTab == 0
+        ? const <String>[]
+        : tabFonts
+              .where(
+                (String family) =>
+                    !_favoriteFonts.contains(family) &&
+                    !recentFonts.contains(family),
+              )
+              .toList(growable: false);
+    final teluguTabCount = _filteredFonts(widget.teluguFonts).length;
+    final englishTabCount = _filteredFonts(widget.englishFonts).length;
+    final hindiTabCount = _filteredFonts(widget.hindiFonts).length;
     return Material(
       color: Colors.transparent,
       child: EditorFullscreenOverlay(
@@ -1436,51 +273,84 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
         onBack: () => Navigator.of(context).pop(),
         onDone: () => Navigator.of(context).pop(_selectedFont),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+          child: Container(
+            color: const Color(0xFF2A2C31),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFF3A3D45),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
+                      color: Colors.white.withValues(alpha: 0.10),
                     ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: TextField(
                     controller: _searchController,
-                    cursorColor: const Color(0xFF0F172A),
+                    cursorColor: const Color(0xFFE8EAED),
                     style: const TextStyle(
-                      color: Color(0xFF0F172A),
+                      color: Color(0xFFE8EAED),
                       fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Search font',
                       hintStyle: TextStyle(
-                        color: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                        color: Colors.white.withValues(alpha: 0.45),
                       ),
                       prefixIcon: const Icon(Icons.search_rounded, size: 18),
                       prefixIconColor: const Color(0xFFCBD5E1),
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                const SizedBox(height: 10),
+                _FontLanguageTabs(
+                  activeIndex: _activeFontTab,
+                  teluguCount: teluguTabCount,
+                  englishCount: englishTabCount,
+                  hindiCount: hindiTabCount,
+                  onChanged: (index) => setState(() => _activeFontTab = index),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF202228),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: const Color(0xFF8B7FFF).withValues(alpha: 0.28),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        const Color(0xFF353842),
+                        const Color(0xFF202228),
+                      ],
+                    ),
+                  ),
                   child: Text(
                     widget.previewText,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 30,
-                      height: 1.1,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 29,
+                      height: 1.12,
+                      fontWeight: FontWeight.w800,
                       fontFamily: _resolveTextRenderFontFamily(_selectedFont),
                     ),
                   ),
@@ -1510,8 +380,28 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                         ...legacyTeluguFonts.map(_buildFontRow),
                         const SizedBox(height: 8),
                       ],
-                      _buildSectionLabel('English Fonts'),
-                      ...englishFonts.map(_buildFontRow),
+                      if (activeLanguageFonts.isNotEmpty) ...<Widget>[
+                        _buildSectionLabel(_activeTabLabel()),
+                        ...activeLanguageFonts.map(_buildFontRow),
+                      ],
+                      if (recentFonts.isEmpty &&
+                          favoriteFonts.isEmpty &&
+                          unicodeTeluguFonts.isEmpty &&
+                          legacyTeluguFonts.isEmpty &&
+                          activeLanguageFonts.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 32),
+                          child: Center(
+                            child: Text(
+                              'No fonts found',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1525,15 +415,28 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
 
   Widget _buildSectionLabel(String label) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 6, 2, 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF94A3B8),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
+      padding: const EdgeInsets.fromLTRB(2, 10, 2, 8),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              color: const Color(0xFF8B7FFF),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              color: Color(0xFFCBD5E1),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1545,6 +448,7 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
       fontFamily: family,
     );
     final isFavorite = _favoriteFonts.contains(family);
+    final secondaryLabel = _fontPickerSecondaryLabel(family);
     return _PressableSurface(
       onTap: () {
         setState(() {
@@ -1552,55 +456,91 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
         });
         unawaited(_rememberRecentFont(family));
       },
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.only(bottom: 7),
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF44475A) : const Color(0xFF33363D),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF8B7FFF)
+                : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 1.2 : 1,
+          ),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: const Color(0xFF8B7FFF).withValues(alpha: 0.18),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
+                  ),
+                ]
+              : null,
+        ),
         child: Row(
           children: <Widget>[
-            Expanded(
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF8B7FFF)
+                    : Colors.white.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Text(
-                'Aa తెలుగు  $family',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                'Aa',
                 style: TextStyle(
-                  fontFamily: family,
-                  fontSize: 17,
-                  height: 1.1,
-                  color: Colors.white.withValues(alpha: selected ? 0.98 : 0.82),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: _resolveTextRenderFontFamily(family),
                 ),
               ),
             ),
-            if (_fontPickerSecondaryLabel(family).isNotEmpty)
-              Text(
-                _fontPickerSecondaryLabel(family),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.48),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    family,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(
+                        alpha: selected ? 0.98 : 0.84,
+                      ),
+                      fontSize: 13.5,
+                      fontWeight: selected ? FontWeight.w900 : FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _sampleForFontFamily(family),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: _resolveTextRenderFontFamily(family),
+                      fontSize: 16,
+                      height: 1.05,
+                      color: Colors.white.withValues(alpha: 0.72),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            if (secondaryLabel.isNotEmpty)
+              _FontMetaBadge(label: secondaryLabel),
             if (cachedReady) ...<Widget>[
               const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.14),
-                  ),
-                ),
-                child: const Text(
-                  'Ready',
-                  style: TextStyle(
-                    color: Color(0xFFBFDBFE),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              const _FontMetaBadge(label: 'Ready', accent: true),
             ],
             const SizedBox(width: 6),
             _PressableSurface(
@@ -1621,10 +561,159 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
             if (selected)
               const Icon(
                 Icons.check_rounded,
-                size: 16,
-                color: Color(0xFF93C5FD),
+                size: 18,
+                color: Color(0xFFB6ADFF),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FontFilterPill extends StatelessWidget {
+  const _FontFilterPill({
+    required this.label,
+    required this.count,
+    required this.active,
+  });
+
+  final String label;
+  final int count;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 30,
+      margin: const EdgeInsets.only(right: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 11),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active
+            ? const Color(0xFF4B4E56)
+            : Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: active
+              ? const Color(0xFF8B7FFF).withValues(alpha: 0.36)
+              : Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Text(
+        '$label ${count > 0 ? count : ''}'.trim(),
+        style: TextStyle(
+          color: active
+              ? const Color(0xFFF8FAFC)
+              : Colors.white.withValues(alpha: 0.45),
+          fontSize: 11.5,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _FontLanguageTabs extends StatelessWidget {
+  const _FontLanguageTabs({
+    required this.activeIndex,
+    required this.teluguCount,
+    required this.englishCount,
+    required this.hindiCount,
+    required this.onChanged,
+  });
+
+  final int activeIndex;
+  final int teluguCount;
+  final int englishCount;
+  final int hindiCount;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = <({String label, int count})>[
+      (label: 'Telugu', count: teluguCount),
+      (label: 'English', count: englishCount),
+      (label: 'Hindi', count: hindiCount),
+    ];
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF202228),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: <Widget>[
+          for (var index = 0; index < tabs.length; index++)
+            Expanded(
+              child: _PressableSurface(
+                onTap: () => onChanged(index),
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: activeIndex == index
+                        ? const Color(0xFF7C3AED)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${tabs[index].label} ${tabs[index].count}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: activeIndex == index
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.58),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FontMetaBadge extends StatelessWidget {
+  const _FontMetaBadge({required this.label, this.accent = false});
+
+  final String label;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 94),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent
+            ? const Color(0xFF2563EB).withValues(alpha: 0.24)
+            : Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: accent
+              ? const Color(0xFF93C5FD).withValues(alpha: 0.26)
+              : Colors.white.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: accent
+              ? const Color(0xFFBFDBFE)
+              : Colors.white.withValues(alpha: 0.48),
+          fontSize: 9.5,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -1634,6 +723,41 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
 class _TextColorPickerScreenState extends State<_TextColorPickerScreen> {
   late Color _selectedColor = widget.selectedColor;
   late int _selectedGradientIndex = widget.selectedGradientIndex;
+  late HSVColor _selectedHsv = HSVColor.fromColor(widget.selectedColor);
+  bool _isColorWheelDragging = false;
+  late final TextEditingController _hexController = TextEditingController(
+    text: _hexFromColor(widget.selectedColor),
+  );
+
+  @override
+  void dispose() {
+    _hexController.dispose();
+    super.dispose();
+  }
+
+  void _setSolidColor(Color color, {bool syncHex = true}) {
+    setState(() {
+      _selectedColor = color;
+      _selectedHsv = HSVColor.fromColor(color);
+      _selectedGradientIndex = -1;
+      if (syncHex) {
+        _hexController.text = _hexFromColor(color);
+      }
+    });
+  }
+
+  void _setHsv(HSVColor hsv) {
+    _setSolidColor(hsv.toColor());
+  }
+
+  void _applyHex() {
+    final parsed = _parseHexColor(_hexController.text);
+    if (parsed == null) {
+      HapticFeedback.mediumImpact();
+      return;
+    }
+    _setSolidColor(parsed);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1653,87 +777,207 @@ class _TextColorPickerScreenState extends State<_TextColorPickerScreen> {
       onBack: () => Navigator.of(context).pop(),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
+          physics: _isColorWheelDragging
+              ? const NeverScrollableScrollPhysics()
+              : const BouncingScrollPhysics(),
           children: <Widget>[
-            _buildLabel('Solid'),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GridView.builder(
-                itemCount: widget.colors.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 8,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  final color = widget.colors[index];
-                  final selected =
-                      _selectedGradientIndex == -1 &&
-                      _selectedColor.toARGB32() == color.toARGB32();
-                  return _PressableSurface(
-                    onTap: () {
-                      setState(() {
-                        _selectedColor = color;
-                        _selectedGradientIndex = -1;
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selected ? Colors.white : Colors.white24,
-                          width: selected ? 2.2 : 1,
-                        ),
-                      ),
-                    ),
-                  );
+            _buildLabel('Solid color wheel'),
+            const SizedBox(height: 12),
+            Center(
+              child: _ColorWheelPicker(
+                hsvColor: _selectedHsv,
+                onChanged: _setHsv,
+                onInteractionChanged: (dragging) {
+                  if (_isColorWheelDragging == dragging) {
+                    return;
+                  }
+                  setState(() => _isColorWheelDragging = dragging);
                 },
               ),
             ),
-            const SizedBox(height: 12),
-            _buildLabel('Gradient'),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GridView.builder(
-                itemCount: widget.gradients.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1.7,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  final selected = _selectedGradientIndex == index;
-                  return _PressableSurface(
+            const SizedBox(height: 14),
+            _buildValueSlider(),
+            const SizedBox(height: 14),
+            _buildHexInput(),
+            const SizedBox(height: 18),
+            _buildPreview(),
+            if (widget.gradients.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 22),
+              _buildLabel('Gradient colors'),
+              const SizedBox(height: 10),
+              ...List<Widget>.generate(widget.gradients.length, (int index) {
+                final selected = _selectedGradientIndex == index;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _PressableSurface(
                     onTap: () {
                       setState(() {
                         _selectedGradientIndex = index;
                       });
                     },
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(16),
                     child: Container(
+                      height: 42,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: widget.gradients[index],
                         ),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: selected ? Colors.white : Colors.white24,
-                          width: selected ? 2 : 1,
+                          width: selected ? 2.2 : 1,
                         ),
                       ),
+                      child: selected
+                          ? const Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  Icons.check_circle_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            )
+                          : null,
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPreview() {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: _selectedColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _selectedGradientIndex >= 0
+                  ? 'Gradient ${_selectedGradientIndex + 1} selected'
+                  : _hexFromColor(_selectedColor),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValueSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _buildLabel('Brightness'),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+          ),
+          child: Slider(
+            min: 0,
+            max: 100,
+            divisions: 100,
+            value: (_selectedHsv.value * 100).clamp(0, 100).toDouble(),
+            activeColor: _selectedHsv.withValue(1).toColor(),
+            inactiveColor: Colors.white24,
+            onChanged: (value) =>
+                _setHsv(_selectedHsv.withValue((value / 100).clamp(0.0, 1.0))),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHexInput() {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: TextField(
+            controller: _hexController,
+            cursorColor: Colors.white,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+            decoration: InputDecoration(
+              labelText: 'HEX color code',
+              hintText: '#FF3366',
+              labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.08),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF93C5FD)),
+              ),
+            ),
+            onSubmitted: (_) => _applyHex(),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _PressableSurface(
+          onTap: _applyHex,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6D5DFB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'Apply',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1747,4 +991,357 @@ class _TextColorPickerScreenState extends State<_TextColorPickerScreen> {
       ),
     );
   }
+}
+
+class _ColorWheelPicker extends StatefulWidget {
+  const _ColorWheelPicker({
+    required this.hsvColor,
+    required this.onChanged,
+    this.onInteractionChanged,
+  });
+
+  final HSVColor hsvColor;
+  final ValueChanged<HSVColor> onChanged;
+
+  final ValueChanged<bool>? onInteractionChanged;
+
+  @override
+  State<_ColorWheelPicker> createState() => _ColorWheelPickerState();
+}
+
+class _ColorWheelPickerState extends State<_ColorWheelPicker> {
+  Offset? _previewPosition;
+  HSVColor? _previewHsv;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 248.0;
+    const previewSize = 66.0;
+    final preview = _previewPosition == null || _previewHsv == null
+        ? null
+        : _ColorMagnifierPreview(
+            color: _previewHsv!.toColor(),
+            hex: _hexFromColor(_previewHsv!.toColor()),
+          );
+    final previewLeft = _previewPosition == null
+        ? 0.0
+        : (_previewPosition!.dx + 18).clamp(0.0, size - previewSize);
+    final previewTop = _previewPosition == null
+        ? 0.0
+        : (_previewPosition!.dy - previewSize - 16).clamp(
+            0.0,
+            size - previewSize,
+          );
+
+    return SizedBox(
+      width: size,
+      height: size + 62,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onPanDown: (details) {
+              widget.onInteractionChanged?.call(true);
+              _handle(details.localPosition, size);
+            },
+            onPanUpdate: (details) => _handle(details.localPosition, size),
+            onPanEnd: (_) => _endInteraction(),
+            onPanCancel: _endInteraction,
+            onTapDown: (details) {
+              widget.onInteractionChanged?.call(true);
+              _handle(details.localPosition, size);
+            },
+            onTapUp: (_) => _endInteraction(),
+            onTapCancel: _endInteraction,
+            child: CustomPaint(
+              size: const Size.square(size),
+              painter: _ColorWheelPainter(widget.hsvColor),
+            ),
+          ),
+          if (preview != null)
+            Positioned(left: previewLeft, top: previewTop, child: preview),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _NeutralColorBubble(
+                  label: 'Black',
+                  color: Colors.black,
+                  selected: widget.hsvColor.value <= 0.02,
+                  onTap: () => _selectNeutral(Colors.black),
+                ),
+                const SizedBox(width: 14),
+                _NeutralColorBubble(
+                  label: 'White',
+                  color: Colors.white,
+                  selected:
+                      widget.hsvColor.saturation <= 0.04 &&
+                      widget.hsvColor.value >= 0.96,
+                  onTap: () => _selectNeutral(Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handle(Offset position, double size) {
+    final center = Offset(size / 2, size / 2);
+    final vector = position - center;
+    final radius = size / 2;
+    final distance = vector.distance.clamp(0.0, radius);
+    var hue = math.atan2(vector.dy, vector.dx) * 180 / math.pi;
+    if (hue < 0) hue += 360;
+    final saturation = (distance / radius).clamp(0.0, 1.0);
+    final visibleValue = widget.hsvColor.value <= 0.001
+        ? 1.0
+        : widget.hsvColor.value;
+    final next = widget.hsvColor
+        .withHue(hue)
+        .withSaturation(saturation)
+        .withValue(visibleValue);
+    setState(() {
+      _previewPosition = Offset(
+        position.dx.clamp(0.0, size),
+        position.dy.clamp(0.0, size),
+      );
+      _previewHsv = next;
+    });
+    widget.onChanged(next);
+  }
+
+  void _selectNeutral(Color color) {
+    HapticFeedback.selectionClick();
+    widget.onInteractionChanged?.call(false);
+    setState(() {
+      _previewPosition = null;
+      _previewHsv = null;
+    });
+    widget.onChanged(HSVColor.fromColor(color));
+  }
+
+  void _endInteraction() {
+    widget.onInteractionChanged?.call(false);
+    if (_previewPosition == null && _previewHsv == null) {
+      return;
+    }
+    setState(() {
+      _previewPosition = null;
+      _previewHsv = null;
+    });
+  }
+}
+
+class _ColorMagnifierPreview extends StatelessWidget {
+  const _ColorMagnifierPreview({required this.color, required this.hex});
+
+  final Color color;
+  final String hex;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLight = color.computeLuminance() > 0.72;
+    return IgnorePointer(
+      child: Container(
+        width: 66,
+        height: 66,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF111827).withValues(alpha: 0.92),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.72),
+            width: 2,
+          ),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              border: Border.all(
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.34)
+                    : Colors.white.withValues(alpha: 0.55),
+                width: 1.4,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              hex.substring(1),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isLight ? Colors.black : Colors.white,
+                fontSize: 7.5,
+                fontWeight: FontWeight.w900,
+                height: 1.0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NeutralColorBubble extends StatelessWidget {
+  const _NeutralColorBubble({
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWhite = color.toARGB32() == Colors.white.toARGB32();
+    return _PressableSurface(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        width: 46,
+        height: 46,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: selected
+              ? const Color(0xFF38BDF8).withValues(alpha: 0.22)
+              : Colors.white.withValues(alpha: 0.08),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF38BDF8)
+                : Colors.white.withValues(alpha: 0.18),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Tooltip(
+          message: label,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color,
+              border: Border.all(
+                color: isWhite
+                    ? Colors.black.withValues(alpha: 0.40)
+                    : Colors.white.withValues(alpha: 0.28),
+              ),
+            ),
+            child: selected
+                ? Icon(
+                    Icons.check_rounded,
+                    color: isWhite ? Colors.black : Colors.white,
+                    size: 19,
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ColorWheelPainter extends CustomPainter {
+  const _ColorWheelPainter(this.hsvColor);
+
+  final HSVColor hsvColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+    final sweep = SweepGradient(
+      colors: List<Color>.generate(
+        361,
+        (index) => HSVColor.fromAHSV(1, index.toDouble(), 1, 1).toColor(),
+      ),
+    );
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = sweep.createShader(
+          Rect.fromCircle(center: center, radius: radius),
+        ),
+    );
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          center,
+          radius,
+          <Color>[Colors.white, Colors.white.withValues(alpha: 0)],
+          <double>[0, 1],
+        ),
+    );
+    final angle = hsvColor.hue * math.pi / 180;
+    final handleRadius = hsvColor.saturation * radius;
+    final handle = Offset(
+      center.dx + (math.cos(angle) * handleRadius),
+      center.dy + (math.sin(angle) * handleRadius),
+    );
+    canvas.drawCircle(
+      handle,
+      10,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    canvas.drawCircle(
+      handle,
+      6,
+      Paint()
+        ..color = hsvColor.toColor()
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ColorWheelPainter oldDelegate) =>
+      oldDelegate.hsvColor != hsvColor;
+}
+
+String _hexFromColor(Color color) {
+  final value = color.toARGB32() & 0xFFFFFF;
+  return '#${value.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+}
+
+Color? _parseHexColor(String input) {
+  var value = input.trim().toUpperCase();
+  if (value.startsWith('#')) {
+    value = value.substring(1);
+  }
+  if (value.length == 3) {
+    value = value.split('').map((char) => '$char$char').join();
+  }
+  if (value.length != 6 && value.length != 8) {
+    return null;
+  }
+  final parsed = int.tryParse(value, radix: 16);
+  if (parsed == null) {
+    return null;
+  }
+  return Color(value.length == 6 ? (0xFF000000 | parsed) : parsed);
 }

@@ -168,7 +168,7 @@ class _LegalCopy {
       ? strings.localized(
           telugu: 'ప్రైవసీ పాలసీ',
           english: 'Privacy Policy',
-          hindi: 'à¤ªà¥à¤°à¤¾à¤‡à¤µà¥‡à¤¸à¥€ à¤ªà¥‰à¤²à¤¿à¤¸à¥€',
+          hindi: 'प्राइवेसी पॉलिसी',
           tamil: 'à®¤à®©à®¿à®¯à¯à®°à®¿à®®à¯ˆ à®•à¯Šà®³à¯à®•à¯ˆ',
           kannada: 'à²—à³Œà²ªà³à²¯à²¤à²¾ à²¨à³€à²¤à²¿',
           malayalam: 'à´¸àµà´µà´•à´¾à´°àµà´¯à´¤à´¾ à´¨à´¯à´‚',
@@ -176,7 +176,7 @@ class _LegalCopy {
       : strings.localized(
           telugu: 'నిబంధనలు మరియు షరతులు',
           english: 'Terms & Conditions',
-          hindi: 'à¤¨à¤¿à¤¯à¤® à¤”à¤° à¤¶à¤°à¥à¤¤à¥‡à¤‚',
+          hindi: 'नियम और शर्तें',
           tamil:
               'à®µà®¿à®¤à®¿à®®à¯à®±à¯ˆà®•à®³à¯ à®®à®±à¯à®±à¯à®®à¯ à®¨à®¿à®ªà®¨à¯à®¤à®©à¯ˆà®•à®³à¯',
           kannada:
@@ -189,7 +189,7 @@ class _LegalCopy {
       ? strings.localized(
           telugu: 'డేటా రక్షణ',
           english: 'Data Protection',
-          hindi: 'à¤¡à¥‡à¤Ÿà¤¾ à¤¸à¥à¤°à¤•à¥à¤·à¤¾',
+          hindi: 'डेटा सुरक्षा',
           tamil: 'à®¤à®°à®µà¯ à®ªà®¾à®¤à¯à®•à®¾à®ªà¯à®ªà¯',
           kannada: 'à²¡à³‡à²Ÿà²¾ à²°à²•à³à²·à²£à³†',
           malayalam: 'à´¡à´¾à´±àµà´± à´¸à´‚à´°à´•àµà´·à´£à´‚',
@@ -197,7 +197,7 @@ class _LegalCopy {
       : strings.localized(
           telugu: 'వినియోగ నియమాలు',
           english: 'Usage Terms',
-          hindi: 'à¤‰à¤ªà¤¯à¥‹à¤— à¤¨à¤¿à¤¯à¤®',
+          hindi: 'उपयोग नियम',
           tamil: 'à®ªà®¯à®©à¯à®ªà®¾à®Ÿà¯à®Ÿà¯ à®µà®¿à®¤à®¿à®•à®³à¯',
           kannada: 'à²¬à²³à²•à³† à²¨à²¿à²¯à²®à²—à²³à³',
           malayalam: 'à´‰à´ªà´¯àµ‹à´— à´¨à´¿à´¬à´¨àµà´§à´¨à´•àµ¾',
@@ -229,7 +229,7 @@ class _LegalCopy {
     telugu: 'ప్రశ్నలు ఉంటే ${AppPublicInfo.supportEmail} కి సంప్రదించండి.',
     english: 'For questions, contact ${AppPublicInfo.supportEmail}.',
     hindi:
-        'à¤ªà¥à¤°à¤¶à¥à¤¨ à¤¹à¥‹à¤¨à¥‡ à¤ªà¤° ${AppPublicInfo.supportEmail} à¤ªà¤° à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚à¥¤',
+        'प्रश्न होने पर ${AppPublicInfo.supportEmail} पर संपर्क करें।',
     tamil:
         'à®•à¯‡à®³à¯à®µà®¿à®•à®³à¯ à®‡à®°à¯à®¨à¯à®¤à®¾à®²à¯ ${AppPublicInfo.supportEmail}-à® à®¤à¯Šà®Ÿà®°à¯à®ªà¯ à®•à¯Šà®³à¯à®³à¯à®™à¯à®•à®³à¯.',
     kannada:

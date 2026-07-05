@@ -148,6 +148,17 @@ bool _isLegacyTeluguFontFamily(String family) =>
     _textFontFamilies.contains(family) &&
     !_unicodeTeluguFontFamilies.contains(family);
 
+bool debugIsLegacyTeluguFontFamilyForTest(String family) =>
+    _isLegacyTeluguFontFamily(family);
+
+String debugResolveTextRenderFontFamilyForTest(String family) =>
+    _resolveTextRenderFontFamily(family);
+
+Future<String?> debugResolveLegacyRenderTextForTest({
+  required String text,
+  required String fontFamily,
+}) => _resolveLegacyRenderTextFor(text: text, fontFamily: fontFamily);
+
 bool _hasLegacyTeluguConverter(String family) =>
     _legacyFontConverters.containsKey(family);
 
@@ -161,10 +172,14 @@ String _resolveTextRenderFontFamily(String family) {
 double _effectiveTextLineHeightForRender({
   required String fontFamily,
   required double textLineHeight,
+  String text = '',
 }) {
   final clamped = textLineHeight.clamp(0.8, 2.2).toDouble();
   if (!_isLegacyTeluguFontFamily(fontFamily)) {
-    return clamped;
+    final needsScriptSafety =
+        _fontFamilyNeedsScriptSafety(fontFamily) ||
+        (text.isNotEmpty && _textValueNeedsScriptSafety(text));
+    return needsScriptSafety ? clamped.clamp(0.95, 2.2).toDouble() : clamped;
   }
   return (clamped * 0.72).clamp(0.58, 1.15).toDouble();
 }
@@ -200,6 +215,12 @@ String _resolveLayerRenderFontFamily(_CanvasLayer layer) {
 String _fontPickerSecondaryLabel(String family) {
   if (_unicodeTeluguFontFamilies.contains(family)) {
     return 'Unicode';
+  }
+  if (_hindiTextFontFamilies.contains(family)) {
+    return 'Hindi';
+  }
+  if (_englishTextFontFamilies.contains(family)) {
+    return 'English';
   }
   if (_isLegacyTeluguFontFamily(family)) {
     return switch (_legacyFontProfileForFamily(family)) {

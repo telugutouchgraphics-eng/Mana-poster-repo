@@ -1,6 +1,6 @@
 part of '../image_editor_screen.dart';
 
-enum _BackgroundEditorTab { white, transparent, color, gradient, image }
+enum _BackgroundEditorTab { transparent, color, gradient }
 
 class BackgroundEditorFullscreenOverlay extends StatefulWidget {
   const BackgroundEditorFullscreenOverlay({
@@ -35,19 +35,28 @@ class _BackgroundEditorFullscreenOverlayState
   late int _selectedGradientIndex = widget.selectedGradientIndex;
   late bool _hasSelectedImage = widget.hasSelectedImage;
   late _BackgroundEditorTab _activeTab = _resolveInitialTab();
+  late HSVColor _selectedHsv = HSVColor.fromColor(
+    widget.selectedColor.a <= 0.001 ? Colors.white : widget.selectedColor,
+  );
+  bool _isColorWheelDragging = false;
+  late final TextEditingController _hexController = TextEditingController(
+    text: _hexFromColor(
+      widget.selectedColor.a <= 0.001 ? Colors.white : widget.selectedColor,
+    ),
+  );
+
+  @override
+  void dispose() {
+    _hexController.dispose();
+    super.dispose();
+  }
 
   _BackgroundEditorTab _resolveInitialTab() {
-    if (_hasSelectedImage) {
-      return _BackgroundEditorTab.image;
-    }
     if (_selectedGradientIndex >= 0) {
       return _BackgroundEditorTab.gradient;
     }
     if (_selectedColor.a <= 0.001) {
       return _BackgroundEditorTab.transparent;
-    }
-    if (_selectedColor.toARGB32() == Colors.white.toARGB32()) {
-      return _BackgroundEditorTab.white;
     }
     return _BackgroundEditorTab.color;
   }
@@ -93,40 +102,6 @@ class _BackgroundEditorFullscreenOverlayState
     );
   }
 
-  Widget _buildWhiteTab() {
-    return Center(
-      child: _PressableSurface(
-        onTap: () {
-          widget.onColorSelected(Colors.white);
-          setState(() {
-            _selectedColor = Colors.white;
-            _selectedGradientIndex = -1;
-            _hasSelectedImage = false;
-          });
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 180,
-          height: 56,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0x1A0F172A)),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'Pure White',
-            style: TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTransparentTab() {
     return Center(
       child: _PressableSurface(
@@ -164,32 +139,200 @@ class _BackgroundEditorFullscreenOverlayState
   }
 
   Widget _buildColorTab() {
-    return GridView.builder(
-      itemCount: widget.colors.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 8,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1,
+    return ListView(
+      physics: _isColorWheelDragging
+          ? const NeverScrollableScrollPhysics()
+          : const BouncingScrollPhysics(),
+      children: <Widget>[
+        _buildLabel('Solid color wheel'),
+        const SizedBox(height: 12),
+        Center(
+          child: _ColorWheelPicker(
+            hsvColor: _selectedHsv,
+            onChanged: _setHsvColor,
+            onInteractionChanged: (dragging) {
+              if (_isColorWheelDragging == dragging) {
+                return;
+              }
+              setState(() => _isColorWheelDragging = dragging);
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildValueSlider(),
+        const SizedBox(height: 14),
+        _buildHexInput(),
+        const SizedBox(height: 14),
+        _buildColorPreview(),
+        const SizedBox(height: 18),
+        _buildLabel('Use the wheel or HEX for any solid color'),
+        const SizedBox(height: 18),
+        _buildGalleryImportActions(),
+      ],
+    );
+  }
+
+  void _setSolidColor(Color color, {bool syncHex = true}) {
+    widget.onColorSelected(color);
+    setState(() {
+      _selectedColor = color;
+      _selectedHsv = HSVColor.fromColor(color);
+      _selectedGradientIndex = -1;
+      _hasSelectedImage = false;
+      if (syncHex) {
+        _hexController.text = _hexFromColor(color);
+      }
+    });
+  }
+
+  void _setHsvColor(HSVColor hsv) {
+    _setSolidColor(hsv.toColor());
+  }
+
+  void _applyHexColor() {
+    final parsed = _parseHexColor(_hexController.text);
+    if (parsed == null) {
+      HapticFeedback.mediumImpact();
+      return;
+    }
+    _setSolidColor(parsed);
+  }
+
+  Widget _buildValueSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _buildLabel('Brightness'),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+          ),
+          child: Slider(
+            min: 0,
+            max: 100,
+            divisions: 100,
+            value: (_selectedHsv.value * 100).clamp(0, 100).toDouble(),
+            activeColor: _selectedHsv.withValue(1).toColor(),
+            inactiveColor: Colors.white24,
+            onChanged: (value) => _setHsvColor(
+              _selectedHsv.withValue((value / 100).clamp(0.0, 1.0)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHexInput() {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: TextField(
+            controller: _hexController,
+            cursorColor: Colors.white,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+            decoration: InputDecoration(
+              labelText: 'HEX color code',
+              hintText: '#FF3366',
+              labelStyle: const TextStyle(color: Color(0xFFCBD5E1)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35)),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.08),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.14),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF93C5FD)),
+              ),
+            ),
+            onSubmitted: (_) => _applyHexColor(),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _PressableSurface(
+          onTap: _applyHexColor,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6D5DFB),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'Apply',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildColorPreview() {
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
-      itemBuilder: (BuildContext context, int index) {
-        final color = widget.colors[index];
-        final selected =
-            _selectedGradientIndex == -1 &&
-            _selectedColor.toARGB32() == color.toARGB32();
-        return _BackgroundColorTile(
-          color: color,
-          selected: selected,
-          onTap: () {
-            widget.onColorSelected(color);
-            setState(() {
-              _selectedColor = color;
-              _selectedGradientIndex = -1;
-              _hasSelectedImage = false;
-            });
-          },
-        );
-      },
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: _selectedColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _hexFromColor(_selectedColor),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLabel(String value) {
+    return Text(
+      value,
+      style: const TextStyle(
+        color: Color(0xFFCBD5E1),
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+      ),
     );
   }
 
@@ -218,10 +361,12 @@ class _BackgroundEditorFullscreenOverlayState
     );
   }
 
-  Widget _buildImageTab(BuildContext context) {
+  Widget _buildGalleryImportActions() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        _buildLabel('Gallery background'),
+        const SizedBox(height: 10),
         _PressableSurface(
           onTap: () async {
             final didSelect = await widget.onImageSelected();
@@ -235,7 +380,6 @@ class _BackgroundEditorFullscreenOverlayState
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            width: 240,
             height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -267,7 +411,6 @@ class _BackgroundEditorFullscreenOverlayState
               : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            width: 240,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -299,16 +442,12 @@ class _BackgroundEditorFullscreenOverlayState
 
   Widget _buildBody(BuildContext context) {
     switch (_activeTab) {
-      case _BackgroundEditorTab.white:
-        return _buildWhiteTab();
       case _BackgroundEditorTab.transparent:
         return _buildTransparentTab();
       case _BackgroundEditorTab.color:
         return _buildColorTab();
       case _BackgroundEditorTab.gradient:
         return _buildGradientTab();
-      case _BackgroundEditorTab.image:
-        return _buildImageTab(context);
     }
   }
 
@@ -335,11 +474,6 @@ class _BackgroundEditorFullscreenOverlayState
                   physics: const BouncingScrollPhysics(),
                   children: <Widget>[
                     _buildTabButton(
-                      _BackgroundEditorTab.white,
-                      strings.localized(telugu: 'తెలుపు', english: 'White'),
-                    ),
-                    const SizedBox(width: 6),
-                    _buildTabButton(
                       _BackgroundEditorTab.transparent,
                       strings.localized(
                         telugu: 'పారదర్శకం',
@@ -359,11 +493,6 @@ class _BackgroundEditorFullscreenOverlayState
                         english: 'Gradient',
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    _buildTabButton(
-                      _BackgroundEditorTab.image,
-                      strings.localized(telugu: 'ఇమేజ్', english: 'Image'),
-                    ),
                   ],
                 ),
               ),
@@ -381,46 +510,6 @@ class _BackgroundEditorFullscreenOverlayState
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BackgroundColorTile extends StatelessWidget {
-  const _BackgroundColorTile({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : const Color(0xFFD1D5DB),
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color(0x140F172A),
-              blurRadius: 6,
-              offset: Offset(0, 2),
-            ),
-          ],
         ),
       ),
     );
@@ -515,48 +604,6 @@ class _ColorDot extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: color,
-            border: Border.all(
-              color: selected
-                  ? const Color(0xFF2563EB)
-                  : const Color(0xFFD1D5DB),
-              width: selected ? 2 : 1,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientDot extends StatelessWidget {
-  const _GradientDot({
-    required this.colors,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final List<Color> colors;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        splashColor: const Color(0x1A2563EB),
-        highlightColor: const Color(0x0F2563EB),
-        borderRadius: BorderRadius.circular(99),
-        child: Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(colors: colors),
             border: Border.all(
               color: selected
                   ? const Color(0xFF2563EB)

@@ -4,9 +4,9 @@ part of 'image_editor_screen.dart';
 
 enum _CanvasLayerType { photo, text, sticker }
 
-enum _ExportImageFormat { png, pngTransparent, jpg }
+enum _ExportImageFormat { png, pngTransparent, jpg, psd, pdf }
 
-enum _BottomPrimaryTool { none, photo, text, background, tools }
+enum _BottomPrimaryTool { none, photo, text, background }
 
 enum _BottomInlineMode {
   none,
@@ -14,17 +14,18 @@ enum _BottomInlineMode {
   stickerCategories,
   stickerItems,
   border,
-  backgroundBlur,
   photoEraser,
 }
 
-enum _BorderStyle { none, thinWhite, thinBlack, rounded, glow }
+enum _BorderStyle { none, thinWhite, thinBlack, rounded, glow, custom }
 
-const double _topBarHeight = 68;
-const double _bottomBarHeight = 84;
+const double _topBarHeight = 102;
+const double _bottomBarHeight = 78;
 const double _cropBarHeight = 132;
 const double _adjustBarHeight = 196;
 const double _eraserBarHeight = 178;
+const double _stretchBarHeight = 226;
+const double _drawBarHeight = 226;
 const double _textStyleBarHeight = 252;
 const double _canvasChromeInset = 18;
 
@@ -34,6 +35,9 @@ final List<Color> _textColors = List<Color>.unmodifiable(
 
 const List<String> _stickerCategories = <String>[
   'Emojis',
+  'DesignPro Shapes',
+  'Callouts',
+  'SVG Marks',
   'Shapes',
   'Hearts',
   'Stars',
@@ -43,7 +47,122 @@ const List<String> _stickerCategories = <String>[
 
 const Map<String, List<String>> _stickerCatalog = <String, List<String>>{
   'Emojis': <String>['😀', '😁', '😎', '🥳', '❤️', '✨'],
-  'Shapes': <String>['⬛', '⬜', '🔶', '🔷', '🔺', '🔻'],
+  'DesignPro Shapes': <String>[
+    'assets/designpro_reference_full/assets/shapes/circle.svg',
+    'assets/designpro_reference_full/assets/shapes/square.svg',
+    'assets/designpro_reference_full/assets/shapes/rectangle.svg',
+    'assets/designpro_reference_full/assets/shapes/triangle.svg',
+    'assets/designpro_reference_full/assets/shapes/star.svg',
+    'assets/designpro_reference_full/assets/shapes/heart.svg',
+    'assets/designpro_reference_full/assets/shapes/arrow.svg',
+    'assets/designpro_reference_full/assets/shapes/cloud.svg',
+    'assets/designpro_reference_full/assets/shapes/crown.svg',
+    'assets/designpro_reference_full/assets/shapes/diamond.svg',
+    'assets/designpro_reference_full/assets/shapes/hexagon.svg',
+    'assets/designpro_reference_full/assets/shapes/octagon.svg',
+    'assets/designpro_reference_full/assets/shapes/lightning.svg',
+    'assets/designpro_reference_full/assets/shapes/flower.svg',
+    'assets/designpro_reference_full/assets/shapes/sunflower1.svg',
+    'assets/designpro_reference_full/assets/shapes/paint_line.svg',
+    'assets/designpro_reference_full/assets/shapes/boom.svg',
+    'assets/designpro_reference_full/assets/shapes/callout.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_circle.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_square.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_star.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_triangle.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_heart.svg',
+  ],
+  'Callouts': <String>[
+    'assets/designpro_reference_full/assets/callouts/callout_cloud.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_dest_bubble.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_dest_triangle.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_oval.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_rectangle.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_round_rectangle.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_shape_1.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_shape_2.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_shape_4.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_shape_5.svg',
+    'assets/designpro_reference_full/assets/callouts/callout_shape_6.svg',
+    'assets/designpro_reference_full/assets/callouts/i_message_1.svg',
+    'assets/designpro_reference_full/assets/callouts/i_message_2.svg',
+    'assets/designpro_reference_full/assets/callouts/i_message_3.svg',
+    'assets/designpro_reference_full/assets/callouts/i_message_4.svg',
+    'assets/designpro_reference_full/assets/callouts/valentine_cloud.svg',
+    'assets/designpro_reference_full/assets/callouts/valentine_red_heart.svg',
+  ],
+  'SVG Marks': <String>[
+    'assets/designpro_reference_full/assets/shapes/default_shape_x.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_star.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_star_2.svg',
+    'assets/designpro_reference_full/assets/shapes/default_shape_heart.svg',
+    'assets/designpro_reference_full/assets/shapes/arrow.svg',
+    'assets/designpro_reference_full/assets/shapes/lightning.svg',
+    'assets/designpro_reference_full/assets/shapes/paint_line.svg',
+    'assets/designpro_reference_full/assets/shapes/boom.svg',
+    'assets/designpro_reference_full/assets/shapes/lines.svg',
+    'assets/designpro_reference_full/assets/shapes/drops.svg',
+    'assets/designpro_reference_full/assets/shapes/foot_print.svg',
+    'assets/designpro_reference_full/assets/shapes/crown.svg',
+    'assets/designpro_reference_full/assets/shapes/cloud_down.svg',
+    'assets/designpro_reference_full/assets/shapes/melt.svg',
+  ],
+  'Shapes': <String>[
+    '●',
+    '○',
+    '◐',
+    '◑',
+    '■',
+    '□',
+    '▣',
+    '▢',
+    '◆',
+    '◇',
+    '◈',
+    '▲',
+    '△',
+    '▼',
+    '▽',
+    '◀',
+    '▶',
+    '◁',
+    '▷',
+    '⬟',
+    '⬢',
+    '⬡',
+    '★',
+    '☆',
+    '✦',
+    '✧',
+    '✚',
+    '✖',
+    '✓',
+    '✔',
+    '⬆',
+    '⬇',
+    '⬅',
+    '➡',
+    '↗',
+    '↘',
+    '↙',
+    '↖',
+    '━',
+    '┃',
+    '┏',
+    '┓',
+    '┗',
+    '┛',
+    '⌜',
+    '⌝',
+    '⌞',
+    '⌟',
+    '⬛',
+    '⬜',
+    '🔶',
+    '🔷',
+    '🔺',
+    '🔻',
+  ],
   'Hearts': <String>['❤️', '💚', '💙', '💜', '🧡', '💕'],
   'Stars': <String>['⭐', '🌟', '✨', '💫', '🔆', '✳️'],
   'Festival': <String>['🎉', '🎊', '🪔', '🪙', '🕯️', '🌸'],
@@ -177,4 +296,28 @@ const List<String> _englishTextFontFamilies = <String>[
   'Rubik',
   'Nunito',
   'Caveat',
+];
+
+const List<String> _hindiTextFontFamilies = <String>[
+  'Noto Sans Devanagari',
+  'Noto Serif Devanagari',
+  'Hind',
+  'Teko',
+  'Rajdhani',
+  'Baloo 2',
+  'Kalam',
+  'Yatra One',
+  'Gotu',
+  'Mukta',
+  'Arya',
+  'Martel',
+  'Sarpanch',
+  'Kurale',
+  'Rozha One',
+];
+
+const List<String> _allTextFontFamilies = <String>[
+  ..._textFontFamilies,
+  ..._englishTextFontFamilies,
+  ..._hindiTextFontFamilies,
 ];

@@ -30,26 +30,41 @@ class AppRegionService {
       return cached;
     }
 
+    SharedPreferences? resolvedPrefs;
     try {
-      final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
-      final nativeState = await NativeStartupStateStore.readAll();
+      resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
       final prefsRegionId = resolvedPrefs.getString(selectedRegionKey);
-      final nativeRegionId = nativeState[selectedRegionKey] as String?;
-      final secureRegionId = await _secureStorage.read(key: selectedRegionKey);
-      final region =
-          appRegionById(prefsRegionId) ??
-          appRegionById(nativeRegionId) ??
-          appRegionById(secureRegionId);
-      if (region == null) {
-        return null;
+      final prefsRegion = appRegionById(prefsRegionId);
+      if (prefsRegion != null) {
+        await _mirrorLocalSelection(prefsRegion, resolvedPrefs);
+        _memoryRegion = prefsRegion;
+        unawaited(_syncToRemote(prefsRegion));
+        return prefsRegion;
       }
-      await _mirrorLocalSelection(region, resolvedPrefs);
-      _memoryRegion = region;
-      unawaited(_syncToRemote(region));
-      return region;
     } catch (_) {
-      return _memoryRegion;
+      resolvedPrefs = null;
     }
+
+    final nativeRegion = await _loadNativeRegion();
+    if (nativeRegion != null) {
+      final prefsForMirror =
+          resolvedPrefs ?? prefs ?? await SharedPreferences.getInstance();
+      await _mirrorLocalSelection(nativeRegion, prefsForMirror);
+      _memoryRegion = nativeRegion;
+      unawaited(_syncToRemote(nativeRegion));
+      return nativeRegion;
+    }
+
+    final secureRegion = await _loadSecureRegion();
+    if (secureRegion != null) {
+      final prefsForMirror =
+          resolvedPrefs ?? prefs ?? await SharedPreferences.getInstance();
+      await _mirrorLocalSelection(secureRegion, prefsForMirror);
+      _memoryRegion = secureRegion;
+      unawaited(_syncToRemote(secureRegion));
+      return secureRegion;
+    }
+    return _memoryRegion;
   }
 
   static Future<bool> hasSelection({SharedPreferences? prefs}) async {
@@ -109,6 +124,23 @@ class AppRegionService {
       selectedRegionLanguageKey: region.primaryLanguage,
       selectedRegionLanguageCodeKey: region.primaryLanguageCode,
     });
+  }
+
+  static Future<AppRegion?> _loadNativeRegion() async {
+    try {
+      final nativeState = await NativeStartupStateStore.readAll();
+      return appRegionById(nativeState[selectedRegionKey] as String?);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<AppRegion?> _loadSecureRegion() async {
+    try {
+      return appRegionById(await _secureStorage.read(key: selectedRegionKey));
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<void> _syncToRemote(AppRegion region) async {

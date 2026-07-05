@@ -1,19 +1,34 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/background_presets.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/image_editor/models/editor_stage_background.dart';
-import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
-import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
+import 'package:mana_poster/features/image_editor/services/editor_draft_storage_service.dart';
 import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
     if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 
 enum _UnitMode { pixels, inches }
 
 enum _SetupBackgroundChoice { white, transparent, color, gradient }
+
+enum _SetupStartChoice { psd, gallery, empty, restoreDraft }
+
+const Color _setupBackdrop = Color(0xFF2A2C31);
+const Color _setupSurface = Color(0xFF1C1E23);
+const Color _setupSurfaceSoft = Color(0xFF24262B);
+const Color _setupBorder = Color(0xFF3A3D45);
+const Color _setupTextPrimary = Color(0xFFF1F3F4);
+const Color _setupTextSecondary = Color(0xFFBDC1C6);
+const Color _setupPurple = Color(0xFF7C6DFF);
+const Color _setupPurpleSoft = Color(0xFF4C3FB8);
 
 class PageSetupScreen extends StatefulWidget {
   const PageSetupScreen({super.key});
@@ -24,6 +39,8 @@ class PageSetupScreen extends StatefulWidget {
 
 class _PageSetupScreenState extends State<PageSetupScreen>
     with AppLanguageStateMixin {
+  bool get _showSkipAction => false;
+
   static const int _minCanvasPx = 320;
   static const int _maxCanvasPx = 10000;
   static const double _minInches = 1;
@@ -32,10 +49,17 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   static const int _maxDpi = 600;
 
   static const List<EditorPageConfig> _presets = <EditorPageConfig>[
-    EditorPageConfig(name: '1:1', widthPx: 1080, heightPx: 1080),
-    EditorPageConfig(name: '4:5', widthPx: 1080, heightPx: 1350),
-    EditorPageConfig(name: '9:16', widthPx: 1080, heightPx: 1920),
-    EditorPageConfig(name: '16:9', widthPx: 1920, heightPx: 1080),
+    EditorPageConfig(name: '1:1', widthPx: 1080, heightPx: 1080, dpi: 300),
+    EditorPageConfig(name: '4:5', widthPx: 1080, heightPx: 1350, dpi: 300),
+    EditorPageConfig(name: '9:16', widthPx: 1080, heightPx: 1920, dpi: 300),
+    EditorPageConfig(name: '16:9', widthPx: 1920, heightPx: 1080, dpi: 300),
+    EditorPageConfig(name: 'A4 Print', widthPx: 2480, heightPx: 3508, dpi: 300),
+    EditorPageConfig(
+      name: 'Letter Print',
+      widthPx: 2550,
+      heightPx: 3300,
+      dpi: 300,
+    ),
   ];
 
   static final List<Color> _backgroundColors = <Color>[
@@ -77,8 +101,13 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   final TextEditingController _dpiController = TextEditingController(
     text: '300',
   );
+  final ImagePicker _imagePicker = ImagePicker();
+  final EditorDraftStorageService _draftStorageService =
+      const EditorDraftStorageService();
 
-  int? _selectedPresetIndex = 0;
+  _SetupStartChoice? _selectedStartChoice;
+  int? _selectedPresetIndex;
+  bool _customSizeSelected = false;
   _UnitMode _unitMode = _UnitMode.pixels;
   _SetupBackgroundChoice _backgroundChoice = _SetupBackgroundChoice.white;
   int _selectedBackgroundColorIndex = 1;
@@ -101,7 +130,7 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   }
 
   void _onInputChanged() {
-    if (mounted && _selectedPresetIndex == null) {
+    if (mounted && _customSizeSelected) {
       setState(() {});
     }
   }
@@ -140,6 +169,9 @@ class _PageSetupScreenState extends State<PageSetupScreen>
 
   String? _customError() {
     if (_selectedPresetIndex != null) {
+      return null;
+    }
+    if (!_customSizeSelected) {
       return null;
     }
     final widthText = _widthController.text.trim();
@@ -191,6 +223,9 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     if (_selectedPresetIndex != null) {
       return _presets[_selectedPresetIndex!];
     }
+    if (!_customSizeSelected) {
+      return null;
+    }
     if (_customError() != null) {
       return null;
     }
@@ -199,6 +234,7 @@ class _PageSetupScreenState extends State<PageSetupScreen>
         name: 'Custom',
         widthPx: _parsePositiveInt(_widthController.text)!,
         heightPx: _parsePositiveInt(_heightController.text)!,
+        dpi: _parsePositiveInt(_dpiController.text) ?? 300,
       );
     }
     final widthIn = _parsePositiveDouble(_widthController.text)!;
@@ -208,6 +244,7 @@ class _PageSetupScreenState extends State<PageSetupScreen>
       name: 'Custom',
       widthPx: (widthIn * dpi).round().clamp(_minCanvasPx, _maxCanvasPx),
       heightPx: (heightIn * dpi).round().clamp(_minCanvasPx, _maxCanvasPx),
+      dpi: dpi,
     );
   }
 
@@ -247,473 +284,880 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     );
   }
 
-  void _skipToEditor() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const ImageEditorScreen()));
+  Future<void> _openEditorWithDesignImport() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.any,
+      withData: false,
+    );
+    if (!mounted || result == null || result.files.isEmpty) {
+      return;
+    }
+    final picked = result.files.single;
+    final path = picked.path;
+    if (path == null || path.isEmpty) {
+      return;
+    }
+    final pathParts = path.split('.');
+    final extension = (picked.extension ?? pathParts.last)
+        .trim()
+        .toLowerCase()
+        .replaceFirst('.', '');
+    if (extension != 'psd') {
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(content: const Text('Select a PSD file.')),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ImageEditorScreen(
+          initialStageBackground: const EditorStageBackground.transparent(),
+          initialDesignImportPath: path,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEditorFromGallery() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      requestFullMetadata: false,
+    );
+    if (!mounted || picked == null || picked.path.trim().isEmpty) {
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ImageEditorScreen(
+          initialStageBackground: const EditorStageBackground.transparent(),
+          initialDesignImportPath: picked.path,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restoreAutosavedDraft() async {
+    try {
+      final file = await _draftStorageService.getAutosaveFile();
+      if (!await file.exists()) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('No autosaved draft found.')),
+        );
+        return;
+      }
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('No autosaved draft found.')),
+        );
+        return;
+      }
+      final decoded = jsonDecode(content);
+      if (decoded is! Map<String, dynamic>) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('Draft restore failed.')),
+        );
+        return;
+      }
+      final layers = decoded['layers'];
+      if (layers is! List || layers.isEmpty) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('No editable draft content.')),
+        );
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ImageEditorScreen(initialDraft: decoded),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(content: const Text('Draft restore failed.')),
+      );
+    }
+  }
+
+  void _continueWithSelectedSource() {
+    switch (_selectedStartChoice) {
+      case _SetupStartChoice.psd:
+        unawaited(_openEditorWithDesignImport());
+        return;
+      case _SetupStartChoice.gallery:
+        unawaited(_openEditorFromGallery());
+        return;
+      case _SetupStartChoice.empty:
+        _openEditor();
+        return;
+      case _SetupStartChoice.restoreDraft:
+        unawaited(_restoreAutosavedDraft());
+        return;
+      case null:
+        return;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
     final theme = Theme.of(context);
-    final config = _resolveConfig() ?? _presets.first;
+    final config = _resolveConfig();
     final customError = _customError();
     final unit = _unitMode == _UnitMode.pixels ? 'px' : 'in';
     final previewBackground = _resolveBackground();
-    final canStart = _resolveConfig() != null;
+    final canStart =
+        _selectedStartChoice != null &&
+        (_selectedStartChoice != _SetupStartChoice.empty || config != null);
 
     return Scaffold(
-      body: GradientShell(
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    boxShadow: const <BoxShadow>[
-                      BoxShadow(
-                        color: Color(0x120F172A),
-                        blurRadius: 20,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
+      backgroundColor: _setupBackdrop,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+              child: Row(
+                children: <Widget>[
+                  _SetupIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).backButtonTooltip,
+                    onTap: () => Navigator.of(context).maybePop(),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          IconButton(
-                            onPressed: () => Navigator.of(context).maybePop(),
-                            style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFF8FAFC),
-                              foregroundColor: const Color(0xFF0F172A),
-                            ),
-                            icon: const Icon(Icons.arrow_back_rounded),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Container(
-                              height: 10,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(999),
-                                gradient: const LinearGradient(
-                                  colors: <Color>[
-                                    Color(0xFF14B8A6),
-                                    Color(0xFF38BDF8),
-                                    Color(0xFFA78BFA),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          TextButton(
-                            onPressed: _skipToEditor,
-                            child: Text(
-                              strings.localized(
-                                telugu: 'స్కిప్',
-                                english: 'Skip',
-                              ),
-                              style: const TextStyle(
-                                color: Color(0xFF0EA5E9),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                  const Spacer(),
+                  if (_showSkipAction)
+                    _SetupIconButton(
+                      icon: Icons.skip_next_rounded,
+                      tooltip: strings.localized(
+                        telugu: 'స్కిప్',
+                        english: 'Skip',
                       ),
-                      const SizedBox(height: 18),
-                      Text(
-                        strings.localized(
-                          telugu: 'కొత్త పోస్టర్',
-                          english: 'New Poster',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: const Color(0xFF0F172A),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        strings.localized(
-                          telugu:
-                              'సైజ్, బ్యాక్‌గ్రౌండ్ ఎంచుకుని డిజైన్ ప్రారంభించండి.',
-                          english:
-                              'Pick size and background, then start your design.',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      Text(
-                        strings.localized(
-                          telugu: 'పేజీ సెటప్',
-                          english: 'Page Setup',
-                        ),
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          color: const Color(0xFF0F172A),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        strings.localized(
-                          telugu:
-                              'సైజ్, బ్యాక్‌గ్రౌండ్ ఎంచుకుని స్టార్ట్ చేయండి.',
-                          english: 'Pick size and background, then start.',
-                        ),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF475569),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      Text(
-                        strings.localized(telugu: 'సైజ్', english: 'Size'),
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: List<Widget>.generate(_presets.length + 1, (
-                          index,
-                        ) {
-                          final isCustom = index == _presets.length;
-                          final selected = isCustom
-                              ? _selectedPresetIndex == null
-                              : _selectedPresetIndex == index;
-                          final label = isCustom
-                              ? strings.localized(
-                                  telugu: 'కస్టమ్',
-                                  english: 'Custom',
-                                )
-                              : _presets[index].name;
-                          return ChoiceChip(
-                            label: Text(label),
-                            selected: selected,
-                            onSelected: (_) => setState(
-                              () => _selectedPresetIndex = isCustom
-                                  ? null
-                                  : index,
-                            ),
-                            side: BorderSide(
-                              color: selected
-                                  ? const Color(0xFF0EA5E9)
-                                  : const Color(0xFFCBD5E1),
-                            ),
-                            selectedColor: const Color(0xFFE0F2FE),
-                            backgroundColor: Colors.white,
-                            labelStyle: TextStyle(
-                              color: const Color(0xFF0F172A),
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                            showCheckmark: false,
-                          );
-                        }),
-                      ),
-                      if (_selectedPresetIndex == null) ...<Widget>[
-                        const SizedBox(height: 14),
-                        Theme(
-                          data: theme.copyWith(
-                            segmentedButtonTheme: SegmentedButtonThemeData(
-                              style: ButtonStyle(
-                                backgroundColor:
-                                    WidgetStateProperty.resolveWith<Color?>(
-                                      (Set<WidgetState> states) =>
-                                          states.contains(WidgetState.selected)
-                                          ? const Color(0xFFE0F2FE)
-                                          : Colors.white,
-                                    ),
-                                foregroundColor:
-                                    const WidgetStatePropertyAll<Color>(
-                                      Color(0xFF0F172A),
-                                    ),
-                                side: const WidgetStatePropertyAll<BorderSide>(
-                                  BorderSide(color: Color(0xFFCBD5E1)),
-                                ),
-                              ),
-                            ),
-                          ),
-                          child: SegmentedButton<_UnitMode>(
-                            segments: <ButtonSegment<_UnitMode>>[
-                              ButtonSegment<_UnitMode>(
-                                value: _UnitMode.pixels,
-                                label: Text(
-                                  strings.localized(
-                                    telugu: 'పిక్సెల్స్',
-                                    english: 'Pixels',
-                                  ),
-                                ),
-                              ),
-                              ButtonSegment<_UnitMode>(
-                                value: _UnitMode.inches,
-                                label: Text(
-                                  strings.localized(
-                                    telugu: 'ఇంచులు',
-                                    english: 'Inches',
-                                  ),
-                                ),
-                              ),
-                            ],
-                            selected: <_UnitMode>{_unitMode},
-                            onSelectionChanged: (value) =>
-                                setState(() => _unitMode = value.first),
+                      onTap: () {},
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                key: const ValueKey<String>('page-setup-scroll'),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 118),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        const Text(
+                          'Start with',
+                          style: TextStyle(
+                            color: _setupTextPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Row(
+                        GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 1.58,
                           children: <Widget>[
-                            Expanded(
-                              child: _Input(
-                                controller: _widthController,
-                                label:
-                                    '${strings.localized(telugu: 'వెడల్పు', english: 'Width')} ($unit)',
-                                numberOnly: _unitMode == _UnitMode.pixels,
+                            _StartChoiceTile(
+                              icon: Icons.layers_outlined,
+                              label: 'PSD',
+                              accentColor: const Color(0xFF38BDF8),
+                              selected:
+                                  _selectedStartChoice == _SetupStartChoice.psd,
+                              onTap: () => setState(
+                                () => _selectedStartChoice =
+                                    _SetupStartChoice.psd,
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _Input(
-                                controller: _heightController,
-                                label:
-                                    '${strings.localized(telugu: 'ఎత్తు', english: 'Height')} ($unit)',
-                                numberOnly: _unitMode == _UnitMode.pixels,
+                            _StartChoiceTile(
+                              icon: Icons.photo_library_outlined,
+                              label: 'Gallery',
+                              accentColor: const Color(0xFF22C55E),
+                              selected:
+                                  _selectedStartChoice ==
+                                  _SetupStartChoice.gallery,
+                              onTap: () => setState(
+                                () => _selectedStartChoice =
+                                    _SetupStartChoice.gallery,
+                              ),
+                            ),
+                            _StartChoiceTile(
+                              icon: Icons.note_add_outlined,
+                              label: 'Empty Page',
+                              accentColor: const Color(0xFFF59E0B),
+                              selected:
+                                  _selectedStartChoice ==
+                                  _SetupStartChoice.empty,
+                              onTap: () => setState(
+                                () => _selectedStartChoice =
+                                    _SetupStartChoice.empty,
+                              ),
+                            ),
+                            _StartChoiceTile(
+                              icon: Icons.restore_rounded,
+                              label: 'Restore Draft',
+                              accentColor: const Color(0xFFEC4899),
+                              selected:
+                                  _selectedStartChoice ==
+                                  _SetupStartChoice.restoreDraft,
+                              onTap: () => setState(
+                                () => _selectedStartChoice =
+                                    _SetupStartChoice.restoreDraft,
                               ),
                             ),
                           ],
                         ),
-                        if (_unitMode == _UnitMode.inches) ...<Widget>[
-                          const SizedBox(height: 10),
-                          _Input(
-                            controller: _dpiController,
-                            label: 'DPI',
-                            numberOnly: true,
-                          ),
-                        ],
-                        if (customError != null) ...<Widget>[
-                          const SizedBox(height: 8),
-                          Text(
-                            customError,
-                            style: const TextStyle(
-                              color: Color(0xFFDC2626),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                      const SizedBox(height: 20),
-                      Text(
-                        strings.localized(
-                          telugu: 'బ్యాక్‌గ్రౌండ్',
-                          english: 'Background',
-                        ),
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _SetupBackgroundChoice.values.map((choice) {
-                          final selected = _backgroundChoice == choice;
-                          return ChoiceChip(
-                            label: Text(_backgroundChoiceLabel(choice)),
-                            selected: selected,
-                            onSelected: (_) =>
-                                setState(() => _backgroundChoice = choice),
-                            side: BorderSide(
-                              color: selected
-                                  ? const Color(0xFF14B8A6)
-                                  : const Color(0xFFCBD5E1),
-                            ),
-                            selectedColor: const Color(0xFFECFEFF),
-                            backgroundColor: Colors.white,
-                            showCheckmark: false,
-                            labelStyle: TextStyle(
-                              color: const Color(0xFF0F172A),
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      if (_backgroundChoice ==
-                          _SetupBackgroundChoice.color) ...<Widget>[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: List<Widget>.generate(
-                            _backgroundColors.length,
-                            (index) {
-                              final selected =
-                                  index == _selectedBackgroundColorIndex;
-                              return InkWell(
-                                onTap: () => setState(
-                                  () => _selectedBackgroundColorIndex = index,
-                                ),
-                                borderRadius: BorderRadius.circular(999),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 120),
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: _backgroundColors[index],
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: selected
-                                          ? const Color(0xFF0EA5E9)
-                                          : const Color(0xFFCBD5E1),
-                                      width: selected ? 2 : 1,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                      if (_backgroundChoice ==
-                          _SetupBackgroundChoice.gradient) ...<Widget>[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: List<Widget>.generate(
-                            _backgroundGradients.length,
-                            (index) {
-                              final selected =
-                                  index == _selectedBackgroundGradientIndex;
-                              return InkWell(
-                                onTap: () => setState(
-                                  () =>
-                                      _selectedBackgroundGradientIndex = index,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 120),
-                                  width: 56,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: _backgroundGradients[index],
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: selected
-                                          ? const Color(0xFF0EA5E9)
-                                          : const Color(0xFFCBD5E1),
-                                      width: selected ? 2 : 1,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Text(
-                            strings.localized(
-                              telugu: 'ప్రీవ్యూ',
-                              english: 'Preview',
-                            ),
-                            style: const TextStyle(
-                              color: Color(0xFF0F172A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          Text(
-                            '${config.widthPx} x ${config.heightPx} px',
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: AspectRatio(
-                          aspectRatio: config.aspectRatio.clamp(0.2, 5),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color:
-                                  previewBackground.type ==
-                                      EditorStageBackgroundType.color
-                                  ? previewBackground.color
-                                  : Colors.white,
-                              gradient:
-                                  previewBackground.type ==
-                                      EditorStageBackgroundType.gradient
-                                  ? LinearGradient(
-                                      colors:
-                                          _backgroundGradients[(previewBackground
-                                                      .gradientIndex ??
-                                                  0)
-                                              .clamp(
-                                                0,
-                                                _backgroundGradients.length - 1,
-                                              )],
-                                    )
-                                  : null,
-                              border: Border.all(
-                                color: const Color(0xFFD7E2EE),
+                        if (_selectedStartChoice ==
+                            _SetupStartChoice.empty) ...<Widget>[
+                          if (config != null) ...<Widget>[
+                            const SizedBox(height: 18),
+                            Text(
+                              strings.localized(
+                                telugu: 'ప్రీవ్యూ',
+                                english: 'Preview',
+                              ),
+                              style: const TextStyle(
+                                color: _setupTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
-                            child:
-                                previewBackground.type ==
-                                    EditorStageBackgroundType.transparent
-                                ? CustomPaint(
-                                    painter: _TransparentPreviewPainter(),
-                                    child: const SizedBox.expand(),
-                                  )
-                                : const SizedBox.expand(),
+                            const SizedBox(height: 10),
+                            _PreviewCard(
+                              config: config,
+                              background: previewBackground,
+                              gradients: _backgroundGradients,
+                            ),
+                          ],
+                          const SizedBox(height: 18),
+                          Text(
+                            strings.localized(telugu: 'సైజ్', english: 'Size'),
+                            style: const TextStyle(
+                              color: _setupTextPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      PrimaryButton(
-                        label: strings.localized(
-                          telugu: 'డిజైన్ ప్రారంభించండి',
-                          english: 'Start Design',
-                        ),
-                        onPressed: canStart ? _openEditor : null,
-                      ),
-                    ],
+                          const SizedBox(height: 10),
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _presets.length + 1,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  childAspectRatio: 2.35,
+                                ),
+                            itemBuilder: (BuildContext context, int index) {
+                              final isCustom = index == _presets.length;
+                              final selected = isCustom
+                                  ? _customSizeSelected
+                                  : _selectedPresetIndex == index;
+                              final preset = isCustom ? null : _presets[index];
+                              return _SizePresetTile(
+                                title: isCustom
+                                    ? strings.localized(
+                                        telugu: 'కస్టమ్',
+                                        english: 'Custom',
+                                      )
+                                    : preset!.name,
+                                subtitle: isCustom
+                                    ? strings.localized(
+                                        telugu: 'Manual',
+                                        english: 'Manual',
+                                      )
+                                    : '${preset!.widthPx} × ${preset.heightPx}',
+                                selected: selected,
+                                onTap: () => setState(() {
+                                  _customSizeSelected = isCustom;
+                                  _selectedPresetIndex = isCustom
+                                      ? null
+                                      : index;
+                                }),
+                              );
+                            },
+                          ),
+                          if (_customSizeSelected) ...<Widget>[
+                            const SizedBox(height: 12),
+                            Theme(
+                              data: theme.copyWith(
+                                segmentedButtonTheme: SegmentedButtonThemeData(
+                                  style: ButtonStyle(
+                                    backgroundColor:
+                                        WidgetStateProperty.resolveWith<Color?>(
+                                          (Set<WidgetState> states) =>
+                                              states.contains(
+                                                WidgetState.selected,
+                                              )
+                                              ? _setupPurpleSoft.withValues(
+                                                  alpha: 0.56,
+                                                )
+                                              : _setupSurface,
+                                        ),
+                                    foregroundColor:
+                                        const WidgetStatePropertyAll<Color>(
+                                          _setupTextPrimary,
+                                        ),
+                                    side:
+                                        const WidgetStatePropertyAll<
+                                          BorderSide
+                                        >(BorderSide(color: _setupBorder)),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ),
+                              ),
+                              child: SegmentedButton<_UnitMode>(
+                                segments: <ButtonSegment<_UnitMode>>[
+                                  ButtonSegment<_UnitMode>(
+                                    value: _UnitMode.pixels,
+                                    label: Text(
+                                      strings.localized(
+                                        telugu: 'పిక్సెల్స్',
+                                        english: 'Pixels',
+                                      ),
+                                    ),
+                                  ),
+                                  ButtonSegment<_UnitMode>(
+                                    value: _UnitMode.inches,
+                                    label: Text(
+                                      strings.localized(
+                                        telugu: 'ఇంచులు',
+                                        english: 'Inches',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                selected: <_UnitMode>{_unitMode},
+                                onSelectionChanged: (value) =>
+                                    setState(() => _unitMode = value.first),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: _Input(
+                                    fieldKey: const ValueKey<String>(
+                                      'page-width-input',
+                                    ),
+                                    controller: _widthController,
+                                    label:
+                                        '${strings.localized(telugu: 'వెడల్పు', english: 'Width')} ($unit)',
+                                    numberOnly: _unitMode == _UnitMode.pixels,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _Input(
+                                    fieldKey: const ValueKey<String>(
+                                      'page-height-input',
+                                    ),
+                                    controller: _heightController,
+                                    label:
+                                        '${strings.localized(telugu: 'ఎత్తు', english: 'Height')} ($unit)',
+                                    numberOnly: _unitMode == _UnitMode.pixels,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_unitMode == _UnitMode.inches) ...<Widget>[
+                              const SizedBox(height: 8),
+                              _Input(
+                                fieldKey: const ValueKey<String>(
+                                  'page-dpi-input',
+                                ),
+                                controller: _dpiController,
+                                label: 'DPI',
+                                numberOnly: true,
+                              ),
+                            ],
+                            if (customError != null) ...<Widget>[
+                              const SizedBox(height: 8),
+                              Text(
+                                customError,
+                                style: const TextStyle(
+                                  color: Color(0xFFFF8A8A),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ],
+                          const SizedBox(height: 16),
+                          _BackgroundPickerRow(
+                            choice: _backgroundChoice,
+                            colorIndex: _selectedBackgroundColorIndex,
+                            gradientIndex: _selectedBackgroundGradientIndex,
+                            colors: _backgroundColors,
+                            gradients: _backgroundGradients,
+                            choiceLabel: _backgroundChoiceLabel,
+                            onChoiceChanged: (choice) =>
+                                setState(() => _backgroundChoice = choice),
+                            onColorChanged: (index) => setState(
+                              () => _selectedBackgroundColorIndex = index,
+                            ),
+                            onGradientChanged: (index) => setState(
+                              () => _selectedBackgroundGradientIndex = index,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              decoration: const BoxDecoration(
+                color: _setupBackdrop,
+                border: Border(top: BorderSide(color: _setupBorder)),
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: SizedBox(
+                    height: 54,
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: canStart ? _continueWithSelectedSource : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _setupPurple,
+                        disabledBackgroundColor: _setupSurface,
+                        foregroundColor: Colors.white,
+                        disabledForegroundColor: _setupTextSecondary.withValues(
+                          alpha: 0.55,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: canStart ? _setupPurple : _setupBorder,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        strings.localized(
+                          telugu: 'డిజైన్ ప్రారంభించండి',
+                          english: 'Start Design',
+                        ),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StartChoiceTile extends StatelessWidget {
+  const _StartChoiceTile({
+    required this.icon,
+    required this.label,
+    required this.accentColor,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accentColor;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final surfaceColor = selected
+        ? Color.alphaBlend(
+            accentColor.withValues(alpha: 0.34),
+            _setupSurfaceSoft,
+          )
+        : Color.alphaBlend(accentColor.withValues(alpha: 0.16), _setupSurface);
+    final borderColor = selected
+        ? accentColor
+        : accentColor.withValues(alpha: 0.46);
+    return Material(
+      color: surfaceColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: borderColor, width: selected ? 1.4 : 1),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Icon(
+                icon,
+                size: 27,
+                color: selected ? Colors.white : accentColor,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? Colors.white : _setupTextPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SetupIconButton extends StatelessWidget {
+  const _SetupIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      style: IconButton.styleFrom(
+        backgroundColor: _setupSurface,
+        foregroundColor: _setupTextPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: _setupBorder),
+        ),
+      ),
+      icon: Icon(icon),
+    );
+  }
+}
+
+class _PreviewCard extends StatelessWidget {
+  const _PreviewCard({
+    required this.config,
+    required this.background,
+    required this.gradients,
+  });
+
+  final EditorPageConfig config;
+  final EditorStageBackground background;
+  final List<List<Color>> gradients;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxPreviewHeight = MediaQuery.sizeOf(context).height * 0.34;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _setupSurface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _setupBorder),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: maxPreviewHeight,
+            maxWidth: 300,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: AspectRatio(
+              aspectRatio: config.aspectRatio.clamp(0.2, 5),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: background.type == EditorStageBackgroundType.color
+                      ? background.color
+                      : Colors.white,
+                  gradient:
+                      background.type == EditorStageBackgroundType.gradient
+                      ? LinearGradient(
+                          colors:
+                              gradients[(background.gradientIndex ?? 0).clamp(
+                                0,
+                                gradients.length - 1,
+                              )],
+                        )
+                      : null,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x66000000),
+                      blurRadius: 22,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: background.type == EditorStageBackgroundType.transparent
+                    ? CustomPaint(
+                        painter: _TransparentPreviewPainter(),
+                        child: const SizedBox.expand(),
+                      )
+                    : const SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SizePresetTile extends StatelessWidget {
+  const _SizePresetTile({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? _setupPurpleSoft.withValues(alpha: 0.72)
+              : _setupSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: selected ? _setupPurple : _setupBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _setupTextPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _setupTextSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackgroundPickerRow extends StatelessWidget {
+  const _BackgroundPickerRow({
+    required this.choice,
+    required this.colorIndex,
+    required this.gradientIndex,
+    required this.colors,
+    required this.gradients,
+    required this.choiceLabel,
+    required this.onChoiceChanged,
+    required this.onColorChanged,
+    required this.onGradientChanged,
+  });
+
+  final _SetupBackgroundChoice choice;
+  final int colorIndex;
+  final int gradientIndex;
+  final List<Color> colors;
+  final List<List<Color>> gradients;
+  final String Function(_SetupBackgroundChoice choice) choiceLabel;
+  final ValueChanged<_SetupBackgroundChoice> onChoiceChanged;
+  final ValueChanged<int> onColorChanged;
+  final ValueChanged<int> onGradientChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _SetupBackgroundChoice.values.map((item) {
+              final selected = choice == item;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(choiceLabel(item)),
+                  selected: selected,
+                  onSelected: (_) => onChoiceChanged(item),
+                  side: BorderSide(
+                    color: selected ? _setupPurple : _setupBorder,
+                  ),
+                  selectedColor: _setupPurpleSoft.withValues(alpha: 0.56),
+                  backgroundColor: _setupSurface,
+                  showCheckmark: false,
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : _setupTextSecondary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        if (choice == _SetupBackgroundChoice.color) ...<Widget>[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List<Widget>.generate(colors.length, (index) {
+              return _ColorDot(
+                selected: index == colorIndex,
+                color: colors[index],
+                onTap: () => onColorChanged(index),
+              );
+            }),
+          ),
+        ],
+        if (choice == _SetupBackgroundChoice.gradient) ...<Widget>[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List<Widget>.generate(gradients.length, (index) {
+              return _GradientDot(
+                selected: index == gradientIndex,
+                colors: gradients[index],
+                onTap: () => onGradientChanged(index),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  const _ColorDot({
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? _setupPurple
+                : Colors.white.withValues(alpha: 0.18),
+            width: selected ? 2.4 : 1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientDot extends StatelessWidget {
+  const _GradientDot({
+    required this.selected,
+    required this.colors,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final List<Color> colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 50,
+        height: 34,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: colors),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? _setupPurple
+                : Colors.white.withValues(alpha: 0.18),
+            width: selected ? 2.4 : 1,
           ),
         ),
       ),
@@ -744,11 +1188,13 @@ class _TransparentPreviewPainter extends CustomPainter {
 
 class _Input extends StatelessWidget {
   const _Input({
+    required this.fieldKey,
     required this.controller,
     required this.label,
     required this.numberOnly,
   });
 
+  final Key fieldKey;
   final TextEditingController controller;
   final String label;
   final bool numberOnly;
@@ -756,9 +1202,10 @@ class _Input extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TextField(
+      key: fieldKey,
       controller: controller,
       style: const TextStyle(
-        color: Color(0xFF0F172A),
+        color: _setupTextPrimary,
         fontWeight: FontWeight.w600,
       ),
       keyboardType: numberOnly
@@ -775,20 +1222,20 @@ class _Input extends StatelessWidget {
             ],
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Color(0xFF64748B)),
+        labelStyle: const TextStyle(color: _setupTextSecondary),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: _setupSurfaceSoft,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: _setupBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderSide: const BorderSide(color: _setupBorder),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: Color(0xFF0EA5E9), width: 1.6),
+          borderSide: BorderSide(color: _setupPurple, width: 1.6),
         ),
       ),
     );

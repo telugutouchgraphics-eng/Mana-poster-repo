@@ -121,6 +121,7 @@ extension _EditorExportState on _ImageEditorScreenState {
   Future<Uint8List> _encodeExportImageBytes(
     ui.Image image, {
     required _ExportImageFormat format,
+    required int dpi,
   }) async {
     try {
       switch (format) {
@@ -132,7 +133,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           if (byteData == null) {
             throw Exception('PNG conversion failed');
           }
-          return byteData.buffer.asUint8List();
+          return _withPngDpiMetadata(byteData.buffer.asUint8List(), dpi: dpi);
         case _ExportImageFormat.jpg:
           final byteData = await image.toByteData(
             format: ui.ImageByteFormat.rawRgba,
@@ -146,14 +147,370 @@ extension _EditorExportState on _ImageEditorScreenState {
             bytes: byteData.buffer,
             order: img.ChannelOrder.rgba,
           );
-          return Uint8List.fromList(img.encodeJpg(encoded, quality: 98));
+          return _withJpegDpiMetadata(
+            Uint8List.fromList(img.encodeJpg(encoded, quality: 100)),
+            dpi: dpi,
+          );
+        case _ExportImageFormat.psd:
+          final byteData = await image.toByteData(
+            format: ui.ImageByteFormat.rawRgba,
+          );
+          if (byteData == null) {
+            throw Exception('PSD conversion failed');
+          }
+          return compute(_encodeFlattenedPsdFromRgba, <String, Object?>{
+            'width': image.width,
+            'height': image.height,
+            'rgba': byteData.buffer.asUint8List(),
+          });
+        case _ExportImageFormat.pdf:
+          final byteData = await image.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
+          if (byteData == null) {
+            throw Exception('PDF conversion failed');
+          }
+          final pngBytes = byteData.buffer.asUint8List();
+          final document = pw.Document();
+          final pageWidth = image.width.toDouble();
+          final pageHeight = image.height.toDouble();
+          document.addPage(
+            pw.Page(
+              pageFormat: pdf.PdfPageFormat(pageWidth, pageHeight),
+              margin: pw.EdgeInsets.zero,
+              build: (pw.Context context) => pw.SizedBox(
+                width: pageWidth,
+                height: pageHeight,
+                child: pw.Image(pw.MemoryImage(pngBytes), fit: pw.BoxFit.fill),
+              ),
+            ),
+          );
+          return document.save();
       }
     } finally {
       image.dispose();
     }
   }
 
-  Future<void> _handleExportTap() async {
+  Future<Uint8List> _imageToRawRgbaBytes(ui.Image image) async {
+    try {
+      final byteData = await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
+      if (byteData == null) {
+        throw Exception('Raw RGBA conversion failed');
+      }
+      return Uint8List.fromList(byteData.buffer.asUint8List());
+    } finally {
+      image.dispose();
+    }
+  }
+
+  Future<Uint8List> _captureLayeredPsdExportBytes({
+    required double devicePixelRatio,
+  }) async {
+    final originalLayers = List<_CanvasLayer>.of(_layers);
+    final originalSelectedLayerId = _selectedLayerId;
+    final originalTransparentCapture = _isTransparentExportCapture;
+    final targetLayers = originalLayers
+        .where((layer) => !layer.isHidden)
+        .toList(growable: false);
+    if (targetLayers.isEmpty) {
+      throw Exception('No visible layers to export as PSD');
+    }
+
+    final payloadLayers = <Map<String, Object?>>[];
+    Uint8List? mergedRgba;
+    int? exportWidth;
+    int? exportHeight;
+    try {
+      await ScreenSecurityService.disableSecure();
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      final mergedImage = await _captureStageImage(
+        pixelRatio: _exportPixelRatio(devicePixelRatio),
+      );
+      if (mergedImage == null) {
+        throw Exception('Export boundary not ready');
+      }
+      final normalizedMerged = await _normalizeExportImageSize(mergedImage);
+      exportWidth = normalizedMerged.width;
+      exportHeight = normalizedMerged.height;
+      mergedRgba = await _imageToRawRgbaBytes(normalizedMerged);
+
+      if (_hasVisibleExportBackground()) {
+        setState(() {
+          _layers
+            ..clear()
+            ..addAll(
+              originalLayers.map((layer) => layer.copyWith(isHidden: true)),
+            );
+          _selectedLayerId = null;
+          _isTransparentExportCapture = false;
+        });
+        await _waitForRenderedFrame();
+        final backgroundImage = await _captureStageImage(
+          pixelRatio: _exportPixelRatio(devicePixelRatio),
+        );
+        if (backgroundImage != null) {
+          final normalizedBackground = await _normalizeExportImageSize(
+            backgroundImage,
+          );
+          payloadLayers.add(<String, Object?>{
+            'name': 'Background',
+            'rgba': await _imageToRawRgbaBytes(normalizedBackground),
+          });
+        }
+      }
+
+      for (final targetLayer in targetLayers) {
+        if (!mounted) {
+          throw Exception('PSD export cancelled');
+        }
+        final isolatedLayers = originalLayers
+            .map(
+              (layer) => layer.copyWith(
+                isHidden: layer.id != targetLayer.id || targetLayer.isHidden,
+              ),
+            )
+            .toList(growable: false);
+        setState(() {
+          _layers
+            ..clear()
+            ..addAll(isolatedLayers);
+          _selectedLayerId = targetLayer.id;
+          _isTransparentExportCapture = true;
+        });
+        await _waitForRenderedFrame();
+        final layerImage = await _captureStageImage(
+          pixelRatio: _exportPixelRatio(devicePixelRatio),
+        );
+        if (layerImage == null) {
+          continue;
+        }
+        final normalizedLayer = await _normalizeExportImageSize(layerImage);
+        final layerRgba = await _imageToRawRgbaBytes(normalizedLayer);
+        payloadLayers.add(<String, Object?>{
+          'name': _exportLayerName(targetLayer),
+          'rgba': layerRgba,
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _layers
+            ..clear()
+            ..addAll(originalLayers);
+          _selectedLayerId = originalSelectedLayerId;
+          _isTransparentExportCapture = originalTransparentCapture;
+        });
+        await _waitForRenderedFrame();
+      } else {
+        _layers
+          ..clear()
+          ..addAll(originalLayers);
+        _selectedLayerId = originalSelectedLayerId;
+        _isTransparentExportCapture = originalTransparentCapture;
+      }
+    }
+
+    if (payloadLayers.isEmpty) {
+      throw Exception('PSD export failed');
+    }
+    return compute(_encodeLayeredPsdFromRgbaPayload, <String, Object?>{
+      'width': exportWidth,
+      'height': exportHeight,
+      'mergedRgba': mergedRgba,
+      'layers': payloadLayers,
+    });
+  }
+
+  bool _hasVisibleExportBackground() {
+    return (_canvasBackgroundColor.a * 255.0).round().clamp(0, 255) > 0 ||
+        _canvasBackgroundGradientIndex >= 0 ||
+        _stageBackgroundImageBytes != null;
+  }
+
+  String _exportLayerName(_CanvasLayer layer) {
+    final customName = layer.layerName.trim();
+    if (customName.isNotEmpty) {
+      return customName;
+    }
+    if (layer.isText) {
+      final text = layer.text?.trim();
+      if (text != null && text.isNotEmpty) {
+        return text.length > 31 ? text.substring(0, 31) : text;
+      }
+      return 'Text Layer';
+    }
+    if (layer.isSticker) {
+      return 'Sticker Layer';
+    }
+    return 'Photo Layer';
+  }
+
+  int _exportDpi({_ExportImageFormat? format}) {
+    final config = widget.pageConfig;
+    if (config == null) {
+      return 300;
+    }
+    final targetSize = _exportTargetPixelSize(format: format);
+    final scale = targetSize == null
+        ? 1.0
+        : targetSize.width / math.max(1, config.widthPx);
+    return (config.dpi * scale).round().clamp(72, 600).toInt();
+  }
+
+  Future<ui.Image> _normalizeExportImageSize(
+    ui.Image source, {
+    _ExportImageFormat? format,
+  }) async {
+    final config = widget.pageConfig;
+    final targetSize = _exportTargetPixelSize(format: format);
+    if (config == null || targetSize == null) {
+      return source;
+    }
+    if (source.width == targetSize.width &&
+        source.height == targetSize.height) {
+      return source;
+    }
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      source,
+      Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
+      Rect.fromLTWH(
+        0,
+        0,
+        targetSize.width.toDouble(),
+        targetSize.height.toDouble(),
+      ),
+      Paint()..filterQuality = FilterQuality.high,
+    );
+    final resized = await recorder.endRecording().toImage(
+      targetSize.width,
+      targetSize.height,
+    );
+    source.dispose();
+    return resized;
+  }
+
+  ({int width, int height})? _exportTargetPixelSize({
+    _ExportImageFormat? format,
+  }) {
+    final config = widget.pageConfig;
+    if (config == null) {
+      return null;
+    }
+    final shouldBoostRaster =
+        format == _ExportImageFormat.png ||
+        format == _ExportImageFormat.pngTransparent ||
+        format == _ExportImageFormat.jpg;
+    var scale = 1.0;
+    if (shouldBoostRaster &&
+        math.max(config.widthPx, config.heightPx) <= 2048) {
+      scale = 2.0;
+    }
+    const maxExportPixels = 64000000.0;
+    final requestedPixels = config.widthPx * config.heightPx * scale * scale;
+    if (requestedPixels > maxExportPixels) {
+      scale = math.sqrt(maxExportPixels / (config.widthPx * config.heightPx));
+    }
+    return (
+      width: math.max(1, (config.widthPx * scale).round()),
+      height: math.max(1, (config.heightPx * scale).round()),
+    );
+  }
+
+  Uint8List _withPngDpiMetadata(Uint8List bytes, {required int dpi}) {
+    if (bytes.length < 33 ||
+        bytes[0] != 0x89 ||
+        bytes[1] != 0x50 ||
+        bytes[2] != 0x4E ||
+        bytes[3] != 0x47) {
+      return bytes;
+    }
+    final pixelsPerMeter = (dpi / 0.0254).round();
+    final chunk = BytesBuilder();
+    final length = ByteData(4)..setUint32(0, 9);
+    final data = ByteData(9)
+      ..setUint32(0, pixelsPerMeter)
+      ..setUint32(4, pixelsPerMeter)
+      ..setUint8(8, 1);
+    final type = Uint8List.fromList(<int>[0x70, 0x48, 0x59, 0x73]); // pHYs
+    final crcInput = BytesBuilder()
+      ..add(type)
+      ..add(data.buffer.asUint8List());
+    final crc = ByteData(4)..setUint32(0, _crc32(crcInput.toBytes()));
+    chunk
+      ..add(length.buffer.asUint8List())
+      ..add(type)
+      ..add(data.buffer.asUint8List())
+      ..add(crc.buffer.asUint8List());
+
+    final output = BytesBuilder()
+      ..add(bytes.sublist(0, 33))
+      ..add(chunk.toBytes())
+      ..add(bytes.sublist(33));
+    return output.toBytes();
+  }
+
+  Uint8List _withJpegDpiMetadata(Uint8List bytes, {required int dpi}) {
+    if (bytes.length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8) {
+      return bytes;
+    }
+    final normalizedDpi = dpi.clamp(1, 65535).toInt();
+    final segment = Uint8List(18);
+    segment[0] = 0xFF;
+    segment[1] = 0xE0;
+    segment[2] = 0x00;
+    segment[3] = 0x10;
+    segment[4] = 0x4A;
+    segment[5] = 0x46;
+    segment[6] = 0x49;
+    segment[7] = 0x46;
+    segment[8] = 0x00;
+    segment[9] = 0x01;
+    segment[10] = 0x02;
+    segment[11] = 0x01;
+    segment[12] = (normalizedDpi >> 8) & 0xFF;
+    segment[13] = normalizedDpi & 0xFF;
+    segment[14] = (normalizedDpi >> 8) & 0xFF;
+    segment[15] = normalizedDpi & 0xFF;
+    segment[16] = 0;
+    segment[17] = 0;
+
+    var insertOffset = 2;
+    if (bytes.length > 20 &&
+        bytes[2] == 0xFF &&
+        bytes[3] == 0xE0 &&
+        bytes[6] == 0x4A &&
+        bytes[7] == 0x46 &&
+        bytes[8] == 0x49 &&
+        bytes[9] == 0x46) {
+      final oldLength = (bytes[4] << 8) | bytes[5];
+      insertOffset = 2 + 2 + oldLength;
+    }
+    final output = BytesBuilder()
+      ..add(bytes.sublist(0, 2))
+      ..add(segment)
+      ..add(bytes.sublist(insertOffset));
+    return output.toBytes();
+  }
+
+  int _crc32(Uint8List bytes) {
+    var crc = 0xFFFFFFFF;
+    for (final byte in bytes) {
+      crc ^= byte;
+      for (var i = 0; i < 8; i++) {
+        crc = (crc & 1) != 0 ? (0xEDB88320 ^ (crc >> 1)) : (crc >> 1);
+      }
+    }
+    return (crc ^ 0xFFFFFFFF) & 0xFFFFFFFF;
+  }
+
+  Future<void> _handleDownloadTap() async {
     if (_isCropMode) {
       return;
     }
@@ -169,6 +526,25 @@ extension _EditorExportState on _ImageEditorScreenState {
       return;
     }
     final format = _defaultExportFormat();
+    await _performExport(format: format);
+  }
+
+  Future<void> _handleExportTap() async {
+    if (_isCropMode || _isExporting || _isCommitWorkerBusy) {
+      return;
+    }
+    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    if (!mounted || !hasAccess) {
+      return;
+    }
+    final canProceed = await _confirmExportIfCanvasEmpty();
+    if (!mounted || !canProceed) {
+      return;
+    }
+    final format = await _pickExportFormat();
+    if (!mounted || format == null) {
+      return;
+    }
     await _performExport(format: format);
   }
 
@@ -216,6 +592,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           unawaited(ScreenSecurityService.enableSecure());
         },
         operation: () async {
+          await _prepareCanvasForFinalExport();
           if (format == _ExportImageFormat.pngTransparent) {
             if (mounted) {
               setState(() {
@@ -230,16 +607,21 @@ extension _EditorExportState on _ImageEditorScreenState {
           await WidgetsBinding.instance.endOfFrame;
           await Future<void>.delayed(const Duration(milliseconds: 80));
           final image = await _captureStageImage(
-            pixelRatio: _exportPixelRatio(devicePixelRatio),
+            pixelRatio: _exportPixelRatio(devicePixelRatio, format: format),
           );
           if (image == null) {
             throw Exception(shareBoundaryNotReadyMessage);
           }
-          final bytes = await _encodeExportImageBytes(
+          final preparedImage = await _normalizeExportImageSize(
             image,
+            format: format,
+          );
+          final bytes = await _encodeExportImageBytes(
+            preparedImage,
             format: format == _ExportImageFormat.pngTransparent
                 ? _ExportImageFormat.png
                 : format,
+            dpi: _exportDpi(format: format),
           );
           await _shareLatestPoster(
             bytes,
@@ -282,66 +664,145 @@ extension _EditorExportState on _ImageEditorScreenState {
   Future<_ExportImageFormat?> _pickExportFormat() async {
     return showModalBottomSheet<_ExportImageFormat>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
       builder: (BuildContext context) {
         final strings = context.strings;
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                ListTile(
-                  leading: const Icon(Icons.image_rounded),
-                  title: Text(
-                    strings.localized(telugu: 'పిఎన్‌జి', english: 'PNG'),
-                  ),
-                  subtitle: Text(
-                    strings.localized(
-                      telugu:
-                          'పారదర్శక బ్యాక్‌గ్రౌండ్, బ్యాక్‌గ్రౌండ్ తీసేయడానికి ఉత్తమం',
-                      english: 'Transparent background, best for Remove BG',
-                    ),
-                  ),
-                  onTap: () => Navigator.of(
-                    context,
-                  ).pop(_ExportImageFormat.pngTransparent),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.crop_square_rounded),
-                  title: Text(
-                    strings.localized(
-                      telugu: 'బ్యాక్‌గ్రౌండ్‌తో పిఎన్‌జి',
-                      english: 'PNG with Background',
-                    ),
-                  ),
-                  subtitle: Text(
-                    strings.localized(
-                      telugu: 'పోస్టర్ లేదా స్టేజ్ బ్యాక్‌గ్రౌండ్ కూడా ఉంటుంది',
-                      english: 'Includes poster/stage background',
-                    ),
-                  ),
-                  onTap: () =>
-                      Navigator.of(context).pop(_ExportImageFormat.png),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_rounded),
-                  title: Text(
-                    strings.localized(telugu: 'జేపీజీ', english: 'JPG'),
-                  ),
-                  subtitle: Text(
-                    strings.localized(
-                      telugu: 'చిన్న ఫైల్ సైజ్',
-                      english: 'Smaller file size',
-                    ),
-                  ),
-                  onTap: () =>
-                      Navigator.of(context).pop(_ExportImageFormat.jpg),
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            decoration: BoxDecoration(
+              color: _editorChromeSurfaceStrong.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: const Color(0xFF38BDF8).withValues(alpha: 0.22),
+              ),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 26,
+                  offset: Offset(0, 14),
                 ),
               ],
+            ),
+            child: ListTileTheme(
+              data: const ListTileThemeData(
+                iconColor: Color(0xFF38BDF8),
+                textColor: _editorChromeTextPrimary,
+                titleTextStyle: TextStyle(
+                  color: _editorChromeTextPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+                subtitleTextStyle: TextStyle(
+                  color: _editorChromeTextSecondary,
+                  fontSize: 12,
+                  height: 1.25,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 44,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  ListTile(
+                    iconColor: const Color(0xFF38BDF8),
+                    textColor: _editorChromeTextPrimary,
+                    leading: const Icon(Icons.image_rounded),
+                    title: Text(
+                      strings.localized(telugu: 'పిఎన్‌జి', english: 'PNG'),
+                    ),
+                    subtitle: Text(
+                      strings.localized(
+                        telugu:
+                            'పారదర్శక బ్యాక్‌గ్రౌండ్, బ్యాక్‌గ్రౌండ్ తీసేయడానికి ఉత్తమం',
+                        english: 'Transparent background, best for Remove BG',
+                      ),
+                    ),
+                    onTap: () => Navigator.of(
+                      context,
+                    ).pop(_ExportImageFormat.pngTransparent),
+                  ),
+                  ListTile(
+                    iconColor: const Color(0xFF38BDF8),
+                    textColor: _editorChromeTextPrimary,
+                    leading: const Icon(Icons.crop_square_rounded),
+                    title: Text(
+                      strings.localized(
+                        telugu: 'బ్యాక్‌గ్రౌండ్‌తో పిఎన్‌జి',
+                        english: 'PNG with Background',
+                      ),
+                    ),
+                    subtitle: Text(
+                      strings.localized(
+                        telugu:
+                            'పోస్టర్ లేదా స్టేజ్ బ్యాక్‌గ్రౌండ్ కూడా ఉంటుంది',
+                        english: 'Includes poster/stage background',
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.of(context).pop(_ExportImageFormat.png),
+                  ),
+                  ListTile(
+                    iconColor: const Color(0xFF38BDF8),
+                    textColor: _editorChromeTextPrimary,
+                    leading: const Icon(Icons.photo_rounded),
+                    title: Text(
+                      strings.localized(telugu: 'జేపీజీ', english: 'JPG'),
+                    ),
+                    subtitle: Text(
+                      strings.localized(
+                        telugu: 'చిన్న ఫైల్ సైజ్',
+                        english: 'Smaller file size',
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.of(context).pop(_ExportImageFormat.jpg),
+                  ),
+                  ListTile(
+                    iconColor: const Color(0xFF38BDF8),
+                    textColor: _editorChromeTextPrimary,
+                    leading: const Icon(Icons.layers_rounded),
+                    title: Text(
+                      strings.localized(telugu: 'పీఎస్డీ', english: 'PSD'),
+                    ),
+                    subtitle: Text(
+                      strings.localized(
+                        telugu: 'ఫోటోషాప్ ఫైల్',
+                        english: 'Photoshop file',
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.of(context).pop(_ExportImageFormat.psd),
+                  ),
+                  ListTile(
+                    iconColor: const Color(0xFF38BDF8),
+                    textColor: _editorChromeTextPrimary,
+                    leading: const Icon(Icons.picture_as_pdf_rounded),
+                    title: Text(
+                      strings.localized(telugu: 'పీడీఎఫ్', english: 'PDF'),
+                    ),
+                    subtitle: Text(
+                      strings.localized(
+                        telugu: 'అసలు రేషియోతో ప్రింట్ ఫైల్',
+                        english: 'Print file with original ratio',
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.of(context).pop(_ExportImageFormat.pdf),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -359,6 +820,25 @@ extension _EditorExportState on _ImageEditorScreenState {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          backgroundColor: _editorChromeSurfaceStrong.withValues(alpha: 0.75),
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(
+              color: const Color(0xFF38BDF8).withValues(alpha: 0.24),
+            ),
+          ),
+          titleTextStyle: const TextStyle(
+            color: _editorChromeTextPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+          contentTextStyle: const TextStyle(
+            color: _editorChromeTextSecondary,
+            fontSize: 13,
+            height: 1.3,
+            fontWeight: FontWeight.w600,
+          ),
           title: Text(
             strings.localized(
               telugu: 'క్యాన్వాస్ ఖాళీగా ఉంది',
@@ -398,8 +878,34 @@ extension _EditorExportState on _ImageEditorScreenState {
 
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
-    final topInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
-    final bottomInset = widget.preferFullWidthCanvas ? 8.0 : _canvasChromeInset;
+    const toolbarCanvasGap = 8.0;
+    final bottomToolsHeight = _isCropMode
+        ? _cropBarHeight
+        : _isAdjustMode
+        ? _adjustBarHeight
+        : _isPhotoStretchMode
+        ? _stretchBarHeight
+        : (_isPhotoEraserMode ||
+              _isContentAwareMode ||
+              _isPhotoStretchMode ||
+              _isLayerMaskBrushMode)
+        ? _eraserBarHeight
+        : _isDrawBrushMode
+        ? _drawBarHeight
+        : _bottomBarHeight;
+    final visibleBottomToolsHeight = _showTextControls
+        ? _textStyleBarHeight
+        : bottomToolsHeight;
+    final systemBottomInset =
+        MediaQuery.maybeViewPaddingOf(context)?.bottom ?? 0;
+    final bannerHeight = _isKeyboardVisible ? 0.0 : _editorBannerHeight;
+    final topInset = 4 + _topBarHeight + toolbarCanvasGap;
+    final bottomInset =
+        systemBottomInset +
+        bannerHeight +
+        6 +
+        visibleBottomToolsHeight +
+        toolbarCanvasGap;
     final workspaceHeight = math.max(
       0.0,
       canvasSize.height - topInset - bottomInset,
@@ -439,7 +945,7 @@ extension _EditorExportState on _ImageEditorScreenState {
       source,
       srcRect,
       Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
-      Paint(),
+      Paint()..filterQuality = FilterQuality.high,
     );
     final cropped = await recorder.endRecording().toImage(
       outputWidth,
@@ -450,10 +956,22 @@ extension _EditorExportState on _ImageEditorScreenState {
   }
 
   Future<ui.Image?> _captureStageImage({required double pixelRatio}) async {
+    final originalWorkspaceZoom = _workspaceZoom;
+    final originalWorkspacePan = _workspacePan;
+    final shouldResetWorkspaceForExport =
+        (_workspaceZoom - 1).abs() > 0.0001 ||
+        _workspacePan.distanceSquared > 0.0001;
     setState(() {
       _isCapturingStage = true;
+      if (shouldResetWorkspaceForExport) {
+        _workspaceZoom = 1;
+        _workspacePan = Offset.zero;
+      }
     });
     try {
+      if (shouldResetWorkspaceForExport) {
+        await _waitForRenderedFrame();
+      }
       for (var attempt = 0; attempt < 2; attempt++) {
         await _waitForRenderedFrame();
         if (!mounted) {
@@ -479,6 +997,10 @@ extension _EditorExportState on _ImageEditorScreenState {
       if (mounted) {
         setState(() {
           _isCapturingStage = false;
+          if (shouldResetWorkspaceForExport) {
+            _workspaceZoom = originalWorkspaceZoom;
+            _workspacePan = originalWorkspacePan;
+          }
         });
       }
     }
@@ -532,6 +1054,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           unawaited(ScreenSecurityService.enableSecure());
         },
         operation: () async {
+          await _prepareCanvasForFinalExport();
           File? tempFile;
           if (format == _ExportImageFormat.pngTransparent) {
             if (mounted) {
@@ -547,23 +1070,46 @@ extension _EditorExportState on _ImageEditorScreenState {
           if (!hasPermission) {
             throw Exception(exportPermissionMessage);
           }
-          await ScreenSecurityService.disableSecure();
-          await WidgetsBinding.instance.endOfFrame;
-          await Future<void>.delayed(const Duration(milliseconds: 80));
-          final image = await _captureStageImage(
-            pixelRatio: _exportPixelRatio(devicePixelRatio),
-          );
-          if (image == null) {
-            throw Exception(exportBoundaryMessage);
-          }
-          final shouldHaveTransparentBackground =
-              format == _ExportImageFormat.pngTransparent;
-          final exportedBytes = await _encodeExportImageBytes(
-            image,
-            format: shouldHaveTransparentBackground
-                ? _ExportImageFormat.png
-                : format,
-          );
+          final exportedBytes = format == _ExportImageFormat.psd
+              ? await _captureLayeredPsdExportBytes(
+                  devicePixelRatio: devicePixelRatio,
+                )
+              : await (() async {
+                  await ScreenSecurityService.disableSecure();
+                  await WidgetsBinding.instance.endOfFrame;
+                  await Future<void>.delayed(const Duration(milliseconds: 80));
+                  final image = await _captureStageImage(
+                    pixelRatio: _exportPixelRatio(
+                      devicePixelRatio,
+                      format: format,
+                    ),
+                  );
+                  if (image == null) {
+                    throw Exception(exportBoundaryMessage);
+                  }
+                  _debugLog(
+                    'editor export capture size=${image.width}x${image.height}, '
+                    'target=${_exportTargetPixelSize(format: format)?.width}x'
+                    '${_exportTargetPixelSize(format: format)?.height}, '
+                    'pixelRatio=${_exportPixelRatio(devicePixelRatio, format: format).toStringAsFixed(3)}',
+                  );
+                  final shouldHaveTransparentBackground =
+                      format == _ExportImageFormat.pngTransparent;
+                  final preparedImage = await _normalizeExportImageSize(
+                    image,
+                    format: format,
+                  );
+                  _debugLog(
+                    'editor export normalized size=${preparedImage.width}x${preparedImage.height}',
+                  );
+                  return _encodeExportImageBytes(
+                    preparedImage,
+                    format: shouldHaveTransparentBackground
+                        ? _ExportImageFormat.png
+                        : format,
+                    dpi: _exportDpi(format: format),
+                  );
+                })();
           final fileName =
               'mana_poster_${DateTime.now().millisecondsSinceEpoch}.${_exportFileExtension(format)}';
           final tempDirectory = await getTemporaryDirectory();
@@ -573,11 +1119,20 @@ extension _EditorExportState on _ImageEditorScreenState {
             tempFile = File(tempPath);
             await tempFile.writeAsBytes(exportedBytes, flush: true);
             _debugLog('editor export bytes=${exportedBytes.length}');
+            final mimeType = _exportMimeType(format);
             final saveResult =
-                await MediaExportService.saveImageFileToGalleryDetailed(
-                  tempFile.path,
-                  fileName: fileName,
-                );
+                format == _ExportImageFormat.pdf ||
+                    format == _ExportImageFormat.psd
+                ? await MediaExportService.saveFileToDownloadsDetailed(
+                    tempFile.path,
+                    fileName: fileName,
+                    mimeType: mimeType,
+                  )
+                : await MediaExportService.saveImageFileToGalleryDetailed(
+                    tempFile.path,
+                    fileName: fileName,
+                    mimeType: mimeType,
+                  );
             _debugLog(
               'editor export save result: success=${saveResult.success}, code=${saveResult.code}, message=${saveResult.message}',
             );
@@ -703,7 +1258,29 @@ extension _EditorExportState on _ImageEditorScreenState {
     }
   }
 
-  double _exportPixelRatio(double devicePixelRatio) {
+  Future<void> _prepareCanvasForFinalExport() async {
+    if (_selectedTextFocusNode.hasFocus || _isInlineTextEditing) {
+      _commitSelectedTextContentEdit();
+      if (_selectedTextFocusNode.hasFocus) {
+        _selectedTextFocusNode.unfocus();
+      }
+      if (mounted) {
+        setState(() {
+          _isInlineTextEditing = false;
+          _showTextControls = false;
+        });
+      } else {
+        _isInlineTextEditing = false;
+        _showTextControls = false;
+      }
+      await _waitForRenderedFrame();
+    }
+  }
+
+  double _exportPixelRatio(
+    double devicePixelRatio, {
+    _ExportImageFormat? format,
+  }) {
     final Rect stageRect = _currentStageLogicalRect();
     final double logicalW = stageRect.width;
     final double logicalH = stageRect.height;
@@ -711,16 +1288,24 @@ extension _EditorExportState on _ImageEditorScreenState {
       return devicePixelRatio.clamp(1.0, 4.5);
     }
 
-    final EditorPageConfig? config = widget.pageConfig;
+    final targetSize = _exportTargetPixelSize(format: format);
     double ratio = devicePixelRatio;
-    if (config != null) {
-      final double neededW = config.widthPx / logicalW;
-      final double neededH = config.heightPx / logicalH;
+    if (targetSize != null) {
+      final double neededW = targetSize.width / logicalW;
+      final double neededH = targetSize.height / logicalH;
       ratio = math.max(ratio, math.max(neededW, neededH));
     }
 
-    const double maxExportPixelRatio = 8.0;
-    return ratio.clamp(1.0, maxExportPixelRatio);
+    const double maxExportPixelRatio = 16.0;
+    const double maxExportPixels = 64000000.0;
+    final double maxRatioByPixels = math.sqrt(
+      maxExportPixels / math.max(1.0, logicalW * logicalH),
+    );
+    final double safeMaxRatio = math.max(
+      1.0,
+      math.min(maxExportPixelRatio, maxRatioByPixels),
+    );
+    return ratio.clamp(1.0, safeMaxRatio);
   }
 
   Future<void> _shareLatestPoster(
@@ -765,6 +1350,7 @@ extension _EditorExportState on _ImageEditorScreenState {
       await file.writeAsBytes(imageBytes, flush: true);
       await MediaExportService.shareImageFile(
         file.path,
+        mimeType: _exportMimeType(format),
         text: 'Mana Poster Ai',
         sharePositionOrigin: box == null
             ? null
@@ -812,9 +1398,27 @@ extension _EditorExportState on _ImageEditorScreenState {
     switch (format) {
       case _ExportImageFormat.jpg:
         return 'jpg';
+      case _ExportImageFormat.psd:
+        return 'psd';
+      case _ExportImageFormat.pdf:
+        return 'pdf';
       case _ExportImageFormat.png:
       case _ExportImageFormat.pngTransparent:
         return 'png';
+    }
+  }
+
+  String _exportMimeType(_ExportImageFormat format) {
+    switch (format) {
+      case _ExportImageFormat.jpg:
+        return 'image/jpeg';
+      case _ExportImageFormat.psd:
+        return 'image/vnd.adobe.photoshop';
+      case _ExportImageFormat.pdf:
+        return 'application/pdf';
+      case _ExportImageFormat.png:
+      case _ExportImageFormat.pngTransparent:
+        return 'image/png';
     }
   }
 }

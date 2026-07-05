@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
-import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -27,6 +24,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _startupLog(String message) {
     developer.log(message, name: 'splash.startup.trace');
+    assert(() {
+      debugPrint('ManaPosterStartupRoute $message');
+      return true;
+    }());
   }
 
   @override
@@ -67,7 +68,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _prepareNextRoute() async {
     try {
-      unawaited(FirebaseBootstrap.ensureInitialized(activateAppCheck: false));
       SharedPreferences? startupPrefs;
       try {
         startupPrefs = await SharedPreferences.getInstance();
@@ -82,70 +82,13 @@ class _SplashScreenState extends State<SplashScreen>
       final String? storedAuthUid = await AppFlowService.loadLastKnownAuthUid(
         prefs: startupPrefs,
       );
-      final hasSelectedRegion = await AppRegionService.hasSelection(
+      final String nextRoute = await AppFlowService.resolvePostSplashEntryRoute(
         prefs: startupPrefs,
       );
-      if (!hasSelectedRegion) {
-        if (!mounted) {
-          return;
-        }
-        _nextRoute = AppRoutes.language;
-        _startupLog('final_route_decision nextRoute=$_nextRoute');
-        return;
-      }
-
-      final String cachedAuthUid = storedAuthUid?.trim() ?? '';
-      User? startupUser;
-      if (cachedAuthUid.isEmpty && FirebaseBootstrap.hasFirebaseApp) {
-        try {
-          startupUser = await _resolveStartupUser();
-        } catch (_) {
-          startupUser = null;
-        }
-      }
-      if (startupUser?.uid.trim().isNotEmpty == true) {
-        unawaited(AppFlowService.persistLastKnownAuthUid(startupUser!.uid));
-      }
-      final String effectiveAuthUid = startupUser?.uid.trim().isNotEmpty == true
-          ? startupUser!.uid.trim()
-          : cachedAuthUid;
-      final bool isAuthenticated = effectiveAuthUid.isNotEmpty;
       _startupLog(
-        'startup_user uid=${startupUser?.uid ?? 'null'}'
-        ' email=${startupUser?.email ?? 'null'}'
-        ' storedUid=${storedAuthUid ?? 'null'}',
+        'startup_user storedUid=${storedAuthUid ?? 'null'}'
+        ' resolvedRoute=$nextRoute',
       );
-      String nextRoute;
-      if (!isAuthenticated) {
-        nextRoute = AppRoutes.login;
-      } else {
-        final Future<String> startupEntryRouteFuture =
-            AppFlowService.resolveAuthenticatedEntryRouteForStartup(
-              includeReligionGate: true,
-              startupUidHint: effectiveAuthUid,
-              allowRemoteProfileRefresh: false,
-              prefs: startupPrefs,
-            );
-        final authenticatedEntryRoute = await startupEntryRouteFuture;
-        nextRoute = authenticatedEntryRoute;
-        unawaited(
-          AppFlowService.syncInitialSetupCompletion(
-            isAuthenticated: isAuthenticated,
-          ).timeout(const Duration(seconds: 2), onTimeout: () {}),
-        );
-        _startupLog(
-          'pre_profile_route_decision nextRoute=$nextRoute'
-          ' isAuthenticated=$isAuthenticated'
-          ' permissionsHandled=deferred',
-        );
-      }
-      if (!isAuthenticated) {
-        _startupLog(
-          'pre_profile_route_decision nextRoute=$nextRoute'
-          ' isAuthenticated=$isAuthenticated'
-          ' permissionsHandled=deferred',
-        );
-      }
       if (!mounted) {
         return;
       }
@@ -171,21 +114,6 @@ class _SplashScreenState extends State<SplashScreen>
             : _minimumSplashDuration - elapsed;
         _navigationTimer = Timer(remaining, _goToNextScreen);
       }
-    }
-  }
-
-  Future<User?> _resolveStartupUser() async {
-    try {
-      if (!FirebaseBootstrap.hasFirebaseApp) {
-        _startupLog('resolve_startup_user firebase_not_ready');
-        return null;
-      }
-      final auth = FirebaseAuth.instance;
-      final currentUser = auth.currentUser;
-      _startupLog('currentUser_at_startup uid=${currentUser?.uid ?? 'null'}');
-      return currentUser;
-    } on Exception {
-      return null;
     }
   }
 

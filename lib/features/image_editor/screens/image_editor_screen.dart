@@ -6,20 +6,28 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pdf/pdf.dart' as pdf;
+import 'package:pdf/widgets.dart' as pw;
+import 'package:psd_sdk/psd_sdk.dart' as psd;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
@@ -61,13 +69,82 @@ part 'tools/text_tool.dart';
 part 'tools/crop_tool.dart';
 part 'tools/adjust_tool.dart';
 part 'tools/background_tool.dart';
+part 'tools/draw_tool.dart';
+part 'tools/clone_tool.dart';
+part 'tools/stretch_tool.dart';
+part 'tools/content_aware_tool.dart';
+part 'tools/selection_tool.dart';
+part 'tools/retouch_tool.dart';
+part 'tools/frame_lens_tool.dart';
+part 'tools/replay_tool.dart';
 
-const Color _editorChromeSurface = Color(0xFFF8FAFC);
-const Color _editorChromeSurfaceStrong = Color(0xFFFFFFFF);
-const Color _editorChromeBorder = Color(0xFFE2E8F0);
-const Color _editorChromeTextPrimary = Color(0xFF0F172A);
-const Color _editorChromeTextSecondary = Color(0xFF64748B);
-const Color _editorCanvasBackdrop = Color(0xFFEFF4F8);
+const Color _editorChromeSurface = Color(0xFF24262B);
+const Color _editorChromeSurfaceStrong = Color(0xFF1C1E23);
+const Color _editorChromeBorder = Color(0xFF3A3D45);
+const Color _editorChromeTextPrimary = Color(0xFFF1F3F4);
+const Color _editorChromeTextSecondary = Color(0xFFBDC1C6);
+const Color _editorCanvasBackdrop = Color(0xFF2A2C31);
+const String _textEffectPresetsStorageKey = 'editor_text_effect_presets_v1';
+const double _workspaceGestureMinZoom = 0.2;
+const double _workspaceFitZoom = 1;
+const double _workspaceMaxZoom = 8;
+
+double _normalizeWorkspaceZoomValue(double value) {
+  if (!value.isFinite) {
+    return _workspaceFitZoom;
+  }
+  return value.clamp(_workspaceGestureMinZoom, _workspaceMaxZoom).toDouble();
+}
+
+@visibleForTesting
+double debugNormalizeWorkspaceZoomForTest(double value) =>
+    _normalizeWorkspaceZoomValue(value);
+
+@visibleForTesting
+double calculatePsdPageWidthScaleForTest({
+  required int psdWidth,
+  required double targetPageWidth,
+}) {
+  if (psdWidth <= 0 || !targetPageWidth.isFinite || targetPageWidth <= 0) {
+    return 1;
+  }
+  return targetPageWidth / psdWidth;
+}
+
+@visibleForTesting
+bool isTopTextEditContextForTest({
+  required bool isTextLayer,
+  required String? psdEditableText,
+  required bool isLocked,
+}) {
+  return !isLocked &&
+      (isTextLayer || (psdEditableText?.trim().isNotEmpty ?? false));
+}
+
+double _snapEditorSliderValue(
+  double value, {
+  required double min,
+  required double max,
+  required double step,
+}) {
+  final clamped = value.clamp(min, max).toDouble();
+  final snapped = min + (((clamped - min) / step).round() * step);
+  return snapped.clamp(min, max).toDouble();
+}
+
+double _editorSliderToPercent(double value, double min, double max) {
+  if ((max - min).abs() < 0.000001) {
+    return 0;
+  }
+  return (((value.clamp(min, max).toDouble() - min) / (max - min)) * 100)
+      .clamp(0, 100)
+      .toDouble();
+}
+
+double _editorPercentToSlider(double percent, double min, double max) {
+  final clampedPercent = percent.clamp(0, 100).toDouble();
+  return min + ((clampedPercent / 100) * (max - min));
+}
 
 class ImageEditorScreen extends StatefulWidget {
   const ImageEditorScreen({
@@ -88,6 +165,8 @@ class ImageEditorScreen extends StatefulWidget {
     this.lockTemplateLayers = false,
     this.autoProcessAddedPhotos = false,
     this.defaultAddedPhotoMaskShape = '',
+    this.initialDesignImportPath,
+    this.initialDraft,
   });
 
   final EditorPageConfig? pageConfig;
@@ -106,6 +185,8 @@ class ImageEditorScreen extends StatefulWidget {
   final bool lockTemplateLayers;
   final bool autoProcessAddedPhotos;
   final String defaultAddedPhotoMaskShape;
+  final String? initialDesignImportPath;
+  final Map<String, dynamic>? initialDraft;
 
   @override
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
@@ -138,6 +219,141 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
   final List<_EditorHistoryEntry> _redoStack = <_EditorHistoryEntry>[];
   String? _selectedLayerId;
+  double _workspaceZoom = 1;
+  Offset _workspacePan = Offset.zero;
+  final Map<int, Offset> _workspacePointers = <int, Offset>{};
+  final Map<String, Matrix4> _groupTransformStartTransforms =
+      <String, Matrix4>{};
+  double? _pinchStartDistance;
+  double _pinchStartZoom = 1;
+  Offset _pinchStartFocalPoint = Offset.zero;
+  Offset _pinchStartPan = Offset.zero;
+  bool _isWorkspacePinching = false;
+  bool _groupTransformUndoPushed = false;
+  String? _groupTransformSessionId;
+  String? _groupTransformSelectedLayerId;
+  Matrix4? _workspaceLayerBaseline;
+  String? _workspaceLayerBaselineId;
+
+  void _resetWorkspaceViewportToFit() {
+    _workspaceZoom = _workspaceFitZoom;
+    _workspacePan = Offset.zero;
+    _workspacePointers.clear();
+    _pinchStartDistance = null;
+    _pinchStartZoom = _workspaceFitZoom;
+    _pinchStartFocalPoint = Offset.zero;
+    _pinchStartPan = Offset.zero;
+    _isWorkspacePinching = false;
+    _workspaceLayerBaseline = null;
+    _workspaceLayerBaselineId = null;
+  }
+
+  Offset _boundWorkspacePan(Offset pan, double zoom) {
+    final maxX = math.max(
+      0.0,
+      ((_lastCanvasSize.width * zoom) - _lastCanvasSize.width) / 2,
+    );
+    final maxY = math.max(
+      0.0,
+      ((_lastCanvasSize.height * zoom) - _lastCanvasSize.height) / 2,
+    );
+    return Offset(
+      pan.dx.clamp(-maxX, maxX).toDouble(),
+      pan.dy.clamp(-maxY, maxY).toDouble(),
+    );
+  }
+
+  double _workspaceBrushSize(double screenSize) =>
+      screenSize / math.max(0.1, _workspaceZoom);
+
+  void _handleWorkspacePointerDown(PointerDownEvent event) {
+    _workspacePointers[event.pointer] = event.localPosition;
+    if (_workspacePointers.length == 1) {
+      _workspaceLayerBaselineId = _selectedLayerId;
+      _workspaceLayerBaseline = _selectedLayerId == null
+          ? null
+          : Matrix4.copy(_transformationController.value);
+    }
+    if (_workspacePointers.length == 2) {
+      final points = _workspacePointers.values.toList(growable: false);
+      _pinchStartDistance = (points[0] - points[1]).distance;
+      _pinchStartZoom = _workspaceZoom;
+      _pinchStartFocalPoint = Offset(
+        (points[0].dx + points[1].dx) / 2,
+        (points[0].dy + points[1].dy) / 2,
+      );
+      _pinchStartPan = _workspacePan;
+      if (_workspaceLayerBaselineId == _selectedLayerId &&
+          _workspaceLayerBaseline != null) {
+        _transformationController.value = Matrix4.copy(
+          _workspaceLayerBaseline!,
+        );
+      }
+      _photoGestureVelocity = Offset.zero;
+      _photoGestureLastScale = 1;
+      _photoGestureLastRotation = 0;
+      _snapGuideNotifier.value = const _SnapGuideState.none();
+      setState(() => _isWorkspacePinching = true);
+    }
+  }
+
+  void _handleWorkspacePointerMove(PointerMoveEvent event) {
+    if (!_workspacePointers.containsKey(event.pointer)) return;
+    _workspacePointers[event.pointer] = event.localPosition;
+    if (_workspacePointers.length < 2 || _pinchStartDistance == null) return;
+    final points = _workspacePointers.values.take(2).toList(growable: false);
+    final distance = (points[0] - points[1]).distance;
+    if (_pinchStartDistance! > 0) {
+      final nextZoom = _normalizeWorkspaceZoomValue(
+        _pinchStartZoom * (distance / _pinchStartDistance!),
+      );
+      final currentFocalPoint = Offset(
+        (points[0].dx + points[1].dx) / 2,
+        (points[0].dy + points[1].dy) / 2,
+      );
+      final viewportCenter = Offset(
+        _lastCanvasSize.width / 2,
+        _lastCanvasSize.height / 2,
+      );
+      final scaleRatio = nextZoom / _pinchStartZoom;
+      final anchoredPan =
+          currentFocalPoint -
+          viewportCenter -
+          ((_pinchStartFocalPoint - viewportCenter - _pinchStartPan) *
+              scaleRatio);
+      final nextPan = nextZoom <= _workspaceFitZoom
+          ? Offset.zero
+          : _boundWorkspacePan(anchoredPan, nextZoom);
+      if ((nextZoom - _workspaceZoom).abs() > 0.0015 ||
+          (nextPan - _workspacePan).distanceSquared > 0.36) {
+        setState(() {
+          _workspaceZoom = nextZoom;
+          _workspacePan = nextPan;
+        });
+      }
+    }
+  }
+
+  void _handleWorkspacePointerEnd(PointerEvent event) {
+    _workspacePointers.remove(event.pointer);
+    if (_workspacePointers.length < 2) {
+      _pinchStartDistance = null;
+      if (_isWorkspacePinching) {
+        setState(() {
+          _isWorkspacePinching = false;
+          if (_workspaceZoom <= _workspaceFitZoom) {
+            _workspaceZoom = _workspaceFitZoom;
+            _workspacePan = Offset.zero;
+          }
+        });
+      }
+    }
+    if (_workspacePointers.isEmpty) {
+      _workspaceLayerBaseline = null;
+      _workspaceLayerBaselineId = null;
+    }
+  }
+
   Color _canvasBackgroundColor = const Color(0xFFFFFFFF);
   int _canvasBackgroundGradientIndex = -1;
   int _layerSeed = 0;
@@ -145,6 +361,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _CanvasLayer? _fontSizeEditBeforeLayer;
   _CanvasLayer? _textStyleEditBeforeLayer;
   _CanvasLayer? _textContentEditBeforeLayer;
+  _CanvasLayer? _photoMaskEditBeforeLayer;
+  bool _isPhotoMaskPositionMode = false;
+  _TextEffectSnapshot? _copiedTextEffect;
+  final List<_TextEffectSnapshot> _savedTextEffectPresets =
+      <_TextEffectSnapshot>[];
+  int _textEffectPresetSeed = 0;
   String? _textContentEditingLayerId;
   bool _isSyncingSelectedTextField = false;
   bool _isExporting = false;
@@ -152,25 +374,38 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isRemovingBackground = false;
   bool _isMagicWandMode = false;
   bool _isPhotoEraserMode = false;
+  bool _isPhotoStretchMode = false;
+  bool _isContentAwareMode = false;
+  bool _isPhotoCloneMode = false;
+  bool _isDrawBrushMode = false;
+  bool _drawBrushPresetsEnabled = false;
   bool _isPickingMedia = false;
+  double _editorBannerHeight = 0;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
   bool _isCropMode = false;
   bool _isCropApplying = false;
   bool _suppressCanvasTapDown = false;
   bool _canvasTapResolvedLayer = false;
+  bool _autoSelectCanvasLayer = false;
+  bool _showSelectedLayerHandles = true;
   int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
+  _TextToolTab _activeTextToolTab = _TextToolTab.style;
   _BottomPrimaryTool _activeBottomPrimaryTool = _BottomPrimaryTool.none;
   _BottomInlineMode _activeInlineMode = _BottomInlineMode.none;
   String _activeStickerCategory = 'Emojis';
   _BorderStyle _borderStyle = _BorderStyle.none;
+  double _borderWidth = 1.5;
+  double _borderRadius = 0;
+  Color _borderColor = Colors.white;
   String? _borderTargetLayerId;
   double _backgroundBlurAmount = 0;
   bool _isAdjustMode = false;
   bool _isLayerInteracting = false;
   bool _isCreatingTextLayer = false;
   bool _isRewardedGateBusy = false;
+  bool _isHistoryReplayRunning = false;
   bool _teluguFontsRewardUnlocked = false;
   int _removeBackgroundTaskId = 0;
   String? _activeCommitJobKey;
@@ -178,7 +413,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double? _pageAspectRatio;
   bool _pageAspectRatioAutoFromImage = false;
   bool _didShowSetupReadyHint = false;
-  bool _isOpeningTextFullScreenEditor = false;
+  bool _isInlineTextEditing = false;
+  bool _isTextPlacementMode = false;
   Matrix4? _gestureStartMatrix;
   Offset _gestureStartFocalPoint = Offset.zero;
   Offset _gestureStartLocalFocalPoint = Offset.zero;
@@ -187,6 +423,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double _photoGestureLastRotation = 0;
   double _stickerHandleStartAngle = 0;
   double _stickerHandleStartDistance = 1;
+  Offset _textStretchStartGlobalPosition = Offset.zero;
+  Offset _textResizeStartGlobalPosition = Offset.zero;
+  Offset _textResizeRightAxisGlobal = Offset(1, 0);
+  double _textResizeStartHorizontalDistance = 1;
+  Offset _textResizeVerticalAxisGlobal = Offset(0, -1);
+  double _textResizeStartVerticalDistance = 1;
+  Offset _objectSideResizeAxisGlobal = Offset.zero;
+  bool _objectSideResizeHorizontal = true;
   Offset _photoGestureVelocity = Offset.zero;
   int _photoGestureLastTimestampMicros = 0;
   late final AnimationController _photoGlideController;
@@ -194,6 +438,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Offset _photoGlideTotalTravel = Offset.zero;
   Offset _photoGlideAppliedTravel = Offset.zero;
   Timer? _selectedTextLongPressTimer;
+  OverlayEntry? _canvasLayerPickerEntry;
   Offset? _selectedTextPressPosition;
   DateTime? _lastSelectedTextTapAt;
   String? _lastSelectedTextTapLayerId;
@@ -207,21 +452,90 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double _adjustSessionContrast = 1;
   double _adjustSessionSaturation = 1;
   double _adjustSessionBlur = 0;
+  double _adjustSessionSharpen = 0;
+  double _adjustSessionGrain = 0;
+  double _adjustSessionVignette = 0;
+  double _adjustSessionMotion = 0;
+  double _adjustSessionTiltShift = 0;
+  double _adjustSessionShadows = 0;
+  double _adjustSessionHighlights = 0;
+  double _adjustSessionTemperature = 0;
+  double _adjustSessionTint = 0;
   double _adjustInitialBrightness = 0;
   double _adjustInitialContrast = 1;
   double _adjustInitialSaturation = 1;
   double _adjustInitialBlur = 0;
+  double _adjustInitialSharpen = 0;
+  double _adjustInitialGrain = 0;
+  double _adjustInitialVignette = 0;
+  double _adjustInitialMotion = 0;
+  double _adjustInitialTiltShift = 0;
+  double _adjustInitialShadows = 0;
+  double _adjustInitialHighlights = 0;
+  double _adjustInitialTemperature = 0;
+  double _adjustInitialTint = 0;
   double _eraserBrushSize = 42;
   double _eraserHardness = 0.28;
+  double _stretchBrushSize = 48;
+  double _stretchStrength = 0.62;
+  double _stretchOpacity = 1;
+  double _contentAwareBrushSize = 54;
+  double _contentAwareStrength = 0.82;
+  double _cloneBrushSize = 44;
+  double _cloneHardness = 0.72;
+  double _cloneOpacity = 1;
+  bool _cloneAligned = false;
+  Offset? _cloneSourcePoint;
+  Offset? _cloneAlignedSampleOffset;
+  ui.Image? _clonePreviewImage;
+  String? _clonePreviewLayerId;
+  ui.Image? _stretchPreviewImage;
+  String? _stretchPreviewLayerId;
+  bool _isLayerMaskBrushMode = false;
+  bool _isLayerMaskBrushRestoreMode = false;
+  double _layerMaskBrushSize = 42;
+  double _layerMaskBrushHardness = 0.35;
+  List<_EditorBrushPreset> _drawBrushPresets = const <_EditorBrushPreset>[
+    _EditorBrushPreset.marker,
+  ];
+  final Map<String, _EditorBrushMask> _drawBrushMasks =
+      <String, _EditorBrushMask>{};
+  final List<_DrawStroke> _drawStrokes = <_DrawStroke>[];
+  final List<_DrawStroke> _drawRedoStrokes = <_DrawStroke>[];
+  List<Offset>? _drawActivePoints;
+  Color _drawColor = Colors.black;
+  double _drawBrushSize = 12;
+  double _drawOpacity = 1;
+  double _drawHue = 0;
+  _EditorBrushPreset _selectedDrawBrush = _EditorBrushPreset.marker;
   final List<Offset> _eraserStrokePoints = <Offset>[];
+  final List<Offset> _contentAwareStrokePoints = <Offset>[];
+  List<Offset> _cloneStrokePoints = <Offset>[];
+  List<Offset> _clonePreviewStampPoints = <Offset>[];
+  List<Offset> _stretchStrokePoints = <Offset>[];
+  final List<_StretchStroke> _stretchLiveStrokes = <_StretchStroke>[];
+  final List<_StretchStroke> _stretchRedoStrokes = <_StretchStroke>[];
+  final List<Offset> _layerMaskStrokePoints = <Offset>[];
   String? _eraserStrokeLayerId;
+  String? _contentAwareStrokeLayerId;
+  String? _cloneStrokeLayerId;
+  String? _stretchStrokeLayerId;
+  String? _layerMaskStrokeLayerId;
   Size _eraserStrokeLayerSize = Size.zero;
+  Size _contentAwareStrokeLayerSize = Size.zero;
+  Size _cloneStrokeLayerSize = Size.zero;
+  Size _stretchStrokeLayerSize = Size.zero;
+  Size _layerMaskStrokeLayerSize = Size.zero;
   final ValueNotifier<_SnapGuideState> _snapGuideNotifier =
       ValueNotifier<_SnapGuideState>(const _SnapGuideState.none());
   final ValueNotifier<_SelectedPhotoRenderState?> _selectedPhotoRenderNotifier =
       ValueNotifier<_SelectedPhotoRenderState?>(null);
   final ValueNotifier<_PhotoEraserPreviewState?> _eraserPreviewNotifier =
       ValueNotifier<_PhotoEraserPreviewState?>(null);
+  final ValueNotifier<_StretchLivePreviewState?> _stretchPreviewNotifier =
+      ValueNotifier<_StretchLivePreviewState?>(null);
+  final ValueNotifier<_DrawPreviewState?> _drawPreviewNotifier =
+      ValueNotifier<_DrawPreviewState?>(null);
   final ValueNotifier<_AdjustSessionState?> _adjustSessionNotifier =
       ValueNotifier<_AdjustSessionState?>(null);
   final ValueNotifier<_EditorCommitState?> _commitStateNotifier =
@@ -255,6 +569,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   bool get _hasSelectedTextLayer => _selectedLayer?.isText ?? false;
+  bool get _hasSelectedEditableTextLayer {
+    final layer = _selectedLayer;
+    if (layer == null) {
+      return false;
+    }
+    return isTopTextEditContextForTest(
+      isTextLayer: layer.isText,
+      psdEditableText: layer.psdEditableText,
+      isLocked: layer.isLocked,
+    );
+  }
+
   bool get _hasSelectedPhotoLayer => _selectedLayer?.isPhoto ?? false;
   bool get _isSelectedLayerLocked => _selectedLayer?.isLocked ?? false;
   _SnapGuideState get _snapGuides => _snapGuideNotifier.value;
@@ -267,8 +593,21 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     return _layers.indexWhere((item) => item.id == selectedId);
   }
 
-  bool get _canUndo => _undoStack.isNotEmpty;
-  bool get _canRedo => _redoStack.isNotEmpty;
+  bool get _canUndo {
+    if (_isDrawBrushMode) {
+      return _drawStrokes.isNotEmpty;
+    }
+    return _undoStack.isNotEmpty ||
+        (_isPhotoStretchMode && _stretchLiveStrokes.isNotEmpty);
+  }
+
+  bool get _canRedo {
+    if (_isDrawBrushMode) {
+      return _drawRedoStrokes.isNotEmpty;
+    }
+    return _redoStack.isNotEmpty ||
+        (_isPhotoStretchMode && _stretchRedoStrokes.isNotEmpty);
+  }
 
   double _effectivePhotoBrightness(_CanvasLayer layer) =>
       _isAdjustMode && _adjustSessionLayerId == layer.id
@@ -290,6 +629,51 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       ? _adjustSessionBlur
       : layer.photoBlur;
 
+  double _effectivePhotoSharpen(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionSharpen
+      : layer.photoSharpen;
+
+  double _effectivePhotoGrain(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionGrain
+      : layer.photoGrain;
+
+  double _effectivePhotoVignette(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionVignette
+      : layer.photoVignette;
+
+  double _effectivePhotoMotion(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionMotion
+      : layer.photoMotion;
+
+  double _effectivePhotoTiltShift(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionTiltShift
+      : layer.photoTiltShift;
+
+  double _effectivePhotoShadows(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionShadows
+      : layer.photoShadows;
+
+  double _effectivePhotoHighlights(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionHighlights
+      : layer.photoHighlights;
+
+  double _effectivePhotoTemperature(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionTemperature
+      : layer.photoTemperature;
+
+  double _effectivePhotoTint(_CanvasLayer layer) =>
+      _isAdjustMode && _adjustSessionLayerId == layer.id
+      ? _adjustSessionTint
+      : layer.photoTint;
+
   String? get _activeModeLabel {
     if (_isCropMode) {
       return 'Crop mode';
@@ -302,6 +686,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     if (_isPhotoEraserMode) {
       return 'Eraser';
+    }
+    if (_isContentAwareMode) {
+      return 'Content Aware';
+    }
+    if (_isPhotoCloneMode) {
+      return 'Clone';
+    }
+    if (_isPhotoStretchMode) {
+      return 'Smudge';
+    }
+    if (_isDrawBrushMode) {
+      return _drawBrushPresetsEnabled ? 'Brushes' : 'Draw';
     }
     if (_hasSelectedTextLayer) {
       return _showTextControls ? 'Text styling' : 'Text selected';
@@ -344,6 +740,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         );
       case 'Eraser':
         return strings.localized(telugu: 'ఎరేసర్', english: 'Eraser');
+      case 'Content Aware':
+        return 'Content Aware';
+      case 'Clone':
+        return 'Clone';
+      case 'Smudge':
+        return strings.localized(telugu: 'స్మడ్జ్', english: 'Smudge');
+      case 'Stretch':
+        return strings.localized(telugu: 'స్ట్రెచ్', english: 'Stretch');
       case 'Removing...':
         return strings.localized(
           telugu: 'తొలగిస్తోంది...',
@@ -608,8 +1012,33 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void _openBottomPrimaryTool(_BottomPrimaryTool tool, String label) {
     setState(() {
       _isPhotoEraserMode = false;
+      _isPhotoStretchMode = false;
+      _isContentAwareMode = false;
+      _isPhotoCloneMode = false;
+      _isDrawBrushMode = false;
+      _isLayerMaskBrushMode = false;
+      _isLayerMaskBrushRestoreMode = false;
       _eraserStrokePoints.clear();
+      _contentAwareStrokePoints.clear();
+      _cloneStrokePoints.clear();
+      _clonePreviewStampPoints.clear();
+      _layerMaskStrokePoints.clear();
       _eraserStrokeLayerId = null;
+      _contentAwareStrokeLayerId = null;
+      _cloneStrokeLayerId = null;
+      _contentAwareStrokeLayerSize = Size.zero;
+      _cloneStrokeLayerSize = Size.zero;
+      _cloneSourcePoint = null;
+      _cloneAlignedSampleOffset = null;
+      _layerMaskStrokeLayerId = null;
+      _eraserPreviewNotifier.value = null;
+      _drawStrokes.clear();
+      _drawRedoStrokes.clear();
+      _drawActivePoints = null;
+      _drawPreviewNotifier.value = null;
+      if (tool != _BottomPrimaryTool.text) {
+        _isTextPlacementMode = false;
+      }
       _activeBottomPrimaryTool = tool;
       _activeMainToolLabel = label;
     });
@@ -636,10 +1065,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             'బ్యాక్‌గ్రౌండ్ టూల్: తెలుపు, రంగు, గ్రేడియెంట్ లేదా చిత్రం ఎంచుకోండి.',
         english: 'Background tool: choose White, Color, Gradient, or Image.',
       ),
-      _BottomPrimaryTool.tools => strings.localized(
-        telugu: 'టూల్స్‌లో క్రాప్, ఎరేజ్, లేయర్లు, స్టికర్లు, బార్డర్ ఉన్నాయి.',
-        english: 'Tools: Crop, Erase, Layers, Stickers, and Border.',
-      ),
       _BottomPrimaryTool.none => '',
     };
     if (message.isEmpty) {
@@ -661,18 +1086,66 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     setState(() {
+      _isTextPlacementMode = false;
       _activeBottomPrimaryTool = _BottomPrimaryTool.none;
       _activeInlineMode = _BottomInlineMode.none;
       _showTextControls = false;
+      _restoreSelectedLayerToolContextFields();
     });
+  }
+
+  void _restoreSelectedLayerToolContextFields() {
+    final selected = _selectedLayer;
+    _activeBottomPrimaryTool = _BottomPrimaryTool.none;
+    if (selected?.isPhoto ?? false) {
+      _activeMainToolLabel = 'Photo';
+    } else if (selected?.isText ?? false) {
+      _activeMainToolLabel = 'Text';
+    } else if (selected?.isSticker ?? false) {
+      _activeMainToolLabel = 'Stickers';
+    } else {
+      _activeMainToolLabel = '';
+    }
+  }
+
+  void _restoreSelectedLayerToolContext() {
+    if (!mounted) {
+      return;
+    }
+    setState(_restoreSelectedLayerToolContextFields);
   }
 
   void _openInlineMode(_BottomInlineMode mode) {
     setState(() {
       if (mode != _BottomInlineMode.photoEraser) {
         _isPhotoEraserMode = false;
+        _isPhotoStretchMode = false;
+        _isContentAwareMode = false;
+        _isPhotoCloneMode = false;
+        _contentAwareStrokePoints.clear();
+        _cloneStrokePoints.clear();
+        _clonePreviewStampPoints.clear();
+        _contentAwareStrokeLayerId = null;
+        _cloneStrokeLayerId = null;
+        _contentAwareStrokeLayerSize = Size.zero;
+        _cloneStrokeLayerSize = Size.zero;
+        _cloneSourcePoint = null;
+        _cloneAlignedSampleOffset = null;
+        _eraserPreviewNotifier.value = null;
       }
+      _isDrawBrushMode = false;
+      _isLayerMaskBrushMode = false;
+      _isLayerMaskBrushRestoreMode = false;
+      _drawStrokes.clear();
+      _drawRedoStrokes.clear();
+      _drawActivePoints = null;
+      _drawPreviewNotifier.value = null;
       _activeInlineMode = mode;
+      if (mode == _BottomInlineMode.border &&
+          _borderStyle == _BorderStyle.none) {
+        _borderStyle = _BorderStyle.custom;
+        _borderTargetLayerId = _hasSelectedPhotoLayer ? _selectedLayerId : null;
+      }
       if (mode != _BottomInlineMode.stickerItems) {
         _activeStickerCategory = 'Emojis';
       }
@@ -682,9 +1155,32 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void _closeInlineMode() {
     setState(() {
       _isPhotoEraserMode = false;
+      _isPhotoStretchMode = false;
+      _isContentAwareMode = false;
+      _isPhotoCloneMode = false;
+      _isDrawBrushMode = false;
+      _isLayerMaskBrushMode = false;
+      _isLayerMaskBrushRestoreMode = false;
       _eraserStrokePoints.clear();
+      _contentAwareStrokePoints.clear();
+      _cloneStrokePoints.clear();
+      _clonePreviewStampPoints.clear();
+      _layerMaskStrokePoints.clear();
       _eraserStrokeLayerId = null;
+      _contentAwareStrokeLayerId = null;
+      _cloneStrokeLayerId = null;
+      _contentAwareStrokeLayerSize = Size.zero;
+      _cloneStrokeLayerSize = Size.zero;
+      _cloneSourcePoint = null;
+      _cloneAlignedSampleOffset = null;
+      _layerMaskStrokeLayerId = null;
+      _eraserPreviewNotifier.value = null;
+      _drawStrokes.clear();
+      _drawRedoStrokes.clear();
+      _drawActivePoints = null;
+      _drawPreviewNotifier.value = null;
       _activeInlineMode = _BottomInlineMode.none;
+      _restoreSelectedLayerToolContextFields();
     });
   }
 
@@ -706,6 +1202,74 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _borderTargetLayerId = nextTarget;
     });
   }
+
+  void _activateCustomBorder() {
+    final nextTarget = _hasSelectedPhotoLayer ? _selectedLayerId : null;
+    if (_borderStyle == _BorderStyle.custom &&
+        _borderTargetLayerId == nextTarget) {
+      return;
+    }
+    _pushUndoSnapshot();
+    setState(() {
+      _borderStyle = _BorderStyle.custom;
+      _borderTargetLayerId = nextTarget;
+    });
+  }
+
+  Future<void> _openBorderColorPickerOverlay() async {
+    _activateCustomBorder();
+    final result = await _pushPremiumOverlay<_TextColorSelection>(
+      _TextColorPickerScreen(
+        colors: editorBackgroundColors.take(50).toList(growable: false),
+        gradients: const <List<Color>>[],
+        selectedColor: _borderColor,
+        selectedGradientIndex: -1,
+      ),
+    );
+    if (!mounted || result == null) {
+      return;
+    }
+    _pushUndoSnapshot();
+    setState(() {
+      _borderStyle = _BorderStyle.custom;
+      _borderColor = result.textColor;
+    });
+  }
+
+  void _setBorderWidth(double value) {
+    final nextWidth = value.clamp(0.5, 100).toDouble();
+    if ((_borderWidth - nextWidth).abs() < 0.001) {
+      return;
+    }
+    setState(() {
+      _borderWidth = nextWidth;
+    });
+  }
+
+  void _beginBorderWidthEdit(double _) {
+    _pushUndoSnapshot();
+  }
+
+  void _endBorderWidthEdit(double _) {}
+
+  void _setBorderRadius(double value) {
+    final nextRadius = value.clamp(0, 100).toDouble();
+    if ((_borderRadius - nextRadius).abs() < 0.001) {
+      return;
+    }
+    setState(() {
+      _borderRadius = nextRadius;
+      if (_borderStyle != _BorderStyle.none) {
+        _borderStyle = _BorderStyle.custom;
+      }
+    });
+  }
+
+  void _beginBorderRadiusEdit(double _) {
+    _pushUndoSnapshot();
+  }
+
+  void _endBorderRadiusEdit(double _) {}
 
   void _setBackgroundBlur(double amount) {
     if (_stageBackgroundImageBytes == null) {
@@ -753,10 +1317,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       padding: shellPadding,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(shellBorderRadius),
-                        child: Material(
-                          color: shellColor,
-                          child: child,
-                        ),
+                        child: Material(color: shellColor, child: child),
                       ),
                     ),
                   ),
@@ -777,8 +1338,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         selectedFontFamily: layer.fontFamily,
         teluguFonts: _textFontFamilies,
         englishFonts: _englishTextFontFamilies,
+        hindiFonts: _hindiTextFontFamilies,
         previewText: (layer.text ?? '').trim().isEmpty
-            ? 'తెలుగు Poster Title'
+            ? 'తెలుగు Poster Title नमस्ते'
             : layer.text!,
       ),
     );
@@ -845,11 +1407,45 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _setSelectedTextColor(result.textColor);
   }
 
-  Future<void> _openStickerBrowserOverlay() async {
+  Future<void> _openStickerColorPickerOverlay() async {
+    final selected = _selectedLayer;
+    if (selected == null || !selected.isSticker) {
+      return;
+    }
+    final result = await _pushPremiumOverlay<_TextColorSelection>(
+      _TextColorPickerScreen(
+        colors: _textColors.take(50).toList(growable: false),
+        gradients: const <List<Color>>[],
+        selectedColor: selected.stickerColor,
+        selectedGradientIndex: -1,
+      ),
+    );
+    if (!mounted || result == null) {
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == selected.id);
+    if (index == -1 || !_layers[index].isSticker) {
+      return;
+    }
+    final beforeLayer = _layers[index];
+    if (beforeLayer.stickerColor.toARGB32() == result.textColor.toARGB32()) {
+      return;
+    }
+    _replaceLayerWithHistory(
+      index: index,
+      afterLayer: beforeLayer.copyWith(stickerColor: result.textColor),
+    );
+  }
+
+  Future<void> _openStickerBrowserOverlay({
+    String? initialCategory,
+    List<String> categories = _stickerCategories,
+  }) async {
     final selected = await _pushPremiumOverlay<String>(
       StickerBrowserFullscreenOverlay(
-        categories: _stickerCategories,
+        categories: categories,
         catalog: _stickerCatalog,
+        initialCategory: initialCategory,
       ),
     );
     if (!mounted || selected == null || selected.isEmpty) {
@@ -858,11 +1454,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _handleAddSticker(selected);
   }
 
+  Future<void> _openShapesBrowserOverlay() async {
+    await _openStickerBrowserOverlay(
+      initialCategory: 'DesignPro Shapes',
+      categories: const <String>['DesignPro Shapes', 'SVG Marks', 'Shapes'],
+    );
+  }
+
   Future<void> _openLayersAdvancedOverlay() async {
     await _pushPremiumOverlay<void>(
       _AdvancedLayersFullscreenOverlay(
         layers: _layers,
         selectedLayerId: _selectedLayerId,
+        autoSelectCanvasLayer: _autoSelectCanvasLayer,
+        onAutoSelectCanvasLayerTap: _toggleCanvasAutoSelectLayer,
         onSelectLayer: _handleLayerSelected,
         onDeleteLayer: _deleteLayerById,
         onToggleLayerLock: _toggleLayerLockById,
@@ -870,6 +1475,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         onReorderLayers: _reorderLayersFromAdvancedView,
         onMoveToFront: _moveLayerToFrontById,
         onMoveToBack: _moveLayerToBackById,
+        onEditText: _editLayerTextById,
+        onBlendModeChanged: _setLayerBlendMode,
       ),
       shellColor: Colors.transparent,
       shellPadding: EdgeInsets.zero,
@@ -880,6 +1487,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _moveLayerToFrontById(String layerId) {
+    final index = _layers.indexWhere((item) => item.id == layerId);
+    if (index == -1 || _layers[index].isLocked) {
+      return;
+    }
     if (_selectedLayerId != layerId) {
       _handleLayerSelected(layerId);
     }
@@ -887,10 +1498,28 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _moveLayerToBackById(String layerId) {
+    final index = _layers.indexWhere((item) => item.id == layerId);
+    if (index == -1 || _layers[index].isLocked) {
+      return;
+    }
     if (_selectedLayerId != layerId) {
       _handleLayerSelected(layerId);
     }
     _moveSelectedLayerToBack();
+  }
+
+  void _setLayerBlendMode(String layerId, BlendMode blendMode) {
+    final index = _layers.indexWhere((layer) => layer.id == layerId);
+    if (index == -1 || _layers[index].blendMode == blendMode) return;
+    final beforeLayer = _layers[index];
+    if (beforeLayer.isLocked) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(blendMode: blendMode);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[index] = afterLayer;
+    });
   }
 
   void _handleToolsLayersTap() {
@@ -898,6 +1527,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       unawaited(_openLayersAdvancedOverlay());
       return;
     }
+    setState(() {
+      _activeMainToolLabel = 'Layers';
+      _activeBottomPrimaryTool = _BottomPrimaryTool.none;
+      _showTextControls = false;
+    });
     _openInlineMode(_BottomInlineMode.layers);
   }
 
@@ -907,8 +1541,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     final beforeLayer = _layers[index];
-    final afterLayer = beforeLayer.copyWith(isLocked: !beforeLayer.isLocked);
+    final nextLocked = !beforeLayer.isLocked;
+    final afterLayer = beforeLayer.copyWith(isLocked: nextLocked);
     _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
+    if (nextLocked && _selectedLayerId == layerId) {
+      _clearSelection();
+    }
   }
 
   void _toggleLayerVisibilityById(String layerId) {
@@ -929,14 +1567,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (oldIndex < 0 || oldIndex >= _layers.length) {
       return;
     }
-    final boundedNew = newIndex.clamp(0, _layers.length).toInt();
-    var insertIndex = boundedNew;
-    if (oldIndex < boundedNew) {
-      insertIndex -= 1;
+    if (_layers[oldIndex].isLocked) {
+      return;
     }
-    if (insertIndex == oldIndex ||
-        insertIndex < 0 ||
-        insertIndex >= _layers.length) {
+    final insertIndex = newIndex.clamp(0, _layers.length - 1).toInt();
+    if (insertIndex == oldIndex) {
       return;
     }
     final layerId = _layers[oldIndex].id;
@@ -962,7 +1597,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     final selectedId = _selectedLayerId;
-    if (selectedId == null) {
+    if (selectedId == null || _layers[index].isLocked) {
       return;
     }
     _pushLayerReorderHistoryEntry(
@@ -984,7 +1619,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     final selectedId = _selectedLayerId;
-    if (selectedId == null) {
+    if (selectedId == null || _layers[index].isLocked) {
       return;
     }
     _pushLayerReorderHistoryEntry(
@@ -1019,11 +1654,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (layer == null || !layer.isText) {
       return;
     }
-    final currentIndex = _textFontFamilies.indexOf(layer.fontFamily);
+    final currentIndex = _allTextFontFamilies.indexOf(layer.fontFamily);
     final nextIndex = currentIndex == -1
         ? 0
-        : (currentIndex + 1) % _textFontFamilies.length;
-    unawaited(_setSelectedTextFontFamily(_textFontFamilies[nextIndex]));
+        : (currentIndex + 1) % _allTextFontFamilies.length;
+    unawaited(_setSelectedTextFontFamily(_allTextFontFamilies[nextIndex]));
   }
 
   Future<void> _setSelectedTextFontFamily(String fontFamily) async {
@@ -1062,186 +1697,167 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _handleSelectedTextDoubleTap() {
-    if (!_hasSelectedTextLayer) {
-      return;
-    }
     _lastSelectedTextTapAt = null;
     _lastSelectedTextTapLayerId = null;
     _cancelSelectedTextLongPress();
-    unawaited(_openSelectedTextFullScreenEditor());
   }
 
-  Future<void> _openSelectedTextFullScreenEditor() async {
-    if (_isOpeningTextFullScreenEditor) {
+  void _handleSelectedTextEditButtonTap() {
+    final selected = _selectedLayer;
+    if (selected == null || selected.isLocked) {
       return;
     }
+    if (selected.isText) {
+      _startInlineTextEditing();
+      return;
+    }
+    if ((selected.psdEditableText ?? '').trim().isNotEmpty) {
+      _editLayerTextById(selected.id);
+    }
+  }
+
+  void _startInlineTextEditing({bool selectAll = false, int? cursorOffset}) {
     final selected = _selectedLayer;
     if (selected == null || !selected.isText || !mounted) {
       return;
     }
-    _isOpeningTextFullScreenEditor = true;
-    _commitSelectedTextContentEdit();
-    final String initialText = selected.text ?? '';
-    _TextEditResult? result;
-    try {
-      result = await Navigator.of(context).push<_TextEditResult>(
-        PageRouteBuilder<_TextEditResult>(
-          opaque: false,
-          barrierColor: Colors.transparent,
-          pageBuilder:
-              (
-                BuildContext context,
-                Animation<double> animation,
-                Animation<double> secondaryAnimation,
-              ) {
-                return TextEditorFullscreenOverlay(
-                  initialText: initialText,
-                  fontFamily: selected.fontFamily,
-                  textColor: selected.textColor,
-                  textGradientIndex: selected.textGradientIndex,
-                  textOpacity: selected.textOpacity,
-                  fontSize: selected.fontSize,
-                  textLineHeight: selected.textLineHeight,
-                  textLetterSpacing: selected.textLetterSpacing,
-                  textAlign: selected.textAlign,
-                  textShadowOpacity: selected.textShadowOpacity,
-                  textShadowBlur: selected.textShadowBlur,
-                  textShadowOffsetY: selected.textShadowOffsetY,
-                  isTextBold: selected.isTextBold,
-                  isTextItalic: selected.isTextItalic,
-                  isTextUnderline: selected.isTextUnderline,
-                  textStrokeColor: selected.textStrokeColor,
-                  textStrokeWidth: selected.textStrokeWidth,
-                  textStrokeGradientIndex: selected.textStrokeGradientIndex,
-                  textBackgroundColor: selected.textBackgroundColor,
-                  textBackgroundOpacity: selected.textBackgroundOpacity,
-                  textBackgroundRadius: selected.textBackgroundRadius,
-                  colors: _textColors,
-                  gradients: _textGradients,
-                  fontFamilies: _textFontFamilies,
-                );
-              },
-          transitionsBuilder:
-              (
-                BuildContext context,
-                Animation<double> animation,
-                Animation<double> secondaryAnimation,
-                Widget child,
-              ) {
-                return FadeTransition(
-                  opacity: CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                  child: child,
-                );
-              },
-        ),
-      );
-    } finally {
-      _isOpeningTextFullScreenEditor = false;
-      if (mounted &&
-          (_showTextControls ||
-              _activeBottomPrimaryTool != _BottomPrimaryTool.none)) {
-        setState(() {
-          _showTextControls = false;
-          _activeBottomPrimaryTool = _BottomPrimaryTool.none;
-        });
-      }
-    }
-    if (!mounted || result == null) {
-      return;
-    }
-    final index = _layers.indexWhere((item) => item.id == selected.id);
-    if (index == -1 || !_layers[index].isText) {
-      return;
-    }
-    final currentLayer = _layers[index];
-    final normalizedText = result.text;
-    final unchanged =
-        (currentLayer.text ?? '') == normalizedText &&
-        currentLayer.textColor.toARGB32() == result.textColor.toARGB32() &&
-        currentLayer.textGradientIndex == result.textGradientIndex &&
-        (currentLayer.textOpacity - result.textOpacity).abs() < 0.0001 &&
-        (currentLayer.fontSize - result.fontSize).abs() < 0.0001 &&
-        (currentLayer.textLineHeight - result.textLineHeight).abs() < 0.0001 &&
-        (currentLayer.textLetterSpacing - result.textLetterSpacing).abs() <
-            0.0001 &&
-        currentLayer.textAlign == result.textAlign &&
-        (currentLayer.textShadowOpacity - result.textShadowOpacity).abs() <
-            0.0001 &&
-        (currentLayer.textShadowBlur - result.textShadowBlur).abs() < 0.0001 &&
-        (currentLayer.textShadowOffsetY - result.textShadowOffsetY).abs() <
-            0.0001 &&
-        currentLayer.isTextBold == result.isTextBold &&
-        currentLayer.isTextItalic == result.isTextItalic &&
-        currentLayer.isTextUnderline == result.isTextUnderline &&
-        currentLayer.textStrokeColor.toARGB32() ==
-            result.textStrokeColor.toARGB32() &&
-        (currentLayer.textStrokeWidth - result.textStrokeWidth).abs() <
-            0.0001 &&
-        currentLayer.textStrokeGradientIndex ==
-            result.textStrokeGradientIndex &&
-        currentLayer.fontFamily == result.fontFamily;
-    if (unchanged) {
-      return;
-    }
-    final converted = await _resolveLegacyRenderTextFor(
-      text: normalizedText,
-      fontFamily: result.fontFamily,
-    );
-    if (!mounted) {
-      return;
-    }
-    final refreshedIndex = _layers.indexWhere((item) => item.id == selected.id);
-    if (refreshedIndex == -1 || !_layers[refreshedIndex].isText) {
-      return;
-    }
-    final latestLayer = _layers[refreshedIndex];
-    final afterLayer = latestLayer.copyWith(
-      text: normalizedText,
-      textColor: result.textColor,
-      textGradientIndex: result.textGradientIndex,
-      textOpacity: result.textOpacity,
-      fontSize: result.fontSize,
-      textLineHeight: result.textLineHeight,
-      textLetterSpacing: result.textLetterSpacing,
-      textAlign: result.textAlign,
-      textShadowOpacity: result.textShadowOpacity,
-      textShadowBlur: result.textShadowBlur,
-      textShadowOffsetY: result.textShadowOffsetY,
-      isTextBold: result.isTextBold,
-      isTextItalic: result.isTextItalic,
-      isTextUnderline: result.isTextUnderline,
-      textStrokeColor: result.textStrokeColor,
-      textStrokeWidth: result.textStrokeWidth,
-      textStrokeGradientIndex: result.textStrokeGradientIndex,
-      fontFamily: result.fontFamily,
-      legacyRenderText: converted,
-    );
-    _replaceLayerWithHistory(index: refreshedIndex, afterLayer: afterLayer);
     _syncSelectedTextEditor();
+    setState(() {
+      _isInlineTextEditing = true;
+      _showTextControls = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_isInlineTextEditing || !_hasSelectedTextLayer) {
+        return;
+      }
+      _selectedTextFocusNode.requestFocus();
+      final textLength = _selectedTextController.text.length;
+      _selectedTextController.selection = selectAll
+          ? TextSelection(baseOffset: 0, extentOffset: textLength)
+          : TextSelection.collapsed(
+              offset: (cursorOffset ?? textLength).clamp(0, textLength),
+            );
+    });
   }
 
-  void _handleSelectedTextTap() {
+  void _editLayerTextById(String layerId) {
+    final index = _layers.indexWhere((item) => item.id == layerId);
+    if (index == -1 || _layers[index].isLocked) {
+      return;
+    }
+    final layer = _layers[index];
+    if (layer.isText) {
+      if (_selectedLayerId != layer.id) {
+        _handleLayerSelected(layer.id);
+      }
+      _startInlineTextEditing();
+      return;
+    }
+    final editableText = layer.psdEditableText?.trim();
+    if (!layer.isPhoto || editableText == null || editableText.isEmpty) {
+      return;
+    }
+    final normalizedText = _normalizePsdEditableText(editableText);
+    final editableFontFamily = _resolvePsdEditFontFamily(layer);
+    final legacyRenderText = _legacyRenderTextForPsdEdit(
+      rawText: editableText,
+      normalizedText: normalizedText,
+      fontFamily: editableFontFamily,
+    );
+    final convertedLayer = _CanvasLayer(
+      id: layer.id,
+      type: _CanvasLayerType.text,
+      layerName: layer.layerName,
+      text: normalizedText,
+      legacyRenderText: legacyRenderText,
+      textColor: Colors.black,
+      textAlign: layer.psdEditableTextAlign ?? TextAlign.center,
+      fontSize: (layer.psdEditableFontSize ?? 40).clamp(1.0, 220.0).toDouble(),
+      fontFamily: editableFontFamily,
+      textOpacity: layer.photoOpacity,
+      blendMode: layer.blendMode,
+      transform: Matrix4.copy(layer.transform),
+    );
+    _replaceLayerWithHistory(
+      index: index,
+      afterLayer: convertedLayer,
+      afterSelectedLayerId: convertedLayer.id,
+    );
+    _syncSelectedTextEditor(requestFocus: true);
+    _startInlineTextEditing(selectAll: true);
+  }
+
+  String _resolvePsdEditFontFamily(_CanvasLayer layer) {
+    final family = layer.psdEditableFontFamily?.trim();
+    if (family != null && family.isNotEmpty) {
+      return _resolvePsdEditableFontFamily(family) ??
+          'Anek Telugu Condensed Regular';
+    }
+    return 'Anek Telugu Condensed Regular';
+  }
+
+  String? _legacyRenderTextForPsdEdit({
+    required String rawText,
+    required String normalizedText,
+    required String fontFamily,
+  }) {
+    if (!_isLegacyTeluguFontFamily(fontFamily)) {
+      return null;
+    }
+    if (_looksLikeLegacyPsdText(rawText)) {
+      return rawText.replaceAll('\r', '\n').trim();
+    }
+    return TeluguLegacyTextService.convertSync(
+      normalizedText,
+      fontFamily: fontFamily,
+    );
+  }
+
+  String _normalizePsdEditableText(String text) {
+    final normalized = text
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n')
+        .replaceAll('\u200c', '')
+        .replaceAll('\u200d', '')
+        .trim();
+    if (normalized.isEmpty || !_looksLikeLegacyPsdText(normalized)) {
+      return normalized;
+    }
+    final converted = TeluguLegacyTextService.reverseConvertSync(
+      normalized,
+    ).replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim();
+    return converted.isEmpty ? normalized : converted;
+  }
+
+  bool _looksLikeLegacyPsdText(String text) {
+    var legacyGlyphs = 0;
+    var readableChars = 0;
+    for (final rune in text.runes) {
+      if (rune == 10 || rune == 13 || rune == 32) {
+        continue;
+      }
+      readableChars += 1;
+      if (rune >= 0xE000 && rune <= 0xF8FF) {
+        legacyGlyphs += 1;
+      }
+    }
+    return legacyGlyphs >= 2 && legacyGlyphs >= (readableChars * 0.12);
+  }
+
+  void _handleSelectedTextTap(int cursorOffset) {
     if (!_hasSelectedTextLayer) {
       return;
     }
-    final selectedId = _selectedLayerId;
-    final now = DateTime.now();
-    if (selectedId != null &&
-        _lastSelectedTextTapLayerId == selectedId &&
-        _lastSelectedTextTapAt != null &&
-        now.difference(_lastSelectedTextTapAt!) <=
-            const Duration(milliseconds: 320)) {
-      _lastSelectedTextTapAt = null;
-      _lastSelectedTextTapLayerId = null;
-      _handleSelectedTextDoubleTap();
-      return;
-    }
-    _lastSelectedTextTapAt = now;
-    _lastSelectedTextTapLayerId = selectedId;
     _cancelSelectedTextLongPress();
+    if (_showTextControls ||
+        _activeBottomPrimaryTool != _BottomPrimaryTool.text ||
+        _activeMainToolLabel != 'Text') {
+      setState(() {
+        _showTextControls = false;
+        _activeBottomPrimaryTool = _BottomPrimaryTool.text;
+        _activeMainToolLabel = 'Text';
+      });
+    }
   }
 
   Widget _buildTextStyleOverlay(double height) {
@@ -1273,57 +1889,77 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                child: _TextStyleBar(
-                  visible: true,
-                  selectedLayer: _selectedLayer,
-                  textController: _selectedTextController,
-                  textFocusNode: _selectedTextFocusNode,
-                  colors: _textColors,
-                  backgroundColors: editorBackgroundColors,
-                  gradients: _textGradients,
-                  onEditTap: () =>
-                      unawaited(_openSelectedTextFullScreenEditor()),
-                  onTextChanged: _handleSelectedTextChanged,
-                  onFontsTap: () => unawaited(_openFontPickerOverlay()),
-                  onColorSelected: _setSelectedTextColor,
-                  onBackgroundColorSelected: _setSelectedTextBackgroundColor,
-                  onAlignSelected: _setSelectedTextAlignment,
-                  onGradientSelected: _setSelectedTextGradient,
-                  onTextOpacityChanged: _setSelectedTextOpacity,
-                  onFontSizeChanged: _setSelectedTextFontSize,
-                  onFontSizeChangeStart: _handleTextFontSizeEditStart,
-                  onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
-                  onBackgroundOpacityChanged: _setSelectedTextBackgroundOpacity,
-                  onBackgroundOpacityChangeStart: _beginSelectedTextStyleEdit,
-                  onBackgroundOpacityChangeEnd: _endSelectedTextStyleEdit,
-                  onBackgroundRadiusChanged: _setSelectedTextBackgroundRadius,
-                  onBackgroundRadiusChangeStart: _beginSelectedTextStyleEdit,
-                  onBackgroundRadiusChangeEnd: _endSelectedTextStyleEdit,
-                  onLineHeightChanged: _setSelectedTextLineHeight,
-                  onLineHeightChangeStart: _beginSelectedTextStyleEdit,
-                  onLineHeightChangeEnd: _endSelectedTextStyleEdit,
-                  onLetterSpacingChanged: _setSelectedTextLetterSpacing,
-                  onLetterSpacingChangeStart: _beginSelectedTextStyleEdit,
-                  onLetterSpacingChangeEnd: _endSelectedTextStyleEdit,
-                  onShadowOpacityChanged: _setSelectedTextShadowOpacity,
-                  onShadowOpacityChangeStart: _beginSelectedTextStyleEdit,
-                  onShadowOpacityChangeEnd: _endSelectedTextStyleEdit,
-                  onShadowBlurChanged: _setSelectedTextShadowBlur,
-                  onShadowBlurChangeStart: _beginSelectedTextStyleEdit,
-                  onShadowBlurChangeEnd: _endSelectedTextStyleEdit,
-                  onShadowOffsetYChanged: _setSelectedTextShadowOffsetY,
-                  onShadowOffsetYChangeStart: _beginSelectedTextStyleEdit,
-                  onShadowOffsetYChangeEnd: _endSelectedTextStyleEdit,
-                  onBoldToggle: _toggleSelectedTextBold,
-                  onItalicToggle: _toggleSelectedTextItalic,
-                  onUnderlineToggle: _toggleSelectedTextUnderline,
-                  onStrokeColorSelected: _setSelectedTextStrokeColor,
-                  onStrokeWidthChanged: _setSelectedTextStrokeWidth,
-                  onStrokeWidthChangeStart: _beginSelectedTextStyleEdit,
-                  onStrokeWidthChangeEnd: _endSelectedTextStyleEdit,
-                ),
+              child: _TextStyleBar(
+                visible: true,
+                focusedTab: _activeTextToolTab,
+                selectedLayer: _selectedLayer,
+                textController: _selectedTextController,
+                textFocusNode: _selectedTextFocusNode,
+                colors: _textColors,
+                backgroundColors: editorBackgroundColors,
+                gradients: _textGradients,
+                savedEffectPresets: _savedTextEffectPresets,
+                copiedTextEffect: _copiedTextEffect,
+                onEditTap: () => _startInlineTextEditing(),
+                onTextChanged: _handleSelectedTextChanged,
+                onFontsTap: () => unawaited(_openFontPickerOverlay()),
+                onColorWheelTap: () => unawaited(_openTextColorPickerOverlay()),
+                onColorSelected: _setSelectedTextColor,
+                onBackgroundColorSelected: _setSelectedTextBackgroundColor,
+                onAlignSelected: _setSelectedTextAlignment,
+                onGradientSelected: _setSelectedTextGradient,
+                onEffectPresetSelected: _applySelectedTextEffectPreset,
+                onCopyTextEffect: _copySelectedTextEffect,
+                onPasteTextEffect: _pasteCopiedTextEffect,
+                onSaveTextEffectPreset: _saveSelectedTextEffectPreset,
+                onSavedTextEffectPresetSelected: _applySavedTextEffectPreset,
+                onSavedTextEffectPresetDeleted: _deleteSavedTextEffectPreset,
+                onTextOpacityChanged: _setSelectedTextOpacity,
+                onFontSizeChanged: _setSelectedTextFontSize,
+                onFontSizeChangeStart: _handleTextFontSizeEditStart,
+                onFontSizeChangeEnd: _handleTextFontSizeEditEnd,
+                onBackgroundOpacityChanged: _setSelectedTextBackgroundOpacity,
+                onBackgroundOpacityChangeStart: _beginSelectedTextStyleEdit,
+                onBackgroundOpacityChangeEnd: _endSelectedTextStyleEdit,
+                onBackgroundRadiusChanged: _setSelectedTextBackgroundRadius,
+                onBackgroundRadiusChangeStart: _beginSelectedTextStyleEdit,
+                onBackgroundRadiusChangeEnd: _endSelectedTextStyleEdit,
+                onBackgroundTopPaddingChanged:
+                    _setSelectedTextBackgroundTopPadding,
+                onBackgroundTopPaddingChangeStart: _beginSelectedTextStyleEdit,
+                onBackgroundTopPaddingChangeEnd: _endSelectedTextStyleEdit,
+                onBackgroundBottomPaddingChanged:
+                    _setSelectedTextBackgroundBottomPadding,
+                onBackgroundBottomPaddingChangeStart:
+                    _beginSelectedTextStyleEdit,
+                onBackgroundBottomPaddingChangeEnd: _endSelectedTextStyleEdit,
+                onLineHeightChanged: _setSelectedTextLineHeight,
+                onLineHeightChangeStart: _beginSelectedTextStyleEdit,
+                onLineHeightChangeEnd: _endSelectedTextStyleEdit,
+                onLetterSpacingChanged: _setSelectedTextLetterSpacing,
+                onLetterSpacingChangeStart: _beginSelectedTextStyleEdit,
+                onLetterSpacingChangeEnd: _endSelectedTextStyleEdit,
+                onShadowOpacityChanged: _setSelectedTextShadowOpacity,
+                onShadowOpacityChangeStart: _beginSelectedTextStyleEdit,
+                onShadowOpacityChangeEnd: _endSelectedTextStyleEdit,
+                onShadowBlurChanged: _setSelectedTextShadowBlur,
+                onShadowBlurChangeStart: _beginSelectedTextStyleEdit,
+                onShadowBlurChangeEnd: _endSelectedTextStyleEdit,
+                onShadowOffsetYChanged: _setSelectedTextShadowOffsetY,
+                onShadowOffsetYChangeStart: _beginSelectedTextStyleEdit,
+                onShadowOffsetYChangeEnd: _endSelectedTextStyleEdit,
+                onShadowColorSelected: _setSelectedTextShadowColorLive,
+                onShadowColorChangeStart: _beginSelectedTextStyleEdit,
+                onShadowColorChangeEnd: _endSelectedTextStyleEdit,
+                onBoldToggle: _toggleSelectedTextBold,
+                onItalicToggle: _toggleSelectedTextItalic,
+                onUnderlineToggle: _toggleSelectedTextUnderline,
+                onStrokeColorSelected: _setSelectedTextStrokeColorLive,
+                onStrokeColorChangeStart: _beginSelectedTextStyleEdit,
+                onStrokeColorChangeEnd: _endSelectedTextStyleEdit,
+                onStrokeWidthChanged: _setSelectedTextStrokeWidth,
+                onStrokeWidthChangeStart: _beginSelectedTextStyleEdit,
+                onStrokeWidthChangeEnd: _endSelectedTextStyleEdit,
               ),
             ),
           ],
@@ -1338,14 +1974,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     _cancelSelectedTextLongPress();
     _selectedTextPressPosition = event.position;
-    _selectedTextLongPressTimer = Timer(const Duration(seconds: 2), () {
-      _selectedTextLongPressTimer = null;
-      _selectedTextPressPosition = null;
-      if (!mounted || !_hasSelectedTextLayer) {
-        return;
-      }
-      unawaited(_openSelectedTextFullScreenEditor());
-    });
   }
 
   void _updateSelectedTextLongPress(PointerMoveEvent event) {
@@ -1375,10 +2003,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
 
     final beforeLayer = _layers[index];
-    if (beforeLayer.textBackgroundColor.toARGB32() == color.toARGB32()) {
+    final nextOpacity = beforeLayer.textBackgroundOpacity <= 0.001
+        ? 0.75
+        : beforeLayer.textBackgroundOpacity;
+    if (beforeLayer.textBackgroundColor.toARGB32() == color.toARGB32() &&
+        (beforeLayer.textBackgroundOpacity - nextOpacity).abs() < 0.0001) {
       return;
     }
-    final afterLayer = beforeLayer.copyWith(textBackgroundColor: color);
+    final afterLayer = beforeLayer.copyWith(
+      textBackgroundColor: color,
+      textBackgroundOpacity: nextOpacity,
+    );
     _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
   }
 
@@ -1411,7 +2046,41 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
     setState(() {
       _layers[index] = _layers[index].copyWith(
-        textBackgroundRadius: radius.clamp(0, 40).toDouble(),
+        textBackgroundRadius: radius.clamp(0, 100).toDouble(),
+      );
+    });
+  }
+
+  void _setSelectedTextBackgroundTopPadding(double padding) {
+    final selectedId = _selectedLayerId;
+    if (selectedId == null) {
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isText) {
+      return;
+    }
+
+    setState(() {
+      _layers[index] = _layers[index].copyWith(
+        textBackgroundTopPadding: padding.clamp(0, 100).toDouble(),
+      );
+    });
+  }
+
+  void _setSelectedTextBackgroundBottomPadding(double padding) {
+    final selectedId = _selectedLayerId;
+    if (selectedId == null) {
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isText) {
+      return;
+    }
+
+    setState(() {
+      _layers[index] = _layers[index].copyWith(
+        textBackgroundBottomPadding: padding.clamp(0, 100).toDouble(),
       );
     });
   }
@@ -1425,10 +2094,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (index == -1 || !_layers[index].isText) {
       return;
     }
+    final snappedValue = _snapEditorSliderValue(
+      value,
+      min: 0.8,
+      max: 2.2,
+      step: 0.1,
+    );
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        textLineHeight: value.clamp(0.8, 2.2).toDouble(),
-      );
+      _layers[index] = _layers[index].copyWith(textLineHeight: snappedValue);
     });
   }
 
@@ -1441,10 +2114,14 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (index == -1 || !_layers[index].isText) {
       return;
     }
+    final snappedValue = _snapEditorSliderValue(
+      value,
+      min: -100,
+      max: 100,
+      step: 1,
+    );
     setState(() {
-      _layers[index] = _layers[index].copyWith(
-        textLetterSpacing: value.clamp(-1, 12).toDouble(),
-      );
+      _layers[index] = _layers[index].copyWith(textLetterSpacing: snappedValue);
     });
   }
 
@@ -1475,7 +2152,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     setState(() {
       _layers[index] = _layers[index].copyWith(
-        textShadowBlur: value.clamp(0, 24).toDouble(),
+        textShadowBlur: value.clamp(0, 100).toDouble(),
       );
     });
   }
@@ -1491,7 +2168,38 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     setState(() {
       _layers[index] = _layers[index].copyWith(
-        textShadowOffsetY: value.clamp(0, 20).toDouble(),
+        textShadowOffsetY: value.clamp(0, 100).toDouble(),
+      );
+    });
+  }
+
+  void _setSelectedTextShadowColorLive(Color color) {
+    final selectedId = _selectedLayerId;
+    if (selectedId == null) return;
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isText) return;
+    final layer = _layers[index];
+    final nextOpacity = layer.textShadowOpacity <= 0.001
+        ? 0.45
+        : layer.textShadowOpacity;
+    final nextBlur = layer.textShadowBlur <= 0.001
+        ? 10.0
+        : layer.textShadowBlur;
+    final nextOffsetY = layer.textShadowOffsetY <= 0.001
+        ? 4.0
+        : layer.textShadowOffsetY;
+    if (layer.textShadowColor.toARGB32() == color.toARGB32() &&
+        (layer.textShadowOpacity - nextOpacity).abs() < 0.0001 &&
+        (layer.textShadowBlur - nextBlur).abs() < 0.0001 &&
+        (layer.textShadowOffsetY - nextOffsetY).abs() < 0.0001) {
+      return;
+    }
+    setState(() {
+      _layers[index] = layer.copyWith(
+        textShadowColor: color,
+        textShadowOpacity: nextOpacity,
+        textShadowBlur: nextBlur,
+        textShadowOffsetY: nextOffsetY,
       );
     });
   }
@@ -1541,8 +2249,37 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (beforeLayer.textStrokeColor.toARGB32() == color.toARGB32()) {
       return;
     }
-    final afterLayer = beforeLayer.copyWith(textStrokeColor: color);
+    final afterLayer = beforeLayer.copyWith(
+      textStrokeColor: color,
+      textStrokeWidth: beforeLayer.textStrokeWidth <= 0.001
+          ? 2.0
+          : beforeLayer.textStrokeWidth,
+      textStrokeGradientIndex: -1,
+    );
     _replaceLayerWithHistory(index: index, afterLayer: afterLayer);
+  }
+
+  void _setSelectedTextStrokeColorLive(Color color) {
+    final selectedId = _selectedLayerId;
+    if (selectedId == null) return;
+    final index = _layers.indexWhere((item) => item.id == selectedId);
+    if (index == -1 || !_layers[index].isText) return;
+    final layer = _layers[index];
+    final nextWidth = layer.textStrokeWidth <= 0.001
+        ? 2.0
+        : layer.textStrokeWidth;
+    if (layer.textStrokeColor.toARGB32() == color.toARGB32() &&
+        (layer.textStrokeWidth - nextWidth).abs() < 0.0001 &&
+        layer.textStrokeGradientIndex == -1) {
+      return;
+    }
+    setState(() {
+      _layers[index] = layer.copyWith(
+        textStrokeColor: color,
+        textStrokeWidth: nextWidth,
+        textStrokeGradientIndex: -1,
+      );
+    });
   }
 
   void _setSelectedTextStrokeWidth(double value) {
@@ -1552,7 +2289,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (index == -1 || !_layers[index].isText) return;
     setState(() {
       _layers[index] = _layers[index].copyWith(
-        textStrokeWidth: value.clamp(0, 8).toDouble(),
+        textStrokeWidth: value.clamp(0, 100).toDouble(),
       );
     });
   }
@@ -1587,9 +2324,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         content: Text(
           strings.localized(
             telugu:
-                'Canvas ready: ${config.widthPx}x${config.heightPx} • $backgroundLabel',
+                'Canvas ready: ${config.widthPx}x${config.heightPx} • ${config.dpi} DPI • $backgroundLabel',
             english:
-                'Canvas ready: ${config.widthPx}x${config.heightPx} • $backgroundLabel',
+                'Canvas ready: ${config.widthPx}x${config.heightPx} • ${config.dpi} DPI • $backgroundLabel',
           ),
         ),
         duration: const Duration(milliseconds: 1800),
@@ -1601,7 +2338,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(ScreenSecurityService.enableSecure());
+    if (kReleaseMode) {
+      unawaited(ScreenSecurityService.enableSecure());
+    }
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
     _photoGlideController =
         AnimationController(
@@ -1618,15 +2357,54 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           });
     _pageAspectRatio = widget.pageConfig?.aspectRatio;
     _applyInitialStageBackground(widget.initialStageBackground);
-    _backgroundRemoverInitialization = _backgroundRemovalService.ensureReady();
-    _enterEditorImmersiveMode();
+    _backgroundRemoverInitialization = Future<void>.delayed(
+      kReleaseMode ? const Duration(seconds: 8) : const Duration(seconds: 30),
+      _backgroundRemovalService.ensureReady,
+    );
+    unawaited(_enterEditorImmersiveMode());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_enterEditorImmersiveMode());
       _showSetupReadyHintIfNeeded();
-      if (widget.templateDocumentSource != null) {
-        unawaited(_loadInitialTemplateDocument());
+      unawaited(
+        Future<void>.delayed(
+          const Duration(milliseconds: 900),
+          kReleaseMode
+              ? _loadTextEffectPresets
+              : () async {
+                  await Future<void>.delayed(const Duration(seconds: 2));
+                  await _loadTextEffectPresets();
+                },
+        ),
+      );
+      if (widget.initialDraft != null) {
+        unawaited(_restoreFromDecodedDraft(widget.initialDraft!));
+      } else if (widget.templateDocumentSource != null) {
+        unawaited(
+          Future<void>.delayed(
+            kReleaseMode
+                ? const Duration(milliseconds: 450)
+                : const Duration(milliseconds: 1800),
+            _loadInitialTemplateDocument,
+          ),
+        );
+      } else if ((widget.initialDesignImportPath ?? '').trim().isNotEmpty) {
+        unawaited(
+          Future<void>.delayed(
+            kReleaseMode
+                ? const Duration(milliseconds: 450)
+                : const Duration(milliseconds: 900),
+            () => _importInitialDesignFile(widget.initialDesignImportPath!),
+          ),
+        );
       } else {
-        unawaited(_restoreAutosavedDraftIfAvailable());
+        unawaited(
+          Future<void>.delayed(
+            kReleaseMode
+                ? const Duration(milliseconds: 1400)
+                : const Duration(milliseconds: 3600),
+            _restoreAutosavedDraftIfAvailable,
+          ),
+        );
       }
     });
   }
@@ -1669,6 +2447,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       contrast: liveAdjustState?.contrast ?? layer.photoContrast,
       saturation: liveAdjustState?.saturation ?? layer.photoSaturation,
       blur: liveAdjustState?.blur ?? layer.photoBlur,
+      sharpen: liveAdjustState?.sharpen ?? layer.photoSharpen,
+      grain: liveAdjustState?.grain ?? layer.photoGrain,
+      vignette: liveAdjustState?.vignette ?? layer.photoVignette,
+      motion: liveAdjustState?.motion ?? layer.photoMotion,
+      tiltShift: liveAdjustState?.tiltShift ?? layer.photoTiltShift,
+      shadows: liveAdjustState?.shadows ?? layer.photoShadows,
+      highlights: liveAdjustState?.highlights ?? layer.photoHighlights,
+      temperature: liveAdjustState?.temperature ?? layer.photoTemperature,
+      tint: liveAdjustState?.tint ?? layer.photoTint,
     );
     if (_selectedPhotoRenderNotifier.value != nextState) {
       _selectedPhotoRenderNotifier.value = nextState;
@@ -1698,7 +2485,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_enterEditorImmersiveMode());
-      unawaited(ScreenSecurityService.enableSecure());
+      if (kReleaseMode) {
+        unawaited(ScreenSecurityService.enableSecure());
+      }
     }
   }
 
@@ -1719,10 +2508,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _snapGuideNotifier.dispose();
     _selectedPhotoRenderNotifier.dispose();
     _eraserPreviewNotifier.dispose();
+    _clonePreviewImage?.dispose();
+    _clonePreviewImage = null;
+    _stretchPreviewNotifier.dispose();
+    _stretchPreviewImage?.dispose();
+    _stretchPreviewImage = null;
+    _drawPreviewNotifier.dispose();
     _adjustSessionNotifier.dispose();
     _commitStateNotifier.dispose();
     _selectedTextController.dispose();
     _selectedTextFocusNode.dispose();
+    _canvasLayerPickerEntry?.remove();
+    _canvasLayerPickerEntry = null;
     _autosaveTimer?.cancel();
     unawaited(_persistAutosaveDraft());
     _photoGlideController.dispose();
@@ -1912,6 +2709,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
             widget.autoSelectInitialLayers && importedLayers.isNotEmpty
             ? importedLayers.last.id
             : null;
+        _syncControllerFromSelection();
         _canvasBackgroundColor = const Color(0xFFFFFFFF);
         _canvasBackgroundGradientIndex = -1;
         _stageBackgroundImageBytes = null;
@@ -1999,6 +2797,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _layers.addAll(insertedLayers);
       if (widget.autoSelectInitialLayers) {
         _selectedLayerId = insertedLayers.last.id;
+        _syncControllerFromSelection();
       }
     });
   }
@@ -2140,7 +2939,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       textStrokeColor: strokeColor,
       textStrokeWidth: personalization.showBottomStrip ? 0 : 1.5,
       fontSize: fontSize,
-      fontFamily: _textFontFamilies.contains(fontFamily)
+      fontFamily: _allTextFontFamilies.contains(fontFamily)
           ? fontFamily
           : 'Anek Telugu Condensed Bold',
       transform: Matrix4.identity()
@@ -2239,413 +3038,1119 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _editorCanvasBackdrop,
-      body: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final canvasSize = Size(
-              constraints.maxWidth,
-              constraints.maxHeight,
-            );
-            final bottomToolsHeight = _isCropMode
-                ? _cropBarHeight
-                : _isAdjustMode
-                ? _adjustBarHeight
-                : _isPhotoEraserMode
-                ? _eraserBarHeight
-                : _bottomBarHeight;
-            final reservedTopInset = widget.preferFullWidthCanvas
-                ? 8.0
-                : _canvasChromeInset;
-            final reservedBottomInset = widget.preferFullWidthCanvas
-                ? 8.0
-                : _canvasChromeInset;
-            _lastCanvasSize = canvasSize;
-            final workspaceHeight = math.max(
-              canvasSize.height - reservedTopInset - reservedBottomInset,
-              0.0,
-            );
-            final workspaceSize = Size(canvasSize.width, workspaceHeight);
-            final hasPageSelection = (_pageAspectRatio ?? 0) > 0;
-            final pageSize = hasPageSelection
-                ? _fitPageSize(
-                    workspaceSize: workspaceSize,
-                    aspectRatio: _pageAspectRatio!,
-                    preferFullWidth: widget.preferFullWidthCanvas,
-                  )
-                : workspaceSize;
+      resizeToAvoidBottomInset: false,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: _editorCanvasBackdrop,
+          image: DecorationImage(
+            image: AssetImage('assets/editor_ui/bg_texture.jpg'),
+            fit: BoxFit.cover,
+            opacity: 0.025,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final canvasSize = Size(
+                constraints.maxWidth,
+                constraints.maxHeight,
+              );
+              final bottomToolsHeight = _isCropMode
+                  ? _cropBarHeight
+                  : _isAdjustMode
+                  ? _adjustBarHeight
+                  : _isPhotoStretchMode
+                  ? _stretchBarHeight
+                  : _isContentAwareMode
+                  ? _eraserBarHeight
+                  : _isPhotoCloneMode
+                  ? _stretchBarHeight
+                  : _isDrawBrushMode
+                  ? _drawBarHeight
+                  : (_isPhotoEraserMode ||
+                        _isContentAwareMode ||
+                        _isPhotoCloneMode ||
+                        _isPhotoStretchMode ||
+                        _isLayerMaskBrushMode)
+                  ? _eraserBarHeight
+                  : _bottomBarHeight;
+              final visibleBottomToolsHeight = _showTextControls
+                  ? _textStyleBarHeight
+                  : bottomToolsHeight;
+              final systemBottomInset = MediaQuery.viewPaddingOf(
+                context,
+              ).bottom;
+              final bannerHeight = _isKeyboardVisible
+                  ? 0.0
+                  : _editorBannerHeight;
+              final floatingBottom = systemBottomInset + bannerHeight + 6;
+              const toolbarCanvasGap = 8.0;
+              const landscapeTopRailWidth = 136.0;
+              const landscapeBottomRailWidth = 136.0;
+              final useLandscapeSideRails =
+                  canvasSize.width > canvasSize.height;
+              final landscapeLeftInset = useLandscapeSideRails
+                  ? landscapeTopRailWidth + toolbarCanvasGap
+                  : 0.0;
+              final landscapeRightInset = useLandscapeSideRails
+                  ? landscapeBottomRailWidth + toolbarCanvasGap
+                  : 0.0;
+              final bottomPanelUsesSideRail =
+                  useLandscapeSideRails &&
+                  _activeInlineMode == _BottomInlineMode.none &&
+                  !_isCropMode &&
+                  !_isAdjustMode &&
+                  !_isPhotoEraserMode &&
+                  !_isPhotoStretchMode &&
+                  !_isContentAwareMode &&
+                  !_isPhotoCloneMode &&
+                  !_isDrawBrushMode &&
+                  !_isLayerMaskBrushMode &&
+                  !_showTextControls;
+              final selectedLayerCanEdit =
+                  _selectedLayerId != null && !_isSelectedLayerLocked;
+              final reservedTopInset = useLandscapeSideRails
+                  ? 0.0
+                  : 4 + _topBarHeight + toolbarCanvasGap;
+              final reservedBottomInset = useLandscapeSideRails
+                  ? 0.0
+                  : floatingBottom +
+                        visibleBottomToolsHeight +
+                        toolbarCanvasGap;
+              final workspaceHeight = math.max(
+                canvasSize.height - reservedTopInset - reservedBottomInset,
+                0.0,
+              );
+              final workspaceWidth = math.max(
+                canvasSize.width - landscapeLeftInset - landscapeRightInset,
+                0.0,
+              );
+              final workspaceSize = Size(workspaceWidth, workspaceHeight);
+              _lastCanvasSize = workspaceSize;
+              final hasPageSelection = (_pageAspectRatio ?? 0) > 0;
+              final pageSize = hasPageSelection
+                  ? _fitPageSize(
+                      workspaceSize: workspaceSize,
+                      aspectRatio: _pageAspectRatio!,
+                      preferFullWidth: widget.preferFullWidthCanvas,
+                      forceFullWidth: _pageAspectRatioAutoFromImage,
+                    )
+                  : workspaceSize;
 
-            if (_templateDocument != null &&
-                !_isTemplateHydrated &&
-                !_templateHydrationScheduled &&
-                !_isTemplateHydrationInProgress &&
-                pageSize.width > 0 &&
-                pageSize.height > 0) {
-              _templateHydrationScheduled = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _templateHydrationScheduled = false;
-                final document = _templateDocument;
-                if (document == null) {
-                  return;
-                }
-                unawaited(
-                  _hydrateTemplateDocument(
-                    document: document,
-                    pageSize: pageSize,
-                  ),
-                );
-              });
-            }
+              if (_templateDocument != null &&
+                  !_isTemplateHydrated &&
+                  !_templateHydrationScheduled &&
+                  !_isTemplateHydrationInProgress &&
+                  pageSize.width > 0 &&
+                  pageSize.height > 0) {
+                _templateHydrationScheduled = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _templateHydrationScheduled = false;
+                  final document = _templateDocument;
+                  if (document == null) {
+                    return;
+                  }
+                  unawaited(
+                    _hydrateTemplateDocument(
+                      document: document,
+                      pageSize: pageSize,
+                    ),
+                  );
+                });
+              }
 
-            return Stack(
-              children: <Widget>[
-                const Positioned.fill(
-                  child: IgnorePointer(
-                    child: ColoredBox(color: _editorCanvasBackdrop),
-                  ),
-                ),
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    key: _stageRepaintKey,
-                    child: _CanvasWorkspace(
-                      layers: _layers,
-                      selectedLayerId: _selectedLayerId,
-                      canvasBackgroundColor: _canvasBackgroundColor,
-                      canvasBackgroundGradientIndex:
-                          _canvasBackgroundGradientIndex,
-                      stageBackgroundImageBytes: _stageBackgroundImageBytes,
-                      backgroundBlurAmount: _backgroundBlurAmount,
-                      borderStyle: _borderStyle,
-                      borderTargetLayerId: _borderTargetLayerId,
-                      canvasSize: canvasSize,
-                      pageAspectRatio: _pageAspectRatio,
-                      hideAutoPageFrame: _pageAspectRatioAutoFromImage,
-                      topInset: reservedTopInset,
-                      bottomInset: reservedBottomInset,
-                      transformationController: _transformationController,
-                      onLayerSelected: _handleLayerSelected,
-                      onSelectedLayerInteractionStart:
-                          _handleSelectedLayerInteractionStart,
-                      onSelectedLayerScaleUpdate:
-                          _handleSelectedLayerScaleUpdate,
-                      onSelectedLayerInteractionEnd:
-                          _handleSelectedLayerInteractionEnd,
-                      onSelectedTransformHandlePointerDown:
-                          _handleSelectedTransformHandlePointerDown,
-                      onSelectedStickerHandleStart:
-                          _handleSelectedStickerHandleStart,
-                      onSelectedStickerHandleUpdate:
-                          _handleSelectedStickerHandleUpdate,
-                      onSelectedStickerHandleEnd:
-                          _handleSelectedStickerHandleEnd,
-                      onSelectedLayerDoubleTap: _resetSelectedLayerToFit,
-                      onSelectedTextTap: _handleSelectedTextTap,
-                      onSelectedTextDoubleTap: _handleSelectedTextDoubleTap,
-                      onSelectedTextPointerDown: _startSelectedTextLongPress,
-                      onSelectedTextPointerMove: _updateSelectedTextLongPress,
-                      onSelectedTextPointerCancel: _cancelSelectedTextLongPress,
-                      isPhotoEraserMode: _isPhotoEraserMode,
-                      onPhotoEraserStart: _handlePhotoEraserStart,
-                      onPhotoEraserUpdate: _handlePhotoEraserUpdate,
-                      onPhotoEraserEnd: _handlePhotoEraserEnd,
-                      onCanvasTapDown: _isCropMode
-                          ? (
-                              Offset _,
-                              Rect pageRectIgnored,
-                              Size pageSizeIgnored,
-                            ) {}
-                          : _handleCanvasTapDown,
-                      onCanvasTap: _isCropMode ? () {} : _handleCanvasTap,
-                      showCanvasBackground: !_isTransparentExportCapture,
-                      photoBrightnessForLayer: _effectivePhotoBrightness,
-                      photoContrastForLayer: _effectivePhotoContrast,
-                      photoSaturationForLayer: _effectivePhotoSaturation,
-                      photoBlurForLayer: _effectivePhotoBlur,
-                      showSelectionDecorations:
-                          !_isCropMode &&
-                          !_isPhotoEraserMode &&
-                          !_isExporting &&
-                          !_isCapturingStage,
-                      showPageFramePreview: !_isExporting && !_isCapturingStage,
-                      snapGuideListenable: _snapGuideNotifier,
-                      snapGuidesEnabled: !_isCropMode && !_isCapturingStage,
-                      selectedPhotoRenderListenable:
-                          _selectedPhotoRenderNotifier,
-                      eraserPreviewListenable: _eraserPreviewNotifier,
-                      preferFullWidthPage: widget.preferFullWidthCanvas,
+              return Stack(
+                children: <Widget>[
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(color: _editorCanvasBackdrop),
                     ),
                   ),
-                ),
-                if (_isCropMode && _cropSessionImageBytes != null)
+                  Positioned(
+                    left: landscapeLeftInset,
+                    right: landscapeRightInset,
+                    top: 0,
+                    bottom: 0,
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: _handleWorkspacePointerDown,
+                      onPointerMove: _handleWorkspacePointerMove,
+                      onPointerUp: _handleWorkspacePointerEnd,
+                      onPointerCancel: _handleWorkspacePointerEnd,
+                      child: IgnorePointer(
+                        ignoring: _isWorkspacePinching,
+                        child: AnimatedContainer(
+                          transform: Matrix4.identity()
+                            ..translateByDouble(
+                              _workspacePan.dx,
+                              _workspacePan.dy,
+                              0,
+                              1,
+                            )
+                            ..scaleByDouble(
+                              _workspaceZoom,
+                              _workspaceZoom,
+                              1,
+                              1,
+                            ),
+                          transformAlignment: Alignment.center,
+                          duration: _isWorkspacePinching
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          child: RepaintBoundary(
+                            key: _stageRepaintKey,
+                            child: _CanvasWorkspace(
+                              layers: _layers,
+                              selectedLayerId: _selectedLayerId,
+                              canvasBackgroundColor: _canvasBackgroundColor,
+                              canvasBackgroundGradientIndex:
+                                  _canvasBackgroundGradientIndex,
+                              stageBackgroundImageBytes:
+                                  _stageBackgroundImageBytes,
+                              backgroundBlurAmount: _backgroundBlurAmount,
+                              borderStyle: _borderStyle,
+                              borderWidth: _borderWidth,
+                              borderRadius: _borderRadius,
+                              borderColor: _borderColor,
+                              borderTargetLayerId: _borderTargetLayerId,
+                              canvasSize: workspaceSize,
+                              pageAspectRatio: _pageAspectRatio,
+                              hideAutoPageFrame: _pageAspectRatioAutoFromImage,
+                              showTransparentCheckerboard:
+                                  (widget.initialDesignImportPath ?? '')
+                                      .trim()
+                                      .isEmpty,
+                              topInset: reservedTopInset,
+                              bottomInset: reservedBottomInset,
+                              viewportScale: _workspaceZoom,
+                              transformationController:
+                                  _transformationController,
+                              onLayerSelected: _autoSelectCanvasLayer
+                                  ? _handleLayerSelected
+                                  : (_) {},
+                              onSelectedLayerInteractionStart:
+                                  _handleSelectedLayerInteractionStart,
+                              onSelectedLayerScaleUpdate:
+                                  _handleSelectedLayerScaleUpdate,
+                              onSelectedLayerInteractionEnd:
+                                  _handleSelectedLayerInteractionEnd,
+                              onSelectedTransformHandlePointerDown:
+                                  _handleSelectedTransformHandlePointerDown,
+                              onSelectedStickerHandleStart:
+                                  _handleSelectedStickerResizeHandleStart,
+                              onSelectedStickerHandleUpdate:
+                                  _handleSelectedStickerResizeHandleUpdate,
+                              onSelectedObjectHorizontalResizeHandleStart:
+                                  _handleSelectedObjectHorizontalResizeHandleStart,
+                              onSelectedObjectHorizontalResizeHandleUpdate:
+                                  _handleSelectedObjectHorizontalResizeHandleUpdate,
+                              onSelectedObjectVerticalResizeHandleStart:
+                                  _handleSelectedObjectVerticalResizeHandleStart,
+                              onSelectedObjectVerticalResizeHandleUpdate:
+                                  _handleSelectedObjectVerticalResizeHandleUpdate,
+                              onSelectedStickerRotateHandleStart:
+                                  _handleSelectedStickerRotateHandleStart,
+                              onSelectedStickerRotateHandleUpdate:
+                                  _handleSelectedStickerRotateHandleUpdate,
+                              onSelectedTextResizeHandleStart:
+                                  _handleSelectedTextResizeHandleStart,
+                              onSelectedTextResizeHandleUpdate:
+                                  _handleSelectedTextResizeHandleUpdate,
+                              onSelectedTextRotateHandleStart:
+                                  _handleSelectedTextRotateHandleStart,
+                              onSelectedTextRotateHandleUpdate:
+                                  _handleSelectedTextRotateHandleUpdate,
+                              onSelectedTextStretchHandleStart:
+                                  _handleSelectedTextStretchHandleStart,
+                              onSelectedTextStretchHandleUpdate:
+                                  _handleSelectedTextStretchHandleUpdate,
+                              onSelectedStickerHandleEnd:
+                                  _handleSelectedStickerHandleEnd,
+                              onSelectedLayerDoubleTap:
+                                  _resetSelectedLayerToFit,
+                              onSelectedTextTap: _handleSelectedTextTap,
+                              onSelectedTextDoubleTap:
+                                  _handleSelectedTextDoubleTap,
+                              onSelectedTextPointerDown:
+                                  _startSelectedTextLongPress,
+                              onSelectedTextPointerMove:
+                                  _updateSelectedTextLongPress,
+                              onSelectedTextPointerCancel:
+                                  _cancelSelectedTextLongPress,
+                              inlineTextController: _selectedTextController,
+                              inlineTextFocusNode: _selectedTextFocusNode,
+                              isInlineTextEditing: _isInlineTextEditing,
+                              onInlineTextChanged: _handleSelectedTextChanged,
+                              onInlineTextEditingComplete: () {
+                                _selectedTextFocusNode.unfocus();
+                              },
+                              isPhotoEraserMode: _isPhotoEraserMode,
+                              isPhotoStretchMode: _isPhotoStretchMode,
+                              isContentAwareMode: _isContentAwareMode,
+                              isPhotoCloneMode: _isPhotoCloneMode,
+                              isLayerMaskBrushMode: _isLayerMaskBrushMode,
+                              isDrawBrushMode: _isDrawBrushMode,
+                              onPhotoEraserStart: _handlePhotoEraserStart,
+                              onPhotoEraserUpdate: _handlePhotoEraserUpdate,
+                              onPhotoEraserEnd: _handlePhotoEraserEnd,
+                              onPhotoEraserCancel: _cancelPhotoEraserStroke,
+                              onContentAwareStart: _handleContentAwareStart,
+                              onContentAwareUpdate: _handleContentAwareUpdate,
+                              onContentAwareEnd: () =>
+                                  unawaited(_handleContentAwareEnd()),
+                              onContentAwareCancel: _cancelContentAwareStroke,
+                              onPhotoCloneSourceTap: _handlePhotoCloneSourceTap,
+                              onPhotoCloneStart: _handlePhotoCloneStart,
+                              onPhotoCloneUpdate: _handlePhotoCloneUpdate,
+                              onPhotoCloneEnd: () =>
+                                  unawaited(_handlePhotoCloneEnd()),
+                              onPhotoCloneCancel: _cancelPhotoCloneStroke,
+                              onPhotoStretchStart: _handlePhotoStretchStart,
+                              onPhotoStretchUpdate: _handlePhotoStretchUpdate,
+                              onPhotoStretchEnd: () =>
+                                  unawaited(_handlePhotoStretchEnd()),
+                              onPhotoStretchCancel: _cancelPhotoStretchStroke,
+                              onLayerMaskBrushStart: _handleLayerMaskBrushStart,
+                              onLayerMaskBrushUpdate:
+                                  _handleLayerMaskBrushUpdate,
+                              onLayerMaskBrushEnd: _handleLayerMaskBrushEnd,
+                              onLayerMaskBrushCancel:
+                                  _cancelLayerMaskBrushStroke,
+                              onDrawBrushStart: _handleDrawBrushStart,
+                              onDrawBrushUpdate: _handleDrawBrushUpdate,
+                              onDrawBrushEnd: _handleDrawBrushEnd,
+                              onCanvasTapDown: _isCropMode
+                                  ? (
+                                      Offset _,
+                                      Rect pageRectIgnored,
+                                      Size pageSizeIgnored,
+                                    ) {}
+                                  : _handleCanvasTapDown,
+                              onCanvasLongPressStart: _isCropMode
+                                  ? (
+                                      Offset globalPositionIgnored,
+                                      Offset localPositionIgnored,
+                                      Rect pageRectIgnored,
+                                      Size pageSizeIgnored,
+                                    ) {}
+                                  : _handleCanvasLongPressStart,
+                              onCanvasTap: _isCropMode
+                                  ? () {}
+                                  : _handleCanvasTap,
+                              routeCanvasGesturesToSelectedLayer:
+                                  !_autoSelectCanvasLayer &&
+                                  selectedLayerCanEdit &&
+                                  _showSelectedLayerHandles &&
+                                  !_isCropMode &&
+                                  !_isPhotoEraserMode &&
+                                  !_isPhotoStretchMode &&
+                                  !_isContentAwareMode &&
+                                  !_isPhotoCloneMode &&
+                                  !_isLayerMaskBrushMode &&
+                                  !_isDrawBrushMode &&
+                                  !_isPhotoMaskPositionMode &&
+                                  !_isMagicWandMode &&
+                                  !_isTextPlacementMode &&
+                                  !_isInlineTextEditing,
+                              showCanvasBackground:
+                                  !_isTransparentExportCapture,
+                              photoBrightnessForLayer:
+                                  _effectivePhotoBrightness,
+                              photoContrastForLayer: _effectivePhotoContrast,
+                              photoSaturationForLayer:
+                                  _effectivePhotoSaturation,
+                              photoBlurForLayer: _effectivePhotoBlur,
+                              photoSharpenForLayer: _effectivePhotoSharpen,
+                              photoGrainForLayer: _effectivePhotoGrain,
+                              photoVignetteForLayer: _effectivePhotoVignette,
+                              photoMotionForLayer: _effectivePhotoMotion,
+                              photoTiltShiftForLayer: _effectivePhotoTiltShift,
+                              photoShadowsForLayer: _effectivePhotoShadows,
+                              photoHighlightsForLayer:
+                                  _effectivePhotoHighlights,
+                              photoTemperatureForLayer:
+                                  _effectivePhotoTemperature,
+                              photoTintForLayer: _effectivePhotoTint,
+                              showSelectionDecorations:
+                                  _showSelectedLayerHandles &&
+                                  !_isCropMode &&
+                                  !_isPhotoEraserMode &&
+                                  !_isContentAwareMode &&
+                                  !_isPhotoCloneMode &&
+                                  !_isLayerMaskBrushMode &&
+                                  !_isDrawBrushMode &&
+                                  !_isExporting &&
+                                  !_isCapturingStage &&
+                                  !_isLayerInteracting &&
+                                  !_isWorkspacePinching,
+                              showPageFramePreview:
+                                  !_isExporting && !_isCapturingStage,
+                              snapGuideListenable: _snapGuideNotifier,
+                              snapGuidesEnabled:
+                                  !_isCropMode &&
+                                  !_isCapturingStage &&
+                                  !_isWorkspacePinching,
+                              selectedPhotoRenderListenable:
+                                  _selectedPhotoRenderNotifier,
+                              eraserPreviewListenable: _eraserPreviewNotifier,
+                              stretchPreviewListenable: _stretchPreviewNotifier,
+                              drawPreviewListenable: _drawPreviewNotifier,
+                              exportHighQuality: _isCapturingStage,
+                              preferFullWidthPage: widget.preferFullWidthCanvas,
+                              forceFullWidthPage: _pageAspectRatioAutoFromImage,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_isCropMode && _cropSessionImageBytes != null)
+                    Positioned.fill(
+                      child: _CropSessionOverlay(
+                        boundaryKey: _cropBoundaryKey,
+                        imageBytes: _cropSessionImageBytes!,
+                        controller: _cropTransformationController,
+                        topInset: reservedTopInset,
+                        bottomInset: reservedBottomInset,
+                        aspectRatio:
+                            _cropSessionAspectRatio ??
+                            (_selectedLayer?.photoAspectRatio ??
+                                _pageAspectRatio),
+                      ),
+                    ),
+                  Positioned(
+                    left: 8,
+                    right: useLandscapeSideRails ? null : 8,
+                    top: 4,
+                    bottom: useLandscapeSideRails ? 4 : null,
+                    width: useLandscapeSideRails ? landscapeTopRailWidth : null,
+                    child: RepaintBoundary(
+                      child: _TopBar(
+                        height: useLandscapeSideRails
+                            ? canvasSize.height - 8
+                            : _topBarHeight,
+                        vertical: useLandscapeSideRails,
+                        onUndoTap: _handleUndo,
+                        onRedoTap: _handleRedo,
+                        onDraftsTap: _openDraftsScreen,
+                        onShareTap: _handleShareTap,
+                        onDownloadTap: _handleDownloadTap,
+                        onExportTap: _handleExportTap,
+                        onDeleteTap: _handleDeleteSelectedLayer,
+                        onDuplicateTap: _handleDuplicateSelectedLayer,
+                        onBringFrontTap: _moveSelectedLayerToFront,
+                        onSendBackTap: _moveSelectedLayerToBack,
+                        onLayersTap: _openLayersAdvancedOverlay,
+                        onUniversalLayerStyleTap: () =>
+                            unawaited(_openUniversalLayerStyleSheet()),
+                        autoSelectCanvasLayer: _autoSelectCanvasLayer,
+                        onAutoSelectCanvasLayerTap:
+                            _toggleCanvasAutoSelectLayer,
+                        selectionHandlesVisible: _showSelectedLayerHandles,
+                        onSelectLayerTap: _showSelectedLayerSelection,
+                        onShowMainToolsTap: _clearSelection,
+                        onAlignHorizontalCenterTap:
+                            _alignSelectedLayerHorizontalCenter,
+                        onAlignVerticalCenterTap:
+                            _alignSelectedLayerVerticalCenter,
+                        canUndo: _canUndo,
+                        canRedo: _canRedo,
+                        isSharing: _isSharing,
+                        isExporting: _isExporting,
+                        canDelete: selectedLayerCanEdit,
+                        canDuplicate: selectedLayerCanEdit,
+                        canBringFront:
+                            selectedLayerCanEdit &&
+                            _selectedLayerIndex != -1 &&
+                            _selectedLayerIndex < _layers.length - 1,
+                        canSendBack:
+                            selectedLayerCanEdit && _selectedLayerIndex > 0,
+                        canAlignSelectedLayer: selectedLayerCanEdit,
+                        hasSelectedTextLayer: _hasSelectedEditableTextLayer,
+                        hasSelectedPhotoLayer:
+                            _hasSelectedPhotoLayer &&
+                            !_hasSelectedEditableTextLayer &&
+                            selectedLayerCanEdit,
+                        hasSelectedStickerLayer:
+                            (_selectedLayer?.isSticker ?? false) &&
+                            selectedLayerCanEdit,
+                        isBorderToolActive:
+                            _activeInlineMode == _BottomInlineMode.border,
+                        activeBorderStyle: _borderStyle,
+                        activeBorderColor: _borderColor,
+                        activeTextToolTab: _activeTextToolTab,
+                        activeMainToolLabel: _activeMainToolLabel,
+                        selectedLayer: _selectedLayer,
+                        savedEffectPresets: _savedTextEffectPresets,
+                        copiedTextEffect: _copiedTextEffect,
+                        onTextEditTap: _handleSelectedTextEditButtonTap,
+                        onTextStyleTap: () =>
+                            unawaited(_handleTextStyleQuickTap()),
+                        onTextFontTap: () =>
+                            unawaited(_handleTextFontQuickTap()),
+                        onTextColorTap: () =>
+                            unawaited(_handleTextColorQuickTap()),
+                        onTextEffectsTap: _handleTextEffectsQuickTap,
+                        onTextAlignLeftTap: () =>
+                            _setSelectedTextAlignment(TextAlign.left),
+                        onTextAlignCenterTap: () =>
+                            _setSelectedTextAlignment(TextAlign.center),
+                        onTextAlignRightTap: () =>
+                            _setSelectedTextAlignment(TextAlign.right),
+                        onEffectPresetSelected: _applySelectedTextEffectPreset,
+                        onCopyTextEffect: _copySelectedTextEffect,
+                        onPasteTextEffect: _pasteCopiedTextEffect,
+                        onSaveTextEffectPreset: _saveSelectedTextEffectPreset,
+                        onSavedTextEffectPresetSelected:
+                            _applySavedTextEffectPreset,
+                        onPhotoCropTap: () => unawaited(_handleCropPhotoTap()),
+                        onPhotoFitTap: _resetSelectedLayerToFit,
+                        onPhotoEraserTap: _activatePhotoEraserMode,
+                        onPhotoContentAwareTap: _activateContentAwareMode,
+                        onPhotoAdjustTap: _openAdjustPanel,
+                        onPhotoRetouchTap: () => unawaited(
+                          _openSelectedPhotoRetouchTool().whenComplete(
+                            _restoreSelectedLayerToolContext,
+                          ),
+                        ),
+                        onPhotoRemoveBgTap: () =>
+                            unawaited(_handleRemoveBackgroundTap()),
+                        onPhotoStyleTap: () =>
+                            unawaited(_openSelectedPhotoStyleOverlay()),
+                        onPhotoFlipHorizontalTap: _flipSelectedPhotoHorizontal,
+                        onPhotoFlipVerticalTap: _flipSelectedPhotoVertical,
+                        onPhotoMaskTap: () =>
+                            unawaited(_openPhotoMaskPickerOverlay()),
+                        onPhotoPerspectiveTap: () =>
+                            unawaited(_openSelectedPhotoPerspectiveOverlay()),
+                        onPhotoCloneTap: _activatePhotoCloneMode,
+                        onPhotoStretchTap: _activatePhotoStretchMode,
+                        onPhotoSelectionTap: () =>
+                            unawaited(_openSelectedPhotoSelectionTool()),
+                        onSelectedRotate90Tap: _rotateSelectedLayer90Degrees,
+                        onStickerColorTap: () =>
+                            unawaited(_openStickerColorPickerOverlay()),
+                        onFrameColorTap: () =>
+                            unawaited(_openSelectedFrameColorPickerOverlay()),
+                        onBorderColorTap: () =>
+                            unawaited(_openBorderColorPickerOverlay()),
+                        onBorderRemoveTap: () =>
+                            _applyBorderStyle(_BorderStyle.none),
+                      ),
+                    ),
+                  ),
+                  if (_isCropMode) const SizedBox.shrink(),
+                  if (!_isKeyboardVisible && !useLandscapeSideRails)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: _EditorBottomBannerAd(
+                        onHeightChanged: (height) {
+                          if ((_editorBannerHeight - height).abs() < 0.5 ||
+                              !mounted) {
+                            return;
+                          }
+                          setState(() {
+                            _editorBannerHeight = height;
+                          });
+                        },
+                      ),
+                    ),
+                  Positioned(
+                    left: bottomPanelUsesSideRail ? null : 0,
+                    right: 0,
+                    top: bottomPanelUsesSideRail ? 4 : null,
+                    bottom: bottomPanelUsesSideRail ? 4 : floatingBottom,
+                    width: bottomPanelUsesSideRail
+                        ? landscapeBottomRailWidth
+                        : null,
+                    child: RepaintBoundary(
+                      child: _EditorGlassSurface(
+                        borderRadius: BorderRadius.zero,
+                        surfaceColor: _editorChromeSurfaceStrong.withValues(
+                          alpha: 0.25,
+                        ),
+                        showBorder: false,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          reverseDuration: const Duration(milliseconds: 180),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                                final slide = Tween<Offset>(
+                                  begin: const Offset(0, 0.08),
+                                  end: Offset.zero,
+                                ).animate(animation);
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: slide,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                          child: _isCropMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'crop-inline-strip',
+                                  ),
+                                  child: _CropInlineStrip(
+                                    height: bottomToolsHeight,
+                                    isApplying: _isCropApplying,
+                                    selectedAspectRatio:
+                                        _cropSessionAspectRatio,
+                                    onBack: _discardCropSession,
+                                    onReset: _resetCropSession,
+                                    onApply: _applyCropSession,
+                                    onAspectRatioChanged: _setCropAspectRatio,
+                                  ),
+                                )
+                              : _isAdjustMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'adjust-inline-strip',
+                                  ),
+                                  child: _AdjustInlineStrip(
+                                    height: bottomToolsHeight,
+                                    sessionListenable: _adjustSessionNotifier,
+                                    onSessionChanged: _updateAdjustSessionState,
+                                    onBack: _discardAdjustSession,
+                                    onReset: _resetAdjustSession,
+                                    onApply: _applyAdjustSession,
+                                  ),
+                                )
+                              : _isPhotoEraserMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'photo-eraser-inline-strip',
+                                  ),
+                                  child: _PhotoEraserInlineStrip(
+                                    height: bottomToolsHeight,
+                                    brushSize: _eraserBrushSize,
+                                    hardness: _eraserHardness,
+                                    isBusy: _isCommitWorkerBusy,
+                                    onBack: _closePhotoEraserMode,
+                                    onBrushSizeChanged: (value) {
+                                      setState(() {
+                                        _eraserBrushSize = value;
+                                      });
+                                      _showEraserBrushCursorPreview();
+                                    },
+                                    onHardnessChanged: (value) {
+                                      setState(() {
+                                        _eraserHardness = value;
+                                      });
+                                      _showEraserBrushCursorPreview();
+                                    },
+                                  ),
+                                )
+                              : _isPhotoStretchMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'photo-stretch-inline-strip',
+                                  ),
+                                  child: _PhotoStretchInlineStrip(
+                                    height: bottomToolsHeight,
+                                    brushSize: _stretchBrushSize,
+                                    strength: _stretchStrength,
+                                    opacity: _stretchOpacity,
+                                    isBusy: _isCommitWorkerBusy,
+                                    onBack: _closePhotoStretchMode,
+                                    onBrushSizeChanged: (value) {
+                                      setState(() {
+                                        _stretchBrushSize = value;
+                                      });
+                                      _showStretchBrushCursorPreview();
+                                    },
+                                    onStrengthChanged: (value) {
+                                      setState(() {
+                                        _stretchStrength = value;
+                                      });
+                                      _showStretchBrushCursorPreview();
+                                    },
+                                    onOpacityChanged: (value) {
+                                      setState(() {
+                                        _stretchOpacity = value;
+                                      });
+                                      _showStretchBrushCursorPreview();
+                                    },
+                                  ),
+                                )
+                              : _isContentAwareMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'content-aware-inline-strip',
+                                  ),
+                                  child: _PhotoEraserInlineStrip(
+                                    height: bottomToolsHeight,
+                                    brushSize: _contentAwareBrushSize,
+                                    hardness: _contentAwareStrength,
+                                    isBusy: _isCommitWorkerBusy,
+                                    message:
+                                        'Tap or drag over an object to blend it into the background',
+                                    modeLabel: 'Content Aware',
+                                    onBack: _closeContentAwareMode,
+                                    onBrushSizeChanged: (value) {
+                                      setState(() {
+                                        _contentAwareBrushSize = value;
+                                      });
+                                      _showContentAwareBrushCursorPreview();
+                                    },
+                                    onHardnessChanged: (value) {
+                                      setState(() {
+                                        _contentAwareStrength = value;
+                                      });
+                                      _showContentAwareBrushCursorPreview();
+                                    },
+                                  ),
+                                )
+                              : _isPhotoCloneMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'photo-clone-inline-strip',
+                                  ),
+                                  child: _PhotoEraserInlineStrip(
+                                    height: bottomToolsHeight,
+                                    brushSize: _cloneBrushSize,
+                                    hardness: _cloneHardness,
+                                    isBusy: _isCommitWorkerBusy,
+                                    message: _cloneSourcePoint == null
+                                        ? 'Tap photo area to select clone source'
+                                        : 'Drag where you want to apply clone',
+                                    modeLabel: _cloneAligned
+                                        ? 'Aligned'
+                                        : 'Fixed',
+                                    hardnessLabel: 'Feather',
+                                    opacity: _cloneOpacity,
+                                    onModeToggle: () {
+                                      setState(() {
+                                        _cloneAligned = !_cloneAligned;
+                                        _cloneAlignedSampleOffset = null;
+                                      });
+                                      _showCloneBrushCursorPreview();
+                                    },
+                                    onBack: _closePhotoCloneMode,
+                                    onBrushSizeChanged: (value) {
+                                      setState(() {
+                                        _cloneBrushSize = value;
+                                      });
+                                      _showCloneBrushCursorPreview();
+                                    },
+                                    onHardnessChanged: (value) {
+                                      setState(() {
+                                        _cloneHardness = value;
+                                      });
+                                      _showCloneBrushCursorPreview();
+                                    },
+                                    onOpacityChanged: (value) {
+                                      setState(() {
+                                        _cloneOpacity = value;
+                                      });
+                                      _showCloneBrushCursorPreview();
+                                    },
+                                  ),
+                                )
+                              : _isDrawBrushMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'draw-live-inline-strip',
+                                  ),
+                                  child: _DrawLiveInlineStrip(
+                                    height: bottomToolsHeight,
+                                    enableBrushPresets:
+                                        _drawBrushPresetsEnabled,
+                                    brushPresets: _drawBrushPresets,
+                                    selectedBrush: _selectedDrawBrush,
+                                    brushMasks: _drawBrushMasks,
+                                    color: _drawColor,
+                                    hue: _drawHue,
+                                    brushSize: _drawBrushSize,
+                                    opacity: _drawOpacity,
+                                    canUndo: _drawStrokes.isNotEmpty,
+                                    canRedo: _drawRedoStrokes.isNotEmpty,
+                                    canApply: _drawStrokes.isNotEmpty,
+                                    onBack: _closeDrawBrushMode,
+                                    onApply: _applyDrawBrushStrokes,
+                                    onUndo: _undoDrawStroke,
+                                    onRedo: _redoDrawStroke,
+                                    onClear: _clearDrawStrokes,
+                                    onBrushSelected: _selectDrawBrushPreset,
+                                    onBlackTap: () =>
+                                        _setDrawBrushColor(Colors.black),
+                                    onWhiteTap: () =>
+                                        _setDrawBrushColor(Colors.white),
+                                    onHueChanged: _setDrawBrushHue,
+                                    onBrushSizeChanged: _setDrawBrushSize,
+                                    onOpacityChanged: _setDrawBrushOpacity,
+                                  ),
+                                )
+                              : _isLayerMaskBrushMode
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'layer-mask-brush-inline-strip',
+                                  ),
+                                  child: _PhotoEraserInlineStrip(
+                                    height: bottomToolsHeight,
+                                    brushSize: _layerMaskBrushSize,
+                                    hardness: _layerMaskBrushHardness,
+                                    isBusy: false,
+                                    message: _isLayerMaskBrushRestoreMode
+                                        ? 'Drag on layer to restore mask area'
+                                        : 'Drag on layer to hide mask area',
+                                    modeLabel: _isLayerMaskBrushRestoreMode
+                                        ? 'Restore'
+                                        : 'Hide',
+                                    onModeToggle:
+                                        _toggleLayerMaskBrushRestoreMode,
+                                    onBack: _closeLayerMaskBrushMode,
+                                    onBrushSizeChanged: (value) {
+                                      setState(() {
+                                        _layerMaskBrushSize = value;
+                                      });
+                                      _showLayerMaskBrushCursorPreview();
+                                    },
+                                    onHardnessChanged: (value) {
+                                      setState(() {
+                                        _layerMaskBrushHardness = value;
+                                      });
+                                      _showLayerMaskBrushCursorPreview();
+                                    },
+                                  ),
+                                )
+                              : _activeInlineMode == _BottomInlineMode.layers
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'layers-inline-strip',
+                                  ),
+                                  child: _LayersInlineStrip(
+                                    height: bottomToolsHeight,
+                                    layers: _layers,
+                                    selectedLayerId: _selectedLayerId,
+                                    onBack: _closeInlineMode,
+                                    onSelectLayer: _handleLayerSelected,
+                                    onMoveToFront: _moveSelectedLayerToFront,
+                                    onMoveToBack: _moveSelectedLayerToBack,
+                                    onMoveForward: _moveSelectedLayerForwardOne,
+                                    onMoveBackward:
+                                        _moveSelectedLayerBackwardOne,
+                                    onDeleteSelected:
+                                        _handleDeleteSelectedLayer,
+                                  ),
+                                )
+                              : _activeInlineMode == _BottomInlineMode.border
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'border-inline-strip',
+                                  ),
+                                  child: _BorderInlineStrip(
+                                    height: bottomToolsHeight,
+                                    borderWidth: _borderWidth,
+                                    borderRadius: _borderRadius,
+                                    onBack: _closeInlineMode,
+                                    onWidthChangeStart: _beginBorderWidthEdit,
+                                    onWidthChanged: _setBorderWidth,
+                                    onWidthChangeEnd: _endBorderWidthEdit,
+                                    onRadiusChangeStart: _beginBorderRadiusEdit,
+                                    onRadiusChanged: _setBorderRadius,
+                                    onRadiusChangeEnd: _endBorderRadiusEdit,
+                                  ),
+                                )
+                              : _showTextControls
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'text-style-overlay',
+                                  ),
+                                  child: _buildTextStyleOverlay(
+                                    _textStyleBarHeight,
+                                  ),
+                                )
+                              : _activeBottomPrimaryTool ==
+                                    _BottomPrimaryTool.none
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>('main-strip'),
+                                  child: _EditorMainToolsStrip(
+                                    height: bottomToolsHeight,
+                                    vertical: bottomPanelUsesSideRail,
+                                    activeToolLabel: _activeMainToolLabel,
+                                    onPhotoTap: () => _openBottomPrimaryTool(
+                                      _BottomPrimaryTool.photo,
+                                      'Photo',
+                                    ),
+                                    onTextTap: _handleMainTextToolTap,
+                                    onBackgroundTap: () =>
+                                        _openBottomPrimaryTool(
+                                          _BottomPrimaryTool.background,
+                                          'Background',
+                                        ),
+                                    onEffectsTap: _openAdjustPanel,
+                                    onEraserTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Erase';
+                                      });
+                                      _activatePhotoEraserMode();
+                                    },
+                                    onContentAwareTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Content Aware';
+                                      });
+                                      _activateContentAwareMode();
+                                    },
+                                    onRetouchTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Retouch';
+                                      });
+                                      unawaited(
+                                        _openSelectedPhotoRetouchTool()
+                                            .whenComplete(
+                                              _restoreSelectedLayerToolContext,
+                                            ),
+                                      );
+                                    },
+                                    onRemoveBgTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Remove BG';
+                                      });
+                                      unawaited(_handleRemoveBackgroundTap());
+                                    },
+                                    onFitTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Fit';
+                                      });
+                                      if (_selectedLayerId != null &&
+                                          !_isSelectedLayerLocked) {
+                                        _resetSelectedLayerToFit();
+                                      } else {
+                                        _openBottomPrimaryTool(
+                                          _BottomPrimaryTool.background,
+                                          'Fit',
+                                        );
+                                      }
+                                    },
+                                    onDrawTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Draw';
+                                      });
+                                      _openDrawTool();
+                                    },
+                                    onBrushesTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Brushes';
+                                      });
+                                      _openBrushesTool();
+                                    },
+                                    onCalloutTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Callout';
+                                      });
+                                      unawaited(
+                                        _openStickerBrowserOverlay(
+                                          initialCategory: 'Callouts',
+                                        ),
+                                      );
+                                    },
+                                    onFramesTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Frames';
+                                      });
+                                      unawaited(_openFramePickerOverlay());
+                                    },
+                                    onReplayTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Replay';
+                                      });
+                                      unawaited(_openHistoryReplay());
+                                    },
+                                    onCropTap: _handleCropPhotoTap,
+                                    onStickersTap: () =>
+                                        unawaited(_openStickerBrowserOverlay()),
+                                    onShapesTap: () {
+                                      setState(() {
+                                        _activeMainToolLabel = 'Shapes';
+                                      });
+                                      unawaited(_openShapesBrowserOverlay());
+                                    },
+                                    onBorderTap: () => _openInlineMode(
+                                      _BottomInlineMode.border,
+                                    ),
+                                  ),
+                                )
+                              : KeyedSubtree(
+                                  key: ValueKey<String>(
+                                    'sub-strip_${_activeBottomPrimaryTool.name}',
+                                  ),
+                                  child: _EditorSubToolsStrip(
+                                    height: bottomToolsHeight,
+                                    vertical: bottomPanelUsesSideRail,
+                                    tool: _activeBottomPrimaryTool,
+                                    onBack: _closeBottomPrimaryTool,
+                                    onPhotoGalleryTap: _handleAddPhoto,
+                                    onPhotoCameraTap: _handleAddPhotoFromCamera,
+                                    onPhotoFileImportTap:
+                                        _handleImportDesignFile,
+                                    onPhotoMagicWandTap: _activateMagicWandMode,
+                                    onTextAddTap: _handleTextAddQuickTap,
+                                    onTextFontTap: _handleTextFontQuickTap,
+                                    onTextSizeTap: _handleTextSizeQuickTap,
+                                    onTextBackgroundTap:
+                                        _handleTextBackgroundQuickTap,
+                                    onBackgroundTransparentTap: () =>
+                                        _setCanvasBackgroundColor(
+                                          Colors.transparent,
+                                        ),
+                                    onBackgroundColorTap: () => unawaited(
+                                      _openBackgroundPickerOverlay(),
+                                    ),
+                                    onBackgroundGradientTap: () => unawaited(
+                                      _openBackgroundPickerOverlay(),
+                                    ),
+                                    onBackgroundImageTap: () async {
+                                      await _setCanvasBackgroundImage();
+                                    },
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
                   Positioned.fill(
-                    child: _CropSessionOverlay(
-                      boundaryKey: _cropBoundaryKey,
-                      imageBytes: _cropSessionImageBytes!,
-                      controller: _cropTransformationController,
-                      topInset: reservedTopInset,
-                      bottomInset: reservedBottomInset,
-                      aspectRatio:
-                          _cropSessionAspectRatio ??
-                          (_selectedLayer?.photoAspectRatio ??
-                              _pageAspectRatio),
-                    ),
-                  ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: RepaintBoundary(
-                    child: _TopBar(
-                      height: _topBarHeight,
-                      onUndoTap: _handleUndo,
-                      onRedoTap: _handleRedo,
-                      onDraftsTap: _openDraftsScreen,
-                      onShareTap: _handleShareTap,
-                      onExportTap: _handleExportTap,
-                      onDeleteTap: _handleDeleteSelectedLayer,
-                      onDuplicateTap: _handleDuplicateSelectedLayer,
-                      onBringFrontTap: _moveSelectedLayerToFront,
-                      onSendBackTap: _moveSelectedLayerToBack,
-                      onLayersTap: _openLayersAdvancedOverlay,
-                      onAlignHorizontalCenterTap:
-                          _alignSelectedLayerHorizontalCenter,
-                      onAlignVerticalCenterTap:
-                          _alignSelectedLayerVerticalCenter,
-                      canUndo: _canUndo,
-                      canRedo: _canRedo,
-                      isSharing: _isSharing,
-                      isExporting: _isExporting,
-                      canDelete: _selectedLayerId != null,
-                      canDuplicate: _selectedLayerId != null,
-                      canBringFront:
-                          _selectedLayerIndex != -1 &&
-                          _selectedLayerIndex < _layers.length - 1,
-                      canSendBack: _selectedLayerIndex > 0,
-                      canAlignSelectedLayer:
-                          _selectedLayerId != null && !_isSelectedLayerLocked,
-                    ),
-                  ),
-                ),
-                if (_isCropMode) const SizedBox.shrink(),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: RepaintBoundary(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      reverseDuration: const Duration(milliseconds: 180),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder:
-                          (Widget child, Animation<double> animation) {
-                            final slide = Tween<Offset>(
-                              begin: const Offset(0, 0.08),
-                              end: Offset.zero,
-                            ).animate(animation);
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: slide,
-                                child: child,
+                    child: ValueListenableBuilder<_EditorCommitState?>(
+                      valueListenable: _commitStateNotifier,
+                      builder:
+                          (
+                            BuildContext context,
+                            _EditorCommitState? commitState,
+                            Widget? child,
+                          ) {
+                            if (commitState == null) {
+                              return const SizedBox.shrink();
+                            }
+                            return AbsorbPointer(
+                              absorbing: true,
+                              child: _EditorCommitOverlay(
+                                label: commitState.label,
+                                detail: commitState.detail,
                               ),
                             );
                           },
-                      child: _isCropMode
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>('crop-inline-strip'),
-                              child: _CropInlineStrip(
-                                height: bottomToolsHeight,
-                                isApplying: _isCropApplying,
-                                selectedAspectRatio: _cropSessionAspectRatio,
-                                onBack: _discardCropSession,
-                                onReset: _resetCropSession,
-                                onApply: _applyCropSession,
-                                onAspectRatioChanged: _setCropAspectRatio,
-                              ),
-                            )
-                          : _isAdjustMode
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>(
-                                'adjust-inline-strip',
-                              ),
-                              child: _AdjustInlineStrip(
-                                height: bottomToolsHeight,
-                                sessionListenable: _adjustSessionNotifier,
-                                onSessionChanged: _updateAdjustSessionState,
-                                onBack: _discardAdjustSession,
-                                onReset: _resetAdjustSession,
-                                onApply: _applyAdjustSession,
-                              ),
-                            )
-                          : _isPhotoEraserMode
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>(
-                                'photo-eraser-inline-strip',
-                              ),
-                              child: _PhotoEraserInlineStrip(
-                                height: bottomToolsHeight,
-                                brushSize: _eraserBrushSize,
-                                hardness: _eraserHardness,
-                                isBusy: _isCommitWorkerBusy,
-                                onBack: _closePhotoEraserMode,
-                                onBrushSizeChanged: (value) {
-                                  setState(() {
-                                    _eraserBrushSize = value;
-                                  });
-                                },
-                                onHardnessChanged: (value) {
-                                  setState(() {
-                                    _eraserHardness = value;
-                                  });
-                                },
-                              ),
-                            )
-                          : _activeInlineMode == _BottomInlineMode.layers
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>(
-                                'layers-inline-strip',
-                              ),
-                              child: _LayersInlineStrip(
-                                height: bottomToolsHeight,
-                                layers: _layers,
-                                selectedLayerId: _selectedLayerId,
-                                onBack: _closeInlineMode,
-                                onSelectLayer: _handleLayerSelected,
-                                onMoveToFront: _moveSelectedLayerToFront,
-                                onMoveToBack: _moveSelectedLayerToBack,
-                                onMoveForward: _moveSelectedLayerForwardOne,
-                                onMoveBackward: _moveSelectedLayerBackwardOne,
-                                onDeleteSelected: _handleDeleteSelectedLayer,
-                              ),
-                            )
-                          : _activeInlineMode == _BottomInlineMode.border
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>(
-                                'border-inline-strip',
-                              ),
-                              child: _BorderInlineStrip(
-                                height: bottomToolsHeight,
-                                selectedStyle: _borderStyle,
-                                onBack: _closeInlineMode,
-                                onStyleTap: _applyBorderStyle,
-                              ),
-                            )
-                          : _activeInlineMode ==
-                                _BottomInlineMode.backgroundBlur
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>('blur-inline-strip'),
-                              child: _BackgroundBlurInlineStrip(
-                                height: bottomToolsHeight,
-                                value: _backgroundBlurAmount,
-                                enabled: _stageBackgroundImageBytes != null,
-                                onBack: _closeInlineMode,
-                                onValueTap: _setBackgroundBlur,
-                              ),
-                            )
-                          : _showTextControls
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>('text-style-overlay'),
-                              child: _buildTextStyleOverlay(
-                                _textStyleBarHeight,
-                              ),
-                            )
-                          : _activeBottomPrimaryTool == _BottomPrimaryTool.none
-                          ? KeyedSubtree(
-                              key: const ValueKey<String>('main-strip'),
-                              child: _EditorMainToolsStrip(
-                                height: bottomToolsHeight,
-                                activeToolLabel: _activeMainToolLabel,
-                                onPhotoTap: () => _openBottomPrimaryTool(
-                                  _BottomPrimaryTool.photo,
-                                  'Photo',
-                                ),
-                                onTextTap: _handleMainTextToolTap,
-                                onBackgroundTap: () => _openBottomPrimaryTool(
-                                  _BottomPrimaryTool.background,
-                                  'Background',
-                                ),
-                                onToolsTap: () => _openBottomPrimaryTool(
-                                  _BottomPrimaryTool.tools,
-                                  'Tools',
-                                ),
-                              ),
-                            )
-                          : KeyedSubtree(
-                              key: ValueKey<String>(
-                                'sub-strip_${_activeBottomPrimaryTool.name}',
-                              ),
-                              child: _EditorSubToolsStrip(
-                                height: bottomToolsHeight,
-                                tool: _activeBottomPrimaryTool,
-                                onBack: _closeBottomPrimaryTool,
-                                onPhotoGalleryTap: _handleAddPhoto,
-                                onPhotoCameraTap: _handleAddPhotoFromCamera,
-                                onPhotoRemoveBgTap: _handleRemoveBackgroundTap,
-                                onPhotoMagicWandTap: _activateMagicWandMode,
-                                onPhotoEraserTap: _activatePhotoEraserMode,
-                                onPhotoCropTap: _handleCropPhotoTap,
-                                onPhotoAdjustTap: _openAdjustPanel,
-                                onTextAddTap: _handleTextAddQuickTap,
-                                onTextEditTap: _handleTextEditQuickTap,
-                                onTextStyleTap: _handleTextStyleQuickTap,
-                                onTextColorTap: _handleTextColorQuickTap,
-                                onTextFontTap: _handleTextFontQuickTap,
-                                onBackgroundWhiteTap: () =>
-                                    _setCanvasBackgroundColor(
-                                      const Color(0xFFFFFFFF),
-                                    ),
-                                onBackgroundTransparentTap: () =>
-                                    _setCanvasBackgroundColor(
-                                      Colors.transparent,
-                                    ),
-                                onBackgroundColorTap: () =>
-                                    unawaited(_openBackgroundPickerOverlay()),
-                                onBackgroundGradientTap: () =>
-                                    unawaited(_openBackgroundPickerOverlay()),
-                                onBackgroundImageTap: () async {
-                                  await _setCanvasBackgroundImage();
-                                },
-                                onBackgroundBlurTap: () => _openInlineMode(
-                                  _BottomInlineMode.backgroundBlur,
-                                ),
-                                onToolsCropTap: _handleCropPhotoTap,
-                                onToolsLayersTap: _handleToolsLayersTap,
-                                onToolsStickersTap: () =>
-                                    unawaited(_openStickerBrowserOverlay()),
-                                onToolsBorderTap: () =>
-                                    _openInlineMode(_BottomInlineMode.border),
-                                onToolsFiltersTap: _openAdjustPanel,
-                              ),
-                            ),
                     ),
                   ),
-                ),
-                Positioned.fill(
-                  child: ValueListenableBuilder<_EditorCommitState?>(
-                    valueListenable: _commitStateNotifier,
-                    builder:
-                        (
-                          BuildContext context,
-                          _EditorCommitState? commitState,
-                          Widget? child,
-                        ) {
-                          if (commitState == null) {
-                            return const SizedBox.shrink();
-                          }
-                          return AbsorbPointer(
-                            absorbing: true,
-                            child: _EditorCommitOverlay(
-                              label: commitState.label,
-                              detail: commitState.detail,
-                            ),
-                          );
-                        },
-                  ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorBottomBannerAd extends StatefulWidget {
+  const _EditorBottomBannerAd({required this.onHeightChanged});
+
+  final ValueChanged<double> onHeightChanged;
+
+  @override
+  State<_EditorBottomBannerAd> createState() => _EditorBottomBannerAdState();
+}
+
+class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
+  static const String _androidTestBannerId =
+      'ca-app-pub-3940256099942544/9214589741';
+
+  BannerAd? _bannerAd;
+  AdSize? _adSize;
+  bool _loadAttempted = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loadAttempted) {
+      return;
+    }
+    _loadAttempted = true;
+    unawaited(_loadBanner());
+  }
+
+  Future<void> _loadBanner() async {
+    if (kIsWeb ||
+        !Platform.isAndroid ||
+        !AppPublicInfo.hasEditorBannerAdUnitId ||
+        !await AdMobConsentService.instance.canRequestAds()) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    final width = MediaQuery.sizeOf(context).width.truncate();
+    final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+      width,
+    );
+    if (!mounted || size == null) {
+      return;
+    }
+    final banner = BannerAd(
+      adUnitId: kDebugMode
+          ? _androidTestBannerId
+          : AppPublicInfo.adMobEditorBannerAdUnitId,
+      request: const AdRequest(),
+      size: size,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _bannerAd = ad as BannerAd;
+            _adSize = size;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              widget.onHeightChanged(size.height.toDouble() + 7);
+            }
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          if (mounted) {
+            widget.onHeightChanged(0);
+          }
+        },
+      ),
+    );
+    await banner.load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final banner = _bannerAd;
+    final size = _adSize;
+    if (banner == null || size == null) {
+      return const SizedBox.shrink();
+    }
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFCBD5E1))),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Center(
+          child: SizedBox(
+            width: size.width.toDouble(),
+            height: size.height.toDouble(),
+            child: AdWidget(ad: banner),
+          ),
         ),
       ),
     );

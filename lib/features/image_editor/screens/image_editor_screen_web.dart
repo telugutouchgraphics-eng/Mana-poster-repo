@@ -14,6 +14,8 @@ class ImageEditorScreen extends StatelessWidget {
     this.templateDocumentSource,
     this.initialPosterProfile,
     this.initialPersonalizationConfig,
+    this.initialDesignImportPath,
+    this.initialDraft,
   });
 
   final EditorPageConfig? pageConfig;
@@ -21,6 +23,8 @@ class ImageEditorScreen extends StatelessWidget {
   final String? templateDocumentSource;
   final PosterProfileData? initialPosterProfile;
   final CreatorPosterPersonalization? initialPersonalizationConfig;
+  final String? initialDesignImportPath;
+  final Map<String, dynamic>? initialDraft;
 
   @override
   Widget build(BuildContext context) {

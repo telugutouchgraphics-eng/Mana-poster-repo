@@ -4,7 +4,9 @@ class TeluguLegacyOfflineConverter {
   TeluguLegacyOfflineConverter._();
 
   static final RegExp _teluguPattern = RegExp(r'[\u0C00-\u0C7F]');
+  static final RegExp _legacyGlyphPattern = RegExp(r'[\uE000-\uF8FF]');
   static _LegacyMapping? _mapping;
+  static _ReverseLegacyMapping? _reverseMapping;
 
   static String convert(String text) {
     final normalized = _normalize(text);
@@ -40,13 +42,17 @@ class TeluguLegacyOfflineConverter {
       final next = i + 1 < runes.length ? runes[i + 1] : null;
       if (next == _virama) {
         final extensionCode = i + 2 < runes.length ? runes[i + 2] : null;
-        final vowelSignAfterExtension = i + 3 < runes.length ? runes[i + 3] : null;
-        final extension = extensionCode == null ? null : mapping.extensions[extensionCode];
+        final vowelSignAfterExtension = i + 3 < runes.length
+            ? runes[i + 3]
+            : null;
+        final extension = extensionCode == null
+            ? null
+            : mapping.extensions[extensionCode];
         if (extensionCode != null &&
             extension != null &&
             _isExtensionTrailingSign(vowelSignAfterExtension)) {
-          final symbol = consonant.symbols[vowelSignAfterExtension!] ??
-              consonant.base;
+          final symbol =
+              consonant.symbols[vowelSignAfterExtension!] ?? consonant.base;
           final combined = extensionCode == _ra
               ? <int>[...extension, ...symbol]
               : <int>[...symbol, ...extension];
@@ -85,6 +91,86 @@ class TeluguLegacyOfflineConverter {
     return out.toString();
   }
 
+  static String reverseConvert(String text) {
+    final normalized = _normalize(text);
+    if (normalized.isEmpty || !_legacyGlyphPattern.hasMatch(normalized)) {
+      return normalized;
+    }
+    final reverse = _loadReverseMapping();
+    final direct = _decodeLegacyText(normalized, reverse, promoteAscii: false);
+    final promoted = _decodeLegacyText(normalized, reverse, promoteAscii: true);
+    final best = promoted.score > direct.score ? promoted : direct;
+    if (best.convertedGlyphs == 0 || !_teluguPattern.hasMatch(best.text)) {
+      return normalized;
+    }
+    return best.text;
+  }
+
+  static _LegacyDecodeResult _decodeLegacyText(
+    String normalized,
+    _ReverseLegacyMapping reverse, {
+    required bool promoteAscii,
+  }) {
+    final source = promoteAscii
+        ? _promotePsdAsciiLegacyGlyphs(normalized, reverse)
+        : _LegacyPromotedText(normalized, null);
+    final out = StringBuffer();
+    var index = 0;
+    var convertedGlyphs = 0;
+
+    while (index < source.text.length) {
+      String? replacement;
+      var matchedLength = 0;
+      for (final token in reverse.tokensByLength) {
+        if (index + token.length > source.text.length) {
+          continue;
+        }
+        if (source.text.startsWith(token, index)) {
+          replacement = reverse.values[token];
+          matchedLength = token.length;
+          break;
+        }
+      }
+      if (replacement != null && matchedLength > 0) {
+        out.write(replacement);
+        convertedGlyphs += matchedLength;
+        index += matchedLength;
+        continue;
+      }
+      out.write(source.originalCharAt(index));
+      index += 1;
+    }
+
+    final converted = out.toString();
+    return _LegacyDecodeResult(
+      converted,
+      convertedGlyphs,
+      _teluguPattern.allMatches(converted).length,
+    );
+  }
+
+  static _LegacyPromotedText _promotePsdAsciiLegacyGlyphs(
+    String text,
+    _ReverseLegacyMapping reverse,
+  ) {
+    final promoted = StringBuffer();
+    final originals = <String>[];
+    for (var index = 0; index < text.length; index += 1) {
+      final code = text.codeUnitAt(index);
+      if (code >= 0x21 && code <= 0x7E) {
+        final legacy = String.fromCharCode(0xF000 + code);
+        if (reverse.hasTokenGlyph(legacy)) {
+          promoted.write(legacy);
+          originals.add(text[index]);
+          continue;
+        }
+      }
+      promoted.write(text[index]);
+      originals.add(text[index]);
+    }
+    return _LegacyPromotedText(promoted.toString(), originals);
+  }
+
   static String _normalize(String text) {
     return text
         .replaceAll('\r\n', '\n')
@@ -105,15 +191,109 @@ class TeluguLegacyOfflineConverter {
     if (current != null) {
       return current;
     }
-    final decoded = jsonDecode(
-      utf8.decode(base64Decode(_mappingData)),
-    ) as Map<String, dynamic>;
+    final decoded =
+        jsonDecode(utf8.decode(base64Decode(_mappingData)))
+            as Map<String, dynamic>;
     _mapping = _LegacyMapping.fromJson(decoded);
     return _mapping!;
   }
 
+  static _ReverseLegacyMapping _loadReverseMapping() {
+    final current = _reverseMapping;
+    if (current != null) {
+      return current;
+    }
+    final values = <String, String>{};
+    void add(String legacy, String unicode) {
+      if (legacy.isEmpty || unicode.isEmpty || legacy == unicode) {
+        return;
+      }
+      values.putIfAbsent(legacy, () => unicode);
+    }
+
+    final mapping = _loadMapping();
+    for (final entry in mapping.vowels.entries) {
+      add(String.fromCharCodes(entry.value), String.fromCharCode(entry.key));
+    }
+    for (final entry in mapping.extensions.entries) {
+      add(String.fromCharCodes(entry.value), String.fromCharCode(entry.key));
+    }
+    for (final entry in mapping.consonants.entries) {
+      final consonantCode = entry.key;
+      final consonant = entry.value;
+      final base = String.fromCharCode(consonantCode);
+      add(String.fromCharCodes(consonant.base), base);
+      for (final symbolEntry in consonant.symbols.entries) {
+        final sign = symbolEntry.key;
+        final unicode = sign == _virama
+            ? String.fromCharCodes(<int>[consonantCode, _virama])
+            : String.fromCharCodes(<int>[consonantCode, sign]);
+        add(String.fromCharCodes(symbolEntry.value), unicode);
+      }
+      for (final sign in _vowelSigns) {
+        add(
+          convert('$base${String.fromCharCode(sign)}'),
+          '$base${String.fromCharCode(sign)}',
+        );
+      }
+    }
+
+    final consonants = mapping.consonants.keys.toList(growable: false);
+    final signs = <int?>[null, _virama, ..._vowelSigns];
+    for (final first in consonants) {
+      for (final second in consonants) {
+        for (final sign in signs) {
+          final codes = <int>[first, _virama, second];
+          if (sign != null) {
+            codes.add(sign);
+          }
+          final unicode = String.fromCharCodes(codes);
+          add(convert(unicode), unicode);
+        }
+      }
+    }
+    _addPsdLegacyAliases(add);
+
+    final tokens = values.keys.toList(growable: false)
+      ..sort((a, b) {
+        final lengthCompare = b.length.compareTo(a.length);
+        if (lengthCompare != 0) {
+          return lengthCompare;
+        }
+        return a.compareTo(b);
+      });
+    _reverseMapping = _ReverseLegacyMapping(values, tokens);
+    return _reverseMapping!;
+  }
+
+  static void _addPsdLegacyAliases(void Function(String, String) add) {
+    String legacy(List<int> codes) => String.fromCharCodes(codes);
+
+    add(legacy(<int>[0xF0BF, 0xF0A3, 0xF0D8]), 'క్క');
+    add(legacy(<int>[0xF0BF, 0xF0A3]), 'క');
+    add(legacy(<int>[0xF0BF, 0xF0B1]), 'కా');
+    add(legacy(<int>[0xF0BF, 0xF0EC, 0xF08C]), 'క్షి');
+    add(legacy(<int>[0xF0C5, 0xF0A3, 0xF094]), 'కు');
+    add(legacy(<int>[0xF073, 0xF0C1]), 'ర');
+  }
+
   static const int _virama = 0x0C4D;
   static const int _ra = 0x0C30;
+  static const List<int> _vowelSigns = <int>[
+    0x0C3E,
+    0x0C3F,
+    0x0C40,
+    0x0C41,
+    0x0C42,
+    0x0C43,
+    0x0C44,
+    0x0C46,
+    0x0C47,
+    0x0C48,
+    0x0C4A,
+    0x0C4B,
+    0x0C4C,
+  ];
 
   static const String _mappingData =
       'eyJ2b3dlbHMiOnsiMzA3NCI6WzYxNDgzXSwiMzA3NyI6WzYxNTUwXSwiMzA3OCI6WzYxNTY4XSwiMzA3OSI6WzYxNTcwXSwiMzA4'
@@ -271,6 +451,52 @@ class TeluguLegacyOfflineConverter {
       'WzYxNTI2LDYxNTk5LDYxNjE4LDYxNTczXSwiMzE0OSI6WzYxNTI2LDYxNTU2LDYxNjE4XX19fX0=';
 }
 
+class _ReverseLegacyMapping {
+  _ReverseLegacyMapping(this.values, this.tokensByLength)
+    : tokenGlyphs = _tokenGlyphs(tokensByLength);
+
+  final Map<String, String> values;
+  final List<String> tokensByLength;
+  final Set<String> tokenGlyphs;
+
+  bool hasTokenGlyph(String value) => tokenGlyphs.contains(value);
+
+  static Set<String> _tokenGlyphs(List<String> tokens) {
+    final glyphs = <String>{};
+    for (final token in tokens) {
+      for (var index = 0; index < token.length; index += 1) {
+        glyphs.add(token[index]);
+      }
+    }
+    return glyphs;
+  }
+}
+
+class _LegacyPromotedText {
+  const _LegacyPromotedText(this.text, this._originals);
+
+  final String text;
+  final List<String>? _originals;
+
+  String originalCharAt(int index) {
+    final originals = _originals;
+    if (originals == null || index < 0 || index >= originals.length) {
+      return text[index];
+    }
+    return originals[index];
+  }
+}
+
+class _LegacyDecodeResult {
+  const _LegacyDecodeResult(this.text, this.convertedGlyphs, this.teluguChars);
+
+  final String text;
+  final int convertedGlyphs;
+  final int teluguChars;
+
+  int get score => (convertedGlyphs * 4) + teluguChars;
+}
+
 class _LegacyMapping {
   const _LegacyMapping({
     required this.vowels,
@@ -334,10 +560,7 @@ class _LegacyMapping {
 }
 
 class _LegacyConsonant {
-  const _LegacyConsonant({
-    required this.base,
-    required this.symbols,
-  });
+  const _LegacyConsonant({required this.base, required this.symbols});
 
   final List<int> base;
   final Map<int, List<int>> symbols;

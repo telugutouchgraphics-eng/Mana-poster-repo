@@ -109,9 +109,9 @@ void main() {
             startMonth: 8,
             startDay: 15,
             title: DynamicLocalizedTitle(
-              telugu: 'à°ˆà°µà±†à°‚à°Ÿà±',
+              telugu: 'ఈవెంట్',
               english: 'Same Day Event',
-              hindi: 'à¤‡à¤µà¥‡à¤‚à¤Ÿ',
+              hindi: 'इवेंट',
             ),
           ),
         ]),

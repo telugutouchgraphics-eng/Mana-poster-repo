@@ -188,6 +188,45 @@ class MediaExportService {
     );
   }
 
+  static Future<MediaExportResult> saveFileToDownloadsDetailed(
+    String filePath, {
+    required String fileName,
+    required String mimeType,
+  }) async {
+    if (kIsWeb) {
+      return const MediaExportResult(
+        success: false,
+        code: 'unsupported_platform',
+        message: 'Downloads save is not supported on web.',
+      );
+    }
+    if (Platform.isAndroid) {
+      try {
+        final saved = await _channel.invokeMapMethod<dynamic, dynamic>(
+          'saveFileToDownloads',
+          <String, dynamic>{
+            'filePath': filePath,
+            'fileName': fileName,
+            'mimeType': mimeType,
+          },
+        );
+        return MediaExportResult.fromMap(saved);
+      } catch (error, stackTrace) {
+        _debugLogStack('saveFileToDownloads native error: $error', stackTrace);
+        return MediaExportResult(
+          success: false,
+          code: 'platform_exception',
+          message: error.toString(),
+        );
+      }
+    }
+    return const MediaExportResult(
+      success: false,
+      code: 'unsupported_platform',
+      message: 'Downloads save is not supported on this platform.',
+    );
+  }
+
   static Future<bool> saveImageFileToGallery(
     String filePath, {
     required String fileName,
@@ -203,6 +242,7 @@ class MediaExportService {
 
   static Future<void> shareImageFile(
     String filePath, {
+    String? mimeType,
     String? text,
     Rect? sharePositionOrigin,
   }) async {
@@ -210,7 +250,7 @@ class MediaExportService {
     try {
       await SharePlus.instance.share(
         ShareParams(
-          files: <XFile>[XFile(filePath)],
+          files: <XFile>[XFile(filePath, mimeType: mimeType)],
           text: text,
           sharePositionOrigin: sharePositionOrigin,
         ),
@@ -225,7 +265,7 @@ class MediaExportService {
             files: <XFile>[
               XFile.fromData(
                 bytes,
-                mimeType: 'image/png',
+                mimeType: mimeType ?? 'image/png',
                 name: filePath.split(Platform.pathSeparator).last,
               ),
             ],

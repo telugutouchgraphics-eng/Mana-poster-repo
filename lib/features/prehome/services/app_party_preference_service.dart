@@ -12,9 +12,11 @@ class AppPartyPreferenceService {
   AppPartyPreferenceService._();
 
   static const String _selectedPartyIdsKey = 'selected_party_ids_v1';
+  static const String _partySelectionHandledKey = 'selected_party_handled_v1';
   static const String _lastRemoteSyncKey = 'selected_party_remote_sync_v1';
 
   static Set<String> _memoryPartyIds = <String>{};
+  static bool _memorySelectionHandled = false;
 
   static Future<Set<String>> loadSelection({SharedPreferences? prefs}) async {
     if (_memoryPartyIds.isNotEmpty) {
@@ -45,11 +47,27 @@ class AppPartyPreferenceService {
         _selectedPartyIdsKey,
         cleanIds.toList()..sort(),
       );
+      await prefs.setBool(_partySelectionHandledKey, true);
       _memoryPartyIds = cleanIds;
+      _memorySelectionHandled = true;
       unawaited(syncStoredSelectionToRemote());
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  static Future<bool> hasSelectionHandled({SharedPreferences? prefs}) async {
+    if (_memorySelectionHandled) {
+      return true;
+    }
+    try {
+      final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+      final handled = resolvedPrefs.getBool(_partySelectionHandledKey) ?? false;
+      _memorySelectionHandled = handled;
+      return handled;
+    } catch (_) {
+      return _memorySelectionHandled;
     }
   }
 

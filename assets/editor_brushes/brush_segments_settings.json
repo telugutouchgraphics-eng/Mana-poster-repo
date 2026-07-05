@@ -1,0 +1,39 @@
+{
+  "segments_list": [
+    {
+      "id": "person",
+      "title": "Person",
+      "is_paid": false
+    },
+    {
+      "id": "face",
+      "title": "Face",
+      "is_paid": false
+    },
+    {
+      "id": "clothes",
+      "title": "Clothes",
+      "is_paid": false
+    },
+    {
+      "id": "sky",
+      "title": "Sky",
+      "is_paid": false
+    },
+    {
+      "id": "head",
+      "title": "Head",
+      "is_paid": false
+    },
+    {
+      "id": "hair",
+      "title": "Hair",
+      "is_paid": false
+    },
+    {
+      "id": "background",
+      "title": "Background",
+      "is_paid": false
+    }
+  ]
+}
