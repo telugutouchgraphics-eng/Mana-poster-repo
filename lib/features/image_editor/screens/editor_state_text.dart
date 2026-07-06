@@ -344,7 +344,7 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
     return Text(
       sticker ?? '*',
-      style: TextStyle(fontSize: fontSize, color: color),
+      style: TextStyle(fontSize: fontSize, height: 1.15, color: color),
     );
   }
 
@@ -461,15 +461,17 @@ extension _EditorTextState on _ImageEditorScreenState {
       _beginSelectedTextContentEdit();
     }
     final beforeLayer = _layers[index];
-    if ((beforeLayer.text ?? '') == value) {
+    final nextLegacyRenderText = _legacyRenderTextForTextEdit(
+      text: value,
+      fontFamily: beforeLayer.fontFamily,
+    );
+    if ((beforeLayer.text ?? '') == value &&
+        beforeLayer.legacyRenderText == nextLegacyRenderText) {
       return;
     }
     final nextLayer = beforeLayer.copyWith(
       text: value,
-      legacyRenderText: _legacyRenderTextForTextEdit(
-        text: value,
-        fontFamily: beforeLayer.fontFamily,
-      ),
+      legacyRenderText: nextLegacyRenderText,
     );
     setState(() {
       _layers[index] = nextLayer;

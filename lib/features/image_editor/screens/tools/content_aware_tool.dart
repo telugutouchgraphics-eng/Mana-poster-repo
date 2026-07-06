@@ -28,6 +28,8 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       _contentAwareStrokePoints.clear();
       _contentAwareStrokeLayerId = null;
       _contentAwareStrokeLayerSize = Size.zero;
+      _contentAwareActivePointers.clear();
+      _suppressContentAwareStroke = false;
     });
     _showContentAwareBrushCursorPreview();
   }
@@ -38,13 +40,17 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       _contentAwareStrokePoints.clear();
       _contentAwareStrokeLayerId = null;
       _contentAwareStrokeLayerSize = Size.zero;
+      _contentAwareActivePointers.clear();
+      _suppressContentAwareStroke = false;
       _eraserPreviewNotifier.value = null;
       _restoreSelectedLayerToolContextFields();
     });
   }
 
   void _handleContentAwareStart(Offset localPosition, Size layerSize) {
-    if (!_isContentAwareMode || _isCommitWorkerBusy || layerSize.isEmpty) {
+    if (!_canUseContentAwarePointerStroke() ||
+        _isCommitWorkerBusy ||
+        layerSize.isEmpty) {
       return;
     }
     final selectedId = _selectedLayerId;
@@ -62,7 +68,7 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
   }
 
   void _handleContentAwareUpdate(Offset localPosition, Size layerSize) {
-    if (!_isContentAwareMode ||
+    if (!_canUseContentAwarePointerStroke() ||
         _isCommitWorkerBusy ||
         _contentAwareStrokeLayerId == null ||
         layerSize.isEmpty) {
@@ -158,6 +164,27 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
     _contentAwareStrokeLayerId = null;
     _contentAwareStrokeLayerSize = Size.zero;
     _eraserPreviewNotifier.value = null;
+  }
+
+  void _handleContentAwarePointerDown(PointerDownEvent event) {
+    _contentAwareActivePointers.add(event.pointer);
+    if (_contentAwareActivePointers.length > 1) {
+      _suppressContentAwareStroke = true;
+      _cancelContentAwareStroke();
+    }
+  }
+
+  void _handleContentAwarePointerEnd(PointerEvent event) {
+    _contentAwareActivePointers.remove(event.pointer);
+    if (_contentAwareActivePointers.isEmpty) {
+      _suppressContentAwareStroke = false;
+    }
+  }
+
+  bool _canUseContentAwarePointerStroke() {
+    return _isContentAwareMode &&
+        !_suppressContentAwareStroke &&
+        _contentAwareActivePointers.length == 1;
   }
 
   void _publishContentAwarePreview() {

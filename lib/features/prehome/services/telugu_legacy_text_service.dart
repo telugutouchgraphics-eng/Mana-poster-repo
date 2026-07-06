@@ -26,7 +26,10 @@ class TeluguLegacyTextService {
     }
 
     try {
-      final converted = TeluguLegacyOfflineConverter.convert(normalized);
+      final converted = TeluguLegacyOfflineConverter.convert(
+        normalized,
+        trailingRaVattu: _usesTrailingRaVattu(fontFamily),
+      );
       if (converted.trim().isEmpty) {
         return null;
       }
@@ -80,6 +83,17 @@ class TeluguLegacyTextService {
         return 'pallavi';
       default:
         return fontFamily;
+    }
+  }
+
+  static bool _usesTrailingRaVattu(String fontFamily) {
+    switch (fontFamily) {
+      case 'Amrutha':
+      case 'Bapu Brush':
+      case 'Ramana Brush':
+        return true;
+      default:
+        return false;
     }
   }
 }

@@ -225,6 +225,32 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
     return 'తెలుగు శుభాకాంక్షలు 123';
   }
 
+  String _previewTextForFontFamily(String text, String family) {
+    if (!_isLegacyTeluguFontFamily(family)) {
+      return text;
+    }
+    final converted = TeluguLegacyTextService.convertSync(
+      text,
+      fontFamily: family,
+    );
+    return converted == null || converted.isEmpty ? text : converted;
+  }
+
+  String _previewFontFamilyForFontFamily(String family) {
+    if (_isLegacyTeluguFontFamily(family)) {
+      return family;
+    }
+    return _resolveTextRenderFontFamily(family);
+  }
+
+  double _previewFontSizeForFontFamily(String family, double baseSize) {
+    return _isLegacyTeluguFontFamily(family) ? baseSize * 1.22 : baseSize;
+  }
+
+  double _previewLineHeightForFontFamily(String family, double baseHeight) {
+    return _isLegacyTeluguFontFamily(family) ? baseHeight * 0.94 : baseHeight;
+  }
+
   @override
   Widget build(BuildContext context) {
     final tabFonts = _filteredFonts(_fontsForActiveTab());
@@ -343,15 +369,26 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                     ),
                   ),
                   child: Text(
-                    widget.previewText,
+                    _previewTextForFontFamily(
+                      widget.previewText,
+                      _selectedFont,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 29,
-                      height: 1.12,
+                      fontSize: _previewFontSizeForFontFamily(
+                        _selectedFont,
+                        29,
+                      ),
+                      height: _previewLineHeightForFontFamily(
+                        _selectedFont,
+                        1.12,
+                      ),
                       fontWeight: FontWeight.w800,
-                      fontFamily: _resolveTextRenderFontFamily(_selectedFont),
+                      fontFamily: _previewFontFamilyForFontFamily(
+                        _selectedFont,
+                      ),
                     ),
                   ),
                 ),
@@ -497,9 +534,9 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                 'Aa',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: _previewFontSizeForFontFamily(family, 15),
                   fontWeight: FontWeight.w900,
-                  fontFamily: _resolveTextRenderFontFamily(family),
+                  fontFamily: _previewFontFamilyForFontFamily(family),
                 ),
               ),
             ),
@@ -522,13 +559,16 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _sampleForFontFamily(family),
+                    _previewTextForFontFamily(
+                      _sampleForFontFamily(family),
+                      family,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: _resolveTextRenderFontFamily(family),
-                      fontSize: 16,
-                      height: 1.05,
+                      fontFamily: _previewFontFamilyForFontFamily(family),
+                      fontSize: _previewFontSizeForFontFamily(family, 16),
+                      height: _previewLineHeightForFontFamily(family, 1.05),
                       color: Colors.white.withValues(alpha: 0.72),
                       fontWeight: FontWeight.w600,
                     ),

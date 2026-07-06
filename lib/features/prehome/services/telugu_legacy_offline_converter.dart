@@ -8,7 +8,7 @@ class TeluguLegacyOfflineConverter {
   static _LegacyMapping? _mapping;
   static _ReverseLegacyMapping? _reverseMapping;
 
-  static String convert(String text) {
+  static String convert(String text, {bool trailingRaVattu = false}) {
     final normalized = _normalize(text);
     if (normalized.isEmpty || !_teluguPattern.hasMatch(normalized)) {
       return normalized;
@@ -45,16 +45,42 @@ class TeluguLegacyOfflineConverter {
         final vowelSignAfterExtension = i + 3 < runes.length
             ? runes[i + 3]
             : null;
+        final secondExtensionCode = i + 4 < runes.length ? runes[i + 4] : null;
         final extension = extensionCode == null
             ? null
             : mapping.extensions[extensionCode];
+        final secondExtension = secondExtensionCode == null
+            ? null
+            : mapping.extensions[secondExtensionCode];
+        if (extensionCode != null &&
+            extension != null &&
+            vowelSignAfterExtension == _virama &&
+            secondExtensionCode != null &&
+            secondExtension != null &&
+            mapping.consonants.containsKey(extensionCode) &&
+            mapping.consonants.containsKey(secondExtensionCode)) {
+          final combined = extensionCode == _ra
+              ? trailingRaVattu
+                    ? <int>[...consonant.base, ...extension, ...secondExtension]
+                    : <int>[...extension, ...consonant.base, ...secondExtension]
+              : secondExtensionCode == _ra
+              ? <int>[...secondExtension, ...consonant.base, ...extension]
+              : <int>[...consonant.base, ...extension, ...secondExtension];
+          out.write(String.fromCharCodes(combined));
+          i += 5;
+          continue;
+        }
         if (extensionCode != null &&
             extension != null &&
             _isExtensionTrailingSign(vowelSignAfterExtension)) {
-          final symbol =
-              consonant.symbols[vowelSignAfterExtension!] ?? consonant.base;
+          final symbol = _symbolForVowelSign(
+            consonant,
+            vowelSignAfterExtension!,
+          );
           final combined = extensionCode == _ra
-              ? <int>[...extension, ...symbol]
+              ? trailingRaVattu
+                    ? <int>[...symbol, ...extension]
+                    : <int>[...extension, ...symbol]
               : <int>[...symbol, ...extension];
           out.write(String.fromCharCodes(combined));
           i += 4;
@@ -64,7 +90,9 @@ class TeluguLegacyOfflineConverter {
             extension != null &&
             mapping.consonants.containsKey(extensionCode)) {
           final combined = extensionCode == _ra
-              ? <int>[...extension, ...consonant.base]
+              ? trailingRaVattu
+                    ? <int>[...consonant.base, ...extension]
+                    : <int>[...extension, ...consonant.base]
               : <int>[...consonant.base, ...extension];
           out.write(String.fromCharCodes(combined));
           i += vowelSignAfterExtension == _virama ? 4 : 3;
@@ -78,9 +106,7 @@ class TeluguLegacyOfflineConverter {
       }
 
       if (_isVowelSign(next)) {
-        out.write(
-          String.fromCharCodes(consonant.symbols[next!] ?? consonant.base),
-        );
+        out.write(String.fromCharCodes(_symbolForVowelSign(consonant, next!)));
         i += 2;
         continue;
       }
@@ -186,6 +212,24 @@ class TeluguLegacyOfflineConverter {
   static bool _isExtensionTrailingSign(int? code) =>
       code != null && code >= 0x0C3E && code <= 0x0C4E;
 
+  static List<int> _symbolForVowelSign(_LegacyConsonant consonant, int sign) {
+    final symbol = consonant.symbols[sign];
+    if (symbol != null && symbol.isNotEmpty) {
+      return symbol;
+    }
+    if (sign == _vocalicRSign) {
+      return <int>[...consonant.base, _legacyVocalicRMark];
+    }
+    if (sign == _vocalicRRSign) {
+      return <int>[
+        ...consonant.base,
+        _legacyVocalicRMark,
+        _legacyVocalicRRMark,
+      ];
+    }
+    return consonant.base;
+  }
+
   static _LegacyMapping _loadMapping() {
     final current = _mapping;
     if (current != null) {
@@ -252,6 +296,16 @@ class TeluguLegacyOfflineConverter {
         }
       }
     }
+    for (final first in consonants) {
+      for (final second in consonants) {
+        for (final third in consonants) {
+          final unicode = String.fromCharCodes(
+            <int>[first, _virama, second, _virama, third],
+          );
+          add(convert(unicode), unicode);
+        }
+      }
+    }
     _addPsdLegacyAliases(add);
 
     final tokens = values.keys.toList(growable: false)
@@ -279,6 +333,10 @@ class TeluguLegacyOfflineConverter {
 
   static const int _virama = 0x0C4D;
   static const int _ra = 0x0C30;
+  static const int _vocalicRSign = 0x0C43;
+  static const int _vocalicRRSign = 0x0C44;
+  static const int _legacyVocalicRMark = 0xF07F;
+  static const int _legacyVocalicRRMark = 0xF0B2;
   static const List<int> _vowelSigns = <int>[
     0x0C3E,
     0x0C3F,

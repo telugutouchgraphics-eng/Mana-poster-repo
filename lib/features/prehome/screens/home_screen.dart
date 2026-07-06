@@ -20,16 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart'
-    show
-        TargetPlatform,
-        compute,
-        defaultTargetPlatform,
-        kDebugMode,
-        kIsWeb,
-        kProfileMode,
-        kReleaseMode,
-        setEquals,
-        ValueListenable;
+    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals, ValueListenable;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -48,7 +39,6 @@ import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
-import 'package:mana_poster/app/services/install_source_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/play_engagement_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
@@ -1262,6 +1252,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const Duration _startupSnapshotHydrationDelay = Duration(
     milliseconds: 450,
   );
+  static const Duration _homeStartupRemoteTimeout = Duration(seconds: 7);
   static const double _homeFeedCacheExtent = 48.0;
   static const bool _enableDebugHomeStartupServices = bool.fromEnvironment(
     'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
@@ -1453,7 +1444,16 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     final allowed = await _isRemoteHomeStartupAllowedForCurrentInstall();
-    if (!mounted || !allowed) {
+    if (!mounted) {
+      return;
+    }
+    if (!allowed) {
+      setState(() {
+        _templatesLoading = false;
+        _templatesLoadingMore = false;
+        _templatesHasMore = false;
+        _religionSelectionReady = true;
+      });
       return;
     }
     _remoteHomeStartupAllowed = true;
@@ -1508,13 +1508,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<bool> _isRemoteHomeStartupAllowedForCurrentInstall() async {
-    if (!kReleaseMode || kIsWeb) {
-      return true;
-    }
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return true;
-    }
-    return InstallSourceService.isTrustedPlayInstall();
+    return true;
   }
 
   Future<void> _loadApprovedCreatorTemplatesAfterStartup() async {
@@ -3590,6 +3584,40 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  Future<ApprovedCreatorTemplatePage> _startupTemplatePageWithTimeout(
+    Future<ApprovedCreatorTemplatePage> future, {
+    required String phase,
+  }) async {
+    try {
+      return await future.timeout(_homeStartupRemoteTimeout);
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'home template $phase timed out/failed: $error',
+        stackTrace,
+      );
+      return const ApprovedCreatorTemplatePage(
+        templates: <ApprovedCreatorTemplate>[],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
+  }
+
+  Future<List<ApprovedCreatorTemplate>> _startupTemplateListWithTimeout(
+    Future<List<ApprovedCreatorTemplate>> future, {
+    required String phase,
+  }) async {
+    try {
+      return await future.timeout(_homeStartupRemoteTimeout);
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'home template $phase timed out/failed: $error',
+        stackTrace,
+      );
+      return const <ApprovedCreatorTemplate>[];
+    }
+  }
+
   Future<void> _loadApprovedCreatorTemplatesInternal({
     bool forceRefresh = false,
   }) async {
@@ -3670,42 +3698,51 @@ class _HomeScreenState extends State<HomeScreen>
         ? startupOrderedTags[1]
         : null;
     final genericFetchStopwatch = Stopwatch()..start();
-    final startupGenericRemoteFuture = shouldUseSlotAwareStartupFetch
-        ? _approvedCreatorTemplateService
-              .fetchApprovedTemplatesPage(
-                pageSize: initialPageSize,
-                allowFallbackMerge: false,
-              )
-              .whenComplete(() {
-                _homeDebugLog(
-                  '[StartupTiming] generic_fetch_done t=${_startupStopwatch.elapsedMilliseconds}ms '
-                  'waitMs=${genericFetchStopwatch.elapsedMilliseconds}',
-                );
-              })
-        : _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
-            pageSize: initialPageSize,
-          );
+    final startupGenericRemoteFuture = _startupTemplatePageWithTimeout(
+      shouldUseSlotAwareStartupFetch
+          ? _approvedCreatorTemplateService
+                .fetchApprovedTemplatesPage(
+                  pageSize: initialPageSize,
+                  allowFallbackMerge: false,
+                )
+                .whenComplete(() {
+                  _homeDebugLog(
+                    '[StartupTiming] generic_fetch_done t=${_startupStopwatch.elapsedMilliseconds}ms '
+                    'waitMs=${genericFetchStopwatch.elapsedMilliseconds}',
+                  );
+                })
+          : _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
+              pageSize: initialPageSize,
+            ),
+      phase: 'generic_startup',
+    );
     final startupSecondaryFuture = shouldUseSlotAwareStartupFetch
         ? (startupSecondaryTag == null
               ? Future<List<ApprovedCreatorTemplate>>.value(
                   const <ApprovedCreatorTemplate>[],
                 )
-              : _approvedCreatorTemplateService
-                    .fetchAllApprovedTemplatesForCategory(
-                      categoryId: startupSecondaryTag,
-                      source: Source.serverAndCache,
-                      scanLimit: _initialPrioritySecondaryFetchSize,
-                    ))
+              : _startupTemplateListWithTimeout(
+                  _approvedCreatorTemplateService
+                      .fetchAllApprovedTemplatesForCategory(
+                        categoryId: startupSecondaryTag,
+                        source: Source.serverAndCache,
+                        scanLimit: _initialPrioritySecondaryFetchSize,
+                      ),
+                  phase: 'secondary_startup',
+                ))
         : null;
     final startupPrimaryFuture = shouldUseSlotAwareStartupFetch
         ? (startupPrimaryTag == null
               ? startupGenericRemoteFuture.then((page) => page.templates)
-              : _approvedCreatorTemplateService
-                    .fetchAllApprovedTemplatesForCategory(
-                      categoryId: startupPrimaryTag,
-                      source: Source.serverAndCache,
-                      scanLimit: _initialPriorityPrimaryFetchSize,
-                    ))
+              : _startupTemplateListWithTimeout(
+                  _approvedCreatorTemplateService
+                      .fetchAllApprovedTemplatesForCategory(
+                        categoryId: startupPrimaryTag,
+                        source: Source.serverAndCache,
+                        scanLimit: _initialPriorityPrimaryFetchSize,
+                      ),
+                  phase: 'primary_startup',
+                ))
         : null;
     final shouldContinueAfterStartupSnapshot =
         hadVisibleTemplates && _startupSnapshotHydrationDeferred;
@@ -3943,11 +3980,13 @@ class _HomeScreenState extends State<HomeScreen>
       );
       var mappingMs = remoteMappingStopwatch.elapsedMilliseconds;
       if (mapped.isEmpty) {
-        final retryPage = await _approvedCreatorTemplateService
-            .fetchApprovedTemplatesPage(
-              pageSize: _templatesPageSize,
-              source: Source.server,
-            );
+        final retryPage = await _startupTemplatePageWithTimeout(
+          _approvedCreatorTemplateService.fetchApprovedTemplatesPage(
+            pageSize: _templatesPageSize,
+            source: Source.server,
+          ),
+          phase: 'retry_startup',
+        );
         if (!mounted) {
           return;
         }
@@ -8974,13 +9013,11 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                 errorWidget: (_, _, _) => _ImageErrorState(
                   compact: true,
                   title: context.strings.localized(
-                    telugu:
-                        'బ్యానర్ అందుబాటులో లేదు',
+                    telugu: 'బ్యానర్ అందుబాటులో లేదు',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
-                    telugu:
-                        'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+                    telugu: 'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -10936,8 +10973,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     switch (result.code) {
       case 'permission_denied':
         return context.strings.localized(
-          telugu:
-              'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
+          telugu: 'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
           english: 'Gallery permission was denied.',
         );
       case 'file_missing':
@@ -10949,14 +10985,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       case 'platform_exception':
       case 'empty_result':
         return context.strings.localized(
-          telugu:
-              'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+          telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
           english: 'File save failed. Please try again.',
         );
       default:
         return context.strings.localized(
-          telugu:
-              'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+          telugu: 'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
           english: 'Download failed. Please try again.',
         );
     }
@@ -11144,28 +11178,23 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final galleryPermissionMessage = context.strings.localized(
-      telugu:
-          'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
+      telugu: 'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
       english: 'Gallery permission was denied.',
     );
     final posterNotReadyMessage = context.strings.localized(
-      telugu:
-          'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Capture failed. Please try again.',
     );
     final posterSavedMessage = context.strings.localized(
-      telugu:
-          'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
+      telugu: 'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
       english: 'Poster saved to gallery.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu:
-          'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'File save failed. Please try again.',
     );
     final downloadFailedMessage = context.strings.localized(
-      telugu:
-          'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Download failed. Please try again.',
     );
     try {
@@ -11291,18 +11320,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final posterNotReadyMessage = context.strings.localized(
-      telugu:
-          'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Capture failed. Please try again.',
     );
     final shareFailedMessage = context.strings.localized(
-      telugu:
-          'షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'Share failed. Please try again.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu:
-          'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
       english: 'File save failed. Please try again.',
     );
     final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
@@ -11754,10 +11780,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               : const Color(0xFF64748B),
                         ),
                         label: Text(
-                          strings.localized(
-                            telugu: 'ఫోటో',
-                            english: 'Photo',
-                          ),
+                          strings.localized(telugu: 'ఫోటో', english: 'Photo'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -12208,79 +12231,81 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   child: const _ImageLoadingState(),
                 );
               },
-              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
-                final strings = context.strings;
-                final failed = resolvedUrl.trim();
-                final thumb = placeholderUrl;
-                if (thumb.isNotEmpty && thumb != failed) {
-                  return buildNetworkPosterImage(
-                    resolvedUrl: thumb,
-                    decodeWidth: decodeWidth.clamp(360, 960),
-                    notifyWhenLoaded: true,
-                  );
-                }
-                if (failed.startsWith('http://') ||
-                    failed.startsWith('https://')) {
-                  unawaited(
-                    PosterNetworkImageCache.instance.removeFile(failed),
-                  );
-                  return Image.network(
-                    failed,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.topCenter,
-                    gaplessPlayback: true,
-                    filterQuality: widget.preferOriginalPosterQuality
-                        ? FilterQuality.high
-                        : FilterQuality.low,
-                    frameBuilder:
-                        (context, child, frame, wasSynchronouslyLoaded) {
-                          if (wasSynchronouslyLoaded || frame != null) {
-                            if (notifyWhenLoaded &&
-                                widget.onFirstFrameReady != null) {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                widget.onFirstFrameReady!.call();
-                              });
-                            }
-                            return child;
-                          }
-                          return SizedBox(
-                            width: double.infinity,
-                            height: posterPlaceholderHeight,
-                            child: const _ImageLoadingState(),
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? stackTrace) {
+                    final strings = context.strings;
+                    final failed = resolvedUrl.trim();
+                    final thumb = placeholderUrl;
+                    if (thumb.isNotEmpty && thumb != failed) {
+                      return buildNetworkPosterImage(
+                        resolvedUrl: thumb,
+                        decodeWidth: decodeWidth.clamp(360, 960),
+                        notifyWhenLoaded: true,
+                      );
+                    }
+                    if (failed.startsWith('http://') ||
+                        failed.startsWith('https://')) {
+                      unawaited(
+                        PosterNetworkImageCache.instance.removeFile(failed),
+                      );
+                      return Image.network(
+                        failed,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.topCenter,
+                        gaplessPlayback: true,
+                        filterQuality: widget.preferOriginalPosterQuality
+                            ? FilterQuality.high
+                            : FilterQuality.low,
+                        frameBuilder:
+                            (context, child, frame, wasSynchronouslyLoaded) {
+                              if (wasSynchronouslyLoaded || frame != null) {
+                                if (notifyWhenLoaded &&
+                                    widget.onFirstFrameReady != null) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    widget.onFirstFrameReady!.call();
+                                  });
+                                }
+                                return child;
+                              }
+                              return SizedBox(
+                                width: double.infinity,
+                                height: posterPlaceholderHeight,
+                                child: const _ImageLoadingState(),
+                              );
+                            },
+                        errorBuilder: (_, _, _) {
+                          schedulePosterReady();
+                          return _ImageErrorState(
+                            title: strings.localized(
+                              telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                              english: 'Template image unavailable',
+                            ),
+                            subtitle: strings.localized(
+                              telugu:
+                                  'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                              english:
+                                  'Please refresh or try another template.',
+                            ),
                           );
                         },
-                    errorBuilder: (_, _, _) {
-                      schedulePosterReady();
-                      return _ImageErrorState(
-                        title: strings.localized(
-                          telugu:
-                              'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                          english: 'Template image unavailable',
-                        ),
-                        subtitle: strings.localized(
-                          telugu:
-                              'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                          english: 'Please refresh or try another template.',
-                        ),
                       );
-                    },
-                  );
-                }
-                schedulePosterReady();
-                return _ImageErrorState(
-                  title: strings.localized(
-                    telugu:
-                        'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                    english: 'Template image unavailable',
-                  ),
-                  subtitle: strings.localized(
-                    telugu:
-                        'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                    english: 'Please refresh or try another template.',
-                  ),
-                );
-              },
+                    }
+                    schedulePosterReady();
+                    return _ImageErrorState(
+                      title: strings.localized(
+                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                        english: 'Template image unavailable',
+                      ),
+                      subtitle: strings.localized(
+                        telugu:
+                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                        english: 'Please refresh or try another template.',
+                      ),
+                    );
+                  },
             );
           }
 
@@ -12293,13 +12318,11 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 constraints: BoxConstraints(minWidth: math.max(width, 1)),
                 child: _ImageErrorState(
                   title: strings.localized(
-                    telugu:
-                        'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                    telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
-                    telugu:
-                        'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                    telugu: 'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -12338,8 +12361,7 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     schedulePosterReady();
                     return _ImageErrorState(
                       title: context.strings.localized(
-                        telugu:
-                            'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
@@ -13125,8 +13147,7 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     if (_hasError || controller == null) {
       return _ImageErrorState(
         title: context.strings.localized(
-          telugu:
-              'వీడియో అందుబాటులో లేదు',
+          telugu: 'వీడియో అందుబాటులో లేదు',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(

@@ -15,7 +15,7 @@ Write-Host "Using gcloud: $gcloud"
 & $gcloud config set project $projectId
 
 Write-Host "Ensuring required APIs are enabled..."
-& $gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com
+& $gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com firestore.googleapis.com
 
 Write-Host "Deploying Cloud Run service..."
 & $gcloud run deploy $serviceName `

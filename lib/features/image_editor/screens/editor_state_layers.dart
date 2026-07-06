@@ -518,7 +518,6 @@ extension _EditorLayersState on _ImageEditorScreenState {
                     fontSize: 92,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
-                    color: previewLayer.stickerColor,
                   ),
                 );
               } else {
@@ -1163,7 +1162,15 @@ extension _EditorLayersState on _ImageEditorScreenState {
     Rect pageRect,
     Size pageSize,
   ) {
-    if (_isCropMode || _isInlineTextEditing) {
+    if (_isCropMode ||
+        _isInlineTextEditing ||
+        _isPhotoEraserMode ||
+        _isContentAwareMode ||
+        _isPhotoCloneMode ||
+        _isPhotoStretchMode ||
+        _isLayerMaskBrushMode ||
+        _isDrawBrushMode) {
+      _canvasTapResolvedLayer = true;
       return;
     }
     if (_suppressCanvasTapDown) {
@@ -3782,14 +3789,25 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         ? null
         : _eraserStrokePoints.last;
     if (previousPoint != null) {
-      final brushSize = _workspaceBrushSize(_eraserBrushSize);
-      final minStep =
-          (brushSize / math.max(layerSize.width, layerSize.height)) * 0.035;
-      if ((nextPoint - previousPoint).distance < minStep.clamp(0.0006, 0.006)) {
+      final pixelDelta = Offset(
+        (nextPoint.dx - previousPoint.dx) * layerSize.width,
+        (nextPoint.dy - previousPoint.dy) * layerSize.height,
+      );
+      final pixelDistance = pixelDelta.distance;
+      if (pixelDistance < 0.45) {
         return;
       }
+      final brushSize = _workspaceBrushSize(_eraserBrushSize);
+      final spacing = (brushSize * 0.18).clamp(0.8, 6.0).toDouble();
+      final steps = (pixelDistance / spacing).ceil().clamp(1, 96);
+      for (var step = 1; step <= steps; step++) {
+        _eraserStrokePoints.add(
+          Offset.lerp(previousPoint, nextPoint, step / steps)!,
+        );
+      }
+    } else {
+      _eraserStrokePoints.add(nextPoint);
     }
-    _eraserStrokePoints.add(nextPoint);
     _publishEraserPreview();
   }
 
@@ -3885,7 +3903,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
     _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
       layerId: layerId,
-      points: List<Offset>.of(_eraserStrokePoints),
+      points: _eraserStrokePoints,
       brushSize: _eraserBrushSize,
       hardness: _eraserHardness,
     );
@@ -4067,14 +4085,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (_EditorTextState._isImageLikeSticker(sticker)) {
       return Size.square(layer.fontSize);
     }
-    final painter = TextPainter(
-      text: TextSpan(
-        text: sticker ?? '*',
-        style: TextStyle(fontSize: layer.fontSize),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return painter.size;
+    return _textStickerVisualSize(sticker, layer.fontSize);
   }
 
   Size _textSelectionHitSize(_CanvasLayer layer, Size pageSize) {
@@ -4085,22 +4096,167 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     );
   }
 
+  Offset _selectionCenterOffsetForLayer(_CanvasLayer layer, Size pageSize) {
+    if (layer.isText) {
+      return _workspaceTextSelectionCenterOffset(layer, pageSize);
+    }
+    if (layer.isPhoto) {
+      final photoSize = layer.fillPageBounds
+          ? pageSize
+          : _photoLayerVisualSize(layer, pageSize);
+      final paintRect = _photoVisiblePaintRect(layer, photoSize);
+      return paintRect.center -
+          Offset(photoSize.width / 2, photoSize.height / 2);
+    }
+    return Offset.zero;
+  }
+
+  Size _selectionBoxSizeForLayer(_CanvasLayer layer, Size pageSize) {
+    if (layer.isText) {
+      return _workspaceTextSelectionBoxSize(layer, pageSize);
+    }
+    if (layer.isPhoto) {
+      final photoSize = layer.fillPageBounds
+          ? pageSize
+          : _photoLayerVisualSize(layer, pageSize);
+      return _photoVisiblePaintRect(layer, photoSize).size;
+    }
+    return _layerVisualSize(layer, pageSize);
+  }
+
+  Matrix4 _transformAroundLayerSelectionCenter(
+    _CanvasLayer layer,
+    Matrix4 base, {
+    double scaleX = 1,
+    double scaleY = 1,
+    double rotation = 0,
+  }) {
+    final centerOffset = _selectionCenterOffsetForLayer(
+      layer,
+      _currentStageLogicalRect().size,
+    );
+    final updated = Matrix4.copy(base);
+    if (centerOffset != Offset.zero) {
+      updated.translateByDouble(centerOffset.dx, centerOffset.dy, 0, 1);
+    }
+    if (rotation.abs() > 0.0001) {
+      updated.rotateZ(rotation);
+    }
+    if ((scaleX - 1).abs() > 0.0001 || (scaleY - 1).abs() > 0.0001) {
+      updated.scaleByDouble(scaleX, scaleY, 1, 1);
+    }
+    if (centerOffset != Offset.zero) {
+      updated.translateByDouble(-centerOffset.dx, -centerOffset.dy, 0, 1);
+    }
+    return updated;
+  }
+
+  void _beginNativeSelectionTransform(
+    _CanvasLayer selected,
+    Offset handleGlobalPosition,
+  ) {
+    _stopPhotoGlide(sync: false);
+    _cancelSelectedTextLongPress();
+    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
+    _transformHandleStartCenterGlobal = _selectedTransformCenterGlobal(
+      layer: selected,
+      matrix: _gestureStartMatrix,
+    );
+    final vector = handleGlobalPosition - _transformHandleStartCenterGlobal;
+    _stickerHandleStartAngle = math.atan2(vector.dy, vector.dx);
+    _stickerHandleStartDistance = math.max(vector.distance, 1).toDouble();
+    _objectSideResizeAxisGlobal = _stickerHandleStartDistance <= 0.001
+        ? Offset.zero
+        : vector / _stickerHandleStartDistance;
+    _textStretchStartGlobalPosition = handleGlobalPosition;
+    _photoGestureVelocity = Offset.zero;
+    _snapGuideNotifier.value = const _SnapGuideState.none();
+    _beginGroupTransformSession(selected);
+    _isLayerInteracting = true;
+  }
+
+  Matrix4? _nativeSelectionTransformFromDrag(
+    _CanvasLayer selected,
+    Offset handleGlobalPosition, {
+    bool resizeUniform = false,
+    bool resizeHorizontal = false,
+    bool resizeVertical = false,
+    Offset? resizeAxisGlobal,
+    bool rotate = false,
+    bool stretchVertical = false,
+  }) {
+    final base = _gestureStartMatrix ?? _transformationController.value;
+    final center = _transformHandleStartCenterGlobal;
+    if (center == Offset.zero) {
+      return null;
+    }
+    if (rotate) {
+      final vector = handleGlobalPosition - center;
+      final angle = math.atan2(vector.dy, vector.dx);
+      final angleDelta = _shortestAngleDelta(
+        from: _stickerHandleStartAngle,
+        to: angle,
+      );
+      final baseRotation = _matrixRotationZ(base);
+      final snappedRotation = _softSnapRotation(baseRotation + angleDelta);
+      final updated = _transformAroundLayerSelectionCenter(
+        selected,
+        base,
+        rotation: snappedRotation - baseRotation,
+      );
+      return _isMatrixFinite(updated) ? updated : null;
+    }
+
+    var scaleX = 1.0;
+    var scaleY = 1.0;
+    if (stretchVertical) {
+      scaleY =
+          (1 +
+                  ((_textStretchStartGlobalPosition.dy -
+                          handleGlobalPosition.dy) /
+                      140.0))
+              .clamp(0.25, 5.0)
+              .toDouble();
+    } else {
+      final vector = handleGlobalPosition - center;
+      final axis = resizeAxisGlobal;
+      final distance = axis == null || axis.distance <= 0.001
+          ? math.max(vector.distance, 1)
+          : math.max((vector.dx * axis.dx) + (vector.dy * axis.dy), 1);
+      final ratio = (distance / _stickerHandleStartDistance)
+          .clamp(0.25, 8.0)
+          .toDouble();
+      if (resizeUniform) {
+        scaleX = ratio;
+        scaleY = ratio;
+      } else if (resizeHorizontal) {
+        scaleX = ratio;
+      } else if (resizeVertical) {
+        scaleY = ratio;
+      }
+    }
+    final updated = _transformAroundLayerSelectionCenter(
+      selected,
+      base,
+      scaleX: scaleX,
+      scaleY: scaleY,
+    );
+    return _isMatrixFinite(updated) ? updated : null;
+  }
+
   Matrix4 _clampLayerTransformToPageBounds(
     _CanvasLayer layer,
     Matrix4 candidate,
   ) {
-    return candidate;
-    /*
     final pageSize = _currentStageLogicalRect().size;
     if (pageSize.width <= 0 || pageSize.height <= 0) {
       return candidate;
     }
-    final layerSize = layer.isText
-        ? _textSelectionHitSize(layer, pageSize)
-        : _layerVisualSize(layer, pageSize);
+    final layerSize = _selectionBoxSizeForLayer(layer, pageSize);
     if (layerSize.width <= 0 || layerSize.height <= 0) {
       return candidate;
     }
+    final centerOffset = _selectionCenterOffsetForLayer(layer, pageSize);
 
     final pageRect = Rect.fromCenter(
       center: Offset.zero,
@@ -4111,12 +4267,15 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     Rect transformedBounds(Matrix4 matrix) {
       final halfWidth = layerSize.width / 2;
       final halfHeight = layerSize.height / 2;
-      final points = <Offset>[
-        Offset(-halfWidth, -halfHeight),
-        Offset(halfWidth, -halfHeight),
-        Offset(halfWidth, halfHeight),
-        Offset(-halfWidth, halfHeight),
-      ].map((point) => MatrixUtils.transformPoint(matrix, point));
+      final points =
+          <Offset>[
+            Offset(-halfWidth, -halfHeight),
+            Offset(halfWidth, -halfHeight),
+            Offset(halfWidth, halfHeight),
+            Offset(-halfWidth, halfHeight),
+          ].map(
+            (point) => MatrixUtils.transformPoint(matrix, point + centerOffset),
+          );
       var left = double.infinity;
       var top = double.infinity;
       var right = double.negativeInfinity;
@@ -4132,34 +4291,25 @@ extension _EditorLayersActions on _ImageEditorScreenState {
 
     var matrix = Matrix4.copy(candidate);
     var bounds = transformedBounds(matrix);
-    if (bounds.width > pageRect.width || bounds.height > pageRect.height) {
-      final fitScale = math
-          .min(pageRect.width / bounds.width, pageRect.height / bounds.height)
-          .clamp(0.05, 1.0)
-          .toDouble();
-      matrix.scaleByDouble(fitScale, fitScale, 1, 1);
-      bounds = transformedBounds(matrix);
-    }
-
+    final minVisibleWidth = math.min(
+      bounds.width,
+      math.min(36.0, pageRect.width * 0.18),
+    );
+    final minVisibleHeight = math.min(
+      bounds.height,
+      math.min(36.0, pageRect.height * 0.18),
+    );
     var dx = 0.0;
     var dy = 0.0;
-    if (bounds.width <= pageRect.width) {
-      if (bounds.left < pageRect.left) {
-        dx = pageRect.left - bounds.left;
-      } else if (bounds.right > pageRect.right) {
-        dx = pageRect.right - bounds.right;
-      }
-    } else {
-      dx = pageRect.center.dx - bounds.center.dx;
+    if (bounds.right < pageRect.left + minVisibleWidth) {
+      dx = (pageRect.left + minVisibleWidth) - bounds.right;
+    } else if (bounds.left > pageRect.right - minVisibleWidth) {
+      dx = (pageRect.right - minVisibleWidth) - bounds.left;
     }
-    if (bounds.height <= pageRect.height) {
-      if (bounds.top < pageRect.top) {
-        dy = pageRect.top - bounds.top;
-      } else if (bounds.bottom > pageRect.bottom) {
-        dy = pageRect.bottom - bounds.bottom;
-      }
-    } else {
-      dy = pageRect.center.dy - bounds.center.dy;
+    if (bounds.bottom < pageRect.top + minVisibleHeight) {
+      dy = (pageRect.top + minVisibleHeight) - bounds.bottom;
+    } else if (bounds.top > pageRect.bottom - minVisibleHeight) {
+      dy = (pageRect.bottom - minVisibleHeight) - bounds.top;
     }
     if (dx.abs() > 0.0001 || dy.abs() > 0.0001) {
       matrix.setTranslationRaw(
@@ -4169,7 +4319,6 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       );
     }
     return matrix;
-    */
   }
 
   Matrix4 _fitTextTransformToPageBounds(_CanvasLayer layer, Matrix4 candidate) {
@@ -4335,6 +4484,22 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     );
     if (_snapGuideNotifier.value != nextState) {
       _snapGuideNotifier.value = nextState;
+    }
+  }
+
+  void _applyLiveSelectedTransform(
+    Matrix4 transform, {
+    double? rotationGuideAngle,
+    bool updateGuides = false,
+  }) {
+    _transformationController.value = transform;
+    if (!updateGuides) {
+      return;
+    }
+    if (rotationGuideAngle != null) {
+      _updateRotationSnapGuide(rotationGuideAngle);
+    } else {
+      _updateSmartGuides(transform);
     }
   }
 
@@ -4616,17 +4781,27 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
   }
 
-  Offset _selectedTransformCenterGlobal() {
+  Offset _selectedTransformCenterGlobal({
+    _CanvasLayer? layer,
+    Matrix4? matrix,
+  }) {
     final renderObject = _stageRepaintKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox) {
       return Offset.zero;
     }
+    final selected = layer ?? _selectedLayer;
+    if (selected == null) {
+      return Offset.zero;
+    }
     final stageRect = _currentStageLogicalRect();
-    final matrix = _transformationController.value;
-    final centerInStage = stageRect.center.translate(
-      matrix.storage[12],
-      matrix.storage[13],
+    final effectiveMatrix = matrix ?? _transformationController.value;
+    final centerOffset = _selectionCenterOffsetForLayer(
+      selected,
+      stageRect.size,
     );
+    final centerInStage =
+        stageRect.center +
+        MatrixUtils.transformPoint(effectiveMatrix, centerOffset);
     return renderObject.localToGlobal(centerInStage);
   }
 
@@ -4637,19 +4812,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    _stickerHandleStartAngle = math.atan2(vector.dy, vector.dx);
-    _stickerHandleStartDistance = math.max(vector.distance, 1);
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
   }
 
   void _handleSelectedStickerResizeHandleUpdate(DragUpdateDetails details) {
@@ -4659,25 +4822,16 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      resizeUniform: true,
+      resizeAxisGlobal: _objectSideResizeAxisGlobal,
     );
-    final updated = Matrix4.copy(base);
-    final center = _selectedTransformCenterGlobal();
-    final distance = math.max((details.globalPosition - center).distance, 1);
-    final scaleRatio = (distance / _stickerHandleStartDistance)
-        .clamp(0.25, 8.0)
-        .toDouble();
-    if ((scaleRatio - 1).abs() > 0.0001) {
-      updated.scaleByDouble(scaleRatio, scaleRatio, 1, 1);
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateSmartGuides(clamped);
+    _applyLiveSelectedTransform(updated);
   }
 
   void _handleSelectedObjectHorizontalResizeHandleStart(
@@ -4717,21 +4871,13 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
+    _objectSideResizeHorizontal = resizeHorizontal;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
+    final center = _transformHandleStartCenterGlobal;
     final vector = details.globalPosition - center;
     final distance = math.max(vector.distance, 1).toDouble();
     _objectSideResizeAxisGlobal = vector / distance;
     _stickerHandleStartDistance = distance;
-    _objectSideResizeHorizontal = resizeHorizontal;
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
   }
 
   void _handleSelectedObjectSideResizeHandleUpdate(DragUpdateDetails details) {
@@ -4741,32 +4887,17 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      resizeHorizontal: _objectSideResizeHorizontal,
+      resizeVertical: !_objectSideResizeHorizontal,
+      resizeAxisGlobal: _objectSideResizeAxisGlobal,
     );
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    final projectedDistance =
-        (vector.dx * _objectSideResizeAxisGlobal.dx) +
-        (vector.dy * _objectSideResizeAxisGlobal.dy);
-    final scaleRatio = (projectedDistance / _stickerHandleStartDistance)
-        .clamp(0.25, 8.0)
-        .toDouble();
-    final updated = Matrix4.copy(base);
-    if ((scaleRatio - 1).abs() > 0.0001) {
-      if (_objectSideResizeHorizontal) {
-        updated.scaleByDouble(scaleRatio, 1, 1, 1);
-      } else {
-        updated.scaleByDouble(1, scaleRatio, 1, 1);
-      }
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateSmartGuides(clamped);
+    _applyLiveSelectedTransform(updated);
   }
 
   void _handleSelectedStickerRotateHandleStart(DragStartDetails details) {
@@ -4776,18 +4907,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    _stickerHandleStartAngle = math.atan2(vector.dy, vector.dx);
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
   }
 
   void _handleSelectedStickerRotateHandleUpdate(DragUpdateDetails details) {
@@ -4797,30 +4917,20 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      rotate: true,
     );
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    final angle = math.atan2(vector.dy, vector.dx);
-    final angleDelta = _shortestAngleDelta(
-      from: _stickerHandleStartAngle,
-      to: angle,
-    );
-    final baseRotation = _matrixRotationZ(base);
-    final snappedRotation = _softSnapRotation(baseRotation + angleDelta);
-    final appliedAngleDelta = snappedRotation - baseRotation;
-    final updated = Matrix4.copy(base);
-    if (appliedAngleDelta.abs() > 0.0001) {
-      updated.rotateZ(appliedAngleDelta);
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateRotationSnapGuide(snappedRotation);
+    final snappedRotation = _matrixRotationZ(updated);
+    _applyLiveSelectedTransform(
+      updated,
+      rotationGuideAngle: snappedRotation,
+      updateGuides: true,
+    );
   }
 
   void _handleSelectedTextResizeHandleStart(DragStartDetails details) {
@@ -4828,42 +4938,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
-    final startVector = details.globalPosition - center;
-    _textResizeStartGlobalPosition = details.globalPosition;
-    _stickerHandleStartDistance = math.max(startVector.distance, 1).toDouble();
-    final base = _gestureStartMatrix ?? _transformationController.value;
-    final origin = MatrixUtils.transformPoint(base, Offset.zero);
-    final right = MatrixUtils.transformPoint(base, const Offset(1, 0)) - origin;
-    _textResizeRightAxisGlobal = right.distance <= 0.0001
-        ? const Offset(1, 0)
-        : right / right.distance;
-    final horizontalDistance =
-        (startVector.dx * _textResizeRightAxisGlobal.dx) +
-        (startVector.dy * _textResizeRightAxisGlobal.dy);
-    _textResizeStartHorizontalDistance = horizontalDistance.abs() < 1
-        ? 1
-        : horizontalDistance;
-    final verticalComponent =
-        startVector - (_textResizeRightAxisGlobal * horizontalDistance);
-    _textResizeVerticalAxisGlobal = verticalComponent.distance <= 0.0001
-        ? const Offset(0, -1)
-        : verticalComponent / verticalComponent.distance;
-    final verticalDistance =
-        (startVector.dx * _textResizeVerticalAxisGlobal.dx) +
-        (startVector.dy * _textResizeVerticalAxisGlobal.dy);
-    _textResizeStartVerticalDistance = verticalDistance.abs() < 1
-        ? 1
-        : verticalDistance;
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
   }
 
   void _handleSelectedTextResizeHandleUpdate(DragUpdateDetails details) {
@@ -4871,42 +4946,16 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      resizeUniform: true,
+      resizeAxisGlobal: _objectSideResizeAxisGlobal,
     );
-    final dragDelta = details.globalPosition - _textResizeStartGlobalPosition;
-    final horizontalDelta =
-        (dragDelta.dx * _textResizeRightAxisGlobal.dx) +
-        (dragDelta.dy * _textResizeRightAxisGlobal.dy);
-    final verticalDelta =
-        (dragDelta.dx * _textResizeVerticalAxisGlobal.dx) +
-        (dragDelta.dy * _textResizeVerticalAxisGlobal.dy);
-    const resizeSensitivity = 180.0;
-    var horizontalRatio = (1 + (horizontalDelta / resizeSensitivity))
-        .clamp(0.35, 3.0)
-        .toDouble();
-    var verticalSizeRatio = (1 + (verticalDelta / resizeSensitivity))
-        .clamp(0.35, 3.0)
-        .toDouble();
-    final horizontalAmount = horizontalDelta.abs();
-    final verticalAmount = verticalDelta.abs();
-    if (horizontalAmount > verticalAmount * 1.35) {
-      verticalSizeRatio = 1;
-    } else {
-      horizontalRatio = verticalSizeRatio;
-    }
-    final updated = Matrix4.copy(base);
-    if ((horizontalRatio - 1).abs() > 0.0001 ||
-        (verticalSizeRatio - 1).abs() > 0.0001) {
-      updated.scaleByDouble(horizontalRatio, verticalSizeRatio, 1, 1);
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateSmartGuides(clamped);
+    _applyLiveSelectedTransform(updated);
   }
 
   void _handleSelectedTextRotateHandleStart(DragStartDetails details) {
@@ -4914,18 +4963,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    _stickerHandleStartAngle = math.atan2(vector.dy, vector.dx);
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
   }
 
   void _handleSelectedTextRotateHandleUpdate(DragUpdateDetails details) {
@@ -4933,30 +4971,20 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      rotate: true,
     );
-    final center = _selectedTransformCenterGlobal();
-    final vector = details.globalPosition - center;
-    final angle = math.atan2(vector.dy, vector.dx);
-    final angleDelta = _shortestAngleDelta(
-      from: _stickerHandleStartAngle,
-      to: angle,
-    );
-    final baseRotation = _matrixRotationZ(base);
-    final snappedRotation = _softSnapRotation(baseRotation + angleDelta);
-    final appliedAngleDelta = snappedRotation - baseRotation;
-    final updated = Matrix4.copy(base);
-    if (appliedAngleDelta.abs() > 0.0001) {
-      updated.rotateZ(appliedAngleDelta);
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateRotationSnapGuide(snappedRotation);
+    final snappedRotation = _matrixRotationZ(updated);
+    _applyLiveSelectedTransform(
+      updated,
+      rotationGuideAngle: snappedRotation,
+      updateGuides: true,
+    );
   }
 
   void _handleSelectedTextStretchHandleStart(DragStartDetails details) {
@@ -4964,21 +4992,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    _stopPhotoGlide(sync: false);
-    _cancelSelectedTextLongPress();
-    _gestureStartMatrix = Matrix4.copy(_transformationController.value);
-    final center = _selectedTransformCenterGlobal();
-    _stickerHandleStartDistance = math.max(
-      (details.globalPosition - center).distance,
-      1,
-    );
-    _textStretchStartGlobalPosition = details.globalPosition;
-    _photoGestureVelocity = Offset.zero;
-    _beginGroupTransformSession(selected);
-    if (_isLayerInteracting) {
-      return;
-    }
-    _isLayerInteracting = true;
+    _beginNativeSelectionTransform(selected, details.globalPosition);
   }
 
   void _handleSelectedTextStretchHandleUpdate(DragUpdateDetails details) {
@@ -4986,23 +5000,15 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (selected == null || !selected.isText || _isSelectedLayerLocked) {
       return;
     }
-    final base = Matrix4.copy(
-      _gestureStartMatrix ?? _transformationController.value,
+    final updated = _nativeSelectionTransformFromDrag(
+      selected,
+      details.globalPosition,
+      stretchVertical: true,
     );
-    final dragDeltaY =
-        _textStretchStartGlobalPosition.dy - details.globalPosition.dy;
-    final stretchRatio = (1 + (dragDeltaY / 140.0)).clamp(0.25, 5.0).toDouble();
-    final updated = Matrix4.copy(base);
-    if ((stretchRatio - 1).abs() > 0.0001) {
-      updated.scaleByDouble(1, stretchRatio, 1, 1);
-    }
-    if (!_isMatrixFinite(updated)) {
+    if (updated == null) {
       return;
     }
-    final clamped = _clampLayerTransformToPageBounds(selected, updated);
-    _transformationController.value = clamped;
-    _previewGroupedLayerTransform(selected, clamped);
-    _updateSmartGuides(clamped);
+    _applyLiveSelectedTransform(updated);
   }
 
   void _handleSelectedStickerHandleEnd() {
@@ -5184,10 +5190,9 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         _photoGestureLastFocalPoint = details.focalPoint;
         return;
       }
-      const dragSensitivity = 0.68;
       incremental.setTranslationRaw(
-        incremental.storage[12] + (moveDelta.dx * dragSensitivity),
-        incremental.storage[13] + (moveDelta.dy * dragSensitivity),
+        incremental.storage[12] + moveDelta.dx,
+        incremental.storage[13] + moveDelta.dy,
         incremental.storage[14],
       );
       if (!_isMatrixFinite(incremental)) {
@@ -5292,12 +5297,8 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _photoGestureLastRotation = 0;
     _stickerHandleStartAngle = 0;
     _stickerHandleStartDistance = 1;
+    _transformHandleStartCenterGlobal = Offset.zero;
     _textStretchStartGlobalPosition = Offset.zero;
-    _textResizeStartGlobalPosition = Offset.zero;
-    _textResizeRightAxisGlobal = const Offset(1, 0);
-    _textResizeStartHorizontalDistance = 1;
-    _textResizeVerticalAxisGlobal = const Offset(0, -1);
-    _textResizeStartVerticalDistance = 1;
     _objectSideResizeAxisGlobal = Offset.zero;
     _objectSideResizeHorizontal = true;
     _photoGestureVelocity = Offset.zero;
@@ -6219,6 +6220,13 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _deleteLayerById(selectedId);
   }
 
+  Future<BackgroundRemovalResult> _removeBackgroundForCurrentUser(
+    Uint8List sourceBytes,
+  ) async {
+    await _backgroundRemoverInitialization;
+    return _backgroundRemovalService.removeBackground(sourceBytes);
+  }
+
   Future<void> _handleRemoveBackgroundTap() async {
     if (_isRemovingBackground || _isCommitWorkerBusy) {
       return;
@@ -6300,8 +6308,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
           _isRemovingBackground = false;
         },
         operation: () async {
-          await _backgroundRemoverInitialization;
-          return _backgroundRemovalService.removeBackground(sourceBytes);
+          return _removeBackgroundForCurrentUser(sourceBytes);
         },
       );
       if (result == null || !mounted || taskId != _removeBackgroundTaskId) {
@@ -7049,7 +7056,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
           optimizedPhoto = await compute(_optimizeEditorPhotoPayload, rawBytes);
           processedBytes = optimizedPhoto.bytes;
           try {
-            final result = await _backgroundRemovalService.removeBackground(
+            final result = await _removeBackgroundForCurrentUser(
               optimizedPhoto.bytes,
             );
             processedBytes = result.pngBytes;

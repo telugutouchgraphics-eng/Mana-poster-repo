@@ -31,3 +31,13 @@ class OfflineBackgroundRemovalService {
 
   Future<Uint8List> finalizeCutout(Uint8List pngBytes) async => pngBytes;
 }
+
+class CloudBackgroundRemovalService {
+  const CloudBackgroundRemovalService();
+
+  bool get isConfigured => false;
+
+  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
+    throw UnsupportedError('Cloud Remove BG is not supported on web');
+  }
+}

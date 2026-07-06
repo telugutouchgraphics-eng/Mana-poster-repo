@@ -4,11 +4,12 @@ This project now supports cloud background removal with this flow:
 
 1. Flutter app uploads input image to Firebase Storage (`users/<uid>/rembg_jobs/.../input.jpg`)
 2. App calls Cloud Run API (`/remove-bg`) with Firebase ID token + input/output paths
-3. Cloud Run runs open-source `rembg`, writes transparent PNG to Firebase Storage
-4. Cloud Run returns download URL
-5. App downloads result PNG and updates selected layer
+3. Cloud Run verifies `users/<uid>/entitlements/pro` is active
+4. Cloud Run runs open-source `rembg`, writes transparent PNG to Firebase Storage
+5. Cloud Run returns download URL
+6. App downloads result PNG and updates selected layer
 
-If cloud service is unavailable, app automatically falls back to on-device MLKit/offline pipeline.
+If the user is not paid, cloud service is unavailable, or the endpoint is not configured, the app automatically falls back to the on-device offline pipeline.
 
 ## 1) One-time prerequisites (manual)
 
@@ -19,8 +20,9 @@ If cloud service is unavailable, app automatically falls back to on-device MLKit
 2. Set project:
    - `gcloud config set project mana-poster-ap`
 3. Enable APIs:
-   - `gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com`
+   - `gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com iamcredentials.googleapis.com firestore.googleapis.com`
 4. Ensure Firebase Storage is enabled in Firebase Console.
+5. Ensure the Cloud Run service account can read Firestore user entitlement docs.
 
 ## 2) Deploy Firebase rules (manual)
 
@@ -78,15 +80,17 @@ flutter build appbundle \
 
 ## 5) Validation checklist
 
-1. Login user in app (Firebase Auth).
+1. Login as an active paid user in app (Firebase Auth).
 2. Open editor and select photo layer.
 3. Tap `Remove BG`.
 4. Check Firebase Storage:
    - `users/<uid>/rembg_jobs/.../output.png` exists.
-5. App should show result with engine label: `Cloud rembg (open-source)`.
+5. App should use the cloud result.
+6. Login as a free user and confirm Remove BG still works through the offline fallback.
 
 ## Notes
 
 - `rembg` is open-source; Cloud Run itself is pay-as-you-go with free tier.
+- The Cloud Run endpoint verifies active subscription server-side; the client-side paid check is only a routing optimization.
 - If Cloud Run fails or endpoint is not configured, app falls back to on-device flow.
 - Keep endpoint secret management in CI/CD for production builds (instead of hardcoding).

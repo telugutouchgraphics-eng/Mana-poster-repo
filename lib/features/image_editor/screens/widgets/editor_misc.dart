@@ -1348,7 +1348,9 @@ class _AdvancedLayersFullscreenOverlayState
           fontSize: 24,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.low,
-          color: layer.stickerColor,
+          color: _EditorTextState._isImageLikeSticker(layer.sticker)
+              ? null
+              : layer.stickerColor,
         ),
       ),
     );
@@ -1493,7 +1495,7 @@ class _StickerBrowserFullscreenOverlayState
     return EditorFullscreenOverlay(
       title: strings.localized(
         telugu: 'Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€¢Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
-        english: 'Stickers',
+        english: 'Assets',
       ),
       doneLabel: strings.localized(
         telugu: 'Ã Â°Â®Ã Â±â€šÃ Â°Â¸Ã Â°Â¿Ã Â°ÂµÃ Â±â€¡Ã Â°Â¯Ã Â°Â¿',
@@ -1579,7 +1581,6 @@ class _StickerBrowserFullscreenOverlayState
                                 fontSize: 38,
                                 fit: BoxFit.contain,
                                 filterQuality: FilterQuality.medium,
-                                color: const Color(0xFFEFF6FF),
                               )
                             : Text(
                                 sticker,

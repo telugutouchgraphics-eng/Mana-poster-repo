@@ -263,6 +263,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     );
   }
 
+  Offset _rubberBandWorkspacePan(Offset pan) {
+    const limit = 36.0;
+    const resistance = 0.18;
+    return Offset(
+      (pan.dx * resistance).clamp(-limit, limit).toDouble(),
+      (pan.dy * resistance).clamp(-limit, limit).toDouble(),
+    );
+  }
+
   double _workspaceBrushSize(double screenSize) =>
       screenSize / math.max(0.1, _workspaceZoom);
 
@@ -322,7 +331,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
           ((_pinchStartFocalPoint - viewportCenter - _pinchStartPan) *
               scaleRatio);
       final nextPan = nextZoom <= _workspaceFitZoom
-          ? Offset.zero
+          ? _rubberBandWorkspacePan(anchoredPan)
           : _boundWorkspacePan(anchoredPan, nextZoom);
       if ((nextZoom - _workspaceZoom).abs() > 0.0015 ||
           (nextPan - _workspacePan).distanceSquared > 0.36) {
@@ -387,7 +396,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isCropApplying = false;
   bool _suppressCanvasTapDown = false;
   bool _canvasTapResolvedLayer = false;
-  bool _autoSelectCanvasLayer = false;
+  bool _autoSelectCanvasLayer = true;
   bool _showSelectedLayerHandles = true;
   int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
@@ -423,12 +432,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   double _photoGestureLastRotation = 0;
   double _stickerHandleStartAngle = 0;
   double _stickerHandleStartDistance = 1;
+  Offset _transformHandleStartCenterGlobal = Offset.zero;
   Offset _textStretchStartGlobalPosition = Offset.zero;
-  Offset _textResizeStartGlobalPosition = Offset.zero;
-  Offset _textResizeRightAxisGlobal = Offset(1, 0);
-  double _textResizeStartHorizontalDistance = 1;
-  Offset _textResizeVerticalAxisGlobal = Offset(0, -1);
-  double _textResizeStartVerticalDistance = 1;
   Offset _objectSideResizeAxisGlobal = Offset.zero;
   bool _objectSideResizeHorizontal = true;
   Offset _photoGestureVelocity = Offset.zero;
@@ -510,6 +515,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _EditorBrushPreset _selectedDrawBrush = _EditorBrushPreset.marker;
   final List<Offset> _eraserStrokePoints = <Offset>[];
   final List<Offset> _contentAwareStrokePoints = <Offset>[];
+  final Set<int> _contentAwareActivePointers = <int>{};
+  bool _suppressContentAwareStroke = false;
   List<Offset> _cloneStrokePoints = <Offset>[];
   List<Offset> _clonePreviewStampPoints = <Offset>[];
   List<Offset> _stretchStrokePoints = <Offset>[];
@@ -719,7 +726,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       case 'Text':
         return strings.localized(telugu: 'టెక్స్ట్', english: 'Text');
       case 'Stickers':
-        return strings.localized(telugu: 'స్టికర్స్', english: 'Stickers');
+        return strings.localized(telugu: 'అసెట్స్', english: 'Assets');
       case 'Background':
         return strings.localized(
           telugu: 'బ్యాక్‌గ్రౌండ్',
@@ -3127,7 +3134,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 0.0,
               );
               final workspaceSize = Size(workspaceWidth, workspaceHeight);
-              _lastCanvasSize = workspaceSize;
+              final workspaceViewportSize = Size(
+                workspaceWidth,
+                canvasSize.height,
+              );
+              _lastCanvasSize = workspaceViewportSize;
               final hasPageSelection = (_pageAspectRatio ?? 0) > 0;
               final pageSize = hasPageSelection
                   ? _fitPageSize(
@@ -3215,7 +3226,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               borderRadius: _borderRadius,
                               borderColor: _borderColor,
                               borderTargetLayerId: _borderTargetLayerId,
-                              canvasSize: workspaceSize,
+                              canvasSize: workspaceViewportSize,
                               pageAspectRatio: _pageAspectRatio,
                               hideAutoPageFrame: _pageAspectRatioAutoFromImage,
                               showTransparentCheckerboard:
@@ -3301,6 +3312,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               onContentAwareEnd: () =>
                                   unawaited(_handleContentAwareEnd()),
                               onContentAwareCancel: _cancelContentAwareStroke,
+                              onContentAwarePointerDown:
+                                  _handleContentAwarePointerDown,
+                              onContentAwarePointerEnd:
+                                  _handleContentAwarePointerEnd,
+                              canUseContentAwarePointerStroke:
+                                  _canUseContentAwarePointerStroke,
                               onPhotoCloneSourceTap: _handlePhotoCloneSourceTap,
                               onPhotoCloneStart: _handlePhotoCloneStart,
                               onPhotoCloneUpdate: _handlePhotoCloneUpdate,

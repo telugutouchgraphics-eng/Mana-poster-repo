@@ -251,6 +251,12 @@ class _TopBar extends StatelessWidget {
           onTap: _withHaptic(onPhotoCropTap),
         ),
         _TopContextChip(
+          icon: Icons.auto_fix_high_outlined,
+          label: 'Remove BG',
+          selected: activeTool == 'Remove BG',
+          onTap: _withHaptic(onPhotoRemoveBgTap),
+        ),
+        _TopContextChip(
           icon: Icons.fit_screen_rounded,
           label: 'Fit',
           selected: activeTool == 'Fit',
@@ -279,12 +285,6 @@ class _TopBar extends StatelessWidget {
           label: 'Retouch',
           selected: activeTool == 'Retouch',
           onTap: _withHaptic(onPhotoRetouchTap),
-        ),
-        _TopContextChip(
-          icon: Icons.auto_fix_high_outlined,
-          label: 'Remove BG',
-          selected: activeTool == 'Remove BG',
-          onTap: _withHaptic(onPhotoRemoveBgTap),
         ),
         _TopContextChip(
           icon: Icons.opacity_rounded,

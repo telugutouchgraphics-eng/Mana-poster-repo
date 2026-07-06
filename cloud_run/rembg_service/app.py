@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from flask import Flask, jsonify, request
-from firebase_admin import auth, initialize_app
+from firebase_admin import auth, firestore, initialize_app
 from google.cloud import storage
 from rembg import new_session, remove
 
@@ -13,6 +13,7 @@ app = Flask(__name__)
 
 initialize_app()
 storage_client = storage.Client()
+firestore_client = firestore.Client()
 rembg_session = new_session(model_name=os.getenv("REMBG_MODEL", "u2net"))
 
 bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "").strip()
@@ -63,6 +64,43 @@ def _verify_user():
         return None
 
 
+def _as_datetime(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _has_active_pro_entitlement(uid):
+    if not uid:
+        return False
+    try:
+        snapshot = (
+            firestore_client.collection("users")
+            .document(uid)
+            .collection("entitlements")
+            .document("pro")
+            .get()
+        )
+        if not snapshot.exists:
+            return False
+        data = snapshot.to_dict() or {}
+        if data.get("isPro") is not True:
+            return False
+        status = str(data.get("status") or "").strip().lower()
+        if status == "active":
+            return True
+        expiry_time = _as_datetime(data.get("expiryTime"))
+        return expiry_time is not None and expiry_time > datetime.now(timezone.utc)
+    except Exception:
+        return False
+
+
 def _validate_path_for_user(path, uid):
     path = (path or "").strip().replace("\\", "/")
     if not path:
@@ -100,6 +138,9 @@ def remove_bg():
 
     payload = request.get_json(silent=True) or {}
     uid = user.get("uid")
+    if not _has_active_pro_entitlement(uid):
+        return _error("Cloud background removal requires an active subscription.", 403)
+
     input_path = _validate_path_for_user(payload.get("inputPath"), uid)
     output_path = _validate_path_for_user(payload.get("outputPath"), uid)
 

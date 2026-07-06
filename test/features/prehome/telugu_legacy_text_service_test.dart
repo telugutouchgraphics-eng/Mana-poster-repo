@@ -11,6 +11,76 @@ void main() {
     expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
   });
 
+  test('keeps Telugu three-consonant clusters in legacy conversion', () {
+    const source = 'రాష్ట్ర';
+    final legacy = TeluguLegacyOfflineConverter.convert(source);
+
+    expect(legacy, isNot(source));
+    expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
+  });
+
+  test('keeps Telugu vocalic-r signs in legacy conversion', () {
+    final samples = <String>[
+      String.fromCharCodes(const <int>[0x0C05, 0x0C2E, 0x0C43, 0x0C24]),
+      String.fromCharCodes(const <int>[0x0C15, 0x0C43, 0x0C24, 0x0C3F]),
+      String.fromCharCodes(
+        const <int>[0x0C38, 0x0C4D, 0x0C2E, 0x0C43, 0x0C24, 0x0C3F],
+      ),
+      String.fromCharCodes(
+        const <int>[
+          0x0C2E,
+          0x0C3E,
+          0x0C24,
+          0x0C43,
+          0x0C2D,
+          0x0C3E,
+          0x0C37,
+        ],
+      ),
+      String.fromCharCodes(
+        const <int>[0x0C26, 0x0C43, 0x0C37, 0x0C4D, 0x0C1F, 0x0C3F],
+      ),
+      String.fromCharCodes(
+        const <int>[0x0C35, 0x0C43, 0x0C26, 0x0C4D, 0x0C27, 0x0C3F],
+      ),
+    ];
+
+    for (final source in samples) {
+      final legacy = TeluguLegacyOfflineConverter.convert(source);
+
+      expect(legacy, isNot(source));
+      expect(legacy.runes, contains(0xF07F));
+      expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
+    }
+  });
+
+  test('uses trailing ra-vattu order for decorative legacy fonts', () {
+    final source = String.fromCharCodes(
+      const <int>[0x0C2A, 0x0C4D, 0x0C30, 0x0C17, 0x0C24, 0x0C3F],
+    );
+    final pallavi = TeluguLegacyTextService.convertSync(
+      source,
+      fontFamily: 'Pallavi Bold',
+    );
+    final amrutha = TeluguLegacyTextService.convertSync(
+      source,
+      fontFamily: 'Amrutha',
+    );
+    final bapuBrush = TeluguLegacyTextService.convertSync(
+      source,
+      fontFamily: 'Bapu Brush',
+    );
+    final ramanaBrush = TeluguLegacyTextService.convertSync(
+      source,
+      fontFamily: 'Ramana Brush',
+    );
+
+    expect(pallavi!.runes.take(3), const <int>[0xF0E7, 0xF07C, 0xF09F]);
+    expect(amrutha!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
+    expect(bapuBrush!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
+    expect(ramanaBrush!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
+  });
+
   test('reverse converts PSD mixed ASCII/private legacy Telugu text', () {
     final rawPsdText = String.fromCharCodes(const <int>[
       0x4e,

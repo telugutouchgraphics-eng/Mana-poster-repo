@@ -234,7 +234,7 @@ class _EditorMainToolsStrip extends StatelessWidget {
         onTap: onTextTap,
       ),
       _ToolItem(
-        label: strings.localized(telugu: 'స్టికర్స్', english: 'Sticker'),
+        label: strings.localized(telugu: 'అసెట్స్', english: 'Assets'),
         icon: Icons.emoji_emotions_outlined,
         assetIcon:
             'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_menu_sticker_bigsize.png',
@@ -1020,7 +1020,9 @@ class _LayersInlineStrip extends StatelessWidget {
         fontSize: 14,
         fit: BoxFit.contain,
         filterQuality: FilterQuality.low,
-        color: layer.stickerColor,
+        color: _EditorTextState._isImageLikeSticker(layer.sticker)
+            ? null
+            : layer.stickerColor,
       ),
     );
   }
@@ -1305,7 +1307,6 @@ class _StickerItemsStrip extends StatelessWidget {
                               fontSize: compact ? 24 : 28,
                               fit: BoxFit.contain,
                               filterQuality: FilterQuality.medium,
-                              color: const Color(0xFFEFF6FF),
                             )
                           : Text(
                               sticker,

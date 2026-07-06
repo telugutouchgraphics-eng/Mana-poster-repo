@@ -26,7 +26,7 @@ final Map<String, String> _legacyConversionCache = <String, String>{};
 bool _legacyConversionCacheLoaded = false;
 Future<void>? _legacyConversionCacheLoadFuture;
 Timer? _legacyConversionCachePersistTimer;
-const String _legacyConversionVersion = 'offline-v2';
+const String _legacyConversionVersion = 'offline-v6';
 
 const Map<String, _LegacyFontProfile> _legacyFontProfiles =
     <String, _LegacyFontProfile>{

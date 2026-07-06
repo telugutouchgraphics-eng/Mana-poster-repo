@@ -3320,6 +3320,9 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onContentAwareUpdate,
     required this.onContentAwareEnd,
     required this.onContentAwareCancel,
+    required this.onContentAwarePointerDown,
+    required this.onContentAwarePointerEnd,
+    required this.canUseContentAwarePointerStroke,
     required this.onPhotoCloneSourceTap,
     required this.onPhotoCloneStart,
     required this.onPhotoCloneUpdate,
@@ -3436,6 +3439,9 @@ class _CanvasWorkspace extends StatelessWidget {
   onContentAwareUpdate;
   final VoidCallback onContentAwareEnd;
   final VoidCallback onContentAwareCancel;
+  final ValueChanged<PointerDownEvent> onContentAwarePointerDown;
+  final ValueChanged<PointerEvent> onContentAwarePointerEnd;
+  final bool Function() canUseContentAwarePointerStroke;
   final void Function(Offset localPosition, Size layerSize)
   onPhotoCloneSourceTap;
   final void Function(Offset localPosition, Size layerSize) onPhotoCloneStart;
@@ -3579,12 +3585,13 @@ class _CanvasWorkspace extends StatelessWidget {
 
     void trackLayerBrushPointerDown(PointerDownEvent event) {
       activeLayerBrushPointers.add(event.pointer);
+      if (isContentAwareMode) {
+        onContentAwarePointerDown(event);
+      }
       if (activeLayerBrushPointers.length > 1) {
         suppressLayerBrushStroke = true;
         if (isPhotoEraserMode) {
           onPhotoEraserCancel();
-        } else if (isContentAwareMode) {
-          onContentAwareCancel();
         } else if (isPhotoCloneMode) {
           onPhotoCloneCancel();
         } else if (isPhotoStretchMode) {
@@ -3597,6 +3604,9 @@ class _CanvasWorkspace extends StatelessWidget {
 
     void trackLayerBrushPointerEnd(PointerEvent event) {
       activeLayerBrushPointers.remove(event.pointer);
+      if (isContentAwareMode) {
+        onContentAwarePointerEnd(event);
+      }
       if (activeLayerBrushPointers.isEmpty) {
         suppressLayerBrushStroke = false;
       }
@@ -3615,9 +3625,7 @@ class _CanvasWorkspace extends StatelessWidget {
     }
 
     bool canUseContentAwareStroke() {
-      return isContentAwareMode &&
-          !suppressLayerBrushStroke &&
-          activeLayerBrushPointers.length <= 1;
+      return isContentAwareMode && canUseContentAwarePointerStroke();
     }
 
     bool canUsePhotoCloneStroke() {
@@ -3632,6 +3640,14 @@ class _CanvasWorkspace extends StatelessWidget {
           activeLayerBrushPointers.length <= 1;
     }
 
+    final lockLayerSelectionForBrushTool =
+        isPhotoEraserMode ||
+        isContentAwareMode ||
+        isPhotoCloneMode ||
+        isPhotoStretchMode ||
+        isLayerMaskBrushMode ||
+        isDrawBrushMode;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: showCanvasBackground
@@ -3640,7 +3656,7 @@ class _CanvasWorkspace extends StatelessWidget {
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: isInlineTextEditing
+        onTapDown: isInlineTextEditing || lockLayerSelectionForBrushTool
             ? null
             : (details) =>
                   onCanvasTapDown(details.localPosition, pageRect, pageSize),
@@ -4254,7 +4270,6 @@ class _CanvasWorkspace extends StatelessWidget {
                                       fontSize: layer.fontSize,
                                       fit: BoxFit.contain,
                                       filterQuality: FilterQuality.medium,
-                                      color: layer.stickerColor,
                                     ),
                                   )
                                 : layer.isSticker
@@ -4513,298 +4528,270 @@ class _CanvasWorkspace extends StatelessWidget {
                                                   Widget? child,
                                                 ) {
                                                   return Stack(
-                                                    clipBehavior: Clip.none,
+                                                    clipBehavior: Clip.hardEdge,
                                                     children: <Widget>[
                                                       Positioned(
                                                         left: 0,
                                                         top: 0,
                                                         width: pageSize.width,
                                                         height: pageSize.height,
-                                                        child: _EditorBlendLayer(
-                                                          blendMode:
-                                                              layer.blendMode,
-                                                          opacity: blendOpacity,
-                                                          child: Center(
-                                                            child: Transform(
-                                                              alignment:
-                                                                  Alignment
-                                                                      .center,
-                                                              transform: matrix,
-                                                              child: SizedBox(
-                                                                width:
-                                                                    transformLayerSize
-                                                                        .width,
-                                                                height:
-                                                                    transformLayerSize
-                                                                        .height,
-                                                                child: Stack(
-                                                                  fit: StackFit
-                                                                      .expand,
-                                                                  children: <Widget>[
-                                                                    Listener(
-                                                                      behavior:
-                                                                          HitTestBehavior
-                                                                              .translucent,
-                                                                      onPointerDown:
-                                                                          (isPhotoEraserMode ||
-                                                                              isContentAwareMode ||
-                                                                              isPhotoCloneMode ||
-                                                                              isPhotoStretchMode ||
-                                                                              isLayerMaskBrushMode)
-                                                                          ? trackLayerBrushPointerDown
-                                                                          : null,
-                                                                      onPointerUp:
-                                                                          (isPhotoEraserMode ||
-                                                                              isContentAwareMode ||
-                                                                              isPhotoCloneMode ||
-                                                                              isPhotoStretchMode ||
-                                                                              isLayerMaskBrushMode)
-                                                                          ? trackLayerBrushPointerEnd
-                                                                          : null,
-                                                                      onPointerCancel:
-                                                                          (isPhotoEraserMode ||
-                                                                              isContentAwareMode ||
-                                                                              isPhotoCloneMode ||
-                                                                              isPhotoStretchMode ||
-                                                                              isLayerMaskBrushMode)
-                                                                          ? trackLayerBrushPointerEnd
-                                                                          : null,
-                                                                      child: GestureDetector(
+                                                        child: ClipRect(
+                                                          child: _EditorBlendLayer(
+                                                            blendMode:
+                                                                layer.blendMode,
+                                                            opacity:
+                                                                blendOpacity,
+                                                            child: Center(
+                                                              child: Transform(
+                                                                alignment:
+                                                                    Alignment
+                                                                        .center,
+                                                                transform:
+                                                                    matrix,
+                                                                child: SizedBox(
+                                                                  width:
+                                                                      transformLayerSize
+                                                                          .width,
+                                                                  height:
+                                                                      transformLayerSize
+                                                                          .height,
+                                                                  child: Stack(
+                                                                    fit: StackFit
+                                                                        .expand,
+                                                                    children: <Widget>[
+                                                                      Listener(
                                                                         behavior:
                                                                             HitTestBehavior.translucent,
-                                                                        onDoubleTap:
-                                                                            isBrushEditingLayer
-                                                                            ? null
-                                                                            : onSelectedLayerDoubleTap,
-                                                                        onPanDown:
-                                                                            isPhotoEraserMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoEraserStroke()) {
-                                                                                  onPhotoEraserStart(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
-                                                                            : isContentAwareMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUseContentAwareStroke()) {
-                                                                                  onContentAwareStart(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
-                                                                            : isPhotoStretchMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoStretchStroke()) {
-                                                                                  onPhotoStretchStart(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
-                                                                            : isLayerMaskBrushMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUseLayerMaskBrushStroke()) {
-                                                                                  onLayerMaskBrushStart(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
+                                                                        onPointerDown:
+                                                                            (isPhotoEraserMode ||
+                                                                                isContentAwareMode ||
+                                                                                isPhotoCloneMode ||
+                                                                                isPhotoStretchMode ||
+                                                                                isLayerMaskBrushMode)
+                                                                            ? trackLayerBrushPointerDown
                                                                             : null,
-                                                                        onTapUp:
-                                                                            isPhotoCloneMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoCloneStroke()) {
-                                                                                  onPhotoCloneSourceTap(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
+                                                                        onPointerUp:
+                                                                            (isPhotoEraserMode ||
+                                                                                isContentAwareMode ||
+                                                                                isPhotoCloneMode ||
+                                                                                isPhotoStretchMode ||
+                                                                                isLayerMaskBrushMode)
+                                                                            ? trackLayerBrushPointerEnd
                                                                             : null,
-                                                                        onPanStart:
-                                                                            isPhotoCloneMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoCloneStroke()) {
-                                                                                  onPhotoCloneStart(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
-                                                                                }
-                                                                              }
+                                                                        onPointerCancel:
+                                                                            (isPhotoEraserMode ||
+                                                                                isContentAwareMode ||
+                                                                                isPhotoCloneMode ||
+                                                                                isPhotoStretchMode ||
+                                                                                isLayerMaskBrushMode)
+                                                                            ? trackLayerBrushPointerEnd
                                                                             : null,
-                                                                        onPanUpdate:
-                                                                            isPhotoEraserMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoEraserStroke()) {
-                                                                                  onPhotoEraserUpdate(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
+                                                                        child: GestureDetector(
+                                                                          behavior:
+                                                                              HitTestBehavior.translucent,
+                                                                          onDoubleTap:
+                                                                              isBrushEditingLayer
+                                                                              ? null
+                                                                              : onSelectedLayerDoubleTap,
+                                                                          onPanDown:
+                                                                              isPhotoEraserMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoEraserStroke()) {
+                                                                                    onPhotoEraserStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
                                                                                 }
-                                                                              }
-                                                                            : isContentAwareMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUseContentAwareStroke()) {
-                                                                                  onContentAwareUpdate(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
+                                                                              : isContentAwareMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUseContentAwareStroke()) {
+                                                                                    onContentAwareStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
                                                                                 }
-                                                                              }
-                                                                            : isPhotoStretchMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoStretchStroke()) {
-                                                                                  onPhotoStretchUpdate(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
+                                                                              : isPhotoStretchMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoStretchStroke()) {
+                                                                                    onPhotoStretchStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
                                                                                 }
-                                                                              }
-                                                                            : isPhotoCloneMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUsePhotoCloneStroke()) {
-                                                                                  onPhotoCloneUpdate(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
+                                                                              : isLayerMaskBrushMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUseLayerMaskBrushStroke()) {
+                                                                                    onLayerMaskBrushStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
                                                                                 }
-                                                                              }
-                                                                            : isLayerMaskBrushMode
-                                                                            ? (
-                                                                                details,
-                                                                              ) {
-                                                                                if (canUseLayerMaskBrushStroke()) {
-                                                                                  onLayerMaskBrushUpdate(
-                                                                                    details.localPosition,
-                                                                                    transformLayerSize,
-                                                                                  );
+                                                                              : null,
+                                                                          onTapUp:
+                                                                              isPhotoCloneMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoCloneStroke()) {
+                                                                                    onPhotoCloneSourceTap(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
                                                                                 }
-                                                                              }
-                                                                            : null,
-                                                                        onPanEnd:
-                                                                            isPhotoEraserMode
-                                                                            ? (_) => onPhotoEraserEnd()
-                                                                            : isContentAwareMode
-                                                                            ? (_) => onContentAwareEnd()
-                                                                            : isPhotoCloneMode
-                                                                            ? (_) => onPhotoCloneEnd()
-                                                                            : isPhotoStretchMode
-                                                                            ? (_) => onPhotoStretchEnd()
-                                                                            : isLayerMaskBrushMode
-                                                                            ? (_) => onLayerMaskBrushEnd()
-                                                                            : null,
-                                                                        onPanCancel:
-                                                                            isPhotoEraserMode
-                                                                            ? onPhotoEraserCancel
-                                                                            : isContentAwareMode
-                                                                            ? onContentAwareCancel
-                                                                            : isPhotoCloneMode
-                                                                            ? onPhotoCloneCancel
-                                                                            : isPhotoStretchMode
-                                                                            ? onPhotoStretchCancel
-                                                                            : isLayerMaskBrushMode
-                                                                            ? onLayerMaskBrushCancel
-                                                                            : null,
-                                                                        onScaleStart:
-                                                                            isBrushEditingLayer
-                                                                            ? null
-                                                                            : onSelectedLayerInteractionStart,
-                                                                        onScaleUpdate:
-                                                                            isBrushEditingLayer
-                                                                            ? null
-                                                                            : onSelectedLayerScaleUpdate,
-                                                                        onScaleEnd:
-                                                                            isBrushEditingLayer
-                                                                            ? null
-                                                                            : (_) => onSelectedLayerInteractionEnd(),
-                                                                        child: _EraserPreviewLayer(
-                                                                          layerId:
-                                                                              layer.id,
-                                                                          previewListenable:
-                                                                              eraserPreviewListenable,
-                                                                          brushScale:
-                                                                              isPhotoStretchMode ||
-                                                                                  isContentAwareMode ||
-                                                                                  isPhotoCloneMode ||
-                                                                                  isPhotoEraserMode ||
-                                                                                  isLayerMaskBrushMode
-                                                                              ? 1 /
-                                                                                    math.max(
-                                                                                      0.1,
-                                                                                      viewportScale,
-                                                                                    )
-                                                                              : 1,
-                                                                          child:
-                                                                              contentLayerChild,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                    if (showSelectionDecorations &&
-                                                                        !isBrushEditingLayer)
-                                                                      Positioned.fill(
-                                                                        child: IgnorePointer(
-                                                                          child: CustomPaint(
-                                                                            painter: _SelectionBoxPainter(
-                                                                              topLeft: Offset.zero,
-                                                                              topRight: Offset(
-                                                                                transformLayerSize.width,
-                                                                                0,
-                                                                              ),
-                                                                              bottomRight: Offset(
-                                                                                transformLayerSize.width,
-                                                                                transformLayerSize.height,
-                                                                              ),
-                                                                              bottomLeft: Offset(
-                                                                                0,
-                                                                                transformLayerSize.height,
-                                                                              ),
-                                                                              leftColor: const Color(
-                                                                                0xFF1A73E8,
-                                                                              ),
-                                                                              topColor: const Color(
-                                                                                0xFF1A73E8,
-                                                                              ),
-                                                                              rightColor: const Color(
-                                                                                0xFF1A73E8,
-                                                                              ),
-                                                                              bottomColor: const Color(
-                                                                                0xFF1A73E8,
-                                                                              ),
-                                                                              strokeWidth:
-                                                                                  1.15 /
-                                                                                  viewportScale.clamp(
-                                                                                    0.25,
-                                                                                    8.0,
-                                                                                  ),
-                                                                            ),
+                                                                              : null,
+                                                                          onPanStart:
+                                                                              isPhotoCloneMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoCloneStroke()) {
+                                                                                    onPhotoCloneStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : null,
+                                                                          onPanUpdate:
+                                                                              isPhotoEraserMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoEraserStroke()) {
+                                                                                    onPhotoEraserUpdate(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : isContentAwareMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUseContentAwareStroke()) {
+                                                                                    onContentAwareUpdate(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : isPhotoStretchMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoStretchStroke()) {
+                                                                                    onPhotoStretchUpdate(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : isPhotoCloneMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUsePhotoCloneStroke()) {
+                                                                                    onPhotoCloneUpdate(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : isLayerMaskBrushMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUseLayerMaskBrushStroke()) {
+                                                                                    onLayerMaskBrushUpdate(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                  }
+                                                                                }
+                                                                              : null,
+                                                                          onPanEnd:
+                                                                              isPhotoEraserMode
+                                                                              ? (
+                                                                                  _,
+                                                                                ) => onPhotoEraserEnd()
+                                                                              : isContentAwareMode
+                                                                              ? (
+                                                                                  _,
+                                                                                ) => onContentAwareEnd()
+                                                                              : isPhotoCloneMode
+                                                                              ? (
+                                                                                  _,
+                                                                                ) => onPhotoCloneEnd()
+                                                                              : isPhotoStretchMode
+                                                                              ? (
+                                                                                  _,
+                                                                                ) => onPhotoStretchEnd()
+                                                                              : isLayerMaskBrushMode
+                                                                              ? (
+                                                                                  _,
+                                                                                ) => onLayerMaskBrushEnd()
+                                                                              : null,
+                                                                          onPanCancel:
+                                                                              isPhotoEraserMode
+                                                                              ? onPhotoEraserCancel
+                                                                              : isContentAwareMode
+                                                                              ? onContentAwareCancel
+                                                                              : isPhotoCloneMode
+                                                                              ? onPhotoCloneCancel
+                                                                              : isPhotoStretchMode
+                                                                              ? onPhotoStretchCancel
+                                                                              : isLayerMaskBrushMode
+                                                                              ? onLayerMaskBrushCancel
+                                                                              : null,
+                                                                          onScaleStart:
+                                                                              isBrushEditingLayer
+                                                                              ? null
+                                                                              : onSelectedLayerInteractionStart,
+                                                                          onScaleUpdate:
+                                                                              isBrushEditingLayer
+                                                                              ? null
+                                                                              : onSelectedLayerScaleUpdate,
+                                                                          onScaleEnd:
+                                                                              isBrushEditingLayer
+                                                                              ? null
+                                                                              : (_) => onSelectedLayerInteractionEnd(),
+                                                                          child: _EraserPreviewLayer(
+                                                                            layerId:
+                                                                                layer.id,
+                                                                            previewListenable:
+                                                                                eraserPreviewListenable,
+                                                                            brushScale:
+                                                                                isPhotoStretchMode ||
+                                                                                    isContentAwareMode ||
+                                                                                    isPhotoCloneMode ||
+                                                                                    isPhotoEraserMode ||
+                                                                                    isLayerMaskBrushMode
+                                                                                ? 1 /
+                                                                                      math.max(
+                                                                                        0.1,
+                                                                                        viewportScale,
+                                                                                      )
+                                                                                : 1,
+                                                                            child:
+                                                                                contentLayerChild,
                                                                           ),
                                                                         ),
                                                                       ),
-                                                                  ],
+                                                                    ],
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
@@ -4870,12 +4857,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                               >[
                                                                                 IgnorePointer(
                                                                                   child: Opacity(
-                                                                                    opacity:
-                                                                                        _isLegacyTeluguFontFamily(
-                                                                                          layer.fontFamily,
-                                                                                        )
-                                                                                        ? 1
-                                                                                        : 0,
+                                                                                    opacity: 0,
                                                                                     child: OverflowBox(
                                                                                       alignment: Alignment.center,
                                                                                       minWidth: 0,
@@ -4900,9 +4882,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                                     focusNode: inlineTextFocusNode,
                                                                                     onChanged: onInlineTextChanged,
                                                                                     onEditingComplete: onInlineTextEditingComplete,
-                                                                                    paintEditableText: !_isLegacyTeluguFontFamily(
-                                                                                      layer.fontFamily,
-                                                                                    ),
+                                                                                    paintEditableText: true,
                                                                                   ),
                                                                                 ),
                                                                               ],
@@ -4975,7 +4955,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                               panEnabled: true,
                                               scaleEnabled: true,
                                               constrained: false,
-                                              clipBehavior: Clip.none,
+                                              clipBehavior: Clip.hardEdge,
                                               boundaryMargin:
                                                   const EdgeInsets.all(2400),
                                               onInteractionStart:
@@ -5213,7 +5193,7 @@ class _CanvasWorkspace extends StatelessWidget {
                     );
 
               return Center(
-                child: isSelected
+                child: isSelected || lockLayerSelectionForBrushTool
                     ? child
                     : GestureDetector(
                         behavior: HitTestBehavior.opaque,
@@ -5269,22 +5249,22 @@ class _CanvasWorkspace extends StatelessWidget {
               : _photoLayerVisualSize(layer, pageSize))
         : Size.zero;
     final transformLayerSize = layer.isPhoto ? photoSize : layerSize;
+    final photoPaintRect = layer.isPhoto
+        ? _photoVisiblePaintRect(layer, photoSize)
+        : Rect.zero;
     final textSelectionBoxSize = layer.isText
         ? _workspaceTextSelectionBoxSize(layer, pageSize)
         : Size.zero;
 
-    return Positioned(
-      left: pageRect.left,
-      top: pageRect.top,
-      width: pageSize.width,
-      height: pageSize.height,
+    final pageOrigin = Offset(pageRect.left, pageRect.top - topInset);
+    return Positioned.fill(
       child: ValueListenableBuilder<Matrix4>(
         valueListenable: transformationController,
         builder: (BuildContext context, Matrix4 matrix, Widget? child) {
           if (layer.isText) {
             return _LayerSelectionBoxOverlay(
               pageSize: pageSize,
-              pageOrigin: Offset.zero,
+              pageOrigin: pageOrigin,
               matrix: matrix,
               viewportScale: viewportScale,
               layerSize: textSelectionBoxSize,
@@ -5314,11 +5294,17 @@ class _CanvasWorkspace extends StatelessWidget {
           }
           return _LayerSelectionBoxOverlay(
             pageSize: pageSize,
-            pageOrigin: Offset.zero,
+            pageOrigin: pageOrigin,
             matrix: matrix,
             viewportScale: viewportScale,
-            layerSize: transformLayerSize,
-            showFrame: false,
+            layerSize: layer.isPhoto ? photoPaintRect.size : transformLayerSize,
+            centerOffset: layer.isPhoto
+                ? (photoPaintRect.center -
+                      Offset(
+                        transformLayerSize.width / 2,
+                        transformLayerSize.height / 2,
+                      ))
+                : Offset.zero,
             showTopStretchHandle: false,
             showSideResizeHandles: true,
             onPointerDown: onSelectedTransformHandlePointerDown,
@@ -5367,6 +5353,7 @@ class _InlineCanvasTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final inputStyle = _inlineTextInputStyle(layer);
     final textDirection = _textDirectionForValue(controller.text);
+    final usesLegacyPreview = _isLegacyTeluguFontFamily(layer.fontFamily);
     final needsScriptSafety = _textLayerNeedsScriptSafety(
       fontFamily: layer.fontFamily,
       text: controller.text,
@@ -5407,87 +5394,134 @@ class _InlineCanvasTextField extends StatelessWidget {
       child: SizedBox(
         width: width,
         height: math.max(height, 44),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.center,
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    textSelectionTheme: TextSelectionThemeData(
-                      cursorColor: const Color(0xFF38BDF8),
-                      selectionColor: const Color(
-                        0xFF38BDF8,
-                      ).withValues(alpha: 0.28),
-                      selectionHandleColor: const Color(0xFF38BDF8),
-                    ),
-                  ),
-                  child: MediaQuery.withNoTextScaling(
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: <Widget>[
-                        Positioned(
-                          left: editLeft,
-                          top: 0,
-                          bottom: 0,
-                          width: editWidth,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: inputVerticalPadding,
-                            ),
-                            child: EditableText(
-                              controller: controller,
-                              focusNode: focusNode,
-                              autofocus: true,
-                              maxLines: null,
-                              minLines: 1,
-                              keyboardType: TextInputType.multiline,
-                              textInputAction: TextInputAction.newline,
-                              keyboardAppearance: Brightness.dark,
-                              textAlign: layer.textAlign,
-                              textDirection: textDirection,
-                              showSelectionHandles: true,
-                              enableInteractiveSelection: true,
-                              strutStyle: StrutStyle(
-                                fontFamily: inputStyle.fontFamily,
-                                fontSize: layer.fontSize,
-                                height: inputStyle.height,
-                                leadingDistribution:
-                                    TextLeadingDistribution.even,
-                              ),
-                              style: editableStyle,
-                              cursorColor: const Color(0xFF38BDF8),
-                              backgroundCursorColor: Colors.transparent,
-                              selectionColor: const Color(
-                                0xFF38BDF8,
-                              ).withValues(alpha: 0.28),
-                              cursorWidth: 1.8,
-                              cursorRadius: const Radius.circular(2),
-                              enableSuggestions: true,
-                              autocorrect: true,
-                              selectionControls: materialTextSelectionControls,
-                              contextMenuBuilder:
-                                  (context, editableTextState) =>
-                                      AdaptiveTextSelectionToolbar.editableText(
-                                        editableTextState: editableTextState,
-                                      ),
-                              magnifierConfiguration:
-                                  TextMagnifier.adaptiveMagnifierConfiguration,
-                              onChanged: onChanged,
-                              onEditingComplete: onEditingComplete,
-                              onTapOutside: (_) => onEditingComplete(),
-                            ),
-                          ),
+        child: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, value, _) {
+            final showLegacyPreview =
+                usesLegacyPreview && value.selection.isCollapsed;
+            final effectiveEditableStyle = showLegacyPreview
+                ? editableStyle.copyWith(color: Colors.transparent)
+                : editableStyle;
+            final legacyPreviewText = showLegacyPreview
+                ? TeluguLegacyTextService.convertSync(
+                        value.text.isEmpty ? '\u200B' : value.text,
+                        fontFamily: layer.fontFamily,
+                      ) ??
+                      value.text
+                : '';
+            return Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Theme(
+                      data: Theme.of(context).copyWith(
+                        textSelectionTheme: TextSelectionThemeData(
+                          cursorColor: const Color(0xFF38BDF8),
+                          selectionColor: const Color(
+                            0xFF38BDF8,
+                          ).withValues(alpha: 0.28),
+                          selectionHandleColor: const Color(0xFF38BDF8),
                         ),
-                      ],
+                      ),
+                      child: MediaQuery.withNoTextScaling(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: <Widget>[
+                            if (showLegacyPreview)
+                              Positioned(
+                                left: editLeft,
+                                top: 0,
+                                bottom: 0,
+                                width: editWidth,
+                                child: IgnorePointer(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: inputVerticalPadding,
+                                    ),
+                                    child: Text(
+                                      legacyPreviewText,
+                                      maxLines: null,
+                                      textAlign: layer.textAlign,
+                                      textDirection: textDirection,
+                                      textScaler: TextScaler.noScaling,
+                                      style: editableStyle.copyWith(
+                                        color: layer.textColor.withValues(
+                                          alpha: layer.textOpacity.clamp(0, 1),
+                                        ),
+                                        fontFamily: layer.fontFamily,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            Positioned(
+                              left: editLeft,
+                              top: 0,
+                              bottom: 0,
+                              width: editWidth,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: inputVerticalPadding,
+                                ),
+                                child: EditableText(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  autofocus: true,
+                                  maxLines: null,
+                                  minLines: 1,
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.newline,
+                                  keyboardAppearance: Brightness.dark,
+                                  textAlign: layer.textAlign,
+                                  textDirection: textDirection,
+                                  showSelectionHandles: true,
+                                  enableInteractiveSelection: true,
+                                  strutStyle: StrutStyle(
+                                    fontFamily: inputStyle.fontFamily,
+                                    fontSize: layer.fontSize,
+                                    height: inputStyle.height,
+                                    leadingDistribution:
+                                        TextLeadingDistribution.even,
+                                  ),
+                                  style: effectiveEditableStyle,
+                                  cursorColor: const Color(0xFF38BDF8),
+                                  backgroundCursorColor: Colors.transparent,
+                                  selectionColor: const Color(
+                                    0xFF38BDF8,
+                                  ).withValues(alpha: 0.28),
+                                  cursorWidth: 1.8,
+                                  cursorRadius: const Radius.circular(2),
+                                  enableSuggestions: true,
+                                  autocorrect: true,
+                                  selectionControls:
+                                      materialTextSelectionControls,
+                                  contextMenuBuilder:
+                                      (context, editableTextState) =>
+                                          AdaptiveTextSelectionToolbar.editableText(
+                                            editableTextState:
+                                                editableTextState,
+                                          ),
+                                  magnifierConfiguration: TextMagnifier
+                                      .adaptiveMagnifierConfiguration,
+                                  onChanged: onChanged,
+                                  onEditingComplete: onEditingComplete,
+                                  onTapOutside: (_) => onEditingComplete(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
@@ -5790,6 +5824,25 @@ Size _photoLayerVisualSize(_CanvasLayer layer, Size pageSize) {
     pageSize: pageSize,
     photoAspectRatio: layer.photoAspectRatio,
   );
+}
+
+Rect _photoVisiblePaintRect(_CanvasLayer layer, Size layerSize) {
+  if (layerSize.width <= 0 || layerSize.height <= 0) {
+    return Rect.zero;
+  }
+  final aspectRatio =
+      (layer.photoAspectRatio != null && layer.photoAspectRatio! > 0)
+      ? layer.photoAspectRatio!
+      : layerSize.width / layerSize.height;
+  var width = layerSize.width;
+  var height = width / aspectRatio;
+  if (height > layerSize.height) {
+    height = layerSize.height;
+    width = height * aspectRatio;
+  }
+  final left = (layerSize.width - width) / 2;
+  final top = (layerSize.height - height) / 2;
+  return Rect.fromLTWH(left, top, width, height);
 }
 
 double _editorPhotoMaskAspectRatio(String shape) {
@@ -6710,14 +6763,26 @@ Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
   if (_EditorTextState._isImageLikeSticker(sticker)) {
     return Size.square(layer.fontSize);
   }
+  return _textStickerVisualSize(sticker, layer.fontSize);
+}
+
+Size _textStickerVisualSize(String? sticker, double fontSize) {
+  final safeFontSize = fontSize.clamp(1.0, 400.0).toDouble();
   final painter = TextPainter(
     text: TextSpan(
       text: sticker ?? '*',
-      style: TextStyle(fontSize: layer.fontSize),
+      style: TextStyle(fontSize: safeFontSize, height: 1.15),
     ),
     textDirection: TextDirection.ltr,
+    textScaler: TextScaler.noScaling,
+    maxLines: 1,
   )..layout();
-  return painter.size;
+  final verticalPadding = math.max(6.0, safeFontSize * 0.16);
+  final horizontalPadding = math.max(4.0, safeFontSize * 0.08);
+  return Size(
+    math.max(safeFontSize, painter.width + (horizontalPadding * 2)),
+    math.max(safeFontSize * 1.22, painter.height + (verticalPadding * 2)),
+  );
 }
 
 Size _workspaceTextSelectionBoxSize(_CanvasLayer layer, Size pageSize) {
@@ -6791,8 +6856,7 @@ Size _workspaceTextSelectionVisualSize(_CanvasLayer layer, Size pageSize) {
 }
 
 Offset _workspaceTextSelectionCenterOffset(_CanvasLayer layer, Size pageSize) {
-  final metrics = _workspaceTextSelectionMetrics(layer, pageSize);
-  return metrics.centerOffset;
+  return _workspaceTextSelectionMetrics(layer, pageSize).centerOffset;
 }
 
 _TextSelectionMetrics _workspaceTextSelectionMetrics(
@@ -7126,7 +7190,6 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
     required this.layerSize,
     this.centerOffset = Offset.zero,
     this.highlightPageOverflow = false,
-    this.showFrame = true,
     required this.showTopStretchHandle,
     required this.showSideResizeHandles,
     required this.onPointerDown,
@@ -7150,7 +7213,6 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
   final Size layerSize;
   final Offset centerOffset;
   final bool highlightPageOverflow;
-  final bool showFrame;
   final bool showTopStretchHandle;
   final bool showSideResizeHandles;
   final VoidCallback onPointerDown;
@@ -7196,12 +7258,6 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
     final rightSideHandleCenter = transformedPoint(
       Offset(boxSize.width / 2, 0),
     );
-    final resizeHandleCenter = transformedPoint(
-      Offset(boxSize.width / 2, -boxSize.height / 2),
-    );
-    final rotateHandleCenter = transformedPoint(
-      Offset(boxSize.width / 2, boxSize.height / 2),
-    );
     final topLeft = transformedPoint(
       Offset(-boxSize.width / 2, -boxSize.height / 2),
     );
@@ -7244,35 +7300,74 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
     const validColor = Color(0xFF1A73E8);
     final decorationScale = 1 / viewportScale.clamp(0.25, 8.0);
     double scaled(double value) => value * decorationScale;
+    final sideHandleHitSize = scaled(44);
+    final cornerHandleHitSize = scaled(48);
+    final stretchHandleHitSize = scaled(44);
+    final sideHandleVisualSize = scaled(10);
+    final cornerHandleVisualSize = scaled(18);
+    final stretchHandleVisualSize = scaled(14);
+    Offset normalizedOr(Offset value, Offset fallback) {
+      final distance = value.distance;
+      if (distance <= 0.001) {
+        return fallback;
+      }
+      return value / distance;
+    }
+
+    final centerPoint = transformedPoint(Offset.zero);
+    final rotateDirection = normalizedOr(
+      bottomSideHandleCenter - centerPoint,
+      const Offset(0, 1),
+    );
+    final rotateHandleCenter =
+        bottomSideHandleCenter + (rotateDirection * scaled(38));
+
+    Widget cornerResizeHandle({required Offset center, required Color color}) {
+      return Positioned(
+        left: center.dx - (cornerHandleHitSize / 2),
+        top: center.dy - (cornerHandleHitSize / 2),
+        child: _TextBoxHandle(
+          visualSize: cornerHandleVisualSize,
+          hitSize: cornerHandleHitSize,
+          decorationScale: decorationScale,
+          isRound: false,
+          color: color,
+          icon: Icons.open_in_full_rounded,
+          onPointerDown: onPointerDown,
+          onPanStart: onResizePanStart,
+          onPanUpdate: onResizePanUpdate,
+          onPanEnd: onPanEnd,
+        ),
+      );
+    }
 
     return Stack(
       clipBehavior: Clip.none,
       children: <Widget>[
-        if (showFrame)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _SelectionBoxPainter(
-                  topLeft: topLeft,
-                  topRight: topRight,
-                  bottomRight: bottomRight,
-                  bottomLeft: bottomLeft,
-                  leftColor: leftOverflow ? overflowColor : validColor,
-                  topColor: topOverflow ? overflowColor : validColor,
-                  rightColor: rightOverflow ? overflowColor : validColor,
-                  bottomColor: bottomOverflow ? overflowColor : validColor,
-                  strokeWidth: scaled(1.15),
-                ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: _SelectionBoxPainter(
+                topLeft: topLeft,
+                topRight: topRight,
+                bottomRight: bottomRight,
+                bottomLeft: bottomLeft,
+                leftColor: leftOverflow ? overflowColor : validColor,
+                topColor: topOverflow ? overflowColor : validColor,
+                rightColor: rightOverflow ? overflowColor : validColor,
+                bottomColor: bottomOverflow ? overflowColor : validColor,
+                strokeWidth: scaled(1.15),
               ),
             ),
           ),
+        ),
         if (showTopStretchHandle)
           Positioned(
-            left: topHandleCenter.dx - scaled(16),
-            top: topHandleCenter.dy - scaled(16),
+            left: topHandleCenter.dx - (stretchHandleHitSize / 2),
+            top: topHandleCenter.dy - (stretchHandleHitSize / 2),
             child: _TextBoxHandle(
-              visualSize: scaled(14),
-              hitSize: scaled(32),
+              visualSize: stretchHandleVisualSize,
+              hitSize: stretchHandleHitSize,
               decorationScale: decorationScale,
               isRound: true,
               color: topOverflow ? overflowColor : validColor,
@@ -7284,11 +7379,11 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
           ),
         if (showSideResizeHandles) ...<Widget>[
           Positioned(
-            left: leftSideHandleCenter.dx - scaled(13),
-            top: leftSideHandleCenter.dy - scaled(13),
+            left: leftSideHandleCenter.dx - (sideHandleHitSize / 2),
+            top: leftSideHandleCenter.dy - (sideHandleHitSize / 2),
             child: _TextBoxHandle(
-              visualSize: scaled(10),
-              hitSize: scaled(26),
+              visualSize: sideHandleVisualSize,
+              hitSize: sideHandleHitSize,
               decorationScale: decorationScale,
               isRound: true,
               color: leftOverflow ? overflowColor : validColor,
@@ -7299,11 +7394,11 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: rightSideHandleCenter.dx - scaled(13),
-            top: rightSideHandleCenter.dy - scaled(13),
+            left: rightSideHandleCenter.dx - (sideHandleHitSize / 2),
+            top: rightSideHandleCenter.dy - (sideHandleHitSize / 2),
             child: _TextBoxHandle(
-              visualSize: scaled(10),
-              hitSize: scaled(26),
+              visualSize: sideHandleVisualSize,
+              hitSize: sideHandleHitSize,
               decorationScale: decorationScale,
               isRound: true,
               color: rightOverflow ? overflowColor : validColor,
@@ -7314,11 +7409,11 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: topHandleCenter.dx - scaled(13),
-            top: topHandleCenter.dy - scaled(13),
+            left: topHandleCenter.dx - (sideHandleHitSize / 2),
+            top: topHandleCenter.dy - (sideHandleHitSize / 2),
             child: _TextBoxHandle(
-              visualSize: scaled(10),
-              hitSize: scaled(26),
+              visualSize: sideHandleVisualSize,
+              hitSize: sideHandleHitSize,
               decorationScale: decorationScale,
               isRound: true,
               color: topOverflow ? overflowColor : validColor,
@@ -7329,11 +7424,11 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: bottomSideHandleCenter.dx - scaled(13),
-            top: bottomSideHandleCenter.dy - scaled(13),
+            left: bottomSideHandleCenter.dx - (sideHandleHitSize / 2),
+            top: bottomSideHandleCenter.dy - (sideHandleHitSize / 2),
             child: _TextBoxHandle(
-              visualSize: scaled(10),
-              hitSize: scaled(26),
+              visualSize: sideHandleVisualSize,
+              hitSize: sideHandleHitSize,
               decorationScale: decorationScale,
               isRound: true,
               color: bottomOverflow ? overflowColor : validColor,
@@ -7344,28 +7439,28 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
             ),
           ),
         ],
-        Positioned(
-          left: resizeHandleCenter.dx - scaled(18),
-          top: resizeHandleCenter.dy - scaled(18),
-          child: _TextBoxHandle(
-            visualSize: scaled(18),
-            hitSize: scaled(36),
-            decorationScale: decorationScale,
-            isRound: false,
-            color: topOverflow || rightOverflow ? overflowColor : validColor,
-            icon: Icons.open_in_full_rounded,
-            onPointerDown: onPointerDown,
-            onPanStart: onResizePanStart,
-            onPanUpdate: onResizePanUpdate,
-            onPanEnd: onPanEnd,
-          ),
+        cornerResizeHandle(
+          center: topLeft,
+          color: topOverflow || leftOverflow ? overflowColor : validColor,
+        ),
+        cornerResizeHandle(
+          center: topRight,
+          color: topOverflow || rightOverflow ? overflowColor : validColor,
+        ),
+        cornerResizeHandle(
+          center: bottomRight,
+          color: bottomOverflow || rightOverflow ? overflowColor : validColor,
+        ),
+        cornerResizeHandle(
+          center: bottomLeft,
+          color: bottomOverflow || leftOverflow ? overflowColor : validColor,
         ),
         Positioned(
-          left: rotateHandleCenter.dx - scaled(18),
-          top: rotateHandleCenter.dy - scaled(18),
+          left: rotateHandleCenter.dx - (cornerHandleHitSize / 2),
+          top: rotateHandleCenter.dy - (cornerHandleHitSize / 2),
           child: _TextBoxHandle(
-            visualSize: scaled(18),
-            hitSize: scaled(36),
+            visualSize: cornerHandleVisualSize,
+            hitSize: cornerHandleHitSize,
             decorationScale: decorationScale,
             isRound: false,
             color: bottomOverflow || rightOverflow ? overflowColor : validColor,
