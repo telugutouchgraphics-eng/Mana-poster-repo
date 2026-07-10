@@ -32,8 +32,8 @@ extension _EditorTextState on _ImageEditorScreenState {
       return;
     }
     final layer = _insertDefaultTextLayer(pageOffset: pageOffset);
-    _syncSelectedTextEditor(requestFocus: true);
-    _startInlineTextEditing(selectAll: true);
+    _syncSelectedTextEditor();
+    unawaited(_openTextTypingScreen(selectAll: true));
     unawaited(
       _hydrateInsertedTextLayerDefaults(
         layerId: layer.id,
@@ -82,25 +82,7 @@ extension _EditorTextState on _ImageEditorScreenState {
     _transformationController.value = Matrix4.copy(clampedTransform);
   }
 
-  void _handleSelectedTextFocusChange() {
-    if (_selectedTextFocusNode.hasFocus) {
-      _beginSelectedTextContentEdit();
-      if (mounted) {
-        setState(() {
-          _isInlineTextEditing = true;
-          _showTextControls = false;
-        });
-      }
-      return;
-    }
-    _commitSelectedTextContentEdit();
-    if (mounted && _isInlineTextEditing) {
-      setState(() {
-        _isInlineTextEditing = false;
-        _showSelectedLayerHandles = false;
-      });
-    }
-  }
+  void _handleSelectedTextFocusChange() {}
 
   Future<void> _handleAddText() async {
     if (_isCreatingTextLayer) {
@@ -115,7 +97,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       }
       setState(() {
         _isTextPlacementMode = true;
-        _isInlineTextEditing = false;
+        _isTextTypingScreenOpen = false;
         _selectedLayerId = null;
         _showTextControls = false;
         _activeBottomPrimaryTool = _BottomPrimaryTool.text;
@@ -148,7 +130,7 @@ extension _EditorTextState on _ImageEditorScreenState {
           .trim();
       final bool shouldUpdateText =
           resolvedName.isNotEmpty &&
-          !(_selectedLayerId == layerId && _isInlineTextEditing) &&
+          !(_selectedLayerId == layerId && _isTextTypingScreenOpen) &&
           (currentLayer.text ?? '').trim() ==
               _selectedTextController.text.trim();
       final bool shouldUpdateFont =
@@ -171,7 +153,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       unawaited(_refreshLayerLegacyRenderText(layerId));
 
       if (_selectedLayerId == layerId) {
-        _syncSelectedTextEditor(requestFocus: _selectedTextFocusNode.hasFocus);
+        _syncSelectedTextEditor();
       }
     } catch (_) {
       // Keep the inserted default text when profile lookup is unavailable.
@@ -184,7 +166,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       id: 'layer_${_layerSeed++}',
       type: _CanvasLayerType.text,
       text: '',
-      isParagraphText: false,
+      isParagraphText: true,
       textColor: Colors.black,
       textAlign: TextAlign.left,
       textStrokeColor: Colors.black,
@@ -384,6 +366,84 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
   }
 
+  Future<void> _openTextTypingScreen({bool selectAll = false}) async {
+    final selected = _selectedLayer;
+    if (selected == null ||
+        !selected.isText ||
+        selected.isLocked ||
+        _isTextTypingScreenOpen ||
+        !mounted) {
+      return;
+    }
+    _syncSelectedTextEditor();
+    final layerId = selected.id;
+    final initialText = _selectedTextController.text;
+    final initialAlign = selected.textAlign;
+    final initialColor = selected.textColor;
+    setState(() {
+      _isTextTypingScreenOpen = true;
+      _showTextControls = false;
+    });
+    final result = await showGeneralDialog<_TextTypingResult>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'Text editor',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 160),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _NativeTextTypingScreen(
+          initialText: initialText,
+          initialTextAlign: initialAlign,
+          initialTextColor: initialColor,
+          colors: _textColors,
+          selectAll: selectAll,
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isTextTypingScreenOpen = false;
+    });
+    if (result == null) {
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == layerId);
+    if (index == -1 || !_layers[index].isText || _layers[index].isLocked) {
+      return;
+    }
+    final textChanged = (_layers[index].text ?? '') != result.text;
+    final alignChanged = _layers[index].textAlign != result.textAlign;
+    final colorChanged =
+        _layers[index].textColor.toARGB32() != result.textColor.toARGB32() ||
+        _layers[index].textGradientIndex != -1;
+    if (!textChanged && !alignChanged && !colorChanged) {
+      _syncSelectedTextEditor();
+      return;
+    }
+    _textContentEditBeforeLayer = _cloneLayer(_layers[index]);
+    _selectedLayerId = layerId;
+    _selectedTextController.value = TextEditingValue(
+      text: result.text,
+      selection: TextSelection.collapsed(offset: result.text.length),
+    );
+    final styledLayer = _layers[index].copyWith(
+      textAlign: result.textAlign,
+      textColor: result.textColor,
+      textGradientIndex: -1,
+      isParagraphText: true,
+    );
+    setState(() {
+      _layers[index] = styledLayer;
+    });
+    _handleSelectedTextChanged(result.text);
+    _commitSelectedTextContentEdit();
+  }
+
   void _beginSelectedTextContentEdit() {
     final layer = _selectedLayer;
     if (layer == null || !layer.isText) {
@@ -472,6 +532,7 @@ extension _EditorTextState on _ImageEditorScreenState {
     final nextLayer = beforeLayer.copyWith(
       text: value,
       legacyRenderText: nextLegacyRenderText,
+      isParagraphText: true,
     );
     setState(() {
       _layers[index] = nextLayer;
@@ -550,6 +611,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       _activeMainToolLabel = 'Text';
       _activeTextToolTab = _TextToolTab.style;
       _showTextControls = true;
+      _showLayerStyleQuickControls = false;
     });
   }
 
@@ -568,6 +630,7 @@ extension _EditorTextState on _ImageEditorScreenState {
       _activeMainToolLabel = 'Text';
       _activeTextToolTab = tab;
       _showTextControls = true;
+      _showLayerStyleQuickControls = false;
     });
   }
 
@@ -584,7 +647,7 @@ extension _EditorTextState on _ImageEditorScreenState {
   }
 
   void _handleTextEffectsQuickTap() {
-    unawaited(_openUniversalLayerStyleSheet());
+    _openLayerStyleQuickControls();
   }
 
   Future<void> _handleTextEditQuickTap({bool selectAll = false}) async {
@@ -594,7 +657,7 @@ extension _EditorTextState on _ImageEditorScreenState {
         return;
       }
     }
-    _startInlineTextEditing(selectAll: selectAll);
+    await _openTextTypingScreen(selectAll: selectAll);
   }
 
   Future<void> _handleTextColorQuickTap() async {
@@ -699,8 +762,8 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
     final snappedFontSize = _snapEditorSliderValue(
       fontSize,
-      min: 18,
-      max: 96,
+      min: 1,
+      max: 220,
       step: 1,
     );
     setState(() {
@@ -851,9 +914,9 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
     final snappedValue = _snapEditorSliderValue(
       value,
-      min: 0.8,
-      max: 2.2,
-      step: 0.1,
+      min: 0.2,
+      max: 5.0,
+      step: 0.05,
     );
     setState(() {
       _layers[index] = _layers[index].copyWith(textLineHeight: snappedValue);
@@ -871,9 +934,9 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
     final snappedValue = _snapEditorSliderValue(
       value,
-      min: -100,
-      max: 100,
-      step: 1,
+      min: -200,
+      max: 200,
+      step: 0.5,
     );
     setState(() {
       _layers[index] = _layers[index].copyWith(textLetterSpacing: snappedValue);

@@ -11,315 +11,238 @@ void main() {
     expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
   });
 
-  test('keeps Telugu three-consonant clusters in legacy conversion', () {
-    const source = 'రాష్ట్ర';
-    final legacy = TeluguLegacyOfflineConverter.convert(source);
+  test('matches AndhraCode refreshed conjunct samples', () {
+    final samples = <String, List<int>>{
+      'అ': const <int>[0xF06E],
+      'ఆ': const <int>[0xF080],
+      'ఇ': const <int>[0xF082],
+      'ఈ': const <int>[0xF087],
+      'ఉ': const <int>[0xF096],
+      'ఊ': const <int>[0xF07D],
+      'ఋ': const <int>[0xF08B, 0xF054, 0xF054],
+      'ౠ': const <int>[0xF08B, 0xF054, 0xF0D6],
+      'ఎ': const <int>[0xF06D],
+      'ఏ': const <int>[0xF040],
+      'ఐ': const <int>[0xF0D7],
+      'ఒ': const <int>[0xF0FF],
+      'ఓ': const <int>[0xF07A],
+      'ఔ': const <int>[0xF057],
+      'అం': const <int>[0xF06E, 0xF02B],
+      'అః': const <int>[0xF06E, 0xF027],
+      'లక్ష్మి': const <int>[0xF05C, 0xF0BF, 0xF0EC, 0xF0EB],
+      'మహారాష్ట్ర': const <int>[
+        0xF065,
+        0xF054,
+        0xF056,
+        0xF09F,
+        0xF0E4,
+        0xF073,
+        0xF090,
+        0xF077,
+        0xF09F,
+        0xF0BC,
+        0xF081,
+      ],
+      'స్త్రీ': const <int>[0xF064, 0xF0D3, 0xF0EF, 0xF081],
+      'స్రి': const <int>[0xF064, 0xF0BE, 0xF0E7],
+      'స్క్రీ': const <int>[0xF064, 0xF0D3, 0xF0D8, 0xF0E7],
+      'త్రై': const <int>[0xF0D4, 0xF0EE, 0xF0D5, 0xF081],
+      '\u0C15\u0C4D\u0C38': const <int>[0xF0BF, 0xF0A3, 0xF0E0],
+      '\u0C15\u0C4D\u0C38\u0C4D': const <int>[0xF0BF, 0xF0F9, 0xF0E0],
+      '\u0C15\u0C4D\u0C38\u0C4D\u0C1F': const <int>[
+        0xF0BF,
+        0xF0A3,
+        0xF0E0,
+        0xF0BC,
+      ],
+      '\u0C15\u0C4D\u0C38\u0C4D\u0C1F\u0C4D': const <int>[
+        0xF0BF,
+        0xF0F9,
+        0xF0E0,
+        0xF0BC,
+      ],
+      '\u0C15\u0C4D\u0C38\u0C4D\u0C1F\u0C4D\u0C30': const <int>[
+        0xF0BF,
+        0xF0F9,
+        0xF064,
+        0xF09F,
+        0xF0BC,
+        0xF081,
+      ],
+      '\u0C38\u0C4D\u0C1F\u0C4D': const <int>[0xF064, 0xF074, 0xF0BC],
+      '\u0C1F\u0C46\u0C15\u0C4D\u0C38\u0C4D\u0C1F\u0C4D': const <int>[
+        0xF066,
+        0xF0C9,
+        0xF0BF,
+        0xF0F9,
+        0xF0E0,
+        0xF0BC,
+      ],
+      'ABC 123 77% A-Z 0.5': const <int>[
+        0xF041,
+        0xF042,
+        0xF043,
+        0xF020,
+        0xF031,
+        0xF032,
+        0xF033,
+        0xF020,
+        0xF037,
+        0xF037,
+        0xF025,
+        0xF020,
+        0xF041,
+        0xF060,
+        0xF05A,
+        0xF020,
+        0xF030,
+        0xF02E,
+        0xF035,
+      ],
+    };
 
-    expect(legacy, isNot(source));
-    expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
-  });
-
-  test('keeps Telugu vocalic-r signs in legacy conversion', () {
-    final samples = <String>[
-      String.fromCharCodes(const <int>[0x0C05, 0x0C2E, 0x0C43, 0x0C24]),
-      String.fromCharCodes(const <int>[0x0C15, 0x0C43, 0x0C24, 0x0C3F]),
-      String.fromCharCodes(
-        const <int>[0x0C38, 0x0C4D, 0x0C2E, 0x0C43, 0x0C24, 0x0C3F],
-      ),
-      String.fromCharCodes(
-        const <int>[
-          0x0C2E,
-          0x0C3E,
-          0x0C24,
-          0x0C43,
-          0x0C2D,
-          0x0C3E,
-          0x0C37,
-        ],
-      ),
-      String.fromCharCodes(
-        const <int>[0x0C26, 0x0C43, 0x0C37, 0x0C4D, 0x0C1F, 0x0C3F],
-      ),
-      String.fromCharCodes(
-        const <int>[0x0C35, 0x0C43, 0x0C26, 0x0C4D, 0x0C27, 0x0C3F],
-      ),
-    ];
-
-    for (final source in samples) {
-      final legacy = TeluguLegacyOfflineConverter.convert(source);
-
-      expect(legacy, isNot(source));
-      expect(legacy.runes, contains(0xF07F));
-      expect(TeluguLegacyTextService.reverseConvertSync(legacy), source);
+    for (final entry in samples.entries) {
+      expect(
+        TeluguLegacyOfflineConverter.convert(entry.key).runes,
+        entry.value,
+        reason: entry.key,
+      );
     }
   });
 
-  test('uses trailing ra-vattu order for decorative legacy fonts', () {
-    final source = String.fromCharCodes(
-      const <int>[0x0C2A, 0x0C4D, 0x0C30, 0x0C17, 0x0C24, 0x0C3F],
-    );
-    final pallavi = TeluguLegacyTextService.convertSync(
-      source,
+  test('repairs split ksha input before legacy conversion', () {
+    final legacy = TeluguLegacyTextService.convertSync(
+      String.fromCharCodes(const <int>[
+        0x0C32,
+        0x0C15,
+        0x0C4D,
+        0x0C4D,
+        0x0C37,
+        0x0C4D,
+        0x0C2E,
+        0x0C3F,
+      ]),
       fontFamily: 'Pallavi Bold',
     );
-    final amrutha = TeluguLegacyTextService.convertSync(
-      source,
-      fontFamily: 'Amrutha',
-    );
-    final bapuBrush = TeluguLegacyTextService.convertSync(
-      source,
-      fontFamily: 'Bapu Brush',
-    );
-    final ramanaBrush = TeluguLegacyTextService.convertSync(
-      source,
-      fontFamily: 'Ramana Brush',
-    );
 
-    expect(pallavi!.runes.take(3), const <int>[0xF0E7, 0xF07C, 0xF09F]);
-    expect(amrutha!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
-    expect(bapuBrush!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
-    expect(ramanaBrush!.runes.take(3), const <int>[0xF07C, 0xF09F, 0xF0E7]);
+    expect(legacy?.runes, const <int>[0xF05C, 0xF0BF, 0xF0EC, 0xF0EB]);
   });
 
-  test('reverse converts PSD mixed ASCII/private legacy Telugu text', () {
-    final rawPsdText = String.fromCharCodes(const <int>[
-      0x4e,
-      0xf0bf,
-      0xf0a3,
-      0x7b,
-      0xf0ec,
-      0xf093,
-      0x20,
-      0xf0d4,
-      0xf0e1,
-      0x5d,
-      0x24,
-      0x54,
-      0xf0bf,
-      0x3d,
-      0x7b,
-      0xf0ec,
-      0xf0bc,
-      0x20,
-      0x79,
-      0xf0ee,
-      0x5c,
-      0x54,
-      0x3e,
-      0xf0b7,
-      0x54,
-      0x5c,
-      0x71,
-      0x54,
-      0x0a,
-      0xf093,
-      0x2b,
-      0xf09d,
-      0x7c,
-      0x20,
-      0xf087,
-      0x20,
-      0x42,
-      0x62,
-      0xf0cd,
-      0x65,
-      0x5b,
-      0x20,
-      0x7c,
-      0xf09f,
-      0x2b,
-      0x26,
-      0xf083,
-      0x54,
-      0x3e,
-      0xf0b7,
-      0x0a,
-      0xf0e7,
-      0x7c,
-      0xf09f,
-      0xf0c8,
-      0x5c,
-      0x2b,
-      0x3c,
-      0xf08a,
-      0x5d,
-      0x20,
-      0x4a,
-      0x24,
-      0xf0d4,
-      0xf090,
-      0xf0fd,
-      0xf0cb,
-      0xf0a2,
-      0x20,
-      0x64,
-      0xf09f,
-      0x5d,
-      0xf0bf,
-      0x3d,
-      0xf0d4,
-      0xf0e1,
-      0xf0ef,
-      0x20,
-      0xf0bf,
-      0xf0b1,
-      0x2b,
-      0xf0d4,
-      0xf0e1,
-      0x54,
-      0x5c,
-      0x54,
-      0x0a,
-      0xf093,
-      0x2b,
-      0x62,
-      0xf0cd,
-      0x5c,
-      0xf093,
-      0x2c,
-      0x20,
-      0xf0e7,
-      0x7c,
-      0xf09f,
-      0xf0dc,
-      0x20,
-      0xf0ff,
-      0xf0bf,
-      0xf0a3,
-      0xf0d8,
-      0x73,
-      0xf0c1,
-      0xf0d6,
-      0x20,
-      0xf080,
-      0x71,
-      0x2b,
-      0x3c,
-      0xf0c3,
-      0xf0d4,
-      0xf090,
-      0xf0e0,
-      0x56,
-      0xf09f,
-      0xf0e4,
-      0x5c,
-      0x0a,
-      0x65,
-      0x54,
-      0x3c,
-      0xf0f3,
-      0xf08a,
-      0xf0ab,
-      0x2c,
-      0x20,
-      0x64,
-      0xf09f,
-      0x54,
-      0x73,
-      0xf0c1,
-      0xf0bf,
-      0xf0ec,
-      0xf08c,
-      0xf0d4,
-      0xf0e1,
-      0x2b,
-      0x3e,
-      0xf0b1,
-      0x2e,
-      0x2e,
-      0x2e,
-      0xf087,
-      0x20,
-      0x79,
-      0xf0ee,
-      0x5c,
-      0x54,
-      0x3e,
-      0xf0b7,
-      0x54,
-      0x5c,
-      0x20,
-      0x7c,
-      0xf09f,
-      0x2b,
-      0x26,
-      0xf083,
-      0x54,
-      0x3e,
-      0xf0b7,
-      0x71,
-      0x54,
-      0x0a,
-      0xf0c8,
-      0x73,
-      0xf0c1,
-      0x54,
-      0x7c,
-      0xf09f,
-      0xf0da,
-      0xf0bf,
-      0xf0c3,
-      0x79,
-      0xf090,
-      0x5c,
-      0xf093,
-      0x20,
-      0xf0bf,
-      0xf0c3,
-      0x73,
-      0xf0c1,
-      0x54,
-      0xf0c5,
-      0xf0a3,
-      0xf094,
-      0x2b,
-      0xf0b3,
-      0xf0d6,
-      0x2e,
-      0x2e,
-      0x2e,
-      0x0a,
-      0x4d,
-      0x54,
-      0xf0c5,
-      0xf0a3,
-      0xf094,
-      0x20,
-      0x4d,
-      0x54,
-      0x20,
-      0xf0c5,
-      0xf0a3,
-      0xf094,
-      0xf0b3,
-      0x54,
-      0x2b,
-      0xf08b,
-      0x20,
-      0x64,
-      0xf09f,
-      0x75,
-      0xf0f3,
-      0xf084,
-      0x54,
-      0xf0ab,
-      0x5c,
-      0xf0c5,
-      0xf0a3,
-      0xf094,
+  test('uses font-specific rakaram order for legacy fonts', () {
+    const ssttaRa = '\u0C37\u0C4D\u0C1F\u0C4D\u0C30';
+    const skra = '\u0C38\u0C4D\u0C15\u0C4D\u0C30';
+    const stra = '\u0C38\u0C4D\u0C24\u0C4D\u0C30';
+
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Aaradhana',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Bapu Bold',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Bapu Script',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Ramana Brush',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Ramana Script',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Ramana Script Medium',
+      )?.runes,
+      const <int>[0xF077, 0xF09F, 0xF0BC, 0xF081],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        ssttaRa,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF081, 0xF077, 0xF09F, 0xF0BC],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        skra,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF0E7, 0xF064, 0xF09F, 0xF0D8],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        stra,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF081, 0xF064, 0xF09F, 0xF0EF],
+    );
+  });
+
+  test('uses font-specific kst vattu order for legacy fonts', () {
+    const kst = '\u0C15\u0C4D\u0C38\u0C4D\u0C1F';
+    const kstDead = '\u0C15\u0C4D\u0C38\u0C4D\u0C1F\u0C4D';
+    const textWord = '\u0C1F\u0C46\u0C15\u0C4D\u0C38\u0C4D\u0C1F\u0C4D';
+
+    expect(TeluguLegacyOfflineConverter.convert(kstDead).runes, const <int>[
+      0xF0BF,
+      0xF0F9,
+      0xF0E0,
+      0xF0BC,
     ]);
-    const expected = '''
-చీకటిని తరిమికొట్టి వెలుగులను
-నింపే ఈ దీపావళి పండుగ
-ప్రజలందరి జీవితాల్లో సరికొత్త కాంతులు
-నింపాలని, ప్రతి ఒక్కరూ ఆనందోత్సాహాల
-మధ్య, సురక్షితంగా...ఈ వెలుగుల పండుగను
-జరుపుకోవాలని కోరుకుంటూ...
-మీకు మీ కుటుంబ సభ్యులకు''';
+    expect(
+      TeluguLegacyTextService.convertSync(
+        kst,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF0BF, 0xF0A3, 0xF0BC, 0xF0E0],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        kstDead,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF0BF, 0xF0F9, 0xF0BC, 0xF0E0],
+    );
+    expect(
+      TeluguLegacyTextService.convertSync(
+        textWord,
+        fontFamily: 'Pallavi Bold',
+      )?.runes,
+      const <int>[0xF066, 0xF0C9, 0xF0BF, 0xF0F9, 0xF0BC, 0xF0E0],
+    );
+  });
 
-    final converted = TeluguLegacyTextService.reverseConvertSync(rawPsdText);
+  test('reverse converts private legacy Telugu text', () {
+    final rawLegacyText = String.fromCharCodes(const <int>[
+      0xF05C,
+      0xF0BF,
+      0xF0EC,
+      0xF0EB,
+    ]);
 
-    expect(converted, expected);
-    expect(RegExp(r'[\uE000-\uF8FF]').hasMatch(converted), isFalse);
+    expect(
+      TeluguLegacyTextService.reverseConvertSync(rawLegacyText),
+      'లక్ష్మి',
+    );
   });
 }

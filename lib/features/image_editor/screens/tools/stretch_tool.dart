@@ -181,9 +181,9 @@ extension _EditorStretchToolState on _ImageEditorScreenState {
     }
     _stretchStrokeLayerId = selectedId;
     _stretchStrokeLayerSize = layerSize;
-    _stretchStrokePoints = <Offset>[
-      _normalizeEraserPoint(localPosition, layerSize),
-    ];
+    final normalizedPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, normalizedPoint);
+    _stretchStrokePoints = <Offset>[normalizedPoint];
     _stretchRedoStrokes.clear();
     _stretchLiveStrokes.add(
       _StretchStroke(
@@ -203,6 +203,7 @@ extension _EditorStretchToolState on _ImageEditorScreenState {
       return;
     }
     final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(_stretchStrokeLayerId!, nextPoint);
     final previousPoint = _stretchStrokePoints.isEmpty
         ? null
         : _stretchStrokePoints.last;
@@ -361,7 +362,7 @@ extension _EditorStretchToolState on _ImageEditorScreenState {
     );
   }
 
-  void _showStretchBrushCursorPreview([Offset point = const Offset(0.5, 0.5)]) {
+  void _showStretchBrushCursorPreview([Offset? point]) {
     if (!_isPhotoStretchMode) {
       _eraserPreviewNotifier.value = null;
       return;
@@ -371,9 +372,10 @@ extension _EditorStretchToolState on _ImageEditorScreenState {
       _eraserPreviewNotifier.value = null;
       return;
     }
+    final previewPoint = _resolveLayerBrushPreviewPoint(selectedId, point);
     _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
       layerId: selectedId,
-      points: <Offset>[point],
+      points: <Offset>[previewPoint],
       brushSize: _stretchBrushSize,
       hardness: _stretchStrength,
     );

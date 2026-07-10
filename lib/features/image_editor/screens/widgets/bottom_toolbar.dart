@@ -146,7 +146,6 @@ class _EditorMainToolsStrip extends StatelessWidget {
     required this.onEffectsTap,
     required this.onEraserTap,
     required this.onContentAwareTap,
-    required this.onRetouchTap,
     required this.onRemoveBgTap,
     required this.onFitTap,
     required this.onDrawTap,
@@ -170,7 +169,6 @@ class _EditorMainToolsStrip extends StatelessWidget {
   final VoidCallback onEffectsTap;
   final VoidCallback onEraserTap;
   final VoidCallback onContentAwareTap;
-  final VoidCallback onRetouchTap;
   final VoidCallback onRemoveBgTap;
   final VoidCallback onFitTap;
   final VoidCallback onDrawTap;
@@ -306,16 +304,8 @@ class _EditorMainToolsStrip extends StatelessWidget {
             'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_menu_remove_background.png',
         active: activeToolLabel == 'Remove BG',
         compact: compact,
+        premium: true,
         onTap: onRemoveBgTap,
-      ),
-      _ToolItem(
-        label: strings.localized(telugu: 'రిటచ్', english: 'Retouch'),
-        icon: Icons.face_retouching_natural_rounded,
-        assetIcon:
-            'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_beautify.png',
-        active: activeToolLabel == 'Retouch',
-        compact: compact,
-        onTap: onRetouchTap,
       ),
       _ToolItem(
         label: strings.localized(telugu: 'ఎఫెక్ట్స్', english: 'Effects'),
@@ -383,6 +373,21 @@ class _EditorSubToolsStrip extends StatelessWidget {
     required this.onPhotoCameraTap,
     required this.onPhotoFileImportTap,
     required this.onPhotoMagicWandTap,
+    required this.hasSelectedPhotoLayer,
+    required this.onPhotoCropTap,
+    required this.onPhotoFitTap,
+    required this.onPhotoEraserTap,
+    required this.onPhotoContentAwareTap,
+    required this.onPhotoAdjustTap,
+    required this.onPhotoRemoveBgTap,
+    required this.onPhotoStyleTap,
+    required this.onPhotoFlipHorizontalTap,
+    required this.onPhotoFlipVerticalTap,
+    required this.onPhotoMaskTap,
+    required this.onPhotoPerspectiveTap,
+    required this.onPhotoCloneTap,
+    required this.onPhotoStretchTap,
+    required this.onPhotoSelectionTap,
     required this.onTextAddTap,
     required this.onTextFontTap,
     required this.onTextSizeTap,
@@ -402,6 +407,21 @@ class _EditorSubToolsStrip extends StatelessWidget {
   final Future<void> Function() onPhotoCameraTap;
   final Future<void> Function() onPhotoFileImportTap;
   final void Function() onPhotoMagicWandTap;
+  final bool hasSelectedPhotoLayer;
+  final VoidCallback onPhotoCropTap;
+  final VoidCallback onPhotoFitTap;
+  final VoidCallback onPhotoEraserTap;
+  final VoidCallback onPhotoContentAwareTap;
+  final VoidCallback onPhotoAdjustTap;
+  final VoidCallback onPhotoRemoveBgTap;
+  final VoidCallback onPhotoStyleTap;
+  final VoidCallback onPhotoFlipHorizontalTap;
+  final VoidCallback onPhotoFlipVerticalTap;
+  final VoidCallback onPhotoMaskTap;
+  final VoidCallback onPhotoPerspectiveTap;
+  final VoidCallback onPhotoCloneTap;
+  final VoidCallback onPhotoStretchTap;
+  final VoidCallback onPhotoSelectionTap;
   final void Function() onTextAddTap;
   final void Function() onTextFontTap;
   final void Function() onTextSizeTap;
@@ -416,7 +436,95 @@ class _EditorSubToolsStrip extends StatelessWidget {
     final strings = context.strings;
     final compact = vertical || MediaQuery.sizeOf(context).width < 370;
     final items = switch (tool) {
-      _BottomPrimaryTool.photo => <Widget>[
+      _BottomPrimaryTool.photo => hasSelectedPhotoLayer
+          ? <Widget>[
+              _ToolItem(
+                label: 'Crop',
+                icon: Icons.crop_rounded,
+                compact: compact,
+                onTap: onPhotoCropTap,
+              ),
+              _ToolItem(
+                label: 'Remove BG',
+                icon: Icons.auto_fix_high_outlined,
+                compact: compact,
+                premium: true,
+                onTap: onPhotoRemoveBgTap,
+              ),
+              _ToolItem(
+                label: 'Fit',
+                icon: Icons.fit_screen_rounded,
+                compact: compact,
+                onTap: onPhotoFitTap,
+              ),
+              _ToolItem(
+                label: 'Erase',
+                icon: Icons.cleaning_services_outlined,
+                compact: compact,
+                onTap: onPhotoEraserTap,
+              ),
+              _ToolItem(
+                label: 'Content',
+                icon: Icons.healing_rounded,
+                compact: compact,
+                onTap: onPhotoContentAwareTap,
+              ),
+              _ToolItem(
+                label: 'Adjust',
+                icon: Icons.tune_rounded,
+                compact: compact,
+                onTap: onPhotoAdjustTap,
+              ),
+              _ToolItem(
+                label: 'Style',
+                icon: Icons.opacity_rounded,
+                compact: compact,
+                onTap: onPhotoStyleTap,
+              ),
+              _ToolItem(
+                label: 'Flip H',
+                icon: Icons.flip_rounded,
+                compact: compact,
+                onTap: onPhotoFlipHorizontalTap,
+              ),
+              _ToolItem(
+                label: 'Flip V',
+                icon: Icons.flip_rounded,
+                compact: compact,
+                onTap: onPhotoFlipVerticalTap,
+              ),
+              _ToolItem(
+                label: 'Mask',
+                icon: Icons.crop_square_rounded,
+                compact: compact,
+                onTap: onPhotoMaskTap,
+              ),
+              _ToolItem(
+                label: 'Perspective',
+                icon: Icons.view_in_ar_outlined,
+                compact: compact,
+                onTap: onPhotoPerspectiveTap,
+              ),
+              _ToolItem(
+                label: 'Clone',
+                icon: Icons.control_point_duplicate_outlined,
+                compact: compact,
+                onTap: onPhotoCloneTap,
+              ),
+              _ToolItem(
+                label: 'Smudge',
+                icon: Icons.gesture_rounded,
+                compact: compact,
+                onTap: onPhotoStretchTap,
+              ),
+              _ToolItem(
+                label: 'Selection',
+                icon: Icons.select_all_rounded,
+                compact: compact,
+                onTap: onPhotoSelectionTap,
+              ),
+            ]
+          : <Widget>[
         _ToolItem(
           label: strings.localized(telugu: 'గ్యాలరీ', english: 'Gallery'),
           icon: Icons.photo_library_outlined,
@@ -468,9 +576,9 @@ class _EditorSubToolsStrip extends StatelessWidget {
         ),
         _ToolItem(
           label: strings.localized(telugu: 'సైజ్', english: 'Size'),
-          icon: Icons.format_size_rounded,
+          icon: Icons.format_shapes_rounded,
           assetIcon:
-              'assets/designpro_reference_full/res/drawable-xxhdpi-v4/icon_font_size.png',
+              '',
           compact: compact,
           onTap: onTextSizeTap,
         ),
@@ -479,9 +587,8 @@ class _EditorSubToolsStrip extends StatelessWidget {
             telugu: 'బ్యాక్‌గ్రౌండ్',
             english: 'Background',
           ),
-          icon: Icons.format_color_fill_rounded,
-          assetIcon:
-              'assets/designpro_reference_full/res/drawable-xxhdpi-v4/icon_text_highlight.png',
+          icon: Icons.branding_watermark_rounded,
+          assetIcon: '',
           compact: compact,
           onTap: onTextBackgroundTap,
         ),

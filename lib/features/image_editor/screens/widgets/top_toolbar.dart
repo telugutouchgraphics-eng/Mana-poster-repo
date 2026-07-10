@@ -15,6 +15,8 @@ class _TopBar extends StatelessWidget {
     required this.onSendBackTap,
     required this.onLayersTap,
     required this.onUniversalLayerStyleTap,
+    required this.onCopyLayerStyleTap,
+    required this.onPasteLayerStyleTap,
     required this.autoSelectCanvasLayer,
     required this.onAutoSelectCanvasLayerTap,
     required this.selectionHandlesVisible,
@@ -28,6 +30,7 @@ class _TopBar extends StatelessWidget {
     required this.isExporting,
     required this.canDelete,
     required this.canDuplicate,
+    required this.canPasteLayerStyle,
     required this.canBringFront,
     required this.canSendBack,
     required this.canAlignSelectedLayer,
@@ -60,7 +63,6 @@ class _TopBar extends StatelessWidget {
     required this.onPhotoEraserTap,
     required this.onPhotoContentAwareTap,
     required this.onPhotoAdjustTap,
-    required this.onPhotoRetouchTap,
     required this.onPhotoRemoveBgTap,
     required this.onPhotoStyleTap,
     required this.onPhotoFlipHorizontalTap,
@@ -91,6 +93,8 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onSendBackTap;
   final VoidCallback onLayersTap;
   final VoidCallback onUniversalLayerStyleTap;
+  final VoidCallback onCopyLayerStyleTap;
+  final VoidCallback onPasteLayerStyleTap;
   final bool autoSelectCanvasLayer;
   final VoidCallback onAutoSelectCanvasLayerTap;
   final bool selectionHandlesVisible;
@@ -104,6 +108,7 @@ class _TopBar extends StatelessWidget {
   final bool isExporting;
   final bool canDelete;
   final bool canDuplicate;
+  final bool canPasteLayerStyle;
   final bool canBringFront;
   final bool canSendBack;
   final bool canAlignSelectedLayer;
@@ -136,7 +141,6 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onPhotoEraserTap;
   final VoidCallback onPhotoContentAwareTap;
   final VoidCallback onPhotoAdjustTap;
-  final VoidCallback onPhotoRetouchTap;
   final VoidCallback onPhotoRemoveBgTap;
   final VoidCallback onPhotoStyleTap;
   final VoidCallback onPhotoFlipHorizontalTap;
@@ -167,15 +171,14 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = context.strings;
     final compact = vertical || MediaQuery.sizeOf(context).width < 400;
-    final activeTool = activeMainToolLabel;
     final showTextToolContext = hasSelectedTextLayer;
-    final showPhotoToolContext = hasSelectedPhotoLayer;
+    final hasPhotoLayerContext = hasSelectedPhotoLayer;
     final showFrameToolContext =
-        hasSelectedPhotoLayer &&
+        hasPhotoLayerContext &&
         (selectedLayer?.photoFramePreset.trim().isNotEmpty ?? false);
     final showStickerToolContext = hasSelectedStickerLayer;
     final showLayerActionTools =
-        showTextToolContext || showPhotoToolContext || showStickerToolContext;
+        showTextToolContext || hasPhotoLayerContext || showStickerToolContext;
     final contextTools = <Widget>[
       if (isBorderToolActive) ...[
         _TopContextChip(
@@ -219,12 +222,6 @@ class _TopBar extends StatelessWidget {
           vertical: vertical,
         ),
         _TopContextChip(
-          icon: Icons.auto_awesome_rounded,
-          label: 'Effects',
-          onTap: _withHaptic(onTextEffectsTap),
-          vertical: vertical,
-        ),
-        _TopContextChip(
           icon: Icons.format_align_left_rounded,
           label: 'Left',
           onTap: _withHaptic(onTextAlignLeftTap),
@@ -243,105 +240,21 @@ class _TopBar extends StatelessWidget {
           vertical: vertical,
         ),
       ],
-      if (showPhotoToolContext) ...[
-        _TopContextChip(
-          icon: Icons.crop_rounded,
-          label: 'Crop',
-          selected: activeTool == 'Crop',
-          onTap: _withHaptic(onPhotoCropTap),
-        ),
-        _TopContextChip(
-          icon: Icons.auto_fix_high_outlined,
-          label: 'Remove BG',
-          selected: activeTool == 'Remove BG',
-          onTap: _withHaptic(onPhotoRemoveBgTap),
-        ),
-        _TopContextChip(
-          icon: Icons.fit_screen_rounded,
-          label: 'Fit',
-          selected: activeTool == 'Fit',
-          onTap: _withHaptic(onPhotoFitTap),
-        ),
-        _TopContextChip(
-          icon: Icons.cleaning_services_outlined,
-          label: 'Erase',
-          selected: activeTool == 'Erase',
-          onTap: _withHaptic(onPhotoEraserTap),
-        ),
-        _TopContextChip(
-          icon: Icons.healing_rounded,
-          label: 'Content',
-          selected: activeTool == 'Content Aware',
-          onTap: _withHaptic(onPhotoContentAwareTap),
-        ),
-        _TopContextChip(
-          icon: Icons.tune_rounded,
-          label: 'Adjust',
-          selected: activeTool == 'Effects',
-          onTap: _withHaptic(onPhotoAdjustTap),
-        ),
-        _TopContextChip(
-          icon: Icons.face_retouching_natural_rounded,
-          label: 'Retouch',
-          selected: activeTool == 'Retouch',
-          onTap: _withHaptic(onPhotoRetouchTap),
-        ),
-        _TopContextChip(
-          icon: Icons.opacity_rounded,
-          label: 'Style',
-          selected:
-              (selectedLayer?.photoOpacity ?? 1) < 0.999 ||
-              (selectedLayer?.photoShadowOpacity ?? 0) > 0.001,
-          onTap: _withHaptic(onPhotoStyleTap),
-        ),
-        _TopContextChip(
-          icon: Icons.flip_rounded,
-          label: 'Flip H',
-          selected: selectedLayer?.flipPhotoHorizontally ?? false,
-          onTap: _withHaptic(onPhotoFlipHorizontalTap),
-        ),
-        _TopContextChip(
-          icon: Icons.flip_rounded,
-          label: 'Flip V',
-          selected: selectedLayer?.flipPhotoVertically ?? false,
-          onTap: _withHaptic(onPhotoFlipVerticalTap),
-        ),
-        _TopContextChip(
-          icon: Icons.crop_square_rounded,
-          label: 'Mask',
-          selected: selectedLayer?.photoMaskShape.trim().isNotEmpty ?? false,
-          onTap: _withHaptic(onPhotoMaskTap),
-        ),
-        _TopContextChip(
-          icon: Icons.view_in_ar_outlined,
-          label: 'Perspective',
-          selected:
-              (selectedLayer?.photoPerspectiveX ?? 0).abs() > 0.01 ||
-              (selectedLayer?.photoPerspectiveY ?? 0).abs() > 0.01,
-          onTap: _withHaptic(onPhotoPerspectiveTap),
-        ),
-        _TopContextChip(
-          icon: Icons.control_point_duplicate_outlined,
-          label: 'Clone',
-          onTap: _withHaptic(onPhotoCloneTap),
-        ),
-        _TopContextChip(
-          icon: Icons.gesture_rounded,
-          label: 'Smudge',
-          selected: activeTool == 'Smudge',
-          onTap: _withHaptic(onPhotoStretchTap),
-        ),
-        _TopContextChip(
-          icon: Icons.select_all_rounded,
-          label: 'Selection',
-          onTap: _withHaptic(onPhotoSelectionTap),
-        ),
-      ],
       if (showLayerActionTools) ...[
         _TopContextChip(
           icon: Icons.auto_awesome_rounded,
-          label: 'Style',
+          label: 'Layer FX',
           onTap: _withHaptic(onUniversalLayerStyleTap),
+        ),
+        _TopContextChip(
+          icon: Icons.content_copy_rounded,
+          label: 'Copy Style',
+          onTap: _withHaptic(onCopyLayerStyleTap),
+        ),
+        _TopContextChip(
+          icon: Icons.content_paste_rounded,
+          label: 'Paste Style',
+          onTap: _withHaptic(canPasteLayerStyle ? onPasteLayerStyleTap : null),
         ),
         _TopContextChip(
           icon: Icons.rotate_90_degrees_ccw_rounded,
@@ -380,16 +293,6 @@ class _TopBar extends StatelessWidget {
           onTap: _withHaptic(
             canAlignSelectedLayer ? onAlignVerticalCenterTap : null,
           ),
-        ),
-        _TopContextChip(
-          icon: Icons.flip_to_front_rounded,
-          label: 'Front',
-          onTap: _withHaptic(canBringFront ? onBringFrontTap : null),
-        ),
-        _TopContextChip(
-          icon: Icons.flip_to_back_rounded,
-          label: 'Back',
-          onTap: _withHaptic(canSendBack ? onSendBackTap : null),
         ),
         _TopContextChip(
           icon: Icons.drag_handle_rounded,
@@ -510,12 +413,12 @@ class _TopBar extends StatelessWidget {
       );
     }
     return _EditorGlassSurface(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.zero,
       surfaceColor: _editorChromeSurfaceStrong.withValues(alpha: 0.25),
       child: SizedBox(
         height: height,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+          padding: const EdgeInsets.fromLTRB(0, 5, 0, 5),
           child: Column(
             children: <Widget>[
               SizedBox(
@@ -550,6 +453,24 @@ class _TopBar extends StatelessWidget {
                         ),
                         onTap: _withHaptic(canRedo ? onRedoTap : null),
                       ),
+                      const SizedBox(width: 4),
+                      _EditorIconButton(
+                        icon: autoSelectCanvasLayer
+                            ? Icons.touch_app_rounded
+                            : Icons.pan_tool_alt_outlined,
+                        tooltip: autoSelectCanvasLayer
+                            ? 'Auto Select On'
+                            : 'Auto Select Off',
+                        onTap: _withHaptic(onAutoSelectCanvasLayerTap),
+                      ),
+                      if (selectedLayer != null)
+                        _EditorIconButton(
+                          icon: Icons.select_all_rounded,
+                          tooltip: selectionHandlesVisible
+                              ? 'Deselect'
+                              : 'Select',
+                          onTap: _withHaptic(onSelectLayerTap),
+                        ),
                       const SizedBox(width: 4),
                       if (compact)
                         _EditorIconButton(
@@ -684,54 +605,21 @@ class _TopBar extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                height: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
+              Container(height: 1, color: Colors.white.withValues(alpha: 0.12)),
               Expanded(
-                child: Row(
-                  children: <Widget>[
-                    _EditorIconButton(
-                      icon: autoSelectCanvasLayer
-                          ? Icons.touch_app_rounded
-                          : Icons.pan_tool_alt_outlined,
-                      tooltip: autoSelectCanvasLayer
-                          ? 'Auto Select On'
-                          : 'Auto Select Off',
-                      onTap: _withHaptic(onAutoSelectCanvasLayerTap),
-                    ),
-                    if (selectedLayer != null)
-                      _EditorIconButton(
-                        icon: Icons.select_all_rounded,
-                        tooltip: selectionHandlesVisible
-                            ? 'Deselect'
-                            : 'Select',
-                        onTap: _withHaptic(onSelectLayerTap),
-                      ),
-                    Container(
-                      width: 1,
-                      height: 26,
-                      margin: const EdgeInsets.only(right: 4),
-                      color: Colors.white.withValues(alpha: 0.12),
-                    ),
-                    Expanded(
-                      child: showContextTools
-                          ? ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              itemCount: contextTools.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 6),
-                              itemBuilder: (_, index) => contextTools[index],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
+                child: showContextTools
+                    ? ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        itemCount: contextTools.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 6),
+                        itemBuilder: (_, index) => contextTools[index],
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),

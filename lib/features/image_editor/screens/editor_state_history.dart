@@ -114,12 +114,13 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     _redoStack.clear();
   }
 
-  void _setCommitState(String? label, {String? detail}) {
+  void _setCommitState(String? label, {String? detail, bool compact = false}) {
     _commitStateNotifier.value = label == null
         ? null
         : _EditorCommitState(
             label: label,
             detail: detail ?? 'Please wait while the layer is updated',
+            compact: compact,
           );
   }
 
@@ -134,6 +135,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
     VoidCallback? onFinish,
     bool showBusyMessage = true,
     bool showCommitState = true,
+    bool compactCommitState = false,
   }) async {
     if (_activeCommitJobKey != null) {
       if (showBusyMessage && mounted) {
@@ -158,7 +160,7 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       onStart?.call();
     }
     if (showCommitState) {
-      _setCommitState(label, detail: detail);
+      _setCommitState(label, detail: detail, compact: compactCommitState);
     }
 
     Future<T> runOperation() async => operation();
@@ -647,7 +649,6 @@ extension _EditorHistoryState on _ImageEditorScreenState {
           .toList(growable: false),
       'layerStyleOverlayColor': layer.layerStyleOverlayColor.toARGB32(),
       'layerStyleOverlayOpacity': layer.layerStyleOverlayOpacity,
-      'layerStyleColorOverlayBlendMode': layer.layerStyleColorOverlayBlendMode,
       'layerStyleStrokeColor': layer.layerStyleStrokeColor.toARGB32(),
       'layerStyleStrokeWidth': layer.layerStyleStrokeWidth,
       'layerStyleShadowColor': layer.layerStyleShadowColor.toARGB32(),
@@ -656,87 +657,29 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'layerStyleShadowSpread': layer.layerStyleShadowSpread,
       'layerStyleShadowOffsetX': layer.layerStyleShadowOffsetX,
       'layerStyleShadowOffsetY': layer.layerStyleShadowOffsetY,
-      'layerStyleShadowBlendMode': layer.layerStyleShadowBlendMode,
       'layerStyleShadowContour': layer.layerStyleShadowContour,
-      'layerStyleShadowNoise': layer.layerStyleShadowNoise,
-      'layerStyleUseGlobalLight': layer.layerStyleUseGlobalLight,
-      'layerStyleGlobalLightAngle': layer.layerStyleGlobalLightAngle,
-      'layerStyleGlobalLightAltitude': layer.layerStyleGlobalLightAltitude,
-      'layerStyleBevelEnabled': layer.layerStyleBevelEnabled,
-      'layerStyleBevelStyle': layer.layerStyleBevelStyle,
-      'layerStyleBevelTechnique': layer.layerStyleBevelTechnique,
-      'layerStyleBevelDirection': layer.layerStyleBevelDirection,
-      'layerStyleBevelDepth': layer.layerStyleBevelDepth,
-      'layerStyleBevelSize': layer.layerStyleBevelSize,
-      'layerStyleBevelSoften': layer.layerStyleBevelSoften,
-      'layerStyleBevelAngle': layer.layerStyleBevelAngle,
-      'layerStyleBevelAltitude': layer.layerStyleBevelAltitude,
-      'layerStyleBevelHighlightColor': layer.layerStyleBevelHighlightColor
-          .toARGB32(),
-      'layerStyleBevelHighlightOpacity': layer.layerStyleBevelHighlightOpacity,
-      'layerStyleBevelShadowColor': layer.layerStyleBevelShadowColor.toARGB32(),
-      'layerStyleBevelShadowOpacity': layer.layerStyleBevelShadowOpacity,
-      'layerStyleContour': layer.layerStyleContour,
-      'layerStyleTextureEnabled': layer.layerStyleTextureEnabled,
-      'layerStyleTextureScale': layer.layerStyleTextureScale,
-      'layerStyleTextureDepth': layer.layerStyleTextureDepth,
       'layerStyleStrokeOpacity': layer.layerStyleStrokeOpacity,
-      'layerStyleStrokePosition': layer.layerStyleStrokePosition,
-      'layerStyleStrokeBlendMode': layer.layerStyleStrokeBlendMode,
       'layerStyleInnerShadowColor': layer.layerStyleInnerShadowColor.toARGB32(),
       'layerStyleInnerShadowOpacity': layer.layerStyleInnerShadowOpacity,
       'layerStyleInnerShadowBlur': layer.layerStyleInnerShadowBlur,
       'layerStyleInnerShadowChoke': layer.layerStyleInnerShadowChoke,
       'layerStyleInnerShadowDistance': layer.layerStyleInnerShadowDistance,
       'layerStyleInnerShadowAngle': layer.layerStyleInnerShadowAngle,
-      'layerStyleInnerShadowBlendMode': layer.layerStyleInnerShadowBlendMode,
       'layerStyleInnerShadowContour': layer.layerStyleInnerShadowContour,
-      'layerStyleInnerShadowNoise': layer.layerStyleInnerShadowNoise,
       'layerStyleGradientOverlayEnabled':
           layer.layerStyleGradientOverlayEnabled,
       'layerStyleGradientOverlayIndex': layer.layerStyleGradientOverlayIndex,
       'layerStyleGradientOverlayOpacity':
           layer.layerStyleGradientOverlayOpacity,
       'layerStyleGradientOverlayAngle': layer.layerStyleGradientOverlayAngle,
-      'layerStyleGradientOverlayStyle': layer.layerStyleGradientOverlayStyle,
       'layerStyleGradientOverlayScale': layer.layerStyleGradientOverlayScale,
-      'layerStyleGradientOverlayBlendMode':
-          layer.layerStyleGradientOverlayBlendMode,
       'layerStyleGradientOverlayReversed':
           layer.layerStyleGradientOverlayReversed,
-      'layerStyleGradientOverlayDither': layer.layerStyleGradientOverlayDither,
       'layerStyleOuterGlowColor': layer.layerStyleOuterGlowColor.toARGB32(),
       'layerStyleOuterGlowOpacity': layer.layerStyleOuterGlowOpacity,
       'layerStyleOuterGlowSize': layer.layerStyleOuterGlowSize,
       'layerStyleOuterGlowSpread': layer.layerStyleOuterGlowSpread,
-      'layerStyleOuterGlowNoise': layer.layerStyleOuterGlowNoise,
       'layerStyleOuterGlowContour': layer.layerStyleOuterGlowContour,
-      'layerStyleOuterGlowRange': layer.layerStyleOuterGlowRange,
-      'layerStyleOuterGlowJitter': layer.layerStyleOuterGlowJitter,
-      'layerStyleOuterGlowBlendMode': layer.layerStyleOuterGlowBlendMode,
-      'layerStyleInnerGlowColor': layer.layerStyleInnerGlowColor.toARGB32(),
-      'layerStyleInnerGlowOpacity': layer.layerStyleInnerGlowOpacity,
-      'layerStyleInnerGlowSize': layer.layerStyleInnerGlowSize,
-      'layerStyleInnerGlowSpread': layer.layerStyleInnerGlowSpread,
-      'layerStyleInnerGlowNoise': layer.layerStyleInnerGlowNoise,
-      'layerStyleInnerGlowSource': layer.layerStyleInnerGlowSource,
-      'layerStyleInnerGlowContour': layer.layerStyleInnerGlowContour,
-      'layerStyleInnerGlowRange': layer.layerStyleInnerGlowRange,
-      'layerStyleInnerGlowJitter': layer.layerStyleInnerGlowJitter,
-      'layerStyleInnerGlowBlendMode': layer.layerStyleInnerGlowBlendMode,
-      'layerStyleSatinColor': layer.layerStyleSatinColor.toARGB32(),
-      'layerStyleSatinOpacity': layer.layerStyleSatinOpacity,
-      'layerStyleSatinAngle': layer.layerStyleSatinAngle,
-      'layerStyleSatinDistance': layer.layerStyleSatinDistance,
-      'layerStyleSatinSize': layer.layerStyleSatinSize,
-      'layerStyleSatinInverted': layer.layerStyleSatinInverted,
-      'layerStyleSatinBlendMode': layer.layerStyleSatinBlendMode,
-      'layerStylePatternOverlayEnabled': layer.layerStylePatternOverlayEnabled,
-      'layerStylePatternOverlayOpacity': layer.layerStylePatternOverlayOpacity,
-      'layerStylePatternOverlayScale': layer.layerStylePatternOverlayScale,
-      'layerStylePatternOverlayBlendMode':
-          layer.layerStylePatternOverlayBlendMode,
-      'layerStylePatternOverlayPreset': layer.layerStylePatternOverlayPreset,
       'isSmartObject': layer.isSmartObject,
       'smartObjectSourceBytes': layer.smartObjectSourceBytes == null
           ? null
@@ -933,8 +876,6 @@ extension _EditorHistoryState on _ImageEditorScreenState {
         ),
         layerStyleOverlayOpacity:
             (raw['layerStyleOverlayOpacity'] as num?)?.toDouble() ?? 0,
-        layerStyleColorOverlayBlendMode:
-            (raw['layerStyleColorOverlayBlendMode'] as num?)?.toInt() ?? 0,
         layerStyleStrokeColor: Color(
           (raw['layerStyleStrokeColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
         ),
@@ -953,60 +894,10 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['layerStyleShadowOffsetX'] as num?)?.toDouble() ?? 0,
         layerStyleShadowOffsetY:
             (raw['layerStyleShadowOffsetY'] as num?)?.toDouble() ?? 6,
-        layerStyleShadowBlendMode:
-            (raw['layerStyleShadowBlendMode'] as num?)?.toInt() ?? 0,
         layerStyleShadowContour:
             (raw['layerStyleShadowContour'] as num?)?.toInt() ?? 0,
-        layerStyleShadowNoise:
-            (raw['layerStyleShadowNoise'] as num?)?.toDouble() ?? 0,
-        layerStyleUseGlobalLight:
-            (raw['layerStyleUseGlobalLight'] as bool?) ?? false,
-        layerStyleGlobalLightAngle:
-            (raw['layerStyleGlobalLightAngle'] as num?)?.toDouble() ?? 120,
-        layerStyleGlobalLightAltitude:
-            (raw['layerStyleGlobalLightAltitude'] as num?)?.toDouble() ?? 30,
-        layerStyleBevelEnabled:
-            (raw['layerStyleBevelEnabled'] as bool?) ?? false,
-        layerStyleBevelStyle:
-            (raw['layerStyleBevelStyle'] as num?)?.toInt() ?? 0,
-        layerStyleBevelTechnique:
-            (raw['layerStyleBevelTechnique'] as num?)?.toInt() ?? 0,
-        layerStyleBevelDirection:
-            (raw['layerStyleBevelDirection'] as num?)?.toInt() ?? 0,
-        layerStyleBevelDepth:
-            (raw['layerStyleBevelDepth'] as num?)?.toDouble() ?? 35,
-        layerStyleBevelSize:
-            (raw['layerStyleBevelSize'] as num?)?.toDouble() ?? 8,
-        layerStyleBevelSoften:
-            (raw['layerStyleBevelSoften'] as num?)?.toDouble() ?? 2,
-        layerStyleBevelAngle:
-            (raw['layerStyleBevelAngle'] as num?)?.toDouble() ?? 120,
-        layerStyleBevelAltitude:
-            (raw['layerStyleBevelAltitude'] as num?)?.toDouble() ?? 30,
-        layerStyleBevelHighlightColor: Color(
-          (raw['layerStyleBevelHighlightColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
-        ),
-        layerStyleBevelHighlightOpacity:
-            (raw['layerStyleBevelHighlightOpacity'] as num?)?.toDouble() ??
-            0.75,
-        layerStyleBevelShadowColor: Color(
-          (raw['layerStyleBevelShadowColor'] as num?)?.toInt() ?? 0xFF000000,
-        ),
-        layerStyleBevelShadowOpacity:
-            (raw['layerStyleBevelShadowOpacity'] as num?)?.toDouble() ?? 0.75,
-        layerStyleContour: (raw['layerStyleContour'] as num?)?.toInt() ?? 0,
-        layerStyleTextureEnabled:
-            (raw['layerStyleTextureEnabled'] as bool?) ?? false,
-        layerStyleTextureScale:
-            (raw['layerStyleTextureScale'] as num?)?.toDouble() ?? 36,
-        layerStyleTextureDepth:
-            (raw['layerStyleTextureDepth'] as num?)?.toDouble() ?? 18,
         layerStyleStrokeOpacity:
             (raw['layerStyleStrokeOpacity'] as num?)?.toDouble() ?? 1,
-        layerStyleStrokePosition:
-            (raw['layerStyleStrokePosition'] as num?)?.toInt() ?? 0,
-        layerStyleStrokeBlendMode:
-            (raw['layerStyleStrokeBlendMode'] as num?)?.toInt() ?? 0,
         layerStyleInnerShadowColor: Color(
           (raw['layerStyleInnerShadowColor'] as num?)?.toInt() ?? 0xFF000000,
         ),
@@ -1020,12 +911,8 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['layerStyleInnerShadowDistance'] as num?)?.toDouble() ?? 8,
         layerStyleInnerShadowAngle:
             (raw['layerStyleInnerShadowAngle'] as num?)?.toDouble() ?? 120,
-        layerStyleInnerShadowBlendMode:
-            (raw['layerStyleInnerShadowBlendMode'] as num?)?.toInt() ?? 0,
         layerStyleInnerShadowContour:
             (raw['layerStyleInnerShadowContour'] as num?)?.toInt() ?? 0,
-        layerStyleInnerShadowNoise:
-            (raw['layerStyleInnerShadowNoise'] as num?)?.toDouble() ?? 0,
         layerStyleGradientOverlayEnabled:
             (raw['layerStyleGradientOverlayEnabled'] as bool?) ?? false,
         layerStyleGradientOverlayIndex:
@@ -1034,16 +921,10 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['layerStyleGradientOverlayOpacity'] as num?)?.toDouble() ?? 0,
         layerStyleGradientOverlayAngle:
             (raw['layerStyleGradientOverlayAngle'] as num?)?.toDouble() ?? 0,
-        layerStyleGradientOverlayStyle:
-            (raw['layerStyleGradientOverlayStyle'] as num?)?.toInt() ?? 0,
         layerStyleGradientOverlayScale:
             (raw['layerStyleGradientOverlayScale'] as num?)?.toDouble() ?? 100,
-        layerStyleGradientOverlayBlendMode:
-            (raw['layerStyleGradientOverlayBlendMode'] as num?)?.toInt() ?? 0,
         layerStyleGradientOverlayReversed:
             (raw['layerStyleGradientOverlayReversed'] as bool?) ?? false,
-        layerStyleGradientOverlayDither:
-            (raw['layerStyleGradientOverlayDither'] as bool?) ?? false,
         layerStyleOuterGlowColor: Color(
           (raw['layerStyleOuterGlowColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
         ),
@@ -1053,62 +934,8 @@ extension _EditorHistoryState on _ImageEditorScreenState {
             (raw['layerStyleOuterGlowSize'] as num?)?.toDouble() ?? 18,
         layerStyleOuterGlowSpread:
             (raw['layerStyleOuterGlowSpread'] as num?)?.toDouble() ?? 0,
-        layerStyleOuterGlowNoise:
-            (raw['layerStyleOuterGlowNoise'] as num?)?.toDouble() ?? 0,
         layerStyleOuterGlowContour:
             (raw['layerStyleOuterGlowContour'] as num?)?.toInt() ?? 0,
-        layerStyleOuterGlowRange:
-            (raw['layerStyleOuterGlowRange'] as num?)?.toDouble() ?? 50,
-        layerStyleOuterGlowJitter:
-            (raw['layerStyleOuterGlowJitter'] as num?)?.toDouble() ?? 0,
-        layerStyleOuterGlowBlendMode:
-            (raw['layerStyleOuterGlowBlendMode'] as num?)?.toInt() ?? 0,
-        layerStyleInnerGlowColor: Color(
-          (raw['layerStyleInnerGlowColor'] as num?)?.toInt() ?? 0xFFFFFFFF,
-        ),
-        layerStyleInnerGlowOpacity:
-            (raw['layerStyleInnerGlowOpacity'] as num?)?.toDouble() ?? 0,
-        layerStyleInnerGlowSize:
-            (raw['layerStyleInnerGlowSize'] as num?)?.toDouble() ?? 18,
-        layerStyleInnerGlowSpread:
-            (raw['layerStyleInnerGlowSpread'] as num?)?.toDouble() ?? 0,
-        layerStyleInnerGlowNoise:
-            (raw['layerStyleInnerGlowNoise'] as num?)?.toDouble() ?? 0,
-        layerStyleInnerGlowSource:
-            (raw['layerStyleInnerGlowSource'] as num?)?.toInt() ?? 0,
-        layerStyleInnerGlowContour:
-            (raw['layerStyleInnerGlowContour'] as num?)?.toInt() ?? 0,
-        layerStyleInnerGlowRange:
-            (raw['layerStyleInnerGlowRange'] as num?)?.toDouble() ?? 50,
-        layerStyleInnerGlowJitter:
-            (raw['layerStyleInnerGlowJitter'] as num?)?.toDouble() ?? 0,
-        layerStyleInnerGlowBlendMode:
-            (raw['layerStyleInnerGlowBlendMode'] as num?)?.toInt() ?? 0,
-        layerStyleSatinColor: Color(
-          (raw['layerStyleSatinColor'] as num?)?.toInt() ?? 0xFF000000,
-        ),
-        layerStyleSatinOpacity:
-            (raw['layerStyleSatinOpacity'] as num?)?.toDouble() ?? 0,
-        layerStyleSatinAngle:
-            (raw['layerStyleSatinAngle'] as num?)?.toDouble() ?? 20,
-        layerStyleSatinDistance:
-            (raw['layerStyleSatinDistance'] as num?)?.toDouble() ?? 12,
-        layerStyleSatinSize:
-            (raw['layerStyleSatinSize'] as num?)?.toDouble() ?? 18,
-        layerStyleSatinInverted:
-            (raw['layerStyleSatinInverted'] as bool?) ?? false,
-        layerStyleSatinBlendMode:
-            (raw['layerStyleSatinBlendMode'] as num?)?.toInt() ?? 0,
-        layerStylePatternOverlayEnabled:
-            (raw['layerStylePatternOverlayEnabled'] as bool?) ?? false,
-        layerStylePatternOverlayOpacity:
-            (raw['layerStylePatternOverlayOpacity'] as num?)?.toDouble() ?? 0,
-        layerStylePatternOverlayScale:
-            (raw['layerStylePatternOverlayScale'] as num?)?.toDouble() ?? 36,
-        layerStylePatternOverlayBlendMode:
-            (raw['layerStylePatternOverlayBlendMode'] as num?)?.toInt() ?? 0,
-        layerStylePatternOverlayPreset:
-            (raw['layerStylePatternOverlayPreset'] as num?)?.toInt() ?? 0,
         isSmartObject: (raw['isSmartObject'] as bool?) ?? false,
         smartObjectSourceBytes: raw['smartObjectSourceBytes'] == null
             ? null
@@ -1144,6 +971,15 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       'backgroundBlurAmount': _backgroundBlurAmount,
       'pageAspectRatio': _pageAspectRatio,
       'pageAspectRatioAutoFromImage': _pageAspectRatioAutoFromImage,
+      'designPageConfig': _designPageConfig == null
+          ? null
+          : <String, Object?>{
+              'name': _designPageConfig!.name,
+              'widthPx': _designPageConfig!.widthPx,
+              'heightPx': _designPageConfig!.heightPx,
+              'dpi': _designPageConfig!.dpi,
+            },
+      'preserveDesignExportPixels': _preserveDesignExportPixels,
       'layers': _layers.map(_serializeLayer).toList(growable: false),
       'savedAt': DateTime.now().toIso8601String(),
     };
@@ -1211,6 +1047,24 @@ extension _EditorHistoryState on _ImageEditorScreenState {
       _pageAspectRatio = (decoded['pageAspectRatio'] as num?)?.toDouble();
       _pageAspectRatioAutoFromImage =
           (decoded['pageAspectRatioAutoFromImage'] as bool?) ?? false;
+      final designConfig = decoded['designPageConfig'];
+      if (designConfig is Map) {
+        final designWidth = (designConfig['widthPx'] as num?)?.toInt() ?? 0;
+        final designHeight = (designConfig['heightPx'] as num?)?.toInt() ?? 0;
+        _designPageConfig = designWidth > 0 && designHeight > 0
+            ? EditorPageConfig(
+                name: (designConfig['name'] as String?) ?? 'Imported Design',
+                widthPx: designWidth,
+                heightPx: designHeight,
+                dpi: (designConfig['dpi'] as num?)?.toInt() ?? 300,
+              )
+            : null;
+      } else {
+        _designPageConfig = null;
+      }
+      _preserveDesignExportPixels =
+          ((decoded['preserveDesignExportPixels'] as bool?) ?? false) &&
+          _designPageConfig != null;
       _syncControllerFromSelection();
       _syncSelectedTextEditor();
     });

@@ -17,16 +17,19 @@ enum _BottomInlineMode {
   photoEraser,
 }
 
+enum _LayerStyleQuickTab { stroke, shadow, glow, colorOverlay, gradient }
+
 enum _BorderStyle { none, thinWhite, thinBlack, rounded, glow, custom }
 
-const double _topBarHeight = 102;
-const double _bottomBarHeight = 78;
-const double _cropBarHeight = 132;
-const double _adjustBarHeight = 196;
-const double _eraserBarHeight = 178;
-const double _stretchBarHeight = 226;
-const double _drawBarHeight = 226;
-const double _textStyleBarHeight = 252;
+const double _topBarHeight = 86;
+const double _bottomBarHeight = 66;
+const double _cropBarHeight = 120;
+const double _adjustBarHeight = 180;
+const double _eraserBarHeight = 160;
+const double _stretchBarHeight = 202;
+const double _drawBarHeight = 202;
+const double _textStyleBarHeight = 224;
+const double _layerStyleQuickPanelHeight = 92;
 const double _canvasChromeInset = 18;
 
 final List<Color> _textColors = List<Color>.unmodifiable(
@@ -171,7 +174,6 @@ const Map<String, List<String>> _stickerCatalog = <String, List<String>>{
 
 final List<List<Color>> _textGradients = List<List<Color>>.unmodifiable(
   editorBackgroundGradients
-      .take(50)
       .map((gradient) => List<Color>.unmodifiable(gradient))
       .toList(growable: false),
 );

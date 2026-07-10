@@ -1,0 +1,765 @@
+[
+  {
+    "unicode": "లక్ష్మి",
+    "legacy": "",
+    "legacyHex": "F05C F0BF F0EC F0EB",
+    "group": "క్ష్మ",
+    "description": "stress regression: లక్ష్మి"
+  },
+  {
+    "unicode": "లక్ష్మీ",
+    "legacy": "",
+    "legacyHex": "F05C F0BF F0A1 F0EB",
+    "group": "క్ష్మ",
+    "description": "stress regression: లక్ష్మీ"
+  },
+  {
+    "unicode": "లక్ష్యం",
+    "legacy": "",
+    "legacyHex": "F05C F0BF F0A3 F08C F0AB F02B",
+    "group": "క్ష్య",
+    "description": "stress regression: లక్ష్యం"
+  },
+  {
+    "unicode": "లక్ష్యాలు",
+    "legacy": "",
+    "legacyHex": "F05C F0BF F08C F0B1 F0AB F05C F054",
+    "group": "క్ష్య",
+    "description": "stress regression: లక్ష్యాలు"
+  },
+  {
+    "unicode": "సూక్ష్మం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0D6 F0BF F0A3 F0EB F02B",
+    "group": "క్ష్మ",
+    "description": "stress regression: సూక్ష్మం"
+  },
+  {
+    "unicode": "సూక్ష్మదర్శిని",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0D6 F0BF F0A3 F0EB F03C F08A F05D F0F4 F093",
+    "group": "క్ష్మ",
+    "description": "stress regression: సూక్ష్మదర్శిని"
+  },
+  {
+    "unicode": "క్షీణత",
+    "legacy": "",
+    "legacyHex": "F0BF F0A1 F08C F044 F0D4 F0E1",
+    "group": "క్ష",
+    "description": "stress regression: క్షీణత"
+  },
+  {
+    "unicode": "క్షేత్రం",
+    "legacy": "",
+    "legacyHex": "F0B9 F0BF F08C F0D4 F0E1 F0E7 F02B",
+    "group": "క్ష",
+    "description": "stress regression: క్షేత్రం"
+  },
+  {
+    "unicode": "క్షౌరం",
+    "legacy": "",
+    "legacyHex": "F0BF F08C F09A F073 F0C1 F02B",
+    "group": "క్ష",
+    "description": "stress regression: క్షౌరం"
+  },
+  {
+    "unicode": "అక్షరం",
+    "legacy": "",
+    "legacyHex": "F06E F0BF F0A3 F08C F073 F0C1 F02B",
+    "group": "క్ష",
+    "description": "stress regression: అక్షరం"
+  },
+  {
+    "unicode": "అక్షరాస్యత",
+    "legacy": "",
+    "legacyHex": "F06E F0BF F0A3 F08C F073 F090 F064 F09F F0AB F0D4 F0E1",
+    "group": "క్ష",
+    "description": "stress regression: అక్షరాస్యత"
+  },
+  {
+    "unicode": "సాక్ష్యం",
+    "legacy": "",
+    "legacyHex": "F06B F0CD F0BF F0A3 F08C F0AB F02B",
+    "group": "క్ష్య",
+    "description": "stress regression: సాక్ష్యం"
+  },
+  {
+    "unicode": "భిక్ష",
+    "legacy": "",
+    "legacyHex": "F05F F0F3 F0BF F0A3 F08C",
+    "group": "క్ష",
+    "description": "stress regression: భిక్ష"
+  },
+  {
+    "unicode": "రాక్షసుడు",
+    "legacy": "",
+    "legacyHex": "F073 F090 F0BF F0A3 F08C F064 F09F F054 F026 F083 F054",
+    "group": "క్ష",
+    "description": "stress regression: రాక్షసుడు"
+  },
+  {
+    "unicode": "కృతజ్ఞత",
+    "legacy": "",
+    "legacyHex": "F0BF F0A3 F08F F0D4 F0E1 F0C8 F0E3 F0D4 F0E1",
+    "group": "జ్ఞ",
+    "description": "stress regression: కృతజ్ఞత"
+  },
+  {
+    "unicode": "కృతజ్ఞతలు",
+    "legacy": "",
+    "legacyHex": "F0BF F0A3 F08F F0D4 F0E1 F0C8 F0E3 F0D4 F0E1 F05C F054",
+    "group": "జ్ఞ",
+    "description": "stress regression: కృతజ్ఞతలు"
+  },
+  {
+    "unicode": "కృతజ్ఞతాభివందనం",
+    "legacy": "",
+    "legacyHex": "F0BF F0A3 F08F F0D4 F0E1 F0C8 F0E3 F0D4 F090 F05F F0F3 F065 F02B F03C F08A F071 F02B",
+    "group": "జ్ఞ",
+    "description": "stress regression: కృతజ్ఞతాభివందనం"
+  },
+  {
+    "unicode": "విజ్ఞానం",
+    "legacy": "",
+    "legacyHex": "F024 F043 F0E3 F0B2 F071 F02B",
+    "group": "జ్ఞ",
+    "description": "stress regression: విజ్ఞానం"
+  },
+  {
+    "unicode": "విజ్ఞప్తి",
+    "legacy": "",
+    "legacyHex": "F024 F0C8 F0E3 F07C F0BE F0EF",
+    "group": "జ్ఞ",
+    "description": "stress regression: విజ్ఞప్తి"
+  },
+  {
+    "unicode": "ప్రజ్ఞ",
+    "legacy": "",
+    "legacyHex": "F07C F09F F0E7 F0C8 F0E3",
+    "group": "జ్ఞ",
+    "description": "stress regression: ప్రజ్ఞ"
+  },
+  {
+    "unicode": "ప్రజ్ఞావంతుడు",
+    "legacy": "",
+    "legacyHex": "F07C F09F F0E7 F043 F0E3 F0B2 F065 F02B F0D4 F0E1 F054 F026 F083 F054",
+    "group": "జ్ఞ",
+    "description": "stress regression: ప్రజ్ఞావంతుడు"
+  },
+  {
+    "unicode": "సంజ్ఞ",
+    "legacy": "",
+    "legacyHex": "F064 F09F F02B F0C8 F0E3",
+    "group": "జ్ఞ",
+    "description": "stress regression: సంజ్ఞ"
+  },
+  {
+    "unicode": "జ్ఞానం",
+    "legacy": "",
+    "legacyHex": "F043 F0E3 F0B2 F071 F02B",
+    "group": "జ్ఞ",
+    "description": "stress regression: జ్ఞానం"
+  },
+  {
+    "unicode": "జ్ఞాపకం",
+    "legacy": "",
+    "legacyHex": "F043 F0E3 F0B2 F07C F09F F0BF F0A3 F02B",
+    "group": "జ్ఞ",
+    "description": "stress regression: జ్ఞాపకం"
+  },
+  {
+    "unicode": "అజ్ఞానం",
+    "legacy": "",
+    "legacyHex": "F06E F043 F0E3 F0B2 F071 F02B",
+    "group": "జ్ఞ",
+    "description": "stress regression: అజ్ఞానం"
+  },
+  {
+    "unicode": "అజ్ఞాత",
+    "legacy": "",
+    "legacyHex": "F06E F043 F0E3 F0B2 F0D4 F0E1",
+    "group": "జ్ఞ",
+    "description": "stress regression: అజ్ఞాత"
+  },
+  {
+    "unicode": "ఆజ్ఞ",
+    "legacy": "",
+    "legacyHex": "F080 F0C8 F0E3",
+    "group": "జ్ఞ",
+    "description": "stress regression: ఆజ్ఞ"
+  },
+  {
+    "unicode": "ఆజ్ఞాపించు",
+    "legacy": "",
+    "legacyHex": "F080 F043 F0E3 F0B2 F07C F0BE F02B F023 F0E1 F054",
+    "group": "జ్ఞ",
+    "description": "stress regression: ఆజ్ఞాపించు"
+  },
+  {
+    "unicode": "స్త్రీ",
+    "legacy": "",
+    "legacyHex": "F064 F0D3 F0EF F081",
+    "group": "స్త్ర",
+    "description": "stress regression: స్త్రీ"
+  },
+  {
+    "unicode": "స్త్రీత్వం",
+    "legacy": "",
+    "legacyHex": "F064 F0D3 F0EF F081 F0D4 F0E1 F0C7 F02B",
+    "group": "స్త్ర",
+    "description": "stress regression: స్త్రీత్వం"
+  },
+  {
+    "unicode": "స్తోత్రం",
+    "legacy": "",
+    "legacyHex": "F06B F0EF F0FE F0D4 F0E1 F0E7 F02B",
+    "group": "stress",
+    "description": "stress regression: స్తోత్రం"
+  },
+  {
+    "unicode": "అస్త్రం",
+    "legacy": "",
+    "legacyHex": "F06E F064 F09F F0EF F081 F02B",
+    "group": "స్త్ర",
+    "description": "stress regression: అస్త్రం"
+  },
+  {
+    "unicode": "శాస్త్రం",
+    "legacy": "",
+    "legacyHex": "F058 F0E6 F064 F09F F0EF F081 F02B",
+    "group": "స్త్ర",
+    "description": "stress regression: శాస్త్రం"
+  },
+  {
+    "unicode": "శస్త్రం",
+    "legacy": "",
+    "legacyHex": "F058 F0F8 F064 F09F F0EF F081 F02B",
+    "group": "స్త్ర",
+    "description": "stress regression: శస్త్రం"
+  },
+  {
+    "unicode": "మహారాష్ట్ర",
+    "legacy": "",
+    "legacyHex": "F065 F054 F056 F09F F0E4 F073 F090 F077 F09F F0BC F081",
+    "group": "ష్ట్ర",
+    "description": "stress regression: మహారాష్ట్ర"
+  },
+  {
+    "unicode": "రాష్ట్రం",
+    "legacy": "",
+    "legacyHex": "F073 F090 F077 F09F F0BC F081 F02B",
+    "group": "ష్ట్ర",
+    "description": "stress regression: రాష్ట్రం"
+  },
+  {
+    "unicode": "రాష్ట్రపతి",
+    "legacy": "",
+    "legacyHex": "F073 F090 F077 F09F F0BC F081 F07C F09F F0DC",
+    "group": "ష్ట్ర",
+    "description": "stress regression: రాష్ట్రపతి"
+  },
+  {
+    "unicode": "రాష్ట్రీయ",
+    "legacy": "",
+    "legacyHex": "F073 F090 F077 F0D3 F0BC F081 F06A F0E1 F054",
+    "group": "ష్ట్ర",
+    "description": "stress regression: రాష్ట్రీయ"
+  },
+  {
+    "unicode": "ఇండస్ట్రీ",
+    "legacy": "",
+    "legacyHex": "F082 F02B F026 F083 F064 F0D3 F0BC F081",
+    "group": "స్ట్ర",
+    "description": "stress regression: ఇండస్ట్రీ"
+  },
+  {
+    "unicode": "మినిస్ట్రీ",
+    "legacy": "",
+    "legacyHex": "F024 F054 F093 F064 F0D3 F0BC F081",
+    "group": "స్ట్ర",
+    "description": "stress regression: మినిస్ట్రీ"
+  },
+  {
+    "unicode": "కెమిస్ట్రీ",
+    "legacy": "",
+    "legacyHex": "F0C2 F0BF F024 F054 F064 F0D3 F0BC F081",
+    "group": "స్ట్ర",
+    "description": "stress regression: కెమిస్ట్రీ"
+  },
+  {
+    "unicode": "స్ట్రీట్",
+    "legacy": "",
+    "legacyHex": "F064 F0D3 F0BC F081 F07B F0D9",
+    "group": "స్ట్ర",
+    "description": "stress regression: స్ట్రీట్"
+  },
+  {
+    "unicode": "స్ట్రక్చర్",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0BC F081 F0BF F0A3 F0CC F073 F059",
+    "group": "స్ట్ర",
+    "description": "stress regression: స్ట్రక్చర్"
+  },
+  {
+    "unicode": "స్ట్రెస్",
+    "legacy": "",
+    "legacyHex": "F099 F064 F0BC F081 F064 F074",
+    "group": "స్ట్ర",
+    "description": "stress regression: స్ట్రెస్"
+  },
+  {
+    "unicode": "స్క్రిప్ట్",
+    "legacy": "",
+    "legacyHex": "F064 F0BE F0D8 F0E7 F07C F074 F0BC",
+    "group": "స్క్ర",
+    "description": "stress regression: స్క్రిప్ట్"
+  },
+  {
+    "unicode": "స్క్రీన్",
+    "legacy": "",
+    "legacyHex": "F064 F0D3 F0D8 F0E7 F048 F08E",
+    "group": "స్క్ర",
+    "description": "stress regression: స్క్రీన్"
+  },
+  {
+    "unicode": "స్క్రోల్",
+    "legacy": "",
+    "legacyHex": "F06B F0FE F0D8 F0E7 F0FD F0D9",
+    "group": "స్క్ర",
+    "description": "stress regression: స్క్రోల్"
+  },
+  {
+    "unicode": "స్రవంతి",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0E7 F065 F02B F0DC",
+    "group": "స్ర",
+    "description": "stress regression: స్రవంతి"
+  },
+  {
+    "unicode": "స్రష్ట",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0E7 F077 F09F F0BC",
+    "group": "స్ర",
+    "description": "stress regression: స్రష్ట"
+  },
+  {
+    "unicode": "స్రవణం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0E7 F065 F044 F02B",
+    "group": "స్ర",
+    "description": "stress regression: స్రవణం"
+  },
+  {
+    "unicode": "టెక్స్ట్",
+    "legacy": "",
+    "legacyHex": "F066 F0C9 F0BF F0F9 F0E0 F0BC",
+    "group": "stress",
+    "description": "stress regression: టెక్స్ట్"
+  },
+  {
+    "unicode": "కాంటెక్స్ట్",
+    "legacy": "",
+    "legacyHex": "F0BF F0B1 F02B F066 F0C9 F0BF F0F9 F0E0 F0BC",
+    "group": "stress",
+    "description": "stress regression: కాంటెక్స్ట్"
+  },
+  {
+    "unicode": "నెక్స్ట్",
+    "legacy": "",
+    "legacyHex": "F048 F0EE F0BF F0F9 F0E0 F0BC",
+    "group": "stress",
+    "description": "stress regression: నెక్స్ట్"
+  },
+  {
+    "unicode": "టెస్ట్",
+    "legacy": "",
+    "legacyHex": "F066 F0C9 F064 F074 F0BC",
+    "group": "stress",
+    "description": "stress regression: టెస్ట్"
+  },
+  {
+    "unicode": "పోస్ట్",
+    "legacy": "",
+    "legacyHex": "F062 F0FE F064 F074 F0BC",
+    "group": "stress",
+    "description": "stress regression: పోస్ట్"
+  },
+  {
+    "unicode": "వెబ్‌సైట్",
+    "legacy": "𑀌",
+    "legacyHex": "F079 F0EE F075 F0D9 1100C F099 F064 F0D5 F07B F0D9",
+    "group": "stress",
+    "description": "stress regression: వెబ్‌సైట్"
+  },
+  {
+    "unicode": "బాక్స్",
+    "legacy": "",
+    "legacyHex": "F075 F0B2 F0BF F0F9 F0E0",
+    "group": "stress",
+    "description": "stress regression: బాక్స్"
+  },
+  {
+    "unicode": "ఫిక్స్",
+    "legacy": "",
+    "legacyHex": "F07C F098 F0BE F0BF F0F9 F0E0",
+    "group": "stress",
+    "description": "stress regression: ఫిక్స్"
+  },
+  {
+    "unicode": "ల్యాబ్",
+    "legacy": "",
+    "legacyHex": "F0FD F0B2 F0AB F075 F0D9",
+    "group": "stress",
+    "description": "stress regression: ల్యాబ్"
+  },
+  {
+    "unicode": "సాఫ్ట్‌వేర్",
+    "legacy": "𑀌",
+    "legacyHex": "F06B F0CD F07C F098 F074 F0BC 1100C F079 F0FB F073 F059",
+    "group": "stress",
+    "description": "stress regression: సాఫ్ట్‌వేర్"
+  },
+  {
+    "unicode": "హార్డ్‌వేర్",
+    "legacy": "𑀌",
+    "legacyHex": "F056 F09F F0E4 F073 F059 F0A6 1100C F079 F0FB F073 F059",
+    "group": "stress",
+    "description": "stress regression: హార్డ్‌వేర్"
+  },
+  {
+    "unicode": "దుఃఖం",
+    "legacy": "",
+    "legacyHex": "F03C F08A F054 F027 F04B F02B",
+    "group": "stress",
+    "description": "stress regression: దుఃఖం"
+  },
+  {
+    "unicode": "నమః",
+    "legacy": "",
+    "legacyHex": "F071 F065 F054 F027",
+    "group": "stress",
+    "description": "stress regression: నమః"
+  },
+  {
+    "unicode": "ఓం నమః శివాయ",
+    "legacy": "",
+    "legacyHex": "F07A F02B F020 F071 F065 F054 F027 F020 F0A5 F079 F090 F06A F0E1 F054",
+    "group": "stress",
+    "description": "stress regression: ఓం నమః శివాయ"
+  },
+  {
+    "unicode": "అంతఃపురం",
+    "legacy": "",
+    "legacyHex": "F06E F02B F0D4 F0E1 F027 F07C F09F F0DA F073 F0C1 F02B",
+    "group": "stress",
+    "description": "stress regression: అంతఃపురం"
+  },
+  {
+    "unicode": "ప్రాతఃకాలం",
+    "legacy": "",
+    "legacyHex": "F062 F0CD F0E7 F0D4 F0E1 F027 F0BF F0B1 F05C F02B",
+    "group": "stress",
+    "description": "stress regression: ప్రాతఃకాలం"
+  },
+  {
+    "unicode": "శ్రీ",
+    "legacy": "",
+    "legacyHex": "F06F F0E7",
+    "group": "శ్ర",
+    "description": "stress regression: శ్రీ"
+  },
+  {
+    "unicode": "శ్రద్ధ",
+    "legacy": "",
+    "legacyHex": "F058 F0F8 F0E7 F03C F08A F0C6",
+    "group": "శ్ర",
+    "description": "stress regression: శ్రద్ధ"
+  },
+  {
+    "unicode": "శ్రేయస్సు",
+    "legacy": "",
+    "legacyHex": "F058 F0E2 F0E7 F06A F0E1 F054 F064 F09F F054 F0E0",
+    "group": "శ్ర",
+    "description": "stress regression: శ్రేయస్సు"
+  },
+  {
+    "unicode": "వ్యాఖ్య",
+    "legacy": "",
+    "legacyHex": "F079 F090 F0AB F04B F0AB",
+    "group": "వ్య",
+    "description": "stress regression: వ్యాఖ్య"
+  },
+  {
+    "unicode": "వ్యాసం",
+    "legacy": "",
+    "legacyHex": "F079 F090 F0AB F064 F09F F02B",
+    "group": "వ్య",
+    "description": "stress regression: వ్యాసం"
+  },
+  {
+    "unicode": "ధ్యానం",
+    "legacy": "",
+    "legacyHex": "F03C F0F3 F091 F0AB F071 F02B",
+    "group": "ధ్య",
+    "description": "stress regression: ధ్యానం"
+  },
+  {
+    "unicode": "దృష్టి",
+    "legacy": "",
+    "legacyHex": "F03C F08A F07F F077 F0BE F0BC",
+    "group": "stress",
+    "description": "stress regression: దృష్టి"
+  },
+  {
+    "unicode": "ద్రవ్యము",
+    "legacy": "",
+    "legacyHex": "F03C F08A F0E7 F065 F0AB F065 F054 F054",
+    "group": "వ్య",
+    "description": "stress regression: ద్రవ్యము"
+  },
+  {
+    "unicode": "పద్మ",
+    "legacy": "",
+    "legacyHex": "F07C F09F F03C F08A F088",
+    "group": "stress",
+    "description": "stress regression: పద్మ"
+  },
+  {
+    "unicode": "బ్రహ్మ",
+    "legacy": "",
+    "legacyHex": "F08B F0E7 F056 F09F F0B2 F088",
+    "group": "బ్ర/హ్మ",
+    "description": "stress regression: బ్రహ్మ"
+  },
+  {
+    "unicode": "చిహ్నం",
+    "legacy": "",
+    "legacyHex": "F0BA F056 F09F F0B2 F095 F02B",
+    "group": "stress",
+    "description": "stress regression: చిహ్నం"
+  },
+  {
+    "unicode": "పుణ్యం",
+    "legacy": "",
+    "legacyHex": "F07C F09F F0DA F044 F0AB F02B",
+    "group": "stress",
+    "description": "stress regression: పుణ్యం"
+  },
+  {
+    "unicode": "వృద్ధి",
+    "legacy": "",
+    "legacyHex": "F065 F07F F07E F0C6",
+    "group": "stress",
+    "description": "stress regression: వృద్ధి"
+  },
+  {
+    "unicode": "స్వాతంత్ర్యం",
+    "legacy": "",
+    "legacyHex": "F06B F0CD F0C7 F0D4 F0E1 F02B F0D4 F0E1 F0AB F0E7 F02B",
+    "group": "stress",
+    "description": "stress regression: స్వాతంత్ర్యం"
+  },
+  {
+    "unicode": "సాంప్రదాయం",
+    "legacy": "",
+    "legacyHex": "F06B F0CD F02B F07C F09F F0E7 F03C F091 F06A F0E1 F054 F02B",
+    "group": "stress",
+    "description": "stress regression: సాంప్రదాయం"
+  },
+  {
+    "unicode": "సంప్రదాయం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F02B F07C F09F F0E7 F03C F091 F06A F0E1 F054 F02B",
+    "group": "stress",
+    "description": "stress regression: సంప్రదాయం"
+  },
+  {
+    "unicode": "సంపూర్ణం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F02B F07C F09F F050 F073 F0C1 F092 F02B",
+    "group": "stress",
+    "description": "stress regression: సంపూర్ణం"
+  },
+  {
+    "unicode": "నిర్మాణం",
+    "legacy": "",
+    "legacyHex": "F093 F073 F090 F088 F044 F02B",
+    "group": "stress",
+    "description": "stress regression: నిర్మాణం"
+  },
+  {
+    "unicode": "సమగ్రం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F065 F054 F03E F0A3 F0E7 F02B",
+    "group": "stress",
+    "description": "stress regression: సమగ్రం"
+  },
+  {
+    "unicode": "అత్యవసరం",
+    "legacy": "",
+    "legacyHex": "F06E F0D4 F0E1 F0AB F065 F064 F09F F073 F0C1 F02B",
+    "group": "stress",
+    "description": "stress regression: అత్యవసరం"
+  },
+  {
+    "unicode": "మృత్యుంజయుడు",
+    "legacy": "",
+    "legacyHex": "F065 F054 F07F F0D4 F0E1 F054 F0AB F02B F0C8 F06A F0E1 F054 F054 F026 F083 F054",
+    "group": "stress",
+    "description": "stress regression: మృత్యుంజయుడు"
+  },
+  {
+    "unicode": "శృంగారం",
+    "legacy": "",
+    "legacyHex": "F058 F0F8 F07F F02B F03E F0B1 F073 F0C1 F02B",
+    "group": "stress",
+    "description": "stress regression: శృంగారం"
+  },
+  {
+    "unicode": "దృఢత్వం",
+    "legacy": "",
+    "legacyHex": "F03C F08A F07F F026 F0F3 F083 F0D4 F0E1 F0C7 F02B",
+    "group": "stress",
+    "description": "stress regression: దృఢత్వం"
+  },
+  {
+    "unicode": "పృథ్వి",
+    "legacy": "",
+    "legacyHex": "F07C F09F F07F F07E F0B8 F0C7",
+    "group": "stress",
+    "description": "stress regression: పృథ్వి"
+  },
+  {
+    "unicode": "గృహప్రవేశం",
+    "legacy": "",
+    "legacyHex": "F03E F0A3 F08F F056 F09F F0B2 F07C F09F F0E7 F079 F0FB F058 F0F8 F02B",
+    "group": "stress",
+    "description": "stress regression: గృహప్రవేశం"
+  },
+  {
+    "unicode": "స్వర్ణోత్సవం",
+    "legacy": "",
+    "legacyHex": "F064 F09F F0C7 F073 F092 F0C3 F0D4 F0E1 F0E0 F065 F02B",
+    "group": "stress",
+    "description": "stress regression: స్వర్ణోత్సవం"
+  },
+  {
+    "unicode": "అంతర్జాతీయ",
+    "legacy": "",
+    "legacyHex": "F06E F02B F0D4 F0E1 F073 F0A8 F090 F072 F06A F0E1 F054",
+    "group": "stress",
+    "description": "stress regression: అంతర్జాతీయ"
+  },
+  {
+    "unicode": "అభ్యుదయం",
+    "legacy": "",
+    "legacyHex": "F06E F075 F0F3 F084 F054 F0AB F03C F08A F06A F0E1 F054 F02B",
+    "group": "stress",
+    "description": "stress regression: అభ్యుదయం"
+  },
+  {
+    "unicode": "అత్యుత్తమం",
+    "legacy": "",
+    "legacyHex": "F06E F0D4 F0E1 F054 F0AB F0D4 F0E1 F0EF F065 F054 F02B",
+    "group": "stress",
+    "description": "stress regression: అత్యుత్తమం"
+  },
+  {
+    "unicode": "దైవజ్ఞుడు",
+    "legacy": "",
+    "legacyHex": "F03C F0EE F0D5 F065 F045 F0E3 F026 F083 F054",
+    "group": "జ్ఞ",
+    "description": "stress regression: దైవజ్ఞుడు"
+  },
+  {
+    "unicode": "నిష్కర్ష",
+    "legacy": "",
+    "legacyHex": "F093 F077 F09F F0D8 F073 F0C1 F0FC",
+    "group": "stress",
+    "description": "stress regression: నిష్కర్ష"
+  },
+  {
+    "unicode": "సంప్రాప్తి",
+    "legacy": "",
+    "legacyHex": "F064 F09F F02B F062 F0CD F0E7 F07C F0BE F0EF",
+    "group": "stress",
+    "description": "stress regression: సంప్రాప్తి"
+  },
+  {
+    "unicode": "సంప్రేక్షణ",
+    "legacy": "",
+    "legacyHex": "F064 F09F F02B F09D F07C F0E7 F0BF F0A3 F08C F044",
+    "group": "క్ష",
+    "description": "stress regression: సంప్రేక్షణ"
+  },
+  {
+    "unicode": "ఉద్ఘాటన",
+    "legacy": "",
+    "legacyHex": "F096 F03C F0E9 F091 F0B3 F071",
+    "group": "stress",
+    "description": "stress regression: ఉద్ఘాటన"
+  },
+  {
+    "unicode": "అధ్యక్షుడు",
+    "legacy": "",
+    "legacyHex": "F06E F03C F0F3 F08A F0AB F0C5 F0A3 F08C F094 F026 F083 F054",
+    "group": "క్ష",
+    "description": "stress regression: అధ్యక్షుడు"
+  },
+  {
+    "unicode": "సద్గురు",
+    "legacy": "",
+    "legacyHex": "F064 F09F F03C F08A F05A F054 F073 F0C1 F054",
+    "group": "stress",
+    "description": "stress regression: సద్గురు"
+  },
+  {
+    "unicode": "సద్భావన",
+    "legacy": "",
+    "legacyHex": "F064 F09F F03C F091 F0D2 F0DB F065 F071",
+    "group": "stress",
+    "description": "stress regression: సద్భావన"
+  },
+  {
+    "unicode": "ఉత్కృష్టం",
+    "legacy": "",
+    "legacyHex": "F096 F0D4 F0E1 F0D8 F08F F077 F09F F0BC F02B",
+    "group": "stress",
+    "description": "stress regression: ఉత్కృష్టం"
+  },
+  {
+    "unicode": "౦౧౨౩౪౫౬౭౮౯",
+    "legacy": "ﱦﱧﱨﱩﱪﱫﱬﱭﱮﱯ",
+    "legacyHex": "FC66 FC67 FC68 FC69 FC6A FC6B FC6C FC6D FC6E FC6F",
+    "group": "telugu-digits",
+    "description": "stress regression: ౦౧౨౩౪౫౬౭౮౯"
+  },
+  {
+    "unicode": "0123456789",
+    "legacy": "",
+    "legacyHex": "F030 F031 F032 F033 F034 F035 F036 F037 F038 F039",
+    "group": "english-digits",
+    "description": "stress regression: 0123456789"
+  },
+  {
+    "unicode": "77 వ సంవత్సరంలో",
+    "legacy": "",
+    "legacyHex": "F037 F037 F020 F065 F020 F064 F09F F02B F065 F0D4 F0E1 F0E0 F073 F0C1 F02B F0FD F0CB",
+    "group": "stress",
+    "description": "stress regression: 77 వ సంవత్సరంలో"
+  },
+  {
+    "unicode": ".,:;!?()[]{}+-*/&@#$%^_",
+    "legacy": "",
+    "legacyHex": "F02E F02C F03A F0D1 F021 F03F F028 F029 F05B F05D F07B F07D F047 F060 F02A F02F F0CA F040 F023 F024 F025 F05E F05F",
+    "group": "symbols",
+    "description": "stress regression: .,:;!?()[]{}+-*/&@#$%^_"
+  },
+  {
+    "unicode": "ం ః ఁ",
+    "legacy": "",
+    "legacyHex": "F02B F020 F027 F020 F022",
+    "group": "telugu-signs",
+    "description": "stress regression: ం ః ఁ"
+  }
+]

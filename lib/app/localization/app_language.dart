@@ -435,8 +435,30 @@ extension AppLanguageContextX on BuildContext {
   AppLanguageController get languageController =>
       AppLanguageScope.maybeOf(this)?.controller ??
       AppLanguageScope._fallbackController;
-  AppLanguage get currentLanguage =>
-      AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.telugu;
+
+  bool get _usesEditorEnglishUi {
+    var isEditorContext = false;
+    void inspect(Element element) {
+      if (element.widget.runtimeType.toString() == 'ImageEditorScreen') {
+        isEditorContext = true;
+      }
+    }
+
+    if (this is Element) {
+      inspect(this as Element);
+      if (!isEditorContext) {
+        (this as Element).visitAncestorElements((Element ancestor) {
+          inspect(ancestor);
+          return !isEditorContext;
+        });
+      }
+    }
+    return isEditorContext;
+  }
+
+  AppLanguage get currentLanguage => _usesEditorEnglishUi
+      ? AppLanguage.english
+      : AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.telugu;
   AppStrings get strings => AppStrings(currentLanguage);
 }
 

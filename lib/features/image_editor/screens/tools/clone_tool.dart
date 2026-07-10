@@ -120,6 +120,7 @@ extension _EditorCloneToolState on _ImageEditorScreenState {
       return;
     }
     final source = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, source);
     setState(() {
       _cloneSourcePoint = source;
       _cloneAlignedSampleOffset = null;
@@ -148,6 +149,7 @@ extension _EditorCloneToolState on _ImageEditorScreenState {
       return;
     }
     final start = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, start);
     final sampleOffset = _cloneAligned
         ? (_cloneAlignedSampleOffset ?? source - start)
         : source - start;
@@ -194,6 +196,7 @@ extension _EditorCloneToolState on _ImageEditorScreenState {
       return;
     }
     final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(_cloneStrokeLayerId!, nextPoint);
     final previousPoint = _cloneStrokePoints.isEmpty
         ? null
         : _cloneStrokePoints.last;
@@ -341,14 +344,15 @@ extension _EditorCloneToolState on _ImageEditorScreenState {
       return;
     }
     final layerId = _selectedLayerId;
-    final previewPoint = point ?? _cloneSourcePoint;
-    if (layerId == null || !_hasSelectedPhotoLayer || previewPoint == null) {
+    if (layerId == null || !_hasSelectedPhotoLayer) {
       _eraserPreviewNotifier.value = null;
       return;
     }
+    final previewPoint = point ?? _cloneSourcePoint;
+    final resolvedPoint = _resolveLayerBrushPreviewPoint(layerId, previewPoint);
     _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
       layerId: layerId,
-      points: <Offset>[previewPoint],
+      points: <Offset>[resolvedPoint],
       brushSize: _cloneBrushSize,
       hardness: _cloneHardness,
     );

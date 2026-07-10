@@ -3,1023 +3,317 @@ part of 'image_editor_screen.dart';
 const int _designImportLargeWarningBytes = 50 * 1024 * 1024;
 const int _designImportMaxBytes = 100 * 1024 * 1024;
 
-extension _EditorLayersState on _ImageEditorScreenState {
-  Future<void> _openLayerStyleDesignOnlySheet(_CanvasLayer layer) {
-    final layerId = layer.id;
-    void updateStyle({
-      Color? strokeColor,
-      double? strokeWidth,
-      double? strokeOpacity,
-      int? strokePosition,
-      Color? shadowColor,
-      double? shadowOpacity,
-      double? shadowBlur,
-      double? shadowSpread,
-      double? shadowOffsetX,
-      double? shadowOffsetY,
-      Color? innerShadowColor,
-      double? innerShadowOpacity,
-      double? innerShadowBlur,
-      double? innerShadowChoke,
-      double? innerShadowDistance,
-      double? innerShadowAngle,
-      Color? outerGlowColor,
-      double? outerGlowOpacity,
-      double? outerGlowSize,
-      double? outerGlowSpread,
-      Color? overlayColor,
-      double? overlayOpacity,
-      bool? gradientOverlayEnabled,
-      int? gradientOverlayIndex,
-      double? gradientOverlayOpacity,
-      double? gradientOverlayAngle,
-      double? gradientOverlayScale,
-      bool? gradientOverlayReversed,
-    }) {
-      final index = _layers.indexWhere((item) => item.id == layerId);
-      if (index == -1 || _layers[index].isLocked) {
-        return;
-      }
-      setState(() {
-        _layers[index] = _layers[index].copyWith(
-          layerStyleStrokeColor: strokeColor,
-          layerStyleStrokeWidth: strokeWidth?.clamp(0.0, 20.0),
-          layerStyleStrokeOpacity: strokeOpacity?.clamp(0.0, 1.0),
-          layerStyleStrokePosition: strokePosition?.clamp(0, 2),
-          layerStyleStrokeBlendMode: 0,
-          layerStyleShadowColor: shadowColor,
-          layerStyleShadowOpacity: shadowOpacity?.clamp(0.0, 1.0),
-          layerStyleShadowBlur: shadowBlur?.clamp(0.0, 80.0),
-          layerStyleShadowSpread: shadowSpread?.clamp(0.0, 80.0),
-          layerStyleShadowOffsetX: shadowOffsetX?.clamp(-80.0, 80.0),
-          layerStyleShadowOffsetY: shadowOffsetY?.clamp(-80.0, 80.0),
-          layerStyleShadowBlendMode: 0,
-          layerStyleShadowNoise: 0,
-          layerStyleInnerShadowColor: innerShadowColor,
-          layerStyleInnerShadowOpacity: innerShadowOpacity?.clamp(0.0, 1.0),
-          layerStyleInnerShadowBlur: innerShadowBlur?.clamp(0.0, 80.0),
-          layerStyleInnerShadowChoke: innerShadowChoke?.clamp(0.0, 100.0),
-          layerStyleInnerShadowDistance: innerShadowDistance?.clamp(0.0, 120.0),
-          layerStyleInnerShadowAngle: innerShadowAngle?.clamp(0.0, 360.0),
-          layerStyleInnerShadowBlendMode: 0,
-          layerStyleInnerShadowNoise: 0,
-          layerStyleOuterGlowColor: outerGlowColor,
-          layerStyleOuterGlowOpacity: outerGlowOpacity?.clamp(0.0, 1.0),
-          layerStyleOuterGlowSize: outerGlowSize?.clamp(0.0, 120.0),
-          layerStyleOuterGlowSpread: outerGlowSpread?.clamp(0.0, 60.0),
-          layerStyleOuterGlowBlendMode: 0,
-          layerStyleOuterGlowNoise: 0,
-          layerStyleOverlayColor: overlayColor,
-          layerStyleOverlayOpacity: overlayOpacity?.clamp(0.0, 1.0),
-          layerStyleColorOverlayBlendMode: 0,
-          layerStyleGradientOverlayEnabled: gradientOverlayEnabled,
-          layerStyleGradientOverlayIndex: gradientOverlayIndex?.clamp(
-            0,
-            math.max(0, _textGradients.length - 1),
-          ),
-          layerStyleGradientOverlayOpacity: gradientOverlayOpacity?.clamp(
-            0.0,
-            1.0,
-          ),
-          layerStyleGradientOverlayAngle: gradientOverlayAngle?.clamp(
-            0.0,
-            360.0,
-          ),
-          layerStyleGradientOverlayScale: gradientOverlayScale?.clamp(
-            10.0,
-            200.0,
-          ),
-          layerStyleGradientOverlayReversed: gradientOverlayReversed,
-          layerStyleGradientOverlayBlendMode: 0,
-          layerStyleBevelEnabled: false,
-          layerStyleTextureEnabled: false,
-          layerStylePatternOverlayEnabled: false,
-          layerStylePatternOverlayOpacity: 0,
-          layerStyleInnerGlowOpacity: 0,
-          layerStyleSatinOpacity: 0,
-        );
-      });
-    }
+double? _layerStyleStep(double? value, double step) {
+  if (value == null || step <= 0) {
+    return value;
+  }
+  return (value / step).roundToDouble() * step;
+}
 
-    Color defaultStrokeColor(_CanvasLayer target) {
-      final baseColor = target.isText
-          ? target.textColor
-          : target.isSticker
-          ? target.stickerColor
-          : Colors.black;
-      return baseColor.computeLuminance() < 0.45 ? Colors.white : Colors.black;
-    }
+class _LayerStyleQuickPatch {
+  const _LayerStyleQuickPatch({
+    this.strokeColor,
+    this.strokeWidth,
+    this.strokeOpacity,
+    this.shadowColor,
+    this.shadowOpacity,
+    this.shadowBlur,
+    this.shadowSpread,
+    this.shadowOffsetX,
+    this.shadowOffsetY,
+    this.innerShadowColor,
+    this.innerShadowOpacity,
+    this.innerShadowBlur,
+    this.innerShadowChoke,
+    this.innerShadowDistance,
+    this.innerShadowAngle,
+    this.outerGlowColor,
+    this.outerGlowOpacity,
+    this.outerGlowSize,
+    this.outerGlowSpread,
+    this.overlayColor,
+    this.overlayOpacity,
+    this.gradientOverlayEnabled,
+    this.gradientOverlayIndex,
+    this.gradientOverlayOpacity,
+    this.gradientOverlayAngle,
+  });
 
-    return showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      isScrollControlled: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final current = _layers.cast<_CanvasLayer?>().firstWhere(
-              (item) => item?.id == layerId,
-              orElse: () => null,
-            );
-            if (current == null) {
-              return const SizedBox.shrink();
-            }
-            final layerName = current.layerName.trim().isEmpty
-                ? (current.isText
-                      ? 'Text Layer'
-                      : current.isSticker
-                      ? 'Sticker Layer'
-                      : 'Photo Layer')
-                : current.layerName.trim();
+  final Color? strokeColor;
+  final double? strokeWidth;
+  final double? strokeOpacity;
+  final Color? shadowColor;
+  final double? shadowOpacity;
+  final double? shadowBlur;
+  final double? shadowSpread;
+  final double? shadowOffsetX;
+  final double? shadowOffsetY;
+  final Color? innerShadowColor;
+  final double? innerShadowOpacity;
+  final double? innerShadowBlur;
+  final double? innerShadowChoke;
+  final double? innerShadowDistance;
+  final double? innerShadowAngle;
+  final Color? outerGlowColor;
+  final double? outerGlowOpacity;
+  final double? outerGlowSize;
+  final double? outerGlowSpread;
+  final Color? overlayColor;
+  final double? overlayOpacity;
+  final bool? gradientOverlayEnabled;
+  final int? gradientOverlayIndex;
+  final double? gradientOverlayOpacity;
+  final double? gradientOverlayAngle;
 
-            Widget slider(
-              String label,
-              double value,
-              double min,
-              double max,
-              ValueChanged<double> onChanged,
-            ) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: _editorChromeTextPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        value.round().toString(),
-                        style: const TextStyle(
-                          color: _editorChromeTextSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: value.clamp(min, max),
-                    min: min,
-                    max: max,
-                    divisions: math.max(1, (max - min).round()),
-                    onChanged: (next) {
-                      if (next == value) {
-                        return;
-                      }
-                      onChanged(next);
-                      setSheetState(() {});
-                    },
-                  ),
-                ],
-              );
-            }
-
-            Widget colorControls(
-              Color selectedColor,
-              ValueChanged<Color> onColor, {
-              bool commitOnDragEnd = false,
-            }) {
-              final selectedHsv = HSVColor.fromColor(selectedColor);
-              final neutralBlack = selectedHsv.value <= 0.02;
-              final neutralWhite =
-                  selectedHsv.saturation <= 0.04 && selectedHsv.value >= 0.96;
-              void setHue(double hue) {
-                final saturation = selectedHsv.saturation <= 0.04
-                    ? 1.0
-                    : selectedHsv.saturation;
-                final value = selectedHsv.value <= 0.02
-                    ? 1.0
-                    : selectedHsv.value;
-                onColor(HSVColor.fromAHSV(1, hue, saturation, value).toColor());
-              }
-
-              return Container(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.055),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        _NeutralColorBubble(
-                          label: 'Black',
-                          color: Colors.black,
-                          selected: neutralBlack,
-                          onTap: () {
-                            onColor(Colors.black);
-                            setSheetState(() {});
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        _NeutralColorBubble(
-                          label: 'White',
-                          color: Colors.white,
-                          selected: neutralWhite,
-                          onTap: () {
-                            onColor(Colors.white);
-                            setSheetState(() {});
-                          },
-                        ),
-                        const Spacer(),
-                        Container(
-                          width: 42,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: selectedColor,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.22),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _LayerStyleHueSlider(
-                      hue: selectedHsv.hue,
-                      color: selectedColor,
-                      onChanged: (hue) {
-                        if (commitOnDragEnd) {
-                          return;
-                        }
-                        setHue(hue);
-                        setSheetState(() {});
-                      },
-                      onChangeEnd: commitOnDragEnd
-                          ? (hue) {
-                              setHue(hue);
-                              setSheetState(() {});
-                            }
-                          : null,
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            Widget gradientChips(int selectedIndex) {
-              if (_textGradients.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              final safeIndex = selectedIndex
-                  .clamp(0, _textGradients.length - 1)
-                  .toInt();
-              return Container(
-                height: 116,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.055),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: GridView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 9,
-                    crossAxisSpacing: 9,
-                    childAspectRatio: 0.56,
-                  ),
-                  itemCount: _textGradients.length,
-                  itemBuilder: (context, index) {
-                    final selected = index == safeIndex;
-                    return Semantics(
-                      button: true,
-                      selected: selected,
-                      label: 'Gradient ${index + 1}',
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(10),
-                          onTap: () {
-                            updateStyle(
-                              gradientOverlayEnabled: true,
-                              gradientOverlayIndex: index,
-                              gradientOverlayOpacity:
-                                  current.layerStyleGradientOverlayOpacity <=
-                                      0.001
-                                  ? 0.65
-                                  : null,
-                            );
-                            setSheetState(() {});
-                            HapticFeedback.selectionClick();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: _textGradients[index],
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: selected
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.16),
-                                width: selected ? 2.5 : 1,
-                              ),
-                              boxShadow: selected
-                                  ? const <BoxShadow>[
-                                      BoxShadow(
-                                        color: Color(0x66000000),
-                                        blurRadius: 7,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: selected
-                                ? const Center(
-                                    child: Icon(
-                                      Icons.check_rounded,
-                                      size: 20,
-                                      color: Colors.white,
-                                      shadows: <Shadow>[
-                                        Shadow(
-                                          color: Colors.black54,
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }
-
-            Widget effectCard({
-              required IconData icon,
-              required String title,
-              required bool enabled,
-              required ValueChanged<bool> onToggle,
-              required List<Widget> children,
-            }) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10),
-                  ),
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent,
-                    splashColor: Colors.white.withValues(alpha: 0.06),
-                    highlightColor: Colors.white.withValues(alpha: 0.04),
-                  ),
-                  child: ExpansionTile(
-                    initiallyExpanded: enabled,
-                    iconColor: _editorChromeTextPrimary,
-                    collapsedIconColor: _editorChromeTextSecondary,
-                    tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-                    childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                    title: Row(
-                      children: [
-                        Icon(icon, color: const Color(0xFF7DD3FC), size: 20),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: const TextStyle(
-                              color: _editorChromeTextPrimary,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        Switch.adaptive(
-                          value: enabled,
-                          onChanged: (next) {
-                            onToggle(next);
-                            setSheetState(() {});
-                          },
-                        ),
-                      ],
-                    ),
-                    children: children,
-                  ),
-                ),
-              );
-            }
-
-            Widget previewCard(_CanvasLayer previewLayer) {
-              final gradientIndex = previewLayer.layerStyleGradientOverlayIndex
-                  .clamp(0, math.max(0, _textGradients.length - 1))
-                  .toInt();
-              final gradientColors = _textGradients.isEmpty
-                  ? const <Color>[Color(0xFFFFFFFF), Color(0xFF000000)]
-                  : _textGradients[gradientIndex];
-              final Widget layerPreviewChild;
-              if (previewLayer.isPhoto && previewLayer.bytes != null) {
-                layerPreviewChild = SizedBox(
-                  width: 170,
-                  height: 112,
-                  child: Image.memory(
-                    previewLayer.bytes!,
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                    filterQuality: FilterQuality.high,
-                  ),
-                );
-              } else if (previewLayer.isText) {
-                layerPreviewChild = ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
-                  child: _CanvasTextLayerView(
-                    text: _resolveLayerRenderText(previewLayer).trim().isEmpty
-                        ? 'Text'
-                        : _resolveLayerRenderText(previewLayer),
-                    textColor: _layerStyleTextColor(previewLayer),
-                    textAlign: previewLayer.textAlign,
-                    fontSize: previewLayer.fontSize.clamp(18.0, 96.0),
-                    textOpacity: previewLayer.textOpacity,
-                    fontFamily: _resolveLayerRenderFontFamily(previewLayer),
-                    textLineHeight: previewLayer.textLineHeight,
-                    textLetterSpacing: previewLayer.textLetterSpacing,
-                    textShadowOpacity: _layerStyleTextShadowOpacity(
-                      previewLayer,
-                    ),
-                    textShadowColor: _layerStyleTextShadowColor(previewLayer),
-                    textShadowBlur: _layerStyleTextShadowBlur(previewLayer),
-                    textShadowOffsetX: _layerStyleTextShadowOffset(
-                      previewLayer,
-                    ).dx,
-                    textShadowOffsetY: _layerStyleTextShadowOffset(
-                      previewLayer,
-                    ).dy,
-                    textOuterGlowColor: previewLayer.layerStyleOuterGlowColor,
-                    textOuterGlowOpacity:
-                        previewLayer.layerStyleOuterGlowOpacity,
-                    textOuterGlowSize: previewLayer.layerStyleOuterGlowSize,
-                    textOuterGlowSpread: previewLayer.layerStyleOuterGlowSpread,
-                    isTextBold: previewLayer.isTextBold,
-                    isTextItalic: previewLayer.isTextItalic,
-                    isTextUnderline: previewLayer.isTextUnderline,
-                    textStrokeColor: previewLayer.layerStyleStrokeWidth > 0.001
-                        ? previewLayer.layerStyleStrokeColor.withValues(
-                            alpha: previewLayer.layerStyleStrokeOpacity.clamp(
-                              0.0,
-                              1.0,
-                            ),
-                          )
-                        : previewLayer.textStrokeColor,
-                    textStrokeWidth: math.max(
-                      previewLayer.textStrokeWidth,
-                      previewLayer.layerStyleStrokeWidth,
-                    ),
-                    textBackgroundColor: previewLayer.textBackgroundColor,
-                    textBackgroundOpacity: previewLayer.textBackgroundOpacity,
-                    textBackgroundRadius: previewLayer.textBackgroundRadius,
-                    textBackgroundTopPadding:
-                        previewLayer.textBackgroundTopPadding,
-                    textBackgroundBottomPadding:
-                        previewLayer.textBackgroundBottomPadding,
-                    maxWidth: previewLayer.isParagraphText ? 220 : null,
-                    textGradient: _layerStyleTextGradient(
-                      previewLayer,
-                      _textGradients,
-                    ),
-                    textGradientAngle:
-                        previewLayer.layerStyleGradientOverlayEnabled
-                        ? previewLayer.layerStyleGradientOverlayAngle
-                        : 0,
-                    textGradientScale:
-                        previewLayer.layerStyleGradientOverlayEnabled
-                        ? previewLayer.layerStyleGradientOverlayScale
-                        : 100,
-                  ),
-                );
-              } else if (_EditorTextState._isImageLikeSticker(
-                previewLayer.sticker,
-              )) {
-                layerPreviewChild = SizedBox(
-                  width: 118,
-                  height: 118,
-                  child: _EditorTextState._buildStickerVisual(
-                    previewLayer.sticker,
-                    fontSize: 92,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                  ),
-                );
-              } else {
-                layerPreviewChild = Text(
-                  previewLayer.sticker ?? '★',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: previewLayer.stickerColor,
-                    fontSize: previewLayer.fontSize.clamp(32.0, 96.0),
-                    fontWeight: FontWeight.w800,
-                  ),
-                );
-              }
-
-              final styledPreview = _EditorUniversalLayerStyle(
-                overlayColor: previewLayer.layerStyleOverlayColor,
-                overlayOpacity: previewLayer.isText
-                    ? 0
-                    : previewLayer.layerStyleOverlayOpacity,
-                colorOverlayBlendMode:
-                    previewLayer.layerStyleColorOverlayBlendMode,
-                strokeColor: previewLayer.layerStyleStrokeColor,
-                strokeWidth: previewLayer.isText
-                    ? 0
-                    : previewLayer.layerStyleStrokeWidth,
-                shadowColor: previewLayer.layerStyleShadowColor,
-                shadowOpacity: previewLayer.isText
-                    ? 0
-                    : previewLayer.layerStyleShadowOpacity,
-                shadowBlur: previewLayer.layerStyleShadowBlur,
-                shadowSpread: previewLayer.layerStyleShadowSpread,
-                shadowOffset: Offset(
-                  previewLayer.layerStyleShadowOffsetX,
-                  previewLayer.layerStyleShadowOffsetY,
-                ),
-                shadowBlendMode: previewLayer.layerStyleShadowBlendMode,
-                shadowContour: previewLayer.layerStyleShadowContour,
-                shadowNoise: previewLayer.layerStyleShadowNoise,
-                useGlobalLight: previewLayer.layerStyleUseGlobalLight,
-                globalLightAngle: previewLayer.layerStyleGlobalLightAngle,
-                globalLightAltitude: previewLayer.layerStyleGlobalLightAltitude,
-                bevelEnabled: false,
-                bevelStyle: 0,
-                bevelTechnique: 0,
-                bevelDirection: 0,
-                bevelDepth: 0,
-                bevelSize: 0,
-                bevelSoften: 0,
-                bevelAngle: 120,
-                bevelAltitude: 30,
-                bevelHighlightColor: Colors.white,
-                bevelHighlightOpacity: 0,
-                bevelShadowColor: Colors.black,
-                bevelShadowOpacity: 0,
-                contour: 0,
-                textureEnabled: false,
-                textureScale: 36,
-                textureDepth: 0,
-                strokeOpacity: previewLayer.layerStyleStrokeOpacity,
-                strokePosition: previewLayer.layerStyleStrokePosition,
-                strokeBlendMode: previewLayer.layerStyleStrokeBlendMode,
-                innerShadowColor: previewLayer.layerStyleInnerShadowColor,
-                innerShadowOpacity: previewLayer.isText
-                    ? 0
-                    : previewLayer.layerStyleInnerShadowOpacity,
-                innerShadowBlur: previewLayer.layerStyleInnerShadowBlur,
-                innerShadowChoke: previewLayer.layerStyleInnerShadowChoke,
-                innerShadowDistance: previewLayer.layerStyleInnerShadowDistance,
-                innerShadowAngle: previewLayer.layerStyleInnerShadowAngle,
-                innerShadowBlendMode:
-                    previewLayer.layerStyleInnerShadowBlendMode,
-                innerShadowContour: previewLayer.layerStyleInnerShadowContour,
-                innerShadowNoise: previewLayer.layerStyleInnerShadowNoise,
-                gradientOverlayEnabled: previewLayer.isText
-                    ? false
-                    : previewLayer.layerStyleGradientOverlayEnabled,
-                gradientOverlayColors: gradientColors,
-                gradientOverlayOpacity:
-                    previewLayer.layerStyleGradientOverlayOpacity,
-                gradientOverlayAngle:
-                    previewLayer.layerStyleGradientOverlayAngle,
-                gradientOverlayStyle:
-                    previewLayer.layerStyleGradientOverlayStyle,
-                gradientOverlayScale:
-                    previewLayer.layerStyleGradientOverlayScale,
-                gradientOverlayBlendMode:
-                    previewLayer.layerStyleGradientOverlayBlendMode,
-                gradientOverlayReversed:
-                    previewLayer.layerStyleGradientOverlayReversed,
-                gradientOverlayDither:
-                    previewLayer.layerStyleGradientOverlayDither,
-                outerGlowColor: previewLayer.layerStyleOuterGlowColor,
-                outerGlowOpacity: previewLayer.isText
-                    ? 0
-                    : previewLayer.layerStyleOuterGlowOpacity,
-                outerGlowSize: previewLayer.layerStyleOuterGlowSize,
-                outerGlowSpread: previewLayer.layerStyleOuterGlowSpread,
-                outerGlowNoise: previewLayer.layerStyleOuterGlowNoise,
-                outerGlowContour: previewLayer.layerStyleOuterGlowContour,
-                outerGlowRange: previewLayer.layerStyleOuterGlowRange,
-                outerGlowJitter: previewLayer.layerStyleOuterGlowJitter,
-                outerGlowBlendMode: previewLayer.layerStyleOuterGlowBlendMode,
-                innerGlowColor: Colors.white,
-                innerGlowOpacity: 0,
-                innerGlowSize: 0,
-                innerGlowSpread: 0,
-                innerGlowNoise: 0,
-                innerGlowSource: 0,
-                innerGlowContour: 0,
-                innerGlowRange: 50,
-                innerGlowJitter: 0,
-                innerGlowBlendMode: 0,
-                satinColor: Colors.black,
-                satinOpacity: 0,
-                satinAngle: 0,
-                satinDistance: 0,
-                satinSize: 1,
-                satinInverted: false,
-                satinBlendMode: 0,
-                patternOverlayEnabled: false,
-                patternOverlayOpacity: 0,
-                patternOverlayScale: 36,
-                patternOverlayBlendMode: 0,
-                patternOverlayPreset: 0,
-                child: layerPreviewChild,
-              );
-
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Container(
-                  height: 138,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B1220),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF263447)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(19),
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _LayerStylePreviewGridPainter(),
-                          ),
-                        ),
-                        Center(
-                          child: OverflowBox(
-                            minWidth: 0,
-                            minHeight: 0,
-                            maxWidth: double.infinity,
-                            maxHeight: double.infinity,
-                            child: styledPreview,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            return SafeArea(
-              top: false,
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.84,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111724),
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: const Color(0xFF263447)),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x99000000),
-                      blurRadius: 34,
-                      offset: Offset(0, 18),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome_motion_rounded,
-                            color: Color(0xFF7DD3FC),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Layer Styles',
-                                  style: TextStyle(
-                                    color: _editorChromeTextPrimary,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                Text(
-                                  layerName,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: _editorChromeTextSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: _editorChromeTextPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    previewCard(current),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: Column(
-                          children: [
-                            effectCard(
-                              icon: Icons.border_outer_rounded,
-                              title: 'Stroke',
-                              enabled: current.layerStyleStrokeWidth > 0.001,
-                              onToggle: (next) => updateStyle(
-                                strokeColor: next
-                                    ? defaultStrokeColor(current)
-                                    : null,
-                                strokeWidth: next ? 8 : 0,
-                                strokeOpacity: next ? 1 : 0,
-                              ),
-                              children: [
-                                colorControls(
-                                  current.layerStyleStrokeColor,
-                                  (color) => updateStyle(strokeColor: color),
-                                ),
-                                slider(
-                                  'Size',
-                                  current.layerStyleStrokeWidth,
-                                  0,
-                                  20,
-                                  (value) => updateStyle(strokeWidth: value),
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleStrokeOpacity * 100,
-                                  0,
-                                  100,
-                                  (value) =>
-                                      updateStyle(strokeOpacity: value / 100),
-                                ),
-                              ],
-                            ),
-                            effectCard(
-                              icon: Icons.wb_twilight_rounded,
-                              title: 'Shadow',
-                              enabled: current.layerStyleShadowOpacity > 0.001,
-                              onToggle: (next) => updateStyle(
-                                shadowOpacity: next ? 0.55 : 0,
-                                shadowBlur: next ? 16 : null,
-                                shadowOffsetY: next ? 8 : null,
-                              ),
-                              children: [
-                                colorControls(
-                                  current.layerStyleShadowColor,
-                                  (color) => updateStyle(shadowColor: color),
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleShadowOpacity * 100,
-                                  0,
-                                  100,
-                                  (value) =>
-                                      updateStyle(shadowOpacity: value / 100),
-                                ),
-                                slider(
-                                  'Blur',
-                                  current.layerStyleShadowBlur,
-                                  0,
-                                  80,
-                                  (value) => updateStyle(shadowBlur: value),
-                                ),
-                                slider(
-                                  'Spread',
-                                  current.layerStyleShadowSpread,
-                                  0,
-                                  80,
-                                  (value) => updateStyle(shadowSpread: value),
-                                ),
-                                slider(
-                                  'X',
-                                  current.layerStyleShadowOffsetX,
-                                  -80,
-                                  80,
-                                  (value) => updateStyle(shadowOffsetX: value),
-                                ),
-                                slider(
-                                  'Y',
-                                  current.layerStyleShadowOffsetY,
-                                  -80,
-                                  80,
-                                  (value) => updateStyle(shadowOffsetY: value),
-                                ),
-                              ],
-                            ),
-                            effectCard(
-                              icon: Icons.dark_mode_rounded,
-                              title: 'Inner Shadow',
-                              enabled:
-                                  current.layerStyleInnerShadowOpacity > 0.001,
-                              onToggle: (next) => updateStyle(
-                                innerShadowOpacity: next ? 0.42 : 0,
-                                innerShadowBlur: next ? 14 : null,
-                                innerShadowDistance: next ? 8 : null,
-                              ),
-                              children: [
-                                colorControls(
-                                  current.layerStyleInnerShadowColor,
-                                  (color) =>
-                                      updateStyle(innerShadowColor: color),
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleInnerShadowOpacity * 100,
-                                  0,
-                                  100,
-                                  (value) => updateStyle(
-                                    innerShadowOpacity: value / 100,
-                                  ),
-                                ),
-                                slider(
-                                  'Blur',
-                                  current.layerStyleInnerShadowBlur,
-                                  0,
-                                  80,
-                                  (value) =>
-                                      updateStyle(innerShadowBlur: value),
-                                ),
-                                slider(
-                                  'Distance',
-                                  current.layerStyleInnerShadowDistance,
-                                  0,
-                                  120,
-                                  (value) =>
-                                      updateStyle(innerShadowDistance: value),
-                                ),
-                                slider(
-                                  'Choke',
-                                  current.layerStyleInnerShadowChoke,
-                                  0,
-                                  100,
-                                  (value) =>
-                                      updateStyle(innerShadowChoke: value),
-                                ),
-                                slider(
-                                  'Angle',
-                                  current.layerStyleInnerShadowAngle,
-                                  0,
-                                  360,
-                                  (value) =>
-                                      updateStyle(innerShadowAngle: value),
-                                ),
-                              ],
-                            ),
-                            effectCard(
-                              icon: Icons.blur_on_rounded,
-                              title: 'Outer Glow',
-                              enabled:
-                                  current.layerStyleOuterGlowOpacity > 0.001,
-                              onToggle: (next) => updateStyle(
-                                outerGlowOpacity: next ? 0.65 : 0,
-                                outerGlowSize: next ? 20 : null,
-                              ),
-                              children: [
-                                colorControls(
-                                  current.layerStyleOuterGlowColor,
-                                  (color) => updateStyle(outerGlowColor: color),
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleOuterGlowOpacity * 100,
-                                  0,
-                                  100,
-                                  (value) => updateStyle(
-                                    outerGlowOpacity: value / 100,
-                                  ),
-                                ),
-                                slider(
-                                  'Size',
-                                  current.layerStyleOuterGlowSize,
-                                  0,
-                                  120,
-                                  (value) => updateStyle(outerGlowSize: value),
-                                ),
-                                slider(
-                                  'Spread',
-                                  current.layerStyleOuterGlowSpread,
-                                  0,
-                                  60,
-                                  (value) =>
-                                      updateStyle(outerGlowSpread: value),
-                                ),
-                              ],
-                            ),
-                            effectCard(
-                              icon: Icons.invert_colors_rounded,
-                              title: 'Color Overlay',
-                              enabled: current.layerStyleOverlayOpacity > 0.001,
-                              onToggle: (next) => updateStyle(
-                                overlayOpacity: next ? 0.45 : 0,
-                                overlayColor: next ? Colors.white : null,
-                              ),
-                              children: [
-                                colorControls(
-                                  current.layerStyleOverlayColor,
-                                  (color) => updateStyle(overlayColor: color),
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleOverlayOpacity * 100,
-                                  0,
-                                  100,
-                                  (value) =>
-                                      updateStyle(overlayOpacity: value / 100),
-                                ),
-                              ],
-                            ),
-                            effectCard(
-                              icon: Icons.gradient_rounded,
-                              title: 'Gradient Overlay',
-                              enabled: current.layerStyleGradientOverlayEnabled,
-                              onToggle: (next) => updateStyle(
-                                gradientOverlayEnabled: next,
-                                gradientOverlayOpacity: next ? 0.65 : 0,
-                              ),
-                              children: [
-                                gradientChips(
-                                  current.layerStyleGradientOverlayIndex,
-                                ),
-                                slider(
-                                  'Opacity',
-                                  current.layerStyleGradientOverlayOpacity *
-                                      100,
-                                  0,
-                                  100,
-                                  (value) => updateStyle(
-                                    gradientOverlayOpacity: value / 100,
-                                  ),
-                                ),
-                                slider(
-                                  'Angle',
-                                  current.layerStyleGradientOverlayAngle,
-                                  0,
-                                  360,
-                                  (value) =>
-                                      updateStyle(gradientOverlayAngle: value),
-                                ),
-                                slider(
-                                  'Scale',
-                                  current.layerStyleGradientOverlayScale,
-                                  10,
-                                  200,
-                                  (value) =>
-                                      updateStyle(gradientOverlayScale: value),
-                                ),
-                                FilterChip(
-                                  label: const Text('Reverse'),
-                                  selected:
-                                      current.layerStyleGradientOverlayReversed,
-                                  onSelected: (value) {
-                                    updateStyle(gradientOverlayReversed: value);
-                                    setSheetState(() {});
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+  _LayerStyleQuickPatch merge(_LayerStyleQuickPatch next) {
+    return _LayerStyleQuickPatch(
+      strokeColor: next.strokeColor ?? strokeColor,
+      strokeWidth: next.strokeWidth ?? strokeWidth,
+      strokeOpacity: next.strokeOpacity ?? strokeOpacity,
+      shadowColor: next.shadowColor ?? shadowColor,
+      shadowOpacity: next.shadowOpacity ?? shadowOpacity,
+      shadowBlur: next.shadowBlur ?? shadowBlur,
+      shadowSpread: next.shadowSpread ?? shadowSpread,
+      shadowOffsetX: next.shadowOffsetX ?? shadowOffsetX,
+      shadowOffsetY: next.shadowOffsetY ?? shadowOffsetY,
+      innerShadowColor: next.innerShadowColor ?? innerShadowColor,
+      innerShadowOpacity: next.innerShadowOpacity ?? innerShadowOpacity,
+      innerShadowBlur: next.innerShadowBlur ?? innerShadowBlur,
+      innerShadowChoke: next.innerShadowChoke ?? innerShadowChoke,
+      innerShadowDistance: next.innerShadowDistance ?? innerShadowDistance,
+      innerShadowAngle: next.innerShadowAngle ?? innerShadowAngle,
+      outerGlowColor: next.outerGlowColor ?? outerGlowColor,
+      outerGlowOpacity: next.outerGlowOpacity ?? outerGlowOpacity,
+      outerGlowSize: next.outerGlowSize ?? outerGlowSize,
+      outerGlowSpread: next.outerGlowSpread ?? outerGlowSpread,
+      overlayColor: next.overlayColor ?? overlayColor,
+      overlayOpacity: next.overlayOpacity ?? overlayOpacity,
+      gradientOverlayEnabled:
+          next.gradientOverlayEnabled ?? gradientOverlayEnabled,
+      gradientOverlayIndex: next.gradientOverlayIndex ?? gradientOverlayIndex,
+      gradientOverlayOpacity:
+          next.gradientOverlayOpacity ?? gradientOverlayOpacity,
+      gradientOverlayAngle: next.gradientOverlayAngle ?? gradientOverlayAngle,
     );
+  }
+}
+
+extension _EditorLayersState on _ImageEditorScreenState {
+  void _updateSelectedLayerStyleQuick({
+    Color? strokeColor,
+    double? strokeWidth,
+    double? strokeOpacity,
+    Color? shadowColor,
+    double? shadowOpacity,
+    double? shadowBlur,
+    double? shadowSpread,
+    double? shadowOffsetX,
+    double? shadowOffsetY,
+    Color? innerShadowColor,
+    double? innerShadowOpacity,
+    double? innerShadowBlur,
+    double? innerShadowChoke,
+    double? innerShadowDistance,
+    double? innerShadowAngle,
+    Color? outerGlowColor,
+    double? outerGlowOpacity,
+    double? outerGlowSize,
+    double? outerGlowSpread,
+    Color? overlayColor,
+    double? overlayOpacity,
+    bool? gradientOverlayEnabled,
+    int? gradientOverlayIndex,
+    double? gradientOverlayOpacity,
+    double? gradientOverlayAngle,
+  }) {
+    final next = _LayerStyleQuickPatch(
+      strokeColor: strokeColor,
+      strokeWidth: strokeWidth,
+      strokeOpacity: strokeOpacity,
+      shadowColor: shadowColor,
+      shadowOpacity: shadowOpacity,
+      shadowBlur: shadowBlur,
+      shadowSpread: shadowSpread,
+      shadowOffsetX: shadowOffsetX,
+      shadowOffsetY: shadowOffsetY,
+      innerShadowColor: innerShadowColor,
+      innerShadowOpacity: innerShadowOpacity,
+      innerShadowBlur: innerShadowBlur,
+      innerShadowChoke: innerShadowChoke,
+      innerShadowDistance: innerShadowDistance,
+      innerShadowAngle: innerShadowAngle,
+      outerGlowColor: outerGlowColor,
+      outerGlowOpacity: outerGlowOpacity,
+      outerGlowSize: outerGlowSize,
+      outerGlowSpread: outerGlowSpread,
+      overlayColor: overlayColor,
+      overlayOpacity: overlayOpacity,
+      gradientOverlayEnabled: gradientOverlayEnabled,
+      gradientOverlayIndex: gradientOverlayIndex,
+      gradientOverlayOpacity: gradientOverlayOpacity,
+      gradientOverlayAngle: gradientOverlayAngle,
+    );
+    _pendingLayerStyleQuickUpdate =
+        _pendingLayerStyleQuickUpdate?.merge(next) ?? next;
+    _layerStyleQuickUpdateTimer ??= Timer(
+      const Duration(milliseconds: 32),
+      _flushLayerStyleQuickUpdate,
+    );
+  }
+
+  void _flushLayerStyleQuickUpdate() {
+    _layerStyleQuickUpdateTimer?.cancel();
+    _layerStyleQuickUpdateTimer = null;
+    final update = _pendingLayerStyleQuickUpdate;
+    _pendingLayerStyleQuickUpdate = null;
+    if (update == null) {
+      return;
+    }
+    final selected = _selectedLayer;
+    if (selected == null || selected.isLocked) {
+      return;
+    }
+    _layerStyleQuickBeforeLayer ??= _cloneLayer(selected);
+    final index = _layers.indexWhere((item) => item.id == selected.id);
+    if (index == -1 || _layers[index].isLocked) {
+      return;
+    }
+    setState(() {
+      _layers[index] = _layers[index].copyWith(
+        layerStyleStrokeColor: update.strokeColor,
+        layerStyleStrokeWidth: _layerStyleStep(
+          update.strokeWidth?.clamp(0.0, 36.0).toDouble(),
+          0.5,
+        ),
+        layerStyleStrokeOpacity: _layerStyleStep(
+          update.strokeOpacity?.clamp(0.0, 1.0).toDouble(),
+          0.01,
+        ),
+        layerStyleShadowColor: update.shadowColor,
+        layerStyleShadowOpacity: _layerStyleStep(
+          update.shadowOpacity?.clamp(0.0, 1.0).toDouble(),
+          0.01,
+        ),
+        layerStyleShadowBlur: _layerStyleStep(
+          update.shadowBlur?.clamp(0.0, 56.0).toDouble(),
+          1,
+        ),
+        layerStyleShadowSpread: _layerStyleStep(
+          update.shadowSpread?.clamp(0.0, 32.0).toDouble(),
+          1,
+        ),
+        layerStyleShadowOffsetX: _layerStyleStep(
+          update.shadowOffsetX?.clamp(-120.0, 120.0).toDouble(),
+          1,
+        ),
+        layerStyleShadowOffsetY: _layerStyleStep(
+          update.shadowOffsetY?.clamp(-120.0, 120.0).toDouble(),
+          1,
+        ),
+        layerStyleInnerShadowColor: update.innerShadowColor,
+        layerStyleInnerShadowOpacity: update.innerShadowOpacity?.clamp(
+          0.0,
+          1.0,
+        ),
+        layerStyleInnerShadowBlur: _layerStyleStep(
+          update.innerShadowBlur?.clamp(0.0, 56.0).toDouble(),
+          1,
+        ),
+        layerStyleInnerShadowChoke: _layerStyleStep(
+          update.innerShadowChoke?.clamp(0.0, 100.0).toDouble(),
+          1,
+        ),
+        layerStyleInnerShadowDistance: _layerStyleStep(
+          update.innerShadowDistance?.clamp(0.0, 80.0).toDouble(),
+          1,
+        ),
+        layerStyleInnerShadowAngle: _layerStyleStep(
+          update.innerShadowAngle?.clamp(0.0, 360.0).toDouble(),
+          1,
+        ),
+        layerStyleOuterGlowColor: update.outerGlowColor,
+        layerStyleOuterGlowOpacity: _layerStyleStep(
+          update.outerGlowOpacity?.clamp(0.0, 1.0).toDouble(),
+          0.01,
+        ),
+        layerStyleOuterGlowSize: _layerStyleStep(
+          update.outerGlowSize?.clamp(0.0, 64.0).toDouble(),
+          1,
+        ),
+        layerStyleOuterGlowSpread: _layerStyleStep(
+          update.outerGlowSpread?.clamp(0.0, 32.0).toDouble(),
+          1,
+        ),
+        layerStyleOverlayColor: update.overlayColor,
+        layerStyleOverlayOpacity: _layerStyleStep(
+          update.overlayOpacity?.clamp(0.0, 1.0).toDouble(),
+          0.01,
+        ),
+        layerStyleGradientOverlayEnabled: update.gradientOverlayEnabled,
+        layerStyleGradientOverlayIndex: update.gradientOverlayIndex?.clamp(
+          0,
+          math.max(0, _textGradients.length - 1),
+        ),
+        layerStyleGradientOverlayOpacity: _layerStyleStep(
+          update.gradientOverlayOpacity?.clamp(0.0, 1.0).toDouble(),
+          0.01,
+        ),
+        layerStyleGradientOverlayAngle: _layerStyleStep(
+          update.gradientOverlayAngle?.clamp(0.0, 360.0).toDouble(),
+          1,
+        ),
+      );
+    });
+  }
+
+  void _commitLayerStyleQuickEdit() {
+    _flushLayerStyleQuickUpdate();
+    final beforeLayer = _layerStyleQuickBeforeLayer;
+    final selected = _selectedLayer;
+    _layerStyleQuickBeforeLayer = null;
+    if (beforeLayer == null || selected == null) {
+      return;
+    }
+    final index = _layers.indexWhere((item) => item.id == beforeLayer.id);
+    if (index == -1) {
+      return;
+    }
+    final afterLayer = _cloneLayer(_layers[index]);
+    if (!_didLayerChange(beforeLayer, afterLayer)) {
+      return;
+    }
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    _scheduleAutosave();
+  }
+
+  void _openLayerStyleQuickControls() {
+    final selected = _selectedLayer;
+    if (selected == null || selected.isLocked) {
+      return;
+    }
+    if (_selectedTextFocusNode.hasFocus) {
+      _selectedTextFocusNode.unfocus();
+    }
+    setState(() {
+      _showLayerStyleQuickControls = true;
+      _showTextControls = false;
+      _activeInlineMode = _BottomInlineMode.none;
+      _activeBottomPrimaryTool = _BottomPrimaryTool.none;
+      _activeMainToolLabel = 'Style';
+      _activeLayerStyleQuickTab = _LayerStyleQuickTab.stroke;
+      _layerStyleQuickBeforeLayer = _cloneLayer(selected);
+    });
+    HapticFeedback.selectionClick();
+  }
+
+  void _closeLayerStyleQuickControls() {
+    _commitLayerStyleQuickEdit();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _showLayerStyleQuickControls = false;
+    });
   }
 
   void _toggleCanvasAutoSelectLayer() {
@@ -1029,29 +323,44 @@ extension _EditorLayersState on _ImageEditorScreenState {
     HapticFeedback.selectionClick();
   }
 
-  Future<void> _openUniversalLayerStyleSheet() async {
+  void _copySelectedLayerStyle() {
     final selected = _selectedLayer;
-    if (selected == null || selected.isLocked) {
+    if (selected == null) {
       return;
     }
-    final layerId = selected.id;
-    final beforeLayer = _cloneLayer(selected);
-    await _openLayerStyleDesignOnlySheet(selected);
-    await Future<void>.delayed(kThemeAnimationDuration);
-    if (!mounted) {
+    setState(() {
+      _copiedLayerStyle = _LayerStyleSnapshot.fromLayer(selected);
+    });
+    HapticFeedback.selectionClick();
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(content: const Text('Layer style copied')),
+    );
+  }
+
+  void _pasteCopiedLayerStyleToSelected() {
+    final snapshot = _copiedLayerStyle;
+    final selected = _selectedLayer;
+    if (snapshot == null || selected == null || selected.isLocked) {
       return;
     }
-    final afterIndex = _layers.indexWhere((layer) => layer.id == layerId);
-    final afterLayer = afterIndex == -1 ? null : _layers[afterIndex];
-    if (afterLayer != null && _didLayerChange(beforeLayer, afterLayer)) {
-      final committedLayer = _cloneLayer(afterLayer);
-      _pushLayerHistoryEntry(
-        beforeLayer: beforeLayer,
-        afterLayer: committedLayer,
-      );
-      setState(() => _layers[afterIndex] = committedLayer);
-      _scheduleAutosave();
+    final index = _layers.indexWhere((item) => item.id == selected.id);
+    if (index == -1) {
+      return;
     }
+    final beforeLayer = _cloneLayer(_layers[index]);
+    final afterLayer = snapshot.applyTo(beforeLayer);
+    if (!_didLayerChange(beforeLayer, afterLayer)) {
+      return;
+    }
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[index] = afterLayer;
+    });
+    _scheduleAutosave();
+    HapticFeedback.selectionClick();
+    ScaffoldMessenger.of(context).showTopSnackBar(
+      AppSnackBar.build(content: const Text('Layer style pasted')),
+    );
   }
 
   void _handleLayerSelected(String id) {
@@ -1086,6 +395,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
 
+    _commitLayerStyleQuickEdit();
     final index = _layers.indexWhere((item) => item.id == id);
     if (index == -1) {
       return;
@@ -1105,6 +415,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _showSelectedLayerHandles = true;
       _isTextPlacementMode = false;
       _showTextControls = false;
+      _showLayerStyleQuickControls = false;
       if (layer.isText) {
         _activeBottomPrimaryTool = _BottomPrimaryTool.text;
         _activeMainToolLabel = 'Text';
@@ -1139,7 +450,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
         _cloneSourcePoint = null;
         _cloneAlignedSampleOffset = null;
         _stretchStrokeLayerSize = Size.zero;
-        _eraserPreviewNotifier.value = null;
+        _setEraserPreviewState(null);
       }
     });
     _syncSelectedTextEditor();
@@ -1163,7 +474,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
     Size pageSize,
   ) {
     if (_isCropMode ||
-        _isInlineTextEditing ||
+        _isTextTypingScreenOpen ||
         _isPhotoEraserMode ||
         _isContentAwareMode ||
         _isPhotoCloneMode ||
@@ -1221,7 +532,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
   }
 
   void _handleCanvasTap() {
-    if (_isInlineTextEditing) {
+    if (_isTextTypingScreenOpen) {
       _canvasTapResolvedLayer = false;
       return;
     }
@@ -1247,7 +558,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
         _isLayerMaskBrushMode ||
         _isDrawBrushMode ||
         _isTextPlacementMode ||
-        _isInlineTextEditing ||
+        _isTextTypingScreenOpen ||
         _isExporting ||
         _isCapturingStage ||
         _layers.isEmpty) {
@@ -1303,11 +614,27 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
 
     final collapsedGroupIds = <String>{};
+    var pickerTopOrderIds = _layers.reversed
+        .map((layer) => layer.id)
+        .toList(growable: true);
     pickerEntry = OverlayEntry(
       builder: (overlayContext) {
         return StatefulBuilder(
           builder: (pickerContext, setPickerState) {
-            final selectableLayers = _layers.reversed.toList(growable: false);
+            final layerById = <String, _CanvasLayer>{
+              for (final layer in _layers) layer.id: layer,
+            };
+            pickerTopOrderIds
+              ..removeWhere((id) => !layerById.containsKey(id))
+              ..addAll(
+                _layers.reversed
+                    .map((layer) => layer.id)
+                    .where((id) => !pickerTopOrderIds.contains(id)),
+              );
+            final selectableLayers = pickerTopOrderIds
+                .map((id) => layerById[id])
+                .whereType<_CanvasLayer>()
+                .toList(growable: false);
             final groupCounts = <String, int>{};
             final groupNames = <String, String>{};
             for (final layer in selectableLayers) {
@@ -1383,20 +710,24 @@ extension _EditorLayersState on _ImageEditorScreenState {
               }
               reordered.removeAt(previousTopIndex);
 
+              final normalizedNewIndex = newIndex > oldIndex
+                  ? newIndex - 1
+                  : newIndex;
               var insertTopIndex = reordered.length;
-              if (newIndex < displayItems.length) {
-                final targetItem =
-                    displayItems[newIndex.clamp(0, displayItems.length - 1)];
-                final targetLayer = targetItem.layer;
-                if (targetLayer != null) {
-                  insertTopIndex = reordered.indexWhere(
-                    (layer) => layer.id == targetLayer.id,
-                  );
-                } else {
-                  insertTopIndex = reordered.indexWhere(
-                    (layer) => layer.groupId.trim() == targetItem.groupId,
-                  );
-                }
+              final visibleLayerIdsAfterRemoval = displayItems
+                  .where((item) => item.layer != null)
+                  .map((item) => item.layer!.id)
+                  .where((id) => id != movedLayer.id)
+                  .toList(growable: false);
+              if (normalizedNewIndex < visibleLayerIdsAfterRemoval.length) {
+                final targetLayerId =
+                    visibleLayerIdsAfterRemoval[normalizedNewIndex.clamp(
+                      0,
+                      visibleLayerIdsAfterRemoval.length - 1,
+                    )];
+                insertTopIndex = reordered.indexWhere(
+                  (layer) => layer.id == targetLayerId,
+                );
                 if (insertTopIndex == -1) {
                   insertTopIndex = reordered.length;
                 }
@@ -1419,6 +750,9 @@ extension _EditorLayersState on _ImageEditorScreenState {
                 return;
               }
               HapticFeedback.selectionClick();
+              pickerTopOrderIds = reordered
+                  .map((layer) => layer.id)
+                  .toList(growable: true);
               _reorderLayersFromAdvancedView(oldCanvasIndex, newCanvasIndex);
               if (mounted && !isRemoved) {
                 setPickerState(() {});
@@ -1832,7 +1166,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _layerMaskStrokePoints.clear();
       _layerMaskStrokeLayerId = null;
       _layerMaskStrokeLayerSize = Size.zero;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       _restoreSelectedLayerToolContextFields();
     });
   }
@@ -1847,9 +1181,11 @@ extension _EditorLayersState on _ImageEditorScreenState {
     }
     _layerMaskStrokeLayerId = selectedId;
     _layerMaskStrokeLayerSize = layerSize;
+    final normalizedPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, normalizedPoint);
     _layerMaskStrokePoints
       ..clear()
-      ..add(_normalizeEraserPoint(localPosition, layerSize));
+      ..add(normalizedPoint);
     _publishLayerMaskBrushPreview();
   }
 
@@ -1860,14 +1196,16 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
     final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(_layerMaskStrokeLayerId!, nextPoint);
     final previousPoint = _layerMaskStrokePoints.isEmpty
         ? null
         : _layerMaskStrokePoints.last;
     if (previousPoint != null) {
       final brushSize = _workspaceBrushSize(_layerMaskBrushSize);
       final minStep =
-          (brushSize / math.max(layerSize.width, layerSize.height)) * 0.035;
-      if ((nextPoint - previousPoint).distance < minStep.clamp(0.0006, 0.006)) {
+          (brushSize / math.max(layerSize.width, layerSize.height)) * 0.012;
+      if ((nextPoint - previousPoint).distance <
+          minStep.clamp(0.00035, 0.0022)) {
         return;
       }
     }
@@ -1880,7 +1218,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
       _layerMaskStrokePoints.clear();
       _layerMaskStrokeLayerId = null;
       _layerMaskStrokeLayerSize = Size.zero;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layerId = _layerMaskStrokeLayerId;
@@ -1888,7 +1226,7 @@ extension _EditorLayersState on _ImageEditorScreenState {
     _layerMaskStrokePoints.clear();
     _layerMaskStrokeLayerId = null;
     _layerMaskStrokeLayerSize = Size.zero;
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
     if (layerId == null || strokePoints.isEmpty) {
       return;
     }
@@ -1940,41 +1278,44 @@ extension _EditorLayersState on _ImageEditorScreenState {
     _layerMaskStrokePoints.clear();
     _layerMaskStrokeLayerId = null;
     _layerMaskStrokeLayerSize = Size.zero;
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
   }
 
   void _publishLayerMaskBrushPreview() {
     final layerId = _layerMaskStrokeLayerId;
     if (layerId == null || _layerMaskStrokePoints.isEmpty) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: List<Offset>.of(_layerMaskStrokePoints),
-      brushSize: _layerMaskBrushSize,
-      hardness: _layerMaskBrushHardness,
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[_layerMaskStrokePoints.last],
+        strokePreviewPoints: List<Offset>.of(_layerMaskStrokePoints),
+        strokePreviewOpacity: _isLayerMaskBrushRestoreMode ? 0.18 : 0.24,
+        brushSize: _layerMaskBrushSize,
+        hardness: _layerMaskBrushHardness,
+      ),
     );
   }
 
-  void _showLayerMaskBrushCursorPreview([
-    Offset point = const Offset(0.5, 0.5),
-  ]) {
+  void _showLayerMaskBrushCursorPreview([Offset? point]) {
     if (!_isLayerMaskBrushMode) {
       return;
     }
     final layerId = _selectedLayerId;
     if (layerId == null) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: <Offset>[
-        Offset(point.dx.clamp(0.0, 1.0), point.dy.clamp(0.0, 1.0)),
-      ],
-      brushSize: _layerMaskBrushSize,
-      hardness: _layerMaskBrushHardness,
+    final previewPoint = _resolveLayerBrushPreviewPoint(layerId, point);
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[previewPoint],
+        brushSize: _layerMaskBrushSize,
+        hardness: _layerMaskBrushHardness,
+      ),
     );
   }
 
@@ -3020,213 +2361,6 @@ extension _EditorLayersState on _ImageEditorScreenState {
   }
 }
 
-class _LayerStylePreviewGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const cell = 14.0;
-    final dark = Paint()..color = const Color(0xFF0B1220);
-    final light = Paint()..color = const Color(0xFF101A2B);
-    for (double y = 0; y < size.height; y += cell) {
-      for (double x = 0; x < size.width; x += cell) {
-        final even = ((x / cell).floor() + (y / cell).floor()).isEven;
-        canvas.drawRect(Rect.fromLTWH(x, y, cell, cell), even ? light : dark);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LayerStylePreviewGridPainter oldDelegate) {
-    return false;
-  }
-}
-
-class _LayerStyleHueSlider extends StatefulWidget {
-  const _LayerStyleHueSlider({
-    required this.hue,
-    required this.color,
-    required this.onChanged,
-    this.onChangeEnd,
-  });
-
-  final double hue;
-  final Color color;
-  final ValueChanged<double> onChanged;
-  final ValueChanged<double>? onChangeEnd;
-
-  @override
-  State<_LayerStyleHueSlider> createState() => _LayerStyleHueSliderState();
-}
-
-class _LayerStyleHueSliderState extends State<_LayerStyleHueSlider> {
-  double? _previewHue;
-  double? _previewDx;
-
-  @override
-  Widget build(BuildContext context) {
-    final hue = (_previewHue ?? widget.hue).clamp(0.0, 360.0).toDouble();
-    final previewColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            const Text(
-              'Color',
-              style: TextStyle(
-                color: _editorChromeTextPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              _hexFromColor(widget.color),
-              style: const TextStyle(
-                color: _editorChromeTextSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final previewLeft = ((_previewDx ?? 0) + 8).clamp(0.0, width - 66);
-            return SizedBox(
-              height: _previewHue == null ? 34 : 104,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: <Widget>[
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: _previewHue == null ? 0 : 70,
-                    height: 34,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanDown: (details) =>
-                          _handle(details.localPosition.dx, width),
-                      onPanUpdate: (details) =>
-                          _handle(details.localPosition.dx, width),
-                      onPanEnd: (_) => _commitAndClearPreview(),
-                      onPanCancel: _commitAndClearPreview,
-                      onTapDown: (details) =>
-                          _handle(details.localPosition.dx, width),
-                      onTapUp: (_) => _commitAndClearPreview(),
-                      onTapCancel: _commitAndClearPreview,
-                      child: CustomPaint(
-                        painter: _LayerStyleHueSliderPainter(hue: hue),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
-                  ),
-                  if (_previewHue != null)
-                    Positioned(
-                      left: previewLeft,
-                      top: 0,
-                      child: _ColorMagnifierPreview(
-                        color: previewColor,
-                        hex: _hexFromColor(previewColor),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  void _handle(double dx, double width) {
-    final normalized = (dx / math.max(1.0, width)).clamp(0.0, 1.0);
-    final hue = normalized * 360;
-    setState(() {
-      _previewHue = hue;
-      _previewDx = dx.clamp(0.0, width);
-    });
-    if (widget.onChangeEnd == null) {
-      widget.onChanged(hue);
-    }
-  }
-
-  void _commitAndClearPreview() {
-    final hue = _previewHue;
-    if (hue != null) {
-      widget.onChangeEnd?.call(hue);
-    }
-    _clearPreview();
-  }
-
-  void _clearPreview() {
-    if (_previewHue == null && _previewDx == null) {
-      return;
-    }
-    setState(() {
-      _previewHue = null;
-      _previewDx = null;
-    });
-  }
-}
-
-class _LayerStyleHueSliderPainter extends CustomPainter {
-  const _LayerStyleHueSliderPainter({required this.hue});
-
-  final double hue;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final trackRect = Rect.fromLTWH(0, 9, size.width, 16);
-    final radius = BorderRadius.circular(999);
-    final gradient = LinearGradient(
-      colors: List<Color>.generate(
-        13,
-        (index) => HSVColor.fromAHSV(1, index * 30.0, 1, 1).toColor(),
-      ),
-    );
-    canvas.drawRRect(
-      radius.toRRect(trackRect),
-      Paint()..shader = gradient.createShader(trackRect),
-    );
-    canvas.drawRRect(
-      radius.toRRect(trackRect),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = Colors.white.withValues(alpha: 0.22),
-    );
-    final x = (hue.clamp(0.0, 360.0) / 360.0) * size.width;
-    final handle = Offset(x.clamp(8.0, size.width - 8.0), trackRect.center.dy);
-    canvas.drawCircle(
-      handle,
-      10,
-      Paint()
-        ..color = Colors.black.withValues(alpha: 0.34)
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      handle,
-      8,
-      Paint()
-        ..color = HSVColor.fromAHSV(1, hue, 1, 1).toColor()
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      handle,
-      8,
-      Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _LayerStyleHueSliderPainter oldDelegate) {
-    return oldDelegate.hue != hue;
-  }
-}
-
 class _CanvasLayerPickerDisplayItem {
   const _CanvasLayerPickerDisplayItem.layer(this.layer)
     : groupId = '',
@@ -3754,7 +2888,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       _eraserStrokePoints.clear();
       _eraserStrokeLayerId = null;
       _eraserStrokeLayerSize = Size.zero;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       _restoreSelectedLayerToolContextFields();
     });
   }
@@ -3771,10 +2905,12 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
     _eraserStrokeLayerId = selectedId;
     _eraserStrokeLayerSize = layerSize;
+    final normalizedPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, normalizedPoint);
     _eraserStrokePoints
       ..clear()
-      ..add(_normalizeEraserPoint(localPosition, layerSize));
-    _publishEraserPreview();
+      ..add(normalizedPoint);
+    _publishEraserPreview(coalesce: false);
   }
 
   void _handlePhotoEraserUpdate(Offset localPosition, Size layerSize) {
@@ -3785,6 +2921,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       return;
     }
     final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(_eraserStrokeLayerId!, nextPoint);
     final previousPoint = _eraserStrokePoints.isEmpty
         ? null
         : _eraserStrokePoints.last;
@@ -3798,13 +2935,11 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         return;
       }
       final brushSize = _workspaceBrushSize(_eraserBrushSize);
-      final spacing = (brushSize * 0.18).clamp(0.8, 6.0).toDouble();
-      final steps = (pixelDistance / spacing).ceil().clamp(1, 96);
-      for (var step = 1; step <= steps; step++) {
-        _eraserStrokePoints.add(
-          Offset.lerp(previousPoint, nextPoint, step / steps)!,
-        );
+      final spacing = (brushSize * 0.035).clamp(0.75, 2.4).toDouble();
+      if (pixelDistance < spacing) {
+        return;
       }
+      _eraserStrokePoints.add(nextPoint);
     } else {
       _eraserStrokePoints.add(nextPoint);
     }
@@ -3816,7 +2951,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       _eraserStrokePoints.clear();
       _eraserStrokeLayerId = null;
       _eraserStrokeLayerSize = Size.zero;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layerId = _eraserStrokeLayerId;
@@ -3826,18 +2961,18 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _eraserStrokeLayerId = null;
     _eraserStrokeLayerSize = Size.zero;
     if (layerId == null || strokePoints.isEmpty) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layerIndex = _layers.indexWhere((item) => item.id == layerId);
     if (layerIndex == -1 || !_layers[layerIndex].isPhoto) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layer = _layers[layerIndex];
     final sourceBytes = layer.bytes;
     if (sourceBytes == null) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final flatPoints = <double>[];
@@ -3849,14 +2984,10 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     final brushSize = _workspaceBrushSize(_eraserBrushSize);
     final resultBytes = await _runQueuedCommitJob<Uint8List>(
       jobKey: 'photo_eraser_$layerId',
-      label: context.strings.localized(
-        telugu: 'ఎరేసర్ అప్లై అవుతోంది',
-        english: 'Applying eraser',
-      ),
-      detail: context.strings.localized(
-        telugu: 'ఫోటోలో ఎంచుకున్న భాగాన్ని softగా తొలగిస్తోంది',
-        english: 'Softly removing the brushed photo area',
-      ),
+      label: 'Applying eraser',
+      detail: 'Softly removing the brushed photo area',
+      showBusyMessage: false,
+      showCommitState: false,
       operation: () => compute(_erasePhotoBrushBytes, <String, Object?>{
         'bytes': sourceBytes,
         'points': flatPoints,
@@ -3870,12 +3001,12 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       }),
     );
     if (resultBytes == null || !mounted) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final currentIndex = _layers.indexWhere((item) => item.id == layerId);
     if (currentIndex == -1) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final beforeLayer = _layers[currentIndex];
@@ -3884,7 +3015,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     setState(() {
       _layers[currentIndex] = afterLayer;
     });
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
     _selectedPhotoRenderNotifier.value = null;
   }
 
@@ -3892,39 +3023,45 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _eraserStrokePoints.clear();
     _eraserStrokeLayerId = null;
     _eraserStrokeLayerSize = Size.zero;
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
   }
 
-  void _publishEraserPreview() {
+  void _publishEraserPreview({bool coalesce = true}) {
     final layerId = _eraserStrokeLayerId;
     if (layerId == null || _eraserStrokePoints.isEmpty) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: _eraserStrokePoints,
-      brushSize: _eraserBrushSize,
-      hardness: _eraserHardness,
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[_eraserStrokePoints.last],
+        effect: _PhotoBrushPreviewEffect.erase,
+        strokePreviewPoints: List<Offset>.of(_eraserStrokePoints),
+        strokePreviewOpacity: 0.18,
+        brushSize: _eraserBrushSize,
+        hardness: _eraserHardness,
+      ),
     );
   }
 
-  void _showEraserBrushCursorPreview([Offset point = const Offset(0.5, 0.5)]) {
+  void _showEraserBrushCursorPreview([Offset? point]) {
     if (!_isPhotoEraserMode || _isCommitWorkerBusy) {
       return;
     }
     final layerId = _selectedLayerId;
     if (layerId == null || !_hasSelectedPhotoLayer) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: <Offset>[
-        Offset(point.dx.clamp(0.0, 1.0), point.dy.clamp(0.0, 1.0)),
-      ],
-      brushSize: _eraserBrushSize,
-      hardness: _eraserHardness,
+    final previewPoint = _resolveLayerBrushPreviewPoint(layerId, point);
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[previewPoint],
+        brushSize: _eraserBrushSize,
+        hardness: _eraserHardness,
+      ),
     );
   }
 
@@ -4400,6 +3537,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       _selectedTextFocusNode.unfocus();
     }
     _commitSelectedTextContentEdit();
+    _commitLayerStyleQuickEdit();
     _cancelSelectedTextLongPress();
     _resetGroupTransformSession();
     _lastSelectedTextTapAt = null;
@@ -4421,6 +3559,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       _showSelectedLayerHandles = false;
       _isTextPlacementMode = false;
       _showTextControls = false;
+      _showLayerStyleQuickControls = false;
       _isAdjustMode = false;
       _isPhotoEraserMode = false;
       _isPhotoStretchMode = false;
@@ -4451,7 +3590,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       _cloneAlignedSampleOffset = null;
       _stretchStrokeLayerSize = Size.zero;
       _layerMaskStrokeLayerSize = Size.zero;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       _drawPreviewNotifier.value = null;
       _activeBottomPrimaryTool = _BottomPrimaryTool.none;
       _activeInlineMode = _BottomInlineMode.none;
@@ -6431,6 +5570,36 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _alignSelectedLayerToPageCenter(horizontal: false);
   }
 
+  void _nudgeSelectedLayer(Offset delta) {
+    if (_isSelectedLayerLocked || delta == Offset.zero) {
+      return;
+    }
+    final index = _selectedLayerIndex;
+    if (index == -1) {
+      return;
+    }
+    final beforeLayer = _layers[index];
+    final nextTransform = Matrix4.copy(beforeLayer.transform);
+    nextTransform.setTranslationRaw(
+      nextTransform.storage[12] + delta.dx,
+      nextTransform.storage[13] + delta.dy,
+      nextTransform.storage[14],
+    );
+    final clampedTransform = _clampLayerTransformToPageBounds(
+      beforeLayer,
+      nextTransform,
+    );
+    if (_isSameMatrix(beforeLayer.transform, clampedTransform)) {
+      return;
+    }
+    final afterLayer = beforeLayer.copyWith(transform: clampedTransform);
+    _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
+    setState(() {
+      _layers[index] = afterLayer;
+      _transformationController.value = Matrix4.copy(clampedTransform);
+    });
+  }
+
   void _moveSelectedLayerToFront() {
     final index = _selectedLayerIndex;
     if (index == -1 || index == _layers.length - 1) {
@@ -6739,6 +5908,13 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _resetWorkspaceViewportToFit();
     _transformationController.value = Matrix4.identity();
     setState(() {
+      _designPageConfig = EditorPageConfig(
+        name: 'PSD ${width}x$height',
+        widthPx: width,
+        heightPx: height,
+        dpi: 300,
+      );
+      _preserveDesignExportPixels = true;
       _pageAspectRatio = width / height;
       _pageAspectRatioAutoFromImage = widget.pageConfig == null;
       _layers.addAll(importedLayers);
@@ -7066,13 +6242,16 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       );
     } else {
       final rawBytes = await effectiveFile.readAsBytes();
-      optimizedPhoto = await compute(_optimizeEditorPhotoPayload, rawBytes);
+      optimizedPhoto = _optimizeEditorPhotoPayload(rawBytes);
       processedBytes = optimizedPhoto.bytes;
     }
     if (!mounted || processedBytes == null) {
       return;
     }
-    final processedPhoto = asFullPage
+    final shouldTrimTransparentPhoto =
+        widget.autoProcessAddedPhotos ||
+        _pickedPhotoMayContainTransparency(effectiveFile);
+    final processedPhoto = asFullPage || !shouldTrimTransparentPhoto
         ? _OptimizedPhotoPayload(
             bytes: processedBytes!,
             aspectRatio: optimizedPhoto.aspectRatio,
@@ -7109,6 +6288,7 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       }
       _layers.add(layer);
       _selectedLayerId = layer.id;
+      _selectedPhotoRenderNotifier.value = null;
       _isLayerInteracting = false;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -7117,5 +6297,14 @@ extension _EditorLayersActions on _ImageEditorScreenState {
       }
       _transformationController.value = Matrix4.identity();
     });
+  }
+
+  bool _pickedPhotoMayContainTransparency(XFile file) {
+    final mimeType = (file.mimeType ?? '').toLowerCase();
+    if (mimeType == 'image/png' || mimeType == 'image/webp') {
+      return true;
+    }
+    final path = file.path.toLowerCase();
+    return path.endsWith('.png') || path.endsWith('.webp');
   }
 }

@@ -486,6 +486,7 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
     );
     final isFavorite = _favoriteFonts.contains(family);
     final secondaryLabel = _fontPickerSecondaryLabel(family);
+    final isPremiumTeluguFont = widget.teluguFonts.contains(family);
     return _PressableSurface(
       onTap: () {
         setState(() {
@@ -578,6 +579,10 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
             ),
             if (secondaryLabel.isNotEmpty)
               _FontMetaBadge(label: secondaryLabel),
+            if (isPremiumTeluguFont) ...<Widget>[
+              const SizedBox(width: 6),
+              const _FontPremiumBadge(),
+            ],
             if (cachedReady) ...<Widget>[
               const SizedBox(width: 6),
               const _FontMetaBadge(label: 'Ready', accent: true),
@@ -755,6 +760,28 @@ class _FontMetaBadge extends StatelessWidget {
           fontSize: 9.5,
           fontWeight: FontWeight.w800,
         ),
+      ),
+    );
+  }
+}
+
+class _FontPremiumBadge extends StatelessWidget {
+  const _FontPremiumBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFACC15),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFF202228)),
+      ),
+      child: const Icon(
+        Icons.workspace_premium_rounded,
+        size: 15,
+        color: Colors.black,
       ),
     );
   }

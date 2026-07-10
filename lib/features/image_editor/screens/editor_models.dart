@@ -241,6 +241,8 @@ class _SelectedPhotoRenderState {
   );
 }
 
+enum _PhotoBrushPreviewEffect { overlay, erase }
+
 @immutable
 class _PhotoEraserPreviewState {
   const _PhotoEraserPreviewState({
@@ -248,6 +250,9 @@ class _PhotoEraserPreviewState {
     required this.points,
     required this.brushSize,
     required this.hardness,
+    this.effect = _PhotoBrushPreviewEffect.overlay,
+    this.strokePreviewPoints,
+    this.strokePreviewOpacity = 0.22,
     this.cloneSourceImage,
     this.cloneSampleOffset,
     this.cloneStampPoints,
@@ -258,6 +263,9 @@ class _PhotoEraserPreviewState {
   final List<Offset> points;
   final double brushSize;
   final double hardness;
+  final _PhotoBrushPreviewEffect effect;
+  final List<Offset>? strokePreviewPoints;
+  final double strokePreviewOpacity;
   final ui.Image? cloneSourceImage;
   final Offset? cloneSampleOffset;
   final List<Offset>? cloneStampPoints;
@@ -362,7 +370,6 @@ class _CanvasLayer {
     this.layerMaskBrushStrokes = const <_LayerMaskBrushStroke>[],
     this.layerStyleOverlayColor = const Color(0xFF000000),
     this.layerStyleOverlayOpacity = 0,
-    this.layerStyleColorOverlayBlendMode = 0,
     this.layerStyleStrokeColor = const Color(0xFFFFFFFF),
     this.layerStyleStrokeWidth = 0,
     this.layerStyleShadowColor = const Color(0xFF000000),
@@ -371,81 +378,26 @@ class _CanvasLayer {
     this.layerStyleShadowSpread = 0,
     this.layerStyleShadowOffsetX = 0,
     this.layerStyleShadowOffsetY = 6,
-    this.layerStyleShadowBlendMode = 0,
     this.layerStyleShadowContour = 0,
-    this.layerStyleShadowNoise = 0,
-    this.layerStyleUseGlobalLight = false,
-    this.layerStyleGlobalLightAngle = 120,
-    this.layerStyleGlobalLightAltitude = 30,
-    this.layerStyleBevelEnabled = false,
-    this.layerStyleBevelStyle = 0,
-    this.layerStyleBevelTechnique = 0,
-    this.layerStyleBevelDirection = 0,
-    this.layerStyleBevelDepth = 35,
-    this.layerStyleBevelSize = 8,
-    this.layerStyleBevelSoften = 2,
-    this.layerStyleBevelAngle = 120,
-    this.layerStyleBevelAltitude = 30,
-    this.layerStyleBevelHighlightColor = const Color(0xFFFFFFFF),
-    this.layerStyleBevelHighlightOpacity = 0.75,
-    this.layerStyleBevelShadowColor = const Color(0xFF000000),
-    this.layerStyleBevelShadowOpacity = 0.75,
-    this.layerStyleContour = 0,
-    this.layerStyleTextureEnabled = false,
-    this.layerStyleTextureScale = 36,
-    this.layerStyleTextureDepth = 18,
     this.layerStyleStrokeOpacity = 1,
-    this.layerStyleStrokePosition = 0,
-    this.layerStyleStrokeBlendMode = 0,
     this.layerStyleInnerShadowColor = const Color(0xFF000000),
     this.layerStyleInnerShadowOpacity = 0,
     this.layerStyleInnerShadowBlur = 12,
     this.layerStyleInnerShadowChoke = 0,
     this.layerStyleInnerShadowDistance = 8,
     this.layerStyleInnerShadowAngle = 120,
-    this.layerStyleInnerShadowBlendMode = 0,
     this.layerStyleInnerShadowContour = 0,
-    this.layerStyleInnerShadowNoise = 0,
     this.layerStyleGradientOverlayEnabled = false,
     this.layerStyleGradientOverlayIndex = 0,
     this.layerStyleGradientOverlayOpacity = 0,
     this.layerStyleGradientOverlayAngle = 0,
-    this.layerStyleGradientOverlayStyle = 0,
     this.layerStyleGradientOverlayScale = 100,
-    this.layerStyleGradientOverlayBlendMode = 0,
     this.layerStyleGradientOverlayReversed = false,
-    this.layerStyleGradientOverlayDither = false,
     this.layerStyleOuterGlowColor = const Color(0xFFFFFFFF),
     this.layerStyleOuterGlowOpacity = 0,
     this.layerStyleOuterGlowSize = 18,
     this.layerStyleOuterGlowSpread = 0,
-    this.layerStyleOuterGlowNoise = 0,
     this.layerStyleOuterGlowContour = 0,
-    this.layerStyleOuterGlowRange = 50,
-    this.layerStyleOuterGlowJitter = 0,
-    this.layerStyleOuterGlowBlendMode = 0,
-    this.layerStyleInnerGlowColor = const Color(0xFFFFFFFF),
-    this.layerStyleInnerGlowOpacity = 0,
-    this.layerStyleInnerGlowSize = 18,
-    this.layerStyleInnerGlowSpread = 0,
-    this.layerStyleInnerGlowNoise = 0,
-    this.layerStyleInnerGlowSource = 0,
-    this.layerStyleInnerGlowContour = 0,
-    this.layerStyleInnerGlowRange = 50,
-    this.layerStyleInnerGlowJitter = 0,
-    this.layerStyleInnerGlowBlendMode = 0,
-    this.layerStyleSatinColor = const Color(0xFF000000),
-    this.layerStyleSatinOpacity = 0,
-    this.layerStyleSatinAngle = 20,
-    this.layerStyleSatinDistance = 12,
-    this.layerStyleSatinSize = 18,
-    this.layerStyleSatinInverted = false,
-    this.layerStyleSatinBlendMode = 0,
-    this.layerStylePatternOverlayEnabled = false,
-    this.layerStylePatternOverlayOpacity = 0,
-    this.layerStylePatternOverlayScale = 36,
-    this.layerStylePatternOverlayBlendMode = 0,
-    this.layerStylePatternOverlayPreset = 0,
     this.isSmartObject = false,
     this.smartObjectSourceBytes,
     this.groupId = '',
@@ -536,7 +488,6 @@ class _CanvasLayer {
   final List<_LayerMaskBrushStroke> layerMaskBrushStrokes;
   final Color layerStyleOverlayColor;
   final double layerStyleOverlayOpacity;
-  final int layerStyleColorOverlayBlendMode;
   final Color layerStyleStrokeColor;
   final double layerStyleStrokeWidth;
   final Color layerStyleShadowColor;
@@ -545,81 +496,26 @@ class _CanvasLayer {
   final double layerStyleShadowSpread;
   final double layerStyleShadowOffsetX;
   final double layerStyleShadowOffsetY;
-  final int layerStyleShadowBlendMode;
   final int layerStyleShadowContour;
-  final double layerStyleShadowNoise;
-  final bool layerStyleUseGlobalLight;
-  final double layerStyleGlobalLightAngle;
-  final double layerStyleGlobalLightAltitude;
-  final bool layerStyleBevelEnabled;
-  final int layerStyleBevelStyle;
-  final int layerStyleBevelTechnique;
-  final int layerStyleBevelDirection;
-  final double layerStyleBevelDepth;
-  final double layerStyleBevelSize;
-  final double layerStyleBevelSoften;
-  final double layerStyleBevelAngle;
-  final double layerStyleBevelAltitude;
-  final Color layerStyleBevelHighlightColor;
-  final double layerStyleBevelHighlightOpacity;
-  final Color layerStyleBevelShadowColor;
-  final double layerStyleBevelShadowOpacity;
-  final int layerStyleContour;
-  final bool layerStyleTextureEnabled;
-  final double layerStyleTextureScale;
-  final double layerStyleTextureDepth;
   final double layerStyleStrokeOpacity;
-  final int layerStyleStrokePosition;
-  final int layerStyleStrokeBlendMode;
   final Color layerStyleInnerShadowColor;
   final double layerStyleInnerShadowOpacity;
   final double layerStyleInnerShadowBlur;
   final double layerStyleInnerShadowChoke;
   final double layerStyleInnerShadowDistance;
   final double layerStyleInnerShadowAngle;
-  final int layerStyleInnerShadowBlendMode;
   final int layerStyleInnerShadowContour;
-  final double layerStyleInnerShadowNoise;
   final bool layerStyleGradientOverlayEnabled;
   final int layerStyleGradientOverlayIndex;
   final double layerStyleGradientOverlayOpacity;
   final double layerStyleGradientOverlayAngle;
-  final int layerStyleGradientOverlayStyle;
   final double layerStyleGradientOverlayScale;
-  final int layerStyleGradientOverlayBlendMode;
   final bool layerStyleGradientOverlayReversed;
-  final bool layerStyleGradientOverlayDither;
   final Color layerStyleOuterGlowColor;
   final double layerStyleOuterGlowOpacity;
   final double layerStyleOuterGlowSize;
   final double layerStyleOuterGlowSpread;
-  final double layerStyleOuterGlowNoise;
   final int layerStyleOuterGlowContour;
-  final double layerStyleOuterGlowRange;
-  final double layerStyleOuterGlowJitter;
-  final int layerStyleOuterGlowBlendMode;
-  final Color layerStyleInnerGlowColor;
-  final double layerStyleInnerGlowOpacity;
-  final double layerStyleInnerGlowSize;
-  final double layerStyleInnerGlowSpread;
-  final double layerStyleInnerGlowNoise;
-  final int layerStyleInnerGlowSource;
-  final int layerStyleInnerGlowContour;
-  final double layerStyleInnerGlowRange;
-  final double layerStyleInnerGlowJitter;
-  final int layerStyleInnerGlowBlendMode;
-  final Color layerStyleSatinColor;
-  final double layerStyleSatinOpacity;
-  final double layerStyleSatinAngle;
-  final double layerStyleSatinDistance;
-  final double layerStyleSatinSize;
-  final bool layerStyleSatinInverted;
-  final int layerStyleSatinBlendMode;
-  final bool layerStylePatternOverlayEnabled;
-  final double layerStylePatternOverlayOpacity;
-  final double layerStylePatternOverlayScale;
-  final int layerStylePatternOverlayBlendMode;
-  final int layerStylePatternOverlayPreset;
   final bool isSmartObject;
   final Uint8List? smartObjectSourceBytes;
   final String groupId;
@@ -714,7 +610,6 @@ class _CanvasLayer {
     List<_LayerMaskBrushStroke>? layerMaskBrushStrokes,
     Color? layerStyleOverlayColor,
     double? layerStyleOverlayOpacity,
-    int? layerStyleColorOverlayBlendMode,
     Color? layerStyleStrokeColor,
     double? layerStyleStrokeWidth,
     Color? layerStyleShadowColor,
@@ -723,81 +618,26 @@ class _CanvasLayer {
     double? layerStyleShadowSpread,
     double? layerStyleShadowOffsetX,
     double? layerStyleShadowOffsetY,
-    int? layerStyleShadowBlendMode,
     int? layerStyleShadowContour,
-    double? layerStyleShadowNoise,
-    bool? layerStyleUseGlobalLight,
-    double? layerStyleGlobalLightAngle,
-    double? layerStyleGlobalLightAltitude,
-    bool? layerStyleBevelEnabled,
-    int? layerStyleBevelStyle,
-    int? layerStyleBevelTechnique,
-    int? layerStyleBevelDirection,
-    double? layerStyleBevelDepth,
-    double? layerStyleBevelSize,
-    double? layerStyleBevelSoften,
-    double? layerStyleBevelAngle,
-    double? layerStyleBevelAltitude,
-    Color? layerStyleBevelHighlightColor,
-    double? layerStyleBevelHighlightOpacity,
-    Color? layerStyleBevelShadowColor,
-    double? layerStyleBevelShadowOpacity,
-    int? layerStyleContour,
-    bool? layerStyleTextureEnabled,
-    double? layerStyleTextureScale,
-    double? layerStyleTextureDepth,
     double? layerStyleStrokeOpacity,
-    int? layerStyleStrokePosition,
-    int? layerStyleStrokeBlendMode,
     Color? layerStyleInnerShadowColor,
     double? layerStyleInnerShadowOpacity,
     double? layerStyleInnerShadowBlur,
     double? layerStyleInnerShadowChoke,
     double? layerStyleInnerShadowDistance,
     double? layerStyleInnerShadowAngle,
-    int? layerStyleInnerShadowBlendMode,
     int? layerStyleInnerShadowContour,
-    double? layerStyleInnerShadowNoise,
     bool? layerStyleGradientOverlayEnabled,
     int? layerStyleGradientOverlayIndex,
     double? layerStyleGradientOverlayOpacity,
     double? layerStyleGradientOverlayAngle,
-    int? layerStyleGradientOverlayStyle,
     double? layerStyleGradientOverlayScale,
-    int? layerStyleGradientOverlayBlendMode,
     bool? layerStyleGradientOverlayReversed,
-    bool? layerStyleGradientOverlayDither,
     Color? layerStyleOuterGlowColor,
     double? layerStyleOuterGlowOpacity,
     double? layerStyleOuterGlowSize,
     double? layerStyleOuterGlowSpread,
-    double? layerStyleOuterGlowNoise,
     int? layerStyleOuterGlowContour,
-    double? layerStyleOuterGlowRange,
-    double? layerStyleOuterGlowJitter,
-    int? layerStyleOuterGlowBlendMode,
-    Color? layerStyleInnerGlowColor,
-    double? layerStyleInnerGlowOpacity,
-    double? layerStyleInnerGlowSize,
-    double? layerStyleInnerGlowSpread,
-    double? layerStyleInnerGlowNoise,
-    int? layerStyleInnerGlowSource,
-    int? layerStyleInnerGlowContour,
-    double? layerStyleInnerGlowRange,
-    double? layerStyleInnerGlowJitter,
-    int? layerStyleInnerGlowBlendMode,
-    Color? layerStyleSatinColor,
-    double? layerStyleSatinOpacity,
-    double? layerStyleSatinAngle,
-    double? layerStyleSatinDistance,
-    double? layerStyleSatinSize,
-    bool? layerStyleSatinInverted,
-    int? layerStyleSatinBlendMode,
-    bool? layerStylePatternOverlayEnabled,
-    double? layerStylePatternOverlayOpacity,
-    double? layerStylePatternOverlayScale,
-    int? layerStylePatternOverlayBlendMode,
-    int? layerStylePatternOverlayPreset,
     bool? isSmartObject,
     Object? smartObjectSourceBytes = _canvasLayerCopyWithUnset,
     String? groupId,
@@ -913,9 +753,6 @@ class _CanvasLayer {
           layerStyleOverlayColor ?? this.layerStyleOverlayColor,
       layerStyleOverlayOpacity:
           layerStyleOverlayOpacity ?? this.layerStyleOverlayOpacity,
-      layerStyleColorOverlayBlendMode:
-          layerStyleColorOverlayBlendMode ??
-          this.layerStyleColorOverlayBlendMode,
       layerStyleStrokeColor:
           layerStyleStrokeColor ?? this.layerStyleStrokeColor,
       layerStyleStrokeWidth:
@@ -931,54 +768,10 @@ class _CanvasLayer {
           layerStyleShadowOffsetX ?? this.layerStyleShadowOffsetX,
       layerStyleShadowOffsetY:
           layerStyleShadowOffsetY ?? this.layerStyleShadowOffsetY,
-      layerStyleShadowBlendMode:
-          layerStyleShadowBlendMode ?? this.layerStyleShadowBlendMode,
       layerStyleShadowContour:
           layerStyleShadowContour ?? this.layerStyleShadowContour,
-      layerStyleShadowNoise:
-          layerStyleShadowNoise ?? this.layerStyleShadowNoise,
-      layerStyleUseGlobalLight:
-          layerStyleUseGlobalLight ?? this.layerStyleUseGlobalLight,
-      layerStyleGlobalLightAngle:
-          layerStyleGlobalLightAngle ?? this.layerStyleGlobalLightAngle,
-      layerStyleGlobalLightAltitude:
-          layerStyleGlobalLightAltitude ?? this.layerStyleGlobalLightAltitude,
-      layerStyleBevelEnabled:
-          layerStyleBevelEnabled ?? this.layerStyleBevelEnabled,
-      layerStyleBevelStyle: layerStyleBevelStyle ?? this.layerStyleBevelStyle,
-      layerStyleBevelTechnique:
-          layerStyleBevelTechnique ?? this.layerStyleBevelTechnique,
-      layerStyleBevelDirection:
-          layerStyleBevelDirection ?? this.layerStyleBevelDirection,
-      layerStyleBevelDepth: layerStyleBevelDepth ?? this.layerStyleBevelDepth,
-      layerStyleBevelSize: layerStyleBevelSize ?? this.layerStyleBevelSize,
-      layerStyleBevelSoften:
-          layerStyleBevelSoften ?? this.layerStyleBevelSoften,
-      layerStyleBevelAngle: layerStyleBevelAngle ?? this.layerStyleBevelAngle,
-      layerStyleBevelAltitude:
-          layerStyleBevelAltitude ?? this.layerStyleBevelAltitude,
-      layerStyleBevelHighlightColor:
-          layerStyleBevelHighlightColor ?? this.layerStyleBevelHighlightColor,
-      layerStyleBevelHighlightOpacity:
-          layerStyleBevelHighlightOpacity ??
-          this.layerStyleBevelHighlightOpacity,
-      layerStyleBevelShadowColor:
-          layerStyleBevelShadowColor ?? this.layerStyleBevelShadowColor,
-      layerStyleBevelShadowOpacity:
-          layerStyleBevelShadowOpacity ?? this.layerStyleBevelShadowOpacity,
-      layerStyleContour: layerStyleContour ?? this.layerStyleContour,
-      layerStyleTextureEnabled:
-          layerStyleTextureEnabled ?? this.layerStyleTextureEnabled,
-      layerStyleTextureScale:
-          layerStyleTextureScale ?? this.layerStyleTextureScale,
-      layerStyleTextureDepth:
-          layerStyleTextureDepth ?? this.layerStyleTextureDepth,
       layerStyleStrokeOpacity:
           layerStyleStrokeOpacity ?? this.layerStyleStrokeOpacity,
-      layerStyleStrokePosition:
-          layerStyleStrokePosition ?? this.layerStyleStrokePosition,
-      layerStyleStrokeBlendMode:
-          layerStyleStrokeBlendMode ?? this.layerStyleStrokeBlendMode,
       layerStyleInnerShadowColor:
           layerStyleInnerShadowColor ?? this.layerStyleInnerShadowColor,
       layerStyleInnerShadowOpacity:
@@ -991,12 +784,8 @@ class _CanvasLayer {
           layerStyleInnerShadowDistance ?? this.layerStyleInnerShadowDistance,
       layerStyleInnerShadowAngle:
           layerStyleInnerShadowAngle ?? this.layerStyleInnerShadowAngle,
-      layerStyleInnerShadowBlendMode:
-          layerStyleInnerShadowBlendMode ?? this.layerStyleInnerShadowBlendMode,
       layerStyleInnerShadowContour:
           layerStyleInnerShadowContour ?? this.layerStyleInnerShadowContour,
-      layerStyleInnerShadowNoise:
-          layerStyleInnerShadowNoise ?? this.layerStyleInnerShadowNoise,
       layerStyleGradientOverlayEnabled:
           layerStyleGradientOverlayEnabled ??
           this.layerStyleGradientOverlayEnabled,
@@ -1007,19 +796,11 @@ class _CanvasLayer {
           this.layerStyleGradientOverlayOpacity,
       layerStyleGradientOverlayAngle:
           layerStyleGradientOverlayAngle ?? this.layerStyleGradientOverlayAngle,
-      layerStyleGradientOverlayStyle:
-          layerStyleGradientOverlayStyle ?? this.layerStyleGradientOverlayStyle,
       layerStyleGradientOverlayScale:
           layerStyleGradientOverlayScale ?? this.layerStyleGradientOverlayScale,
-      layerStyleGradientOverlayBlendMode:
-          layerStyleGradientOverlayBlendMode ??
-          this.layerStyleGradientOverlayBlendMode,
       layerStyleGradientOverlayReversed:
           layerStyleGradientOverlayReversed ??
           this.layerStyleGradientOverlayReversed,
-      layerStyleGradientOverlayDither:
-          layerStyleGradientOverlayDither ??
-          this.layerStyleGradientOverlayDither,
       layerStyleOuterGlowColor:
           layerStyleOuterGlowColor ?? this.layerStyleOuterGlowColor,
       layerStyleOuterGlowOpacity:
@@ -1028,60 +809,8 @@ class _CanvasLayer {
           layerStyleOuterGlowSize ?? this.layerStyleOuterGlowSize,
       layerStyleOuterGlowSpread:
           layerStyleOuterGlowSpread ?? this.layerStyleOuterGlowSpread,
-      layerStyleOuterGlowNoise:
-          layerStyleOuterGlowNoise ?? this.layerStyleOuterGlowNoise,
       layerStyleOuterGlowContour:
           layerStyleOuterGlowContour ?? this.layerStyleOuterGlowContour,
-      layerStyleOuterGlowRange:
-          layerStyleOuterGlowRange ?? this.layerStyleOuterGlowRange,
-      layerStyleOuterGlowJitter:
-          layerStyleOuterGlowJitter ?? this.layerStyleOuterGlowJitter,
-      layerStyleOuterGlowBlendMode:
-          layerStyleOuterGlowBlendMode ?? this.layerStyleOuterGlowBlendMode,
-      layerStyleInnerGlowColor:
-          layerStyleInnerGlowColor ?? this.layerStyleInnerGlowColor,
-      layerStyleInnerGlowOpacity:
-          layerStyleInnerGlowOpacity ?? this.layerStyleInnerGlowOpacity,
-      layerStyleInnerGlowSize:
-          layerStyleInnerGlowSize ?? this.layerStyleInnerGlowSize,
-      layerStyleInnerGlowSpread:
-          layerStyleInnerGlowSpread ?? this.layerStyleInnerGlowSpread,
-      layerStyleInnerGlowNoise:
-          layerStyleInnerGlowNoise ?? this.layerStyleInnerGlowNoise,
-      layerStyleInnerGlowSource:
-          layerStyleInnerGlowSource ?? this.layerStyleInnerGlowSource,
-      layerStyleInnerGlowContour:
-          layerStyleInnerGlowContour ?? this.layerStyleInnerGlowContour,
-      layerStyleInnerGlowRange:
-          layerStyleInnerGlowRange ?? this.layerStyleInnerGlowRange,
-      layerStyleInnerGlowJitter:
-          layerStyleInnerGlowJitter ?? this.layerStyleInnerGlowJitter,
-      layerStyleInnerGlowBlendMode:
-          layerStyleInnerGlowBlendMode ?? this.layerStyleInnerGlowBlendMode,
-      layerStyleSatinColor: layerStyleSatinColor ?? this.layerStyleSatinColor,
-      layerStyleSatinOpacity:
-          layerStyleSatinOpacity ?? this.layerStyleSatinOpacity,
-      layerStyleSatinAngle: layerStyleSatinAngle ?? this.layerStyleSatinAngle,
-      layerStyleSatinDistance:
-          layerStyleSatinDistance ?? this.layerStyleSatinDistance,
-      layerStyleSatinSize: layerStyleSatinSize ?? this.layerStyleSatinSize,
-      layerStyleSatinInverted:
-          layerStyleSatinInverted ?? this.layerStyleSatinInverted,
-      layerStyleSatinBlendMode:
-          layerStyleSatinBlendMode ?? this.layerStyleSatinBlendMode,
-      layerStylePatternOverlayEnabled:
-          layerStylePatternOverlayEnabled ??
-          this.layerStylePatternOverlayEnabled,
-      layerStylePatternOverlayOpacity:
-          layerStylePatternOverlayOpacity ??
-          this.layerStylePatternOverlayOpacity,
-      layerStylePatternOverlayScale:
-          layerStylePatternOverlayScale ?? this.layerStylePatternOverlayScale,
-      layerStylePatternOverlayBlendMode:
-          layerStylePatternOverlayBlendMode ??
-          this.layerStylePatternOverlayBlendMode,
-      layerStylePatternOverlayPreset:
-          layerStylePatternOverlayPreset ?? this.layerStylePatternOverlayPreset,
       isSmartObject: isSmartObject ?? this.isSmartObject,
       smartObjectSourceBytes:
           identical(smartObjectSourceBytes, _canvasLayerCopyWithUnset)
@@ -1224,6 +953,142 @@ class _TextEffectSnapshot {
   }
 }
 
+class _LayerStyleSnapshot {
+  const _LayerStyleSnapshot({
+    required this.strokeColor,
+    required this.strokeWidth,
+    required this.strokeOpacity,
+    required this.shadowColor,
+    required this.shadowOpacity,
+    required this.shadowBlur,
+    required this.shadowSpread,
+    required this.shadowOffsetX,
+    required this.shadowOffsetY,
+    required this.shadowContour,
+    required this.innerShadowColor,
+    required this.innerShadowOpacity,
+    required this.innerShadowBlur,
+    required this.innerShadowChoke,
+    required this.innerShadowDistance,
+    required this.innerShadowAngle,
+    required this.innerShadowContour,
+    required this.gradientOverlayEnabled,
+    required this.gradientOverlayIndex,
+    required this.gradientOverlayOpacity,
+    required this.gradientOverlayAngle,
+    required this.gradientOverlayScale,
+    required this.gradientOverlayReversed,
+    required this.outerGlowColor,
+    required this.outerGlowOpacity,
+    required this.outerGlowSize,
+    required this.outerGlowSpread,
+    required this.outerGlowContour,
+    required this.overlayColor,
+    required this.overlayOpacity,
+  });
+
+  factory _LayerStyleSnapshot.fromLayer(_CanvasLayer layer) {
+    return _LayerStyleSnapshot(
+      strokeColor: layer.layerStyleStrokeColor,
+      strokeWidth: layer.layerStyleStrokeWidth,
+      strokeOpacity: layer.layerStyleStrokeOpacity,
+      shadowColor: layer.layerStyleShadowColor,
+      shadowOpacity: layer.layerStyleShadowOpacity,
+      shadowBlur: layer.layerStyleShadowBlur,
+      shadowSpread: layer.layerStyleShadowSpread,
+      shadowOffsetX: layer.layerStyleShadowOffsetX,
+      shadowOffsetY: layer.layerStyleShadowOffsetY,
+      shadowContour: layer.layerStyleShadowContour,
+      innerShadowColor: layer.layerStyleInnerShadowColor,
+      innerShadowOpacity: layer.layerStyleInnerShadowOpacity,
+      innerShadowBlur: layer.layerStyleInnerShadowBlur,
+      innerShadowChoke: layer.layerStyleInnerShadowChoke,
+      innerShadowDistance: layer.layerStyleInnerShadowDistance,
+      innerShadowAngle: layer.layerStyleInnerShadowAngle,
+      innerShadowContour: layer.layerStyleInnerShadowContour,
+      gradientOverlayEnabled: layer.layerStyleGradientOverlayEnabled,
+      gradientOverlayIndex: layer.layerStyleGradientOverlayIndex,
+      gradientOverlayOpacity: layer.layerStyleGradientOverlayOpacity,
+      gradientOverlayAngle: layer.layerStyleGradientOverlayAngle,
+      gradientOverlayScale: layer.layerStyleGradientOverlayScale,
+      gradientOverlayReversed: layer.layerStyleGradientOverlayReversed,
+      outerGlowColor: layer.layerStyleOuterGlowColor,
+      outerGlowOpacity: layer.layerStyleOuterGlowOpacity,
+      outerGlowSize: layer.layerStyleOuterGlowSize,
+      outerGlowSpread: layer.layerStyleOuterGlowSpread,
+      outerGlowContour: layer.layerStyleOuterGlowContour,
+      overlayColor: layer.layerStyleOverlayColor,
+      overlayOpacity: layer.layerStyleOverlayOpacity,
+    );
+  }
+
+  final Color strokeColor;
+  final double strokeWidth;
+  final double strokeOpacity;
+  final Color shadowColor;
+  final double shadowOpacity;
+  final double shadowBlur;
+  final double shadowSpread;
+  final double shadowOffsetX;
+  final double shadowOffsetY;
+  final int shadowContour;
+  final Color innerShadowColor;
+  final double innerShadowOpacity;
+  final double innerShadowBlur;
+  final double innerShadowChoke;
+  final double innerShadowDistance;
+  final double innerShadowAngle;
+  final int innerShadowContour;
+  final bool gradientOverlayEnabled;
+  final int gradientOverlayIndex;
+  final double gradientOverlayOpacity;
+  final double gradientOverlayAngle;
+  final double gradientOverlayScale;
+  final bool gradientOverlayReversed;
+  final Color outerGlowColor;
+  final double outerGlowOpacity;
+  final double outerGlowSize;
+  final double outerGlowSpread;
+  final int outerGlowContour;
+  final Color overlayColor;
+  final double overlayOpacity;
+
+  _CanvasLayer applyTo(_CanvasLayer layer) {
+    return layer.copyWith(
+      layerStyleStrokeColor: strokeColor,
+      layerStyleStrokeWidth: strokeWidth,
+      layerStyleStrokeOpacity: strokeOpacity,
+      layerStyleShadowColor: shadowColor,
+      layerStyleShadowOpacity: shadowOpacity,
+      layerStyleShadowBlur: shadowBlur,
+      layerStyleShadowSpread: shadowSpread,
+      layerStyleShadowOffsetX: shadowOffsetX,
+      layerStyleShadowOffsetY: shadowOffsetY,
+      layerStyleShadowContour: shadowContour,
+      layerStyleInnerShadowColor: innerShadowColor,
+      layerStyleInnerShadowOpacity: innerShadowOpacity,
+      layerStyleInnerShadowBlur: innerShadowBlur,
+      layerStyleInnerShadowChoke: innerShadowChoke,
+      layerStyleInnerShadowDistance: innerShadowDistance,
+      layerStyleInnerShadowAngle: innerShadowAngle,
+      layerStyleInnerShadowContour: innerShadowContour,
+      layerStyleGradientOverlayEnabled: gradientOverlayEnabled,
+      layerStyleGradientOverlayIndex: gradientOverlayIndex,
+      layerStyleGradientOverlayOpacity: gradientOverlayOpacity,
+      layerStyleGradientOverlayAngle: gradientOverlayAngle,
+      layerStyleGradientOverlayScale: gradientOverlayScale,
+      layerStyleGradientOverlayReversed: gradientOverlayReversed,
+      layerStyleOuterGlowColor: outerGlowColor,
+      layerStyleOuterGlowOpacity: outerGlowOpacity,
+      layerStyleOuterGlowSize: outerGlowSize,
+      layerStyleOuterGlowSpread: outerGlowSpread,
+      layerStyleOuterGlowContour: outerGlowContour,
+      layerStyleOverlayColor: overlayColor,
+      layerStyleOverlayOpacity: overlayOpacity,
+    );
+  }
+}
+
 class _EditorSnapshot {
   const _EditorSnapshot({
     required this.layers,
@@ -1254,10 +1119,15 @@ class _EditorSnapshot {
 
 @immutable
 class _EditorCommitState {
-  const _EditorCommitState({required this.label, this.detail});
+  const _EditorCommitState({
+    required this.label,
+    this.detail,
+    this.compact = false,
+  });
 
   final String label;
   final String? detail;
+  final bool compact;
 }
 
 @immutable

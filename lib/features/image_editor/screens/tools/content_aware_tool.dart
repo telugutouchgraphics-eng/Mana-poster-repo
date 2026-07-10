@@ -42,7 +42,7 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       _contentAwareStrokeLayerSize = Size.zero;
       _contentAwareActivePointers.clear();
       _suppressContentAwareStroke = false;
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       _restoreSelectedLayerToolContextFields();
     });
   }
@@ -61,10 +61,12 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
     }
     _contentAwareStrokeLayerId = selectedId;
     _contentAwareStrokeLayerSize = layerSize;
+    final normalizedPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(selectedId, normalizedPoint);
     _contentAwareStrokePoints
       ..clear()
-      ..add(_normalizeEraserPoint(localPosition, layerSize));
-    _publishContentAwarePreview();
+      ..add(normalizedPoint);
+    _publishContentAwarePreview(coalesce: false);
   }
 
   void _handleContentAwareUpdate(Offset localPosition, Size layerSize) {
@@ -75,14 +77,16 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       return;
     }
     final nextPoint = _normalizeEraserPoint(localPosition, layerSize);
+    _rememberLayerBrushPreviewPoint(_contentAwareStrokeLayerId!, nextPoint);
     final previousPoint = _contentAwareStrokePoints.isEmpty
         ? null
         : _contentAwareStrokePoints.last;
     if (previousPoint != null) {
       final brushSize = _workspaceBrushSize(_contentAwareBrushSize);
       final minStep =
-          (brushSize / math.max(layerSize.width, layerSize.height)) * 0.035;
-      if ((nextPoint - previousPoint).distance < minStep.clamp(0.0006, 0.006)) {
+          (brushSize / math.max(layerSize.width, layerSize.height)) * 0.012;
+      if ((nextPoint - previousPoint).distance <
+          minStep.clamp(0.00035, 0.0022)) {
         return;
       }
     }
@@ -102,18 +106,18 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
     _contentAwareStrokeLayerId = null;
     _contentAwareStrokeLayerSize = Size.zero;
     if (layerId == null || strokePoints.isEmpty) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layerIndex = _layers.indexWhere((item) => item.id == layerId);
     if (layerIndex == -1 || !_layers[layerIndex].isPhoto) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final layer = _layers[layerIndex];
     final sourceBytes = layer.bytes;
     if (sourceBytes == null) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final flatPoints = <double>[];
@@ -128,7 +132,8 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       label: 'Content Aware',
       detail: 'Blending brushed pixels into the surrounding background',
       showBusyMessage: false,
-      showCommitState: false,
+      showCommitState: true,
+      compactCommitState: true,
       operation: () => compute(_applyContentAwareFillBytes, <String, Object?>{
         'bytes': sourceBytes,
         'points': flatPoints,
@@ -142,19 +147,19 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
       }),
     );
     if (resultBytes == null || !mounted) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final currentIndex = _layers.indexWhere((item) => item.id == layerId);
     if (currentIndex == -1) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
     final beforeLayer = _layers[currentIndex];
     final afterLayer = beforeLayer.copyWith(bytes: resultBytes);
     _pushLayerHistoryEntry(beforeLayer: beforeLayer, afterLayer: afterLayer);
     setState(() => _layers[currentIndex] = afterLayer);
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
     _selectedPhotoRenderNotifier.value = null;
     _showContentAwareBrushCursorPreview();
   }
@@ -163,7 +168,7 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
     _contentAwareStrokePoints.clear();
     _contentAwareStrokeLayerId = null;
     _contentAwareStrokeLayerSize = Size.zero;
-    _eraserPreviewNotifier.value = null;
+    _setEraserPreviewState(null);
   }
 
   void _handleContentAwarePointerDown(PointerDownEvent event) {
@@ -184,41 +189,44 @@ extension _EditorContentAwareToolState on _ImageEditorScreenState {
   bool _canUseContentAwarePointerStroke() {
     return _isContentAwareMode &&
         !_suppressContentAwareStroke &&
-        _contentAwareActivePointers.length == 1;
+        _contentAwareActivePointers.length <= 1;
   }
 
-  void _publishContentAwarePreview() {
+  void _publishContentAwarePreview({bool coalesce = true}) {
     final layerId = _contentAwareStrokeLayerId;
     if (layerId == null || _contentAwareStrokePoints.isEmpty) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: List<Offset>.of(_contentAwareStrokePoints),
-      brushSize: _contentAwareBrushSize,
-      hardness: _contentAwareStrength,
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[_contentAwareStrokePoints.last],
+        strokePreviewPoints: List<Offset>.of(_contentAwareStrokePoints),
+        strokePreviewOpacity: 0.2,
+        brushSize: _contentAwareBrushSize,
+        hardness: _contentAwareStrength,
+      ),
     );
   }
 
-  void _showContentAwareBrushCursorPreview([
-    Offset point = const Offset(0.5, 0.5),
-  ]) {
+  void _showContentAwareBrushCursorPreview([Offset? point]) {
     if (!_isContentAwareMode || _isCommitWorkerBusy) {
       return;
     }
     final layerId = _selectedLayerId;
     if (layerId == null || !_hasSelectedPhotoLayer) {
-      _eraserPreviewNotifier.value = null;
+      _setEraserPreviewState(null);
       return;
     }
-    _eraserPreviewNotifier.value = _PhotoEraserPreviewState(
-      layerId: layerId,
-      points: <Offset>[
-        Offset(point.dx.clamp(0.0, 1.0), point.dy.clamp(0.0, 1.0)),
-      ],
-      brushSize: _contentAwareBrushSize,
-      hardness: _contentAwareStrength,
+    final previewPoint = _resolveLayerBrushPreviewPoint(layerId, point);
+    _setEraserPreviewState(
+      _PhotoEraserPreviewState(
+        layerId: layerId,
+        points: <Offset>[previewPoint],
+        brushSize: _contentAwareBrushSize,
+        hardness: _contentAwareStrength,
+      ),
     );
   }
 }
@@ -244,6 +252,7 @@ Uint8List _applyContentAwareFillBytes(Map<String, Object?> input) {
       ? ((brushSize / 2) * (width / 360.0))
       : radiusNormalized * math.min(width, height);
   final resolvedRadius = radius.clamp(3.0, math.min(width, height) / 2);
+  final effectiveStrength = (strength * 0.88).clamp(0.1, 0.92).toDouble();
   final flipX = (input['flipX'] as bool?) ?? false;
   final flipY = (input['flipY'] as bool?) ?? false;
 
@@ -262,14 +271,51 @@ Uint8List _applyContentAwareFillBytes(Map<String, Object?> input) {
     return bytes;
   }
 
+  final searchRadius = (resolvedRadius * (1.8 + strength)).round().clamp(
+    10,
+    96,
+  );
+  var minDirtyX = width - 1;
+  var minDirtyY = height - 1;
+  var maxDirtyX = 0;
+  var maxDirtyY = 0;
+  for (final point in points) {
+    minDirtyX = math.min(minDirtyX, point.dx.floor());
+    minDirtyY = math.min(minDirtyY, point.dy.floor());
+    maxDirtyX = math.max(maxDirtyX, point.dx.ceil());
+    maxDirtyY = math.max(maxDirtyY, point.dy.ceil());
+  }
+  final margin = (resolvedRadius + searchRadius + 16).ceil();
+  final cropLeft = math.max(0, minDirtyX - margin);
+  final cropTop = math.max(0, minDirtyY - margin);
+  final cropRight = math.min(width - 1, maxDirtyX + margin);
+  final cropBottom = math.min(height - 1, maxDirtyY + margin);
+  final cropWidth = cropRight - cropLeft + 1;
+  final cropHeight = cropBottom - cropTop + 1;
+  if (cropWidth <= 0 || cropHeight <= 0) {
+    return bytes;
+  }
+
+  final cropSource = img.copyCrop(
+    source,
+    x: cropLeft,
+    y: cropTop,
+    width: cropWidth,
+    height: cropHeight,
+  );
+  final localPoints = points
+      .map((point) => point - Offset(cropLeft.toDouble(), cropTop.toDouble()))
+      .toList(growable: false);
+  final cropOutput = img.Image.from(cropSource);
+
   final coverage = _buildContentAwareCoverage(
-    points: points,
-    width: width,
-    height: height,
+    points: localPoints,
+    width: cropWidth,
+    height: cropHeight,
     radius: resolvedRadius,
     strength: strength,
   );
-  final fillMask = Uint8List(width * height);
+  final fillMask = Uint8List(cropWidth * cropHeight);
   var fillCount = 0;
   for (var index = 0; index < coverage.length; index++) {
     if (coverage[index] > 10) {
@@ -282,20 +328,28 @@ Uint8List _applyContentAwareFillBytes(Map<String, Object?> input) {
   }
 
   final fillPixels = _contentAwareFillPixels(
-    source,
+    cropSource,
     fillMask,
-    width,
-    height,
-    searchRadius: (resolvedRadius * (1.8 + strength)).round().clamp(10, 96),
+    cropWidth,
+    cropHeight,
+    searchRadius: searchRadius,
   );
 
-  final smooth = img.Image(width: width, height: height, numChannels: 4);
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      final index = (y * width) + x;
-      final base = source.getPixel(x, y);
+  final smooth = img.Image(
+    width: cropWidth,
+    height: cropHeight,
+    numChannels: 4,
+  );
+  for (var y = 0; y < cropHeight; y++) {
+    for (var x = 0; x < cropWidth; x++) {
+      final index = (y * cropWidth) + x;
+      final base = cropSource.getPixel(x, y);
       final filled = fillPixels[index] ?? base;
-      final alpha = (coverage[index] / 255.0) * strength;
+      final coverageAlpha = coverage[index] / 255.0;
+      final alpha =
+          (Curves.easeInOut.transform(coverageAlpha) * effectiveStrength)
+              .clamp(0.0, 0.94)
+              .toDouble();
       final r = (base.r + ((filled.r - base.r) * alpha)).round();
       final g = (base.g + ((filled.g - base.g) * alpha)).round();
       final b = (base.b + ((filled.b - base.b) * alpha)).round();
@@ -303,25 +357,29 @@ Uint8List _applyContentAwareFillBytes(Map<String, Object?> input) {
     }
   }
 
-  final maskImage = img.Image(width: width, height: height, numChannels: 4);
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      final value = coverage[(y * width) + x];
+  final maskImage = img.Image(
+    width: cropWidth,
+    height: cropHeight,
+    numChannels: 4,
+  );
+  for (var y = 0; y < cropHeight; y++) {
+    for (var x = 0; x < cropWidth; x++) {
+      final value = coverage[(y * cropWidth) + x];
       maskImage.setPixelRgba(x, y, value, value, value, 255);
     }
   }
   final blurRadius = (resolvedRadius * 0.055).round().clamp(1, 8);
   final blurred = img.gaussianBlur(smooth, radius: blurRadius, mask: maskImage);
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      final index = (y * width) + x;
+  for (var y = 0; y < cropHeight; y++) {
+    for (var x = 0; x < cropWidth; x++) {
+      final index = (y * cropWidth) + x;
       final blend = math.min(coverage[index] / 255.0, 1.0);
       if (blend <= 0) {
         continue;
       }
-      final original = source.getPixel(x, y);
+      final original = cropSource.getPixel(x, y);
       final soft = blurred.getPixel(x, y);
-      output.setPixelRgba(
+      cropOutput.setPixelRgba(
         x,
         y,
         (original.r + ((soft.r - original.r) * blend)).round(),
@@ -331,7 +389,46 @@ Uint8List _applyContentAwareFillBytes(Map<String, Object?> input) {
       );
     }
   }
-  return Uint8List.fromList(img.encodePng(output));
+  final polishRadius = (resolvedRadius * 0.028).round().clamp(1, 4);
+  final polished = img.gaussianBlur(
+    cropOutput,
+    radius: polishRadius,
+    mask: maskImage,
+  );
+  for (var y = 0; y < cropHeight; y++) {
+    for (var x = 0; x < cropWidth; x++) {
+      final index = (y * cropWidth) + x;
+      final coverageAlpha = coverage[index] / 255.0;
+      if (coverageAlpha <= 0) {
+        continue;
+      }
+      final current = cropOutput.getPixel(x, y);
+      final soft = polished.getPixel(x, y);
+      final polish = (coverageAlpha * 0.28).clamp(0.0, 0.28).toDouble();
+      cropOutput.setPixelRgba(
+        x,
+        y,
+        (current.r + ((soft.r - current.r) * polish)).round(),
+        (current.g + ((soft.g - current.g) * polish)).round(),
+        (current.b + ((soft.b - current.b) * polish)).round(),
+        current.a,
+      );
+    }
+  }
+  for (var y = 0; y < cropHeight; y++) {
+    for (var x = 0; x < cropWidth; x++) {
+      final pixel = cropOutput.getPixel(x, y);
+      output.setPixelRgba(
+        cropLeft + x,
+        cropTop + y,
+        pixel.r,
+        pixel.g,
+        pixel.b,
+        pixel.a,
+      );
+    }
+  }
+  return Uint8List.fromList(img.encodePng(output, level: 1));
 }
 
 Uint8List _buildContentAwareCoverage({

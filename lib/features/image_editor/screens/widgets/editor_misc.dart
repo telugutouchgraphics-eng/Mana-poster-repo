@@ -288,10 +288,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
             telugu: 'Ã Â°Â«Ã Â°Â¾Ã Â°â€šÃ Â°Å¸Ã Â±Â Ã Â°Â¸Ã Â±Ë†Ã Â°Å“Ã Â±Â',
             english: 'Font Size',
           ),
-          value: layer.fontSize.clamp(18, 96).toDouble(),
-          min: 18,
-          max: 96,
-          divisions: 78,
+          value: layer.fontSize.clamp(1, 220).toDouble(),
+          min: 1,
+          max: 220,
+          divisions: 219,
           valueText: layer.fontSize.toStringAsFixed(0),
           onChangeStart: widget.onFontSizeChangeStart,
           onChanged: widget.onFontSizeChanged,
@@ -305,11 +305,11 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°Â²Ã Â±Ë†Ã Â°Â¨Ã Â±Â Ã Â°Â¸Ã Â±ÂÃ Â°ÂªÃ Â±â€¡Ã Â°Â¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±Â',
             english: 'Line Spacing',
           ),
-          value: layer.textLineHeight.clamp(0.8, 2.2).toDouble(),
-          min: 0.8,
-          max: 2.2,
-          divisions: 14,
-          valueText: layer.textLineHeight.toStringAsFixed(1),
+          value: layer.textLineHeight.clamp(0.2, 5.0).toDouble(),
+          min: 0.2,
+          max: 5.0,
+          divisions: 96,
+          valueText: layer.textLineHeight.toStringAsFixed(2),
           onChangeStart: widget.onLineHeightChangeStart,
           onChanged: widget.onLineHeightChanged,
           onChangeEnd: widget.onLineHeightChangeEnd,
@@ -322,11 +322,11 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°â€¦Ã Â°â€¢Ã Â±ÂÃ Â°Â·Ã Â°Â°Ã Â°Â¾Ã Â°Â² Ã Â°Â¦Ã Â±â€šÃ Â°Â°Ã Â°â€š',
             english: 'Letter Spacing',
           ),
-          value: layer.textLetterSpacing.clamp(-100, 100).toDouble(),
-          min: -100,
-          max: 100,
-          divisions: 40,
-          valueText: layer.textLetterSpacing.toStringAsFixed(0),
+          value: layer.textLetterSpacing.clamp(-200, 200).toDouble(),
+          min: -200,
+          max: 200,
+          divisions: 160,
+          valueText: layer.textLetterSpacing.toStringAsFixed(1),
           onChangeStart: widget.onLetterSpacingChangeStart,
           onChanged: widget.onLetterSpacingChanged,
           onChangeEnd: widget.onLetterSpacingChangeEnd,
@@ -423,9 +423,111 @@ class _TextStyleBarState extends State<_TextStyleBar> {
 
   Widget _buildBackgroundTab(_CanvasLayer layer) {
     final strings = context.strings;
+    final effectiveOpacity = layer.textBackgroundOpacity.clamp(0, 1).toDouble();
+    final effectiveRadius = layer.textBackgroundRadius.clamp(0, 100).toDouble();
+    final effectiveTopPadding = layer.textBackgroundTopPadding
+        .clamp(0, 100)
+        .toDouble();
+    final effectiveBottomPadding = layer.textBackgroundBottomPadding
+        .clamp(0, 100)
+        .toDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        _buildBackgroundPreview(layer),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _buildBackgroundActionChip(
+                icon: Icons.block_rounded,
+                label: 'Transparent',
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0,
+                  radius: effectiveRadius,
+                  topPadding: effectiveTopPadding,
+                  bottomPadding: effectiveBottomPadding,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildBackgroundActionChip(
+                icon: Icons.restart_alt_rounded,
+                label: 'Reset',
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0.72,
+                  radius: 18,
+                  topPadding: 18,
+                  bottomPadding: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildSectionLabel('Quick Styles'),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 42,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            children: <Widget>[
+              _buildBackgroundPresetChip(
+                label: 'Soft',
+                selected:
+                    effectiveOpacity >= 0.68 &&
+                    effectiveOpacity <= 0.82 &&
+                    effectiveRadius >= 14 &&
+                    effectiveRadius <= 28,
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0.74,
+                  radius: 20,
+                  topPadding: 18,
+                  bottomPadding: 18,
+                ),
+              ),
+              _buildBackgroundPresetChip(
+                label: 'Pill',
+                selected: effectiveRadius >= 60,
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0.82,
+                  radius: 86,
+                  topPadding: 14,
+                  bottomPadding: 14,
+                ),
+              ),
+              _buildBackgroundPresetChip(
+                label: 'Label',
+                selected:
+                    effectiveRadius <= 10 &&
+                    effectiveTopPadding <= 14 &&
+                    effectiveBottomPadding <= 14,
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0.9,
+                  radius: 8,
+                  topPadding: 10,
+                  bottomPadding: 10,
+                ),
+              ),
+              _buildBackgroundPresetChip(
+                label: 'Poster',
+                selected:
+                    effectiveOpacity >= 0.9 &&
+                    effectiveTopPadding >= 26 &&
+                    effectiveBottomPadding >= 26,
+                onTap: () => _applyBackgroundPreset(
+                  opacity: 0.96,
+                  radius: 26,
+                  topPadding: 30,
+                  bottomPadding: 30,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         _CompactLabeledSlider(
           sliderId: 'background-opacity',
           label: strings.localized(
@@ -433,7 +535,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°Â¬Ã Â±ÂÃ Â°Â¯Ã Â°Â¾Ã Â°â€¢Ã Â±ÂÃ¢â‚¬Å’Ã Â°â€”Ã Â±ÂÃ Â°Â°Ã Â±Å’Ã Â°â€šÃ Â°Â¡Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â°Â¾Ã Â°Â¸Ã Â°Â¿Ã Â°Å¸Ã Â±â‚¬',
             english: 'Background Opacity',
           ),
-          value: layer.textBackgroundOpacity.clamp(0, 1).toDouble(),
+          value: effectiveOpacity,
           min: 0,
           max: 1,
           valueText: layer.textBackgroundOpacity.toStringAsFixed(2),
@@ -449,9 +551,10 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°â€¢Ã Â±â€¹Ã Â°Â£Ã Â°Â¾Ã Â°Â² Ã Â°Â°Ã Â±â€¡Ã Â°Â¡Ã Â°Â¿Ã Â°Â¯Ã Â°Â¸Ã Â±Â',
             english: 'Corner Radius',
           ),
-          value: layer.textBackgroundRadius.clamp(0, 100).toDouble(),
+          value: effectiveRadius,
           min: 0,
           max: 100,
+          divisions: 100,
           valueText: layer.textBackgroundRadius.toStringAsFixed(0),
           onChangeStart: widget.onBackgroundRadiusChangeStart,
           onChanged: widget.onBackgroundRadiusChanged,
@@ -465,7 +568,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°Å¸Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°ÂµÃ Â±â€ Ã Â°Â¡Ã Â°Â²Ã Â±ÂÃ Â°ÂªÃ Â±Â',
             english: 'Top Width',
           ),
-          value: layer.textBackgroundTopPadding.clamp(0, 100).toDouble(),
+          value: effectiveTopPadding,
           min: 0,
           max: 100,
           divisions: 100,
@@ -482,7 +585,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
                 'Ã Â°Â¬Ã Â°Â¾Ã Â°Å¸Ã Â°Â®Ã Â±Â Ã Â°ÂµÃ Â±â€ Ã Â°Â¡Ã Â°Â²Ã Â±ÂÃ Â°ÂªÃ Â±Â',
             english: 'Bottom Width',
           ),
-          value: layer.textBackgroundBottomPadding.clamp(0, 100).toDouble(),
+          value: effectiveBottomPadding,
           min: 0,
           max: 100,
           divisions: 100,
@@ -518,6 +621,143 @@ class _TextStyleBarState extends State<_TextStyleBar> {
     );
   }
 
+  void _applyBackgroundPreset({
+    required double opacity,
+    required double radius,
+    required double topPadding,
+    required double bottomPadding,
+  }) {
+    widget.onBackgroundOpacityChanged(opacity);
+    widget.onBackgroundRadiusChanged(radius);
+    widget.onBackgroundTopPaddingChanged(topPadding);
+    widget.onBackgroundBottomPaddingChanged(bottomPadding);
+  }
+
+  Widget _buildBackgroundPreview(_CanvasLayer layer) {
+    final previewText = (_resolveLayerRenderText(layer).trim().isEmpty)
+        ? 'Text Background'
+        : _resolveLayerRenderText(layer).trim();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A).withValues(alpha: 0.34),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: EdgeInsets.fromLTRB(
+            18,
+            layer.textBackgroundTopPadding.clamp(0, 100).toDouble() * 0.42,
+            18,
+            layer.textBackgroundBottomPadding.clamp(0, 100).toDouble() * 0.42,
+          ),
+          decoration: BoxDecoration(
+            color: layer.textBackgroundColor.withValues(
+              alpha: layer.textBackgroundOpacity.clamp(0, 1).toDouble(),
+            ),
+            borderRadius: BorderRadius.circular(
+              layer.textBackgroundRadius.clamp(0, 100).toDouble() * 0.72,
+            ),
+          ),
+          child: Text(
+            previewText,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              color: layer.textColor,
+              fontSize: 17,
+              fontWeight: layer.isTextBold ? FontWeight.w800 : FontWeight.w700,
+              height: 1.18,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackgroundActionChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(icon, size: 18, color: const Color(0xFFE2E8F0)),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFFE2E8F0),
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackgroundPresetChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF38BDF8).withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF38BDF8).withValues(alpha: 0.72)
+                  : Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? const Color(0xFFE0F2FE)
+                  : const Color(0xFFCBD5E1),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSectionLabel(String label) {
     return Text(
       label,
@@ -531,6 +771,516 @@ class _TextStyleBarState extends State<_TextStyleBar> {
 }
 
 enum _TextEffectPreset { none, softShadow, hardShadow, outline, lift, poster }
+
+class _TextTypingResult {
+  const _TextTypingResult({
+    required this.text,
+    required this.textAlign,
+    required this.textColor,
+  });
+
+  final String text;
+  final TextAlign textAlign;
+  final Color textColor;
+}
+
+class _NativeTextTypingScreen extends StatefulWidget {
+  const _NativeTextTypingScreen({
+    required this.initialText,
+    required this.initialTextAlign,
+    required this.initialTextColor,
+    required this.colors,
+    required this.selectAll,
+  });
+
+  final String initialText;
+  final TextAlign initialTextAlign;
+  final Color initialTextColor;
+  final List<Color> colors;
+  final bool selectAll;
+
+  @override
+  State<_NativeTextTypingScreen> createState() =>
+      _NativeTextTypingScreenState();
+}
+
+class _NativeTextTypingScreenState extends State<_NativeTextTypingScreen> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  late TextAlign _textAlign;
+  late Color _textColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _focusNode = FocusNode();
+    _textAlign = widget.initialTextAlign;
+    _textColor = widget.initialTextColor;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _focusNode.requestFocus();
+      final length = _controller.text.length;
+      _controller.selection = widget.selectAll
+          ? TextSelection(baseOffset: 0, extentOffset: length)
+          : TextSelection.collapsed(offset: length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _closeWithText() {
+    Navigator.of(context).pop(
+      _TextTypingResult(
+        text: _controller.text,
+        textAlign: _textAlign,
+        textColor: _textColor,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    return Material(
+      color: Colors.transparent,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.25),
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 10, 16, viewInsets.bottom + 12),
+              child: Column(
+                children: <Widget>[
+                  SizedBox(
+                    height: 46,
+                    child: Row(
+                      children: <Widget>[
+                        IconButton(
+                          tooltip: 'Cancel',
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Spacer(),
+                        _TypingAlignButton(
+                          icon: Icons.format_align_left_rounded,
+                          selected: _textAlign == TextAlign.left,
+                          onTap: () => setState(() {
+                            _textAlign = TextAlign.left;
+                          }),
+                        ),
+                        _TypingAlignButton(
+                          icon: Icons.format_align_center_rounded,
+                          selected: _textAlign == TextAlign.center,
+                          onTap: () => setState(() {
+                            _textAlign = TextAlign.center;
+                          }),
+                        ),
+                        _TypingAlignButton(
+                          icon: Icons.format_align_right_rounded,
+                          selected: _textAlign == TextAlign.right,
+                          onTap: () => setState(() {
+                            _textAlign = TextAlign.right;
+                          }),
+                        ),
+                        const SizedBox(width: 10),
+                        FilledButton(
+                          onPressed: _closeWithText,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF111827),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
+                          ),
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      autofocus: true,
+                      expands: true,
+                      maxLines: null,
+                      minLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      enableInteractiveSelection: true,
+                      autocorrect: true,
+                      enableSuggestions: true,
+                      cursorColor: Colors.white,
+                      cursorWidth: 2,
+                      textAlign: _textAlign,
+                      style: TextStyle(
+                        color: _textColor,
+                        fontSize: 28,
+                        height: 1.35,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.black.withValues(alpha: 0.28),
+                        hintText: 'Type text',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 28,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        contentPadding: const EdgeInsets.all(18),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.24),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.24),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            width: 1.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 46,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      itemCount: widget.colors.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final color = widget.colors[index];
+                        return _TypingColorBubble(
+                          color: color,
+                          selected: color.toARGB32() == _textColor.toARGB32(),
+                          onTap: () => setState(() {
+                            _textColor = color;
+                          }),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingAlignButton extends StatelessWidget {
+  const _TypingAlignButton({
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Align',
+      onPressed: onTap,
+      style: IconButton.styleFrom(
+        backgroundColor: selected
+            ? Colors.white.withValues(alpha: 0.22)
+            : Colors.transparent,
+      ),
+      icon: Icon(icon, color: Colors.white, size: 21),
+    );
+  }
+}
+
+class _TypingColorBubble extends StatelessWidget {
+  const _TypingColorBubble({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWhite = color.toARGB32() == Colors.white.toARGB32();
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 38,
+        height: 38,
+        padding: EdgeInsets.all(selected ? 3 : 5),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.3),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isWhite
+                  ? Colors.black.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingLayerNudgeControl extends StatelessWidget {
+  const _FloatingLayerNudgeControl({
+    required this.expanded,
+    required this.canNudge,
+    required this.isAtEdge,
+    required this.onToggle,
+    required this.onNudge,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  final bool expanded;
+  final bool canNudge;
+  final bool isAtEdge;
+  final VoidCallback onToggle;
+  final ValueChanged<Offset> onNudge;
+  final GestureDragUpdateCallback onDragUpdate;
+  final GestureDragEndCallback onDragEnd;
+
+  static const double collapsedSize = 42;
+  static const double expandedSize = 138;
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = expanded ? 0.94 : (isAtEdge ? 0.34 : 0.62);
+    final size = expanded ? expandedSize : collapsedSize;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onPanUpdate: onDragUpdate,
+      onPanEnd: onDragEnd,
+      onTap: onToggle,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 160),
+        opacity: opacity,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFF111827).withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(expanded ? 22 : 999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: expanded
+              ? _LayerNudgePad(canNudge: canNudge, onNudge: onNudge)
+              : Icon(
+                  Icons.open_with_rounded,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  size: 21,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerNudgePad extends StatelessWidget {
+  const _LayerNudgePad({required this.canNudge, required this.onNudge});
+
+  final bool canNudge;
+  final ValueChanged<Offset> onNudge;
+
+  @override
+  Widget build(BuildContext context) {
+    const step = 2.0;
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: Stack(
+        children: <Widget>[
+          Align(
+            alignment: Alignment.topCenter,
+            child: _LayerNudgeButton(
+              icon: Icons.keyboard_arrow_up_rounded,
+              enabled: canNudge,
+              onTap: () => onNudge(const Offset(0, -step)),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _LayerNudgeButton(
+              icon: Icons.keyboard_arrow_left_rounded,
+              enabled: canNudge,
+              onTap: () => onNudge(const Offset(-step, 0)),
+            ),
+          ),
+          Align(
+            alignment: Alignment.center,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.12),
+              ),
+              child: Icon(
+                Icons.control_camera_rounded,
+                size: 18,
+                color: Colors.white.withValues(alpha: canNudge ? 0.9 : 0.34),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _LayerNudgeButton(
+              icon: Icons.keyboard_arrow_right_rounded,
+              enabled: canNudge,
+              onTap: () => onNudge(const Offset(step, 0)),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _LayerNudgeButton(
+              icon: Icons.keyboard_arrow_down_rounded,
+              enabled: canNudge,
+              onTap: () => onNudge(const Offset(0, step)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerNudgeButton extends StatefulWidget {
+  const _LayerNudgeButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  State<_LayerNudgeButton> createState() => _LayerNudgeButtonState();
+}
+
+class _LayerNudgeButtonState extends State<_LayerNudgeButton> {
+  Timer? _repeatTimer;
+
+  void _startRepeating() {
+    if (!widget.enabled) {
+      return;
+    }
+    _stopRepeating();
+    widget.onTap();
+    _repeatTimer = Timer.periodic(const Duration(milliseconds: 55), (_) {
+      if (widget.enabled) {
+        widget.onTap();
+      } else {
+        _stopRepeating();
+      }
+    });
+  }
+
+  void _stopRepeating() {
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+  }
+
+  @override
+  void didUpdateWidget(covariant _LayerNudgeButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled) {
+      _stopRepeating();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopRepeating();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.enabled ? widget.onTap : null,
+      onLongPressStart: widget.enabled ? (_) => _startRepeating() : null,
+      onLongPressEnd: (_) => _stopRepeating(),
+      onLongPressCancel: _stopRepeating,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.enabled
+              ? Colors.white.withValues(alpha: 0.18)
+              : Colors.white.withValues(alpha: 0.06),
+        ),
+        child: Icon(
+          widget.icon,
+          size: 28,
+          color: Colors.white.withValues(alpha: widget.enabled ? 0.95 : 0.32),
+        ),
+      ),
+    );
+  }
+}
 
 class _CompactLabeledSlider extends StatelessWidget {
   const _CompactLabeledSlider({
@@ -831,6 +1581,7 @@ class _AdvancedLayersFullscreenOverlay extends StatefulWidget {
     required this.onMoveToBack,
     required this.onEditText,
     required this.onBlendModeChanged,
+    required this.onClose,
   });
 
   final List<_CanvasLayer> layers;
@@ -846,6 +1597,7 @@ class _AdvancedLayersFullscreenOverlay extends StatefulWidget {
   final ValueChanged<String> onMoveToBack;
   final ValueChanged<String> onEditText;
   final void Function(String layerId, BlendMode blendMode) onBlendModeChanged;
+  final VoidCallback onClose;
 
   @override
   State<_AdvancedLayersFullscreenOverlay> createState() =>
@@ -896,171 +1648,192 @@ class _AdvancedLayersFullscreenOverlayState
           orElse: () => _blendModes.first,
         )
         .$1;
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => Navigator.of(context).pop(),
-          child: ColoredBox(color: const Color(0xFF0B0D12)),
-        ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: FractionallySizedBox(
-            widthFactor: 1,
-            heightFactor: 0.58,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _editorChromeSurfaceStrong,
-                  image: const DecorationImage(
-                    image: AssetImage(
-                      'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_layers_panel_bg.png',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final panelWidth = math.min(
+          390.0,
+          math.max(292.0, constraints.maxWidth * 0.82),
+        );
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: widget.onClose,
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.06)),
+            ),
+            AnimatedAlign(
+              alignment: Alignment.centerRight,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: SizedBox(
+                width: panelWidth,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _editorChromeSurfaceStrong,
+                    image: const DecorationImage(
+                      image: AssetImage(
+                        'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_layers_panel_bg.png',
+                      ),
+                      fit: BoxFit.cover,
+                      opacity: 0,
                     ),
-                    fit: BoxFit.cover,
-                    opacity: 0,
-                  ),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28),
-                  ),
-                  border: Border.all(
-                    color: _editorChromeBorder.withValues(alpha: 0.45),
-                  ),
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        width: 38,
-                        height: 4,
-                        margin: const EdgeInsets.only(top: 9, bottom: 5),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.32),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(24),
+                    ),
+                    border: Border.all(
+                      color: _editorChromeBorder.withValues(alpha: 0.45),
+                    ),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x55000000),
+                        blurRadius: 26,
+                        offset: Offset(-8, 0),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 2, 10, 6),
-                        child: Row(
-                          children: <Widget>[
-                            const Icon(
-                              Icons.layers_rounded,
-                              color: Color(0xFFB8AEFF),
-                            ),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Text(
-                                strings.localized(
-                                  telugu:
-                                      'Ã Â°Â²Ã Â±â€¡Ã Â°Â¯Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
-                                  english: 'Layers',
-                                ),
-                                style: const TextStyle(
-                                  color: _editorChromeTextPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                    ],
+                  ),
+                  child: SafeArea(
+                    left: false,
+                    child: Column(
+                      children: <Widget>[
+                        Container(
+                          width: 4,
+                          height: 36,
+                          margin: const EdgeInsets.only(top: 10, bottom: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.32),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF111827),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: _editorChromeBorder.withValues(
+                                  alpha: 0.55,
                                 ),
                               ),
                             ),
-                            IconButton(
-                              tooltip: _panelAutoSelectCanvasLayer
-                                  ? 'Auto Select On'
-                                  : 'Auto Select Off',
-                              onPressed: () {
-                                widget.onAutoSelectCanvasLayerTap();
-                                setState(() {
-                                  _panelAutoSelectCanvasLayer =
-                                      !_panelAutoSelectCanvasLayer;
-                                });
-                              },
-                              icon: Icon(
-                                _panelAutoSelectCanvasLayer
-                                    ? Icons.touch_app_rounded
-                                    : Icons.pan_tool_alt_outlined,
-                                color: _panelAutoSelectCanvasLayer
-                                    ? const Color(0xFF38BDF8)
-                                    : _editorChromeTextSecondary,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                color: _editorChromeTextPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (selectedLayerId != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 6, 10, 6),
                           child: Row(
                             children: <Widget>[
-                              if (selectedLayer != null &&
-                                  (selectedLayer.isText ||
-                                      ((selectedLayer.psdEditableText ?? '')
-                                          .trim()
-                                          .isNotEmpty))) ...<Widget>[
-                                _LayerActionButton(
-                                  icon: Icons.edit_note_rounded,
-                                  label: 'Edit text',
-                                  onTap: () {
-                                    widget.onEditText(selectedLayerId);
-                                    Navigator.of(context).pop();
-                                  },
+                              const Icon(
+                                Icons.layers_rounded,
+                                color: Color(0xFFB8AEFF),
+                              ),
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Text(
+                                  strings.localized(
+                                    telugu:
+                                        'Ã Â°Â²Ã Â±â€¡Ã Â°Â¯Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
+                                    english: 'Layers',
+                                  ),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                const SizedBox(width: 6),
-                              ],
-                              _LayerActionButton(
-                                icon: Icons.vertical_align_top_rounded,
-                                label: 'Front',
-                                onTap: () =>
-                                    widget.onMoveToFront(selectedLayerId),
                               ),
-                              const SizedBox(width: 6),
-                              _LayerActionButton(
-                                icon: Icons.vertical_align_bottom_rounded,
-                                label: 'Back',
-                                onTap: () =>
-                                    widget.onMoveToBack(selectedLayerId),
-                              ),
-                              const SizedBox(width: 6),
-                              _LayerActionButton(
-                                icon: Icons.delete_outline_rounded,
-                                label: 'Delete',
-                                onTap: () {
-                                  widget.onDeleteLayer(selectedLayerId);
+                              IconButton(
+                                tooltip: _panelAutoSelectCanvasLayer
+                                    ? 'Auto Select On'
+                                    : 'Auto Select Off',
+                                onPressed: () {
+                                  widget.onAutoSelectCanvasLayerTap();
                                   setState(() {
-                                    _panelSelectedLayerId = null;
-                                    _blendOptionsExpanded = false;
+                                    _panelAutoSelectCanvasLayer =
+                                        !_panelAutoSelectCanvasLayer;
                                   });
                                 },
+                                icon: Icon(
+                                  _panelAutoSelectCanvasLayer
+                                      ? Icons.touch_app_rounded
+                                      : Icons.pan_tool_alt_outlined,
+                                  color: _panelAutoSelectCanvasLayer
+                                      ? const Color(0xFF38BDF8)
+                                      : const Color(0xFFE5E7EB),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: widget.onClose,
+                                icon: const Icon(
+                                  Icons.close_rounded,
+                                  color: Color(0xFFFFFFFF),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-                        child: _buildBlendModePicker(
-                          selectedLayerId: selectedLayerId,
-                          selectedBlend: selectedBlend,
-                          selectedBlendMode: selectedBlendMode,
+                        if (selectedLayerId != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                            child: Row(
+                              children: <Widget>[
+                                if (selectedLayer != null &&
+                                    (selectedLayer.isText ||
+                                        ((selectedLayer.psdEditableText ?? '')
+                                            .trim()
+                                            .isNotEmpty))) ...<Widget>[
+                                  _LayerActionButton(
+                                    icon: Icons.edit_note_rounded,
+                                    label: 'Edit text',
+                                    onTap: () {
+                                      widget.onEditText(selectedLayerId);
+                                      widget.onClose();
+                                    },
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                _LayerActionButton(
+                                  icon: Icons.vertical_align_top_rounded,
+                                  label: 'Front',
+                                  onTap: () =>
+                                      widget.onMoveToFront(selectedLayerId),
+                                ),
+                                const SizedBox(width: 6),
+                                _LayerActionButton(
+                                  icon: Icons.vertical_align_bottom_rounded,
+                                  label: 'Back',
+                                  onTap: () =>
+                                      widget.onMoveToBack(selectedLayerId),
+                                ),
+                                const SizedBox(width: 6),
+                                _LayerActionButton(
+                                  icon: Icons.delete_outline_rounded,
+                                  label: 'Delete',
+                                  onTap: () {
+                                    widget.onDeleteLayer(selectedLayerId);
+                                    setState(() {
+                                      _panelSelectedLayerId = null;
+                                      _blendOptionsExpanded = false;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                          child: _buildBlendModePicker(
+                            selectedLayerId: selectedLayerId,
+                            selectedBlend: selectedBlend,
+                            selectedBlendMode: selectedBlendMode,
+                          ),
                         ),
-                      ),
-                      Expanded(child: _buildLayersList()),
-                    ],
+                        Expanded(child: _buildLayersList()),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -1374,13 +2147,41 @@ class _AdvancedLayersFullscreenOverlayState
 }
 
 class _EditorCommitOverlay extends StatelessWidget {
-  const _EditorCommitOverlay({required this.label, this.detail});
+  const _EditorCommitOverlay({
+    required this.label,
+    this.detail,
+    this.compact = false,
+  });
 
   final String label;
   final String? detail;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF020617).withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFFFFFFF).withValues(alpha: 0.22),
+            ),
+          ),
+          child: const SizedBox.square(
+            dimension: 46,
+            child: Padding(
+              padding: EdgeInsets.all(11),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.6,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xEFFFFFFF)),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     return Center(
       child: _EditorProcessingCard(label: label, detail: detail),
     );
@@ -1780,6 +2581,7 @@ class _ToolItem extends StatelessWidget {
     this.assetIcon,
     this.active = false,
     this.compact = false,
+    this.premium = false,
   });
 
   final String label;
@@ -1788,6 +2590,7 @@ class _ToolItem extends StatelessWidget {
   final VoidCallback onTap;
   final bool active;
   final bool compact;
+  final bool premium;
 
   @override
   Widget build(BuildContext context) {
@@ -1801,9 +2604,13 @@ class _ToolItem extends StatelessWidget {
             constraints.maxWidth >= 108 &&
             constraints.maxHeight.isFinite &&
             constraints.maxHeight <= 64;
-        final iconWidget = SizedBox(
-          width: sideRailTile ? 30 : (compact ? 25 : 27),
-          height: sideRailTile ? 30 : (compact ? 25 : 27),
+        final displayLabel = icon == Icons.format_shapes_rounded
+            ? 'Typography'
+            : label;
+        final iconSize = sideRailTile ? 30.0 : (compact ? 25.0 : 27.0);
+        final baseIcon = SizedBox(
+          width: iconSize,
+          height: iconSize,
           child: safeAssetIcon == null
               ? Icon(
                   icon,
@@ -1821,8 +2628,37 @@ class _ToolItem extends StatelessWidget {
                   ),
                 ),
         );
+        final iconWidget = SizedBox(
+          width: iconSize + (premium ? 8 : 0),
+          height: iconSize + (premium ? 6 : 0),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Positioned(left: 0, bottom: 0, child: baseIcon),
+              if (premium)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFACC15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFF202228)),
+                    ),
+                    child: const Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 10,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
         final labelWidget = Text(
-          label,
+          displayLabel,
           maxLines: sideRailTile ? 2 : 1,
           overflow: TextOverflow.ellipsis,
           textAlign: sideRailTile ? TextAlign.left : TextAlign.center,

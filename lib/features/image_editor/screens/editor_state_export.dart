@@ -351,7 +351,7 @@ extension _EditorExportState on _ImageEditorScreenState {
   }
 
   int _exportDpi({_ExportImageFormat? format}) {
-    final config = widget.pageConfig;
+    final config = _effectiveExportPageConfig;
     if (config == null) {
       return 300;
     }
@@ -366,7 +366,7 @@ extension _EditorExportState on _ImageEditorScreenState {
     ui.Image source, {
     _ExportImageFormat? format,
   }) async {
-    final config = widget.pageConfig;
+    final config = _effectiveExportPageConfig;
     final targetSize = _exportTargetPixelSize(format: format);
     if (config == null || targetSize == null) {
       return source;
@@ -399,7 +399,7 @@ extension _EditorExportState on _ImageEditorScreenState {
   ({int width, int height})? _exportTargetPixelSize({
     _ExportImageFormat? format,
   }) {
-    final config = widget.pageConfig;
+    final config = _effectiveExportPageConfig;
     if (config == null) {
       return null;
     }
@@ -407,21 +407,16 @@ extension _EditorExportState on _ImageEditorScreenState {
         format == _ExportImageFormat.png ||
         format == _ExportImageFormat.pngTransparent ||
         format == _ExportImageFormat.jpg;
-    var scale = 1.0;
-    if (shouldBoostRaster &&
-        math.max(config.widthPx, config.heightPx) <= 2048) {
-      scale = 2.0;
-    }
-    const maxExportPixels = 64000000.0;
-    final requestedPixels = config.widthPx * config.heightPx * scale * scale;
-    if (requestedPixels > maxExportPixels) {
-      scale = math.sqrt(maxExportPixels / (config.widthPx * config.heightPx));
-    }
-    return (
-      width: math.max(1, (config.widthPx * scale).round()),
-      height: math.max(1, (config.heightPx * scale).round()),
+    return _calculateExportTargetPixelSize(
+      widthPx: config.widthPx,
+      heightPx: config.heightPx,
+      shouldBoostRaster: shouldBoostRaster,
+      preservePixels: _preserveDesignExportPixels && _designPageConfig != null,
     );
   }
+
+  EditorPageConfig? get _effectiveExportPageConfig =>
+      _designPageConfig ?? widget.pageConfig;
 
   Uint8List _withPngDpiMetadata(Uint8List bytes, {required int dpi}) {
     if (bytes.length < 33 ||
@@ -878,39 +873,7 @@ extension _EditorExportState on _ImageEditorScreenState {
 
   Rect _currentStageLogicalRect() {
     final canvasSize = _lastCanvasSize;
-    const toolbarCanvasGap = 8.0;
-    final bottomToolsHeight = _isCropMode
-        ? _cropBarHeight
-        : _isAdjustMode
-        ? _adjustBarHeight
-        : _isPhotoStretchMode
-        ? _stretchBarHeight
-        : (_isPhotoEraserMode ||
-              _isContentAwareMode ||
-              _isPhotoStretchMode ||
-              _isLayerMaskBrushMode)
-        ? _eraserBarHeight
-        : _isDrawBrushMode
-        ? _drawBarHeight
-        : _bottomBarHeight;
-    final visibleBottomToolsHeight = _showTextControls
-        ? _textStyleBarHeight
-        : bottomToolsHeight;
-    final systemBottomInset =
-        MediaQuery.maybeViewPaddingOf(context)?.bottom ?? 0;
-    final bannerHeight = _isKeyboardVisible ? 0.0 : _editorBannerHeight;
-    final topInset = 4 + _topBarHeight + toolbarCanvasGap;
-    final bottomInset =
-        systemBottomInset +
-        bannerHeight +
-        6 +
-        visibleBottomToolsHeight +
-        toolbarCanvasGap;
-    final workspaceHeight = math.max(
-      0.0,
-      canvasSize.height - topInset - bottomInset,
-    );
-    final workspaceSize = Size(canvasSize.width, workspaceHeight);
+    final workspaceSize = Size(canvasSize.width, canvasSize.height);
     final hasPageSelection = _pageAspectRatio != null;
     final stageSize = hasPageSelection
         ? _fitPageSize(
@@ -920,7 +883,7 @@ extension _EditorExportState on _ImageEditorScreenState {
           )
         : workspaceSize;
     return Rect.fromCenter(
-      center: Offset(canvasSize.width / 2, topInset + (workspaceHeight / 2)),
+      center: Offset(canvasSize.width / 2, canvasSize.height / 2),
       width: stageSize.width,
       height: stageSize.height,
     );
@@ -1259,18 +1222,18 @@ extension _EditorExportState on _ImageEditorScreenState {
   }
 
   Future<void> _prepareCanvasForFinalExport() async {
-    if (_selectedTextFocusNode.hasFocus || _isInlineTextEditing) {
+    if (_selectedTextFocusNode.hasFocus || _isTextTypingScreenOpen) {
       _commitSelectedTextContentEdit();
       if (_selectedTextFocusNode.hasFocus) {
         _selectedTextFocusNode.unfocus();
       }
       if (mounted) {
         setState(() {
-          _isInlineTextEditing = false;
+          _isTextTypingScreenOpen = false;
           _showTextControls = false;
         });
       } else {
-        _isInlineTextEditing = false;
+        _isTextTypingScreenOpen = false;
         _showTextControls = false;
       }
       await _waitForRenderedFrame();
@@ -1284,28 +1247,13 @@ extension _EditorExportState on _ImageEditorScreenState {
     final Rect stageRect = _currentStageLogicalRect();
     final double logicalW = stageRect.width;
     final double logicalH = stageRect.height;
-    if (logicalW <= 0 || logicalH <= 0) {
-      return devicePixelRatio.clamp(1.0, 4.5);
-    }
-
-    final targetSize = _exportTargetPixelSize(format: format);
-    double ratio = devicePixelRatio;
-    if (targetSize != null) {
-      final double neededW = targetSize.width / logicalW;
-      final double neededH = targetSize.height / logicalH;
-      ratio = math.max(ratio, math.max(neededW, neededH));
-    }
-
-    const double maxExportPixelRatio = 16.0;
-    const double maxExportPixels = 64000000.0;
-    final double maxRatioByPixels = math.sqrt(
-      maxExportPixels / math.max(1.0, logicalW * logicalH),
+    return _calculateExportPixelRatioForStage(
+      logicalWidth: logicalW,
+      logicalHeight: logicalH,
+      devicePixelRatio: devicePixelRatio,
+      targetSize: _exportTargetPixelSize(format: format),
+      preservePixels: _preserveDesignExportPixels && _designPageConfig != null,
     );
-    final double safeMaxRatio = math.max(
-      1.0,
-      math.min(maxExportPixelRatio, maxRatioByPixels),
-    );
-    return ratio.clamp(1.0, safeMaxRatio);
   }
 
   Future<void> _shareLatestPoster(

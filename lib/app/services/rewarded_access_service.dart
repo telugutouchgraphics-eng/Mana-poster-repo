@@ -25,15 +25,24 @@ class RewardedAccessService {
     required String adUnitId,
     required String debugLabel,
   }) async {
-    if (kIsWeb || adUnitId.trim().isEmpty) {
+    if (kIsWeb) {
+      _debugLog(
+        'RewardedAccessService: rewarded ads are not supported on web for $debugLabel',
+      );
+      return true;
+    }
+    if (adUnitId.trim().isEmpty) {
       _debugLog(
         'RewardedAccessService: no rewarded ad configured for $debugLabel, allowing access',
       );
       return true;
     }
     if (!await AdMobConsentService.instance.canRequestAds()) {
+      await AdMobConsentService.instance.prepareForAds();
+    }
+    if (!await AdMobConsentService.instance.canRequestAds()) {
       _debugLog(
-        'RewardedAccessService: ads consent not granted for $debugLabel, allowing access',
+        'RewardedAccessService: ads unavailable for $debugLabel, allowing access',
       );
       return true;
     }
@@ -70,7 +79,7 @@ class RewardedAccessService {
               },
               onAdDismissedFullScreenContent: (RewardedAd ad) async {
                 await Future<void>.delayed(const Duration(milliseconds: 350));
-                complete(rewardEarned || adShown);
+                complete(rewardEarned);
               },
               onAdFailedToShowFullScreenContent: (
                 RewardedAd ad,
@@ -79,7 +88,7 @@ class RewardedAccessService {
                 _debugLog(
                   'RewardedAccessService show failed for $debugLabel: $error',
                 );
-                complete(false);
+                complete(true);
               },
             );
             ad.show(
@@ -95,7 +104,7 @@ class RewardedAccessService {
             _debugLog(
               'RewardedAccessService load failed for $debugLabel: $error',
             );
-            complete(false);
+            complete(true);
           },
         ),
       );
@@ -104,14 +113,14 @@ class RewardedAccessService {
         'RewardedAccessService exception for $debugLabel: $error',
         stackTrace,
       );
-      complete(false);
+      complete(true);
     }
 
     return completer.future.timeout(
       const Duration(minutes: 3),
       onTimeout: () {
         _debugLog('RewardedAccessService timeout for $debugLabel');
-        final fallbackValue = rewardEarned || adShown;
+        final fallbackValue = rewardEarned || !adShown;
         complete(fallbackValue);
         return fallbackValue;
       },

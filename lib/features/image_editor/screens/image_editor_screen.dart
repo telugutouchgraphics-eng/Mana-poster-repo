@@ -74,7 +74,6 @@ part 'tools/clone_tool.dart';
 part 'tools/stretch_tool.dart';
 part 'tools/content_aware_tool.dart';
 part 'tools/selection_tool.dart';
-part 'tools/retouch_tool.dart';
 part 'tools/frame_lens_tool.dart';
 part 'tools/replay_tool.dart';
 
@@ -109,6 +108,92 @@ double calculatePsdPageWidthScaleForTest({
     return 1;
   }
   return targetPageWidth / psdWidth;
+}
+
+({int width, int height}) _calculateExportTargetPixelSize({
+  required int widthPx,
+  required int heightPx,
+  required bool shouldBoostRaster,
+  required bool preservePixels,
+}) {
+  if (widthPx <= 0 || heightPx <= 0) {
+    return (width: 1, height: 1);
+  }
+  var scale = 1.0;
+  if (!preservePixels &&
+      shouldBoostRaster &&
+      math.max(widthPx, heightPx) <= 2048) {
+    scale = 2.0;
+  }
+  const maxExportPixels = 64000000.0;
+  final requestedPixels = widthPx * heightPx * scale * scale;
+  if (requestedPixels > maxExportPixels) {
+    scale = math.sqrt(maxExportPixels / (widthPx * heightPx));
+  }
+  return (
+    width: math.max(1, (widthPx * scale).round()),
+    height: math.max(1, (heightPx * scale).round()),
+  );
+}
+
+@visibleForTesting
+({int width, int height}) debugCalculateExportTargetPixelSizeForTest({
+  required int widthPx,
+  required int heightPx,
+  required bool shouldBoostRaster,
+  required bool preservePixels,
+}) {
+  return _calculateExportTargetPixelSize(
+    widthPx: widthPx,
+    heightPx: heightPx,
+    shouldBoostRaster: shouldBoostRaster,
+    preservePixels: preservePixels,
+  );
+}
+
+double _calculateExportPixelRatioForStage({
+  required double logicalWidth,
+  required double logicalHeight,
+  required double devicePixelRatio,
+  required ({int width, int height})? targetSize,
+  required bool preservePixels,
+}) {
+  if (logicalWidth <= 0 || logicalHeight <= 0) {
+    return devicePixelRatio.clamp(1.0, 4.5).toDouble();
+  }
+
+  double ratio = devicePixelRatio;
+  if (targetSize != null) {
+    final neededW = targetSize.width / logicalWidth;
+    final neededH = targetSize.height / logicalHeight;
+    ratio = math.max(ratio, math.max(neededW, neededH));
+  }
+
+  const maxExportPixels = 64000000.0;
+  final maxRatioByPixels = math.sqrt(
+    maxExportPixels / math.max(1.0, logicalWidth * logicalHeight),
+  );
+  final safeMaxRatio = preservePixels
+      ? math.max(1.0, maxRatioByPixels)
+      : math.max(1.0, math.min(16.0, maxRatioByPixels));
+  return ratio.clamp(1.0, safeMaxRatio).toDouble();
+}
+
+@visibleForTesting
+double debugCalculateExportPixelRatioForTest({
+  required double logicalWidth,
+  required double logicalHeight,
+  required double devicePixelRatio,
+  required ({int width, int height})? targetSize,
+  required bool preservePixels,
+}) {
+  return _calculateExportPixelRatioForStage(
+    logicalWidth: logicalWidth,
+    logicalHeight: logicalHeight,
+    devicePixelRatio: devicePixelRatio,
+    targetSize: targetSize,
+    preservePixels: preservePixels,
+  );
 }
 
 @visibleForTesting
@@ -234,6 +319,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   String? _groupTransformSelectedLayerId;
   Matrix4? _workspaceLayerBaseline;
   String? _workspaceLayerBaselineId;
+  String? _lastLayerBrushPreviewLayerId;
+  Offset? _lastLayerBrushPreviewPoint;
+  _PhotoEraserPreviewState? _pendingEraserPreviewState;
+  bool _eraserPreviewFrameScheduled = false;
 
   void _resetWorkspaceViewportToFit() {
     _workspaceZoom = _workspaceFitZoom;
@@ -274,6 +363,115 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   double _workspaceBrushSize(double screenSize) =>
       screenSize / math.max(0.1, _workspaceZoom);
+
+  void _setEraserPreviewState(
+    _PhotoEraserPreviewState? state, {
+    bool coalesce = false,
+  }) {
+    if (!coalesce || state == null) {
+      _pendingEraserPreviewState = null;
+      _eraserPreviewNotifier.value = state;
+      return;
+    }
+    _pendingEraserPreviewState = state;
+    if (_eraserPreviewFrameScheduled) {
+      return;
+    }
+    _eraserPreviewFrameScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _eraserPreviewFrameScheduled = false;
+      final pending = _pendingEraserPreviewState;
+      _pendingEraserPreviewState = null;
+      if (!mounted || pending == null) {
+        return;
+      }
+      _eraserPreviewNotifier.value = pending;
+    });
+  }
+
+  void _rememberLayerBrushPreviewPoint(String layerId, Offset point) {
+    _lastLayerBrushPreviewLayerId = layerId;
+    _lastLayerBrushPreviewPoint = Offset(
+      point.dx.clamp(0.0, 1.0).toDouble(),
+      point.dy.clamp(0.0, 1.0).toDouble(),
+    );
+  }
+
+  Offset _resolveLayerBrushPreviewPoint(String layerId, [Offset? point]) {
+    if (point != null) {
+      final normalized = Offset(
+        point.dx.clamp(0.0, 1.0).toDouble(),
+        point.dy.clamp(0.0, 1.0).toDouble(),
+      );
+      _rememberLayerBrushPreviewPoint(layerId, normalized);
+      return normalized;
+    }
+    if (_lastLayerBrushPreviewLayerId == layerId &&
+        _lastLayerBrushPreviewPoint != null) {
+      return _lastLayerBrushPreviewPoint!;
+    }
+    final visiblePoint = _visibleWorkspaceCenterAsLayerPoint(layerId);
+    if (visiblePoint != null) {
+      _rememberLayerBrushPreviewPoint(layerId, visiblePoint);
+      return visiblePoint;
+    }
+    const fallback = Offset(0.5, 0.5);
+    _rememberLayerBrushPreviewPoint(layerId, fallback);
+    return fallback;
+  }
+
+  Offset? _visibleWorkspaceCenterAsLayerPoint(String layerId) {
+    final layer = _layers.cast<_CanvasLayer?>().firstWhere(
+      (item) => item?.id == layerId,
+      orElse: () => null,
+    );
+    if (layer == null || _lastCanvasSize.isEmpty) {
+      return null;
+    }
+    final pageSize = _pageAspectRatio == null
+        ? _lastCanvasSize
+        : _fitPageSize(
+            workspaceSize: _lastCanvasSize,
+            aspectRatio: _pageAspectRatio!,
+            preferFullWidth: widget.preferFullWidthCanvas,
+            forceFullWidth: _pageAspectRatioAutoFromImage,
+          );
+    if (pageSize.isEmpty) {
+      return null;
+    }
+    final viewportCenter = Offset(
+      _lastCanvasSize.width / 2,
+      _lastCanvasSize.height / 2,
+    );
+    final workspacePoint =
+        viewportCenter - (_workspacePan / math.max(0.1, _workspaceZoom));
+    final pageOrigin = Offset(
+      (_lastCanvasSize.width - pageSize.width) / 2,
+      (_lastCanvasSize.height - pageSize.height) / 2,
+    );
+    final pagePoint = workspacePoint - pageOrigin;
+    final layerSize = layer.isPhoto
+        ? (layer.fillPageBounds
+              ? pageSize
+              : _photoLayerVisualSize(layer, pageSize))
+        : _workspaceLayerVisualSize(layer, pageSize);
+    if (layerSize.isEmpty) {
+      return null;
+    }
+    final layerOrigin = Offset(
+      (pageSize.width - layerSize.width) / 2,
+      (pageSize.height - layerSize.height) / 2,
+    );
+    final layerCenter = Offset(layerSize.width / 2, layerSize.height / 2);
+    final transformedPoint = pagePoint - layerOrigin - layerCenter;
+    final inverse = Matrix4.inverted(Matrix4.copy(layer.transform));
+    final localCentered = MatrixUtils.transformPoint(inverse, transformedPoint);
+    final localPoint = localCentered + layerCenter;
+    return Offset(
+      (localPoint.dx / layerSize.width).clamp(0.0, 1.0).toDouble(),
+      (localPoint.dy / layerSize.height).clamp(0.0, 1.0).toDouble(),
+    );
+  }
 
   void _handleWorkspacePointerDown(PointerDownEvent event) {
     _workspacePointers[event.pointer] = event.localPosition;
@@ -373,6 +571,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _CanvasLayer? _photoMaskEditBeforeLayer;
   bool _isPhotoMaskPositionMode = false;
   _TextEffectSnapshot? _copiedTextEffect;
+  _LayerStyleSnapshot? _copiedLayerStyle;
+  _CanvasLayer? _layerStyleQuickBeforeLayer;
+  Timer? _layerStyleQuickUpdateTimer;
+  _LayerStyleQuickPatch? _pendingLayerStyleQuickUpdate;
   final List<_TextEffectSnapshot> _savedTextEffectPresets =
       <_TextEffectSnapshot>[];
   int _textEffectPresetSeed = 0;
@@ -398,9 +600,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _canvasTapResolvedLayer = false;
   bool _autoSelectCanvasLayer = true;
   bool _showSelectedLayerHandles = true;
+  bool _showLayerStyleQuickControls = false;
   int _suppressCanvasTapToken = 0;
   bool _showTextControls = false;
   _TextToolTab _activeTextToolTab = _TextToolTab.style;
+  _LayerStyleQuickTab _activeLayerStyleQuickTab = _LayerStyleQuickTab.stroke;
   _BottomPrimaryTool _activeBottomPrimaryTool = _BottomPrimaryTool.none;
   _BottomInlineMode _activeInlineMode = _BottomInlineMode.none;
   String _activeStickerCategory = 'Emojis';
@@ -419,11 +623,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   int _removeBackgroundTaskId = 0;
   String? _activeCommitJobKey;
   Future<void> _commitJobTail = Future<void>.value();
+  EditorPageConfig? _designPageConfig;
+  bool _preserveDesignExportPixels = false;
   double? _pageAspectRatio;
   bool _pageAspectRatioAutoFromImage = false;
   bool _didShowSetupReadyHint = false;
-  bool _isInlineTextEditing = false;
+  bool _isTextTypingScreenOpen = false;
   bool _isTextPlacementMode = false;
+  bool _showLayersAdvancedPanel = false;
+  bool _layerNudgeControlExpanded = false;
+  Offset _layerNudgeControlOffset = const Offset(0, 220);
   Matrix4? _gestureStartMatrix;
   Offset _gestureStartFocalPoint = Offset.zero;
   Offset _gestureStartLocalFocalPoint = Offset.zero;
@@ -954,6 +1163,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _EditorRewardGateFeature.teluguFonts => 'telugu_fonts',
       _EditorRewardGateFeature.removeBackground => 'remove_background',
     };
+    final featureTitle = switch (feature) {
+      _EditorRewardGateFeature.teluguFonts => 'Telugu Fonts',
+      _EditorRewardGateFeature.removeBackground => 'Remove BG',
+    };
     final failureMessage = switch (feature) {
       _EditorRewardGateFeature.teluguFonts => strings.localized(
         telugu: 'తెలుగు ఫాంట్స్ అన్‌లాక్ చేయడానికి ad పూర్తిగా చూడాలి',
@@ -964,6 +1177,25 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         english: 'Watch the full ad to use Remove BG',
       ),
     };
+
+    final accessChoice = await _showEditorRewardChoiceDialog(
+      title: featureTitle,
+    );
+    if (!mounted || accessChoice == null) {
+      return false;
+    }
+    if (accessChoice == 'subscribe') {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const SubscriptionPlanScreen()),
+      );
+      if (!mounted) {
+        return false;
+      }
+      final refreshed = _editorEntitlementService.isConfigured
+          ? await _editorEntitlementService.fetchFreshEntitlementWithRetry()
+          : _editorEntitlementService.cachedEntitlement;
+      return refreshed?.hasAccess == true;
+    }
 
     setState(() {
       _isRewardedGateBusy = true;
@@ -995,6 +1227,124 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _isRewardedGateBusy = false;
       }
     }
+  }
+
+  Future<String?> _showEditorRewardChoiceDialog({required String title}) {
+    return showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF202228),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.30),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFACC15).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Color(0xFFFACC15),
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _editorChromeTextPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Subscribe for ad-free access, or continue free by watching an ad.',
+                  style: TextStyle(
+                    color: _editorChromeTextSecondary.withValues(alpha: 0.92),
+                    fontSize: 12.5,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop('free'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _editorChromeTextPrimary,
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.18),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Free',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () =>
+                            Navigator.of(dialogContext).pop('subscribe'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFFACC15),
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Subscribe',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Color get _activeModeAccent {
@@ -1097,6 +1447,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _activeBottomPrimaryTool = _BottomPrimaryTool.none;
       _activeInlineMode = _BottomInlineMode.none;
       _showTextControls = false;
+      _showLayerStyleQuickControls = false;
       _restoreSelectedLayerToolContextFields();
     });
   }
@@ -1148,6 +1499,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _drawActivePoints = null;
       _drawPreviewNotifier.value = null;
       _activeInlineMode = mode;
+      _showLayerStyleQuickControls = false;
       if (mode == _BottomInlineMode.border &&
           _borderStyle == _BorderStyle.none) {
         _borderStyle = _BorderStyle.custom;
@@ -1187,6 +1539,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       _drawActivePoints = null;
       _drawPreviewNotifier.value = null;
       _activeInlineMode = _BottomInlineMode.none;
+      _showLayerStyleQuickControls = false;
       _restoreSelectedLayerToolContextFields();
     });
   }
@@ -1469,28 +1822,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   Future<void> _openLayersAdvancedOverlay() async {
-    await _pushPremiumOverlay<void>(
-      _AdvancedLayersFullscreenOverlay(
-        layers: _layers,
-        selectedLayerId: _selectedLayerId,
-        autoSelectCanvasLayer: _autoSelectCanvasLayer,
-        onAutoSelectCanvasLayerTap: _toggleCanvasAutoSelectLayer,
-        onSelectLayer: _handleLayerSelected,
-        onDeleteLayer: _deleteLayerById,
-        onToggleLayerLock: _toggleLayerLockById,
-        onToggleLayerVisibility: _toggleLayerVisibilityById,
-        onReorderLayers: _reorderLayersFromAdvancedView,
-        onMoveToFront: _moveLayerToFrontById,
-        onMoveToBack: _moveLayerToBackById,
-        onEditText: _editLayerTextById,
-        onBlendModeChanged: _setLayerBlendMode,
-      ),
-      shellColor: Colors.transparent,
-      shellPadding: EdgeInsets.zero,
-      shellBorderRadius: 0,
-      shellBlurSigma: 0,
-      barrierColor: Colors.transparent,
-    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _showLayersAdvancedPanel = true);
+  }
+
+  void _closeLayersAdvancedPanel() {
+    if (!_showLayersAdvancedPanel || !mounted) {
+      return;
+    }
+    setState(() => _showLayersAdvancedPanel = false);
   }
 
   void _moveLayerToFrontById(String layerId) {
@@ -1707,6 +2049,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _lastSelectedTextTapAt = null;
     _lastSelectedTextTapLayerId = null;
     _cancelSelectedTextLongPress();
+    unawaited(_openTextTypingScreen(selectAll: true));
   }
 
   void _handleSelectedTextEditButtonTap() {
@@ -1715,36 +2058,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     if (selected.isText) {
-      _startInlineTextEditing();
+      unawaited(_openTextTypingScreen());
       return;
     }
     if ((selected.psdEditableText ?? '').trim().isNotEmpty) {
       _editLayerTextById(selected.id);
     }
-  }
-
-  void _startInlineTextEditing({bool selectAll = false, int? cursorOffset}) {
-    final selected = _selectedLayer;
-    if (selected == null || !selected.isText || !mounted) {
-      return;
-    }
-    _syncSelectedTextEditor();
-    setState(() {
-      _isInlineTextEditing = true;
-      _showTextControls = false;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_isInlineTextEditing || !_hasSelectedTextLayer) {
-        return;
-      }
-      _selectedTextFocusNode.requestFocus();
-      final textLength = _selectedTextController.text.length;
-      _selectedTextController.selection = selectAll
-          ? TextSelection(baseOffset: 0, extentOffset: textLength)
-          : TextSelection.collapsed(
-              offset: (cursorOffset ?? textLength).clamp(0, textLength),
-            );
-    });
   }
 
   void _editLayerTextById(String layerId) {
@@ -1757,7 +2076,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       if (_selectedLayerId != layer.id) {
         _handleLayerSelected(layer.id);
       }
-      _startInlineTextEditing();
+      unawaited(_openTextTypingScreen());
       return;
     }
     final editableText = layer.psdEditableText?.trim();
@@ -1790,8 +2109,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       afterLayer: convertedLayer,
       afterSelectedLayerId: convertedLayer.id,
     );
-    _syncSelectedTextEditor(requestFocus: true);
-    _startInlineTextEditing(selectAll: true);
+    _syncSelectedTextEditor();
+    unawaited(_openTextTypingScreen(selectAll: true));
   }
 
   String _resolvePsdEditFontFamily(_CanvasLayer layer) {
@@ -1851,7 +2170,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     return legacyGlyphs >= 2 && legacyGlyphs >= (readableChars * 0.12);
   }
 
-  void _handleSelectedTextTap(int cursorOffset) {
+  void _handleSelectedTextTap() {
     if (!_hasSelectedTextLayer) {
       return;
     }
@@ -1865,6 +2184,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _activeMainToolLabel = 'Text';
       });
     }
+    unawaited(_openTextTypingScreen());
   }
 
   Widget _buildTextStyleOverlay(double height) {
@@ -1907,7 +2227,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 gradients: _textGradients,
                 savedEffectPresets: _savedTextEffectPresets,
                 copiedTextEffect: _copiedTextEffect,
-                onEditTap: () => _startInlineTextEditing(),
+                onEditTap: () => unawaited(_openTextTypingScreen()),
                 onTextChanged: _handleSelectedTextChanged,
                 onFontsTap: () => unawaited(_openFontPickerOverlay()),
                 onColorWheelTap: () => unawaited(_openTextColorPickerOverlay()),
@@ -2103,9 +2423,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     final snappedValue = _snapEditorSliderValue(
       value,
-      min: 0.8,
-      max: 2.2,
-      step: 0.1,
+      min: 0.2,
+      max: 5.0,
+      step: 0.05,
     );
     setState(() {
       _layers[index] = _layers[index].copyWith(textLineHeight: snappedValue);
@@ -2123,9 +2443,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     final snappedValue = _snapEditorSliderValue(
       value,
-      min: -100,
-      max: 100,
-      step: 1,
+      min: -200,
+      max: 200,
+      step: 0.5,
     );
     setState(() {
       _layers[index] = _layers[index].copyWith(textLetterSpacing: snappedValue);
@@ -2309,6 +2629,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return;
     }
     _didShowSetupReadyHint = true;
+    if (_didShowSetupReadyHint) {
+      return;
+    }
     final strings = context.strings;
     final config = widget.pageConfig!;
     final backgroundLabel = switch (widget.initialStageBackground?.type) {
@@ -2528,6 +2851,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _canvasLayerPickerEntry?.remove();
     _canvasLayerPickerEntry = null;
     _autosaveTimer?.cancel();
+    _layerStyleQuickUpdateTimer?.cancel();
     unawaited(_persistAutosaveDraft());
     _photoGlideController.dispose();
     _selectedTextLongPressTimer?.cancel();
@@ -3082,8 +3406,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         _isLayerMaskBrushMode)
                   ? _eraserBarHeight
                   : _bottomBarHeight;
+              final showTextStyleQuickControls =
+                  _showTextControls && _activeTextToolTab == _TextToolTab.style;
               final visibleBottomToolsHeight = _showTextControls
-                  ? _textStyleBarHeight
+                  ? showTextStyleQuickControls
+                        ? bottomToolsHeight
+                        : _textStyleBarHeight
                   : bottomToolsHeight;
               final systemBottomInset = MediaQuery.viewPaddingOf(
                 context,
@@ -3093,15 +3421,15 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   : _editorBannerHeight;
               final floatingBottom = systemBottomInset + bannerHeight + 6;
               const toolbarCanvasGap = 8.0;
-              const landscapeTopRailWidth = 136.0;
+              const landscapeTopRailWidth = 86.0;
               const landscapeBottomRailWidth = 136.0;
               final useLandscapeSideRails =
                   canvasSize.width > canvasSize.height;
               final landscapeLeftInset = useLandscapeSideRails
-                  ? landscapeTopRailWidth + toolbarCanvasGap
+                  ? landscapeBottomRailWidth + toolbarCanvasGap
                   : 0.0;
               final landscapeRightInset = useLandscapeSideRails
-                  ? landscapeBottomRailWidth + toolbarCanvasGap
+                  ? landscapeTopRailWidth + toolbarCanvasGap
                   : 0.0;
               final bottomPanelUsesSideRail =
                   useLandscapeSideRails &&
@@ -3114,12 +3442,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   !_isPhotoCloneMode &&
                   !_isDrawBrushMode &&
                   !_isLayerMaskBrushMode &&
-                  !_showTextControls;
+                  !_showTextControls &&
+                  !_showLayerStyleQuickControls;
               final selectedLayerCanEdit =
                   _selectedLayerId != null && !_isSelectedLayerLocked;
               final reservedTopInset = useLandscapeSideRails
                   ? 0.0
-                  : 4 + _topBarHeight + toolbarCanvasGap;
+                  : _topBarHeight + toolbarCanvasGap;
               final reservedBottomInset = useLandscapeSideRails
                   ? 0.0
                   : floatingBottom +
@@ -3134,10 +3463,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 0.0,
               );
               final workspaceSize = Size(workspaceWidth, workspaceHeight);
-              final workspaceViewportSize = Size(
-                workspaceWidth,
-                canvasSize.height,
-              );
+              final workspaceViewportSize = workspaceSize;
+              final workspaceFrameTop = useLandscapeSideRails
+                  ? 0.0
+                  : reservedTopInset;
+              final workspaceFrameBottom = useLandscapeSideRails
+                  ? 0.0
+                  : reservedBottomInset;
               _lastCanvasSize = workspaceViewportSize;
               final hasPageSelection = (_pageAspectRatio ?? 0) > 0;
               final pageSize = hasPageSelection
@@ -3170,6 +3502,26 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   );
                 });
               }
+              final nudgeControlSize = _layerNudgeControlExpanded
+                  ? _FloatingLayerNudgeControl.expandedSize
+                  : _FloatingLayerNudgeControl.collapsedSize;
+              final nudgeMaxX = math.max(
+                0.0,
+                canvasSize.width - nudgeControlSize,
+              );
+              final nudgeMaxY = math.max(
+                0.0,
+                canvasSize.height - nudgeControlSize,
+              );
+              final nudgePosition = Offset(
+                _layerNudgeControlOffset.dx.clamp(0.0, nudgeMaxX).toDouble(),
+                _layerNudgeControlOffset.dy.clamp(0.0, nudgeMaxY).toDouble(),
+              );
+              final nudgeAtEdge =
+                  nudgePosition.dx <= 0.5 ||
+                  nudgePosition.dy <= 0.5 ||
+                  (nudgeMaxX - nudgePosition.dx).abs() <= 0.5 ||
+                  (nudgeMaxY - nudgePosition.dy).abs() <= 0.5;
 
               return Stack(
                 children: <Widget>[
@@ -3181,8 +3533,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                   Positioned(
                     left: landscapeLeftInset,
                     right: landscapeRightInset,
-                    top: 0,
-                    bottom: 0,
+                    top: workspaceFrameTop,
+                    bottom: workspaceFrameBottom,
                     child: Listener(
                       behavior: HitTestBehavior.translucent,
                       onPointerDown: _handleWorkspacePointerDown,
@@ -3233,8 +3585,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   (widget.initialDesignImportPath ?? '')
                                       .trim()
                                       .isEmpty,
-                              topInset: reservedTopInset,
-                              bottomInset: reservedBottomInset,
+                              topInset: 0,
+                              bottomInset: 0,
                               viewportScale: _workspaceZoom,
                               transformationController:
                                   _transformationController,
@@ -3290,13 +3642,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   _updateSelectedTextLongPress,
                               onSelectedTextPointerCancel:
                                   _cancelSelectedTextLongPress,
-                              inlineTextController: _selectedTextController,
-                              inlineTextFocusNode: _selectedTextFocusNode,
-                              isInlineTextEditing: _isInlineTextEditing,
-                              onInlineTextChanged: _handleSelectedTextChanged,
-                              onInlineTextEditingComplete: () {
-                                _selectedTextFocusNode.unfocus();
-                              },
+                              isTextTypingScreenOpen: _isTextTypingScreenOpen,
                               isPhotoEraserMode: _isPhotoEraserMode,
                               isPhotoStretchMode: _isPhotoStretchMode,
                               isContentAwareMode: _isContentAwareMode,
@@ -3370,7 +3716,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   !_isPhotoMaskPositionMode &&
                                   !_isMagicWandMode &&
                                   !_isTextPlacementMode &&
-                                  !_isInlineTextEditing,
+                                  !_isTextTypingScreenOpen,
                               showCanvasBackground:
                                   !_isTransparentExportCapture,
                               photoBrightnessForLayer:
@@ -3402,6 +3748,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   !_isCapturingStage &&
                                   !_isLayerInteracting &&
                                   !_isWorkspacePinching,
+                              isLayerInteracting: _isLayerInteracting,
                               showPageFramePreview:
                                   !_isExporting && !_isCapturingStage,
                               snapGuideListenable: _snapGuideNotifier,
@@ -3437,10 +3784,37 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 _pageAspectRatio),
                       ),
                     ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      ignoring: !_showLayersAdvancedPanel,
+                      child: AnimatedOpacity(
+                        opacity: _showLayersAdvancedPanel ? 1 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: _AdvancedLayersFullscreenOverlay(
+                          layers: _layers,
+                          selectedLayerId: _selectedLayerId,
+                          autoSelectCanvasLayer: _autoSelectCanvasLayer,
+                          onAutoSelectCanvasLayerTap:
+                              _toggleCanvasAutoSelectLayer,
+                          onSelectLayer: _handleLayerSelected,
+                          onDeleteLayer: _deleteLayerById,
+                          onToggleLayerLock: _toggleLayerLockById,
+                          onToggleLayerVisibility: _toggleLayerVisibilityById,
+                          onReorderLayers: _reorderLayersFromAdvancedView,
+                          onMoveToFront: _moveLayerToFrontById,
+                          onMoveToBack: _moveLayerToBackById,
+                          onEditText: _editLayerTextById,
+                          onBlendModeChanged: _setLayerBlendMode,
+                          onClose: _closeLayersAdvancedPanel,
+                        ),
+                      ),
+                    ),
+                  ),
                   Positioned(
-                    left: 8,
-                    right: useLandscapeSideRails ? null : 8,
-                    top: 4,
+                    left: useLandscapeSideRails ? null : 0,
+                    right: useLandscapeSideRails ? 8 : 0,
+                    top: useLandscapeSideRails ? 4 : 0,
                     bottom: useLandscapeSideRails ? 4 : null,
                     width: useLandscapeSideRails ? landscapeTopRailWidth : null,
                     child: RepaintBoundary(
@@ -3460,8 +3834,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         onBringFrontTap: _moveSelectedLayerToFront,
                         onSendBackTap: _moveSelectedLayerToBack,
                         onLayersTap: _openLayersAdvancedOverlay,
-                        onUniversalLayerStyleTap: () =>
-                            unawaited(_openUniversalLayerStyleSheet()),
+                        onUniversalLayerStyleTap: _openLayerStyleQuickControls,
+                        onCopyLayerStyleTap: _copySelectedLayerStyle,
+                        onPasteLayerStyleTap: _pasteCopiedLayerStyleToSelected,
                         autoSelectCanvasLayer: _autoSelectCanvasLayer,
                         onAutoSelectCanvasLayerTap:
                             _toggleCanvasAutoSelectLayer,
@@ -3478,6 +3853,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         isExporting: _isExporting,
                         canDelete: selectedLayerCanEdit,
                         canDuplicate: selectedLayerCanEdit,
+                        canPasteLayerStyle:
+                            selectedLayerCanEdit && _copiedLayerStyle != null,
                         canBringFront:
                             selectedLayerCanEdit &&
                             _selectedLayerIndex != -1 &&
@@ -3527,11 +3904,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         onPhotoEraserTap: _activatePhotoEraserMode,
                         onPhotoContentAwareTap: _activateContentAwareMode,
                         onPhotoAdjustTap: _openAdjustPanel,
-                        onPhotoRetouchTap: () => unawaited(
-                          _openSelectedPhotoRetouchTool().whenComplete(
-                            _restoreSelectedLayerToolContext,
-                          ),
-                        ),
                         onPhotoRemoveBgTap: () =>
                             unawaited(_handleRemoveBackgroundTap()),
                         onPhotoStyleTap: () =>
@@ -3558,6 +3930,74 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       ),
                     ),
                   ),
+                  if (!_isTextTypingScreenOpen &&
+                      !_isExporting &&
+                      !_isCapturingStage)
+                    Positioned(
+                      left: nudgePosition.dx,
+                      top: nudgePosition.dy,
+                      child: _FloatingLayerNudgeControl(
+                        expanded: _layerNudgeControlExpanded,
+                        canNudge: selectedLayerCanEdit,
+                        isAtEdge: nudgeAtEdge,
+                        onToggle: () {
+                          setState(() {
+                            _layerNudgeControlExpanded =
+                                !_layerNudgeControlExpanded;
+                          });
+                        },
+                        onNudge: _nudgeSelectedLayer,
+                        onDragUpdate: (details) {
+                          setState(() {
+                            _layerNudgeControlOffset = Offset(
+                              (_layerNudgeControlOffset.dx + details.delta.dx)
+                                  .clamp(0.0, nudgeMaxX)
+                                  .toDouble(),
+                              (_layerNudgeControlOffset.dy + details.delta.dy)
+                                  .clamp(0.0, nudgeMaxY)
+                                  .toDouble(),
+                            );
+                          });
+                        },
+                        onDragEnd: (_) {
+                          const snapDistance = 28.0;
+                          final distances = <double>[
+                            nudgePosition.dx,
+                            nudgePosition.dy,
+                            nudgeMaxX - nudgePosition.dx,
+                            nudgeMaxY - nudgePosition.dy,
+                          ];
+                          final nearest = distances.reduce(math.min);
+                          if (nearest > snapDistance) {
+                            return;
+                          }
+                          setState(() {
+                            _layerNudgeControlExpanded = false;
+                            if (nearest == distances[0]) {
+                              _layerNudgeControlOffset = Offset(
+                                0,
+                                nudgePosition.dy,
+                              );
+                            } else if (nearest == distances[1]) {
+                              _layerNudgeControlOffset = Offset(
+                                nudgePosition.dx,
+                                0,
+                              );
+                            } else if (nearest == distances[2]) {
+                              _layerNudgeControlOffset = Offset(
+                                nudgeMaxX,
+                                nudgePosition.dy,
+                              );
+                            } else {
+                              _layerNudgeControlOffset = Offset(
+                                nudgePosition.dx,
+                                nudgeMaxY,
+                              );
+                            }
+                          });
+                        },
+                      ),
+                    ),
                   if (_isCropMode) const SizedBox.shrink(),
                   if (!_isKeyboardVisible && !useLandscapeSideRails)
                     Positioned(
@@ -3576,9 +4016,39 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         },
                       ),
                     ),
+                  if (_showLayerStyleQuickControls &&
+                      selectedLayerCanEdit &&
+                      !_isKeyboardVisible &&
+                      !_isTextTypingScreenOpen &&
+                      !_isExporting &&
+                      !_isCapturingStage)
+                    Positioned(
+                      left: useLandscapeSideRails
+                          ? landscapeBottomRailWidth + toolbarCanvasGap
+                          : 0,
+                      right: useLandscapeSideRails
+                          ? landscapeTopRailWidth + toolbarCanvasGap
+                          : 0,
+                      bottom: useLandscapeSideRails
+                          ? 10
+                          : floatingBottom + bottomToolsHeight + 8,
+                      child: _LayerStyleQuickPanel(
+                        height: _layerStyleQuickPanelHeight,
+                        activeTab: _activeLayerStyleQuickTab,
+                        layer: _selectedLayer,
+                        gradients: _textGradients,
+                        onChangeStart: (_) {
+                          _layerStyleQuickBeforeLayer ??= _selectedLayer == null
+                              ? null
+                              : _cloneLayer(_selectedLayer!);
+                        },
+                        onChangeEnd: (_) => _commitLayerStyleQuickEdit(),
+                        onUpdate: _updateSelectedLayerStyleQuick,
+                      ),
+                    ),
                   Positioned(
-                    left: bottomPanelUsesSideRail ? null : 0,
-                    right: 0,
+                    left: 0,
+                    right: bottomPanelUsesSideRail ? null : 0,
                     top: bottomPanelUsesSideRail ? 4 : null,
                     bottom: bottomPanelUsesSideRail ? 4 : floatingBottom,
                     width: bottomPanelUsesSideRail
@@ -3587,9 +4057,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                     child: RepaintBoundary(
                       child: _EditorGlassSurface(
                         borderRadius: BorderRadius.zero,
-                        surfaceColor: _editorChromeSurfaceStrong.withValues(
-                          alpha: 0.25,
-                        ),
+                        surfaceColor:
+                            (_showLayerStyleQuickControls ||
+                                showTextStyleQuickControls)
+                            ? Colors.transparent
+                            : _editorChromeSurfaceStrong.withValues(
+                                alpha: 0.25,
+                              ),
                         showBorder: false,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 220),
@@ -3878,11 +4352,47 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                 )
                               : _showTextControls
                               ? KeyedSubtree(
-                                  key: const ValueKey<String>(
-                                    'text-style-overlay',
+                                  key: ValueKey<String>(
+                                    showTextStyleQuickControls
+                                        ? 'text-style-quick-strip'
+                                        : 'text-style-overlay',
                                   ),
-                                  child: _buildTextStyleOverlay(
-                                    _textStyleBarHeight,
+                                  child: showTextStyleQuickControls
+                                      ? _TextStyleQuickToolsStrip(
+                                          height: bottomToolsHeight,
+                                          layer: _selectedLayer,
+                                          onBack: () {
+                                            setState(() {
+                                              _showTextControls = false;
+                                            });
+                                          },
+                                          onBoldToggle: _toggleSelectedTextBold,
+                                          onItalicToggle:
+                                              _toggleSelectedTextItalic,
+                                          onUnderlineToggle:
+                                              _toggleSelectedTextUnderline,
+                                          onAlignSelected:
+                                              _setSelectedTextAlignment,
+                                        )
+                                      : _buildTextStyleOverlay(
+                                          _textStyleBarHeight,
+                                        ),
+                                )
+                              : _showLayerStyleQuickControls
+                              ? KeyedSubtree(
+                                  key: const ValueKey<String>(
+                                    'layer-style-quick-strip',
+                                  ),
+                                  child: _LayerStyleQuickToolsStrip(
+                                    height: bottomToolsHeight,
+                                    activeTab: _activeLayerStyleQuickTab,
+                                    onBack: _closeLayerStyleQuickControls,
+                                    onTabSelected: (tab) {
+                                      setState(() {
+                                        _activeLayerStyleQuickTab = tab;
+                                      });
+                                      HapticFeedback.selectionClick();
+                                    },
                                   ),
                                 )
                               : _activeBottomPrimaryTool ==
@@ -3915,17 +4425,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                         _activeMainToolLabel = 'Content Aware';
                                       });
                                       _activateContentAwareMode();
-                                    },
-                                    onRetouchTap: () {
-                                      setState(() {
-                                        _activeMainToolLabel = 'Retouch';
-                                      });
-                                      unawaited(
-                                        _openSelectedPhotoRetouchTool()
-                                            .whenComplete(
-                                              _restoreSelectedLayerToolContext,
-                                            ),
-                                      );
                                     },
                                     onRemoveBgTap: () {
                                       setState(() {
@@ -4009,6 +4508,37 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     onPhotoFileImportTap:
                                         _handleImportDesignFile,
                                     onPhotoMagicWandTap: _activateMagicWandMode,
+                                    hasSelectedPhotoLayer:
+                                        _hasSelectedPhotoLayer &&
+                                        selectedLayerCanEdit,
+                                    onPhotoCropTap: () =>
+                                        unawaited(_handleCropPhotoTap()),
+                                    onPhotoFitTap: _resetSelectedLayerToFit,
+                                    onPhotoEraserTap: _activatePhotoEraserMode,
+                                    onPhotoContentAwareTap:
+                                        _activateContentAwareMode,
+                                    onPhotoAdjustTap: _openAdjustPanel,
+                                    onPhotoRemoveBgTap: () =>
+                                        unawaited(_handleRemoveBackgroundTap()),
+                                    onPhotoStyleTap: () => unawaited(
+                                      _openSelectedPhotoStyleOverlay(),
+                                    ),
+                                    onPhotoFlipHorizontalTap:
+                                        _flipSelectedPhotoHorizontal,
+                                    onPhotoFlipVerticalTap:
+                                        _flipSelectedPhotoVertical,
+                                    onPhotoMaskTap: () => unawaited(
+                                      _openPhotoMaskPickerOverlay(),
+                                    ),
+                                    onPhotoPerspectiveTap: () => unawaited(
+                                      _openSelectedPhotoPerspectiveOverlay(),
+                                    ),
+                                    onPhotoCloneTap: _activatePhotoCloneMode,
+                                    onPhotoStretchTap:
+                                        _activatePhotoStretchMode,
+                                    onPhotoSelectionTap: () => unawaited(
+                                      _openSelectedPhotoSelectionTool(),
+                                    ),
                                     onTextAddTap: _handleTextAddQuickTap,
                                     onTextFontTap: _handleTextFontQuickTap,
                                     onTextSizeTap: _handleTextSizeQuickTap,
@@ -4050,6 +4580,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               child: _EditorCommitOverlay(
                                 label: commitState.label,
                                 detail: commitState.detail,
+                                compact: commitState.compact,
                               ),
                             );
                           },
@@ -4058,6 +4589,945 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+typedef _LayerStyleQuickUpdate =
+    void Function({
+      Color? strokeColor,
+      double? strokeWidth,
+      double? strokeOpacity,
+      Color? shadowColor,
+      double? shadowOpacity,
+      double? shadowBlur,
+      double? shadowSpread,
+      double? shadowOffsetX,
+      double? shadowOffsetY,
+      Color? innerShadowColor,
+      double? innerShadowOpacity,
+      double? innerShadowBlur,
+      double? innerShadowChoke,
+      double? innerShadowDistance,
+      double? innerShadowAngle,
+      Color? outerGlowColor,
+      double? outerGlowOpacity,
+      double? outerGlowSize,
+      double? outerGlowSpread,
+      Color? overlayColor,
+      double? overlayOpacity,
+      bool? gradientOverlayEnabled,
+      int? gradientOverlayIndex,
+      double? gradientOverlayOpacity,
+      double? gradientOverlayAngle,
+    });
+
+class _LayerStyleQuickPanel extends StatelessWidget {
+  const _LayerStyleQuickPanel({
+    required this.height,
+    required this.activeTab,
+    required this.layer,
+    required this.gradients,
+    required this.onChangeStart,
+    required this.onChangeEnd,
+    required this.onUpdate,
+  });
+
+  final double height;
+  final _LayerStyleQuickTab activeTab;
+  final _CanvasLayer? layer;
+  final List<List<Color>> gradients;
+  final ValueChanged<double> onChangeStart;
+  final ValueChanged<double> onChangeEnd;
+  final _LayerStyleQuickUpdate onUpdate;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = layer;
+    if (current == null) {
+      return const SizedBox.shrink();
+    }
+    return SizedBox(
+      height: height,
+      child: ColoredBox(
+        color: const Color(0x260B1220),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          child: KeyedSubtree(
+            key: ValueKey<_LayerStyleQuickTab>(activeTab),
+            child: _buildTabContent(current),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(_CanvasLayer current) {
+    switch (activeTab) {
+      case _LayerStyleQuickTab.stroke:
+        return _QuickPanelBody(
+          children: [
+            _LayerStyleColorSlider(
+              label: 'Color',
+              color: current.layerStyleStrokeColor,
+              onBlack: () => onUpdate(strokeColor: Colors.black),
+              onWhite: () => onUpdate(strokeColor: Colors.white),
+              onChangeStart: onChangeStart,
+              onChangeEnd: onChangeEnd,
+              onHueChanged: (color) => onUpdate(strokeColor: color),
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Size',
+              value: current.layerStyleStrokeWidth,
+              min: 0,
+              max: 36,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(strokeWidth: value),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Opacity',
+              value: current.layerStyleStrokeOpacity * 100,
+              min: 0,
+              max: 100,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(strokeOpacity: value / 100),
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        );
+      case _LayerStyleQuickTab.shadow:
+        return _QuickPanelBody(
+          children: [
+            _LayerStyleColorSlider(
+              label: 'Color',
+              color: current.layerStyleShadowColor,
+              onBlack: () => onUpdate(shadowColor: Colors.black),
+              onWhite: () => onUpdate(shadowColor: Colors.white),
+              onChangeStart: onChangeStart,
+              onChangeEnd: onChangeEnd,
+              onHueChanged: (color) => onUpdate(shadowColor: color),
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Opacity',
+              value: current.layerStyleShadowOpacity * 100,
+              min: 0,
+              max: 100,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(shadowOpacity: value / 100),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Blur',
+              value: current.layerStyleShadowBlur,
+              min: 0,
+              max: 96,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(shadowBlur: value),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Y',
+              value: current.layerStyleShadowOffsetY,
+              min: -120,
+              max: 120,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(shadowOffsetY: value),
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        );
+      case _LayerStyleQuickTab.glow:
+        return _QuickPanelBody(
+          children: [
+            _LayerStyleColorSlider(
+              label: 'Color',
+              color: current.layerStyleOuterGlowColor,
+              onBlack: () => onUpdate(outerGlowColor: Colors.black),
+              onWhite: () => onUpdate(outerGlowColor: Colors.white),
+              onChangeStart: onChangeStart,
+              onChangeEnd: onChangeEnd,
+              onHueChanged: (color) => onUpdate(outerGlowColor: color),
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Opacity',
+              value: current.layerStyleOuterGlowOpacity * 100,
+              min: 0,
+              max: 100,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(outerGlowOpacity: value / 100),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Size',
+              value: current.layerStyleOuterGlowSize,
+              min: 0,
+              max: 120,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(outerGlowSize: value),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Spread',
+              value: current.layerStyleOuterGlowSpread,
+              min: 0,
+              max: 32,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(outerGlowSpread: value),
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        );
+      case _LayerStyleQuickTab.colorOverlay:
+        return _QuickPanelBody(
+          children: [
+            _LayerStyleColorSlider(
+              label: 'Color',
+              color: current.layerStyleOverlayColor,
+              onBlack: () => onUpdate(overlayColor: Colors.black),
+              onWhite: () => onUpdate(overlayColor: Colors.white),
+              onChangeStart: onChangeStart,
+              onChangeEnd: onChangeEnd,
+              onHueChanged: (color) => onUpdate(overlayColor: color),
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Color',
+              value: current.layerStyleOverlayOpacity * 100,
+              min: 0,
+              max: 100,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(overlayOpacity: value / 100),
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        );
+      case _LayerStyleQuickTab.gradient:
+        return _QuickPanelBody(
+          children: [
+            _LayerStyleGradientStrip(
+              gradients: gradients,
+              selectedIndex: current.layerStyleGradientOverlayIndex,
+              onChangeStart: onChangeStart,
+              onChangeEnd: onChangeEnd,
+              onSelected: (index) {
+                onUpdate(
+                  gradientOverlayEnabled: true,
+                  gradientOverlayIndex: index,
+                  gradientOverlayOpacity:
+                      current.layerStyleGradientOverlayOpacity <= 0.001
+                      ? 0.65
+                      : current.layerStyleGradientOverlayOpacity,
+                );
+              },
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Opacity',
+              value: current.layerStyleGradientOverlayOpacity * 100,
+              min: 0,
+              max: 100,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(
+                gradientOverlayEnabled: value > 0,
+                gradientOverlayOpacity: value / 100,
+              ),
+              onChangeEnd: onChangeEnd,
+            ),
+            _LayerStyleQuickSlider(
+              label: 'Angle',
+              value: current.layerStyleGradientOverlayAngle,
+              min: 0,
+              max: 360,
+              onChangeStart: onChangeStart,
+              onChanged: (value) => onUpdate(
+                gradientOverlayEnabled:
+                    current.layerStyleGradientOverlayOpacity > 0.001,
+                gradientOverlayAngle: value,
+              ),
+              onChangeEnd: onChangeEnd,
+            ),
+          ],
+        );
+    }
+  }
+}
+
+class _QuickPanelBody extends StatelessWidget {
+  const _QuickPanelBody({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 12),
+      itemCount: children.length,
+      separatorBuilder: (_, _) => const SizedBox(width: 28),
+      itemBuilder: (_, index) => children[index],
+    );
+  }
+}
+
+class _LayerStyleGradientStrip extends StatelessWidget {
+  const _LayerStyleGradientStrip({
+    required this.gradients,
+    required this.selectedIndex,
+    required this.onChangeStart,
+    required this.onChangeEnd,
+    required this.onSelected,
+  });
+
+  final List<List<Color>> gradients;
+  final int selectedIndex;
+  final ValueChanged<double> onChangeStart;
+  final ValueChanged<double> onChangeEnd;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = math.min(360.0, MediaQuery.sizeOf(context).width * 0.78);
+    final safeSelected = gradients.isEmpty
+        ? -1
+        : selectedIndex.clamp(0, gradients.length - 1);
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Gradient',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                gradients.isEmpty ? '0' : '${safeSelected + 1}',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: gradients.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final selected = index == safeSelected;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (_) => onChangeStart(index.toDouble()),
+                  onTapCancel: () => onChangeEnd(index.toDouble()),
+                  onTap: () {
+                    onSelected(index);
+                    onChangeEnd(index.toDouble());
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    width: selected ? 54 : 46,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      gradient: LinearGradient(colors: gradients[index]),
+                      border: Border.all(
+                        color: selected ? Colors.black : Colors.white70,
+                        width: selected ? 2 : 1,
+                      ),
+                      boxShadow: selected
+                          ? const <BoxShadow>[
+                              BoxShadow(
+                                color: Color(0x33000000),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerStyleQuickToolsStrip extends StatelessWidget {
+  const _LayerStyleQuickToolsStrip({
+    required this.height,
+    required this.activeTab,
+    required this.onBack,
+    required this.onTabSelected,
+  });
+
+  final double height;
+  final _LayerStyleQuickTab activeTab;
+  final VoidCallback onBack;
+  final ValueChanged<_LayerStyleQuickTab> onTabSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          _LayerStyleToolButton(
+            label: 'Close',
+            icon: Icons.keyboard_arrow_down_rounded,
+            selected: false,
+            onTap: onBack,
+          ),
+          _LayerStyleToolButton(
+            label: 'Stroke',
+            icon: Icons.border_outer_rounded,
+            selected: activeTab == _LayerStyleQuickTab.stroke,
+            onTap: () => onTabSelected(_LayerStyleQuickTab.stroke),
+          ),
+          _LayerStyleToolButton(
+            label: 'Shadow',
+            icon: Icons.wb_twilight_rounded,
+            selected: activeTab == _LayerStyleQuickTab.shadow,
+            onTap: () => onTabSelected(_LayerStyleQuickTab.shadow),
+          ),
+          _LayerStyleToolButton(
+            label: 'Glow',
+            icon: Icons.blur_on_rounded,
+            selected: activeTab == _LayerStyleQuickTab.glow,
+            onTap: () => onTabSelected(_LayerStyleQuickTab.glow),
+          ),
+          _LayerStyleToolButton(
+            label: 'Color',
+            icon: Icons.invert_colors_rounded,
+            selected: activeTab == _LayerStyleQuickTab.colorOverlay,
+            onTap: () => onTabSelected(_LayerStyleQuickTab.colorOverlay),
+          ),
+          _LayerStyleToolButton(
+            label: 'Gradient',
+            icon: Icons.gradient_rounded,
+            selected: activeTab == _LayerStyleQuickTab.gradient,
+            onTap: () => onTabSelected(_LayerStyleQuickTab.gradient),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TextStyleQuickToolsStrip extends StatelessWidget {
+  const _TextStyleQuickToolsStrip({
+    required this.height,
+    required this.layer,
+    required this.onBack,
+    required this.onBoldToggle,
+    required this.onItalicToggle,
+    required this.onUnderlineToggle,
+    required this.onAlignSelected,
+  });
+
+  final double height;
+  final _CanvasLayer? layer;
+  final VoidCallback onBack;
+  final VoidCallback onBoldToggle;
+  final VoidCallback onItalicToggle;
+  final VoidCallback onUnderlineToggle;
+  final ValueChanged<TextAlign> onAlignSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final textLayer = layer;
+    return SizedBox(
+      height: height,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: <Widget>[
+            _TextStyleQuickIcon(
+              tooltip: 'Close',
+              icon: Icons.keyboard_arrow_down_rounded,
+              selected: false,
+              onTap: onBack,
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Bold',
+              icon: Icons.format_bold_rounded,
+              selected: textLayer?.isTextBold ?? false,
+              onTap: onBoldToggle,
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Italic',
+              icon: Icons.format_italic_rounded,
+              selected: textLayer?.isTextItalic ?? false,
+              onTap: onItalicToggle,
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Underline',
+              icon: Icons.format_underline_rounded,
+              selected: textLayer?.isTextUnderline ?? false,
+              onTap: onUnderlineToggle,
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Left',
+              icon: Icons.format_align_left_rounded,
+              selected: textLayer?.textAlign == TextAlign.left,
+              onTap: () => onAlignSelected(TextAlign.left),
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Center',
+              icon: Icons.format_align_center_rounded,
+              selected: textLayer?.textAlign == TextAlign.center,
+              onTap: () => onAlignSelected(TextAlign.center),
+            ),
+            _TextStyleQuickIcon(
+              tooltip: 'Right',
+              icon: Icons.format_align_right_rounded,
+              selected: textLayer?.textAlign == TextAlign.right,
+              onTap: () => onAlignSelected(TextAlign.right),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TextStyleQuickIcon extends StatelessWidget {
+  const _TextStyleQuickIcon({
+    required this.tooltip,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        child: _PressableSurface(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            width: 34,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected
+                  ? const Color(0xFF2563EB).withValues(alpha: 0.72)
+                  : Colors.transparent,
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: selected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.88),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerStyleToolButton extends StatelessWidget {
+  const _LayerStyleToolButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: _PressableSurface(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 72,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFF2563EB).withValues(alpha: 0.78)
+                : Colors.white.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFFBFDBFE)
+                  : Colors.white.withValues(alpha: 0.10),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? Colors.white : const Color(0xFFD1D5DB),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? Colors.white : const Color(0xFFD1D5DB),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LayerStyleQuickSlider extends StatelessWidget {
+  const _LayerStyleQuickSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChangeStart,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChangeStart;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = value.clamp(min, max).toDouble();
+    return SizedBox(
+      width: math.min(300, MediaQuery.sizeOf(context).width * 0.68),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                clamped.round().toString(),
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          SliderTheme(
+            data: SliderThemeData(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              activeTrackColor: const Color(0xFF60A5FA),
+              inactiveTrackColor: Colors.white.withValues(alpha: 0.28),
+              thumbColor: Colors.white,
+              overlayColor: const Color(0x3360A5FA),
+            ),
+            child: Slider(
+              value: clamped,
+              min: min,
+              max: max,
+              divisions: math.max(1, (max - min).round()),
+              onChangeStart: onChangeStart,
+              onChanged: onChanged,
+              onChangeEnd: onChangeEnd,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerStyleColorSlider extends StatelessWidget {
+  const _LayerStyleColorSlider({
+    required this.label,
+    required this.color,
+    required this.onBlack,
+    required this.onWhite,
+    required this.onChangeStart,
+    required this.onChangeEnd,
+    required this.onHueChanged,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onBlack;
+  final VoidCallback onWhite;
+  final ValueChanged<double> onChangeStart;
+  final ValueChanged<double> onChangeEnd;
+  final ValueChanged<Color> onHueChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final hsv = HSVColor.fromColor(color);
+    final width = math.min(320.0, MediaQuery.sizeOf(context).width * 0.72);
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Spacer(),
+              _LayerStyleColorDot(
+                color: Colors.black,
+                selected: color.computeLuminance() <= 0.02,
+                onTap: onBlack,
+              ),
+              const SizedBox(width: 8),
+              _LayerStyleColorDot(
+                color: Colors.white,
+                selected: hsv.saturation <= 0.04 && hsv.value >= 0.96,
+                onTap: onWhite,
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 26,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.45),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          _LayerStyleAllColorsSlider(
+            hue: hsv.hue.clamp(0.0, 359.0).toDouble(),
+            onChangeStart: onChangeStart,
+            onChanged: (hue) {
+              final saturation = hsv.saturation <= 0.04 ? 1.0 : hsv.saturation;
+              final value = hsv.value <= 0.02 ? 1.0 : hsv.value;
+              onHueChanged(
+                HSVColor.fromAHSV(1, hue, saturation, value).toColor(),
+              );
+            },
+            onChangeEnd: onChangeEnd,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerStyleAllColorsSlider extends StatelessWidget {
+  const _LayerStyleAllColorsSlider({
+    required this.hue,
+    required this.onChangeStart,
+    required this.onChanged,
+    required this.onChangeEnd,
+  });
+
+  final double hue;
+  final ValueChanged<double> onChangeStart;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
+
+  static const double _maxHue = 359;
+
+  double _hueForDx(double dx, double width) {
+    if (width <= 0) {
+      return hue.clamp(0.0, _maxHue).toDouble();
+    }
+    return ((dx.clamp(0.0, width) / width) * _maxHue)
+        .clamp(0.0, _maxHue)
+        .toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          void updateFromLocal(Offset localPosition) {
+            onChanged(_hueForDx(localPosition.dx, width));
+          }
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) {
+              final next = _hueForDx(details.localPosition.dx, width);
+              onChangeStart(next);
+              onChanged(next);
+            },
+            onTapUp: (details) =>
+                onChangeEnd(_hueForDx(details.localPosition.dx, width)),
+            onTapCancel: () => onChangeEnd(hue),
+            onHorizontalDragStart: (details) {
+              final next = _hueForDx(details.localPosition.dx, width);
+              onChangeStart(next);
+              onChanged(next);
+            },
+            onHorizontalDragUpdate: (details) =>
+                updateFromLocal(details.localPosition),
+            onHorizontalDragEnd: (_) => onChangeEnd(hue),
+            child: CustomPaint(
+              painter: _LayerStyleAllColorsSliderPainter(hue: hue),
+              child: const SizedBox.expand(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LayerStyleAllColorsSliderPainter extends CustomPainter {
+  const _LayerStyleAllColorsSliderPainter({required this.hue});
+
+  final double hue;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const trackHeight = 7.0;
+    final trackRect = Rect.fromLTWH(
+      0,
+      (size.height - trackHeight) / 2,
+      size.width,
+      trackHeight,
+    );
+    final rrect = RRect.fromRectAndRadius(
+      trackRect,
+      const Radius.circular(999),
+    );
+    final colors = List<Color>.generate(
+      37,
+      (index) => HSVColor.fromAHSV(1, index * 10.0, 1, 1).toColor(),
+    );
+    final paint = Paint()
+      ..shader = LinearGradient(colors: colors).createShader(trackRect);
+    canvas.drawRRect(rrect, paint);
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.35),
+    );
+
+    final thumbX = size.width <= 0
+        ? 0.0
+        : (hue.clamp(0.0, 359.0) / 359.0) * size.width;
+    final thumbCenter = Offset(thumbX, size.height / 2);
+    canvas.drawCircle(thumbCenter, 9, Paint()..color = const Color(0xCC000000));
+    canvas.drawCircle(thumbCenter, 7, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      thumbCenter,
+      5,
+      Paint()..color = HSVColor.fromAHSV(1, hue, 1, 1).toColor(),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LayerStyleAllColorsSliderPainter oldDelegate) {
+    return oldDelegate.hue != hue;
+  }
+}
+
+class _LayerStyleColorDot extends StatelessWidget {
+  const _LayerStyleColorDot({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PressableSurface(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF60A5FA)
+                : Colors.white.withValues(alpha: 0.45),
+            width: selected ? 3 : 1,
           ),
         ),
       ),

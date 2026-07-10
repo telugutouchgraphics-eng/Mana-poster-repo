@@ -26,7 +26,7 @@ final Map<String, String> _legacyConversionCache = <String, String>{};
 bool _legacyConversionCacheLoaded = false;
 Future<void>? _legacyConversionCacheLoadFuture;
 Timer? _legacyConversionCachePersistTimer;
-const String _legacyConversionVersion = 'offline-v6';
+const String _legacyConversionVersion = 'offline-v9';
 
 const Map<String, _LegacyFontProfile> _legacyFontProfiles =
     <String, _LegacyFontProfile>{
@@ -174,14 +174,14 @@ double _effectiveTextLineHeightForRender({
   required double textLineHeight,
   String text = '',
 }) {
-  final clamped = textLineHeight.clamp(0.8, 2.2).toDouble();
+  final clamped = textLineHeight.clamp(0.2, 5.0).toDouble();
   if (!_isLegacyTeluguFontFamily(fontFamily)) {
     final needsScriptSafety =
         _fontFamilyNeedsScriptSafety(fontFamily) ||
         (text.isNotEmpty && _textValueNeedsScriptSafety(text));
-    return needsScriptSafety ? clamped.clamp(0.95, 2.2).toDouble() : clamped;
+    return needsScriptSafety ? clamped.clamp(0.5, 5.0).toDouble() : clamped;
   }
-  return (clamped * 0.72).clamp(0.58, 1.15).toDouble();
+  return (clamped * 0.72).clamp(0.2, 3.6).toDouble();
 }
 
 String _resolveTextRenderValue({

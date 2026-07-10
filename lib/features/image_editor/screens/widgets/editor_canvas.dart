@@ -3,6 +3,44 @@ part of '../image_editor_screen.dart';
 const int _designImportMaxCanvasPixels = 64 * 1000 * 1000;
 const int _designImportMaxPsdLayerWorkPixels = 512 * 1000 * 1000;
 
+final LinkedHashMap<int, ui.ImageFilter> _expandedMaskFilterCache =
+    LinkedHashMap<int, ui.ImageFilter>();
+
+ui.ImageFilter? _expandedMaskFilter({
+  required double dilate,
+  required double blur,
+}) {
+  final safeDilate = dilate.clamp(0.0, 48.0).toDouble();
+  final safeBlur = blur.clamp(0.0, 96.0).toDouble();
+  if (safeDilate <= 0.001 && safeBlur <= 0.001) {
+    return null;
+  }
+  final dilateKey = (safeDilate * 2).round();
+  final blurKey = (safeBlur * 2).round();
+  final key = Object.hash(dilateKey, blurKey);
+  final cached = _expandedMaskFilterCache.remove(key);
+  if (cached != null) {
+    _expandedMaskFilterCache[key] = cached;
+    return cached;
+  }
+  ui.ImageFilter filter;
+  if (safeDilate > 0.001 && safeBlur > 0.001) {
+    filter = ui.ImageFilter.compose(
+      inner: ui.ImageFilter.dilate(radiusX: safeDilate, radiusY: safeDilate),
+      outer: ui.ImageFilter.blur(sigmaX: safeBlur, sigmaY: safeBlur),
+    );
+  } else if (safeDilate > 0.001) {
+    filter = ui.ImageFilter.dilate(radiusX: safeDilate, radiusY: safeDilate);
+  } else {
+    filter = ui.ImageFilter.blur(sigmaX: safeBlur, sigmaY: safeBlur);
+  }
+  _expandedMaskFilterCache[key] = filter;
+  while (_expandedMaskFilterCache.length > 64) {
+    _expandedMaskFilterCache.remove(_expandedMaskFilterCache.keys.first);
+  }
+  return filter;
+}
+
 class _EditorClippingStack extends MultiChildRenderObjectWidget {
   const _EditorClippingStack({required super.children});
 
@@ -135,7 +173,6 @@ Widget buildEditorLayerStylePixelTestSurface({
         child: _EditorUniversalLayerStyle(
           overlayColor: overlayColor,
           overlayOpacity: overlayOpacity,
-          colorOverlayBlendMode: 0,
           strokeColor: Colors.red,
           strokeWidth: strokeWidth,
           shadowColor: Colors.black,
@@ -143,81 +180,23 @@ Widget buildEditorLayerStylePixelTestSurface({
           shadowBlur: shadowBlur,
           shadowSpread: shadowSpread,
           shadowOffset: shadowOffset,
-          shadowBlendMode: 0,
-          shadowContour: 0,
-          shadowNoise: 0,
-          useGlobalLight: false,
-          globalLightAngle: 120,
-          globalLightAltitude: 30,
-          bevelEnabled: false,
-          bevelStyle: 0,
-          bevelTechnique: 0,
-          bevelDirection: 0,
-          bevelDepth: 0,
-          bevelSize: 0,
-          bevelSoften: 0,
-          bevelAngle: 120,
-          bevelAltitude: 30,
-          bevelHighlightColor: Colors.white,
-          bevelHighlightOpacity: 0,
-          bevelShadowColor: Colors.black,
-          bevelShadowOpacity: 0,
-          contour: 0,
-          textureEnabled: false,
-          textureScale: 36,
-          textureDepth: 0,
           strokeOpacity: strokeOpacity,
-          strokePosition: 0,
-          strokeBlendMode: 0,
           innerShadowColor: Colors.black,
           innerShadowOpacity: innerShadowOpacity,
           innerShadowBlur: innerShadowBlur,
           innerShadowChoke: innerShadowChoke,
           innerShadowDistance: innerShadowDistance,
           innerShadowAngle: 120,
-          innerShadowBlendMode: 0,
-          innerShadowContour: 0,
-          innerShadowNoise: 0,
           gradientOverlayEnabled: gradientOverlayEnabled,
           gradientOverlayColors: const <Color>[Colors.white, Colors.black],
           gradientOverlayOpacity: gradientOverlayOpacity,
           gradientOverlayAngle: 0,
-          gradientOverlayStyle: 0,
           gradientOverlayScale: 100,
-          gradientOverlayBlendMode: 0,
           gradientOverlayReversed: false,
-          gradientOverlayDither: false,
           outerGlowColor: Colors.white,
           outerGlowOpacity: outerGlowOpacity,
           outerGlowSize: outerGlowSize,
           outerGlowSpread: outerGlowSpread,
-          outerGlowNoise: 0,
-          outerGlowContour: 0,
-          outerGlowRange: 50,
-          outerGlowJitter: 0,
-          outerGlowBlendMode: 0,
-          innerGlowColor: Colors.white,
-          innerGlowOpacity: 0,
-          innerGlowSize: 0,
-          innerGlowSpread: 0,
-          innerGlowNoise: 0,
-          innerGlowSource: 0,
-          innerGlowContour: 0,
-          innerGlowRange: 50,
-          innerGlowJitter: 0,
-          innerGlowBlendMode: 0,
-          satinColor: Colors.black,
-          satinOpacity: 0,
-          satinAngle: 0,
-          satinDistance: 0,
-          satinSize: 1,
-          satinInverted: false,
-          satinBlendMode: 0,
-          patternOverlayEnabled: false,
-          patternOverlayOpacity: 0,
-          patternOverlayScale: 36,
-          patternOverlayBlendMode: 0,
-          patternOverlayPreset: 0,
           child: SizedBox.square(
             dimension: 40,
             child: ColoredBox(color: childColor),
@@ -233,266 +212,89 @@ class _EditorUniversalLayerStyle extends SingleChildRenderObjectWidget {
     super.key,
     required this.overlayColor,
     required this.overlayOpacity,
-    required this.colorOverlayBlendMode,
     required this.strokeColor,
     required this.strokeWidth,
+    required this.strokeOpacity,
     required this.shadowColor,
     required this.shadowOpacity,
     required this.shadowBlur,
     required this.shadowSpread,
     required this.shadowOffset,
-    required this.shadowBlendMode,
-    required this.shadowContour,
-    required this.shadowNoise,
-    required this.useGlobalLight,
-    required this.globalLightAngle,
-    required this.globalLightAltitude,
-    required this.bevelEnabled,
-    required this.bevelStyle,
-    required this.bevelTechnique,
-    required this.bevelDirection,
-    required this.bevelDepth,
-    required this.bevelSize,
-    required this.bevelSoften,
-    required this.bevelAngle,
-    required this.bevelAltitude,
-    required this.bevelHighlightColor,
-    required this.bevelHighlightOpacity,
-    required this.bevelShadowColor,
-    required this.bevelShadowOpacity,
-    required this.contour,
-    required this.textureEnabled,
-    required this.textureScale,
-    required this.textureDepth,
-    required this.strokeOpacity,
-    required this.strokePosition,
-    required this.strokeBlendMode,
     required this.innerShadowColor,
     required this.innerShadowOpacity,
     required this.innerShadowBlur,
     required this.innerShadowChoke,
     required this.innerShadowDistance,
     required this.innerShadowAngle,
-    required this.innerShadowBlendMode,
-    required this.innerShadowContour,
-    required this.innerShadowNoise,
     required this.gradientOverlayEnabled,
     required this.gradientOverlayColors,
     required this.gradientOverlayOpacity,
     required this.gradientOverlayAngle,
-    required this.gradientOverlayStyle,
     required this.gradientOverlayScale,
-    required this.gradientOverlayBlendMode,
     required this.gradientOverlayReversed,
-    required this.gradientOverlayDither,
     required this.outerGlowColor,
     required this.outerGlowOpacity,
     required this.outerGlowSize,
     required this.outerGlowSpread,
-    required this.outerGlowNoise,
-    required this.outerGlowContour,
-    required this.outerGlowRange,
-    required this.outerGlowJitter,
-    required this.outerGlowBlendMode,
-    required this.innerGlowColor,
-    required this.innerGlowOpacity,
-    required this.innerGlowSize,
-    required this.innerGlowSpread,
-    required this.innerGlowNoise,
-    required this.innerGlowSource,
-    required this.innerGlowContour,
-    required this.innerGlowRange,
-    required this.innerGlowJitter,
-    required this.innerGlowBlendMode,
-    required this.satinColor,
-    required this.satinOpacity,
-    required this.satinAngle,
-    required this.satinDistance,
-    required this.satinSize,
-    required this.satinInverted,
-    required this.satinBlendMode,
-    required this.patternOverlayEnabled,
-    required this.patternOverlayOpacity,
-    required this.patternOverlayScale,
-    required this.patternOverlayBlendMode,
-    required this.patternOverlayPreset,
     required super.child,
   });
 
   final Color overlayColor;
   final double overlayOpacity;
-  final int colorOverlayBlendMode;
   final Color strokeColor;
   final double strokeWidth;
+  final double strokeOpacity;
   final Color shadowColor;
   final double shadowOpacity;
   final double shadowBlur;
   final double shadowSpread;
   final Offset shadowOffset;
-  final int shadowBlendMode;
-  final int shadowContour;
-  final double shadowNoise;
-  final bool useGlobalLight;
-  final double globalLightAngle;
-  final double globalLightAltitude;
-  final bool bevelEnabled;
-  final int bevelStyle;
-  final int bevelTechnique;
-  final int bevelDirection;
-  final double bevelDepth;
-  final double bevelSize;
-  final double bevelSoften;
-  final double bevelAngle;
-  final double bevelAltitude;
-  final Color bevelHighlightColor;
-  final double bevelHighlightOpacity;
-  final Color bevelShadowColor;
-  final double bevelShadowOpacity;
-  final int contour;
-  final bool textureEnabled;
-  final double textureScale;
-  final double textureDepth;
-  final double strokeOpacity;
-  final int strokePosition;
-  final int strokeBlendMode;
   final Color innerShadowColor;
   final double innerShadowOpacity;
   final double innerShadowBlur;
   final double innerShadowChoke;
   final double innerShadowDistance;
   final double innerShadowAngle;
-  final int innerShadowBlendMode;
-  final int innerShadowContour;
-  final double innerShadowNoise;
   final bool gradientOverlayEnabled;
   final List<Color> gradientOverlayColors;
   final double gradientOverlayOpacity;
   final double gradientOverlayAngle;
-  final int gradientOverlayStyle;
   final double gradientOverlayScale;
-  final int gradientOverlayBlendMode;
   final bool gradientOverlayReversed;
-  final bool gradientOverlayDither;
   final Color outerGlowColor;
   final double outerGlowOpacity;
   final double outerGlowSize;
   final double outerGlowSpread;
-  final double outerGlowNoise;
-  final int outerGlowContour;
-  final double outerGlowRange;
-  final double outerGlowJitter;
-  final int outerGlowBlendMode;
-  final Color innerGlowColor;
-  final double innerGlowOpacity;
-  final double innerGlowSize;
-  final double innerGlowSpread;
-  final double innerGlowNoise;
-  final int innerGlowSource;
-  final int innerGlowContour;
-  final double innerGlowRange;
-  final double innerGlowJitter;
-  final int innerGlowBlendMode;
-  final Color satinColor;
-  final double satinOpacity;
-  final double satinAngle;
-  final double satinDistance;
-  final double satinSize;
-  final bool satinInverted;
-  final int satinBlendMode;
-  final bool patternOverlayEnabled;
-  final double patternOverlayOpacity;
-  final double patternOverlayScale;
-  final int patternOverlayBlendMode;
-  final int patternOverlayPreset;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
     return _RenderEditorUniversalLayerStyle(
       overlayColor: overlayColor,
       overlayOpacity: overlayOpacity,
-      colorOverlayBlendMode: colorOverlayBlendMode,
       strokeColor: strokeColor,
       strokeWidth: strokeWidth,
+      strokeOpacity: strokeOpacity,
       shadowColor: shadowColor,
       shadowOpacity: shadowOpacity,
       shadowBlur: shadowBlur,
       shadowSpread: shadowSpread,
       shadowOffset: shadowOffset,
-      shadowBlendMode: shadowBlendMode,
-      shadowContour: shadowContour,
-      shadowNoise: shadowNoise,
-      useGlobalLight: useGlobalLight,
-      globalLightAngle: globalLightAngle,
-      globalLightAltitude: globalLightAltitude,
-      bevelEnabled: bevelEnabled,
-      bevelStyle: bevelStyle,
-      bevelTechnique: bevelTechnique,
-      bevelDirection: bevelDirection,
-      bevelDepth: bevelDepth,
-      bevelSize: bevelSize,
-      bevelSoften: bevelSoften,
-      bevelAngle: bevelAngle,
-      bevelAltitude: bevelAltitude,
-      bevelHighlightColor: bevelHighlightColor,
-      bevelHighlightOpacity: bevelHighlightOpacity,
-      bevelShadowColor: bevelShadowColor,
-      bevelShadowOpacity: bevelShadowOpacity,
-      contour: contour,
-      textureEnabled: textureEnabled,
-      textureScale: textureScale,
-      textureDepth: textureDepth,
-      strokeOpacity: strokeOpacity,
-      strokePosition: strokePosition,
-      strokeBlendMode: strokeBlendMode,
       innerShadowColor: innerShadowColor,
       innerShadowOpacity: innerShadowOpacity,
       innerShadowBlur: innerShadowBlur,
       innerShadowChoke: innerShadowChoke,
       innerShadowDistance: innerShadowDistance,
       innerShadowAngle: innerShadowAngle,
-      innerShadowBlendMode: innerShadowBlendMode,
-      innerShadowContour: innerShadowContour,
-      innerShadowNoise: innerShadowNoise,
       gradientOverlayEnabled: gradientOverlayEnabled,
       gradientOverlayColors: gradientOverlayColors,
       gradientOverlayOpacity: gradientOverlayOpacity,
       gradientOverlayAngle: gradientOverlayAngle,
-      gradientOverlayStyle: gradientOverlayStyle,
       gradientOverlayScale: gradientOverlayScale,
-      gradientOverlayBlendMode: gradientOverlayBlendMode,
       gradientOverlayReversed: gradientOverlayReversed,
-      gradientOverlayDither: gradientOverlayDither,
       outerGlowColor: outerGlowColor,
       outerGlowOpacity: outerGlowOpacity,
       outerGlowSize: outerGlowSize,
       outerGlowSpread: outerGlowSpread,
-      outerGlowNoise: outerGlowNoise,
-      outerGlowContour: outerGlowContour,
-      outerGlowRange: outerGlowRange,
-      outerGlowJitter: outerGlowJitter,
-      outerGlowBlendMode: outerGlowBlendMode,
-      innerGlowColor: innerGlowColor,
-      innerGlowOpacity: innerGlowOpacity,
-      innerGlowSize: innerGlowSize,
-      innerGlowSpread: innerGlowSpread,
-      innerGlowNoise: innerGlowNoise,
-      innerGlowSource: innerGlowSource,
-      innerGlowContour: innerGlowContour,
-      innerGlowRange: innerGlowRange,
-      innerGlowJitter: innerGlowJitter,
-      innerGlowBlendMode: innerGlowBlendMode,
-      satinColor: satinColor,
-      satinOpacity: satinOpacity,
-      satinAngle: satinAngle,
-      satinDistance: satinDistance,
-      satinSize: satinSize,
-      satinInverted: satinInverted,
-      satinBlendMode: satinBlendMode,
-      patternOverlayEnabled: patternOverlayEnabled,
-      patternOverlayOpacity: patternOverlayOpacity,
-      patternOverlayScale: patternOverlayScale,
-      patternOverlayBlendMode: patternOverlayBlendMode,
-      patternOverlayPreset: patternOverlayPreset,
     );
   }
 
@@ -504,89 +306,30 @@ class _EditorUniversalLayerStyle extends SingleChildRenderObjectWidget {
     renderObject
       ..overlayColor = overlayColor
       ..overlayOpacity = overlayOpacity
-      ..colorOverlayBlendMode = colorOverlayBlendMode
       ..strokeColor = strokeColor
       ..strokeWidth = strokeWidth
+      ..strokeOpacity = strokeOpacity
       ..shadowColor = shadowColor
       ..shadowOpacity = shadowOpacity
       ..shadowBlur = shadowBlur
       ..shadowSpread = shadowSpread
       ..shadowOffset = shadowOffset
-      ..shadowBlendMode = shadowBlendMode
-      ..shadowContour = shadowContour
-      ..shadowNoise = shadowNoise
-      ..useGlobalLight = useGlobalLight
-      ..globalLightAngle = globalLightAngle
-      ..globalLightAltitude = globalLightAltitude
-      ..bevelEnabled = bevelEnabled
-      ..bevelStyle = bevelStyle
-      ..bevelTechnique = bevelTechnique
-      ..bevelDirection = bevelDirection
-      ..bevelDepth = bevelDepth
-      ..bevelSize = bevelSize
-      ..bevelSoften = bevelSoften
-      ..bevelAngle = bevelAngle
-      ..bevelAltitude = bevelAltitude
-      ..bevelHighlightColor = bevelHighlightColor
-      ..bevelHighlightOpacity = bevelHighlightOpacity
-      ..bevelShadowColor = bevelShadowColor
-      ..bevelShadowOpacity = bevelShadowOpacity
-      ..contour = contour
-      ..textureEnabled = textureEnabled
-      ..textureScale = textureScale
-      ..textureDepth = textureDepth
-      ..strokeOpacity = strokeOpacity
-      ..strokePosition = strokePosition
-      ..strokeBlendMode = strokeBlendMode
       ..innerShadowColor = innerShadowColor
       ..innerShadowOpacity = innerShadowOpacity
       ..innerShadowBlur = innerShadowBlur
       ..innerShadowChoke = innerShadowChoke
       ..innerShadowDistance = innerShadowDistance
       ..innerShadowAngle = innerShadowAngle
-      ..innerShadowBlendMode = innerShadowBlendMode
-      ..innerShadowContour = innerShadowContour
-      ..innerShadowNoise = innerShadowNoise
       ..gradientOverlayEnabled = gradientOverlayEnabled
       ..gradientOverlayColors = gradientOverlayColors
       ..gradientOverlayOpacity = gradientOverlayOpacity
       ..gradientOverlayAngle = gradientOverlayAngle
-      ..gradientOverlayStyle = gradientOverlayStyle
       ..gradientOverlayScale = gradientOverlayScale
-      ..gradientOverlayBlendMode = gradientOverlayBlendMode
       ..gradientOverlayReversed = gradientOverlayReversed
-      ..gradientOverlayDither = gradientOverlayDither
       ..outerGlowColor = outerGlowColor
       ..outerGlowOpacity = outerGlowOpacity
       ..outerGlowSize = outerGlowSize
-      ..outerGlowSpread = outerGlowSpread
-      ..outerGlowNoise = outerGlowNoise
-      ..outerGlowContour = outerGlowContour
-      ..outerGlowRange = outerGlowRange
-      ..outerGlowJitter = outerGlowJitter
-      ..outerGlowBlendMode = outerGlowBlendMode
-      ..innerGlowColor = innerGlowColor
-      ..innerGlowOpacity = innerGlowOpacity
-      ..innerGlowSize = innerGlowSize
-      ..innerGlowSpread = innerGlowSpread
-      ..innerGlowNoise = innerGlowNoise
-      ..innerGlowSource = innerGlowSource
-      ..innerGlowContour = innerGlowContour
-      ..innerGlowRange = innerGlowRange
-      ..innerGlowJitter = innerGlowJitter
-      ..innerGlowBlendMode = innerGlowBlendMode
-      ..satinColor = satinColor
-      ..satinOpacity = satinOpacity
-      ..satinAngle = satinAngle
-      ..satinDistance = satinDistance
-      ..satinSize = satinSize
-      ..satinInverted = satinInverted
-      ..satinBlendMode = satinBlendMode
-      ..patternOverlayEnabled = patternOverlayEnabled
-      ..patternOverlayOpacity = patternOverlayOpacity
-      ..patternOverlayScale = patternOverlayScale
-      ..patternOverlayBlendMode = patternOverlayBlendMode
-      ..patternOverlayPreset = patternOverlayPreset;
+      ..outerGlowSpread = outerGlowSpread;
   }
 }
 
@@ -594,262 +337,83 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
   _RenderEditorUniversalLayerStyle({
     required Color overlayColor,
     required double overlayOpacity,
-    required int colorOverlayBlendMode,
     required Color strokeColor,
     required double strokeWidth,
+    required double strokeOpacity,
     required Color shadowColor,
     required double shadowOpacity,
     required double shadowBlur,
     required double shadowSpread,
     required Offset shadowOffset,
-    required int shadowBlendMode,
-    required int shadowContour,
-    required double shadowNoise,
-    required bool useGlobalLight,
-    required double globalLightAngle,
-    required double globalLightAltitude,
-    required bool bevelEnabled,
-    required int bevelStyle,
-    required int bevelTechnique,
-    required int bevelDirection,
-    required double bevelDepth,
-    required double bevelSize,
-    required double bevelSoften,
-    required double bevelAngle,
-    required double bevelAltitude,
-    required Color bevelHighlightColor,
-    required double bevelHighlightOpacity,
-    required Color bevelShadowColor,
-    required double bevelShadowOpacity,
-    required int contour,
-    required bool textureEnabled,
-    required double textureScale,
-    required double textureDepth,
-    required double strokeOpacity,
-    required int strokePosition,
-    required int strokeBlendMode,
     required Color innerShadowColor,
     required double innerShadowOpacity,
     required double innerShadowBlur,
     required double innerShadowChoke,
     required double innerShadowDistance,
     required double innerShadowAngle,
-    required int innerShadowBlendMode,
-    required int innerShadowContour,
-    required double innerShadowNoise,
     required bool gradientOverlayEnabled,
     required List<Color> gradientOverlayColors,
     required double gradientOverlayOpacity,
     required double gradientOverlayAngle,
-    required int gradientOverlayStyle,
     required double gradientOverlayScale,
-    required int gradientOverlayBlendMode,
     required bool gradientOverlayReversed,
-    required bool gradientOverlayDither,
     required Color outerGlowColor,
     required double outerGlowOpacity,
     required double outerGlowSize,
     required double outerGlowSpread,
-    required double outerGlowNoise,
-    required int outerGlowContour,
-    required double outerGlowRange,
-    required double outerGlowJitter,
-    required int outerGlowBlendMode,
-    required Color innerGlowColor,
-    required double innerGlowOpacity,
-    required double innerGlowSize,
-    required double innerGlowSpread,
-    required double innerGlowNoise,
-    required int innerGlowSource,
-    required int innerGlowContour,
-    required double innerGlowRange,
-    required double innerGlowJitter,
-    required int innerGlowBlendMode,
-    required Color satinColor,
-    required double satinOpacity,
-    required double satinAngle,
-    required double satinDistance,
-    required double satinSize,
-    required bool satinInverted,
-    required int satinBlendMode,
-    required bool patternOverlayEnabled,
-    required double patternOverlayOpacity,
-    required double patternOverlayScale,
-    required int patternOverlayBlendMode,
-    required int patternOverlayPreset,
   }) : _overlayColor = overlayColor,
        _overlayOpacity = overlayOpacity,
-       _colorOverlayBlendMode = colorOverlayBlendMode,
        _strokeColor = strokeColor,
        _strokeWidth = strokeWidth,
+       _strokeOpacity = strokeOpacity,
        _shadowColor = shadowColor,
        _shadowOpacity = shadowOpacity,
        _shadowBlur = shadowBlur,
        _shadowSpread = shadowSpread,
        _shadowOffset = shadowOffset,
-       _shadowBlendMode = shadowBlendMode,
-       _shadowContour = shadowContour,
-       _shadowNoise = shadowNoise,
-       _useGlobalLight = useGlobalLight,
-       _globalLightAngle = globalLightAngle,
-       _globalLightAltitude = globalLightAltitude,
-       _bevelEnabled = bevelEnabled,
-       _bevelStyle = bevelStyle,
-       _bevelTechnique = bevelTechnique,
-       _bevelDirection = bevelDirection,
-       _bevelDepth = bevelDepth,
-       _bevelSize = bevelSize,
-       _bevelSoften = bevelSoften,
-       _bevelAngle = bevelAngle,
-       _bevelAltitude = bevelAltitude,
-       _bevelHighlightColor = bevelHighlightColor,
-       _bevelHighlightOpacity = bevelHighlightOpacity,
-       _bevelShadowColor = bevelShadowColor,
-       _bevelShadowOpacity = bevelShadowOpacity,
-       _contour = contour,
-       _textureEnabled = textureEnabled,
-       _textureScale = textureScale,
-       _textureDepth = textureDepth,
-       _strokeOpacity = strokeOpacity,
-       _strokePosition = strokePosition,
-       _strokeBlendMode = strokeBlendMode,
        _innerShadowColor = innerShadowColor,
        _innerShadowOpacity = innerShadowOpacity,
        _innerShadowBlur = innerShadowBlur,
        _innerShadowChoke = innerShadowChoke,
        _innerShadowDistance = innerShadowDistance,
        _innerShadowAngle = innerShadowAngle,
-       _innerShadowBlendMode = innerShadowBlendMode,
-       _innerShadowContour = innerShadowContour,
-       _innerShadowNoise = innerShadowNoise,
        _gradientOverlayEnabled = gradientOverlayEnabled,
        _gradientOverlayColors = gradientOverlayColors,
        _gradientOverlayOpacity = gradientOverlayOpacity,
        _gradientOverlayAngle = gradientOverlayAngle,
-       _gradientOverlayStyle = gradientOverlayStyle,
        _gradientOverlayScale = gradientOverlayScale,
-       _gradientOverlayBlendMode = gradientOverlayBlendMode,
        _gradientOverlayReversed = gradientOverlayReversed,
-       _gradientOverlayDither = gradientOverlayDither,
        _outerGlowColor = outerGlowColor,
        _outerGlowOpacity = outerGlowOpacity,
        _outerGlowSize = outerGlowSize,
-       _outerGlowSpread = outerGlowSpread,
-       _outerGlowNoise = outerGlowNoise,
-       _outerGlowContour = outerGlowContour,
-       _outerGlowRange = outerGlowRange,
-       _outerGlowJitter = outerGlowJitter,
-       _outerGlowBlendMode = outerGlowBlendMode,
-       _innerGlowColor = innerGlowColor,
-       _innerGlowOpacity = innerGlowOpacity,
-       _innerGlowSize = innerGlowSize,
-       _innerGlowSpread = innerGlowSpread,
-       _innerGlowNoise = innerGlowNoise,
-       _innerGlowSource = innerGlowSource,
-       _innerGlowContour = innerGlowContour,
-       _innerGlowRange = innerGlowRange,
-       _innerGlowJitter = innerGlowJitter,
-       _innerGlowBlendMode = innerGlowBlendMode,
-       _satinColor = satinColor,
-       _satinOpacity = satinOpacity,
-       _satinAngle = satinAngle,
-       _satinDistance = satinDistance,
-       _satinSize = satinSize,
-       _satinInverted = satinInverted,
-       _satinBlendMode = satinBlendMode,
-       _patternOverlayEnabled = patternOverlayEnabled,
-       _patternOverlayOpacity = patternOverlayOpacity,
-       _patternOverlayScale = patternOverlayScale,
-       _patternOverlayBlendMode = patternOverlayBlendMode,
-       _patternOverlayPreset = patternOverlayPreset;
+       _outerGlowSpread = outerGlowSpread;
 
   Color _overlayColor;
   double _overlayOpacity;
-  int _colorOverlayBlendMode;
   Color _strokeColor;
   double _strokeWidth;
+  double _strokeOpacity;
   Color _shadowColor;
   double _shadowOpacity;
   double _shadowBlur;
   double _shadowSpread;
   Offset _shadowOffset;
-  int _shadowBlendMode;
-  int _shadowContour;
-  double _shadowNoise;
-  bool _useGlobalLight;
-  double _globalLightAngle;
-  double _globalLightAltitude;
-  bool _bevelEnabled;
-  int _bevelStyle;
-  int _bevelTechnique;
-  int _bevelDirection;
-  double _bevelDepth;
-  double _bevelSize;
-  double _bevelSoften;
-  double _bevelAngle;
-  double _bevelAltitude;
-  Color _bevelHighlightColor;
-  double _bevelHighlightOpacity;
-  Color _bevelShadowColor;
-  double _bevelShadowOpacity;
-  int _contour;
-  bool _textureEnabled;
-  double _textureScale;
-  double _textureDepth;
-  double _strokeOpacity;
-  int _strokePosition;
-  int _strokeBlendMode;
   Color _innerShadowColor;
   double _innerShadowOpacity;
   double _innerShadowBlur;
   double _innerShadowChoke;
   double _innerShadowDistance;
   double _innerShadowAngle;
-  int _innerShadowBlendMode;
-  int _innerShadowContour;
-  double _innerShadowNoise;
   bool _gradientOverlayEnabled;
   List<Color> _gradientOverlayColors;
   double _gradientOverlayOpacity;
   double _gradientOverlayAngle;
-  int _gradientOverlayStyle;
   double _gradientOverlayScale;
-  int _gradientOverlayBlendMode;
   bool _gradientOverlayReversed;
-  bool _gradientOverlayDither;
   Color _outerGlowColor;
   double _outerGlowOpacity;
   double _outerGlowSize;
   double _outerGlowSpread;
-  double _outerGlowNoise;
-  int _outerGlowContour;
-  double _outerGlowRange;
-  double _outerGlowJitter;
-  int _outerGlowBlendMode;
-  Color _innerGlowColor;
-  double _innerGlowOpacity;
-  double _innerGlowSize;
-  double _innerGlowSpread;
-  double _innerGlowNoise;
-  int _innerGlowSource;
-  int _innerGlowContour;
-  double _innerGlowRange;
-  double _innerGlowJitter;
-  int _innerGlowBlendMode;
-  Color _satinColor;
-  double _satinOpacity;
-  double _satinAngle;
-  double _satinDistance;
-  double _satinSize;
-  bool _satinInverted;
-  int _satinBlendMode;
-  bool _patternOverlayEnabled;
-  double _patternOverlayOpacity;
-  double _patternOverlayScale;
-  int _patternOverlayBlendMode;
-  int _patternOverlayPreset;
-
-  bool get _layerStyleEngineEnabled => true;
 
   set overlayColor(Color value) {
     if (_overlayColor == value) return;
@@ -863,12 +427,6 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  set colorOverlayBlendMode(int value) {
-    if (_colorOverlayBlendMode == value) return;
-    _colorOverlayBlendMode = value;
-    markNeedsPaint();
-  }
-
   set strokeColor(Color value) {
     if (_strokeColor == value) return;
     _strokeColor = value;
@@ -878,6 +436,12 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
   set strokeWidth(double value) {
     if (_strokeWidth == value) return;
     _strokeWidth = value;
+    markNeedsPaint();
+  }
+
+  set strokeOpacity(double value) {
+    if (_strokeOpacity == value) return;
+    _strokeOpacity = value;
     markNeedsPaint();
   }
 
@@ -908,162 +472,6 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
   set shadowOffset(Offset value) {
     if (_shadowOffset == value) return;
     _shadowOffset = value;
-    markNeedsPaint();
-  }
-
-  set shadowBlendMode(int value) {
-    if (_shadowBlendMode == value) return;
-    _shadowBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set shadowContour(int value) {
-    if (_shadowContour == value) return;
-    _shadowContour = value;
-    markNeedsPaint();
-  }
-
-  set shadowNoise(double value) {
-    if (_shadowNoise == value) return;
-    _shadowNoise = value;
-    markNeedsPaint();
-  }
-
-  set useGlobalLight(bool value) {
-    if (_useGlobalLight == value) return;
-    _useGlobalLight = value;
-    markNeedsPaint();
-  }
-
-  set globalLightAngle(double value) {
-    if (_globalLightAngle == value) return;
-    _globalLightAngle = value;
-    markNeedsPaint();
-  }
-
-  set globalLightAltitude(double value) {
-    if (_globalLightAltitude == value) return;
-    _globalLightAltitude = value;
-    markNeedsPaint();
-  }
-
-  set bevelEnabled(bool value) {
-    if (_bevelEnabled == value) return;
-    _bevelEnabled = value;
-    markNeedsPaint();
-  }
-
-  set bevelStyle(int value) {
-    if (_bevelStyle == value) return;
-    _bevelStyle = value;
-    markNeedsPaint();
-  }
-
-  set bevelTechnique(int value) {
-    if (_bevelTechnique == value) return;
-    _bevelTechnique = value;
-    markNeedsPaint();
-  }
-
-  set bevelDirection(int value) {
-    if (_bevelDirection == value) return;
-    _bevelDirection = value;
-    markNeedsPaint();
-  }
-
-  set bevelDepth(double value) {
-    if (_bevelDepth == value) return;
-    _bevelDepth = value;
-    markNeedsPaint();
-  }
-
-  set bevelSize(double value) {
-    if (_bevelSize == value) return;
-    _bevelSize = value;
-    markNeedsPaint();
-  }
-
-  set bevelSoften(double value) {
-    if (_bevelSoften == value) return;
-    _bevelSoften = value;
-    markNeedsPaint();
-  }
-
-  set bevelAngle(double value) {
-    if (_bevelAngle == value) return;
-    _bevelAngle = value;
-    markNeedsPaint();
-  }
-
-  set bevelAltitude(double value) {
-    if (_bevelAltitude == value) return;
-    _bevelAltitude = value;
-    markNeedsPaint();
-  }
-
-  set bevelHighlightColor(Color value) {
-    if (_bevelHighlightColor == value) return;
-    _bevelHighlightColor = value;
-    markNeedsPaint();
-  }
-
-  set bevelHighlightOpacity(double value) {
-    if (_bevelHighlightOpacity == value) return;
-    _bevelHighlightOpacity = value;
-    markNeedsPaint();
-  }
-
-  set bevelShadowColor(Color value) {
-    if (_bevelShadowColor == value) return;
-    _bevelShadowColor = value;
-    markNeedsPaint();
-  }
-
-  set bevelShadowOpacity(double value) {
-    if (_bevelShadowOpacity == value) return;
-    _bevelShadowOpacity = value;
-    markNeedsPaint();
-  }
-
-  set contour(int value) {
-    if (_contour == value) return;
-    _contour = value;
-    markNeedsPaint();
-  }
-
-  set textureEnabled(bool value) {
-    if (_textureEnabled == value) return;
-    _textureEnabled = value;
-    markNeedsPaint();
-  }
-
-  set textureScale(double value) {
-    if (_textureScale == value) return;
-    _textureScale = value;
-    markNeedsPaint();
-  }
-
-  set textureDepth(double value) {
-    if (_textureDepth == value) return;
-    _textureDepth = value;
-    markNeedsPaint();
-  }
-
-  set strokeOpacity(double value) {
-    if (_strokeOpacity == value) return;
-    _strokeOpacity = value;
-    markNeedsPaint();
-  }
-
-  set strokePosition(int value) {
-    if (_strokePosition == value) return;
-    _strokePosition = value;
-    markNeedsPaint();
-  }
-
-  set strokeBlendMode(int value) {
-    if (_strokeBlendMode == value) return;
-    _strokeBlendMode = value;
     markNeedsPaint();
   }
 
@@ -1103,24 +511,6 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  set innerShadowBlendMode(int value) {
-    if (_innerShadowBlendMode == value) return;
-    _innerShadowBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set innerShadowContour(int value) {
-    if (_innerShadowContour == value) return;
-    _innerShadowContour = value;
-    markNeedsPaint();
-  }
-
-  set innerShadowNoise(double value) {
-    if (_innerShadowNoise == value) return;
-    _innerShadowNoise = value;
-    markNeedsPaint();
-  }
-
   set gradientOverlayEnabled(bool value) {
     if (_gradientOverlayEnabled == value) return;
     _gradientOverlayEnabled = value;
@@ -1145,33 +535,15 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  set gradientOverlayStyle(int value) {
-    if (_gradientOverlayStyle == value) return;
-    _gradientOverlayStyle = value;
-    markNeedsPaint();
-  }
-
   set gradientOverlayScale(double value) {
     if (_gradientOverlayScale == value) return;
     _gradientOverlayScale = value;
     markNeedsPaint();
   }
 
-  set gradientOverlayBlendMode(int value) {
-    if (_gradientOverlayBlendMode == value) return;
-    _gradientOverlayBlendMode = value;
-    markNeedsPaint();
-  }
-
   set gradientOverlayReversed(bool value) {
     if (_gradientOverlayReversed == value) return;
     _gradientOverlayReversed = value;
-    markNeedsPaint();
-  }
-
-  set gradientOverlayDither(bool value) {
-    if (_gradientOverlayDither == value) return;
-    _gradientOverlayDither = value;
     markNeedsPaint();
   }
 
@@ -1199,712 +571,164 @@ class _RenderEditorUniversalLayerStyle extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  set outerGlowNoise(double value) {
-    if (_outerGlowNoise == value) return;
-    _outerGlowNoise = value;
-    markNeedsPaint();
-  }
-
-  set outerGlowContour(int value) {
-    if (_outerGlowContour == value) return;
-    _outerGlowContour = value;
-    markNeedsPaint();
-  }
-
-  set outerGlowRange(double value) {
-    if (_outerGlowRange == value) return;
-    _outerGlowRange = value;
-    markNeedsPaint();
-  }
-
-  set outerGlowJitter(double value) {
-    if (_outerGlowJitter == value) return;
-    _outerGlowJitter = value;
-    markNeedsPaint();
-  }
-
-  set outerGlowBlendMode(int value) {
-    if (_outerGlowBlendMode == value) return;
-    _outerGlowBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowColor(Color value) {
-    if (_innerGlowColor == value) return;
-    _innerGlowColor = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowOpacity(double value) {
-    if (_innerGlowOpacity == value) return;
-    _innerGlowOpacity = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowSize(double value) {
-    if (_innerGlowSize == value) return;
-    _innerGlowSize = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowSpread(double value) {
-    if (_innerGlowSpread == value) return;
-    _innerGlowSpread = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowNoise(double value) {
-    if (_innerGlowNoise == value) return;
-    _innerGlowNoise = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowSource(int value) {
-    if (_innerGlowSource == value) return;
-    _innerGlowSource = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowContour(int value) {
-    if (_innerGlowContour == value) return;
-    _innerGlowContour = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowRange(double value) {
-    if (_innerGlowRange == value) return;
-    _innerGlowRange = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowJitter(double value) {
-    if (_innerGlowJitter == value) return;
-    _innerGlowJitter = value;
-    markNeedsPaint();
-  }
-
-  set innerGlowBlendMode(int value) {
-    if (_innerGlowBlendMode == value) return;
-    _innerGlowBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set satinColor(Color value) {
-    if (_satinColor == value) return;
-    _satinColor = value;
-    markNeedsPaint();
-  }
-
-  set satinOpacity(double value) {
-    if (_satinOpacity == value) return;
-    _satinOpacity = value;
-    markNeedsPaint();
-  }
-
-  set satinAngle(double value) {
-    if (_satinAngle == value) return;
-    _satinAngle = value;
-    markNeedsPaint();
-  }
-
-  set satinDistance(double value) {
-    if (_satinDistance == value) return;
-    _satinDistance = value;
-    markNeedsPaint();
-  }
-
-  set satinSize(double value) {
-    if (_satinSize == value) return;
-    _satinSize = value;
-    markNeedsPaint();
-  }
-
-  set satinInverted(bool value) {
-    if (_satinInverted == value) return;
-    _satinInverted = value;
-    markNeedsPaint();
-  }
-
-  set satinBlendMode(int value) {
-    if (_satinBlendMode == value) return;
-    _satinBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set patternOverlayEnabled(bool value) {
-    if (_patternOverlayEnabled == value) return;
-    _patternOverlayEnabled = value;
-    markNeedsPaint();
-  }
-
-  set patternOverlayOpacity(double value) {
-    if (_patternOverlayOpacity == value) return;
-    _patternOverlayOpacity = value;
-    markNeedsPaint();
-  }
-
-  set patternOverlayScale(double value) {
-    if (_patternOverlayScale == value) return;
-    _patternOverlayScale = value;
-    markNeedsPaint();
-  }
-
-  set patternOverlayBlendMode(int value) {
-    if (_patternOverlayBlendMode == value) return;
-    _patternOverlayBlendMode = value;
-    markNeedsPaint();
-  }
-
-  set patternOverlayPreset(int value) {
-    if (_patternOverlayPreset == value) return;
-    _patternOverlayPreset = value;
-    markNeedsPaint();
-  }
-
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child == null) {
       return;
     }
-    if (!_layerStyleEngineEnabled) {
-      context.paintChild(child!, offset);
-      return;
-    }
-    final stroke = _strokeWidth.clamp(0.0, 20.0).toDouble();
-    final strokeOpacity = _strokeOpacity.clamp(0.0, 1.0).toDouble();
-    final shadowOpacity = _shadowOpacity.clamp(0.0, 1.0).toDouble();
-    final overlayOpacity = _overlayOpacity.clamp(0.0, 1.0).toDouble();
-    final blur = _shadowBlur.clamp(0.0, 80.0).toDouble();
-    final shadowSpread = _shadowSpread.clamp(0.0, 80.0).toDouble();
-    final outerGlowOpacity = _outerGlowOpacity.clamp(0.0, 1.0).toDouble();
-    final outerGlowSize = _outerGlowSize.clamp(0.0, 120.0).toDouble();
-    final outerGlowSpread = _outerGlowSpread.clamp(0.0, 60.0).toDouble();
-    final innerShadowBlur = _innerShadowBlur.clamp(0.0, 80.0).toDouble();
-    final overflow =
-        <double>[
-          stroke,
-          blur * 2 + shadowSpread + _shadowOffset.distance,
-          outerGlowSize * 2 + outerGlowSpread,
-          innerShadowBlur,
-        ].reduce(math.max) +
-        8;
-    final bounds = (offset & size).inflate(overflow);
-
-    if (shadowOpacity > 0.001) {
-      _paintDropShadow(context, offset, bounds, blur, shadowSpread);
-    }
-    if (outerGlowOpacity > 0.001) {
-      _paintOuterGlow(context, offset, bounds, outerGlowSize, outerGlowSpread);
-    }
-    if (stroke > 0.001) {
-      _paintStroke(context, offset, bounds, stroke, strokeOpacity);
-    }
-    context.paintChild(child!, offset);
-    if (_innerShadowOpacity > 0.001) {
-      _paintInnerShadow(context, offset, bounds);
-    }
-    if (overlayOpacity > 0.001) {
-      _paintTintedChild(
-        context,
-        offset,
-        bounds,
-        _overlayColor.withValues(alpha: overlayOpacity),
-        blendMode: _effectBlendMode(_colorOverlayBlendMode),
-      );
-    }
-    if (_gradientOverlayEnabled && _gradientOverlayOpacity > 0.001) {
-      _paintGradientOverlay(context, offset, bounds);
-    }
-  }
-
-  void _paintTintedChild(
-    PaintingContext context,
-    Offset childOffset,
-    Rect bounds,
-    Color color, {
-    ui.ImageFilter? imageFilter,
-    BlendMode blendMode = BlendMode.srcOver,
-  }) {
-    _paintTintedChildCopies(
-      context,
-      <Offset>[childOffset],
-      bounds,
-      color,
-      imageFilter: imageFilter,
-      blendMode: blendMode,
-    );
-  }
-
-  void _paintTintedChildCopies(
-    PaintingContext context,
-    Iterable<Offset> childOffsets,
-    Rect bounds,
-    Color color, {
-    ui.ImageFilter? imageFilter,
-    BlendMode blendMode = BlendMode.srcOver,
-  }) {
-    context.canvas.saveLayer(
-      bounds,
-      Paint()
-        ..blendMode = blendMode
-        ..imageFilter = imageFilter,
-    );
-    for (final childOffset in childOffsets) {
-      context.paintChild(child!, childOffset);
-    }
-    context.canvas.drawRect(
-      bounds,
-      Paint()
-        ..color = color
-        ..blendMode = BlendMode.srcIn,
-    );
-    context.canvas.restore();
-  }
-
-  void _paintStroke(
-    PaintingContext context,
-    Offset offset,
-    Rect bounds,
-    double stroke,
-    double opacity,
-  ) {
-    final position = _strokePosition.clamp(0, 2);
-    if (position == 2) {
-      context.canvas.saveLayer(
-        bounds,
-        Paint()
-          ..blendMode = _effectBlendMode(_strokeBlendMode)
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.inner,
-            math.max(0.1, stroke / 2),
+    final effectiveOuterGlowSize = _outerGlowSize.clamp(0.0, 64.0).toDouble();
+    final effectiveOuterGlowSpread = _outerGlowSpread
+        .clamp(0.0, 32.0)
+        .toDouble();
+    final effectiveShadowBlur = _shadowBlur.clamp(0.0, 56.0).toDouble();
+    final effectiveShadowSpread = _shadowSpread.clamp(0.0, 32.0).toDouble();
+    final effectiveStrokeWidth = _strokeWidth.clamp(0.0, 36.0).toDouble();
+    final effectiveInnerShadowBlur = _innerShadowBlur
+        .clamp(0.0, 56.0)
+        .toDouble();
+    final effectiveInnerShadowDistance = _innerShadowDistance
+        .clamp(0.0, 80.0)
+        .toDouble();
+    final visualPadding =
+        math.max(
+          math.max(
+            effectiveStrokeWidth,
+            effectiveOuterGlowSize + effectiveOuterGlowSpread,
           ),
-      );
-      context.paintChild(child!, offset);
+          math.max(
+            effectiveShadowBlur +
+                effectiveShadowSpread +
+                _shadowOffset.distance,
+            effectiveInnerShadowBlur + effectiveInnerShadowDistance,
+          ),
+        ) +
+        12;
+    final bounds = (offset & size).inflate(visualPadding);
+
+    void paintChildMask({
+      required Offset at,
+      required Color color,
+      double blur = 0,
+      ui.ImageFilter? imageFilter,
+      BlendMode blendMode = BlendMode.srcOver,
+    }) {
+      final paint = Paint()..blendMode = blendMode;
+      if (imageFilter != null) {
+        paint.imageFilter = imageFilter;
+      } else if (blur > 0.001) {
+        paint.imageFilter = ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur);
+      }
+      context.canvas.saveLayer(bounds, paint);
+      context.paintChild(child!, at);
       context.canvas.drawRect(
         bounds,
         Paint()
-          ..color = _strokeColor.withValues(alpha: opacity)
+          ..color = color
           ..blendMode = BlendMode.srcIn,
       );
       context.canvas.restore();
-      return;
     }
-    final radius = position == 1 ? stroke / 2 : stroke;
-    final offsets = _alphaSpreadOffsets(
-      radius,
-      baseOffset: offset,
-      includeCenter: false,
-      maxSamples: stroke >= 12 ? 220 : 160,
-    );
-    _paintTintedChildCopies(
-      context,
-      offsets,
-      bounds,
-      _strokeColor.withValues(alpha: opacity),
-      blendMode: _effectBlendMode(_strokeBlendMode),
-    );
-  }
 
-  void _paintOuterGlow(
-    PaintingContext context,
-    Offset offset,
-    Rect bounds,
-    double size,
-    double spread,
-  ) {
-    final rangeFactor = (_outerGlowRange / 50).clamp(0.2, 2.0).toDouble();
-    final sigma = math.max(
-      0.1,
-      size / _glowBlurDivisor(_outerGlowContour) * rangeFactor,
-    );
-    final color = _outerGlowColor.withValues(alpha: _outerGlowOpacity);
-    final spreadRadius = spread.clamp(0.0, 60.0).toDouble();
-    final offsets = _alphaSpreadOffsets(
-      spreadRadius,
-      baseOffset: offset,
-      includeCenter: true,
-      maxSamples: 140,
-    );
-    _paintTintedChildCopies(
-      context,
-      offsets,
-      bounds,
-      color,
-      blendMode: _effectBlendMode(_outerGlowBlendMode),
-      imageFilter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-    );
-    _paintGlowNoise(
-      context,
-      offset,
-      _outerGlowColor,
-      _outerGlowNoise,
-      _outerGlowJitter,
-      _outerGlowOpacity,
-      contour: _outerGlowContour,
-      blendMode: _effectBlendMode(_outerGlowBlendMode),
-      outside: true,
-      spread: size + spread,
-    );
-  }
-
-  void _paintDropShadow(
-    PaintingContext context,
-    Offset offset,
-    Rect bounds,
-    double blur,
-    double spread,
-  ) {
-    final shadowOffset = _useGlobalLight
-        ? Offset(
-                math.cos(_degreesToRadians(_globalLightAngle)),
-                -math.sin(_degreesToRadians(_globalLightAngle)),
-              ) *
-              _shadowOffset.distance
-        : _shadowOffset;
-    final offsets = _alphaSpreadOffsets(
-      spread,
-      baseOffset: offset + shadowOffset,
-      includeCenter: true,
-      maxSamples: 140,
-    );
-    _paintTintedChildCopies(
-      context,
-      offsets,
-      bounds,
-      _shadowColor.withValues(alpha: _shadowOpacity.clamp(0.0, 1.0)),
-      blendMode: _effectBlendMode(_shadowBlendMode),
-      imageFilter: blur > 0.001
-          ? ui.ImageFilter.blur(
-              sigmaX: blur / _glowBlurDivisor(_shadowContour),
-              sigmaY: blur / _glowBlurDivisor(_shadowContour),
-            )
-          : null,
-    );
-    _paintShadowNoise(
-      context,
-      offset + shadowOffset,
-      offset,
-      bounds,
-      _shadowColor,
-      _shadowOpacity,
-      _shadowNoise,
-      _shadowContour,
-      _effectBlendMode(_shadowBlendMode),
-      inside: false,
-    );
-  }
-
-  void _paintInnerShadow(PaintingContext context, Offset offset, Rect bounds) {
-    final distance = _innerShadowDistance.clamp(0.0, 120.0).toDouble();
-    final radians = _degreesToRadians(
-      _useGlobalLight ? _globalLightAngle : _innerShadowAngle,
-    );
-    final shadowOffset =
-        Offset(math.cos(radians), -math.sin(radians)) * distance;
-    context.canvas.saveLayer(
-      bounds,
-      Paint()..blendMode = _effectBlendMode(_innerShadowBlendMode),
-    );
-    final choke = (_innerShadowChoke / 100).clamp(0.0, 1.0).toDouble();
-    final blurDivisor = (_glowBlurDivisor(_innerShadowContour) + (choke * 5))
-        .clamp(1.0, 8.0);
-    _paintTintedChild(
-      context,
-      offset - shadowOffset,
-      bounds,
-      _innerShadowColor.withValues(
-        alpha: (_innerShadowOpacity * (1 + choke * 0.35))
-            .clamp(0.0, 1.0)
-            .toDouble(),
-      ),
-      imageFilter: _innerShadowBlur > 0.001
-          ? ui.ImageFilter.blur(
-              sigmaX: _innerShadowBlur / blurDivisor,
-              sigmaY: _innerShadowBlur / blurDivisor,
-            )
-          : null,
-    );
-    context.canvas.saveLayer(bounds, Paint()..blendMode = BlendMode.dstIn);
-    context.paintChild(child!, offset);
-    context.canvas.restore();
-    context.canvas.restore();
-    _paintShadowNoise(
-      context,
-      offset - shadowOffset,
-      offset,
-      bounds,
-      _innerShadowColor,
-      _innerShadowOpacity,
-      _innerShadowNoise,
-      _innerShadowContour,
-      _effectBlendMode(_innerShadowBlendMode),
-      inside: true,
-    );
-  }
-
-  void _paintShadowNoise(
-    PaintingContext context,
-    Offset sourceOffset,
-    Offset originalOffset,
-    Rect bounds,
-    Color color,
-    double opacity,
-    double noise,
-    int contour,
-    BlendMode blendMode, {
-    required bool inside,
-  }) {
-    final amount = (noise / 100).clamp(0.0, 1.0).toDouble();
-    final resolvedOpacity = opacity.clamp(0.0, 1.0).toDouble();
-    if (amount <= 0.001 || resolvedOpacity <= 0.001) return;
-    final layerRect = originalOffset & size;
-    final noiseRect = inside ? layerRect : bounds;
-    final step = math.max(
-      3.0,
-      math.sqrt((noiseRect.width * noiseRect.height) / 50000),
-    );
-    context.canvas.saveLayer(bounds, Paint()..blendMode = blendMode);
-    final paint = Paint()..style = PaintingStyle.fill;
-    for (double y = noiseRect.top; y < noiseRect.bottom; y += step) {
-      for (double x = noiseRect.left; x < noiseRect.right; x += step) {
-        final seed =
-            (math.sin(x * 17.17 + y * 43.73 + contour * 29.11) * 19341.73)
-                .abs();
-        final fraction = seed - seed.floorToDouble();
-        if (fraction > amount) continue;
-        paint.color = color.withValues(
-          alpha: resolvedOpacity * (0.08 + fraction * 0.24),
-        );
-        context.canvas.drawCircle(Offset(x, y), step * 0.3, paint);
-      }
+    final outerGlowOpacity = _outerGlowOpacity.clamp(0.0, 1.0).toDouble();
+    if (outerGlowOpacity > 0.001 && _outerGlowSize > 0.001) {
+      final glowSize = _outerGlowSize.clamp(0.0, 64.0).toDouble();
+      final spread = _outerGlowSpread.clamp(0.0, 32.0).toDouble();
+      final glowDilate = math.min(18.0, spread * 0.22);
+      final glowBlur = math.max(0.1, (glowSize * 0.42) + (spread * 0.18));
+      paintChildMask(
+        at: offset,
+        color: _outerGlowColor.withValues(alpha: outerGlowOpacity),
+        imageFilter: _expandedMaskFilter(dilate: glowDilate, blur: glowBlur),
+      );
     }
-    context.canvas.saveLayer(bounds, Paint()..blendMode = BlendMode.dstIn);
-    context.paintChild(child!, sourceOffset);
-    context.canvas.restore();
-    if (inside) {
-      context.canvas.saveLayer(bounds, Paint()..blendMode = BlendMode.dstIn);
-      context.paintChild(child!, originalOffset);
-      context.canvas.restore();
-    }
-    context.canvas.restore();
-  }
 
-  void _paintGradientOverlay(
-    PaintingContext context,
-    Offset offset,
-    Rect bounds,
-  ) {
-    final colors = _gradientOverlayColors.isEmpty
-        ? const <Color>[Color(0xFFFFFFFF), Color(0xFF000000)]
-        : _gradientOverlayColors;
-    final sourceColors = _gradientOverlayReversed
-        ? colors.reversed.toList(growable: false)
-        : colors;
-    final layerRect = offset & size;
-    final radians = _degreesToRadians(_gradientOverlayAngle);
-    final direction = Offset(math.cos(radians), math.sin(radians));
-    final center = layerRect.center;
-    final scale = (_gradientOverlayScale / 100).clamp(0.1, 2.0).toDouble();
-    final radius = layerRect.longestSide * 0.72 * scale;
-    final resolvedColors = sourceColors
-        .map(
-          (color) => color.withValues(
-            alpha: color.a * _gradientOverlayOpacity.clamp(0.0, 1.0),
-          ),
-        )
-        .toList(growable: false);
-    final shader = switch (_gradientOverlayStyle.clamp(0, 3)) {
-      1 => RadialGradient(
-        colors: resolvedColors,
-        radius: scale,
-      ).createShader(layerRect),
-      2 => SweepGradient(
-        colors: resolvedColors,
-        transform: GradientRotation(radians),
-      ).createShader(layerRect),
-      3 =>
-        LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: <Color>[
-            ...resolvedColors,
-            ...resolvedColors.reversed.skip(1),
-          ],
-        ).createShader(
-          Rect.fromPoints(
-            center - direction * radius,
-            center + direction * radius,
-          ),
-        ),
-      _ =>
-        LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: resolvedColors,
-        ).createShader(
-          Rect.fromPoints(
-            center - direction * radius,
-            center + direction * radius,
-          ),
-        ),
-    };
-    context.canvas.saveLayer(
-      bounds,
-      Paint()..blendMode = _effectBlendMode(_gradientOverlayBlendMode),
-    );
-    context.paintChild(child!, offset);
-    context.canvas.drawRect(
-      layerRect.inflate(2),
-      Paint()
-        ..shader = shader
-        ..blendMode = BlendMode.srcIn,
-    );
-    if (_gradientOverlayDither) {
-      _paintGradientDither(context.canvas, layerRect);
-    }
-    context.canvas.restore();
-  }
-
-  void _paintGradientDither(Canvas canvas, Rect layerRect) {
-    final paint = Paint()
-      ..blendMode = BlendMode.srcATop
-      ..strokeWidth = 1;
-    final step = math.max(
-      4.0,
-      math.sqrt((layerRect.width * layerRect.height) / 50000),
-    );
-    for (double y = layerRect.top; y < layerRect.bottom; y += step) {
-      for (double x = layerRect.left; x < layerRect.right; x += step) {
-        final seed = (math.sin(x * 91.17 + y * 47.31) * 24634.6345).abs();
-        final fraction = seed - seed.floorToDouble();
-        paint.color = (fraction > 0.5 ? Colors.white : Colors.black).withValues(
-          alpha: 0.018 + fraction * 0.018,
-        );
-        canvas.drawPoints(ui.PointMode.points, <Offset>[Offset(x, y)], paint);
-      }
-    }
-  }
-
-  void _paintGlowNoise(
-    PaintingContext context,
-    Offset offset,
-    Color color,
-    double noise,
-    double jitter,
-    double opacity, {
-    required int contour,
-    required bool outside,
-    required double spread,
-    required BlendMode blendMode,
-  }) {
-    final noiseAmount = (noise / 100).clamp(0.0, 1.0).toDouble();
-    final jitterAmount = (jitter / 100).clamp(0.0, 1.0).toDouble();
-    final amount = math.max(noiseAmount, jitterAmount * 0.72);
-    final resolvedOpacity = opacity.clamp(0.0, 1.0).toDouble();
-    if (amount <= 0.001 || resolvedOpacity <= 0.001) {
-      return;
-    }
-    final layerRect = offset & size;
-    final paint = Paint()
-      ..style = PaintingStyle.fill
-      ..blendMode = BlendMode.srcIn;
-    final step = math.max(3.0, 12.0 - (amount * 7.0));
-    context.canvas.saveLayer(
-      layerRect.inflate(spread),
-      Paint()..blendMode = blendMode,
-    );
-    if (outside) {
-      _paintTintedChild(
-        context,
-        offset,
-        layerRect.inflate(spread),
-        color.withValues(alpha: resolvedOpacity * 0.45),
-        imageFilter: ui.ImageFilter.blur(
-          sigmaX: math.max(0.1, spread / 5),
-          sigmaY: math.max(0.1, spread / 5),
+    final shadowOpacity = _shadowOpacity.clamp(0.0, 1.0).toDouble();
+    if (shadowOpacity > 0.001) {
+      final spread = _shadowSpread.clamp(0.0, 32.0).toDouble();
+      final shadowDilate = math.min(32.0, spread);
+      final shadowBlur = math.max(0.0, _shadowBlur.clamp(0.0, 56.0) / 2.0);
+      paintChildMask(
+        at: offset + _shadowOffset,
+        color: _shadowColor.withValues(alpha: shadowOpacity),
+        imageFilter: _expandedMaskFilter(
+          dilate: shadowDilate,
+          blur: shadowBlur,
         ),
       );
-    } else {
-      context.paintChild(child!, offset);
     }
-    for (double y = layerRect.top; y < layerRect.bottom; y += step) {
-      for (double x = layerRect.left; x < layerRect.right; x += step) {
-        final seed =
-            (math.sin(x * 12.9898 + y * 78.233 + contour * 37.719) * 43758.5453)
-                .abs();
-        final fraction = seed - seed.floorToDouble();
-        if (fraction > amount) {
-          continue;
-        }
-        paint.color = color.withValues(
+
+    final strokeOpacity = _strokeOpacity.clamp(0.0, 1.0).toDouble();
+    if (strokeOpacity > 0.001 && effectiveStrokeWidth > 0.001) {
+      paintChildMask(
+        at: offset,
+        color: _strokeColor.withValues(alpha: strokeOpacity),
+        imageFilter: _expandedMaskFilter(
+          dilate: math.max(0.75, effectiveStrokeWidth / 2.0),
+          blur: effectiveStrokeWidth > 2.5 ? 0.45 : 0.15,
+        ),
+      );
+    }
+
+    context.paintChild(child!, offset);
+
+    final innerShadowOpacity = _innerShadowOpacity.clamp(0.0, 1.0).toDouble();
+    if (innerShadowOpacity > 0.001) {
+      final radians = _innerShadowAngle * math.pi / 180.0;
+      final shadowShift = Offset(
+        math.cos(radians) * effectiveInnerShadowDistance,
+        math.sin(radians) * effectiveInnerShadowDistance,
+      );
+      paintChildMask(
+        at: offset + shadowShift,
+        color: _innerShadowColor.withValues(
           alpha:
-              resolvedOpacity *
-              (noiseAmount * (0.08 + fraction * 0.18) +
-                  jitterAmount * (0.04 + fraction * 0.22)),
-        );
-        context.canvas.drawCircle(Offset(x, y), step * 0.22, paint);
-      }
-    }
-    context.canvas.restore();
-  }
-
-  List<Offset> _alphaSpreadOffsets(
-    double radius, {
-    required Offset baseOffset,
-    required bool includeCenter,
-    required int maxSamples,
-  }) {
-    final resolvedRadius = radius.clamp(0.0, 160.0).toDouble();
-    if (resolvedRadius <= 0.001) {
-      return <Offset>[baseOffset];
+              innerShadowOpacity *
+              (1 - (_innerShadowChoke / 140).clamp(0.0, 0.7)),
+        ),
+        blur: math.max(0.0, effectiveInnerShadowBlur / 3.0),
+        blendMode: BlendMode.srcATop,
+      );
     }
 
-    final offsets = <Offset>[if (includeCenter) baseOffset];
-    final ringCount = math.max(1, math.min(10, (resolvedRadius / 2.5).ceil()));
-    for (var ring = 1; ring <= ringCount; ring++) {
-      final ringRadius = resolvedRadius * ring / ringCount;
-      final circumference = math.pi * 2 * ringRadius;
-      final samples = math.max(12, math.min(72, (circumference / 2.25).ceil()));
-      for (var index = 0; index < samples; index++) {
-        final angle = (math.pi * 2 * index) / samples;
-        offsets.add(
-          baseOffset +
-              Offset(
-                math.cos(angle) * ringRadius,
-                math.sin(angle) * ringRadius,
-              ),
-        );
-        if (offsets.length >= maxSamples) {
-          return offsets;
-        }
-      }
+    final overlayOpacity = _overlayOpacity.clamp(0.0, 1.0).toDouble();
+    if (overlayOpacity > 0.001) {
+      paintChildMask(
+        at: offset,
+        color: _overlayColor.withValues(alpha: overlayOpacity),
+        blendMode: BlendMode.srcATop,
+      );
     }
-    return offsets;
-  }
 
-  BlendMode _effectBlendMode(int index) {
-    return switch (index.clamp(0, 7)) {
-      1 => BlendMode.multiply,
-      2 => BlendMode.screen,
-      3 => BlendMode.overlay,
-      4 => BlendMode.softLight,
-      5 => BlendMode.hardLight,
-      6 => BlendMode.colorDodge,
-      7 => BlendMode.colorBurn,
-      _ => BlendMode.srcOver,
-    };
+    final gradientOpacity = _gradientOverlayOpacity.clamp(0.0, 1.0).toDouble();
+    if (_gradientOverlayEnabled &&
+        gradientOpacity > 0.001 &&
+        _gradientOverlayColors.isNotEmpty) {
+      final colors = _gradientOverlayReversed
+          ? _gradientOverlayColors.reversed.toList(growable: false)
+          : _gradientOverlayColors;
+      final radians = _gradientOverlayAngle * math.pi / 180.0;
+      final scale = (_gradientOverlayScale / 100).clamp(0.2, 3.0).toDouble();
+      final direction = Offset(math.cos(radians), math.sin(radians)) * scale;
+      context.canvas.saveLayer(
+        bounds,
+        Paint()
+          ..blendMode = BlendMode.srcATop
+          ..color = const Color(0xFFFFFFFF).withValues(alpha: gradientOpacity),
+      );
+      context.paintChild(child!, offset);
+      context.canvas.drawRect(
+        offset & size,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment(-direction.dx, -direction.dy),
+            end: Alignment(direction.dx, direction.dy),
+            colors: colors,
+          ).createShader(offset & size)
+          ..blendMode = BlendMode.srcIn,
+      );
+      context.canvas.restore();
+    }
   }
-
-  double _glowBlurDivisor(int contour) {
-    return switch (contour.clamp(0, 3)) {
-      1 => 1.35,
-      2 => 3.2,
-      3 => 1.8,
-      _ => 2.0,
-    };
-  }
-
-  double _degreesToRadians(double degrees) => degrees * math.pi / 180.0;
 }
 
 class _EditorBlendLayer extends SingleChildRenderObjectWidget {
@@ -2162,17 +986,17 @@ class _TransparentCheckerPainter extends CustomPainter {
 }
 
 double _mapAdjustBlurToSigma(double blur) {
-  final normalized = (blur / 10).clamp(0.0, 1.0);
-  final eased = math.pow(normalized, 1.65).toDouble();
-  return (eased * 24).clamp(0.0, 24.0);
+  final normalized = (blur / 14).clamp(0.0, 1.0);
+  final eased = math.pow(normalized, 1.85).toDouble();
+  return (eased * 14).clamp(0.0, 14.0);
 }
 
 List<double> _brightnessContrastMatrix({
   required double brightness,
   required double contrast,
 }) {
-  final clampedContrast = contrast.clamp(0.4, 2.2);
-  final clampedBrightness = brightness.clamp(-1.0, 1.0);
+  final clampedContrast = contrast.clamp(0.38, 1.8);
+  final clampedBrightness = brightness.clamp(-0.55, 0.55);
   final bias = (clampedBrightness * 255) + ((1 - clampedContrast) * 128);
   return <double>[
     clampedContrast,
@@ -2321,9 +1145,11 @@ Uint8List _optimizeEditorPhotoBytes(Uint8List bytes) {
 
 _OptimizedPhotoPayload _optimizeEditorPhotoPayload(Uint8List bytes) {
   final optimizedBytes = _optimizeEditorPhotoBytes(bytes);
-  final decoded = img.decodeImage(optimizedBytes);
-  final aspectRatio = decoded != null && decoded.height > 0
-      ? decoded.width / decoded.height
+  final info = img
+      .findDecoderForData(optimizedBytes)
+      ?.startDecode(optimizedBytes);
+  final aspectRatio = info != null && info.height > 0
+      ? info.width / info.height
       : null;
   return _OptimizedPhotoPayload(
     bytes: optimizedBytes,
@@ -3301,11 +2127,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onSelectedTextPointerDown,
     required this.onSelectedTextPointerMove,
     required this.onSelectedTextPointerCancel,
-    required this.inlineTextController,
-    required this.inlineTextFocusNode,
-    required this.isInlineTextEditing,
-    required this.onInlineTextChanged,
-    required this.onInlineTextEditingComplete,
+    required this.isTextTypingScreenOpen,
     required this.isPhotoEraserMode,
     required this.isPhotoStretchMode,
     required this.isContentAwareMode,
@@ -3358,6 +2180,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.photoTemperatureForLayer,
     required this.photoTintForLayer,
     required this.showSelectionDecorations,
+    required this.isLayerInteracting,
     required this.showPageFramePreview,
     required this.snapGuideListenable,
     required this.snapGuidesEnabled,
@@ -3414,16 +2237,12 @@ class _CanvasWorkspace extends StatelessWidget {
   final ValueChanged<DragUpdateDetails> onSelectedTextStretchHandleUpdate;
   final VoidCallback onSelectedStickerHandleEnd;
   final VoidCallback onSelectedLayerDoubleTap;
-  final ValueChanged<int> onSelectedTextTap;
+  final VoidCallback onSelectedTextTap;
   final VoidCallback onSelectedTextDoubleTap;
   final ValueChanged<PointerDownEvent> onSelectedTextPointerDown;
   final ValueChanged<PointerMoveEvent> onSelectedTextPointerMove;
   final VoidCallback onSelectedTextPointerCancel;
-  final TextEditingController inlineTextController;
-  final FocusNode inlineTextFocusNode;
-  final bool isInlineTextEditing;
-  final ValueChanged<String> onInlineTextChanged;
-  final VoidCallback onInlineTextEditingComplete;
+  final bool isTextTypingScreenOpen;
   final bool isPhotoEraserMode;
   final bool isPhotoStretchMode;
   final bool isContentAwareMode;
@@ -3488,6 +2307,7 @@ class _CanvasWorkspace extends StatelessWidget {
   final double Function(_CanvasLayer layer) photoTemperatureForLayer;
   final double Function(_CanvasLayer layer) photoTintForLayer;
   final bool showSelectionDecorations;
+  final bool isLayerInteracting;
   final bool showPageFramePreview;
   final ValueListenable<_SnapGuideState> snapGuideListenable;
   final bool snapGuidesEnabled;
@@ -3656,7 +2476,7 @@ class _CanvasWorkspace extends StatelessWidget {
       ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: isInlineTextEditing || lockLayerSelectionForBrushTool
+        onTapDown: isTextTypingScreenOpen || lockLayerSelectionForBrushTool
             ? null
             : (details) =>
                   onCanvasTapDown(details.localPosition, pageRect, pageSize),
@@ -3669,7 +2489,7 @@ class _CanvasWorkspace extends StatelessWidget {
         onScaleEnd: routeCanvasGesturesToSelectedLayer
             ? (_) => onSelectedLayerInteractionEnd()
             : null,
-        onLongPressStart: isInlineTextEditing
+        onLongPressStart: isTextTypingScreenOpen
             ? null
             : (details) => onCanvasLongPressStart(
                 details.globalPosition,
@@ -3737,7 +2557,9 @@ class _CanvasWorkspace extends StatelessWidget {
                                           stageBackgroundImageBytes!,
                                           fit: BoxFit.cover,
                                           gaplessPlayback: true,
-                                          filterQuality: exportHighQuality
+                                          filterQuality: isLayerInteracting
+                                              ? FilterQuality.low
+                                              : exportHighQuality
                                               ? FilterQuality.high
                                               : FilterQuality.medium,
                                         ),
@@ -3780,20 +2602,6 @@ class _CanvasWorkspace extends StatelessWidget {
                                     pageSize,
                                   )
                                 : Size.zero;
-                            final inlineTextEditorSize =
-                                layer.isText &&
-                                    isSelected &&
-                                    isInlineTextEditing
-                                ? _inlineTextInputVisualSize(layer, pageSize)
-                                : layerSize;
-                            final textInteractiveSize = layer.isText
-                                ? (isSelected && isInlineTextEditing
-                                      ? inlineTextEditorSize
-                                      : Size(
-                                          layerSize.width + 16,
-                                          layerSize.height + 12,
-                                        ))
-                                : layerSize;
                             final textTapTargetSize = layer.isText
                                 ? (isSelected
                                       ? Size(
@@ -3801,8 +2609,8 @@ class _CanvasWorkspace extends StatelessWidget {
                                           textSelectionBoxSize.height + 8,
                                         )
                                       : Size(
-                                          inlineTextEditorSize.width + 56,
-                                          inlineTextEditorSize.height + 36,
+                                          layerSize.width + 56,
+                                          layerSize.height + 36,
                                         ))
                                 : layerSize;
                             final photoSize = layer.isPhoto
@@ -3814,7 +2622,9 @@ class _CanvasWorkspace extends StatelessWidget {
                                 ? photoSize
                                 : layerSize;
                             final photoCacheWidth =
-                                layer.isPhoto && !exportHighQuality
+                                layer.isPhoto &&
+                                    !exportHighQuality &&
+                                    (!isSelected || isLayerInteracting)
                                 ? (photoSize.width * devicePixelRatio)
                                       .round()
                                       .clamp(512, 2048)
@@ -4147,7 +2957,9 @@ class _CanvasWorkspace extends StatelessWidget {
                                   ..setEntry(3, 2, perspectiveDepth)
                                   ..rotateX(verticalRadians)
                                   ..rotateY(-horizontalRadians),
-                                filterQuality: FilterQuality.high,
+                                filterQuality: isLayerInteracting
+                                    ? FilterQuality.low
+                                    : FilterQuality.high,
                                 child: layerChild,
                               );
                             }
@@ -4316,8 +3128,6 @@ class _CanvasWorkspace extends StatelessWidget {
                                   overlayOpacity: layer.isText
                                       ? 0
                                       : layer.layerStyleOverlayOpacity,
-                                  colorOverlayBlendMode:
-                                      layer.layerStyleColorOverlayBlendMode,
                                   strokeColor: layer.layerStyleStrokeColor,
                                   strokeWidth: layer.isText
                                       ? 0
@@ -4332,45 +3142,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                     layer.layerStyleShadowOffsetX,
                                     layer.layerStyleShadowOffsetY,
                                   ),
-                                  shadowBlendMode:
-                                      layer.layerStyleShadowBlendMode,
-                                  shadowContour: layer.layerStyleShadowContour,
-                                  shadowNoise: layer.layerStyleShadowNoise,
-                                  useGlobalLight:
-                                      layer.layerStyleUseGlobalLight,
-                                  globalLightAngle:
-                                      layer.layerStyleGlobalLightAngle,
-                                  globalLightAltitude:
-                                      layer.layerStyleGlobalLightAltitude,
-                                  bevelEnabled: layer.layerStyleBevelEnabled,
-                                  bevelStyle: layer.layerStyleBevelStyle,
-                                  bevelTechnique:
-                                      layer.layerStyleBevelTechnique,
-                                  bevelDirection:
-                                      layer.layerStyleBevelDirection,
-                                  bevelDepth: layer.layerStyleBevelDepth,
-                                  bevelSize: layer.layerStyleBevelSize,
-                                  bevelSoften: layer.layerStyleBevelSoften,
-                                  bevelAngle: layer.layerStyleBevelAngle,
-                                  bevelAltitude: layer.layerStyleBevelAltitude,
-                                  bevelHighlightColor:
-                                      layer.layerStyleBevelHighlightColor,
-                                  bevelHighlightOpacity:
-                                      layer.layerStyleBevelHighlightOpacity,
-                                  bevelShadowColor:
-                                      layer.layerStyleBevelShadowColor,
-                                  bevelShadowOpacity:
-                                      layer.layerStyleBevelShadowOpacity,
-                                  contour: layer.layerStyleContour,
-                                  textureEnabled:
-                                      layer.layerStyleTextureEnabled,
-                                  textureScale: layer.layerStyleTextureScale,
-                                  textureDepth: layer.layerStyleTextureDepth,
                                   strokeOpacity: layer.layerStyleStrokeOpacity,
-                                  strokePosition:
-                                      layer.layerStyleStrokePosition,
-                                  strokeBlendMode:
-                                      layer.layerStyleStrokeBlendMode,
                                   innerShadowColor:
                                       layer.layerStyleInnerShadowColor,
                                   innerShadowOpacity: layer.isText
@@ -4384,12 +3156,6 @@ class _CanvasWorkspace extends StatelessWidget {
                                       layer.layerStyleInnerShadowDistance,
                                   innerShadowAngle:
                                       layer.layerStyleInnerShadowAngle,
-                                  innerShadowBlendMode:
-                                      layer.layerStyleInnerShadowBlendMode,
-                                  innerShadowContour:
-                                      layer.layerStyleInnerShadowContour,
-                                  innerShadowNoise:
-                                      layer.layerStyleInnerShadowNoise,
                                   gradientOverlayEnabled: layer.isText
                                       ? false
                                       : layer.layerStyleGradientOverlayEnabled,
@@ -4408,16 +3174,10 @@ class _CanvasWorkspace extends StatelessWidget {
                                       layer.layerStyleGradientOverlayOpacity,
                                   gradientOverlayAngle:
                                       layer.layerStyleGradientOverlayAngle,
-                                  gradientOverlayStyle:
-                                      layer.layerStyleGradientOverlayStyle,
                                   gradientOverlayScale:
                                       layer.layerStyleGradientOverlayScale,
-                                  gradientOverlayBlendMode:
-                                      layer.layerStyleGradientOverlayBlendMode,
                                   gradientOverlayReversed:
                                       layer.layerStyleGradientOverlayReversed,
-                                  gradientOverlayDither:
-                                      layer.layerStyleGradientOverlayDither,
                                   outerGlowColor:
                                       layer.layerStyleOuterGlowColor,
                                   outerGlowOpacity: layer.isText
@@ -4426,53 +3186,6 @@ class _CanvasWorkspace extends StatelessWidget {
                                   outerGlowSize: layer.layerStyleOuterGlowSize,
                                   outerGlowSpread:
                                       layer.layerStyleOuterGlowSpread,
-                                  outerGlowNoise:
-                                      layer.layerStyleOuterGlowNoise,
-                                  outerGlowContour:
-                                      layer.layerStyleOuterGlowContour,
-                                  outerGlowRange:
-                                      layer.layerStyleOuterGlowRange,
-                                  outerGlowJitter:
-                                      layer.layerStyleOuterGlowJitter,
-                                  outerGlowBlendMode:
-                                      layer.layerStyleOuterGlowBlendMode,
-                                  innerGlowColor:
-                                      layer.layerStyleInnerGlowColor,
-                                  innerGlowOpacity:
-                                      layer.layerStyleInnerGlowOpacity,
-                                  innerGlowSize: layer.layerStyleInnerGlowSize,
-                                  innerGlowSpread:
-                                      layer.layerStyleInnerGlowSpread,
-                                  innerGlowNoise:
-                                      layer.layerStyleInnerGlowNoise,
-                                  innerGlowSource:
-                                      layer.layerStyleInnerGlowSource,
-                                  innerGlowContour:
-                                      layer.layerStyleInnerGlowContour,
-                                  innerGlowRange:
-                                      layer.layerStyleInnerGlowRange,
-                                  innerGlowJitter:
-                                      layer.layerStyleInnerGlowJitter,
-                                  innerGlowBlendMode:
-                                      layer.layerStyleInnerGlowBlendMode,
-                                  satinColor: layer.layerStyleSatinColor,
-                                  satinOpacity: layer.layerStyleSatinOpacity,
-                                  satinAngle: layer.layerStyleSatinAngle,
-                                  satinDistance: layer.layerStyleSatinDistance,
-                                  satinSize: layer.layerStyleSatinSize,
-                                  satinInverted: layer.layerStyleSatinInverted,
-                                  satinBlendMode:
-                                      layer.layerStyleSatinBlendMode,
-                                  patternOverlayEnabled:
-                                      layer.layerStylePatternOverlayEnabled,
-                                  patternOverlayOpacity:
-                                      layer.layerStylePatternOverlayOpacity,
-                                  patternOverlayScale:
-                                      layer.layerStylePatternOverlayScale,
-                                  patternOverlayBlendMode:
-                                      layer.layerStylePatternOverlayBlendMode,
-                                  patternOverlayPreset:
-                                      layer.layerStylePatternOverlayPreset,
                                   child: stretchAwareLayerChild,
                                 );
 
@@ -4651,6 +3364,18 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                                     );
                                                                                   }
                                                                                 }
+                                                                              : isContentAwareMode
+                                                                              ? (
+                                                                                  details,
+                                                                                ) {
+                                                                                  if (canUseContentAwareStroke()) {
+                                                                                    onContentAwareStart(
+                                                                                      details.localPosition,
+                                                                                      transformLayerSize,
+                                                                                    );
+                                                                                    onContentAwareEnd();
+                                                                                  }
+                                                                                }
                                                                               : null,
                                                                           onPanStart:
                                                                               isPhotoCloneMode
@@ -4768,25 +3493,24 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                               isBrushEditingLayer
                                                                               ? null
                                                                               : (_) => onSelectedLayerInteractionEnd(),
-                                                                          child: _EraserPreviewLayer(
-                                                                            layerId:
-                                                                                layer.id,
-                                                                            previewListenable:
-                                                                                eraserPreviewListenable,
-                                                                            brushScale:
-                                                                                isPhotoStretchMode ||
-                                                                                    isContentAwareMode ||
-                                                                                    isPhotoCloneMode ||
-                                                                                    isPhotoEraserMode ||
-                                                                                    isLayerMaskBrushMode
-                                                                                ? 1 /
-                                                                                      math.max(
-                                                                                        0.1,
-                                                                                        viewportScale,
-                                                                                      )
-                                                                                : 1,
-                                                                            child:
-                                                                                contentLayerChild,
+                                                                          child: RepaintBoundary(
+                                                                            child: _EraserPreviewLayer(
+                                                                              layerId: layer.id,
+                                                                              previewListenable: eraserPreviewListenable,
+                                                                              brushScale:
+                                                                                  isPhotoStretchMode ||
+                                                                                      isContentAwareMode ||
+                                                                                      isPhotoCloneMode ||
+                                                                                      isPhotoEraserMode ||
+                                                                                      isLayerMaskBrushMode
+                                                                                  ? 1 /
+                                                                                        math.max(
+                                                                                          0.1,
+                                                                                          viewportScale,
+                                                                                        )
+                                                                                  : 1,
+                                                                              child: contentLayerChild,
+                                                                            ),
                                                                           ),
                                                                         ),
                                                                       ),
@@ -4844,90 +3568,49 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                   height:
                                                                       textTapTargetSize
                                                                           .height,
-                                                                  child:
-                                                                      isInlineTextEditing
-                                                                      ? Stack(
-                                                                          alignment:
-                                                                              Alignment.center,
-                                                                          clipBehavior:
-                                                                              Clip.none,
-                                                                          children:
-                                                                              <
-                                                                                Widget
-                                                                              >[
-                                                                                IgnorePointer(
-                                                                                  child: Opacity(
-                                                                                    opacity: 0,
-                                                                                    child: OverflowBox(
-                                                                                      alignment: Alignment.center,
-                                                                                      minWidth: 0,
-                                                                                      minHeight: 0,
-                                                                                      maxWidth: double.infinity,
-                                                                                      maxHeight: double.infinity,
-                                                                                      child: effectiveTextChild,
-                                                                                    ),
-                                                                                  ),
-                                                                                ),
-                                                                                OverflowBox(
-                                                                                  alignment: Alignment.center,
-                                                                                  minWidth: 0,
-                                                                                  minHeight: 0,
-                                                                                  maxWidth: double.infinity,
-                                                                                  maxHeight: double.infinity,
-                                                                                  child: _InlineCanvasTextField(
-                                                                                    layer: layer,
-                                                                                    width: textInteractiveSize.width,
-                                                                                    height: textInteractiveSize.height,
-                                                                                    controller: inlineTextController,
-                                                                                    focusNode: inlineTextFocusNode,
-                                                                                    onChanged: onInlineTextChanged,
-                                                                                    onEditingComplete: onInlineTextEditingComplete,
-                                                                                    paintEditableText: true,
-                                                                                  ),
-                                                                                ),
-                                                                              ],
-                                                                        )
-                                                                      : Listener(
-                                                                          onPointerDown:
-                                                                              onSelectedTextPointerDown,
-                                                                          onPointerMove:
-                                                                              onSelectedTextPointerMove,
-                                                                          onPointerUp: (_) =>
-                                                                              onSelectedTextPointerCancel(),
-                                                                          onPointerCancel: (_) =>
-                                                                              onSelectedTextPointerCancel(),
-                                                                          child: GestureDetector(
-                                                                            behavior:
-                                                                                HitTestBehavior.opaque,
-                                                                            onTapUp:
-                                                                                (
-                                                                                  details,
-                                                                                ) => onSelectedTextTap(
-                                                                                  _textCursorOffsetForTap(
-                                                                                    layer: layer,
-                                                                                    pageSize: pageSize,
-                                                                                    tapTargetSize: textTapTargetSize,
-                                                                                    localPosition: details.localPosition,
-                                                                                  ),
-                                                                                ),
-                                                                            onDoubleTap:
-                                                                                onSelectedTextDoubleTap,
-                                                                            onScaleStart:
-                                                                                onSelectedLayerInteractionStart,
-                                                                            onScaleUpdate:
-                                                                                onSelectedLayerScaleUpdate,
-                                                                            onScaleEnd: (_) =>
-                                                                                onSelectedLayerInteractionEnd(),
-                                                                            child: OverflowBox(
-                                                                              alignment: Alignment.center,
-                                                                              minWidth: 0,
-                                                                              minHeight: 0,
-                                                                              maxWidth: double.infinity,
-                                                                              maxHeight: double.infinity,
-                                                                              child: effectiveTextChild,
-                                                                            ),
-                                                                          ),
-                                                                        ),
+                                                                  child: Listener(
+                                                                    onPointerDown:
+                                                                        onSelectedTextPointerDown,
+                                                                    onPointerMove:
+                                                                        onSelectedTextPointerMove,
+                                                                    onPointerUp:
+                                                                        (_) =>
+                                                                            onSelectedTextPointerCancel(),
+                                                                    onPointerCancel:
+                                                                        (_) =>
+                                                                            onSelectedTextPointerCancel(),
+                                                                    child: GestureDetector(
+                                                                      behavior:
+                                                                          HitTestBehavior
+                                                                              .opaque,
+                                                                      onTapUp:
+                                                                          (_) =>
+                                                                              onSelectedTextTap(),
+                                                                      onDoubleTap:
+                                                                          onSelectedTextDoubleTap,
+                                                                      onScaleStart:
+                                                                          onSelectedLayerInteractionStart,
+                                                                      onScaleUpdate:
+                                                                          onSelectedLayerScaleUpdate,
+                                                                      onScaleEnd:
+                                                                          (_) =>
+                                                                              onSelectedLayerInteractionEnd(),
+                                                                      child: OverflowBox(
+                                                                        alignment:
+                                                                            Alignment.center,
+                                                                        minWidth:
+                                                                            0,
+                                                                        minHeight:
+                                                                            0,
+                                                                        maxWidth:
+                                                                            double.infinity,
+                                                                        maxHeight:
+                                                                            double.infinity,
+                                                                        child:
+                                                                            effectiveTextChild,
+                                                                      ),
+                                                                    ),
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ),
@@ -5238,7 +3921,7 @@ class _CanvasWorkspace extends StatelessWidget {
     final layer = selectedLayer;
     if (layer == null ||
         (!layer.isPhoto && !layer.isSticker && !layer.isText) ||
-        (layer.isText && isInlineTextEditing)) {
+        (layer.isText && isTextTypingScreenOpen)) {
       return const SizedBox.shrink();
     }
 
@@ -5328,206 +4011,6 @@ class _CanvasWorkspace extends StatelessWidget {
   }
 }
 
-class _InlineCanvasTextField extends StatelessWidget {
-  const _InlineCanvasTextField({
-    required this.layer,
-    required this.width,
-    required this.height,
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-    required this.onEditingComplete,
-    required this.paintEditableText,
-  });
-
-  final _CanvasLayer layer;
-  final double width;
-  final double height;
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onEditingComplete;
-  final bool paintEditableText;
-
-  @override
-  Widget build(BuildContext context) {
-    final inputStyle = _inlineTextInputStyle(layer);
-    final textDirection = _textDirectionForValue(controller.text);
-    final usesLegacyPreview = _isLegacyTeluguFontFamily(layer.fontFamily);
-    final needsScriptSafety = _textLayerNeedsScriptSafety(
-      fontFamily: layer.fontFamily,
-      text: controller.text,
-    );
-    final inputVerticalPadding = needsScriptSafety
-        ? math.max(8.0, layer.fontSize * 0.16)
-        : 6.0;
-    final editableStyle = inputStyle.copyWith(
-      color: paintEditableText
-          ? layer.textColor.withValues(alpha: layer.textOpacity.clamp(0, 1))
-          : Colors.transparent,
-      shadows: const <Shadow>[],
-      decorationColor: Colors.transparent,
-    );
-    final inputPainter = TextPainter(
-      text: TextSpan(
-        text: controller.text.isEmpty ? '\u200B' : controller.text,
-        style: editableStyle,
-      ),
-      textAlign: layer.textAlign,
-      textDirection: textDirection,
-      textScaler: TextScaler.noScaling,
-      maxLines: null,
-    )..layout();
-    final editWidth = layer.isParagraphText
-        ? width
-        : math.max(
-            width,
-            inputPainter.width + math.max(24, layer.fontSize * 2),
-          );
-    final editLeft = switch (layer.textAlign) {
-      TextAlign.right || TextAlign.end => width - editWidth,
-      TextAlign.center || TextAlign.justify => (width - editWidth) / 2,
-      _ => 0.0,
-    };
-
-    return Center(
-      child: SizedBox(
-        width: width,
-        height: math.max(height, 44),
-        child: ValueListenableBuilder<TextEditingValue>(
-          valueListenable: controller,
-          builder: (context, value, _) {
-            final showLegacyPreview =
-                usesLegacyPreview && value.selection.isCollapsed;
-            final effectiveEditableStyle = showLegacyPreview
-                ? editableStyle.copyWith(color: Colors.transparent)
-                : editableStyle;
-            final legacyPreviewText = showLegacyPreview
-                ? TeluguLegacyTextService.convertSync(
-                        value.text.isEmpty ? '\u200B' : value.text,
-                        fontFamily: layer.fontFamily,
-                      ) ??
-                      value.text
-                : '';
-            return Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                Positioned.fill(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Theme(
-                      data: Theme.of(context).copyWith(
-                        textSelectionTheme: TextSelectionThemeData(
-                          cursorColor: const Color(0xFF38BDF8),
-                          selectionColor: const Color(
-                            0xFF38BDF8,
-                          ).withValues(alpha: 0.28),
-                          selectionHandleColor: const Color(0xFF38BDF8),
-                        ),
-                      ),
-                      child: MediaQuery.withNoTextScaling(
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: <Widget>[
-                            if (showLegacyPreview)
-                              Positioned(
-                                left: editLeft,
-                                top: 0,
-                                bottom: 0,
-                                width: editWidth,
-                                child: IgnorePointer(
-                                  child: Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: inputVerticalPadding,
-                                    ),
-                                    child: Text(
-                                      legacyPreviewText,
-                                      maxLines: null,
-                                      textAlign: layer.textAlign,
-                                      textDirection: textDirection,
-                                      textScaler: TextScaler.noScaling,
-                                      style: editableStyle.copyWith(
-                                        color: layer.textColor.withValues(
-                                          alpha: layer.textOpacity.clamp(0, 1),
-                                        ),
-                                        fontFamily: layer.fontFamily,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            Positioned(
-                              left: editLeft,
-                              top: 0,
-                              bottom: 0,
-                              width: editWidth,
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: inputVerticalPadding,
-                                ),
-                                child: EditableText(
-                                  controller: controller,
-                                  focusNode: focusNode,
-                                  autofocus: true,
-                                  maxLines: null,
-                                  minLines: 1,
-                                  keyboardType: TextInputType.multiline,
-                                  textInputAction: TextInputAction.newline,
-                                  keyboardAppearance: Brightness.dark,
-                                  textAlign: layer.textAlign,
-                                  textDirection: textDirection,
-                                  showSelectionHandles: true,
-                                  enableInteractiveSelection: true,
-                                  strutStyle: StrutStyle(
-                                    fontFamily: inputStyle.fontFamily,
-                                    fontSize: layer.fontSize,
-                                    height: inputStyle.height,
-                                    leadingDistribution:
-                                        TextLeadingDistribution.even,
-                                  ),
-                                  style: effectiveEditableStyle,
-                                  cursorColor: const Color(0xFF38BDF8),
-                                  backgroundCursorColor: Colors.transparent,
-                                  selectionColor: const Color(
-                                    0xFF38BDF8,
-                                  ).withValues(alpha: 0.28),
-                                  cursorWidth: 1.8,
-                                  cursorRadius: const Radius.circular(2),
-                                  enableSuggestions: true,
-                                  autocorrect: true,
-                                  selectionControls:
-                                      materialTextSelectionControls,
-                                  contextMenuBuilder:
-                                      (context, editableTextState) =>
-                                          AdaptiveTextSelectionToolbar.editableText(
-                                            editableTextState:
-                                                editableTextState,
-                                          ),
-                                  magnifierConfiguration: TextMagnifier
-                                      .adaptiveMagnifierConfiguration,
-                                  onChanged: onChanged,
-                                  onEditingComplete: onEditingComplete,
-                                  onTapOutside: (_) => onEditingComplete(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
 class _EraserPreviewLayer extends StatelessWidget {
   const _EraserPreviewLayer({
     required this.layerId,
@@ -5547,10 +4030,16 @@ class _EraserPreviewLayer extends StatelessWidget {
       valueListenable: previewListenable,
       child: child,
       builder: (context, preview, child) {
+        final activePreview = preview != null && preview.layerId == layerId
+            ? preview
+            : null;
         return CustomPaint(
-          foregroundPainter: preview == null || preview.layerId != layerId
+          foregroundPainter: activePreview == null
               ? null
-              : _PhotoEraserPreviewPainter(preview, brushScale: brushScale),
+              : _PhotoEraserPreviewPainter(
+                  activePreview,
+                  brushScale: brushScale,
+                ),
           child: child,
         );
       },
@@ -5574,6 +4063,44 @@ class _PhotoEraserPreviewPainter extends CustomPainter {
     final hardStop = _editorRoundBrushHardRadiusFactor(hardness);
     final cloneImage = preview.cloneSourceImage;
     final cloneSampleOffset = preview.cloneSampleOffset;
+
+    void drawStrokePreview() {
+      final strokePoints = preview.strokePreviewPoints;
+      if (strokePoints == null || strokePoints.isEmpty) {
+        return;
+      }
+      final isErasePreview = preview.effect == _PhotoBrushPreviewEffect.erase;
+      final strokePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = radius * 2
+        ..color =
+            (isErasePreview ? const Color(0xFFEF4444) : const Color(0xFFFFFFFF))
+                .withValues(
+                  alpha: preview.strokePreviewOpacity.clamp(0.0, 0.42),
+                );
+      final outlinePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = math.max(1.0, 1.2 * brushScale)
+        ..color = const Color(0xFF0F172A).withValues(alpha: 0.38);
+      final path = Path();
+      for (var index = 0; index < strokePoints.length; index++) {
+        final point = Offset(
+          strokePoints[index].dx * size.width,
+          strokePoints[index].dy * size.height,
+        );
+        if (index == 0) {
+          path.moveTo(point.dx, point.dy);
+        } else {
+          path.lineTo(point.dx, point.dy);
+        }
+      }
+      canvas.drawPath(path, strokePaint);
+      canvas.drawPath(path, outlinePaint);
+    }
 
     if (cloneImage != null && cloneSampleOffset != null) {
       final cloneOpacity = preview.cloneOpacity.clamp(0.0, 1.0).toDouble();
@@ -5698,6 +4225,8 @@ class _PhotoEraserPreviewPainter extends CustomPainter {
         canvas.restore();
       }
     }
+
+    drawStrokePreview();
 
     void drawBrushCursor(Offset normalizedPoint) {
       final center = Offset(
@@ -6647,71 +5176,6 @@ bool _textLayerNeedsScriptSafety({
       _textValueNeedsScriptSafety(text);
 }
 
-TextStyle _inlineTextInputStyle(_CanvasLayer layer) {
-  final typingFontFamily = _isLegacyTeluguFontFamily(layer.fontFamily)
-      ? _legacyFontFallbackFamily
-      : _resolveTextRenderFontFamily(layer.fontFamily);
-  final needsScriptSafety = _textLayerNeedsScriptSafety(
-    fontFamily: layer.fontFamily,
-    text: layer.text ?? '',
-  );
-  return TextStyle(
-    color: Colors.black,
-    fontFamily: typingFontFamily,
-    fontSize: layer.fontSize,
-    height: needsScriptSafety
-        ? layer.textLineHeight.clamp(0.95, 2.2).toDouble()
-        : layer.textLineHeight.clamp(0.8, 2.2).toDouble(),
-    letterSpacing: _isLegacyTeluguFontFamily(layer.fontFamily)
-        ? 0
-        : layer.textLetterSpacing,
-    fontWeight: layer.isTextBold ? FontWeight.w700 : FontWeight.w500,
-    fontStyle: layer.isTextItalic ? FontStyle.italic : FontStyle.normal,
-    decoration: layer.isTextUnderline
-        ? TextDecoration.underline
-        : TextDecoration.none,
-    decorationColor: Colors.black,
-  );
-}
-
-Size _inlineTextInputVisualSize(_CanvasLayer layer, Size pageSize) {
-  final maxWidth = math.max(72.0, pageSize.width * 0.9);
-  final style = _inlineTextInputStyle(layer);
-  final value = (layer.text ?? '').isEmpty ? '\u200B' : layer.text!;
-  final painter = TextPainter(
-    text: TextSpan(text: value, style: style),
-    textAlign: layer.textAlign,
-    textDirection: _textDirectionForValue(value),
-    textScaler: TextScaler.noScaling,
-    strutStyle: StrutStyle(
-      fontFamily: style.fontFamily,
-      fontSize: layer.fontSize,
-      height: style.height,
-      leadingDistribution: TextLeadingDistribution.even,
-    ),
-    maxLines: null,
-  );
-  if (layer.isParagraphText) {
-    painter.layout(maxWidth: math.max(40.0, maxWidth - 16));
-  } else {
-    painter.layout();
-  }
-  final needsScriptSafety = _textLayerNeedsScriptSafety(
-    fontFamily: layer.fontFamily,
-    text: value,
-  );
-  final scriptSafetyPadding = needsScriptSafety
-      ? math.max(12.0, layer.fontSize * 0.36)
-      : math.max(8.0, layer.fontSize * 0.22);
-  final typingReserve = math.max(24.0, layer.fontSize * 2);
-  return Size(
-    layer.isParagraphText
-        ? maxWidth
-        : (painter.width + typingReserve).clamp(72.0, pageSize.width * 8),
-    math.max(44.0, painter.height + 12 + (scriptSafetyPadding * 2)),
-  );
-}
-
 Size _workspaceLayerVisualSize(_CanvasLayer layer, Size pageSize) {
   if (layer.isPhoto) {
     return layer.fillPageBounds
@@ -6793,60 +5257,6 @@ Size _workspaceTextSelectionBoxSize(_CanvasLayer layer, Size pageSize) {
   return Size(
     math.max(24.0, visualSize.width),
     math.max(24.0, visualSize.height),
-  );
-}
-
-int _textCursorOffsetForTap({
-  required _CanvasLayer layer,
-  required Size pageSize,
-  required Size tapTargetSize,
-  required Offset localPosition,
-}) {
-  final sourceText = layer.text ?? '';
-  if (sourceText.isEmpty) {
-    return 0;
-  }
-  final renderText = _resolveLayerRenderText(layer);
-  final painter = TextPainter(
-    text: TextSpan(
-      text: renderText,
-      style: TextStyle(
-        fontFamily: _resolveLayerRenderFontFamily(layer),
-        fontSize: layer.fontSize,
-        height: _effectiveTextLineHeightForRender(
-          fontFamily: layer.fontFamily,
-          textLineHeight: layer.textLineHeight,
-          text: renderText,
-        ),
-        letterSpacing: layer.textLetterSpacing,
-        fontWeight: layer.isTextBold ? FontWeight.w700 : FontWeight.w500,
-        fontStyle: layer.isTextItalic ? FontStyle.italic : FontStyle.normal,
-      ),
-    ),
-    textDirection: _textDirectionForValue(renderText),
-    textAlign: layer.textAlign,
-    textScaler: TextScaler.noScaling,
-    maxLines: null,
-  );
-  if (layer.isParagraphText) {
-    painter.layout(maxWidth: math.max(72.0, pageSize.width * 0.9));
-  } else {
-    painter.layout();
-  }
-  final paintOrigin = Offset(
-    (tapTargetSize.width - painter.width) / 2,
-    (tapTargetSize.height - painter.height) / 2,
-  );
-  final renderOffset = painter
-      .getPositionForOffset(localPosition - paintOrigin)
-      .offset
-      .clamp(0, renderText.length);
-  if (renderText == sourceText || renderText.isEmpty) {
-    return renderOffset.clamp(0, sourceText.length);
-  }
-  return ((renderOffset / renderText.length) * sourceText.length).round().clamp(
-    0,
-    sourceText.length,
   );
 }
 
@@ -6967,38 +5377,31 @@ String _layerStyleVisualSignature(_CanvasLayer layer) {
     layer.id,
     layer.layerStyleOverlayColor.toARGB32(),
     layer.layerStyleOverlayOpacity.toStringAsFixed(4),
-    layer.layerStyleColorOverlayBlendMode,
     layer.layerStyleStrokeColor.toARGB32(),
     layer.layerStyleStrokeWidth.toStringAsFixed(3),
     layer.layerStyleStrokeOpacity.toStringAsFixed(4),
-    layer.layerStyleStrokePosition,
-    layer.layerStyleStrokeBlendMode,
     layer.layerStyleShadowColor.toARGB32(),
     layer.layerStyleShadowOpacity.toStringAsFixed(4),
     layer.layerStyleShadowBlur.toStringAsFixed(3),
     layer.layerStyleShadowSpread.toStringAsFixed(3),
     layer.layerStyleShadowOffsetX.toStringAsFixed(3),
     layer.layerStyleShadowOffsetY.toStringAsFixed(3),
-    layer.layerStyleShadowBlendMode,
     layer.layerStyleInnerShadowColor.toARGB32(),
     layer.layerStyleInnerShadowOpacity.toStringAsFixed(4),
     layer.layerStyleInnerShadowBlur.toStringAsFixed(3),
     layer.layerStyleInnerShadowChoke.toStringAsFixed(3),
     layer.layerStyleInnerShadowDistance.toStringAsFixed(3),
     layer.layerStyleInnerShadowAngle.toStringAsFixed(3),
-    layer.layerStyleInnerShadowBlendMode,
     layer.layerStyleOuterGlowColor.toARGB32(),
     layer.layerStyleOuterGlowOpacity.toStringAsFixed(4),
     layer.layerStyleOuterGlowSize.toStringAsFixed(3),
     layer.layerStyleOuterGlowSpread.toStringAsFixed(3),
-    layer.layerStyleOuterGlowBlendMode,
     layer.layerStyleGradientOverlayEnabled,
     layer.layerStyleGradientOverlayIndex,
     layer.layerStyleGradientOverlayOpacity.toStringAsFixed(4),
     layer.layerStyleGradientOverlayAngle.toStringAsFixed(3),
     layer.layerStyleGradientOverlayScale.toStringAsFixed(3),
     layer.layerStyleGradientOverlayReversed,
-    layer.layerStyleGradientOverlayBlendMode,
   ]).toString();
 }
 
@@ -7087,8 +5490,8 @@ final LinkedHashMap<int, ui.ImageFilter> _textOuterGlowFilterCache =
     LinkedHashMap<int, ui.ImageFilter>();
 
 ui.ImageFilter _textOuterGlowFilter(double size, double spread) {
-  final sizeStep = size.round().clamp(0, 120);
-  final spreadStep = spread.round().clamp(0, 60);
+  final sizeStep = (size * 0.5).round().clamp(0, 60);
+  final spreadStep = (spread * 0.5).round().clamp(0, 32);
   final key = sizeStep * 100 + spreadStep;
   final cached = _textOuterGlowFilterCache.remove(key);
   if (cached != null) {
@@ -7096,9 +5499,13 @@ ui.ImageFilter _textOuterGlowFilter(double size, double spread) {
     return cached;
   }
 
-  final spreadRatio = spreadStep / 100;
-  final dilateRadius = sizeStep * spreadRatio;
-  final blurRadius = math.max(0.0, sizeStep - dilateRadius);
+  final visualSize = sizeStep * 2.0;
+  final visualSpread = spreadStep * 2.0;
+  final dilateRadius = math.min(18.0, visualSpread * 0.22);
+  final blurRadius = math.max(
+    0.01,
+    (visualSize * 0.42) + (visualSpread * 0.18),
+  );
   final filter = ui.ImageFilter.compose(
     inner: ui.ImageFilter.dilate(radiusX: dilateRadius, radiusY: dilateRadius),
     outer: ui.ImageFilter.blur(
@@ -7296,32 +5703,16 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
           bottomLeft,
           bottomRight,
         ].any((point) => point.dy > pageBounds.bottom + overflowTolerance);
-    const overflowColor = Color(0xFFEF4444);
-    const validColor = Color(0xFF1A73E8);
+    final overflowColor = const Color(0xFFEF4444).withValues(alpha: 0.58);
+    final validColor = const Color(0xFF1A73E8).withValues(alpha: 0.48);
     final decorationScale = 1 / viewportScale.clamp(0.25, 8.0);
     double scaled(double value) => value * decorationScale;
     final sideHandleHitSize = scaled(44);
     final cornerHandleHitSize = scaled(48);
     final stretchHandleHitSize = scaled(44);
-    final sideHandleVisualSize = scaled(10);
-    final cornerHandleVisualSize = scaled(18);
-    final stretchHandleVisualSize = scaled(14);
-    Offset normalizedOr(Offset value, Offset fallback) {
-      final distance = value.distance;
-      if (distance <= 0.001) {
-        return fallback;
-      }
-      return value / distance;
-    }
-
-    final centerPoint = transformedPoint(Offset.zero);
-    final rotateDirection = normalizedOr(
-      bottomSideHandleCenter - centerPoint,
-      const Offset(0, 1),
-    );
-    final rotateHandleCenter =
-        bottomSideHandleCenter + (rotateDirection * scaled(38));
-
+    final sideHandleVisualSize = scaled(7.5);
+    final cornerHandleVisualSize = scaled(13);
+    final stretchHandleVisualSize = scaled(10);
     Widget cornerResizeHandle({required Offset center, required Color color}) {
       return Positioned(
         left: center.dx - (cornerHandleHitSize / 2),
@@ -7356,7 +5747,7 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
                 topColor: topOverflow ? overflowColor : validColor,
                 rightColor: rightOverflow ? overflowColor : validColor,
                 bottomColor: bottomOverflow ? overflowColor : validColor,
-                strokeWidth: scaled(1.15),
+                strokeWidth: scaled(0.72),
               ),
             ),
           ),
@@ -7440,36 +5831,8 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
           ),
         ],
         cornerResizeHandle(
-          center: topLeft,
-          color: topOverflow || leftOverflow ? overflowColor : validColor,
-        ),
-        cornerResizeHandle(
           center: topRight,
           color: topOverflow || rightOverflow ? overflowColor : validColor,
-        ),
-        cornerResizeHandle(
-          center: bottomRight,
-          color: bottomOverflow || rightOverflow ? overflowColor : validColor,
-        ),
-        cornerResizeHandle(
-          center: bottomLeft,
-          color: bottomOverflow || leftOverflow ? overflowColor : validColor,
-        ),
-        Positioned(
-          left: rotateHandleCenter.dx - (cornerHandleHitSize / 2),
-          top: rotateHandleCenter.dy - (cornerHandleHitSize / 2),
-          child: _TextBoxHandle(
-            visualSize: cornerHandleVisualSize,
-            hitSize: cornerHandleHitSize,
-            decorationScale: decorationScale,
-            isRound: false,
-            color: bottomOverflow || rightOverflow ? overflowColor : validColor,
-            icon: Icons.rotate_90_degrees_cw_rounded,
-            onPointerDown: onPointerDown,
-            onPanStart: onRotatePanStart,
-            onPanUpdate: onRotatePanUpdate,
-            onPanEnd: onPanEnd,
-          ),
         ),
       ],
     );
@@ -7504,7 +5867,9 @@ class _SelectionBoxPainter extends CustomPainter {
     final paint = Paint()
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
-      ..isAntiAlias = true;
+      ..isAntiAlias = true
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     canvas.drawLine(topLeft, topRight, paint..color = topColor);
     canvas.drawLine(topRight, bottomRight, paint..color = rightColor);
     canvas.drawLine(bottomRight, bottomLeft, paint..color = bottomColor);
@@ -7566,29 +5931,26 @@ class _TextBoxHandle extends StatelessWidget {
           child: Center(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: color,
+                color: color.withValues(alpha: icon == null ? 0.78 : 0.88),
                 shape: isRound ? BoxShape.circle : BoxShape.rectangle,
                 borderRadius: isRound
                     ? null
-                    : BorderRadius.circular(visualSize * 0.24),
+                    : BorderRadius.circular(visualSize * 0.32),
                 border: Border.all(
-                  color: Colors.white,
-                  width: 2 * decorationScale,
+                  color: Colors.white.withValues(alpha: 0.72),
+                  width: 1.1 * decorationScale,
                 ),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: const Color(0x4D000000),
-                    blurRadius: 5 * decorationScale,
-                    offset: Offset(0, 2 * decorationScale),
-                  ),
-                ],
               ),
               child: SizedBox(
                 width: visualSize,
                 height: visualSize,
                 child: icon == null
                     ? null
-                    : Icon(icon, size: visualSize * 0.62, color: Colors.white),
+                    : Icon(
+                        icon,
+                        size: visualSize * 0.58,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
               ),
             ),
           ),
@@ -7721,13 +6083,14 @@ class _CanvasTextLayerView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasOuterGlow = textOuterGlowOpacity > 0.001;
+    final effectiveTextShadowBlur = textShadowBlur.clamp(0.0, 48.0).toDouble();
     final overflowPadding = _textVisualOverflowPadding(
       fontFamily: fontFamily,
       text: text,
       fontSize: fontSize,
       textStrokeWidth: textStrokeWidth,
       textShadowOpacity: textShadowOpacity,
-      textShadowBlur: textShadowBlur,
+      textShadowBlur: effectiveTextShadowBlur,
       textShadowOffsetX: textShadowOffsetX,
       textShadowOffsetY: textShadowOffsetY,
       isTextUnderline: isTextUnderline,
@@ -7800,50 +6163,52 @@ class _CanvasTextLayerView extends StatelessWidget {
               shadows: <Shadow>[
                 Shadow(
                   color: textShadowColor.withValues(alpha: textShadowOpacity),
-                  blurRadius: textShadowBlur,
+                  blurRadius: effectiveTextShadowBlur,
                   offset: Offset(textShadowOffsetX, textShadowOffsetY),
                 ),
               ],
             ),
           );
 
-    final glowFilter = _textOuterGlowFilter(
-      textOuterGlowSize,
-      textOuterGlowSpread,
-    );
-    final glowGlyph = Text(
-      text,
-      textAlign: textAlign,
-      textDirection: _textDirectionForValue(text),
-      textScaler: TextScaler.noScaling,
-      softWrap: true,
-      style: TextStyle(
-        fontSize: fontSize,
-        height: _effectiveTextLineHeightForRender(
-          fontFamily: fontFamily,
-          textLineHeight: textLineHeight,
-          text: text,
-        ),
-        letterSpacing: textLetterSpacing,
-        fontWeight: isTextBold ? FontWeight.w700 : FontWeight.w500,
-        fontStyle: isTextItalic ? FontStyle.italic : FontStyle.normal,
-        fontFamily: fontFamily,
-        color: textOuterGlowColor,
-      ),
-    );
     final glowLayers = !hasOuterGlow
         ? const <Widget>[]
         : <Widget>[
             Opacity(
               opacity: textOuterGlowOpacity.clamp(0.0, 1.0),
               child: ImageFiltered(
-                imageFilter: glowFilter,
+                imageFilter: _textOuterGlowFilter(
+                  textOuterGlowSize,
+                  textOuterGlowSpread,
+                ),
                 child: ColorFiltered(
                   colorFilter: ColorFilter.mode(
                     textOuterGlowColor,
                     BlendMode.srcIn,
                   ),
-                  child: glowGlyph,
+                  child: Text(
+                    text,
+                    textAlign: textAlign,
+                    textDirection: _textDirectionForValue(text),
+                    textScaler: TextScaler.noScaling,
+                    softWrap: true,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      height: _effectiveTextLineHeightForRender(
+                        fontFamily: fontFamily,
+                        textLineHeight: textLineHeight,
+                        text: text,
+                      ),
+                      letterSpacing: textLetterSpacing,
+                      fontWeight: isTextBold
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      fontStyle: isTextItalic
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+                      fontFamily: fontFamily,
+                      color: textOuterGlowColor,
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -28,20 +28,14 @@ void main() {
       const Size(400, 800),
     );
     expect(
-      debugFitPageSizeForTest(
-        workspaceSize: workspace,
-        aspectRatio: 0.5,
-      ),
+      debugFitPageSizeForTest(workspaceSize: workspace, aspectRatio: 0.5),
       const Size(300, 600),
     );
   });
 
   test('PSD coordinates scale to the actual edge-to-edge page width', () {
     expect(
-      calculatePsdPageWidthScaleForTest(
-        psdWidth: 1000,
-        targetPageWidth: 400,
-      ),
+      calculatePsdPageWidthScaleForTest(psdWidth: 1000, targetPageWidth: 400),
       0.4,
     );
     expect(
@@ -51,6 +45,59 @@ void main() {
             targetPageWidth: 400,
           ),
       400,
+    );
+  });
+
+  test('PSD imported design export preserves original pixel size', () {
+    expect(
+      debugCalculateExportTargetPixelSizeForTest(
+        widthPx: 0,
+        heightPx: 1400,
+        shouldBoostRaster: true,
+        preservePixels: true,
+      ),
+      (width: 1, height: 1),
+    );
+    expect(
+      debugCalculateExportTargetPixelSizeForTest(
+        widthPx: 1000,
+        heightPx: 1400,
+        shouldBoostRaster: true,
+        preservePixels: true,
+      ),
+      (width: 1000, height: 1400),
+    );
+    expect(
+      debugCalculateExportTargetPixelSizeForTest(
+        widthPx: 1000,
+        heightPx: 1400,
+        shouldBoostRaster: true,
+        preservePixels: false,
+      ),
+      (width: 2000, height: 2800),
+    );
+  });
+
+  test('PSD export pixel ratio is not capped below original resolution', () {
+    expect(
+      debugCalculateExportPixelRatioForTest(
+        logicalWidth: 360,
+        logicalHeight: 360,
+        devicePixelRatio: 3,
+        targetSize: (width: 8000, height: 8000),
+        preservePixels: true,
+      ),
+      closeTo(8000 / 360, 0.0001),
+    );
+    expect(
+      debugCalculateExportPixelRatioForTest(
+        logicalWidth: 360,
+        logicalHeight: 360,
+        devicePixelRatio: 3,
+        targetSize: (width: 8000, height: 8000),
+        preservePixels: false,
+      ),
+      16,
     );
   });
 

@@ -191,7 +191,18 @@ Uint8List _magicWandRemoveColorBytes(Map<String, Object?> input) {
     }
   }
 
-  return Uint8List.fromList(img.encodePng(output));
+  return Uint8List.fromList(img.encodePng(output, level: 1));
+}
+
+double _editorRoundBrushHardRadiusFactor(double hardness) {
+  final value = hardness.clamp(0.0, 1.0).toDouble();
+  if (value >= 0.999) {
+    return 1;
+  }
+  if (value <= 0.001) {
+    return 0;
+  }
+  return value;
 }
 
 Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
@@ -229,14 +240,6 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
   var touchedMaxX = -1;
   var touchedMaxY = -1;
 
-  double brushCoverage(double distanceSquared) {
-    return _editorRoundBrushCoverage(
-      distanceSquared: distanceSquared,
-      radius: clampedRadius,
-      hardness: hardness,
-    );
-  }
-
   void stampAt(double normalizedX, double normalizedY) {
     final mappedX = (flipX ? 1 - normalizedX : normalizedX).clamp(0.0, 1.0);
     final mappedY = (flipY ? 1 - normalizedY : normalizedY).clamp(0.0, 1.0);
@@ -253,7 +256,11 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
         final pixelCenterX = x + 0.5;
         final dx = pixelCenterX - centerX;
         final dy = pixelCenterY - centerY;
-        final coverage = brushCoverage((dx * dx) + (dy * dy));
+        final coverage = _editorRoundBrushCoverage(
+          distanceSquared: (dx * dx) + (dy * dy),
+          radius: clampedRadius,
+          hardness: hardness,
+        );
         if (coverage <= 0) {
           continue;
         }
@@ -261,18 +268,10 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
         final maskIndex = (y * width) + x;
         if (coverageByte > alphaMask[maskIndex]) {
           alphaMask[maskIndex] = coverageByte;
-          if (x < touchedMinX) {
-            touchedMinX = x;
-          }
-          if (x > touchedMaxX) {
-            touchedMaxX = x;
-          }
-          if (y < touchedMinY) {
-            touchedMinY = y;
-          }
-          if (y > touchedMaxY) {
-            touchedMaxY = y;
-          }
+          touchedMinX = math.min(touchedMinX, x);
+          touchedMaxX = math.max(touchedMaxX, x);
+          touchedMinY = math.min(touchedMinY, y);
+          touchedMaxY = math.max(touchedMaxY, y);
         }
       }
     }
@@ -321,18 +320,7 @@ Uint8List _erasePhotoBrushBytes(Map<String, Object?> input) {
     }
   }
 
-  return Uint8List.fromList(img.encodePng(output));
-}
-
-double _editorRoundBrushHardRadiusFactor(double hardness) {
-  final value = hardness.clamp(0.0, 1.0).toDouble();
-  if (value >= 0.999) {
-    return 1;
-  }
-  if (value <= 0.001) {
-    return 0;
-  }
-  return value;
+  return Uint8List.fromList(img.encodePng(output, level: 1));
 }
 
 double _editorRoundBrushCoverage({
@@ -359,8 +347,7 @@ double _editorRoundBrushCoverage({
     0.0,
     1.0,
   );
-  final feather = 1 - edgeProgress;
-  return feather * feather * feather * (feather * ((feather * 6) - 15) + 10);
+  return 1 - Curves.easeOut.transform(edgeProgress);
 }
 
 Widget _buildAdjustedPhoto({
@@ -530,12 +517,12 @@ List<double>? _toneColorBalanceMatrix({
   // A stable two-point RGB curve: shadows move the black point while
   // highlights move the white point. Temperature and tint then adjust channel
   // gains without altering alpha, so transparent photo edges remain intact.
-  final blackPoint = shadow >= 0 ? shadow * 42 : shadow * 10;
-  final whitePoint = 255 + (highlight * 54);
-  final tonalScale = ((whitePoint - blackPoint) / 255).clamp(0.45, 1.55);
-  final redScale = tonalScale * (1 + (warmth * 0.18) + (tintAmount * 0.06));
-  final greenScale = tonalScale * (1 - (tintAmount * 0.12));
-  final blueScale = tonalScale * (1 - (warmth * 0.18) + (tintAmount * 0.06));
+  final blackPoint = shadow >= 0 ? shadow * 30 : shadow * 8;
+  final whitePoint = 255 + (highlight * 40);
+  final tonalScale = ((whitePoint - blackPoint) / 255).clamp(0.58, 1.38);
+  final redScale = tonalScale * (1 + (warmth * 0.13) + (tintAmount * 0.04));
+  final greenScale = tonalScale * (1 - (tintAmount * 0.08));
+  final blueScale = tonalScale * (1 - (warmth * 0.13) + (tintAmount * 0.04));
   return <double>[
     redScale,
     0,
@@ -588,11 +575,11 @@ class _PhotoLocalEffectsLayer extends StatelessWidget {
 
     if (sharpenAmount > 0.01) {
       final clarity = math
-          .pow((sharpenAmount / 100).clamp(0.0, 1.0), 0.78)
+          .pow((sharpenAmount / 100).clamp(0.0, 1.0), 0.92)
           .toDouble();
       final matrix = _brightnessContrastMatrix(
         brightness: 0,
-        contrast: 1 + (clarity * 0.55),
+        contrast: 1 + (clarity * 0.30),
       );
       result = ColorFiltered(
         colorFilter: ColorFilter.matrix(matrix),
@@ -602,10 +589,10 @@ class _PhotoLocalEffectsLayer extends StatelessWidget {
 
     if (tiltShiftAmount > 0.01) {
       final tiltStrength = math
-          .pow((tiltShiftAmount / 100).clamp(0.0, 1.0), 0.72)
+          .pow((tiltShiftAmount / 100).clamp(0.0, 1.0), 0.9)
           .toDouble();
-      final blur = 3.0 + (tiltStrength * 22);
-      final focusHalfHeight = 0.10 + ((1 - tiltStrength) * 0.26);
+      final blur = 2.0 + (tiltStrength * 13);
+      final focusHalfHeight = 0.16 + ((1 - tiltStrength) * 0.24);
       result = Stack(
         fit: StackFit.expand,
         children: <Widget>[
@@ -642,10 +629,10 @@ class _PhotoLocalEffectsLayer extends StatelessWidget {
 
     if (motionAmount > 0.01) {
       final motionStrength = math
-          .pow((motionAmount / 100).clamp(0.0, 1.0), 0.78)
+          .pow((motionAmount / 100).clamp(0.0, 1.0), 0.95)
           .toDouble();
-      final dx = 1.5 + (motionStrength * 18);
-      final opacity = (motionStrength * 0.34).clamp(0.0, 0.34).toDouble();
+      final dx = 1.0 + (motionStrength * 11);
+      final opacity = (motionStrength * 0.22).clamp(0.0, 0.22).toDouble();
       result = Stack(
         fit: StackFit.expand,
         children: <Widget>[
@@ -688,12 +675,12 @@ class _PhotoLocalEffectsLayer extends StatelessWidget {
                       colors: <Color>[
                         Colors.transparent,
                         Colors.black.withValues(
-                          alpha: (0.12 + (vignetteAmount / 100 * 0.72))
-                              .clamp(0.0, 0.84)
+                          alpha: (0.08 + (vignetteAmount / 100 * 0.46))
+                              .clamp(0.0, 0.54)
                               .toDouble(),
                         ),
                       ],
-                      stops: const <double>[0.55, 1.0],
+                      stops: const <double>[0.62, 1.0],
                     ),
                   ),
                 ),
@@ -718,11 +705,11 @@ class _PhotoGrainPainter extends CustomPainter {
       return;
     }
     final effectiveIntensity = math
-        .pow(intensity.clamp(0.0, 1.0), 0.8)
+        .pow(intensity.clamp(0.0, 1.0), 1.05)
         .toDouble();
-    final step = (6 - (effectiveIntensity * 4.2)).clamp(1.8, 6.0).toDouble();
-    final alpha = (0.025 + (effectiveIntensity * 0.14))
-        .clamp(0.0, 0.18)
+    final step = (7 - (effectiveIntensity * 4.4)).clamp(2.2, 7.0).toDouble();
+    final alpha = (0.015 + (effectiveIntensity * 0.09))
+        .clamp(0.0, 0.11)
         .toDouble();
     final darkPaint = Paint()..color = Colors.black.withValues(alpha: alpha);
     final lightPaint = Paint()

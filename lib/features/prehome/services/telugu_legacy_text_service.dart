@@ -28,7 +28,8 @@ class TeluguLegacyTextService {
     try {
       final converted = TeluguLegacyOfflineConverter.convert(
         normalized,
-        trailingRaVattu: _usesTrailingRaVattu(fontFamily),
+        trailingRaVattu: usesTrailingRaVattu(fontFamily),
+        trailingKsaTtaVattu: usesTrailingKsaTtaVattu(fontFamily),
       );
       if (converted.trim().isEmpty) {
         return null;
@@ -67,33 +68,47 @@ class TeluguLegacyTextService {
         .replaceAll('\r', '\n')
         .replaceAll('\u200c', '')
         .replaceAll('\u200d', '')
+        .replaceAll(RegExp('\u0C4D{2,}'), '\u0C4D')
         .trim();
   }
 
   static String _profileFor(String fontFamily) {
-    switch (fontFamily) {
-      case 'Pragathi':
-      case 'Brahma':
-      case 'Pridhvi':
-      case 'Kranthi':
-        return 'name';
-      case 'Pallavi Medium':
-      case 'Pallavi Bold':
-      case 'Pallavi Thin':
-        return 'pallavi';
-      default:
-        return fontFamily;
-    }
+    final rakaram = usesTrailingRaVattu(fontFamily) ? 'trailing' : 'leading';
+    final ksaTta = usesTrailingKsaTtaVattu(fontFamily)
+        ? 'andhra-kst'
+        : 'separated-kst';
+    final baseProfile = switch (fontFamily) {
+      'Pragathi' || 'Brahma' || 'Pridhvi' || 'Kranthi' => 'name',
+      'Pallavi Medium' || 'Pallavi Bold' || 'Pallavi Thin' => 'pallavi',
+      _ => fontFamily,
+    };
+    return '$baseProfile::$rakaram::$ksaTta';
   }
 
-  static bool _usesTrailingRaVattu(String fontFamily) {
+  static bool usesTrailingRaVattu(String fontFamily) {
     switch (fontFamily) {
+      case 'Aaradhana':
       case 'Amrutha':
       case 'Bapu Brush':
+      case 'Bapu Bold':
+      case 'Bapu Script':
+      case 'Brahma Script':
+      case 'Chandra Script':
+      case 'Kusuma':
+      case 'Maanasa':
+      case 'Madhubala':
       case 'Ramana Brush':
+      case 'Ramana Script':
+      case 'Ramana Script Medium':
+      case 'Saagari':
+      case 'Subhadra':
         return true;
       default:
         return false;
     }
+  }
+
+  static bool usesTrailingKsaTtaVattu(String fontFamily) {
+    return false;
   }
 }
