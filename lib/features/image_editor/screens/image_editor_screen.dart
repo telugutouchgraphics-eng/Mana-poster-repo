@@ -27,6 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/rewarded_access_service.dart';
@@ -592,6 +593,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isDrawBrushMode = false;
   bool _isPickingMedia = false;
   double _editorBannerHeight = 0;
+  bool _editorBannerHeightKnown = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
   bool _isCropMode = false;
@@ -1104,8 +1106,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
   }
 
-  bool get _hasRewardedEditorProAccess =>
-      _editorEntitlementService.cachedEntitlement?.hasAccess == true;
+  bool get _hasRewardedEditorProAccess {
+    if (_editorEntitlementService.cachedEntitlement?.hasAccess == true) {
+      return true;
+    }
+    final appEntitlement =
+        SubscriptionBackendService.entitlementNotifier.value ??
+        _appEntitlementService.cachedEntitlement;
+    if (appEntitlement?.hasAccess != true) {
+      return false;
+    }
+    final productId = appEntitlement?.productId?.trim();
+    return productId == EditorSubscriptionPlanConfig.productId ||
+        productId == 'manual_lifetime_whitelist';
+  }
+
+  Future<void> _refreshEditorAdEntitlementInBackground() async {
+    await Future.wait(<Future<void>>[
+      _appEntitlementService.refreshEntitlementInBackground(),
+      _editorEntitlementService.refreshEntitlementInBackground(),
+    ]);
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   bool get _hasImmediateEditorSubscriptionAccess =>
       SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
@@ -2778,6 +2802,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
     unawaited(_loadEditorAssetCatalog());
+    unawaited(_refreshEditorAdEntitlementInBackground());
     unawaited(
       _rewardedAccessService.preloadRewardedAd(
         adUnitId: AppPublicInfo.adMobEditorRewardedAdUnitId,
@@ -3532,7 +3557,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               final showEditorBannerAd = !_hasRewardedEditorProAccess;
               final bannerHeight = _isKeyboardVisible || !showEditorBannerAd
                   ? 0.0
-                  : _editorBannerHeight;
+                  : (_editorBannerHeightKnown ? _editorBannerHeight : 72.0);
               final floatingBottom = systemBottomInset + bannerHeight + 6;
               const toolbarCanvasGap = 8.0;
               const landscapeTopRailWidth = 86.0;
@@ -4123,11 +4148,17 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       bottom: 0,
                       child: _EditorBottomBannerAd(
                         onHeightChanged: (height) {
-                          if ((_editorBannerHeight - height).abs() < 0.5 ||
-                              !mounted) {
+                          if (!mounted) {
+                            return;
+                          }
+                          final hasMeaningfulHeightChange =
+                              (_editorBannerHeight - height).abs() >= 0.5;
+                          if (!hasMeaningfulHeightChange &&
+                              _editorBannerHeightKnown) {
                             return;
                           }
                           setState(() {
+                            _editorBannerHeightKnown = true;
                             _editorBannerHeight = height;
                           });
                         },
@@ -5705,6 +5736,7 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     if (kIsWeb ||
         !Platform.isAndroid ||
         !AppPublicInfo.hasEditorBannerAdUnitId) {
+      widget.onHeightChanged(0);
       return;
     }
     _isLoading = true;
@@ -5713,6 +5745,7 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     }
     if (!await AdMobConsentService.instance.canRequestAds()) {
       _isLoading = false;
+      widget.onHeightChanged(0);
       _scheduleBannerRetry();
       return;
     }
@@ -5727,6 +5760,9 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     );
     if (!mounted || size == null) {
       _isLoading = false;
+      if (mounted) {
+        widget.onHeightChanged(0);
+      }
       _scheduleBannerRetry();
       return;
     }
