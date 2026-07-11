@@ -7,8 +7,8 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import org.gradle.api.GradleException
 
-val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a")
-val unsupportedBundleAbis = listOf("x86", "x86_64")
+val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+val unsupportedBundleAbis = listOf("x86")
 
 plugins {
     id("com.android.application")
@@ -119,7 +119,7 @@ android {
             }
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
