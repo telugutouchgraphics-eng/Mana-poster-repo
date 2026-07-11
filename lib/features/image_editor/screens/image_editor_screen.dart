@@ -655,10 +655,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Offset _photoGlideTotalTravel = Offset.zero;
   Offset _photoGlideAppliedTravel = Offset.zero;
   Timer? _selectedTextLongPressTimer;
-  OverlayEntry? _canvasLayerPickerEntry;
-  Offset? _selectedTextPressPosition;
   DateTime? _lastSelectedTextTapAt;
   String? _lastSelectedTextTapLayerId;
+  OverlayEntry? _canvasLayerPickerEntry;
+  Offset? _selectedTextPressPosition;
   static const double _snapThreshold = 18;
   static const double _rotationSnapThresholdRadians = math.pi / 24;
   Size _lastCanvasSize = Size.zero;
@@ -1302,37 +1302,39 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
-                    children: <Widget>[
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFACC15).withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: const Color(0xFFFACC15).withValues(alpha: 0.26),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.workspace_premium_rounded,
-                          color: Color(0xFFFACC15),
-                          size: 27,
+                  children: <Widget>[
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFACC15).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(
+                            0xFFFACC15,
+                          ).withValues(alpha: 0.26),
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _editorChromeTextPrimary,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w900,
-                            height: 1.12,
-                          ),
+                      child: const Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Color(0xFFFACC15),
+                        size: 27,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _editorChromeTextPrimary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          height: 1.12,
                         ),
                       ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -2171,8 +2173,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   void _handleSelectedTextDoubleTap() {
-    _lastSelectedTextTapAt = null;
-    _lastSelectedTextTapLayerId = null;
     _cancelSelectedTextLongPress();
     unawaited(_openTextTypingScreen(selectAll: true));
   }
@@ -2309,7 +2309,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _activeMainToolLabel = 'Text';
       });
     }
-    unawaited(_openTextTypingScreen());
   }
 
   Widget _buildTextStyleOverlay(double height) {
@@ -5667,4 +5666,3 @@ class _LayerStyleColorDot extends StatelessWidget {
     );
   }
 }
-
