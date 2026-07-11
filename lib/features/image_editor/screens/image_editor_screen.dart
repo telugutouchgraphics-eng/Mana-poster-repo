@@ -621,6 +621,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isCreatingTextLayer = false;
   bool _isRewardedGateBusy = false;
   bool _isHistoryReplayRunning = false;
+  bool _assetsRewardUnlocked = false;
+  bool _teluguFontsRewardUnlocked = false;
   int _removeBackgroundTaskId = 0;
   String? _activeCommitJobKey;
   Future<void> _commitJobTail = Future<void>.value();
@@ -1172,6 +1174,13 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_hasRewardedEditorProAccess) {
       return true;
     }
+    if (feature == _EditorRewardGateFeature.assets && _assetsRewardUnlocked) {
+      return true;
+    }
+    if (feature == _EditorRewardGateFeature.teluguFonts &&
+        _teluguFontsRewardUnlocked) {
+      return true;
+    }
     if (_isRewardedGateBusy) {
       return false;
     }
@@ -1240,6 +1249,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         ).showTopSnackBar(AppSnackBar.build(content: Text(failureMessage)));
         return false;
       }
+      if (feature == _EditorRewardGateFeature.assets) {
+        _assetsRewardUnlocked = true;
+      }
+      if (feature == _EditorRewardGateFeature.teluguFonts) {
+        _teluguFontsRewardUnlocked = true;
+      }
       return true;
     } finally {
       if (mounted) {
@@ -1287,39 +1302,37 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
-                  children: <Widget>[
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFACC15).withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: const Color(
-                            0xFFFACC15,
-                          ).withValues(alpha: 0.26),
+                    children: <Widget>[
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFACC15).withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFFFACC15).withValues(alpha: 0.26),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.workspace_premium_rounded,
+                          color: Color(0xFFFACC15),
+                          size: 27,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Color(0xFFFACC15),
-                        size: 27,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _editorChromeTextPrimary,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
-                          height: 1.12,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _editorChromeTextPrimary,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            height: 1.12,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -5654,3 +5667,4 @@ class _LayerStyleColorDot extends StatelessWidget {
     );
   }
 }
+
