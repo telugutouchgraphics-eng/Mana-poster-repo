@@ -5727,6 +5727,7 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
       _scheduleBannerRetry();
       return;
     }
+    widget.onHeightChanged(size.height.toDouble() + 7);
     final banner = BannerAd(
       adUnitId: kDebugMode
           ? _androidTestBannerId
