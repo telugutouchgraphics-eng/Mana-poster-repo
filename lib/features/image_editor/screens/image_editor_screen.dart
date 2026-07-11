@@ -13,7 +13,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +27,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
-import 'package:mana_poster/app/services/admob_consent_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
@@ -85,7 +83,6 @@ const Color _editorChromeTextPrimary = Color(0xFFF1F3F4);
 const Color _editorChromeTextSecondary = Color(0xFFBDC1C6);
 const Color _editorCanvasBackdrop = Color(0xFF2A2C31);
 const String _textEffectPresetsStorageKey = 'editor_text_effect_presets_v1';
-const double _editorBannerReservedHeight = 96.0;
 const double _workspaceGestureMinZoom = 0.2;
 const double _workspaceFitZoom = 1;
 const double _workspaceMaxZoom = 8;
@@ -3553,10 +3550,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               final systemBottomInset = MediaQuery.viewPaddingOf(
                 context,
               ).bottom;
-              final showEditorBannerAd = !_hasRewardedEditorProAccess;
-              final bannerHeight = _isKeyboardVisible || !showEditorBannerAd
-                  ? 0.0
-                  : _editorBannerReservedHeight;
+              const bannerHeight = 0.0;
               final floatingBottom = systemBottomInset + bannerHeight + 6;
               const toolbarCanvasGap = 8.0;
               const landscapeTopRailWidth = 86.0;
@@ -4138,15 +4132,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       ),
                     ),
                   if (_isCropMode) const SizedBox.shrink(),
-                  if (showEditorBannerAd &&
-                      !_isKeyboardVisible &&
-                      !useLandscapeSideRails)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: const _EditorBottomBannerAd(),
-                    ),
                   if (_showLayerStyleQuickControls &&
                       selectedLayerCanEdit &&
                       !_isKeyboardVisible &&
@@ -5683,147 +5668,3 @@ class _LayerStyleColorDot extends StatelessWidget {
   }
 }
 
-class _EditorBottomBannerAd extends StatefulWidget {
-  const _EditorBottomBannerAd();
-
-  @override
-  State<_EditorBottomBannerAd> createState() => _EditorBottomBannerAdState();
-}
-
-class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
-  static const String _androidTestBannerId =
-      'ca-app-pub-3940256099942544/9214589741';
-
-  BannerAd? _bannerAd;
-  AdSize? _adSize;
-  bool _loadAttempted = false;
-  bool _isLoading = false;
-  Timer? _retryTimer;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_loadAttempted) {
-      return;
-    }
-    _loadAttempted = true;
-    unawaited(_loadBanner());
-  }
-
-  Future<void> _loadBanner() async {
-    if (_isLoading || _bannerAd != null) {
-      return;
-    }
-    if (kIsWeb ||
-        !Platform.isAndroid ||
-        !AppPublicInfo.hasEditorBannerAdUnitId) {
-      return;
-    }
-    _isLoading = true;
-    if (!await AdMobConsentService.instance.canRequestAds()) {
-      await AdMobConsentService.instance.prepareForAds();
-    }
-    if (!await AdMobConsentService.instance.canRequestAds()) {
-      _isLoading = false;
-      _scheduleBannerRetry();
-      return;
-    }
-    await MobileAds.instance.initialize();
-    if (!mounted) {
-      _isLoading = false;
-      return;
-    }
-    final width = MediaQuery.sizeOf(context).width.truncate();
-    final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-      width,
-    );
-    if (!mounted || size == null) {
-      _isLoading = false;
-      _scheduleBannerRetry();
-      return;
-    }
-    final banner = BannerAd(
-      adUnitId: kDebugMode
-          ? _androidTestBannerId
-          : AppPublicInfo.adMobEditorBannerAdUnitId,
-      request: const AdRequest(),
-      size: size,
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          _isLoading = false;
-          if (!mounted) {
-            ad.dispose();
-            return;
-          }
-          setState(() {
-            _bannerAd = ad as BannerAd;
-            _adSize = size;
-          });
-        },
-        onAdFailedToLoad: (ad, error) {
-          _isLoading = false;
-          ad.dispose();
-          if (mounted) {
-            _scheduleBannerRetry();
-          }
-        },
-      ),
-    );
-    try {
-      await banner.load();
-    } catch (_) {
-      _isLoading = false;
-      banner.dispose();
-      if (mounted) {
-        _scheduleBannerRetry();
-      }
-    }
-  }
-
-  void _scheduleBannerRetry() {
-    if (!mounted || _retryTimer?.isActive == true || _bannerAd != null) {
-      return;
-    }
-    _retryTimer = Timer(const Duration(seconds: 20), () {
-      if (mounted) {
-        unawaited(_loadBanner());
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _retryTimer?.cancel();
-    _bannerAd?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final banner = _bannerAd;
-    final size = _adSize;
-    if (banner == null || size == null) {
-      return const SizedBox(height: _editorBannerReservedHeight);
-    }
-    return SizedBox(
-      height: _editorBannerReservedHeight,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFCBD5E1))),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: SizedBox(
-              width: size.width.toDouble(),
-              height: size.height.toDouble(),
-              child: AdWidget(ad: banner),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
