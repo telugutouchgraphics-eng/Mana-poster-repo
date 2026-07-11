@@ -18,6 +18,7 @@ class SubscriptionPlanConfig {
   static const int trialDays = 3;
   static const String monthlyPriceDisplay = '₹149';
   static const Duration entitlementCacheTtl = Duration(minutes: 10);
+
   /// Must cover cold billing + Firebase entitlement fetch on slower networks.
   static const Duration paywallTimeout = Duration(seconds: 28);
   static const String playPackageName = 'com.manaposter.app';
@@ -44,5 +45,35 @@ class SubscriptionPlanConfig {
   }) {
     return 'https://play.google.com/store/account/subscriptions'
         '?sku=$productId&package=$packageName';
+  }
+}
+
+class EditorSubscriptionPlanConfig {
+  const EditorSubscriptionPlanConfig._();
+
+  static const String productId = String.fromEnvironment(
+    'MANA_POSTER_EDITOR_PLAN_PRODUCT_ID',
+    defaultValue: 'mana_poster_editor_pro',
+  );
+  static const String monthlyBasePlanId = String.fromEnvironment(
+    'MANA_POSTER_EDITOR_MONTHLY_BASE_PLAN_ID',
+    defaultValue: 'monthly-99',
+  );
+  static const String yearlyBasePlanId = String.fromEnvironment(
+    'MANA_POSTER_EDITOR_YEARLY_BASE_PLAN_ID',
+    defaultValue: 'yearly-699',
+  );
+  static const String trialOfferId = String.fromEnvironment(
+    'MANA_POSTER_EDITOR_PLAN_OFFER_ID',
+    defaultValue: '',
+  );
+
+  static const String monthlyPriceDisplay = '₹99';
+  static const String yearlyPriceDisplay = '₹699';
+
+  static Set<String> resolvedProductIds() {
+    final ids = <String>{productId};
+    ids.removeWhere((id) => id.trim().isEmpty);
+    return ids;
   }
 }

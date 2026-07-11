@@ -1069,19 +1069,19 @@ class AppStrings {
   }
 
   bool _containsPlainMojibakeLeadBytes(String value) {
-    return value.contains('à°') ||
-        value.contains('à¤') ||
-        value.contains('à®') ||
-        value.contains('à²') ||
-        value.contains('à´');
+    return value.contains('\u00E0\u00B0') ||
+        value.contains('\u00E0\u00A4') ||
+        value.contains('\u00E0\u00AE') ||
+        value.contains('\u00E0\u00B2') ||
+        value.contains('\u00E0\u00B4');
   }
 
   bool _looksCorrupted(String value) {
-    if (value.contains('à°') ||
-        value.contains('à¤') ||
-        value.contains('à®') ||
-        value.contains('à²') ||
-        value.contains('à´')) {
+    if (value.contains('\u00E0\u00B0') ||
+        value.contains('\u00E0\u00A4') ||
+        value.contains('\u00E0\u00AE') ||
+        value.contains('\u00E0\u00B2') ||
+        value.contains('\u00E0\u00B4')) {
       return true;
     }
     return value.contains("\u00c3\u00a0") ||
@@ -1090,11 +1090,11 @@ class AppStrings {
         value.contains("\u00c3\u00b0\u00c5\u00b8") ||
         value.contains("\u00c3\u00af\u00c2\u00b8") ||
         value.contains("\u00c3\u00a2\u00c2\u009d") ||
-        value.contains('à°') ||
-        value.contains('à¤') ||
-        value.contains('à®') ||
-        value.contains('à²') ||
-        value.contains('à´') ||
+        value.contains('\u00E0\u00B0') ||
+        value.contains('\u00E0\u00A4') ||
+        value.contains('\u00E0\u00AE') ||
+        value.contains('\u00E0\u00B2') ||
+        value.contains('\u00E0\u00B4') ||
         value.contains('â€') ||
         value.contains('â€™') ||
         value.contains('â€œ') ||

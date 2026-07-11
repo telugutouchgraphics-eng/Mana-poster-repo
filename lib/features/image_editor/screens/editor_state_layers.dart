@@ -482,6 +482,10 @@ extension _EditorLayersState on _ImageEditorScreenState {
         _isLayerMaskBrushMode ||
         _isDrawBrushMode) {
       _canvasTapResolvedLayer = true;
+      if (_isDrawBrushMode && pageSize.width > 0 && pageSize.height > 0) {
+        _handleDrawBrushStart(localPosition, pageSize);
+        _handleDrawBrushEnd();
+      }
       return;
     }
     if (_suppressCanvasTapDown) {

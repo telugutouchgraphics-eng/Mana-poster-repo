@@ -169,20 +169,17 @@ class _LegalCopy {
           telugu: 'ప్రైవసీ పాలసీ',
           english: 'Privacy Policy',
           hindi: 'प्राइवेसी पॉलिसी',
-          tamil: 'à®¤à®©à®¿à®¯à¯à®°à®¿à®®à¯ˆ à®•à¯Šà®³à¯à®•à¯ˆ',
-          kannada: 'à²—à³Œà²ªà³à²¯à²¤à²¾ à²¨à³€à²¤à²¿',
-          malayalam: 'à´¸àµà´µà´•à´¾à´°àµà´¯à´¤à´¾ à´¨à´¯à´‚',
+          tamil: 'தனியுரிமை கொள்கை',
+          kannada: 'ಗೌಪ್ಯತಾ ನೀತಿ',
+          malayalam: 'സ്വകാര്യതാ നയം',
         )
       : strings.localized(
           telugu: 'నిబంధనలు మరియు షరతులు',
           english: 'Terms & Conditions',
           hindi: 'नियम और शर्तें',
-          tamil:
-              'à®µà®¿à®¤à®¿à®®à¯à®±à¯ˆà®•à®³à¯ à®®à®±à¯à®±à¯à®®à¯ à®¨à®¿à®ªà®¨à¯à®¤à®©à¯ˆà®•à®³à¯',
-          kannada:
-              'à²¨à²¿à²¯à²®à²—à²³à³ à²®à²¤à³à²¤à³ à²·à²°à²¤à³à²¤à³à²—à²³à³',
-          malayalam:
-              'à´¨à´¿à´¬à´¨àµà´§à´¨à´•à´³àµà´‚ à´µàµà´¯à´µà´¸àµà´¥à´•à´³àµà´‚',
+          tamil: 'விதிமுறைகள் மற்றும் நிபந்தனைகள்',
+          kannada: 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು',
+          malayalam: 'നിബന്ധനകളും വ്യവസ്ഥകളും',
         );
 
   String get badge => _isPrivacy
@@ -190,17 +187,17 @@ class _LegalCopy {
           telugu: 'డేటా రక్షణ',
           english: 'Data Protection',
           hindi: 'डेटा सुरक्षा',
-          tamil: 'à®¤à®°à®µà¯ à®ªà®¾à®¤à¯à®•à®¾à®ªà¯à®ªà¯',
-          kannada: 'à²¡à³‡à²Ÿà²¾ à²°à²•à³à²·à²£à³†',
-          malayalam: 'à´¡à´¾à´±àµà´± à´¸à´‚à´°à´•àµà´·à´£à´‚',
+          tamil: 'தரவு பாதுகாப்பு',
+          kannada: 'ಡೇಟಾ ರಕ್ಷಣೆ',
+          malayalam: 'ഡാറ്റ സംരക്ഷണം',
         )
       : strings.localized(
           telugu: 'వినియోగ నియమాలు',
           english: 'Usage Terms',
           hindi: 'उपयोग नियम',
-          tamil: 'à®ªà®¯à®©à¯à®ªà®¾à®Ÿà¯à®Ÿà¯ à®µà®¿à®¤à®¿à®•à®³à¯',
-          kannada: 'à²¬à²³à²•à³† à²¨à²¿à²¯à²®à²—à²³à³',
-          malayalam: 'à´‰à´ªà´¯àµ‹à´— à´¨à´¿à´¬à´¨àµà´§à´¨à´•àµ¾',
+          tamil: 'பயன்பாட்டு விதிகள்',
+          kannada: 'ಬಳಕೆ ನಿಯಮಗಳು',
+          malayalam: 'ഉപയോഗ നിബന്ധനകൾ',
         );
 
   String get summary => _isPrivacy
@@ -208,18 +205,18 @@ class _LegalCopy {
           telugu:
               'మీ డేటా, subscriptions, ప్రకటనలు, account deletion మరియు Firebase సేవల వినియోగం గురించి ఈ పేజీ వివరిస్తుంది.',
           english:
-              'This page explains how Mana Poster Ai handles your data, subscriptions, ads, account deletion, and Firebase-powered services.',
+              'This page explains how Mana Poster Ai handles your data, subscriptions, editor assets, Telugu fonts, background removal, ads, account deletion, and Firebase-powered services.',
         )
       : strings.localized(
           telugu:
               'Mana Poster Ai వాడకం, subscriptions, చెల్లింపులు, ప్రకటనలు, ఖాతా బాధ్యతలు మరియు సేవా పరిమితులకు సంబంధించిన నియమాలు ఇక్కడ ఉన్నాయి.',
           english:
-              'This page contains the rules for using Mana Poster Ai, including subscriptions, payments, ads, account responsibility, and service limitations.',
+              'This page contains the rules for using Mana Poster Ai, including subscriptions, editor tools, premium assets, payments, ads, account responsibility, and service limitations.',
         );
 
   String get lastUpdated => strings.localized(
-    telugu: 'చివరి నవీకరణ: 15 జూన్ 2026',
-    english: 'Last updated: June 15, 2026',
+    telugu: 'చివరి నవీకరణ: 11 జూలై 2026',
+    english: 'Last updated: July 11, 2026',
   );
 
   List<_LegalSection> get sections =>
@@ -228,14 +225,12 @@ class _LegalCopy {
   String get footer => strings.localized(
     telugu: 'ప్రశ్నలు ఉంటే ${AppPublicInfo.supportEmail} కి సంప్రదించండి.',
     english: 'For questions, contact ${AppPublicInfo.supportEmail}.',
-    hindi:
-        'प्रश्न होने पर ${AppPublicInfo.supportEmail} पर संपर्क करें।',
+    hindi: 'प्रश्न होने पर ${AppPublicInfo.supportEmail} पर संपर्क करें।',
     tamil:
-        'à®•à¯‡à®³à¯à®µà®¿à®•à®³à¯ à®‡à®°à¯à®¨à¯à®¤à®¾à®²à¯ ${AppPublicInfo.supportEmail}-à® à®¤à¯Šà®Ÿà®°à¯à®ªà¯ à®•à¯Šà®³à¯à®³à¯à®™à¯à®•à®³à¯.',
-    kannada:
-        'à²ªà³à²°à²¶à³à²¨à³†à²—à²³à²¿à²¦à³à²¦à²°à³† ${AppPublicInfo.supportEmail} à²—à³† à²¸à²‚à²ªà²°à³à²•à²¿à²¸à²¿.',
+        'கேள்விகள் இருந்தால் ${AppPublicInfo.supportEmail}-ஐ தொடர்பு கொள்ளுங்கள்.',
+    kannada: 'ಪ್ರಶ್ನೆಗಳಿದ್ದರೆ ${AppPublicInfo.supportEmail} ಗೆ ಸಂಪರ್ಕಿಸಿ.',
     malayalam:
-        'à´šàµ‹à´¦àµà´¯à´™àµà´™àµ¾ à´‰à´£àµà´Ÿàµ†à´™àµà´•à´¿àµ½ ${AppPublicInfo.supportEmail}-àµ½ à´¬à´¨àµà´§à´ªàµà´ªàµ†à´Ÿàµà´•.',
+        'ചോദ്യങ്ങൾ ഉണ്ടെങ്കിൽ ${AppPublicInfo.supportEmail}-ൽ ബന്ധപ്പെടുക.',
   );
 
   List<_LegalSection> get _privacySections => <_LegalSection>[
@@ -246,9 +241,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'మేము మీ email address, పేరు, Firebase UID, Google Sign-In వివరాలు, profile photo, logo, poster profile details, business name, WhatsApp number, notification token, subscription status, referral code, referral attribution details మరియు purchase verification కోసం అవసరమైన billing సమాచారాన్ని సేకరిస్తాము.',
+            'మేము మీ email address, పేరు, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, selected State/Union Territory, selected app language, selected political party categories, notification token, subscription status, referral code, referral attribution details, purchase verification కోసం అవసరమైన billing information, editor asset download/cache records, ad consent/status signals, support/report details మరియు app operate చేయడానికి అవసరమైన technical diagnostics ను collect/process చేయవచ్చు.',
         english:
-            'We collect your email address, name, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, selected State/Union Territory, selected app language, selected political party categories, notification token, subscription status, referral code, referral attribution details, and billing information needed for purchase verification.',
+            'We collect your email address, name, Firebase UID, Google Sign-In details, profile photo, logo, poster profile details, business name, WhatsApp number, selected State/Union Territory, selected app language, selected political party categories, notification token, subscription status, referral code, referral attribution details, billing information needed for purchase verification, editor asset download/cache records, ad consent/status signals, support/report details, and technical diagnostics needed to operate the app.',
       ),
     ),
     _LegalSection(
@@ -258,9 +253,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'ఈ సమాచారాన్ని login, account security, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention మరియు customer support కోసం ఉపయోగిస్తాము.',
+            'ఈ సమాచారాన్ని login, account security, region-based language selection, relevant poster categories చూపించడం, poster personalization, editor asset delivery, asset download access, save/export flows, PSD/TIFF import support, background removal, notification delivery, subscription verification, purchase restoration, rewarded-ad access checks, referral rewards, abuse prevention మరియు customer support కోసం ఉపయోగిస్తాము.',
         english:
-            'We use this data for login, account security, region-based language selection, showing relevant poster categories, poster personalization, save and export flows, notification delivery, subscription verification, purchase restoration, referral rewards, abuse prevention, and customer support.',
+            'We use this data for login, account security, region-based language selection, showing relevant poster categories, poster personalization, editor asset delivery, asset download access, save and export flows, PSD/TIFF import support, background removal, notification delivery, subscription verification, purchase restoration, rewarded-ad access checks, referral rewards, abuse prevention, and customer support.',
       ),
     ),
     _LegalSection(
@@ -306,9 +301,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'యాప్ Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing మరియు AdMob ను ఉపయోగిస్తుంది. ఈ సేవలు app performance, crash diagnostics, notifications, billing verification మరియు ad delivery కోసం ఉపయోగించబడతాయి. Personalized లేదా non-personalized ads అందించడానికి AdMob device identifiers, IP address మరియు usage data ను సేకరించవచ్చు.',
+            'యాప్ Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing మరియు AdMob ను ఉపయోగిస్తుంది. ఈ సేవలు app performance, crash diagnostics, notifications, billing verification, premium asset delivery మరియు ad delivery కోసం ఉపయోగించబడతాయి. Personalized లేదా non-personalized ads, అలాగే paid subscription లేకుండా కొన్ని editor actions unlock చేసే rewarded ads చూపించడానికి AdMob device identifiers, IP address, consent status మరియు usage data ను process చేయవచ్చు.',
         english:
-            'The app uses Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing, and AdMob. These services support app performance, crash diagnostics, notifications, billing verification, and ad delivery. AdMob may collect device identifiers, IP address, and usage data to provide personalized or non-personalized ads.',
+            'The app uses Firebase Authentication, Firestore, Storage, Messaging, Analytics, Crashlytics, Google Sign-In, Google Play Billing, and AdMob. These services support app performance, crash diagnostics, notifications, billing verification, premium asset delivery, and ad delivery. AdMob may collect device identifiers, IP address, consent status, and usage data to provide personalized or non-personalized ads, including rewarded ads that may unlock selected editor actions without a paid subscription.',
       ),
     ),
     _LegalSection(
@@ -337,9 +332,21 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'ఫోటో ఎంపిక, poster saving, status image selection మరియు optional notifications కోసం మాత్రమే permissions అడుగుతాము. మీరు వీటిని device settings లో మార్చవచ్చు. మీరు upload, export, status upload, comment/reply లేదా share చేసే content కు మీరు బాధ్యులు. App కొంత media cache లేదా temporary files ను అవసరం ముగిసిన తర్వాత delete చేయవచ్చు. Status images upload ముందు compress చేయబడవచ్చు; temporary compressed files device లేదా backend processing పూర్తయ్యాక remove చేయవచ్చు.',
+            'Photo selection, poster saving, status image selection, PSD/TIFF import, local export మరియు optional notifications కోసం మాత్రమే permissions అడుగుతాము. మీరు వీటిని device settings లో మార్చవచ్చు. మీరు upload, import, export, status గా use, comment/reply లేదా share చేసే content కు మీరు బాధ్యులు. App media files, downloaded premium assets, brush resources, previews, export files మరియు temporary cache ను అవసరం మేరకు save చేసి, అవసరం ముగిసిన తర్వాత remove చేయవచ్చు. Status images upload ముందు compress చేయబడవచ్చు; temporary compressed files device లేదా backend processing పూర్తయ్యాక remove చేయవచ్చు.',
         english:
-            'Permissions are requested only for photo selection, poster saving, status image selection, and optional notifications. You can manage them from device settings. You remain responsible for any content you upload, export, upload as a status, comment/reply to, or share. The app may temporarily cache media files and remove them when they are no longer needed. Status images may be compressed before upload; temporary compressed files may be removed after device or backend processing is complete.',
+            'Permissions are requested only for photo selection, poster saving, status image selection, PSD/TIFF import, local export, and optional notifications. You can manage them from device settings. You remain responsible for any content you upload, import, export, use as a status, comment/reply to, or share. The app may temporarily cache media files, downloaded premium assets, brush resources, previews, and export files, and may remove temporary files when they are no longer needed. Status images may be compressed before upload; temporary compressed files may be removed after device or backend processing is complete.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'Editor processing, assets మరియు downloads',
+        english: 'Editor Processing, Assets, and Downloads',
+      ),
+      strings.localized(
+        telugu:
+            'Editor లో PSD/TIFF import, photo editing, brushes, layer effects, Telugu fonts, premium assets మరియు background removal tools ఉపయోగించవచ్చు. Premium assets backend/dashboard నుండి categories గా అందించబడవచ్చు. Asset thumbnail app లో కనిపిస్తుంది; user download/import చేసినప్పుడు asset device cache లో save కావచ్చు. Admins assets/categories ను update, remove లేదా replace చేయవచ్చు.',
+        english:
+            'The editor may support PSD/TIFF import, photo editing, brushes, layer effects, Telugu fonts, premium assets, and background removal tools. Premium assets may be delivered from the backend/admin dashboard by category. Asset thumbnails may be shown in the app, and downloaded/imported assets may be saved in device cache for faster reuse. Admins may update, remove, replace, or reorganize assets and categories over time. Background removal and other editor processing may run on-device where supported or through configured app services when needed for the requested feature.',
       ),
     ),
     _LegalSection(
@@ -349,9 +356,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'Subscription verification కోసం purchase tokens మరియు billing status ను server-side లో process చేయవచ్చు. ప్రస్తుత plan కు ${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} రోజులు ఉంటుంది. రద్దు చేయకపోతే తరువాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున auto-renew అవుతుంది.',
+            'Subscription verification కోసం purchase tokens, product IDs, entitlement status మరియు billing status ను server-side లో process చేయవచ్చు. Mana Poster Ai లో వేర్వేరు Google Play Billing plans ఉండవచ్చు: App Pro (${SubscriptionPlanConfig.trialPriceDisplay} ${SubscriptionPlanConfig.trialDays} రోజులకు, cancel చేయకపోతే తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}), Editor Pro (premium editor assets, Telugu fonts, background removal కోసం నెలకు ₹99), yearly all-access (available ఉన్న చోట App Pro + Editor Pro benefits కలిపి సంవత్సరానికి ₹699). Plan availability, prices, taxes, grace periods, renewal behavior Google Play ద్వారా control అవుతాయి మరియు country/platform ఆధారంగా మారవచ్చు.',
         english:
-            'For subscription verification, purchase tokens and billing status may be processed server-side. The current plan includes a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. If not cancelled, it renews automatically at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month.',
+            'For subscription verification, purchase tokens, product IDs, entitlement status, and billing status may be processed server-side. Mana Poster Ai may offer separate Play Billing plans, including App Pro (${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days, then ${SubscriptionPlanConfig.monthlyPriceDisplay} per month unless cancelled), Editor Pro (₹99 per month for premium editor assets, Telugu fonts, and background removal), and yearly all-access (₹699 per year where available, covering App Pro and Editor Pro benefits). Plan availability, prices, taxes, grace periods, and renewal behavior are controlled through Google Play and may vary by country or platform.',
       ),
     ),
     _LegalSection(
@@ -433,9 +440,21 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'ప్రస్తుత subscription plan కు ${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} రోజులు ఉంటుంది. Trial గడువు లోపు రద్దు చేయకపోతే, తరువాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున auto-renew అవుతుంది. ప్రస్తుత app access మరియు premium features ఈ subscription plan ప్రకారమే అందించబడతాయి.',
+            'Mana Poster Ai లో multiple subscription plans ఉండవచ్చు. App Pro కి ${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} రోజులు ఉండవచ్చు; cancel చేయకపోతే తరువాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} చొప్పున renew అవుతుంది. Editor Pro premium editor assets, Telugu fonts మరియు background removal కోసం నెలకు ₹99 గా ఉండవచ్చు. Yearly all-access plan available ఉన్న చోట App Pro మరియు Editor Pro benefits కలిపి సంవత్సరానికి ₹699 గా ఉండవచ్చు. Active benefits purchased plan, successful Google Play verification, country availability మరియు current product configuration మీద ఆధారపడతాయి.',
         english:
-            'The current subscription plan includes a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. If you do not cancel within the trial period, the plan auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month. Current app access and premium features are provided under this subscription plan.',
+            'Mana Poster Ai may offer multiple subscription plans. App Pro may include a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days and then renew at ${SubscriptionPlanConfig.monthlyPriceDisplay} per month unless cancelled. Editor Pro may provide premium editor assets, Telugu fonts, and background removal for ₹99 per month. A yearly all-access plan may provide App Pro and Editor Pro benefits together for ₹699 per year where available. Active benefits depend on the plan purchased, successful Google Play verification, country availability, and current product configuration.',
+      ),
+    ),
+    _LegalSection(
+      strings.localized(
+        telugu: 'Editor tools మరియు asset license',
+        english: 'Editor Tools and Asset License',
+      ),
+      strings.localized(
+        telugu:
+            'Editor లో premium assets, Telugu fonts, background removal, PSD/TIFF import, brushes, layer effects, text tools, erase tools మరియు export tools అందుబాటులో ఉండవచ్చు. Download చేసిన assets ను app లో poster/design creation కోసం మాత్రమే ఉపయోగించాలి. Asset files ను resell, redistribute, extract, republish, package లేదా standalone library గా share చేయడం నిషేధం. Third-party images, PSD files, fonts, logos లేదా copyrighted material import చేస్తే వాటి rights user బాధ్యత.',
+        english:
+            'The editor may include premium assets, Telugu fonts, background removal, PSD/TIFF import, brushes, layer effects, text tools, erase tools, and export tools. Downloaded assets are licensed for creating posters/designs inside Mana Poster Ai only. You must not resell, redistribute, extract, republish, package, or share asset files as a standalone asset library. If you import third-party images, PSD files, fonts, logos, or copyrighted material, you are responsible for having the required rights. Export quality may depend on source file quality, selected canvas size, device capability, memory limits, and the export settings used.',
       ),
     ),
     _LegalSection(
@@ -469,9 +488,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'యాప్‌లో AdMob ads చూపించబడవచ్చు. Ads availability, ad skip timing, billing services, Google sign-in, notifications లేదా Firebase services కొన్నిసార్లు third-party providers మీద ఆధారపడవచ్చు. మూడో పక్ష సేవలు నిరంతరంగా అందుబాటులో ఉంటాయని యాప్ హామీ ఇవ్వదు.',
+            'యాప్‌లో AdMob ads చూపించబడవచ్చు. Paid subscription లేకుండా కొన్ని premium editor actions unlock చేయడానికి rewarded ads చూపించవచ్చు. Rewarded-ad access paid subscription కాదు, auto-renew కాదు, device state, ad availability, network, policy లేదా fraud checks కారణంగా పరిమితం కావచ్చు. Ads availability, ad skip timing, billing services, Google sign-in, notifications లేదా Firebase services కొన్నిసార్లు third-party providers మీద ఆధారపడవచ్చు. మూడో పక్ష సేవలు నిరంతరంగా అందుబాటులో ఉంటాయని యాప్ హామీ ఇవ్వదు.',
         english:
-            'The app may display AdMob ads. Ad availability, ad-skip timing, billing services, Google sign-in, notifications, or Firebase services may depend on third-party providers. The app does not guarantee uninterrupted availability of third-party services.',
+            'The app may display AdMob ads, including rewarded ads that can unlock selected premium editor actions without a paid subscription. Rewarded-ad access is not a paid subscription, does not auto-renew, and may be limited by device state, ad availability, network, policy, or fraud checks. Ad availability, ad-skip timing, billing services, Google sign-in, notifications, or Firebase services may depend on third-party providers. The app does not guarantee uninterrupted availability of third-party services.',
       ),
     ),
     _LegalSection(
@@ -529,9 +548,9 @@ class _LegalCopy {
       ),
       strings.localized(
         telugu:
-            'యాప్ ఫీచర్లు, ధరలు, డిజైన్లు, ప్రకటనలు మరియు ఈ నిబంధనలు సమయానుసారం మారవచ్చు. సాంకేతిక సమస్యలు, platform restrictions లేదా third-party failures వల్ల కొన్ని ఫీచర్లు తాత్కాలికంగా అందుబాటులో లేకపోవచ్చు. చట్టం అనుమతించే పరిమితిలో, పరోక్ష నష్టం, data loss లేదా missed business opportunity కు యాప్ బాధ్యత వహించదు.',
+            'యాప్ features, prices, designs, assets, fonts, ads, editor tools మరియు ఈ terms సమయానుసారం మారవచ్చు. Backend assets/categories add, remove, replace, rename లేదా reorganize కావచ్చు. Technical issues, platform restrictions, ad-fill issues, billing verification delay, backend maintenance, device limits లేదా third-party failures వల్ల కొన్ని features తాత్కాలికంగా అందుబాటులో లేకపోవచ్చు. చట్టం అనుమతించే పరిమితిలో indirect loss, data loss, low-quality source files వల్ల export quality loss లేదా missed business opportunity కు యాప్ బాధ్యత వహించదు.',
         english:
-            'Features, pricing, designs, ads, and these terms may change over time. Some features may become temporarily unavailable because of technical issues, platform restrictions, or third-party failures. To the extent permitted by law, the app is not liable for indirect loss, data loss, or missed business opportunities.',
+            'Features, pricing, designs, assets, fonts, ads, editor tools, and these terms may change over time. Backend assets and categories may be added, removed, replaced, renamed, or reorganized. Some features may become temporarily unavailable because of technical issues, platform restrictions, ad-fill issues, billing verification delay, backend maintenance, device limits, or third-party failures. To the extent permitted by law, the app is not liable for indirect loss, data loss, export quality loss caused by low-quality source files, or missed business opportunities.',
       ),
     ),
     _LegalSection(

@@ -190,10 +190,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         _buildSectionLabel(
-          strings.localized(
-            telugu: 'Ã Â°Â«Ã Â°Â¿Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â°Â²Ã Â°Â°Ã Â±Â',
-            english: 'Fill Color',
-          ),
+          strings.localized(telugu: 'ఫిల్ కలర్', english: 'Fill Color'),
         ),
         const SizedBox(height: 10),
         _PressableSurface(
@@ -253,8 +250,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         const SizedBox(height: 14),
         _buildSectionLabel(
           strings.localized(
-            telugu:
-                'Ã Â°Å½Ã Â°â€šÃ Â°Å¡Ã Â±ÂÃ Â°â€¢Ã Â±ÂÃ Â°Â¨Ã Â±ÂÃ Â°Â¨ Ã Â°â€¢Ã Â°Â²Ã Â°Â°Ã Â±Â',
+            telugu: 'ఎంచుకున్న కలర్',
             english: 'Selected color',
           ),
         ),
@@ -284,10 +280,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
       children: <Widget>[
         _CompactLabeledSlider(
           sliderId: 'font-size',
-          label: strings.localized(
-            telugu: 'Ã Â°Â«Ã Â°Â¾Ã Â°â€šÃ Â°Å¸Ã Â±Â Ã Â°Â¸Ã Â±Ë†Ã Â°Å“Ã Â±Â',
-            english: 'Font Size',
-          ),
+          label: strings.localized(telugu: 'ఫాంట్ సైజ్', english: 'Font Size'),
           value: layer.fontSize.clamp(1, 220).toDouble(),
           min: 1,
           max: 220,
@@ -301,8 +294,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'line-height',
           label: strings.localized(
-            telugu:
-                'Ã Â°Â²Ã Â±Ë†Ã Â°Â¨Ã Â±Â Ã Â°Â¸Ã Â±ÂÃ Â°ÂªÃ Â±â€¡Ã Â°Â¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±Â',
+            telugu: 'లైన్ స్పేసింగ్',
             english: 'Line Spacing',
           ),
           value: layer.textLineHeight.clamp(0.2, 5.0).toDouble(),
@@ -318,8 +310,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'letter-spacing',
           label: strings.localized(
-            telugu:
-                'Ã Â°â€¦Ã Â°â€¢Ã Â±ÂÃ Â°Â·Ã Â°Â°Ã Â°Â¾Ã Â°Â² Ã Â°Â¦Ã Â±â€šÃ Â°Â°Ã Â°â€š',
+            telugu: 'అక్షరాల దూరం',
             english: 'Letter Spacing',
           ),
           value: layer.textLetterSpacing.clamp(-200, 200).toDouble(),
@@ -531,8 +522,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'background-opacity',
           label: strings.localized(
-            telugu:
-                'Ã Â°Â¬Ã Â±ÂÃ Â°Â¯Ã Â°Â¾Ã Â°â€¢Ã Â±ÂÃ¢â‚¬Å’Ã Â°â€”Ã Â±ÂÃ Â°Â°Ã Â±Å’Ã Â°â€šÃ Â°Â¡Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â°Â¾Ã Â°Â¸Ã Â°Â¿Ã Â°Å¸Ã Â±â‚¬',
+            telugu: 'బ్యాక్‌గ్రౌండ్ అపాసిటీ',
             english: 'Background Opacity',
           ),
           value: effectiveOpacity,
@@ -547,8 +537,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'background-radius',
           label: strings.localized(
-            telugu:
-                'Ã Â°â€¢Ã Â±â€¹Ã Â°Â£Ã Â°Â¾Ã Â°Â² Ã Â°Â°Ã Â±â€¡Ã Â°Â¡Ã Â°Â¿Ã Â°Â¯Ã Â°Â¸Ã Â±Â',
+            telugu: 'కోణాల రేడియస్',
             english: 'Corner Radius',
           ),
           value: effectiveRadius,
@@ -564,8 +553,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'background-top-width',
           label: strings.localized(
-            telugu:
-                'Ã Â°Å¸Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°ÂµÃ Â±â€ Ã Â°Â¡Ã Â°Â²Ã Â±ÂÃ Â°ÂªÃ Â±Â',
+            telugu: 'టాప్ వెడల్పు',
             english: 'Top Width',
           ),
           value: effectiveTopPadding,
@@ -581,8 +569,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         _CompactLabeledSlider(
           sliderId: 'background-bottom-width',
           label: strings.localized(
-            telugu:
-                'Ã Â°Â¬Ã Â°Â¾Ã Â°Å¸Ã Â°Â®Ã Â±Â Ã Â°ÂµÃ Â±â€ Ã Â°Â¡Ã Â°Â²Ã Â±ÂÃ Â°ÂªÃ Â±Â',
+            telugu: 'బాటమ్ వెడల్పు',
             english: 'Bottom Width',
           ),
           value: effectiveBottomPadding,
@@ -597,8 +584,7 @@ class _TextStyleBarState extends State<_TextStyleBar> {
         const SizedBox(height: 10),
         _buildSectionLabel(
           strings.localized(
-            telugu:
-                'Ã Â°Â¬Ã Â±ÂÃ Â°Â¯Ã Â°Â¾Ã Â°â€¢Ã Â±ÂÃ¢â‚¬Å’Ã Â°â€”Ã Â±ÂÃ Â°Â°Ã Â±Å’Ã Â°â€šÃ Â°Â¡Ã Â±Â Ã Â°â€¢Ã Â°Â²Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
+            telugu: 'బ్యాక్‌గ్రౌండ్ కలర్స్',
             english: 'Background Colors',
           ),
         ),
@@ -1727,8 +1713,7 @@ class _AdvancedLayersFullscreenOverlayState
                               Expanded(
                                 child: Text(
                                   strings.localized(
-                                    telugu:
-                                        'Ã Â°Â²Ã Â±â€¡Ã Â°Â¯Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
+                                    telugu: 'లేయర్స్',
                                     english: 'Layers',
                                   ),
                                   style: const TextStyle(
@@ -2269,11 +2254,23 @@ class StickerBrowserFullscreenOverlay extends StatefulWidget {
     super.key,
     required this.categories,
     required this.catalog,
+    required this.remoteCatalog,
+    required this.localAssetPath,
+    required this.requestRemoteAssetAccess,
+    required this.downloadAsset,
     this.initialCategory,
   });
 
   final List<String> categories;
   final Map<String, List<String>> catalog;
+  final EditorAssetCatalog remoteCatalog;
+  final Future<String?> Function(EditorRemoteAsset asset) localAssetPath;
+  final Future<bool> Function() requestRemoteAssetAccess;
+  final Future<String> Function(
+    EditorRemoteAsset asset,
+    void Function(double progress) onProgress,
+  )
+  downloadAsset;
   final String? initialCategory;
 
   @override
@@ -2288,20 +2285,157 @@ class _StickerBrowserFullscreenOverlayState
           widget.categories.contains(widget.initialCategory)
       ? widget.initialCategory!
       : widget.categories.first;
+  String? _downloadingAssetId;
+  double _downloadProgress = 0;
+  final Map<String, String> _downloadedAssetPaths = <String, String>{};
+  final Set<String> _checkingAssetIds = <String>{};
+
+  List<EditorRemoteAsset> get _remoteAssets {
+    final categoryIds = widget.remoteCatalog.categories
+        .where((item) => item.name == _selectedCategory)
+        .map((item) => item.id)
+        .toSet();
+    return widget.remoteCatalog.assets
+        .where((item) => categoryIds.contains(item.categoryId))
+        .toList(growable: false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkVisibleRemoteAssets();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant StickerBrowserFullscreenOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.remoteCatalog != widget.remoteCatalog) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkVisibleRemoteAssets();
+      });
+    }
+  }
+
+  void _selectCategory(String category) {
+    setState(() => _selectedCategory = category);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkVisibleRemoteAssets();
+    });
+  }
+
+  void _checkVisibleRemoteAssets() {
+    for (final asset in _remoteAssets) {
+      if (asset.kind == 'text' ||
+          _downloadedAssetPaths.containsKey(asset.id) ||
+          _checkingAssetIds.contains(asset.id)) {
+        continue;
+      }
+      _checkingAssetIds.add(asset.id);
+      unawaited(_checkRemoteAsset(asset));
+    }
+  }
+
+  Future<void> _checkRemoteAsset(EditorRemoteAsset asset) async {
+    final path = await widget.localAssetPath(asset);
+    if (!mounted) return;
+    setState(() {
+      _checkingAssetIds.remove(asset.id);
+      if (path == null) {
+        _downloadedAssetPaths.remove(asset.id);
+      } else {
+        _downloadedAssetPaths[asset.id] = path;
+      }
+    });
+  }
+
+  Future<void> _selectRemoteAsset(EditorRemoteAsset asset) async {
+    if (_downloadingAssetId != null) return;
+    if (asset.kind == 'text') {
+      Navigator.of(context).pop(asset.value);
+      return;
+    }
+    final accessGranted = await widget.requestRemoteAssetAccess();
+    if (!mounted || !accessGranted) return;
+    final downloadedPath = _downloadedAssetPaths[asset.id];
+    if (downloadedPath != null) {
+      Navigator.of(context).pop(downloadedPath);
+      return;
+    }
+    final existingPath = await widget.localAssetPath(asset);
+    if (!mounted) return;
+    if (existingPath != null) {
+      _downloadedAssetPaths[asset.id] = existingPath;
+      Navigator.of(context).pop(existingPath);
+      return;
+    }
+    setState(() {
+      _downloadingAssetId = asset.id;
+      _downloadProgress = 0;
+    });
+    try {
+      final path = await widget.downloadAsset(asset, (progress) {
+        if (mounted) setState(() => _downloadProgress = progress);
+      });
+      if (!mounted) return;
+      setState(() {
+        _downloadedAssetPaths[asset.id] = path;
+        _downloadingAssetId = null;
+        _downloadProgress = 0;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _downloadingAssetId = null);
+      ScaffoldMessenger.of(context).showTopSnackBar(
+        AppSnackBar.build(
+          content: const Text('Asset download failed. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  Widget _buildRemoteAssetThumbnail(EditorRemoteAsset asset) {
+    final thumbnailUrl = asset.thumbnailUrl;
+    final lower = thumbnailUrl.toLowerCase();
+    final isSvg =
+        asset.extension == 'svg' ||
+        Uri.tryParse(thumbnailUrl)?.path.toLowerCase().endsWith('.svg') ==
+            true ||
+        lower.contains('.svg?');
+    if (isSvg) {
+      return SvgPicture.network(
+        thumbnailUrl,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => const Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white54,
+            ),
+          ),
+        ),
+      );
+    }
+    return Image.network(
+      thumbnailUrl,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, _, _) =>
+          const Icon(Icons.broken_image_outlined, color: Colors.white54),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final stickers = widget.catalog[_selectedCategory] ?? const <String>[];
+    final remoteAssets = _remoteAssets;
     final strings = context.strings;
     return EditorFullscreenOverlay(
-      title: strings.localized(
-        telugu: 'Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€¢Ã Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â±Â',
-        english: 'Assets',
-      ),
-      doneLabel: strings.localized(
-        telugu: 'Ã Â°Â®Ã Â±â€šÃ Â°Â¸Ã Â°Â¿Ã Â°ÂµÃ Â±â€¡Ã Â°Â¯Ã Â°Â¿',
-        english: 'Close',
-      ),
+      title: strings.localized(telugu: 'స్టికర్స్', english: 'Assets'),
+      doneLabel: strings.localized(telugu: 'మూసివేయి', english: 'Close'),
       onBack: () => Navigator.of(context).pop(),
       onDone: () => Navigator.of(context).pop(),
       child: Padding(
@@ -2318,7 +2452,7 @@ class _StickerBrowserFullscreenOverlayState
                   final category = widget.categories[index];
                   final selected = category == _selectedCategory;
                   return _PressableSurface(
-                    onTap: () => setState(() => _selectedCategory = category),
+                    onTap: () => _selectCategory(category),
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -2358,19 +2492,91 @@ class _StickerBrowserFullscreenOverlayState
                   crossAxisSpacing: 10,
                   childAspectRatio: 1,
                 ),
-                itemCount: stickers.length,
+                itemCount: stickers.length + remoteAssets.length,
                 itemBuilder: (BuildContext context, int index) {
+                  if (index >= stickers.length) {
+                    final asset = remoteAssets[index - stickers.length];
+                    final downloading = _downloadingAssetId == asset.id;
+                    final downloaded = _downloadedAssetPaths.containsKey(
+                      asset.id,
+                    );
+                    return _PressableSurface(
+                      enabled: _downloadingAssetId == null,
+                      onTap: () => _selectRemoteAsset(asset),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            if (asset.kind == 'text')
+                              Center(
+                                child: Text(
+                                  asset.value,
+                                  style: const TextStyle(
+                                    fontSize: 34,
+                                    height: 1,
+                                  ),
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: _buildRemoteAssetThumbnail(asset),
+                              ),
+                            if (asset.kind != 'text')
+                              Positioned(
+                                right: 5,
+                                bottom: 5,
+                                child: Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xDD111827),
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                  child: downloading
+                                      ? Padding(
+                                          padding: const EdgeInsets.all(5),
+                                          child: CircularProgressIndicator(
+                                            value: _downloadProgress > 0
+                                                ? _downloadProgress
+                                                : null,
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Icon(
+                                          downloaded
+                                              ? Icons.add_rounded
+                                              : Icons.download_rounded,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   final sticker = stickers[index];
                   final imageLike = _EditorTextState._isImageLikeSticker(
                     sticker,
                   );
                   return _PressableSurface(
                     onTap: () => Navigator.of(context).pop(sticker),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
@@ -2818,11 +3024,7 @@ class _DraftsScreenState extends State<_DraftsScreen> {
         elevation: 0,
         foregroundColor: _editorChromeTextPrimary,
         title: Text(
-          strings.localized(
-            telugu:
-                'Ã Â°Â¡Ã Â±ÂÃ Â°Â°Ã Â°Â¾Ã Â°Â«Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ Â°Â¸Ã Â±Â',
-            english: 'Drafts',
-          ),
+          strings.localized(telugu: 'డ్రాఫ్ట్స్', english: 'Drafts'),
           style: const TextStyle(
             color: _editorChromeTextPrimary,
             fontWeight: FontWeight.w800,
@@ -2834,13 +3036,11 @@ class _DraftsScreenState extends State<_DraftsScreen> {
             child: Text(
               _saving
                   ? strings.localized(
-                      telugu:
-                          'Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°â€¦Ã Â°ÂµÃ Â±ÂÃ Â°Â¤Ã Â±â€¹Ã Â°â€šÃ Â°Â¦Ã Â°Â¿...',
+                      telugu: 'సేవ్ అవుతోంది...',
                       english: 'Saving...',
                     )
                   : strings.localized(
-                      telugu:
-                          'Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¸Ã Â±ÂÃ Â°Â¤Ã Â±ÂÃ Â°Â¤Ã Â°Â¾Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¿ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°Â¿',
+                      telugu: 'ప్రస్తుతాన్ని సేవ్ చేయి',
                       english: 'Save Current',
                     ),
             ),
@@ -2864,8 +3064,7 @@ class _DraftsScreenState extends State<_DraftsScreen> {
                 return Center(
                   child: Text(
                     strings.localized(
-                      telugu:
-                          'Ã Â°â€¡Ã Â°â€šÃ Â°â€¢Ã Â°Â¾ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¸Ã Â°Â¿Ã Â°Â¨ Ã Â°Â¡Ã Â±ÂÃ Â°Â°Ã Â°Â¾Ã Â°Â«Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ Â°Â¸Ã Â±Â Ã Â°Â²Ã Â±â€¡Ã Â°ÂµÃ Â±Â',
+                      telugu: 'ఇంకా సేవ్ చేసిన డ్రాఫ్ట్స్ లేవు',
                       english: 'No saved drafts yet',
                     ),
                     style: const TextStyle(color: _editorChromeTextSecondary),

@@ -105,6 +105,13 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+    // Editor assets are published by the portal server. Public reads support
+    // in-app downloads; direct client writes remain blocked.
+    match /portal_assets/editor_assets/{categoryId}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

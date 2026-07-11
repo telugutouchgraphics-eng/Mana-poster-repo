@@ -5,7 +5,11 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mana_poster/app/services/admob_consent_service.dart';
 
 class RewardedAccessService {
-  const RewardedAccessService();
+  RewardedAccessService();
+
+  RewardedAd? _preloadedAd;
+  String? _preloadedAdUnitId;
+  bool _isPreloading = false;
 
   void _debugLog(String message) {
     if (kDebugMode) {
@@ -19,6 +23,46 @@ class RewardedAccessService {
     }
     debugPrint(message);
     debugPrintStack(stackTrace: stackTrace);
+  }
+
+  Future<void> preloadRewardedAd({required String adUnitId}) async {
+    if (kIsWeb ||
+        adUnitId.trim().isEmpty ||
+        _isPreloading ||
+        (_preloadedAd != null && _preloadedAdUnitId == adUnitId)) {
+      return;
+    }
+    _isPreloading = true;
+    try {
+      if (!await AdMobConsentService.instance.canRequestAds()) {
+        await AdMobConsentService.instance.prepareForAds();
+      }
+      if (!await AdMobConsentService.instance.canRequestAds()) {
+        return;
+      }
+      await RewardedAd.load(
+        adUnitId: adUnitId,
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (RewardedAd ad) {
+            _preloadedAd?.dispose();
+            _preloadedAd = ad;
+            _preloadedAdUnitId = adUnitId;
+            _debugLog('RewardedAccessService preloaded rewarded ad');
+          },
+          onAdFailedToLoad: (LoadAdError error) {
+            _debugLog('RewardedAccessService preload failed: $error');
+          },
+        ),
+      );
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'RewardedAccessService preload exception: $error',
+        stackTrace,
+      );
+    } finally {
+      _isPreloading = false;
+    }
   }
 
   Future<bool> showRewardedAccessAd({
@@ -48,7 +92,13 @@ class RewardedAccessService {
     }
 
     final completer = Completer<bool>();
-    RewardedAd? rewardedAd;
+    RewardedAd? rewardedAd = _preloadedAdUnitId == adUnitId
+        ? _preloadedAd
+        : null;
+    if (rewardedAd != null) {
+      _preloadedAd = null;
+      _preloadedAdUnitId = null;
+    }
     var rewardEarned = false;
     var adShown = false;
 
@@ -64,50 +114,58 @@ class RewardedAccessService {
       rewardedAd = null;
     }
 
-    try {
-      await RewardedAd.load(
-        adUnitId: adUnitId,
-        request: const AdRequest(),
-        rewardedAdLoadCallback: RewardedAdLoadCallback(
-          onAdLoaded: (RewardedAd ad) {
-            _debugLog('RewardedAccessService ad loaded for $debugLabel');
-            rewardedAd = ad;
-            ad.fullScreenContentCallback = FullScreenContentCallback(
-              onAdShowedFullScreenContent: (RewardedAd ad) {
-                adShown = true;
-                _debugLog('RewardedAccessService ad shown for $debugLabel');
-              },
-              onAdDismissedFullScreenContent: (RewardedAd ad) async {
-                await Future<void>.delayed(const Duration(milliseconds: 350));
-                complete(rewardEarned);
-              },
-              onAdFailedToShowFullScreenContent: (
-                RewardedAd ad,
-                AdError error,
-              ) {
-                _debugLog(
-                  'RewardedAccessService show failed for $debugLabel: $error',
-                );
-                complete(true);
-              },
-            );
-            ad.show(
-              onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-                rewardEarned = true;
-                _debugLog(
-                  'RewardedAccessService reward earned for $debugLabel: amount=${reward.amount} type=${reward.type}',
-                );
-              },
-            );
-          },
-          onAdFailedToLoad: (LoadAdError error) {
-            _debugLog(
-              'RewardedAccessService load failed for $debugLabel: $error',
-            );
-            complete(true);
-          },
-        ),
+    void showAd(RewardedAd ad) {
+      _debugLog('RewardedAccessService ad ready for $debugLabel');
+      rewardedAd = ad;
+      ad.fullScreenContentCallback = FullScreenContentCallback(
+        onAdShowedFullScreenContent: (RewardedAd ad) {
+          adShown = true;
+          _debugLog('RewardedAccessService ad shown for $debugLabel');
+        },
+        onAdDismissedFullScreenContent: (RewardedAd ad) async {
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+          complete(rewardEarned);
+          unawaited(preloadRewardedAd(adUnitId: adUnitId));
+        },
+        onAdFailedToShowFullScreenContent: (RewardedAd ad, AdError error) {
+          _debugLog(
+            'RewardedAccessService show failed for $debugLabel: $error',
+          );
+          complete(true);
+          unawaited(preloadRewardedAd(adUnitId: adUnitId));
+        },
       );
+      ad.show(
+        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+          rewardEarned = true;
+          _debugLog(
+            'RewardedAccessService reward earned for $debugLabel: amount=${reward.amount} type=${reward.type}',
+          );
+        },
+      );
+    }
+
+    try {
+      if (rewardedAd != null) {
+        showAd(rewardedAd!);
+      } else {
+        await RewardedAd.load(
+          adUnitId: adUnitId,
+          request: const AdRequest(),
+          rewardedAdLoadCallback: RewardedAdLoadCallback(
+            onAdLoaded: (RewardedAd ad) {
+              _debugLog('RewardedAccessService ad loaded for $debugLabel');
+              showAd(ad);
+            },
+            onAdFailedToLoad: (LoadAdError error) {
+              _debugLog(
+                'RewardedAccessService load failed for $debugLabel: $error',
+              );
+              complete(true);
+            },
+          ),
+        );
+      }
     } catch (error, stackTrace) {
       _debugLogStack(
         'RewardedAccessService exception for $debugLabel: $error',
@@ -125,5 +183,11 @@ class RewardedAccessService {
         return fallbackValue;
       },
     );
+  }
+
+  void dispose() {
+    _preloadedAd?.dispose();
+    _preloadedAd = null;
+    _preloadedAdUnitId = null;
   }
 }

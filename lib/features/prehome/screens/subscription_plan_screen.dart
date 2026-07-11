@@ -15,15 +15,25 @@ import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 
+enum SubscriptionPlanMode { appPlan, editorPlan }
+
 class SubscriptionPlanScreen extends StatefulWidget {
   const SubscriptionPlanScreen({
     super.key,
     this.triggerRestoreOnOpen = false,
     this.startPurchaseOnOpen = false,
+    this.mode = SubscriptionPlanMode.appPlan,
   });
+
+  const SubscriptionPlanScreen.editorPro({
+    super.key,
+    this.triggerRestoreOnOpen = false,
+    this.startPurchaseOnOpen = false,
+  }) : mode = SubscriptionPlanMode.editorPlan;
 
   final bool triggerRestoreOnOpen;
   final bool startPurchaseOnOpen;
+  final SubscriptionPlanMode mode;
 
   @override
   State<SubscriptionPlanScreen> createState() => _SubscriptionPlanScreenState();
@@ -31,9 +41,8 @@ class SubscriptionPlanScreen extends StatefulWidget {
 
 class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     with AppLanguageStateMixin, WidgetsBindingObserver {
-  final SubscriptionBackendService _backendService =
-      SubscriptionBackendService();
-  final ProPurchaseGateway _purchaseGateway = InAppPurchaseGateway();
+  late final SubscriptionBackendService _backendService;
+  late final ProPurchaseGateway _purchaseGateway;
 
   AppLanguage _languageSnapshot = AppLanguage.telugu;
   SubscriptionBackendResult? _backendResult;
@@ -58,6 +67,13 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool get _isSubscriptionExpired => _backendResult?.isExpired == true;
   bool get _canSubscribe => !_isSubscriptionActive;
   AppStrings get _strings => AppStrings(_languageSnapshot);
+  bool get _isEditorPlan => widget.mode == SubscriptionPlanMode.editorPlan;
+  Set<String> get _productIdsToQuery => _isEditorPlan
+      ? EditorSubscriptionPlanConfig.resolvedProductIds()
+      : SubscriptionPlanConfig.resolvedPremiumProductIds();
+  String get _monthlyFallbackPrice => _isEditorPlan
+      ? EditorSubscriptionPlanConfig.monthlyPriceDisplay
+      : SubscriptionPlanConfig.monthlyPriceDisplay;
 
   @override
   void didChangeDependencies() {
@@ -68,6 +84,20 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   @override
   void initState() {
     super.initState();
+    _backendService = _isEditorPlan
+        ? SubscriptionBackendService.editor()
+        : SubscriptionBackendService.app();
+    _purchaseGateway = _isEditorPlan
+        ? InAppPurchaseGateway(
+            productId: EditorSubscriptionPlanConfig.productId,
+            fallbackProductIds:
+                EditorSubscriptionPlanConfig.resolvedProductIds().toList(
+                  growable: false,
+                ),
+            preferredBasePlanId: EditorSubscriptionPlanConfig.monthlyBasePlanId,
+            preferredOfferId: EditorSubscriptionPlanConfig.trialOfferId,
+          )
+        : InAppPurchaseGateway();
     WidgetsBinding.instance.addObserver(this);
     _screenShownAt = DateTime.now();
     unawaited(_purchaseGateway.initialize());
@@ -214,7 +244,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       if (!available) {
         return null;
       }
-      final ids = SubscriptionPlanConfig.resolvedPremiumProductIds();
+      final ids = _productIdsToQuery;
       var response = await store.queryProductDetails(ids);
       if (response.productDetails.isEmpty) {
         for (final id in ids) {
@@ -255,17 +285,38 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
   }
 
-  Future<void> _subscribeFreePlan() async {
+  ProPurchaseGateway _purchaseGatewayForBasePlan(String? basePlanId) {
+    if (basePlanId == null || basePlanId.isEmpty) {
+      return _purchaseGateway;
+    }
+    final isEditorBasePlan =
+        basePlanId == EditorSubscriptionPlanConfig.monthlyBasePlanId ||
+        basePlanId == EditorSubscriptionPlanConfig.yearlyBasePlanId;
+    if (!isEditorBasePlan) {
+      return _purchaseGateway;
+    }
+    return InAppPurchaseGateway(
+      productId: EditorSubscriptionPlanConfig.productId,
+      fallbackProductIds: EditorSubscriptionPlanConfig.resolvedProductIds()
+          .toList(growable: false),
+      preferredBasePlanId: basePlanId,
+      preferredOfferId: '',
+    );
+  }
+
+  Future<void> _subscribeFreePlan({String? editorBasePlanId}) async {
     if (_isBusy || !_canSubscribe) {
       return;
     }
+    final purchaseGateway = _purchaseGatewayForBasePlan(editorBasePlanId);
+    await purchaseGateway.initialize();
     if (!await _prepareForStoreFlow()) {
       return;
     }
     var shouldShowThanksPrompt = false;
     setState(() => _busyFree = true);
     try {
-      final outcome = await _purchaseGateway.purchaseMonthlyPro();
+      final outcome = await purchaseGateway.purchaseMonthlyPro();
       if (!mounted) {
         return;
       }
@@ -823,7 +874,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       return null;
     }
     final normalizedProductId = result.productId?.trim();
-    if (normalizedProductId != 'mana_poster_premium_monthly_149') {
+    if (normalizedProductId == null ||
+        !_productIdsToQuery.contains(normalizedProductId)) {
       return null;
     }
     final startDate = result.startDate;
@@ -898,6 +950,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     String? kannada,
     String? malayalam,
   }) {
+    if (_isEditorPlan) {
+      return english;
+    }
     return _strings.localized(
       telugu: telugu,
       english: english,
@@ -910,23 +965,12 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   String get _monthlyPriceLabel {
     final price = _selectedProduct?.price.trim() ?? '';
-    return price.isNotEmpty
-        ? price
-        : SubscriptionPlanConfig.monthlyPriceDisplay;
+    return price.isNotEmpty ? price : _monthlyFallbackPrice;
   }
 
   String get _trialPriceLabel => SubscriptionPlanConfig.trialPriceDisplay;
 
   int get _trialDays => SubscriptionPlanConfig.trialDays;
-
-  String get _trialOfferTitle => _t(
-    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
-    english: '$_trialDays-day trial plan',
-    hindi: '3-दिन ट्रायल प्लान',
-    tamil: '3 நாள் சோதனை திட்டம்',
-    kannada: '3 ದಿನಗಳ ಟ್ರಯಲ್ ಪ್ಲಾನ್',
-    malayalam: '3 ദിവസത്തെ ട്രയൽ പ്ലാൻ',
-  );
 
   String get _trialOfferBody => _t(
     telugu:
@@ -943,12 +987,388 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         'ഈ പ്ലാൻ Rs.4യ്ക്ക് 3 ദിവസത്തെ ട്രയലായി തുടങ്ങുന്നു. ഈ സമയത്ത് നിങ്ങൾക്ക് റദ്ദാക്കാം.',
   );
 
+  String get _alreadyActiveLabel => _t(
+    telugu: 'ఇప్పటికే యాక్టివ్',
+    english: 'Already Active',
+    hindi: 'पहले से सक्रिय',
+    tamil: 'ஏற்கனவே செயலில் உள்ளது',
+    kannada: 'ಈಗಾಗಲೇ ಸಕ್ರಿಯವಾಗಿದೆ',
+    malayalam: 'ഇതിനകം ആക്റ്റീവാണ്',
+  );
+
+  String get _appPlanDetailsTitle => _t(
+    telugu: 'మీ ప్లాన్ వివరాలు',
+    english: 'Your plan details',
+    hindi: 'आपके प्लान विवरण',
+    tamil: 'உங்கள் திட்ட விவரங்கள்',
+    kannada: 'ನಿಮ್ಮ ಯೋಜನೆಯ ವಿವರಗಳು',
+    malayalam: 'നിങ്ങളുടെ പ്ലാൻ വിവരങ്ങൾ',
+  );
+
+  String get _subscribeAppProLabel => _t(
+    telugu: 'App Pro సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe App Pro',
+    hindi: 'App Pro सब्सक्राइब करें',
+    tamil: 'App Pro சந்தா எடுக்கவும்',
+    kannada: 'App Pro ಚಂದಾದಾರರಾಗಿ',
+    malayalam: 'App Pro സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+  );
+
+  String get _allAccessYearlyTitle => _t(
+    telugu: 'All Access వార్షిక ప్లాన్',
+    english: 'All Access Yearly',
+    hindi: 'All Access वार्षिक',
+    tamil: 'All Access ஆண்டு திட்டம்',
+    kannada: 'All Access ವಾರ್ಷಿಕ',
+    malayalam: 'All Access വാർഷികം',
+  );
+
+  String get _allAccessTitle => _t(
+    telugu: 'All Access',
+    english: 'All Access',
+    hindi: 'All Access',
+    tamil: 'All Access',
+    kannada: 'All Access',
+    malayalam: 'All Access',
+  );
+
+  String get _appEditorTogetherSubtitle => _t(
+    telugu: 'App Pro + Editor Pro కలిపి',
+    english: 'App Pro + Editor Pro together',
+    hindi: 'App Pro + Editor Pro साथ में',
+    tamil: 'App Pro + Editor Pro ஒன்றாக',
+    kannada: 'App Pro + Editor Pro ಒಟ್ಟಿಗೆ',
+    malayalam: 'App Pro + Editor Pro ഒരുമിച്ച്',
+  );
+
+  String get _allAccessBundleSubtitle => _t(
+    telugu: 'App Pro + Editor Pro బండిల్',
+    english: 'App Pro + Editor Pro bundle',
+    hindi: 'App Pro + Editor Pro बंडल',
+    tamil: 'App Pro + Editor Pro பண்டில்',
+    kannada: 'App Pro + Editor Pro ಬಂಡಲ್',
+    malayalam: 'App Pro + Editor Pro ബണ്ടിൽ',
+  );
+
+  String get _yearlyPriceLabel =>
+      '${EditorSubscriptionPlanConfig.yearlyPriceDisplay} / ${_t(telugu: 'సంవత్సరం', english: 'year', hindi: 'वर्ष', tamil: 'ஆண்டு', kannada: 'ವರ್ಷ', malayalam: 'വർഷം')}';
+
+  String get _editorMonthlyPriceLabel =>
+      '${EditorSubscriptionPlanConfig.monthlyPriceDisplay} / ${_t(telugu: 'నెల', english: 'month', hindi: 'माह', tamil: 'மாதம்', kannada: 'ತಿಂಗಳು', malayalam: 'മാസം')}';
+
+  String get _subscribeYearlyLabel => _t(
+    telugu: 'వార్షికంగా సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe Yearly',
+    hindi: 'वार्षिक सब्सक्राइब करें',
+    tamil: 'ஆண்டு சந்தா எடுக்கவும்',
+    kannada: 'ವಾರ್ಷಿಕವಾಗಿ ಚಂದಾದಾರರಾಗಿ',
+    malayalam: 'വാർഷികമായി സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+  );
+
+  String get _editorProTitle => _t(
+    telugu: 'Editor Pro',
+    english: 'Editor Pro',
+    hindi: 'Editor Pro',
+    tamil: 'Editor Pro',
+    kannada: 'Editor Pro',
+    malayalam: 'Editor Pro',
+  );
+
+  String get _editorOnlySubtitle => _t(
+    telugu: 'ఎడిటర్ ప్రీమియం టూల్స్ మాత్రమే',
+    english: 'Only editor premium tools',
+    hindi: 'केवल एडिटर प्रीमियम टूल्स',
+    tamil: 'எடிட்டர் பிரீமியம் கருவிகள் மட்டும்',
+    kannada: 'ಎಡಿಟರ್ ಪ್ರೀಮಿಯಂ ಟೂಲ್‌ಗಳು ಮಾತ್ರ',
+    malayalam: 'എഡിറ്റർ പ്രീമിയം ടൂളുകൾ മാത്രം',
+  );
+
+  String get _premiumAssetsLabel => _t(
+    telugu: 'ప్రీమియం Assets',
+    english: 'Premium Assets',
+    hindi: 'प्रीमियम Assets',
+    tamil: 'பிரீமியம் Assets',
+    kannada: 'ಪ್ರೀಮಿಯಂ Assets',
+    malayalam: 'പ്രീമിയം Assets',
+  );
+
+  String get _teluguLegacyFontsLabel => _t(
+    telugu: 'తెలుగు లెగసీ ఫాంట్స్',
+    english: 'Telugu legacy fonts',
+    hindi: 'तेलुगु लेगेसी फॉन्ट्स',
+    tamil: 'தெலுங்கு லெகசி எழுத்துருக்கள்',
+    kannada: 'ತೆಲುಗು ಲೆಗಸಿ ಫಾಂಟ್‌ಗಳು',
+    malayalam: 'తెలുങ്ക് ലെഗസി ഫോണ്ടുകൾ',
+  );
+
+  String get _removeBgToolLabel => _t(
+    telugu: 'Remove BG టూల్',
+    english: 'Remove BG tool',
+    hindi: 'Remove BG टूल',
+    tamil: 'Remove BG கருவி',
+    kannada: 'Remove BG ಟೂಲ್',
+    malayalam: 'Remove BG ടൂൾ',
+  );
+
+  String get _doesNotIncludeAppProLabel => _t(
+    telugu: 'App Pro సబ్‌స్క్రిప్షన్ ఇందులో ఉండదు',
+    english: 'Does not include App Pro subscription',
+    hindi: 'इसमें App Pro सब्सक्रिप्शन शामिल नहीं है',
+    tamil: 'இதில் App Pro சந்தா இல்லை',
+    kannada: 'ಇದು App Pro ಚಂದಾದಾರಿಕೆಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ',
+    malayalam: 'ഇതിൽ App Pro സബ്‌സ്‌ക്രിപ്ഷൻ ഉൾപ്പെടില്ല',
+  );
+
+  String get _subscribeEditorProLabel => _t(
+    telugu: 'Editor Pro సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe Editor Pro',
+    hindi: 'Editor Pro सब्सक्राइब करें',
+    tamil: 'Editor Pro சந்தா எடுக்கவும்',
+    kannada: 'Editor Pro ಚಂದಾದಾರರಾಗಿ',
+    malayalam: 'Editor Pro സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+  );
+
+  String get _includesAppProFeaturesLabel => _t(
+    telugu: 'App Pro ఫీచర్స్ ఉంటాయి',
+    english: 'Includes App Pro features',
+    hindi: 'App Pro फीचर्स शामिल हैं',
+    tamil: 'App Pro அம்சங்கள் அடங்கும்',
+    kannada: 'App Pro ವೈಶಿಷ್ಟ್ಯಗಳು ಒಳಗೊಂಡಿವೆ',
+    malayalam: 'App Pro ഫീച്ചറുകൾ ഉൾപ്പെടും',
+  );
+
+  String get _includesEditorProToolsLabel => _t(
+    telugu: 'అన్ని Editor Pro టూల్స్ ఉంటాయి',
+    english: 'Includes all Editor Pro tools',
+    hindi: 'सभी Editor Pro टूल्स शामिल हैं',
+    tamil: 'அனைத்து Editor Pro கருவிகளும் அடங்கும்',
+    kannada: 'ಎಲ್ಲಾ Editor Pro ಟೂಲ್‌ಗಳು ಒಳಗೊಂಡಿವೆ',
+    malayalam: 'എല്ലാ Editor Pro ടൂളുകളും ഉൾപ്പെടും',
+  );
+
+  String get _yearlyAutoRenewingBundleLabel => _t(
+    telugu: 'ఒకే వార్షిక auto-renewing బండిల్ ప్లాన్',
+    english: 'One yearly auto-renewing bundle plan',
+    hindi: 'एक वार्षिक auto-renewing बंडल प्लान',
+    tamil: 'ஒரு ஆண்டு auto-renewing பண்டில் திட்டம்',
+    kannada: 'ಒಂದು ವಾರ್ಷಿಕ auto-renewing ಬಂಡಲ್ ಯೋಜನೆ',
+    malayalam: 'ഒരു വാർഷിക auto-renewing ബണ്ടിൽ പ്ലാൻ',
+  );
+
+  String get _yearlyAutoRenewingPlanLabel => _t(
+    telugu: 'ఒకే వార్షిక auto-renewing ప్లాన్',
+    english: 'One yearly auto-renewing plan',
+    hindi: 'एक वार्षिक auto-renewing प्लान',
+    tamil: 'ஒரு ஆண்டு auto-renewing திட்டம்',
+    kannada: 'ಒಂದು ವಾರ್ಷಿಕ auto-renewing ಯೋಜನೆ',
+    malayalam: 'ഒരു വാർഷിക auto-renewing പ്ലാൻ',
+  );
+
+  String get _includesPosterAccessLabel => _t(
+    telugu: 'పోస్టర్ share/download access ఉంటుంది',
+    english: 'Includes poster share and download access',
+    hindi: 'पोस्टर शेयर और डाउनलोड access शामिल है',
+    tamil: 'போஸ்டர் பகிர்வு மற்றும் பதிவிறக்க access அடங்கும்',
+    kannada: 'ಪೋಸ್ಟರ್ share ಮತ್ತು download access ಒಳಗೊಂಡಿದೆ',
+    malayalam: 'പോസ്റ്റർ share/download access ഉൾപ്പെടും',
+  );
+
+  String get _includesEditorPremiumLabel => _t(
+    telugu: 'ప్రీమియం editor assets, Telugu fonts, Remove BG ఉంటాయి',
+    english: 'Includes premium editor assets, Telugu fonts, and Remove BG',
+    hindi: 'प्रीमियम editor assets, Telugu fonts और Remove BG शामिल हैं',
+    tamil: 'பிரீமியம் editor assets, Telugu fonts மற்றும் Remove BG அடங்கும்',
+    kannada: 'ಪ್ರೀಮಿಯಂ editor assets, Telugu fonts ಮತ್ತು Remove BG ಒಳಗೊಂಡಿವೆ',
+    malayalam: 'പ്രീമിയം editor assets, Telugu fonts, Remove BG ഉൾപ്പെടും',
+  );
+
+  String get _bestForBothLabel => _t(
+    telugu: 'Home posters మరియు editor tools రెండూ వాడితే best option',
+    english: 'Best option if you use both home posters and editor tools',
+    hindi:
+        'Home posters और editor tools दोनों उपयोग करने वालों के लिए best option',
+    tamil:
+        'Home posters மற்றும் editor tools இரண்டும் பயன்படுத்தினால் சிறந்த தேர்வு',
+    kannada: 'Home posters ಮತ್ತು editor tools ಎರಡನ್ನೂ ಬಳಸಿದರೆ ಉತ್ತಮ ಆಯ್ಕೆ',
+    malayalam:
+        'Home posters, editor tools രണ്ടും ഉപയോഗിക്കുന്നവർക്ക് മികച്ച ഓപ്ഷൻ',
+  );
+
+  String get _bestValueForBothLabel => _t(
+    telugu: 'రెండూ అవసరమైన users కి best value',
+    english: 'Best value for users who need both',
+    hindi: 'दोनों चाहिए वाले users के लिए best value',
+    tamil: 'இரண்டும் தேவைப்படும் users க்கு best value',
+    kannada: 'ಎರಡೂ ಬೇಕಾದ users ಗೆ best value',
+    malayalam: 'രണ്ടും ആവശ്യമായ users ന് best value',
+  );
+
+  String get _subscribeAllAccessLabel => _t(
+    telugu: 'All Access సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe All Access',
+    hindi: 'All Access सब्सक्राइब करें',
+    tamil: 'All Access சந்தா எடுக்கவும்',
+    kannada: 'All Access ಚಂದಾದಾರರಾಗಿ',
+    malayalam: 'All Access സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+  );
+
+  String get _editorPlanHeroSubtitle => _t(
+    telugu:
+        'Editor Pro monthly లేదా app + editor కోసం All Access yearly ఎంచుకోండి.',
+    english:
+        'Choose Editor Pro monthly, or All Access yearly for app + editor together.',
+    hindi:
+        'Editor Pro monthly चुनें या app + editor के लिए All Access yearly लें।',
+    tamil:
+        'Editor Pro monthly அல்லது app + editor க்கு All Access yearly தேர்வு செய்யவும்.',
+    kannada:
+        'Editor Pro monthly ಅಥವಾ app + editor ಗಾಗಿ All Access yearly ಆಯ್ಕೆಮಾಡಿ.',
+    malayalam:
+        'Editor Pro monthly അല്ലെങ്കിൽ app + editor നായി All Access yearly തിരഞ്ഞെടുക്കുക.',
+  );
+
+  String get _billingNoticeText {
+    if (_isEditorPlan) {
+      return _t(
+        telugu:
+            'Editor Pro నెలకు ${EditorSubscriptionPlanConfig.monthlyPriceDisplay}. All Access సంవత్సరానికి ${EditorSubscriptionPlanConfig.yearlyPriceDisplay} తో App Pro + Editor Pro రెండూ ఉంటాయి. Subscription auto-renew అవుతుంది; Play Store లో ఎప్పుడైనా cancel చేయవచ్చు.',
+        english:
+            'Editor Pro is ${EditorSubscriptionPlanConfig.monthlyPriceDisplay} per month. All Access is ${EditorSubscriptionPlanConfig.yearlyPriceDisplay} per year and includes both App Pro and Editor Pro. Subscriptions auto-renew and can be cancelled anytime in the Play Store.',
+        hindi:
+            'Editor Pro ${EditorSubscriptionPlanConfig.monthlyPriceDisplay} प्रति माह है। All Access ${EditorSubscriptionPlanConfig.yearlyPriceDisplay} प्रति वर्ष है और इसमें App Pro + Editor Pro दोनों शामिल हैं। Subscription auto-renew होता है और Play Store में कभी भी cancel किया जा सकता है।',
+        tamil:
+            'Editor Pro மாதம் ${EditorSubscriptionPlanConfig.monthlyPriceDisplay}. All Access ஆண்டு ${EditorSubscriptionPlanConfig.yearlyPriceDisplay}; இதில் App Pro + Editor Pro இரண்டும் அடங்கும். Subscription auto-renew ஆகும்; Play Store-ல் எப்போது வேண்டுமானாலும் cancel செய்யலாம்.',
+        kannada:
+            'Editor Pro ತಿಂಗಳಿಗೆ ${EditorSubscriptionPlanConfig.monthlyPriceDisplay}. All Access ವರ್ಷಕ್ಕೆ ${EditorSubscriptionPlanConfig.yearlyPriceDisplay}; ಇದರಲ್ಲಿ App Pro + Editor Pro ಎರಡೂ ಒಳಗೊಂಡಿವೆ. Subscription auto-renew ಆಗುತ್ತದೆ; Play Store ನಲ್ಲಿ ಯಾವಾಗ ಬೇಕಾದರೂ cancel ಮಾಡಬಹುದು.',
+        malayalam:
+            'Editor Pro മാസം ${EditorSubscriptionPlanConfig.monthlyPriceDisplay}. All Access വർഷം ${EditorSubscriptionPlanConfig.yearlyPriceDisplay}; App Pro + Editor Pro രണ്ടും ഉൾപ്പെടും. Subscription auto-renew ചെയ്യും; Play Store-ൽ എപ്പോൾ വേണമെങ്കിലും cancel ചെയ്യാം.',
+      );
+    }
+    return _t(
+      telugu:
+          'App Pro ${SubscriptionPlanConfig.trialPriceDisplay} తో ${SubscriptionPlanConfig.trialDays} రోజుల trial గా ప్రారంభమవుతుంది. Trial తర్వాత నెలకు $_monthlyPriceLabel తో auto-renew అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల్లో cancel చేస్తే నెలసరి ఛార్జ్ వర్తించదు.',
+      english:
+          'App Pro starts with a ${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days. After the trial, it auto-renews at $_monthlyPriceLabel per month. Cancel within ${SubscriptionPlanConfig.trialDays} days to avoid the monthly charge.',
+      hindi:
+          'App Pro ${SubscriptionPlanConfig.trialPriceDisplay} में ${SubscriptionPlanConfig.trialDays} दिनों के trial से शुरू होता है। Trial के बाद यह $_monthlyPriceLabel प्रति माह auto-renew होता है। मासिक शुल्क से बचने के लिए ${SubscriptionPlanConfig.trialDays} दिनों में cancel करें।',
+      tamil:
+          'App Pro ${SubscriptionPlanConfig.trialPriceDisplay}க்கு ${SubscriptionPlanConfig.trialDays} நாள் trial ஆக தொடங்கும். Trialக்கு பிறகு மாதம் $_monthlyPriceLabel auto-renew ஆகும். மாத கட்டணத்தை தவிர்க்க ${SubscriptionPlanConfig.trialDays} நாட்களில் cancel செய்யவும்.',
+      kannada:
+          'App Pro ${SubscriptionPlanConfig.trialPriceDisplay} ಗೆ ${SubscriptionPlanConfig.trialDays} ದಿನಗಳ trial ಆಗಿ ಆರಂಭವಾಗುತ್ತದೆ. Trial ನಂತರ ತಿಂಗಳಿಗೆ $_monthlyPriceLabel auto-renew ಆಗುತ್ತದೆ. ಮಾಸಿಕ ಶುಲ್ಕ ತಪ್ಪಿಸಲು ${SubscriptionPlanConfig.trialDays} ದಿನಗಳಲ್ಲಿ cancel ಮಾಡಿ.',
+      malayalam:
+          'App Pro ${SubscriptionPlanConfig.trialPriceDisplay}യ്ക്ക് ${SubscriptionPlanConfig.trialDays} ദിവസത്തെ trial ആയി തുടങ്ങും. Trial കഴിഞ്ഞാൽ മാസം $_monthlyPriceLabel auto-renew ചെയ്യും. മാസചാർജ് ഒഴിവാക്കാൻ ${SubscriptionPlanConfig.trialDays} ദിവസത്തിനുള്ളിൽ cancel ചെയ്യുക.',
+    );
+  }
+
+  List<Widget> _buildPlanCards(List<String> appPlanDetails) {
+    if (!_isEditorPlan) {
+      return <Widget>[
+        _PlanSection(
+          title: _appPlanDetailsTitle,
+          details: appPlanDetails,
+          monthlyPrice: _monthlyFallbackPrice,
+          buttonLabel: _isSubscriptionActive
+              ? _alreadyActiveLabel
+              : _subscribeAppProLabel,
+          onTap: () => unawaited(_subscribeFreePlan()),
+          busy: _busyFree,
+          accent: const Color(0xFF1D4ED8),
+          enabled: _canSubscribe,
+        ),
+        const SizedBox(height: 14),
+        _PlanChoiceCard(
+          title: _allAccessYearlyTitle,
+          subtitle: _appEditorTogetherSubtitle,
+          price: _yearlyPriceLabel,
+          details: <String>[
+            _includesPosterAccessLabel,
+            _includesEditorPremiumLabel,
+            _yearlyAutoRenewingBundleLabel,
+            _bestForBothLabel,
+          ],
+          buttonLabel: _isSubscriptionActive
+              ? _alreadyActiveLabel
+              : _subscribeYearlyLabel,
+          busy: _busyFree,
+          enabled: _canSubscribe,
+          accent: const Color(0xFF9333EA),
+          onTap: () => unawaited(
+            _subscribeFreePlan(
+              editorBasePlanId: EditorSubscriptionPlanConfig.yearlyBasePlanId,
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return <Widget>[
+      _PlanChoiceCard(
+        title: _editorProTitle,
+        subtitle: _editorOnlySubtitle,
+        price: _editorMonthlyPriceLabel,
+        details: <String>[
+          _premiumAssetsLabel,
+          _teluguLegacyFontsLabel,
+          _removeBgToolLabel,
+          _doesNotIncludeAppProLabel,
+        ],
+        buttonLabel: _isSubscriptionActive
+            ? _alreadyActiveLabel
+            : _subscribeEditorProLabel,
+        busy: _busyFree,
+        enabled: _canSubscribe,
+        accent: const Color(0xFF1D4ED8),
+        onTap: () => unawaited(_subscribeFreePlan()),
+      ),
+      const SizedBox(height: 14),
+      _PlanChoiceCard(
+        title: _allAccessTitle,
+        subtitle: _allAccessBundleSubtitle,
+        price: _yearlyPriceLabel,
+        details: <String>[
+          _includesAppProFeaturesLabel,
+          _includesEditorProToolsLabel,
+          _yearlyAutoRenewingPlanLabel,
+          _bestValueForBothLabel,
+        ],
+        buttonLabel: _isSubscriptionActive
+            ? _alreadyActiveLabel
+            : _subscribeAllAccessLabel,
+        busy: _busyFree,
+        enabled: _canSubscribe,
+        accent: const Color(0xFF9333EA),
+        onTap: () => unawaited(
+          _subscribeFreePlan(
+            editorBasePlanId: EditorSubscriptionPlanConfig.yearlyBasePlanId,
+          ),
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String? subscriptionStartLine = _subscriptionStartLine();
-    final String? subscriptionExpiryLine = _subscriptionExpiryLine();
+    final isEditorPlan = _isEditorPlan;
+    final pageBackground = isEditorPlan
+        ? const Color(0xFF070A12)
+        : Colors.white;
+    final titleColor = isEditorPlan ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isEditorPlan
+        ? const Color(0xFFCBD5E1)
+        : const Color(0xFF475569);
+    final appBarForeground = isEditorPlan
+        ? Colors.white
+        : const Color(0xFF0F172A);
     final List<String> planDetails = <String>[
       _trialOfferBody,
+      _t(
+        telugu: 'పోస్టర్ share/download ఫీచర్స్ అన్‌లాక్ అవుతాయి.',
+        english: 'Unlock poster share and download features.',
+        hindi: 'पोस्टर share/download फीचर्स अनलॉक होते हैं।',
+        tamil: 'போஸ்டர் share/download அம்சங்கள் திறக்கும்.',
+        kannada: 'ಪೋಸ್ಟರ್ share/download ವೈಶಿಷ್ಟ್ಯಗಳು unlock ಆಗುತ್ತವೆ.',
+        malayalam: 'പോസ്റ്റർ share/download ഫീച്ചറുകൾ unlock ചെയ്യും.',
+      ),
       _t(
         telugu:
             '3 రోజుల తర్వాత ప్లాన్ $_monthlyPriceLabel నెలసరి ధరతో ఆటో రిన్యువల్ అవుతుంది',
@@ -963,21 +1383,34 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         malayalam:
             '3 ദിവസങ്ങൾക്ക് ശേഷം പ്ലാൻ $_monthlyPriceLabel മാസംതോറും ഓട്ടോ റിന്യൂവാകും',
       ),
+      _t(
+        telugu: 'నెలసరి ఛార్జ్ రాకుండా 3 రోజుల్లో cancel చేయవచ్చు.',
+        english: 'Cancel within 3 days to avoid the monthly charge.',
+        hindi: 'मासिक शुल्क से बचने के लिए 3 दिनों में cancel कर सकते हैं।',
+        tamil: 'மாத கட்டணத்தை தவிர்க்க 3 நாட்களில் cancel செய்யலாம்.',
+        kannada: 'ಮಾಸಿಕ ಶುಲ್ಕ ತಪ್ಪಿಸಲು 3 ದಿನಗಳಲ್ಲಿ cancel ಮಾಡಬಹುದು.',
+        malayalam: 'മാസചാർജ് ഒഴിവാക്കാൻ 3 ദിവസത്തിനുള്ളിൽ cancel ചെയ്യാം.',
+      ),
+      _t(
+        telugu: 'ఈ ప్లాన్‌లో premium editor assets లేదా Telugu fonts ఉండవు.',
+        english:
+            'This plan does not include premium editor assets or Telugu fonts.',
+        hindi:
+            'इस प्लान में premium editor assets या Telugu fonts शामिल नहीं हैं।',
+        tamil:
+            'இந்த திட்டத்தில் premium editor assets அல்லது Telugu fonts இல்லை.',
+        kannada: 'ಈ ಯೋಜನೆಯಲ್ಲಿ premium editor assets ಅಥವಾ Telugu fonts ಇಲ್ಲ.',
+        malayalam:
+            'ഈ പ്ലാനിൽ premium editor assets അല്ലെങ്കിൽ Telugu fonts ഇല്ല.',
+      ),
     ];
-    planDetails.addAll(
-      <String?>[
-        subscriptionStartLine,
-        subscriptionExpiryLine,
-      ].whereType<String>(),
-    );
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: pageBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: pageBackground,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+        iconTheme: IconThemeData(color: appBarForeground),
       ),
       body: SafeArea(
         top: false,
@@ -985,56 +1418,65 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
           onRefresh: _refreshStatus,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 26),
             children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: <Color>[Color(0xFF4F46E5), Color(0xFF9333EA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              if (isEditorPlan) ...<Widget>[
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[Color(0xFF151A2E), Color(0xFF0B1020)],
+                    ),
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.10),
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.28),
+                        blurRadius: 28,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: const <BoxShadow>[
-                    BoxShadow(
-                      color: Color(0x224F46E5),
-                      blurRadius: 24,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
+                  child: Row(
+                    children: <Widget>[
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFACC15).withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(
+                          Icons.workspace_premium_rounded,
+                          color: Color(0xFFFACC15),
+                          size: 27,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'Premium editor tools for every design',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            height: 1.25,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        _t(
-                          telugu: 'షేర్ & డౌన్‌లోడ్ అన్‌లాక్',
-                          english: 'Unlock share & download',
-                          hindi: 'शेयर और डाउनलोड अनलॉक करें',
-                          tamil: 'பகிர்வு மற்றும் பதிவிறக்கம் திறக்கவும்',
-                          kannada: 'ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ಲಾಕ್ ಮಾಡಿ',
-                          malayalam: 'ഷെയറും ഡൗൺലോഡും അൺലോക്ക് ചെയ്യുക',
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      _t(
+                const SizedBox(height: 18),
+              ],
+              Text(
+                _isEditorPlan
+                    ? _editorProTitle
+                    : _t(
                         telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
                         english: 'Subscription Plan',
                         hindi: 'सब्सक्रिप्शन प्लान',
@@ -1042,73 +1484,37 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                         kannada: 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ',
                         malayalam: 'സബ്സ്ക്രിപ്ഷൻ പ്ലാൻ',
                       ),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _t(
-                        telugu:
-                            'రూ.4 తో 3 రోజుల ట్రయల్ ప్రారంభించి పోస్టర్ షేరింగ్ మరియు డౌన్‌లోడ్‌ను వెంటనే అన్‌లాక్ చేయండి.',
-                        english:
-                            'Start with a $_trialPriceLabel trial for $_trialDays days and instantly unlock poster sharing and downloads.',
-                        hindi:
-                            'Rs.4 के 3-दिन ट्रायल से शुरू करें और तुरंत पोस्टर शेयर और डाउनलोड अनलॉक करें।',
-                        tamil:
-                            'Rs.4 க்கு 3 நாள் சோதனையுடன் தொடங்கி போஸ்டர் பகிர்வு மற்றும் பதிவிறக்கத்தை உடனே திறக்கவும்.',
-                        kannada:
-                            'Rs.4 ಗೆ 3 ದಿನಗಳ ಟ್ರಯಲ್‌ನೊಂದಿಗೆ ಆರಂಭಿಸಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಅನ್ನು ತಕ್ಷಣ ಅನ್ಲಾಕ್ ಮಾಡಿ.',
-                        malayalam:
-                            'Rs.4 ന് 3 ദിവസത്തെ ട്രയലോടെ ആരംഭിച്ച് പോസ്റ്റർ ഷെയറും ഡൗൺലോഡും ഉടൻ അൺലോക്ക് ചെയ്യൂ.',
-                      ),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: <Widget>[
-                        _PlanHighlightChip(
-                          icon: Icons.bolt_rounded,
-                          label: _trialOfferTitle,
-                        ),
-                        _PlanHighlightChip(
-                          icon: Icons.calendar_month_rounded,
-                          label: _t(
-                            telugu: 'నెలకు $_monthlyPriceLabel',
-                            english: '$_monthlyPriceLabel per month',
-                            hindi: '$_monthlyPriceLabel प्रति माह',
-                            tamil: 'மாதத்திற்கு $_monthlyPriceLabel',
-                            kannada: 'ತಿಂಗಳಿಗೆ $_monthlyPriceLabel',
-                            malayalam: 'മാസം $_monthlyPriceLabel',
-                          ),
-                        ),
-                        _PlanHighlightChip(
-                          icon: Icons.autorenew_rounded,
-                          label: _t(
-                            telugu: 'ఆటో రిన్యువల్',
-                            english: 'Auto-renewal',
-                            hindi: 'ऑटो-रिन्यूअल',
-                            tamil: 'தானியங்கி புதுப்பிப்பு',
-                            kannada: 'ಸ್ವಯಂ ನವೀಕರಣ',
-                            malayalam: 'ഓട്ടോ റിന്യൂവൽ',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                style: const TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w800,
+                  height: 1.08,
+                ).copyWith(color: titleColor),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 8),
+              Text(
+                _isEditorPlan
+                    ? _editorPlanHeroSubtitle
+                    : _t(
+                        telugu:
+                            'రూ.4 trial తో మొదలుపెట్టి poster share/download unlock చేయండి.',
+                        english:
+                            'Start with a $_trialPriceLabel trial and unlock poster sharing and downloads.',
+                        hindi:
+                            '$_trialPriceLabel trial से शुरू करें और poster share/download unlock करें।',
+                        tamil:
+                            '$_trialPriceLabel trial மூலம் தொடங்கி poster share/download unlock செய்யவும்.',
+                        kannada:
+                            '$_trialPriceLabel trial ಮೂಲಕ ಪ್ರಾರಂಭಿಸಿ poster share/download unlock ಮಾಡಿ.',
+                        malayalam:
+                            '$_trialPriceLabel trial ഉപയോഗിച്ച് തുടങ്ങി poster share/download unlock ചെയ്യുക.',
+                      ),
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.35,
+                ).copyWith(color: subtitleColor),
+              ),
+              const SizedBox(height: 16),
               _SubscriptionStatusCard(
                 label: _subscriptionStatusLabel(),
                 helper: _statusLine(),
@@ -1118,137 +1524,77 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                 backgroundColor: _statusBackgroundColor,
                 borderColor: _statusBorderColor,
               ),
-              const SizedBox(height: 18),
-              _PlanSection(
-                title: _t(
-                  telugu: 'మీ ప్లాన్ వివరాలు',
-                  english: 'Your plan details',
-                  hindi: 'आपके प्लान की जानकारी',
-                  tamil: 'உங்கள் திட்ட விவரங்கள்',
-                  kannada: 'ನಿಮ್ಮ ಯೋಜನೆ ವಿವರಗಳು',
-                  malayalam: 'നിങ്ങളുടെ പ്ലാൻ വിവരങ്ങൾ',
-                ),
-                details: planDetails,
-                buttonLabel: _t(
-                  telugu: _isSubscriptionActive
-                      ? 'ఇప్పటికే యాక్టివ్'
-                      : 'ఇప్పుడే సబ్‌స్క్రైబ్ చేయండి',
-                  english: _isSubscriptionActive
-                      ? 'Already Active'
-                      : 'Subscribe now',
-                  hindi: _isSubscriptionActive
-                      ? 'पहले से सक्रिय'
-                      : 'अभी सब्सक्राइब करें',
-                  tamil: _isSubscriptionActive
-                      ? 'ஏற்கனவே செயலிலுள்ளது'
-                      : 'இப்போது சந்தா செய்யவும்',
-                  kannada: _isSubscriptionActive
-                      ? 'ಈಗಾಗಲೇ ಸಕ್ರಿಯ'
-                      : 'ಈಗಲೇ ಚಂದಾದಾರರಾಗಿ',
-                  malayalam: _isSubscriptionActive
-                      ? 'ഇതിനകം സജീവം'
-                      : 'ഇപ്പോൾ സബ്സ്ക്രൈബ് ചെയ്യൂ',
-                ),
-                onTap: _subscribeFreePlan,
-                busy: _busyFree,
-                accent: const Color(0xFF1D4ED8),
-                enabled: _canSubscribe,
-              ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              ..._buildPlanCards(planDetails),
+              const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEEF2FF),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.restore_rounded,
-                            color: Color(0xFF4F46E5),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _t(
-                              telugu:
-                                  'వెరిఫై అయిన సబ్‌స్క్రిప్షన్ స్థితిని రిఫ్రెష్ చేయడానికి రిస్టోర్ చేయండి',
-                              english:
-                                  'Restore to refresh your verified subscription status',
-                              hindi:
-                                  'सत्यापित सब्सक्रिप्शन स्थिति रीफ्रेश करने के लिए रिस्टोर करें',
-                              tamil:
-                                  'உறுதிப்படுத்தப்பட்ட சந்தா நிலையை புதுப்பிக்க மீட்டெடுக்கவும்',
-                              kannada:
-                                  'ಪರಿಶೀಲಿತ ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲು ಮರುಸ್ಥಾಪಿಸಿ',
-                              malayalam:
-                                  'സ്ഥിരീകരിച്ച സബ്സ്ക്രിപ്ഷൻ നില പുതുക്കാൻ റിസ്റ്റോർ ചെയ്യുക',
-                            ),
-                            style: const TextStyle(
-                              color: Color(0xFF0F172A),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              height: 1.25,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Icon(
+                      Icons.restore_rounded,
+                      color: Color(0xFF475569),
+                      size: 20,
                     ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _busyRestore ? null : _restoreSubscriptions,
-                        icon: _busyRestore
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.history_rounded),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF0F172A),
-                          side: const BorderSide(color: Color(0xFFD6DCE8)),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _t(
+                          telugu:
+                              'Purchase చేసిన plan కనిపించకపోతే restore చేయండి.',
+                          english:
+                              'Restore if a purchased plan is not showing.',
+                          hindi: 'खरीदा हुआ plan नहीं दिखे तो restore करें।',
+                          tamil:
+                              'வாங்கிய plan தெரியவில்லை என்றால் restore செய்யவும்.',
+                          kannada: 'ಖರೀದಿಸಿದ plan ಕಾಣಿಸದಿದ್ದರೆ restore ಮಾಡಿ.',
+                          malayalam:
+                              'വാങ്ങിയ plan കാണുന്നില്ലെങ്കിൽ restore ചെയ്യുക.',
                         ),
-                        label: Text(
-                          _t(
-                            telugu: 'సబ్‌స్క్రిప్షన్లు రిస్టోర్ చేయండి',
-                            english: 'Restore subscriptions',
-                            hindi: 'सब्सक्रिप्शन बहाल करें',
-                            tamil: 'சந்தாக்களை மீட்டெடுக்கவும்',
-                            kannada: 'ಚಂದಾದಾರಿಕೆಗಳನ್ನು ಮರುಸ್ಥಾಪಿಸಿ',
-                            malayalam: 'സബ്സ്ക്രിപ്ഷനുകൾ പുനഃസ്ഥാപിക്കുക',
-                          ),
+                        style: const TextStyle(
+                          color: Color(0xFF334155),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.25,
                         ),
                       ),
+                    ),
+                    TextButton(
+                      onPressed: _busyRestore ? null : _restoreSubscriptions,
+                      child: _busyRestore
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              _t(
+                                telugu: 'Restore',
+                                english: 'Restore',
+                                hindi: 'Restore',
+                                tamil: 'Restore',
+                                kannada: 'Restore',
+                                malayalam: 'Restore',
+                              ),
+                            ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFFDE68A)),
                 ),
                 child: Row(
@@ -1261,20 +1607,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _t(
-                          telugu:
-                              '1st month trial plan రూ.4. అది ముగిసిన తర్వాత ప్లాన్ నెలకు రూ.149 తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల ట్రయల్ తర్వాత మీరు unsubscribe లేదా cancel చేయకపోతే ప్లాన్ నెలకు $_monthlyPriceLabel తో ఆటో రిన్యువల్ అవుతుంది. 3 రోజుల్లో రద్దు చేస్తే నెలసరి ఛార్జ్ వర్తించదు. ప్రస్తుతం ఉన్న ప్లాన్ గడువు ముగిసే వరకు ప్రయోజనాలు కొనసాగుతాయి.',
-                          english:
-                              'After the 3-day trial, the plan auto-renews at $_monthlyPriceLabel per month unless you unsubscribe or cancel. If you cancel within 3 days, the monthly charge does not apply. Benefits continue until the current plan expires.',
-                          hindi:
-                              '3-दिन ट्रायल के बाद, यदि आप अनसब्सक्राइब या रद्द नहीं करते हैं तो प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा। 3 दिनों के भीतर रद्द करने पर मासिक शुल्क लागू नहीं होगा। वर्तमान प्लान समाप्त होने तक लाभ जारी रहेंगे।',
-                          tamil:
-                              '3 நாள் சோதனைக்குப் பிறகு, நீங்கள் ரத்து செய்யாவிட்டால் திட்டம் $_monthlyPriceLabel மாதத்திற்கு தானாக புதுப்பிக்கும். 3 நாட்களுக்குள் ரத்து செய்தால் மாதாந்திர கட்டணம் வசூலிக்கப்படாது. தற்போதைய திட்டம் முடியும் வரை நன்மைகள் தொடரும்.',
-                          kannada:
-                              '3 ದಿನಗಳ ಟ್ರಯಲ್ ನಂತರ ನೀವು unsubscribe ಅಥವಾ cancel ಮಾಡದಿದ್ದರೆ ಯೋಜನೆ $_monthlyPriceLabel ಪ್ರತಿ ತಿಂಗಳು ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ. 3 ದಿನಗಳ ಒಳಗೆ ರದ್ದುಗೊಳಿಸಿದರೆ ಮಾಸಿಕ ಶುಲ್ಕ ಅನ್ವಯಿಸುವುದಿಲ್ಲ. ಪ್ರಸ್ತುತ ಯೋಜನೆ ಮುಗಿಯುವವರೆಗೆ ಪ್ರಯೋಜನಗಳು ಮುಂದುವರೆಯುತ್ತವೆ.',
-                          malayalam:
-                              '3 ദിവസത്തെ ട്രയലിന് ശേഷം നിങ്ങൾ unsubscribe ചെയ്യുകയോ cancel ചെയ്യുകയോ ഇല്ലെങ്കിൽ പ്ലാൻ $_monthlyPriceLabel മാസത്തിൽ ഓട്ടോ റിന്യൂവാകും. 3 ദിവസത്തിനുള്ളിൽ റദ്ദാക്കിയാൽ മാസചെലവ് ബാധകമല്ല. നിലവിലെ പ്ലാൻ അവസാനിക്കുന്നതുവരെ ആനുകൂല്യങ്ങൾ തുടരും.',
-                        ),
+                        _billingNoticeText,
                         style: const TextStyle(
                           color: Color(0xFF92400E),
                           fontSize: 13.5,
@@ -1316,10 +1649,10 @@ class _SubscriptionStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -1390,6 +1723,7 @@ class _PlanSection extends StatelessWidget {
   const _PlanSection({
     required this.title,
     required this.details,
+    required this.monthlyPrice,
     required this.buttonLabel,
     required this.onTap,
     required this.busy,
@@ -1399,6 +1733,7 @@ class _PlanSection extends StatelessWidget {
 
   final String title;
   final List<String> details;
+  final String monthlyPrice;
   final String buttonLabel;
   final VoidCallback onTap;
   final bool busy;
@@ -1410,15 +1745,147 @@ class _PlanSection extends StatelessWidget {
     final Color bulletAccent = enabled ? accent : const Color(0xFF94A3B8);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                monthlyPrice,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _CompactPriceLine(
+            title: 'Trial',
+            value: SubscriptionPlanConfig.trialValueDisplay,
+            accent: const Color(0xFF16A34A),
+          ),
+          const SizedBox(height: 14),
+          ...details.map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: bulletAccent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: bulletAccent,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      line,
+                      style: const TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.32,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: _SubscriptionActionButton(
+              label: buttonLabel,
+              busy: busy,
+              enabled: enabled,
+              accent: accent,
+              onTap: onTap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanChoiceCard extends StatelessWidget {
+  const _PlanChoiceCard({
+    required this.title,
+    required this.subtitle,
+    required this.price,
+    required this.details,
+    required this.buttonLabel,
+    required this.busy,
+    required this.enabled,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String price;
+  final List<String> details;
+  final String buttonLabel;
+  final bool busy;
+  final bool enabled;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bulletAccent = enabled ? accent : const Color(0xFF94A3B8);
+
+    return Container(
+      padding: const EdgeInsets.all(21),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Colors.white,
+            accent.withValues(alpha: 0.045),
+          ],
+        ),
         borderRadius: BorderRadius.circular(26),
-        boxShadow: const <BoxShadow>[
+        border: Border.all(color: accent.withValues(alpha: 0.26)),
+        boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 20,
-            offset: Offset(0, 10),
+            color: accent.withValues(alpha: 0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -1429,14 +1896,56 @@ class _PlanSection extends StatelessWidget {
             title,
             style: const TextStyle(
               color: Color(0xFF0F172A),
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              fontSize: 21,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w600,
+              fontSize: 13.5,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 15),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  price,
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 28,
+                    height: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: accent,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 17),
           ...details.map(
             (line) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 9),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -1460,9 +1969,9 @@ class _PlanSection extends StatelessWidget {
                       line,
                       style: const TextStyle(
                         color: Color(0xFF334155),
-                        fontSize: 14.5,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        height: 1.4,
+                        height: 1.32,
                       ),
                     ),
                   ),
@@ -1470,77 +1979,15 @@ class _PlanSection extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: _PriceBadge(
-                    title: context.strings.localized(
-                      telugu: 'ట్రయల్',
-                      english: 'Trial',
-                      hindi: 'ट्रायल',
-                      tamil: 'சோதனை',
-                      kannada: 'ಟ್ರಯಲ್',
-                      malayalam: 'ട്രയൽ',
-                    ),
-                    value: SubscriptionPlanConfig.trialValueDisplay,
-                    accent: const Color(0xFF16A34A),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PriceBadge(
-                    title: context.strings.localized(
-                      telugu: 'నెలసరి',
-                      english: 'Monthly',
-                      hindi: 'मासिक',
-                      tamil: 'மாதாந்திரம்',
-                      kannada: 'ಮಾಸಿಕ',
-                      malayalam: 'മാസാന്ത്യം',
-                    ),
-                    value: SubscriptionPlanConfig.monthlyPriceDisplay,
-                    accent: accent,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: busy || !enabled ? null : onTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: enabled ? accent : const Color(0xFFCBD5E1),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFCBD5E1),
-                disabledForegroundColor: const Color(0xFF64748B),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              child: busy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(buttonLabel),
+            child: _SubscriptionActionButton(
+              label: buttonLabel,
+              busy: busy,
+              enabled: enabled,
+              accent: accent,
+              onTap: onTap,
             ),
           ),
         ],
@@ -1549,42 +1996,50 @@ class _PlanSection extends StatelessWidget {
   }
 }
 
-class _PlanHighlightChip extends StatelessWidget {
-  const _PlanHighlightChip({required this.icon, required this.label});
+class _SubscriptionActionButton extends StatelessWidget {
+  const _SubscriptionActionButton({
+    required this.label,
+    required this.busy,
+    required this.enabled,
+    required this.accent,
+    required this.onTap,
+  });
 
-  final IconData icon;
   final String label;
+  final bool busy;
+  final bool enabled;
+  final Color accent;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+    return FilledButton(
+      onPressed: busy || !enabled ? null : onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: enabled ? accent : const Color(0xFFCBD5E1),
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: const Color(0xFFCBD5E1),
+        disabledForegroundColor: const Color(0xFF64748B),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 7),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+      child: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
     );
   }
 }
 
-class _PriceBadge extends StatelessWidget {
-  const _PriceBadge({
+class _CompactPriceLine extends StatelessWidget {
+  const _CompactPriceLine({
     required this.title,
     required this.value,
     required this.accent,
@@ -1597,29 +2052,28 @@ class _PriceBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Text(
             title,
             style: const TextStyle(
               color: Color(0xFF64748B),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(width: 8),
           Text(
             value,
             style: TextStyle(
               color: accent,
-              fontSize: 18,
+              fontSize: 13.5,
               fontWeight: FontWeight.w800,
             ),
           ),

@@ -231,11 +231,11 @@ List<_PosterFirebaseCandidate> _posterFirebaseResolveCandidates({
 }
 
 String _repairLegacyUiText(String value) {
-  if (!(value.contains('à°') ||
-      value.contains('à¤') ||
-      value.contains('à®') ||
-      value.contains('à²') ||
-      value.contains('à´'))) {
+  if (!(value.contains('\u00E0\u00B0') ||
+      value.contains('\u00E0\u00A4') ||
+      value.contains('\u00E0\u00AE') ||
+      value.contains('\u00E0\u00B2') ||
+      value.contains('\u00E0\u00B4'))) {
     return value;
   }
   try {
@@ -2755,11 +2755,11 @@ class _HomeScreenState extends State<HomeScreen>
               hindi:
                   'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
               tamil:
-                  'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
+                  'வெபில் editor கிடைக்காது. Poster create செய்ய mobile app பயன்படுத்துங்கள்.',
               kannada:
-                  'à²µà³†à²¬à³â€Œà²¨à²²à³à²²à²¿ editor à²²à²­à³à²¯à²µà²¿à²²à³à²². Poster create à²®à²¾à²¡à²²à³ mobile app à²¬à²³à²¸à²¿.',
+                  'ವೆಬ್‌ನಲ್ಲಿ editor ಲಭ್ಯವಿಲ್ಲ. Poster create ಮಾಡಲು mobile app ಬಳಸಿ.',
               malayalam:
-                  'à´µàµ†à´¬à´¿àµ½ editor à´²à´­àµà´¯à´®à´²àµà´². Poster create à´šàµ†à´¯àµà´¯à´¾àµ» mobile app à´‰à´ªà´¯àµ‹à´—à´¿à´•àµà´•àµà´•.',
+                  'വെബിൽ editor ലഭ്യമല്ല. Poster create ചെയ്യാൻ mobile app ഉപയോഗിക്കുക.',
             ),
           ),
         ),

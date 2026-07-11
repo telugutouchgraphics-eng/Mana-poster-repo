@@ -27,7 +27,7 @@ const double _cropBarHeight = 120;
 const double _adjustBarHeight = 180;
 const double _eraserBarHeight = 160;
 const double _stretchBarHeight = 202;
-const double _drawBarHeight = 202;
+const double _drawBarHeight = 112;
 const double _textStyleBarHeight = 224;
 const double _layerStyleQuickPanelHeight = 92;
 const double _canvasChromeInset = 18;
@@ -169,7 +169,7 @@ const Map<String, List<String>> _stickerCatalog = <String, List<String>>{
   'Hearts': <String>['❤️', '💚', '💙', '💜', '🧡', '💕'],
   'Stars': <String>['⭐', '🌟', '✨', '💫', '🔆', '✳️'],
   'Festival': <String>['🎉', '🎊', '🪔', '🪙', '🕯️', '🌸'],
-  'Political': politicalLogoElements,
+  'Political': <String>[],
 };
 
 final List<List<Color>> _textGradients = List<List<Color>>.unmodifiable(

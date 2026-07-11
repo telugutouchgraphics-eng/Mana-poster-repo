@@ -268,7 +268,8 @@ extension _EditorTextState on _ImageEditorScreenState {
         lower.endsWith('.png') ||
         lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
-        lower.endsWith('.webp');
+        lower.endsWith('.webp') ||
+        lower.endsWith('.svg');
     if (!isImage) {
       return null;
     }
@@ -312,6 +313,15 @@ extension _EditorTextState on _ImageEditorScreenState {
     }
     final filePath = _resolveStickerFilePath(sticker);
     if (filePath != null) {
+      if (filePath.toLowerCase().endsWith('.svg')) {
+        return SvgPicture.file(
+          File(filePath),
+          fit: fit,
+          colorFilter: color == null
+              ? null
+              : ColorFilter.mode(color, BlendMode.srcIn),
+        );
+      }
       return Image.file(
         File(filePath),
         fit: fit,

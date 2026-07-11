@@ -19,6 +19,8 @@ enum SubscriptionBackendState {
 
 enum SubscriptionPlanStatus { active, expired, inactive, unknown }
 
+enum SubscriptionEntitlementScope { app, editor }
+
 class SubscriptionBackendResult {
   const SubscriptionBackendResult({
     required this.state,
@@ -56,7 +58,15 @@ class SubscriptionBackendResult {
 
 class SubscriptionBackendService {
   SubscriptionBackendService({FirebaseAuth? firebaseAuth})
-    : _firebaseAuthOverride = firebaseAuth;
+    : this.app(firebaseAuth: firebaseAuth);
+
+  SubscriptionBackendService.app({FirebaseAuth? firebaseAuth})
+    : entitlementScope = SubscriptionEntitlementScope.app,
+      _firebaseAuthOverride = firebaseAuth;
+
+  SubscriptionBackendService.editor({FirebaseAuth? firebaseAuth})
+    : entitlementScope = SubscriptionEntitlementScope.editor,
+      _firebaseAuthOverride = firebaseAuth;
 
   static const String _verifyUrl = String.fromEnvironment(
     'MANA_POSTER_SUBSCRIPTION_VERIFY_URL',
@@ -68,21 +78,26 @@ class SubscriptionBackendService {
     defaultValue:
         'https://asia-south1-mana-poster-ap.cloudfunctions.net/subscriptionStatus',
   );
-  static SubscriptionBackendResult? _cachedEntitlement;
-  static DateTime? _cachedEntitlementAt;
+  static final Map<SubscriptionEntitlementScope, SubscriptionBackendResult?>
+  _cachedEntitlements = <SubscriptionEntitlementScope, SubscriptionBackendResult?>{};
+  static final Map<SubscriptionEntitlementScope, DateTime?>
+  _cachedEntitlementTimes = <SubscriptionEntitlementScope, DateTime?>{};
   static Future<void>? _pendingRecoveryFuture;
   static final ValueNotifier<SubscriptionBackendResult?> entitlementNotifier =
       ValueNotifier<SubscriptionBackendResult?>(null);
+  final SubscriptionEntitlementScope entitlementScope;
   final FirebaseAuth? _firebaseAuthOverride;
   FirebaseAuth get _firebaseAuth =>
       _firebaseAuthOverride ?? FirebaseAuth.instance;
 
   bool get isConfigured => _verifyUrl.isNotEmpty && _statusUrl.isNotEmpty;
-  SubscriptionBackendResult? get cachedEntitlement => _cachedEntitlement;
-  DateTime? get cachedEntitlementAt => _cachedEntitlementAt;
+  SubscriptionBackendResult? get cachedEntitlement =>
+      _cachedEntitlements[entitlementScope];
+  DateTime? get cachedEntitlementAt =>
+      _cachedEntitlementTimes[entitlementScope];
   bool get hasFreshEntitlementCache {
-    final cachedAt = _cachedEntitlementAt;
-    if (cachedAt == null || _cachedEntitlement == null) {
+    final cachedAt = cachedEntitlementAt;
+    if (cachedAt == null || cachedEntitlement == null) {
       return false;
     }
     return DateTime.now().difference(cachedAt) <=
@@ -90,16 +105,18 @@ class SubscriptionBackendService {
   }
 
   void clearEntitlementCache() {
-    _cachedEntitlement = null;
-    _cachedEntitlementAt = null;
-    entitlementNotifier.value = null;
+    _cachedEntitlements.remove(entitlementScope);
+    _cachedEntitlementTimes.remove(entitlementScope);
+    if (entitlementScope == SubscriptionEntitlementScope.app) {
+      entitlementNotifier.value = null;
+    }
   }
 
   /// Call when auth uid changes or user signs out so another account never
   /// inherits entitlement UI / cached Pro flags.
   static Future<void> resetLocalClientStateForAuthChange() async {
-    _cachedEntitlement = null;
-    _cachedEntitlementAt = null;
+    _cachedEntitlements.clear();
+    _cachedEntitlementTimes.clear();
     entitlementNotifier.value = null;
     await PlayBillingAccountBindingService.instance
         .clearPendingSubscriptionBindingIfOwnedByDifferentUid(
@@ -113,7 +130,7 @@ class SubscriptionBackendService {
   Future<SubscriptionBackendResult> fetchEntitlementWithCache({
     bool forceRefresh = false,
   }) async {
-    final cached = _cachedEntitlement;
+    final cached = cachedEntitlement;
     if (!forceRefresh && hasFreshEntitlementCache && cached != null) {
       return cached;
     }
@@ -131,6 +148,7 @@ class SubscriptionBackendService {
       url: _statusUrl,
       payload: <String, dynamic>{
         'platform': _platformLabel,
+        'scope': _scopeLabel,
         'uid': _firebaseAuth.currentUser?.uid,
       },
     );
@@ -139,9 +157,9 @@ class SubscriptionBackendService {
   Future<SubscriptionBackendResult> fetchEntitlement({
     bool forceRefresh = false,
   }) async {
-    final cached = _cachedEntitlement;
+    final cached = cachedEntitlement;
     if (!forceRefresh && hasFreshEntitlementCache && cached != null) {
-      return _cachedEntitlement!;
+      return cached;
     }
     return _fetchEntitlementFromBackend();
   }
@@ -154,14 +172,16 @@ class SubscriptionBackendService {
       if (clearCacheFirst) {
         clearEntitlementCache();
       }
-      final previousCached = _cachedEntitlement;
-      final previousCachedAt = _cachedEntitlementAt;
+      final previousCached = cachedEntitlement;
+      final previousCachedAt = cachedEntitlementAt;
       final result = await fetchEntitlement(forceRefresh: forceRefresh);
       if (result.state == SubscriptionBackendState.failed &&
           previousCached != null) {
-        _cachedEntitlement = previousCached;
-        _cachedEntitlementAt = previousCachedAt;
-        entitlementNotifier.value = previousCached;
+        _cachedEntitlements[entitlementScope] = previousCached;
+        _cachedEntitlementTimes[entitlementScope] = previousCachedAt;
+        if (entitlementScope == SubscriptionEntitlementScope.app) {
+          entitlementNotifier.value = previousCached;
+        }
       }
     } catch (_) {
       // Ignore background refresh failures and preserve the last known cache.
@@ -243,6 +263,7 @@ class SubscriptionBackendService {
 
     final payload = <String, dynamic>{
       'platform': _platformLabel,
+      'scope': _scopeLabel,
       'productId': evidence.productId,
       'verificationSource': evidence.source,
       'serverVerificationData': evidence.serverVerificationData,
@@ -374,9 +395,11 @@ class SubscriptionBackendService {
         lastSyncedAt: _parseDateTime(decoded['lastSyncedAt']),
       );
       await InAppPurchaseGateway.syncBackendEntitlement(result.hasAccess);
-      _cachedEntitlement = result;
-      _cachedEntitlementAt = DateTime.now();
-      entitlementNotifier.value = result;
+      _cachedEntitlements[entitlementScope] = result;
+      _cachedEntitlementTimes[entitlementScope] = DateTime.now();
+      if (entitlementScope == SubscriptionEntitlementScope.app) {
+        entitlementNotifier.value = result;
+      }
       if (result.hasAccess) {
         await PlayBillingAccountBindingService.instance
             .clearPendingSubscriptionBinding(
@@ -492,4 +515,6 @@ class SubscriptionBackendService {
   }
 
   String get _platformLabel => kIsWeb ? 'web' : Platform.operatingSystem;
+  String get _scopeLabel =>
+      entitlementScope == SubscriptionEntitlementScope.editor ? 'editor' : 'app';
 }

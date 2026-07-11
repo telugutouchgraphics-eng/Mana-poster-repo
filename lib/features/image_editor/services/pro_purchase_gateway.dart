@@ -348,6 +348,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   InAppPurchaseGateway({
     this.productId = SubscriptionPlanConfig.primaryMonthlyProductId,
     List<String>? fallbackProductIds,
+    this.preferredBasePlanId = SubscriptionPlanConfig.primaryMonthlyBasePlanId,
+    this.preferredOfferId = SubscriptionPlanConfig.primaryTrialOfferId,
     InAppPurchase? inAppPurchase,
   }) : _fallbackProductIds =
            fallbackProductIds ??
@@ -360,6 +362,8 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
 
   final String productId;
   final List<String> _fallbackProductIds;
+  final String preferredBasePlanId;
+  final String preferredOfferId;
   final InAppPurchase _inAppPurchase;
 
   void _debugLog(String message) {
@@ -376,7 +380,6 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
 
   Set<String> get _allProductIds {
     final ids = <String>{
-      ...SubscriptionPlanConfig.resolvedPremiumProductIds(),
       productId,
       ..._fallbackProductIds,
     };
@@ -717,11 +720,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     if (offers == null || offers.isEmpty) {
       return null;
     }
-    final preferredBasePlanId = SubscriptionPlanConfig.primaryMonthlyBasePlanId;
-    final preferredOfferId = SubscriptionPlanConfig.primaryTrialOfferId;
-
     for (final offer in offers) {
       if (offer.basePlanId == preferredBasePlanId &&
+          preferredOfferId.isNotEmpty &&
           offer.offerId == preferredOfferId) {
         return offer;
       }

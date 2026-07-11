@@ -680,6 +680,18 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Published editor asset catalog. Administration uses the trusted portal
+    // server SDK; mobile clients can never write catalog records directly.
+    match /editorAssetCategories/{categoryId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
+    match /editorAssets/{assetId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
     // Admin-created manual event categories used to show event chips in app.
     match /manualEventCategories/{categoryId} {
       allow read: if resource.data.active == true;

@@ -193,12 +193,12 @@ class NotificationService {
       categoryKey: categoryKey,
       userName: userName,
       text: _ResolvedNotificationText(
-      title: dataResolved.title.isNotEmpty
-          ? dataResolved.title
-          : _sanitizeNotificationText(message.notification?.title ?? ''),
-      body: dataResolved.body.isNotEmpty
-          ? dataResolved.body
-          : _sanitizeNotificationText(message.notification?.body ?? ''),
+        title: dataResolved.title.isNotEmpty
+            ? dataResolved.title
+            : _sanitizeNotificationText(message.notification?.title ?? ''),
+        body: dataResolved.body.isNotEmpty
+            ? dataResolved.body
+            : _sanitizeNotificationText(message.notification?.body ?? ''),
       ),
     );
     if (resolved.title.isEmpty &&
@@ -692,11 +692,11 @@ class NotificationService {
   }
 
   static bool _looksCorruptedText(String value) {
-    return value.contains('à°') ||
-        value.contains('à¤') ||
-        value.contains('à®') ||
-        value.contains('à²') ||
-        value.contains('à´');
+    return value.contains('\u00E0\u00B0') ||
+        value.contains('\u00E0\u00A4') ||
+        value.contains('\u00E0\u00AE') ||
+        value.contains('\u00E0\u00B2') ||
+        value.contains('\u00E0\u00B4');
   }
 
   static Future<_NotificationArtifactBundle> _buildNotificationArtifactBundle({

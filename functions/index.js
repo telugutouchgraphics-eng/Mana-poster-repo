@@ -29,6 +29,11 @@ const subscriptionPlanConfig = {
   trialPrice: 4,
   monthlyPrice: 149,
 };
+const editorSubscriptionPlanConfig = {
+  productId: "mana_poster_editor_pro",
+  monthlyBasePlanId: "monthly-99",
+  yearlyBasePlanId: "yearly-699",
+};
 const referralRewardConfig = {
   requiredPaidReferrals: 15,
   rewardDays: 30,
@@ -43,12 +48,14 @@ const referralCollections = {
 };
 const supportedProductIds = new Set([
   subscriptionPlanConfig.primaryMonthlyProductId,
+  editorSubscriptionPlanConfig.productId,
 ]);
 const playPackageName =
     String(process.env.MANA_POSTER_PLAY_PACKAGE_NAME || "com.manaposter.app")
         .trim();
 const playSubscriptionProductIds = new Set([
   subscriptionPlanConfig.primaryMonthlyProductId,
+  editorSubscriptionPlanConfig.productId,
 ]);
 const playApiScope = ["https://www.googleapis.com/auth/androidpublisher"];
 let androidPublisherClientPromise = null;
@@ -322,6 +329,7 @@ async function verifySubscriptionPurchaseWithGoogle({
     raw: payload,
     productIds,
     primaryProductId,
+    basePlanId: subscriptionLineItemBasePlanId(selectedLineItem),
     linkedPurchaseToken: String(payload.linkedPurchaseToken || "").trim(),
     subscriptionState: String(payload.subscriptionState || "").trim(),
     startTime,
@@ -357,6 +365,35 @@ function firstValidDateTimeString(values) {
     }
   }
   return "";
+}
+
+function subscriptionAccessScopesForPlan({productId, basePlanId, valid}) {
+  const normalizedProductId = String(productId || "").trim();
+  const normalizedBasePlanId = String(basePlanId || "").trim();
+  if (!valid) {
+    return {appAccess: false, editorAccess: false, accessScope: "inactive"};
+  }
+  if (normalizedProductId === subscriptionPlanConfig.primaryMonthlyProductId) {
+    return {appAccess: true, editorAccess: false, accessScope: "app"};
+  }
+  if (normalizedProductId === editorSubscriptionPlanConfig.productId) {
+    if (normalizedBasePlanId === editorSubscriptionPlanConfig.yearlyBasePlanId) {
+      return {appAccess: true, editorAccess: true, accessScope: "bundle"};
+    }
+    if (normalizedBasePlanId === editorSubscriptionPlanConfig.monthlyBasePlanId) {
+      return {appAccess: false, editorAccess: true, accessScope: "editor"};
+    }
+  }
+  return {appAccess: false, editorAccess: false, accessScope: "inactive"};
+}
+
+function requestedSubscriptionScope(payload) {
+  const scope = String(payload?.scope || payload?.entitlementScope || "").trim().toLowerCase();
+  return scope === "editor" ? "editor" : "app";
+}
+
+function isAccessActiveForScope(access, scope) {
+  return scope === "editor" ? access.editorAccess === true : access.appAccess === true;
 }
 
 function toFirestoreTimestamp(value) {
@@ -625,6 +662,7 @@ function buildSubscriptionMetadataPatch(verification) {
   const patch = {
     autoRenewing: verification.autoRenewing === true,
     latestOrderId: verification.latestOrderId || null,
+    basePlanId: verification.basePlanId || null,
     lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   const startTime = toFirestoreTimestamp(verification.startTime);
@@ -708,6 +746,7 @@ async function upsertServerSubscriptionToken({
   token,
   tokenHash,
   productId,
+  basePlanId,
   platform,
   source,
   linkedPurchaseTokenHash,
@@ -720,6 +759,7 @@ async function upsertServerSubscriptionToken({
     token,
     tokenHash,
     productId: productId || null,
+    basePlanId: basePlanId || null,
     platform: platform || null,
     source: source || null,
     linkedPurchaseTokenHash: linkedPurchaseTokenHash || null,
@@ -765,6 +805,111 @@ async function resolveStoredSubscriptionToken({
     return {tokenHash: legacyTokenHash, token: legacyToken};
   }
   return {tokenHash, token: ""};
+}
+
+async function resolveStoredSubscriptionTokensForUser({
+  uid,
+  entitlementRef,
+  entitlementData,
+}) {
+  const tokens = new Map();
+  const primary = await resolveStoredSubscriptionToken({
+    uid,
+    entitlementRef,
+    entitlementData,
+  });
+  if (primary.token) {
+    tokens.set(primary.tokenHash || sha256(primary.token), primary);
+  }
+  const snap = await db.collection(subscriptionCollections.serverTokens)
+      .where("uid", "==", uid)
+      .where("kind", "==", "subscription")
+      .limit(10)
+      .get();
+  snap.forEach((doc) => {
+    const data = doc.data() || {};
+    const token = String(data.token || "").trim();
+    if (!token) {
+      return;
+    }
+    tokens.set(doc.id, {
+      tokenHash: doc.id,
+      token,
+      productId: String(data.productId || "").trim(),
+    });
+  });
+  return Array.from(tokens.values());
+}
+
+function emptyAggregatedSubscriptionAccess() {
+  return {
+    isPro: false,
+    appAccess: false,
+    editorAccess: false,
+    status: "inactive",
+    productId: null,
+    basePlanId: null,
+    subscriptionState: null,
+    startTime: null,
+    expiryTime: null,
+    autoRenewing: null,
+    latestOrderId: null,
+    verification: null,
+  };
+}
+
+async function aggregateSubscriptionAccessForUser({
+  uid,
+  entitlementRef,
+  entitlementData,
+}) {
+  const aggregate = emptyAggregatedSubscriptionAccess();
+  const storedTokens = await resolveStoredSubscriptionTokensForUser({
+    uid,
+    entitlementRef,
+    entitlementData,
+  });
+  for (const storedToken of storedTokens) {
+    try {
+      const verification = await verifySubscriptionPurchaseWithGoogle({
+        purchaseToken: storedToken.token,
+      });
+      const access = subscriptionAccessScopesForPlan({
+        productId: verification.primaryProductId || storedToken.productId,
+        basePlanId: verification.basePlanId,
+        valid: verification.valid,
+      });
+      if (!access.appAccess && !access.editorAccess) {
+        continue;
+      }
+      aggregate.isPro = true;
+      aggregate.appAccess = aggregate.appAccess || access.appAccess;
+      aggregate.editorAccess = aggregate.editorAccess || access.editorAccess;
+      aggregate.status = "active";
+      const expiryMillis = Date.parse(String(verification.expiryTime || ""));
+      const currentExpiryMillis = toMillis(aggregate.expiryTime);
+      const shouldUseThisToken =
+        currentExpiryMillis <= 0 ||
+        (Number.isFinite(expiryMillis) && expiryMillis > currentExpiryMillis);
+      if (shouldUseThisToken) {
+        aggregate.productId = verification.primaryProductId || storedToken.productId || null;
+        aggregate.basePlanId = verification.basePlanId || null;
+        aggregate.subscriptionState = verification.subscriptionState || null;
+        aggregate.startTime = toFirestoreTimestamp(verification.startTime) || aggregate.startTime;
+        aggregate.expiryTime = toFirestoreTimestamp(verification.expiryTime) || aggregate.expiryTime;
+        aggregate.autoRenewing = verification.autoRenewing === true;
+        aggregate.latestOrderId = verification.latestOrderId || aggregate.latestOrderId;
+        aggregate.verification = verification;
+      }
+    } catch (error) {
+      logger.warn("subscriptionStatus token aggregate failed", {
+        uid,
+        tokenHash: storedToken.tokenHash || null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return aggregate;
 }
 
 async function acknowledgeSubscriptionPurchase({
@@ -4015,6 +4160,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
     const transactionDate = String(payload.transactionDate || "");
     const purchaseStatus = String(payload.purchaseStatus || "");
     const platform = String(payload.platform || "");
+    const requestedScope = requestedSubscriptionScope(payload);
     if (!token) {
       res.status(400).json({isPro: false, message: "Purchase token is required"});
       return;
@@ -4036,6 +4182,12 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
         (purchaseStatus === "purchased" ||
           purchaseStatus === "restored" ||
           purchaseStatus.length === 0);
+    const access = subscriptionAccessScopesForPlan({
+      productId: verification.primaryProductId || productId,
+      basePlanId: verification.basePlanId,
+      valid: isValid,
+    });
+    const scopeIsPro = isAccessActiveForScope(access, requestedScope);
     const tokenHash = sha256(token);
 
     await assertPurchaseTokenOwnership({
@@ -4065,7 +4217,11 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
         entitlementRef,
         {
           isPro: isValid,
+          appAccess: access.appAccess,
+          editorAccess: access.editorAccess,
+          accessScope: access.accessScope,
           productId: verification.primaryProductId || productId || null,
+          basePlanId: verification.basePlanId || null,
           source: source || null,
           platform: platform || null,
           verificationTokenHash: tokenHash,
@@ -4084,7 +4240,11 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       tx.set(eventRef, {
         type: "verify",
         isPro: isValid,
+        appAccess: access.appAccess,
+        editorAccess: access.editorAccess,
+        accessScope: access.accessScope,
         productId: verification.primaryProductId || productId || null,
+        basePlanId: verification.basePlanId || null,
         source: source || null,
         platform: platform || null,
         localVerificationData: localVerificationData || null,
@@ -4105,6 +4265,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       token,
       tokenHash,
       productId: verification.primaryProductId || productId || null,
+      basePlanId: verification.basePlanId || null,
       platform,
       source,
       linkedPurchaseTokenHash,
@@ -4113,7 +4274,7 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
     });
 
     let referralReward = null;
-    if (isValid) {
+    if (isValid && access.appAccess) {
       try {
         referralReward = await recordPaidReferralForSubscriber({
           subscriberUid: uid,
@@ -4171,15 +4332,22 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
     logger.info("verifySubscription completed", {
       uid,
       isValid,
+      appAccess: access.appAccess,
+      editorAccess: access.editorAccess,
       productId: verification.primaryProductId || productId || null,
+      basePlanId: verification.basePlanId || null,
       subscriptionState: verification.subscriptionState || null,
     });
 
     res.status(200).json({
-      isPro: isValid,
-      message: isValid ? "Verification success" : "Verification failed",
+      isPro: scopeIsPro,
+      appAccess: access.appAccess,
+      editorAccess: access.editorAccess,
+      accessScope: access.accessScope,
+      message: scopeIsPro ? "Verification success" : "Verification failed",
       status: entitlementStatus,
       productId: verification.primaryProductId || productId || null,
+      basePlanId: verification.basePlanId || null,
       subscriptionState: verification.subscriptionState || null,
       startDate: verification.startTime || null,
       expiryTime: verification.expiryTime || null,
@@ -4253,29 +4421,29 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
     const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
     const snap = await entitlementRef.get();
     const data = snap.data() || {};
+    const requestedScope = requestedSubscriptionScope(req.body || {});
     const reward = referralRewardWindow(data);
-    const storedToken = await resolveStoredSubscriptionToken({
+    const aggregate = await aggregateSubscriptionAccessForUser({
       uid,
       entitlementRef,
       entitlementData: data,
     });
-    const token = storedToken.token;
-    let isPro = data.isPro === true;
-    let status = data.status || null;
-    let productId = data.productId || null;
-    let subscriptionState = data.subscriptionState || null;
-    let startTime = data.startTime || null;
-    let expiryTime = data.expiryTime || null;
-    let autoRenewing = data.autoRenewing ?? null;
-    let latestOrderId = data.latestOrderId || null;
-    if (!token && String(data.source || "") === "referral_reward") {
-      isPro = false;
-      status = "inactive";
-    }
-    if (!token && String(data.source || "") === first150TrialSource) {
-      isPro = isFirst150TrialActive(data);
+    let appAccess = aggregate.appAccess;
+    let editorAccess = aggregate.editorAccess;
+    let status = aggregate.status || data.status || "inactive";
+    let productId = aggregate.productId || data.productId || null;
+    let basePlanId = aggregate.basePlanId || data.basePlanId || null;
+    let subscriptionState = aggregate.subscriptionState || data.subscriptionState || null;
+    let startTime = aggregate.startTime || data.startTime || null;
+    let expiryTime = aggregate.expiryTime || data.expiryTime || null;
+    let autoRenewing = aggregate.autoRenewing ?? data.autoRenewing ?? null;
+    let latestOrderId = aggregate.latestOrderId || data.latestOrderId || null;
+    if (!aggregate.isPro && String(data.source || "") === first150TrialSource) {
+      const first150Active = isFirst150TrialActive(data);
+      appAccess = first150Active;
+      editorAccess = false;
       status = deriveEntitlementStatus({
-        isPro,
+        isPro: first150Active,
         subscriptionState: data.subscriptionState || first150TrialState,
         expiryTime,
       });
@@ -4283,52 +4451,8 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
       subscriptionState = data.subscriptionState || first150TrialState;
       autoRenewing = false;
     }
-
-    if (token) {
-      try {
-        const verification = await verifySubscriptionPurchaseWithGoogle({
-          purchaseToken: token,
-        });
-        isPro = verification.valid;
-        productId = verification.primaryProductId || productId;
-        subscriptionState = verification.subscriptionState || null;
-        startTime = toFirestoreTimestamp(verification.startTime) || startTime;
-        expiryTime = toFirestoreTimestamp(verification.expiryTime) || expiryTime;
-        autoRenewing = verification.autoRenewing === true;
-        latestOrderId = verification.latestOrderId || latestOrderId;
-        status = deriveEntitlementStatus({
-          isPro,
-          subscriptionState,
-          expiryTime,
-        });
-        await entitlementRef.set({
-          isPro,
-          productId,
-          subscriptionState,
-          startTime,
-          status,
-          verificationTokenHash: storedToken.tokenHash || data.verificationTokenHash || null,
-          ...buildSubscriptionMetadataPatch(verification),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          ackPending: false,
-        }, {merge: true});
-      } catch (error) {
-        logger.warn("subscriptionStatus live sync failed", {
-          uid,
-          tokenHash: sha256(token),
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    status = deriveEntitlementStatus({
-      isPro,
-      subscriptionState,
-      expiryTime,
-    });
-    isPro = status === "active";
-    if (!isPro && reward.active) {
-      isPro = true;
+    if (!appAccess && reward.active) {
+      appAccess = true;
       status = "active";
       productId = productId || "referral_reward";
       subscriptionState = subscriptionState || "REFERRAL_REWARD";
@@ -4336,15 +4460,27 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
       expiryTime = reward.expiresAt || expiryTime;
       autoRenewing = false;
     }
+    const isPro = isAccessActiveForScope({appAccess, editorAccess}, requestedScope);
 
     if (
       isPro !== (data.isPro === true) ||
+      appAccess !== (data.appAccess === true) ||
+      editorAccess !== (data.editorAccess === true) ||
       status !== (data.status || null) ||
       reward.active !== (data.referralRewardActive === true)
     ) {
       await entitlementRef.set({
-        isPro,
+        isPro: appAccess || editorAccess,
+        appAccess,
+        editorAccess,
         status,
+        productId,
+        basePlanId,
+        subscriptionState,
+        startTime,
+        expiryTime,
+        autoRenewing: autoRenewing === true,
+        latestOrderId: latestOrderId || null,
         referralRewardActive: reward.active,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, {merge: true});
@@ -4352,9 +4488,12 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
 
     res.status(200).json({
       isPro,
+      appAccess,
+      editorAccess,
       message: isPro ? "Entitlement active" : "Entitlement inactive",
       status,
       productId,
+      basePlanId,
       subscriptionState,
       startDate: firestoreValueToIsoString(startTime),
       expiryTime: firestoreValueToIsoString(expiryTime),
@@ -4396,14 +4535,23 @@ async function syncSubscriptionEntitlementFromToken({
   });
   const isPro = verification.valid &&
     (!productIdHint || verification.productIds.includes(productIdHint));
+  const access = subscriptionAccessScopesForPlan({
+    productId: verification.primaryProductId || productIdHint,
+    basePlanId: verification.basePlanId,
+    valid: isPro,
+  });
   const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
   const linkedPurchaseTokenHash = verification.linkedPurchaseToken ?
     sha256(verification.linkedPurchaseToken) :
     null;
   await entitlementRef.set({
-    isPro,
+    isPro: access.appAccess || access.editorAccess,
+    appAccess: access.appAccess,
+    editorAccess: access.editorAccess,
+    accessScope: access.accessScope,
     status: isPro ? "active" : "inactive",
     productId: verification.primaryProductId || productIdHint || null,
+    basePlanId: verification.basePlanId || null,
     subscriptionState: verification.subscriptionState || null,
     verificationTokenHash: tokenHash,
     linkedPurchaseTokenHash,
@@ -4415,6 +4563,7 @@ async function syncSubscriptionEntitlementFromToken({
     token: purchaseToken,
     tokenHash,
     productId: verification.primaryProductId || productIdHint || null,
+    basePlanId: verification.basePlanId || null,
     linkedPurchaseTokenHash,
     ackPending: false,
   });
@@ -4422,7 +4571,11 @@ async function syncSubscriptionEntitlementFromToken({
     type: "subscription_sync",
     trigger,
     isPro,
+    appAccess: access.appAccess,
+    editorAccess: access.editorAccess,
+    accessScope: access.accessScope,
     productId: verification.primaryProductId || productIdHint || null,
+    basePlanId: verification.basePlanId || null,
     verificationTokenHash: tokenHash,
     subscriptionState: verification.subscriptionState || null,
     expiryTime: verification.expiryTime || null,
@@ -4430,7 +4583,7 @@ async function syncSubscriptionEntitlementFromToken({
     latestOrderId: verification.latestOrderId || null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return {isPro, verification, tokenHash};
+  return {isPro, access, verification, tokenHash};
 }
 
 exports.verifyTemplatePurchase = onRequest({region: "asia-south1"}, async (req, res) => {

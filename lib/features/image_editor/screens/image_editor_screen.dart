@@ -40,12 +40,12 @@ import 'package:mana_poster/features/prehome/models/approved_creator_template.da
 import 'package:mana_poster/app/localization/app_language.dart';
 
 import '../models/background_presets.dart';
-import '../models/elements_catalog.dart';
 import '../models/editor_template_document.dart';
 import '../models/editor_page_config.dart';
 import '../models/editor_stage_background.dart';
 import '../services/background_removal_service.dart';
 import '../services/editor_draft_storage_service.dart';
+import '../services/editor_asset_catalog_service.dart';
 
 part 'editor_constants.dart';
 part 'editor_models.dart';
@@ -277,7 +277,7 @@ class ImageEditorScreen extends StatefulWidget {
   State<ImageEditorScreen> createState() => _ImageEditorScreenState();
 }
 
-enum _EditorRewardGateFeature { teluguFonts, removeBackground }
+enum _EditorRewardGateFeature { assets, teluguFonts, removeBackground }
 
 class _ImageEditorScreenState extends State<ImageEditorScreen>
     with
@@ -295,10 +295,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       const EditorDraftStorageService();
   final OfflineBackgroundRemovalService _backgroundRemovalService =
       const OfflineBackgroundRemovalService();
-  final RewardedAccessService _rewardedAccessService =
-      const RewardedAccessService();
+  final RewardedAccessService _rewardedAccessService = RewardedAccessService();
+  final SubscriptionBackendService _appEntitlementService =
+      SubscriptionBackendService.app();
   final SubscriptionBackendService _editorEntitlementService =
-      SubscriptionBackendService();
+      SubscriptionBackendService.editor();
 
   final List<_CanvasLayer> _layers = <_CanvasLayer>[];
   final List<_EditorHistoryEntry> _undoStack = <_EditorHistoryEntry>[];
@@ -589,7 +590,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isContentAwareMode = false;
   bool _isPhotoCloneMode = false;
   bool _isDrawBrushMode = false;
-  bool _drawBrushPresetsEnabled = false;
   bool _isPickingMedia = false;
   double _editorBannerHeight = 0;
   bool _isCapturingStage = false;
@@ -608,6 +608,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   _BottomPrimaryTool _activeBottomPrimaryTool = _BottomPrimaryTool.none;
   _BottomInlineMode _activeInlineMode = _BottomInlineMode.none;
   String _activeStickerCategory = 'Emojis';
+  final EditorAssetCatalogService _editorAssetCatalogService =
+      EditorAssetCatalogService();
+  EditorAssetCatalog _remoteEditorAssetCatalog = EditorAssetCatalog.empty;
+  bool _isEditorAssetCatalogLoading = false;
   _BorderStyle _borderStyle = _BorderStyle.none;
   double _borderWidth = 1.5;
   double _borderRadius = 0;
@@ -619,6 +623,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isCreatingTextLayer = false;
   bool _isRewardedGateBusy = false;
   bool _isHistoryReplayRunning = false;
+  bool _assetsRewardUnlocked = false;
   bool _teluguFontsRewardUnlocked = false;
   int _removeBackgroundTaskId = 0;
   String? _activeCommitJobKey;
@@ -717,11 +722,11 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   final List<_DrawStroke> _drawStrokes = <_DrawStroke>[];
   final List<_DrawStroke> _drawRedoStrokes = <_DrawStroke>[];
   List<Offset>? _drawActivePoints;
-  Color _drawColor = Colors.black;
+  final Color _drawColor = Colors.black;
   double _drawBrushSize = 12;
   double _drawOpacity = 1;
-  double _drawHue = 0;
   _EditorBrushPreset _selectedDrawBrush = _EditorBrushPreset.marker;
+  bool _showDrawBrushSettings = false;
   final List<Offset> _eraserStrokePoints = <Offset>[];
   final List<Offset> _contentAwareStrokePoints = <Offset>[];
   final Set<int> _contentAwareActivePointers = <int>{};
@@ -913,7 +918,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       return 'Smudge';
     }
     if (_isDrawBrushMode) {
-      return _drawBrushPresetsEnabled ? 'Brushes' : 'Draw';
+      return 'Brushes';
     }
     if (_hasSelectedTextLayer) {
       return _showTextControls ? 'Text styling' : 'Text selected';
@@ -1100,25 +1105,24 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   bool get _hasRewardedEditorProAccess =>
-      SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
       _editorEntitlementService.cachedEntitlement?.hasAccess == true;
 
   bool get _hasImmediateEditorSubscriptionAccess =>
       SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true ||
-      _editorEntitlementService.cachedEntitlement?.hasAccess == true;
+      _appEntitlementService.cachedEntitlement?.hasAccess == true;
 
   Future<bool> _ensureSubscriptionAccessForExportActions() async {
     if (!widget.requireSubscriptionForExportActions) {
       return true;
     }
     if (_hasImmediateEditorSubscriptionAccess) {
-      unawaited(_editorEntitlementService.refreshEntitlementInBackground());
+      unawaited(_appEntitlementService.refreshEntitlementInBackground());
       return true;
     }
 
-    if (_editorEntitlementService.isConfigured &&
+    if (_appEntitlementService.isConfigured &&
         FirebaseAuth.instance.currentUser != null) {
-      final result = await _editorEntitlementService.fetchEntitlement(
+      final result = await _appEntitlementService.fetchEntitlement(
         forceRefresh: true,
       );
       if (!mounted) {
@@ -1135,9 +1139,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (!mounted) {
       return false;
     }
-    final refreshed = _editorEntitlementService.isConfigured
-        ? await _editorEntitlementService.fetchFreshEntitlementWithRetry()
-        : _editorEntitlementService.cachedEntitlement;
+    final refreshed = _appEntitlementService.isConfigured
+        ? await _appEntitlementService.fetchFreshEntitlementWithRetry()
+        : _appEntitlementService.cachedEntitlement;
     return refreshed?.hasAccess == true;
   }
 
@@ -1150,6 +1154,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (_hasRewardedEditorProAccess) {
       return true;
     }
+    if (feature == _EditorRewardGateFeature.assets && _assetsRewardUnlocked) {
+      return true;
+    }
     if (feature == _EditorRewardGateFeature.teluguFonts &&
         _teluguFontsRewardUnlocked) {
       return true;
@@ -1160,14 +1167,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
     final strings = context.strings;
     final label = switch (feature) {
+      _EditorRewardGateFeature.assets => 'editor_assets',
       _EditorRewardGateFeature.teluguFonts => 'telugu_fonts',
       _EditorRewardGateFeature.removeBackground => 'remove_background',
     };
     final featureTitle = switch (feature) {
+      _EditorRewardGateFeature.assets => 'Editor Assets',
       _EditorRewardGateFeature.teluguFonts => 'Telugu Fonts',
       _EditorRewardGateFeature.removeBackground => 'Remove BG',
     };
     final failureMessage = switch (feature) {
+      _EditorRewardGateFeature.assets => strings.localized(
+        telugu: 'Assets వాడడానికి ad పూర్తిగా చూడాలి',
+        english: 'Watch the full ad to use Assets',
+      ),
       _EditorRewardGateFeature.teluguFonts => strings.localized(
         telugu: 'తెలుగు ఫాంట్స్ అన్‌లాక్ చేయడానికి ad పూర్తిగా చూడాలి',
         english: 'Watch the full ad to unlock Telugu fonts',
@@ -1186,7 +1199,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     if (accessChoice == 'subscribe') {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(builder: (_) => const SubscriptionPlanScreen()),
+        MaterialPageRoute<void>(
+          builder: (_) => const SubscriptionPlanScreen.editorPro(),
+        ),
       );
       if (!mounted) {
         return false;
@@ -1214,6 +1229,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         ).showTopSnackBar(AppSnackBar.build(content: Text(failureMessage)));
         return false;
       }
+      if (feature == _EditorRewardGateFeature.assets) {
+        _assetsRewardUnlocked = true;
+      }
       if (feature == _EditorRewardGateFeature.teluguFonts) {
         _teluguFontsRewardUnlocked = true;
       }
@@ -1232,22 +1250,30 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   Future<String?> _showEditorRewardChoiceDialog({required String title}) {
     return showDialog<String>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.48),
+      barrierColor: Colors.black.withValues(alpha: 0.62),
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
             decoration: BoxDecoration(
-              color: const Color(0xFF202228),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  Color(0xFF252A36),
+                  Color(0xFF151821),
+                  Color(0xFF101219),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               boxShadow: <BoxShadow>[
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.30),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
+                  color: Colors.black.withValues(alpha: 0.42),
+                  blurRadius: 34,
+                  offset: const Offset(0, 18),
                 ),
               ],
             ),
@@ -1256,46 +1282,63 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
-                  children: <Widget>[
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFACC15).withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.workspace_premium_rounded,
-                        color: Color(0xFFFACC15),
-                        size: 21,
-                      ),
-                    ),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _editorChromeTextPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
+                    children: <Widget>[
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFACC15).withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFFFACC15).withValues(alpha: 0.26),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.workspace_premium_rounded,
+                          color: Color(0xFFFACC15),
+                          size: 27,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _editorChromeTextPrimary,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            height: 1.12,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Subscribe for ad-free access, or continue free by watching an ad.',
+                  context.strings.localized(
+                    telugu:
+                        'Editor Pro తో Assets, Telugu Fonts, Remove BG అన్‌లాక్ అవుతాయి. ₹99/month లేదా ₹699/year సబ్‌స్క్రైబ్ చేయండి, లేదా ad చూసి free గా కొనసాగండి.',
+                    english:
+                        'Editor Pro unlocks Assets, Telugu Fonts, and Remove BG. Subscribe for ₹99/month or ₹699/year, or continue free by watching an ad.',
+                    hindi:
+                        'Editor Pro से Assets, Telugu Fonts और Remove BG अनलॉक होते हैं। ₹99/month या ₹699/year सब्सक्राइब करें, या ad देखकर free जारी रखें।',
+                    tamil:
+                        'Editor Pro மூலம் Assets, Telugu Fonts மற்றும் Remove BG திறக்கும். ₹99/month அல்லது ₹699/year சந்தா எடுக்கவும், அல்லது ad பார்த்து free ஆக தொடரவும்.',
+                    kannada:
+                        'Editor Pro ಮೂಲಕ Assets, Telugu Fonts ಮತ್ತು Remove BG unlock ಆಗುತ್ತವೆ. ₹99/month ಅಥವಾ ₹699/year subscribe ಮಾಡಿ, ಅಥವಾ ad ನೋಡಿ free ಆಗಿ ಮುಂದುವರಿಸಿ.',
+                    malayalam:
+                        'Editor Pro ഉപയോഗിച്ച് Assets, Telugu Fonts, Remove BG unlock ചെയ്യും. ₹99/month അല്ലെങ്കിൽ ₹699/year subscribe ചെയ്യുക, അല്ലെങ്കിൽ ad കണ്ടു free ആയി തുടരുക.',
+                  ),
                   style: TextStyle(
                     color: _editorChromeTextSecondary.withValues(alpha: 0.92),
-                    fontSize: 12.5,
-                    height: 1.35,
+                    fontSize: 14,
+                    height: 1.42,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Row(
                   children: <Widget>[
                     Expanded(
@@ -1308,17 +1351,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                             color: Colors.white.withValues(alpha: 0.18),
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text(
                           'Free',
-                          style: TextStyle(fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14.5,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
                         onPressed: () =>
@@ -1327,13 +1373,16 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                           backgroundColor: const Color(0xFFFACC15),
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text(
                           'Subscribe',
-                          style: TextStyle(fontWeight: FontWeight.w900),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14.5,
+                          ),
                         ),
                       ),
                     ),
@@ -1799,12 +1848,39 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   Future<void> _openStickerBrowserOverlay({
     String? initialCategory,
-    List<String> categories = _stickerCategories,
+    List<String> categories = const <String>[],
   }) async {
+    if (_remoteEditorAssetCatalog.categories.isEmpty &&
+        !_isEditorAssetCatalogLoading) {
+      await _loadEditorAssetCatalog();
+    }
+    final allRemoteCategories = _remoteEditorAssetCatalog.categories
+        .map((item) => item.name)
+        .toList(growable: false);
+    final visibleCategories = categories.isEmpty
+        ? allRemoteCategories
+        : categories
+              .where(allRemoteCategories.contains)
+              .toList(growable: false);
+    if (visibleCategories.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Assets are not available right now.'),
+          ),
+        );
+      }
+      return;
+    }
     final selected = await _pushPremiumOverlay<String>(
       StickerBrowserFullscreenOverlay(
-        categories: categories,
-        catalog: _stickerCatalog,
+        categories: visibleCategories,
+        catalog: const <String, List<String>>{},
+        remoteCatalog: _remoteEditorAssetCatalog,
+        localAssetPath: _localEditorAssetPath,
+        requestRemoteAssetAccess: () =>
+            _ensureRewardedAccessForFeature(_EditorRewardGateFeature.assets),
+        downloadAsset: _downloadEditorAsset,
         initialCategory: initialCategory,
       ),
     );
@@ -1813,6 +1889,35 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     _handleAddSticker(selected);
   }
+
+  Future<void> _loadEditorAssetCatalog() async {
+    if (_isEditorAssetCatalogLoading) return;
+    _isEditorAssetCatalogLoading = true;
+    try {
+      final catalog = await _editorAssetCatalogService.loadCatalog();
+      if (mounted) setState(() => _remoteEditorAssetCatalog = catalog);
+      unawaited(_refreshEditorAssetCatalog());
+    } catch (_) {
+      // Bundled assets remain available when the network/catalog is unavailable.
+    } finally {
+      _isEditorAssetCatalogLoading = false;
+    }
+  }
+
+  Future<void> _refreshEditorAssetCatalog() async {
+    try {
+      final catalog = await _editorAssetCatalogService.refreshCatalog();
+      if (mounted) setState(() => _remoteEditorAssetCatalog = catalog);
+    } catch (_) {}
+  }
+
+  Future<String> _downloadEditorAsset(
+    EditorRemoteAsset asset,
+    void Function(double progress) onProgress,
+  ) => _editorAssetCatalogService.download(asset, onProgress: onProgress);
+
+  Future<String?> _localEditorAssetPath(EditorRemoteAsset asset) =>
+      _editorAssetCatalogService.localPath(asset);
 
   Future<void> _openShapesBrowserOverlay() async {
     await _openStickerBrowserOverlay(
@@ -2672,6 +2777,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       unawaited(ScreenSecurityService.enableSecure());
     }
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
+    unawaited(_loadEditorAssetCatalog());
+    unawaited(
+      _rewardedAccessService.preloadRewardedAd(
+        adUnitId: AppPublicInfo.adMobEditorRewardedAdUnitId,
+      ),
+    );
     _photoGlideController =
         AnimationController(
             vsync: this,
@@ -2848,6 +2959,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _commitStateNotifier.dispose();
     _selectedTextController.dispose();
     _selectedTextFocusNode.dispose();
+    _rewardedAccessService.dispose();
+    _editorAssetCatalogService.dispose();
     _canvasLayerPickerEntry?.remove();
     _canvasLayerPickerEntry = null;
     _autosaveTimer?.cancel();
@@ -3684,6 +3797,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                               onDrawBrushStart: _handleDrawBrushStart,
                               onDrawBrushUpdate: _handleDrawBrushUpdate,
                               onDrawBrushEnd: _handleDrawBrushEnd,
+                              onDrawBrushCancel: _cancelDrawBrushStroke,
                               onCanvasTapDown: _isCropMode
                                   ? (
                                       Offset _,
@@ -4046,6 +4160,31 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                         onUpdate: _updateSelectedLayerStyleQuick,
                       ),
                     ),
+                  if (_isDrawBrushMode &&
+                      _showDrawBrushSettings &&
+                      !_isKeyboardVisible &&
+                      !_isTextTypingScreenOpen &&
+                      !_isExporting &&
+                      !_isCapturingStage)
+                    Positioned(
+                      left: useLandscapeSideRails
+                          ? landscapeBottomRailWidth + toolbarCanvasGap + 10
+                          : 10,
+                      right: useLandscapeSideRails
+                          ? landscapeTopRailWidth + toolbarCanvasGap + 10
+                          : 10,
+                      bottom: useLandscapeSideRails
+                          ? 10
+                          : floatingBottom + bottomToolsHeight + 6,
+                      child: RepaintBoundary(
+                        child: _DrawBrushSettingsOverlay(
+                          brushSize: _drawBrushSize,
+                          opacity: _drawOpacity,
+                          onBrushSizeChanged: _setDrawBrushSize,
+                          onOpacityChanged: _setDrawBrushOpacity,
+                        ),
+                      ),
+                    ),
                   Positioned(
                     left: 0,
                     right: bottomPanelUsesSideRail ? null : 0,
@@ -4252,13 +4391,10 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                   ),
                                   child: _DrawLiveInlineStrip(
                                     height: bottomToolsHeight,
-                                    enableBrushPresets:
-                                        _drawBrushPresetsEnabled,
                                     brushPresets: _drawBrushPresets,
                                     selectedBrush: _selectedDrawBrush,
                                     brushMasks: _drawBrushMasks,
                                     color: _drawColor,
-                                    hue: _drawHue,
                                     brushSize: _drawBrushSize,
                                     opacity: _drawOpacity,
                                     canUndo: _drawStrokes.isNotEmpty,
@@ -4270,11 +4406,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     onRedo: _redoDrawStroke,
                                     onClear: _clearDrawStrokes,
                                     onBrushSelected: _selectDrawBrushPreset,
-                                    onBlackTap: () =>
-                                        _setDrawBrushColor(Colors.black),
-                                    onWhiteTap: () =>
-                                        _setDrawBrushColor(Colors.white),
-                                    onHueChanged: _setDrawBrushHue,
+                                    showBrushSettings: _showDrawBrushSettings,
+                                    onBrushSettingsChanged: (value) {
+                                      setState(() {
+                                        _showDrawBrushSettings = value;
+                                      });
+                                    },
                                     onBrushSizeChanged: _setDrawBrushSize,
                                     onOpacityChanged: _setDrawBrushOpacity,
                                   ),
@@ -4445,12 +4582,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                           'Fit',
                                         );
                                       }
-                                    },
-                                    onDrawTap: () {
-                                      setState(() {
-                                        _activeMainToolLabel = 'Draw';
-                                      });
-                                      _openDrawTool();
                                     },
                                     onBrushesTap: () {
                                       setState(() {
@@ -5551,6 +5682,8 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
   BannerAd? _bannerAd;
   AdSize? _adSize;
   bool _loadAttempted = false;
+  bool _isLoading = false;
+  Timer? _retryTimer;
 
   @override
   void didChangeDependencies() {
@@ -5563,13 +5696,26 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
   }
 
   Future<void> _loadBanner() async {
-    if (kIsWeb ||
-        !Platform.isAndroid ||
-        !AppPublicInfo.hasEditorBannerAdUnitId ||
-        !await AdMobConsentService.instance.canRequestAds()) {
+    if (_isLoading || _bannerAd != null) {
       return;
     }
+    if (kIsWeb ||
+        !Platform.isAndroid ||
+        !AppPublicInfo.hasEditorBannerAdUnitId) {
+      return;
+    }
+    _isLoading = true;
+    if (!await AdMobConsentService.instance.canRequestAds()) {
+      await AdMobConsentService.instance.prepareForAds();
+    }
+    if (!await AdMobConsentService.instance.canRequestAds()) {
+      _isLoading = false;
+      _scheduleBannerRetry();
+      return;
+    }
+    await MobileAds.instance.initialize();
     if (!mounted) {
+      _isLoading = false;
       return;
     }
     final width = MediaQuery.sizeOf(context).width.truncate();
@@ -5577,6 +5723,8 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
       width,
     );
     if (!mounted || size == null) {
+      _isLoading = false;
+      _scheduleBannerRetry();
       return;
     }
     final banner = BannerAd(
@@ -5587,6 +5735,7 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
       size: size,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          _isLoading = false;
           if (!mounted) {
             ad.dispose();
             return;
@@ -5602,18 +5751,41 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
           });
         },
         onAdFailedToLoad: (ad, error) {
+          _isLoading = false;
           ad.dispose();
           if (mounted) {
             widget.onHeightChanged(0);
+            _scheduleBannerRetry();
           }
         },
       ),
     );
-    await banner.load();
+    try {
+      await banner.load();
+    } catch (_) {
+      _isLoading = false;
+      banner.dispose();
+      if (mounted) {
+        widget.onHeightChanged(0);
+        _scheduleBannerRetry();
+      }
+    }
+  }
+
+  void _scheduleBannerRetry() {
+    if (!mounted || _retryTimer?.isActive == true || _bannerAd != null) {
+      return;
+    }
+    _retryTimer = Timer(const Duration(seconds: 20), () {
+      if (mounted) {
+        unawaited(_loadBanner());
+      }
+    });
   }
 
   @override
   void dispose() {
+    _retryTimer?.cancel();
     _bannerAd?.dispose();
     super.dispose();
   }

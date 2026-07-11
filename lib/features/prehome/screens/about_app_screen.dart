@@ -581,7 +581,7 @@ class _AboutCopy {
     telugu:
         'Mana Poster Ai ద్వారా శుభాకాంక్షలు, పండుగ పోస్టర్లు, వ్యాపార ప్రచార డిజైన్లు, భక్తి పోస్టర్లు, ప్రత్యేక సందర్భాల పోస్టర్లు వంటి వాటిని వేగంగా ఎంచుకుని మీ వివరాలతో వ్యక్తిగతంగా మార్చుకోవచ్చు. మొబైల్‌లోనే చూసి, ఎంపిక చేసి, సవరించి, ఇతరులతో పంచుకోవడానికి సరళమైన పని విధానం ఈ యాప్‌లో అందుబాటులో ఉంటుంది.',
     english:
-        'Mana Poster Ai helps users quickly choose, personalize, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app is built around a simple mobile workflow for browsing, editing, and sharing in one place.',
+        'Mana Poster Ai helps users quickly choose, personalize, edit, export, and share greeting posters, festival designs, business promotions, devotional content, and other occasion-based posters. The app combines ready-made posters with a mobile editor, premium assets, Telugu fonts, background removal, and export tools in one place.',
     hindi:
         'Mana Poster Ai की मदद से शुभकामना पोस्टर, त्योहार डिज़ाइन, बिज़नेस प्रमोशन पोस्टर, भक्ति पोस्टर और खास मौकों के पोस्टर जल्दी चुनकर अपनी जानकारी के साथ निजी रूप में तैयार किए जा सकते हैं। मोबाइल पर ही देखना, चुनना, संपादित करना और साझा करना आसान बनाया गया है।',
     tamil:
@@ -632,7 +632,7 @@ class _AboutCopy {
     telugu:
         'ఇది ముందుగానే సిద్ధంగా ఉన్న పోస్టర్లను చూసి, మీ ఫోటో, వ్యాపార పేరు, వాట్సాప్ వివరాలు లేదా అవసరమైన వ్యక్తిగత వివరాలు జోడించి, మీ అవసరానికి తగ్గట్టుగా మార్చుకునే పోస్టర్ తయారీ యాప్. నమూనాలు, ప్రొఫైల్ వివరాలు, సబ్‌స్క్రిప్షన్ సమాచారం, సహాయం మరియు న్యాయ సమాచారం ఒకే చోట అందుబాటులో ఉంటాయి.',
     english:
-        'This is a poster creation app where users can choose ready-made designs and personalize them with their photo, business name, WhatsApp details, and other relevant information. Templates, profile details, subscription information, help, and legal access are available in one place.',
+        'This is a poster creation app where users can choose ready-made designs and personalize them with their photo, business name, WhatsApp details, and other relevant information. The editor also supports text layers, photo layers, brushes, layer effects, PSD/TIFF import where supported, premium downloadable assets, Telugu font access, background removal, save/export workflows, subscription information, help, and legal access in one place.',
     hindi:
         'यह एक पोस्टर क्रिएशन ऐप है जिसमें उपयोगकर्ता तैयार डिज़ाइन चुनकर अपनी फोटो, बिज़नेस नाम, व्हाट्सऐप जानकारी और अन्य ज़रूरी विवरण जोड़ सकते हैं। टेम्पलेट्स, प्रोफ़ाइल जानकारी, सब्सक्रिप्शन विवरण, सहायता और कानूनी जानकारी एक ही जगह मिलती है।',
     tamil:
@@ -847,7 +847,7 @@ class _AboutCopy {
       telugu:
           'డిజైన్‌ను ఎంచుకున్న తర్వాత ఎడిటర్‌లో అవసరమైన మార్పులు చేసి వ్యక్తిగత రూపంలో మార్చుకోవచ్చు.',
       english:
-          'Once a design is selected, it can be edited and personalized in the editor.',
+          'Once a design is selected, it can be edited and personalized in the editor with layers, text, photos, brushes, effects, background removal, and export tools.',
       hindi:
           'डिज़ाइन चुनने के बाद उसे एडिटर में बदलकर व्यक्तिगत रूप दिया जा सकता है।',
       tamil:
@@ -856,6 +856,20 @@ class _AboutCopy {
           'ವಿನ್ಯಾಸವನ್ನು ಆಯ್ಕೆ ಮಾಡಿದ ನಂತರ, ಅದನ್ನು ಎಡಿಟರ್‌ನಲ್ಲಿ ತಿದ್ದುಪಡಿ ಮಾಡಿ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು.',
       malayalam:
           'ഒരു ഡിസൈൻ തിരഞ്ഞെടുക്കപ്പെട്ടാൽ, അത് എഡിറ്ററിൽ തിരുത്തി വ്യക്തിപരമാക്കാം.',
+    ),
+    strings.localized(
+      telugu:
+          'Assets tool ద్వారా backend నుండి వచ్చే premium assets categories చూడవచ్చు; download చేసిన తర్వాత poster canvas లో import చేయవచ్చు.',
+      english:
+          'The Assets tool can show premium asset categories from the backend; after download, supported assets can be imported onto the poster canvas.',
+      hindi:
+          'Assets tool backend से आने वाली premium asset categories दिखा सकता है; download के बाद supported assets poster canvas पर import किए जा सकते हैं।',
+      tamil:
+          'Assets tool backend இலிருந்து வரும் premium asset categories காட்டும்; download செய்த பிறகு supported assets poster canvas-க்கு import செய்யலாம்.',
+      kannada:
+          'Assets tool backend ನಿಂದ ಬರುವ premium asset categories ತೋರಿಸಬಹುದು; download ಮಾಡಿದ ನಂತರ supported assets poster canvas ಗೆ import ಮಾಡಬಹುದು.',
+      malayalam:
+          'Assets tool backend-ൽ നിന്ന് വരുന്ന premium asset categories കാണിക്കും; download ചെയ്ത ശേഷം supported assets poster canvas-ലേക്ക് import ചെയ്യാം.',
     ),
     strings.localized(
       telugu:
@@ -882,14 +896,16 @@ class _AboutCopy {
   List<String> get subscriptionItems => <String>[
     strings.localized(
       telugu:
-          'సబ్‌స్క్రిప్షన్ ప్లాన్ ఫ్రీ ట్యాబ్ పోస్టర్లకు మాత్రమే వర్తిస్తుంది.',
-      english: 'The subscription plan supports poster creation and exports.',
-      hindi: 'सब्सक्रिप्शन प्लान केवल फ्री टैब पोस्टरों पर लागू होता है।',
-      tamil: 'சந்தா திட்டம் இலவச டாப் போஸ்டர்களுக்கு மட்டும் பொருந்தும்.',
+          'App Pro poster access, poster creation మరియు exports కోసం ఉపయోగపడుతుంది.',
+      english: 'App Pro supports poster access, poster creation, and exports.',
+      hindi:
+          'App Pro poster access, poster creation और exports को support करता है।',
+      tamil:
+          'App Pro poster access, poster creation மற்றும் exports-ஐ support செய்கிறது.',
       kannada:
-          'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ ಉಚಿತ ಟ್ಯಾಬ್ ಪೋಸ್ಟರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ.',
+          'App Pro poster access, poster creation ಮತ್ತು exports ಅನ್ನು support ಮಾಡುತ್ತದೆ.',
       malayalam:
-          'സബ്സ്ക്രിപ്ഷൻ പദ്ധതി ഫ്രീ ടാബിലെ പോസ്റ്ററുകൾക്ക് മാത്രമാണ് ബാധകം.',
+          'App Pro poster access, poster creation, exports എന്നിവ support ചെയ്യുന്നു.',
     ),
     strings.localized(
       telugu:
@@ -915,29 +931,31 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'పోస్టర్ యాక్సెస్ మరియు ఎగుమతి ఫీచర్లు యాక్టివ్ ప్లాన్ ప్రకారం ఉంటాయి.',
+          'Editor Pro లో premium editor assets, Telugu fonts మరియు background removal ఉంటాయి; available ఉన్న చోట నెలకు ₹99.',
       english:
-          'Poster access and export features follow the active subscription plan.',
+          'Editor Pro is available separately at ₹99 per month for premium editor assets, Telugu fonts, and background removal where available.',
       hindi:
-          'प्रीमियम पोस्टर इस प्लान में शामिल नहीं हैं। उन्हें अलग से खरीदना होगा।',
+          'Editor Pro में premium editor assets, Telugu fonts और background removal शामिल हैं; जहाँ उपलब्ध हो वहाँ ₹99 प्रति माह।',
       tamil:
-          'பிரீமியம் போஸ்டர்கள் இந்த திட்டத்தில் சேராது. அவற்றை தனியாக வாங்க வேண்டும்.',
+          'Editor Pro-வில் premium editor assets, Telugu fonts மற்றும் background removal இருக்கும்; கிடைக்கும் இடங்களில் மாதம் ₹99.',
       kannada:
-          'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್‌ಗಳು ಈ ಯೋಜನೆಯಲ್ಲಿ ಸೇರಿರುವುದಿಲ್ಲ. ಅವನ್ನು ಪ್ರತ್ಯೇಕವಾಗಿ ಖರೀದಿಸಬೇಕು.',
+          'Editor Pro ನಲ್ಲಿ premium editor assets, Telugu fonts ಮತ್ತು background removal ಇರುತ್ತವೆ; ಲಭ್ಯವಿರುವ ಕಡೆ ತಿಂಗಳಿಗೆ ₹99.',
       malayalam:
-          'പ്രീമിയം പോസ്റ്ററുകൾ ഈ പദ്ധതിയിൽ ഉൾപ്പെടില്ല. അവ വേർതിരിച്ച് വാങ്ങണം.',
+          'Editor Pro-യിൽ premium editor assets, Telugu fonts, background removal എന്നിവ ഉണ്ടായിരിക്കും; ലഭ്യമായിടത്ത് മാസം ₹99.',
     ),
     strings.localized(
       telugu:
-          'పోస్టర్ ఎంచుకున్న తర్వాత దాన్ని ఎడిటర్‌లో అనుకూలంగా మార్చుకోవచ్చు.',
-      english: 'After choosing a poster, it can be customized in the editor.',
+          '₹699 yearly all-access plan available ఉన్న చోట App Pro మరియు Editor Pro benefits రెండూ కలిపి ఇస్తుంది.',
+      english:
+          'The ₹699 yearly all-access plan includes both App Pro and Editor Pro benefits where the yearly plan is available.',
       hindi:
-          'प्रीमियम पोस्टर खरीदने के बाद उसे पूरी तरह कस्टमाइज़ किया जा सकता है।',
-      tamil: 'பிரீமியம் போஸ்டரை வாங்கிய பிறகு அதை முழுமையாக தனிப்பயனாக்கலாம்.',
+          '₹699 yearly all-access plan जहाँ उपलब्ध हो, App Pro और Editor Pro दोनों benefits शामिल करता है।',
+      tamil:
+          '₹699 yearly all-access plan கிடைக்கும் இடங்களில் App Pro மற்றும் Editor Pro benefits இரண்டையும் சேர்க்கிறது.',
       kannada:
-          'ಪ್ರೀಮಿಯಂ ಪೋಸ್ಟರ್ ಖರೀದಿಸಿದ ನಂತರ ಅದನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ವೈಯಕ್ತಿಕಗೊಳಿಸಬಹುದು.',
+          '₹699 yearly all-access plan ಲಭ್ಯವಿರುವ ಕಡೆ App Pro ಮತ್ತು Editor Pro benefits ಎರಡನ್ನೂ ಒಳಗೊಂಡಿರುತ್ತದೆ.',
       malayalam:
-          'പ്രീമിയം പോസ്റ്റർ വാങ്ങിയ ശേഷം അത് പൂർണ്ണമായി വ്യക്തിഗതമാക്കാം.',
+          '₹699 yearly all-access plan ലഭ്യമായിടത്ത് App Pro, Editor Pro benefits രണ്ടും ഉൾപ്പെടും.',
     ),
   ];
 

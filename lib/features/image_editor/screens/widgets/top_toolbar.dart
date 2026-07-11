@@ -326,7 +326,7 @@ class _TopBar extends StatelessWidget {
                 _EditorIconButton(
                   icon: Icons.arrow_back_ios_new_rounded,
                   tooltip: strings.localized(
-                    telugu: 'Ã Â°ÂµÃ Â±â€ Ã Â°Â¨Ã Â°â€¢Ã Â±ÂÃ Â°â€¢Ã Â°Â¿',
+                    telugu: 'వెనక్కి',
                     english: 'Back',
                   ),
                   compact: true,
@@ -334,19 +334,13 @@ class _TopBar extends StatelessWidget {
                 ),
                 _EditorIconButton(
                   icon: Icons.undo_rounded,
-                  tooltip: strings.localized(
-                    telugu: 'Ã Â°â€¦Ã Â°â€šÃ Â°Â¡Ã Â±Â',
-                    english: 'Undo',
-                  ),
+                  tooltip: strings.localized(telugu: 'అండు', english: 'Undo'),
                   compact: true,
                   onTap: _withHaptic(canUndo ? onUndoTap : null),
                 ),
                 _EditorIconButton(
                   icon: Icons.redo_rounded,
-                  tooltip: strings.localized(
-                    telugu: 'Ã Â°Â°Ã Â±â‚¬Ã Â°Â¡Ã Â±â€¹',
-                    english: 'Redo',
-                  ),
+                  tooltip: strings.localized(telugu: 'రీడో', english: 'Redo'),
                   compact: true,
                   onTap: _withHaptic(canRedo ? onRedoTap : null),
                 ),
@@ -428,7 +422,7 @@ class _TopBar extends StatelessWidget {
                     _EditorIconButton(
                       icon: Icons.arrow_back_ios_new_rounded,
                       tooltip: strings.localized(
-                        telugu: 'à°µà±†à°¨à°•à±à°•à°¿',
+                        telugu: 'వెనక్కి',
                         english: 'Back',
                       ),
                       onTap: _withHaptic(
@@ -440,7 +434,7 @@ class _TopBar extends StatelessWidget {
                       _EditorIconButton(
                         icon: Icons.undo_rounded,
                         tooltip: strings.localized(
-                          telugu: 'à°…à°‚à°¡à±',
+                          telugu: 'అండు',
                           english: 'Undo',
                         ),
                         onTap: _withHaptic(canUndo ? onUndoTap : null),
@@ -448,7 +442,7 @@ class _TopBar extends StatelessWidget {
                       _EditorIconButton(
                         icon: Icons.redo_rounded,
                         tooltip: strings.localized(
-                          telugu: 'à°°à±€à°¡à±‹',
+                          telugu: 'రీడో',
                           english: 'Redo',
                         ),
                         onTap: _withHaptic(canRedo ? onRedoTap : null),
@@ -478,9 +472,7 @@ class _TopBar extends StatelessWidget {
                               ? Icons.hourglass_top_rounded
                               : Icons.download_rounded,
                           tooltip: strings.localized(
-                            telugu: isExporting
-                                ? 'à°¸à±‡à°µà± à°…à°µà±à°¤à±‹à°‚à°¦à°¿'
-                                : 'à°¸à±‡à°µà±',
+                            telugu: isExporting ? 'సేవ్ అవుతోంది' : 'సేవ్',
                             english: isExporting ? 'Downloading' : 'Download',
                           ),
                           onTap: isExporting ? null : onDownloadTap,
@@ -488,9 +480,7 @@ class _TopBar extends StatelessWidget {
                       else
                         _TopPrimaryPillButton(
                           label: strings.localized(
-                            telugu: isExporting
-                                ? 'à°¸à±‡à°µà±...'
-                                : 'à°¸à±‡à°µà±',
+                            telugu: isExporting ? 'సేవ్...' : 'సేవ్',
                             english: isExporting
                                 ? 'Downloading...'
                                 : 'Download',
@@ -536,7 +526,7 @@ class _TopBar extends StatelessWidget {
                         ),
                       PopupMenuButton<String>(
                         tooltip: strings.localized(
-                          telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
+                          telugu: 'మరిన్ని',
                           english: 'More',
                         ),
                         color: const Color(0xFF303236),
@@ -597,7 +587,7 @@ class _TopBar extends StatelessWidget {
                       assetIcon:
                           'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_layer.png',
                       tooltip: strings.localized(
-                        telugu: 'à°²à±‡à°¯à°°à±à°¸à±',
+                        telugu: 'లేయర్స్',
                         english: 'Layers',
                       ),
                       onTap: _withHaptic(onLayersTap),

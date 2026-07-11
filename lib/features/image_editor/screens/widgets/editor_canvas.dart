@@ -2161,6 +2161,7 @@ class _CanvasWorkspace extends StatelessWidget {
     required this.onDrawBrushStart,
     required this.onDrawBrushUpdate,
     required this.onDrawBrushEnd,
+    required this.onDrawBrushCancel,
     required this.onCanvasTapDown,
     required this.onCanvasLongPressStart,
     required this.onCanvasTap,
@@ -2281,6 +2282,7 @@ class _CanvasWorkspace extends StatelessWidget {
   final void Function(Offset localPosition, Size pageSize) onDrawBrushStart;
   final void Function(Offset localPosition, Size pageSize) onDrawBrushUpdate;
   final VoidCallback onDrawBrushEnd;
+  final VoidCallback onDrawBrushCancel;
   final void Function(Offset localPosition, Rect pageRect, Size pageSize)
   onCanvasTapDown;
   final void Function(
@@ -3718,6 +3720,7 @@ class _CanvasWorkspace extends StatelessWidget {
                     onStart: onDrawBrushStart,
                     onUpdate: onDrawBrushUpdate,
                     onEnd: onDrawBrushEnd,
+                    onCancel: onDrawBrushCancel,
                   ),
                 ),
               Positioned.fill(
@@ -6310,13 +6313,14 @@ class _CanvasTextLayerView extends StatelessWidget {
   }
 }
 
-class _DrawCanvasLiveOverlay extends StatelessWidget {
+class _DrawCanvasLiveOverlay extends StatefulWidget {
   const _DrawCanvasLiveOverlay({
     required this.pageSize,
     required this.previewListenable,
     required this.onStart,
     required this.onUpdate,
     required this.onEnd,
+    required this.onCancel,
   });
 
   final Size pageSize;
@@ -6324,35 +6328,83 @@ class _DrawCanvasLiveOverlay extends StatelessWidget {
   final void Function(Offset localPosition, Size pageSize) onStart;
   final void Function(Offset localPosition, Size pageSize) onUpdate;
   final VoidCallback onEnd;
+  final VoidCallback onCancel;
+
+  @override
+  State<_DrawCanvasLiveOverlay> createState() => _DrawCanvasLiveOverlayState();
+}
+
+class _DrawCanvasLiveOverlayState extends State<_DrawCanvasLiveOverlay> {
+  final Set<int> _activePointers = <int>{};
+  bool _suppressStroke = false;
+
+  bool get _canStroke => !_suppressStroke && _activePointers.length <= 1;
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointers.add(event.pointer);
+    if (_activePointers.length > 1) {
+      _suppressStroke = true;
+      widget.onCancel();
+    }
+  }
+
+  void _handlePointerEnd(PointerEvent event) {
+    _activePointers.remove(event.pointer);
+    if (_activePointers.isEmpty) {
+      _suppressStroke = false;
+      widget.onEnd();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.opaque,
-      onPanStart: (details) => onStart(details.localPosition, pageSize),
-      onPanUpdate: (details) => onUpdate(details.localPosition, pageSize),
-      onPanEnd: (_) => onEnd(),
-      onPanCancel: onEnd,
-      child: ClipRect(
-        child: ValueListenableBuilder<_DrawPreviewState?>(
-          valueListenable: previewListenable,
-          builder:
-              (
-                BuildContext context,
-                _DrawPreviewState? preview,
-                Widget? child,
-              ) {
-                if (preview == null || preview.strokes.isEmpty) {
-                  return const SizedBox.expand();
-                }
-                return CustomPaint(
-                  painter: _DrawStrokesPainter(
-                    strokes: preview.strokes,
-                    brushMasks: preview.brushMasks,
-                  ),
-                  size: Size.infinite,
-                );
-              },
+      onPointerDown: _handlePointerDown,
+      onPointerUp: _handlePointerEnd,
+      onPointerCancel: _handlePointerEnd,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (details) {
+          if (!_canStroke) {
+            return;
+          }
+          widget.onStart(details.localPosition, widget.pageSize);
+          widget.onEnd();
+        },
+        onPanStart: (details) {
+          if (_canStroke) {
+            widget.onStart(details.localPosition, widget.pageSize);
+          }
+        },
+        onPanUpdate: (details) {
+          if (_canStroke) {
+            widget.onUpdate(details.localPosition, widget.pageSize);
+          }
+        },
+        onPanEnd: (_) => widget.onEnd(),
+        onPanCancel: widget.onEnd,
+        child: ClipRect(
+          child: ValueListenableBuilder<_DrawPreviewState?>(
+            valueListenable: widget.previewListenable,
+            builder:
+                (
+                  BuildContext context,
+                  _DrawPreviewState? preview,
+                  Widget? child,
+                ) {
+                  if (preview == null || preview.strokes.isEmpty) {
+                    return const SizedBox.expand();
+                  }
+                  return CustomPaint(
+                    painter: _DrawStrokesPainter(
+                      strokes: preview.strokes,
+                      brushMasks: preview.brushMasks,
+                    ),
+                    size: Size.infinite,
+                  );
+                },
+          ),
         ),
       ),
     );
