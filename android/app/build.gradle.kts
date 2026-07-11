@@ -7,8 +7,8 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import org.gradle.api.GradleException
 
-val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-val unsupportedBundleAbis = listOf("x86")
+val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a")
+val unsupportedBundleAbis = listOf("x86", "x86_64")
 
 plugins {
     id("com.android.application")
