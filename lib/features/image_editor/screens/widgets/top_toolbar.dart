@@ -214,6 +214,7 @@ class _TopBar extends StatelessWidget {
           label: 'Fonts',
           onTap: _withHaptic(onTextFontTap),
           vertical: vertical,
+          premium: true,
         ),
         _TopContextChip(
           icon: Icons.palette_outlined,
@@ -678,6 +679,7 @@ class _TopContextChip extends StatelessWidget {
     this.selected = false,
     this.color,
     this.vertical = false,
+    this.premium = false,
   });
 
   final IconData icon;
@@ -686,6 +688,7 @@ class _TopContextChip extends StatelessWidget {
   final bool selected;
   final Color? color;
   final bool vertical;
+  final bool premium;
 
   @override
   Widget build(BuildContext context) {
@@ -719,84 +722,16 @@ class _TopContextChip extends StatelessWidget {
                     : Colors.white.withValues(alpha: 0.10),
               ),
             ),
-            child: useCompactVertical
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      Icon(
-                        icon,
-                        size: 18,
-                        color: enabled
-                            ? selected
-                                  ? const Color(0xFFF5F3FF)
-                                  : _editorChromeTextPrimary
-                            : _editorChromeTextSecondary.withValues(alpha: 0.5),
-                      ),
-                      if (color != null) ...[
-                        const SizedBox(height: 3),
-                        Container(
-                          width: 11,
-                          height: 11,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white70, width: 1),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 3),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: enabled
-                              ? selected
-                                    ? const Color(0xFFF5F3FF)
-                                    : _editorChromeTextPrimary
-                              : _editorChromeTextSecondary.withValues(
-                                  alpha: 0.5,
-                                ),
-                          fontSize: 9.4,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisSize: vertical
-                        ? MainAxisSize.max
-                        : MainAxisSize.min,
-                    children: <Widget>[
-                      Icon(
-                        icon,
-                        size: 18,
-                        color: enabled
-                            ? selected
-                                  ? const Color(0xFFF5F3FF)
-                                  : _editorChromeTextPrimary
-                            : _editorChromeTextSecondary.withValues(alpha: 0.5),
-                      ),
-                      if (color != null) ...[
-                        const SizedBox(width: 5),
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white70, width: 1),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                useCompactVertical
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            icon,
+                            size: 18,
                             color: enabled
                                 ? selected
                                       ? const Color(0xFFF5F3FF)
@@ -804,13 +739,102 @@ class _TopContextChip extends StatelessWidget {
                                 : _editorChromeTextSecondary.withValues(
                                     alpha: 0.5,
                                   ),
-                            fontSize: 11.6,
-                            fontWeight: FontWeight.w800,
                           ),
-                        ),
+                          if (color != null) ...[
+                            const SizedBox(height: 3),
+                            Container(
+                              width: 11,
+                              height: 11,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white70,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 3),
+                          Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: enabled
+                                  ? selected
+                                        ? const Color(0xFFF5F3FF)
+                                        : _editorChromeTextPrimary
+                                  : _editorChromeTextSecondary.withValues(
+                                      alpha: 0.5,
+                                    ),
+                              fontSize: 9.4,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisSize: vertical
+                            ? MainAxisSize.max
+                            : MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            icon,
+                            size: 18,
+                            color: enabled
+                                ? selected
+                                      ? const Color(0xFFF5F3FF)
+                                      : _editorChromeTextPrimary
+                                : _editorChromeTextSecondary.withValues(
+                                    alpha: 0.5,
+                                  ),
+                          ),
+                          if (color != null) ...[
+                            const SizedBox(width: 5),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white70,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: enabled
+                                    ? selected
+                                          ? const Color(0xFFF5F3FF)
+                                          : _editorChromeTextPrimary
+                                    : _editorChromeTextSecondary.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                fontSize: 11.6,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                if (premium)
+                  const Positioned(
+                    right: -8,
+                    top: -8,
+                    child: _EditorPremiumBadge(),
                   ),
+              ],
+            ),
           ),
         );
       },

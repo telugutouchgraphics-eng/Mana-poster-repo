@@ -236,6 +236,7 @@ class _EditorMainToolsStrip extends StatelessWidget {
             'assets/designpro_reference_full/res/drawable-xxhdpi-v4/ic_menu_sticker_bigsize.png',
         active: activeToolLabel == 'Stickers',
         compact: compact,
+        premium: true,
         onTap: onStickersTap,
       ),
       _ToolItem(
@@ -568,6 +569,7 @@ class _EditorSubToolsStrip extends StatelessWidget {
           assetIcon:
               'assets/designpro_reference_full/res/drawable-xxhdpi-v4/icon_font_style_ab.png',
           compact: compact,
+          premium: true,
           onTap: onTextFontTap,
         ),
         _ToolItem(

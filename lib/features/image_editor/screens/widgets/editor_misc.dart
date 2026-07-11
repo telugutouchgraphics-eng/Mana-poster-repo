@@ -2835,30 +2835,17 @@ class _ToolItem extends StatelessWidget {
                 ),
         );
         final iconWidget = SizedBox(
-          width: iconSize + (premium ? 8 : 0),
-          height: iconSize + (premium ? 6 : 0),
+          width: iconSize + (premium ? 12 : 0),
+          height: iconSize + (premium ? 9 : 0),
           child: Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
               Positioned(left: 0, bottom: 0, child: baseIcon),
               if (premium)
-                Positioned(
-                  right: -1,
-                  top: -1,
-                  child: Container(
-                    width: 15,
-                    height: 15,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFACC15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF202228)),
-                    ),
-                    child: const Icon(
-                      Icons.workspace_premium_rounded,
-                      size: 10,
-                      color: Colors.black,
-                    ),
-                  ),
+                const Positioned(
+                  right: -3,
+                  top: -3,
+                  child: _EditorPremiumBadge(),
                 ),
             ],
           ),
@@ -2935,6 +2922,46 @@ class _ToolItem extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _EditorPremiumBadge extends StatelessWidget {
+  const _EditorPremiumBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            Color(0xFFFF3EA5),
+            Color(0xFFB832FF),
+            Color(0xFF6D28D9),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.78),
+          width: 1.2,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: const Color(0xFFFF3EA5).withValues(alpha: 0.38),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.workspace_premium_rounded,
+        size: 13,
+        color: Colors.white,
+      ),
     );
   }
 }
