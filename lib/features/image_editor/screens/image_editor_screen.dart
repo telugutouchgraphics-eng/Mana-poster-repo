@@ -85,6 +85,7 @@ const Color _editorChromeTextPrimary = Color(0xFFF1F3F4);
 const Color _editorChromeTextSecondary = Color(0xFFBDC1C6);
 const Color _editorCanvasBackdrop = Color(0xFF2A2C31);
 const String _textEffectPresetsStorageKey = 'editor_text_effect_presets_v1';
+const double _editorBannerReservedHeight = 96.0;
 const double _workspaceGestureMinZoom = 0.2;
 const double _workspaceFitZoom = 1;
 const double _workspaceMaxZoom = 8;
@@ -592,8 +593,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   bool _isPhotoCloneMode = false;
   bool _isDrawBrushMode = false;
   bool _isPickingMedia = false;
-  double _editorBannerHeight = 0;
-  bool _editorBannerHeightKnown = false;
   bool _isCapturingStage = false;
   bool _isTransparentExportCapture = false;
   bool _isCropMode = false;
@@ -3557,7 +3556,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               final showEditorBannerAd = !_hasRewardedEditorProAccess;
               final bannerHeight = _isKeyboardVisible || !showEditorBannerAd
                   ? 0.0
-                  : (_editorBannerHeightKnown ? _editorBannerHeight : 72.0);
+                  : _editorBannerReservedHeight;
               final floatingBottom = systemBottomInset + bannerHeight + 6;
               const toolbarCanvasGap = 8.0;
               const landscapeTopRailWidth = 86.0;
@@ -4146,23 +4145,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       left: 0,
                       right: 0,
                       bottom: 0,
-                      child: _EditorBottomBannerAd(
-                        onHeightChanged: (height) {
-                          if (!mounted) {
-                            return;
-                          }
-                          final hasMeaningfulHeightChange =
-                              (_editorBannerHeight - height).abs() >= 0.5;
-                          if (!hasMeaningfulHeightChange &&
-                              _editorBannerHeightKnown) {
-                            return;
-                          }
-                          setState(() {
-                            _editorBannerHeightKnown = true;
-                            _editorBannerHeight = height;
-                          });
-                        },
-                      ),
+                      child: const _EditorBottomBannerAd(),
                     ),
                   if (_showLayerStyleQuickControls &&
                       selectedLayerCanEdit &&
@@ -5701,9 +5684,7 @@ class _LayerStyleColorDot extends StatelessWidget {
 }
 
 class _EditorBottomBannerAd extends StatefulWidget {
-  const _EditorBottomBannerAd({required this.onHeightChanged});
-
-  final ValueChanged<double> onHeightChanged;
+  const _EditorBottomBannerAd();
 
   @override
   State<_EditorBottomBannerAd> createState() => _EditorBottomBannerAdState();
@@ -5736,7 +5717,6 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     if (kIsWeb ||
         !Platform.isAndroid ||
         !AppPublicInfo.hasEditorBannerAdUnitId) {
-      widget.onHeightChanged(0);
       return;
     }
     _isLoading = true;
@@ -5745,7 +5725,6 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     }
     if (!await AdMobConsentService.instance.canRequestAds()) {
       _isLoading = false;
-      widget.onHeightChanged(0);
       _scheduleBannerRetry();
       return;
     }
@@ -5760,13 +5739,9 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     );
     if (!mounted || size == null) {
       _isLoading = false;
-      if (mounted) {
-        widget.onHeightChanged(0);
-      }
       _scheduleBannerRetry();
       return;
     }
-    widget.onHeightChanged(size.height.toDouble() + 7);
     final banner = BannerAd(
       adUnitId: kDebugMode
           ? _androidTestBannerId
@@ -5784,17 +5759,11 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
             _bannerAd = ad as BannerAd;
             _adSize = size;
           });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              widget.onHeightChanged(size.height.toDouble() + 7);
-            }
-          });
         },
         onAdFailedToLoad: (ad, error) {
           _isLoading = false;
           ad.dispose();
           if (mounted) {
-            widget.onHeightChanged(0);
             _scheduleBannerRetry();
           }
         },
@@ -5806,7 +5775,6 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
       _isLoading = false;
       banner.dispose();
       if (mounted) {
-        widget.onHeightChanged(0);
         _scheduleBannerRetry();
       }
     }
@@ -5835,20 +5803,24 @@ class _EditorBottomBannerAdState extends State<_EditorBottomBannerAd> {
     final banner = _bannerAd;
     final size = _adSize;
     if (banner == null || size == null) {
-      return const SizedBox.shrink();
+      return const SizedBox(height: _editorBannerReservedHeight);
     }
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFCBD5E1))),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Center(
-          child: SizedBox(
-            width: size.width.toDouble(),
-            height: size.height.toDouble(),
-            child: AdWidget(ad: banner),
+    return SizedBox(
+      height: _editorBannerReservedHeight,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFCBD5E1))),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: size.width.toDouble(),
+              height: size.height.toDouble(),
+              child: AdWidget(ad: banner),
+            ),
           ),
         ),
       ),
