@@ -8,11 +8,13 @@ import 'dart:ui' as ui;
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';

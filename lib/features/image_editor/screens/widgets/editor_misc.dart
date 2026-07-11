@@ -2419,11 +2419,26 @@ class _StickerBrowserFullscreenOverlayState
         ),
       );
     }
-    return Image.network(
-      thumbnailUrl,
+    return CachedNetworkImage(
+      imageUrl: thumbnailUrl,
+      cacheManager: PosterNetworkImageCache.instance,
+      memCacheWidth: 384,
+      memCacheHeight: 384,
+      maxWidthDiskCache: 512,
+      maxHeightDiskCache: 512,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
-      errorBuilder: (_, _, _) =>
+      placeholder: (_, _) => const Center(
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white54,
+          ),
+        ),
+      ),
+      errorWidget: (_, _, _) =>
           const Icon(Icons.broken_image_outlined, color: Colors.white54),
     );
   }
