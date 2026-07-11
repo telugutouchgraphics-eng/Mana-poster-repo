@@ -3529,7 +3529,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
               final systemBottomInset = MediaQuery.viewPaddingOf(
                 context,
               ).bottom;
-              final bannerHeight = _isKeyboardVisible
+              final showEditorBannerAd = !_hasRewardedEditorProAccess;
+              final bannerHeight = _isKeyboardVisible || !showEditorBannerAd
                   ? 0.0
                   : _editorBannerHeight;
               final floatingBottom = systemBottomInset + bannerHeight + 6;
@@ -4113,7 +4114,9 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                       ),
                     ),
                   if (_isCropMode) const SizedBox.shrink(),
-                  if (!_isKeyboardVisible && !useLandscapeSideRails)
+                  if (showEditorBannerAd &&
+                      !_isKeyboardVisible &&
+                      !useLandscapeSideRails)
                     Positioned(
                       left: 0,
                       right: 0,
