@@ -109,10 +109,7 @@ Future<void> main() async {
 
 Future<void> _hideSystemUiAfterFirstFrame() async {
   await Future<void>.delayed(const Duration(milliseconds: 120));
-  await SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.manual,
-    overlays: const <SystemUiOverlay>[SystemUiOverlay.top],
-  );
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 }
 
 Future<void> _runDeferredPostSplashInitialization() async {

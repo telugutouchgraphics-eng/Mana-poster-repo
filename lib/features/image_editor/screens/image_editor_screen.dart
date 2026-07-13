@@ -4858,7 +4858,7 @@ class _LayerStyleQuickPanel extends StatelessWidget {
               label: 'Blur',
               value: current.layerStyleShadowBlur,
               min: 0,
-              max: 96,
+              max: 56,
               onChangeStart: onChangeStart,
               onChanged: (value) => onUpdate(shadowBlur: value),
               onChangeEnd: onChangeEnd,
@@ -4899,7 +4899,7 @@ class _LayerStyleQuickPanel extends StatelessWidget {
               label: 'Size',
               value: current.layerStyleOuterGlowSize,
               min: 0,
-              max: 120,
+              max: 64,
               onChangeStart: onChangeStart,
               onChanged: (value) => onUpdate(outerGlowSize: value),
               onChangeEnd: onChangeEnd,
@@ -5381,57 +5381,145 @@ class _LayerStyleQuickSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clamped = value.clamp(min, max).toDouble();
-    return SizedBox(
-      width: math.min(300, MediaQuery.sizeOf(context).width * 0.68),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    double valueForDx(double dx, double width) {
+      if (width <= 0 || (max - min).abs() < 0.001) {
+        return clamped;
+      }
+      final raw = min + (dx.clamp(0.0, width) / width) * (max - min);
+      final steps = math.max(1, (max - min).round());
+      final stepped =
+          min +
+          (((raw - min) / (max - min)) * steps).round() / steps * (max - min);
+      return stepped.clamp(min, max).toDouble();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        return SizedBox(
+          width: math.min(availableWidth * 0.82, 300.0).clamp(220.0, 300.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
-                ),
+                  Text(
+                    clamped.round().toString(),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                clamped.round().toString(),
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
+              const Spacer(),
+              LayoutBuilder(
+                builder: (context, trackConstraints) {
+                  final trackWidth = trackConstraints.maxWidth;
+                  final percent = (max - min).abs() < 0.001
+                      ? 0.0
+                      : ((clamped - min) / (max - min)).clamp(0.0, 1.0);
+                  void update(Offset localPosition) {
+                    onChanged(valueForDx(localPosition.dx, trackWidth));
+                  }
+
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (details) {
+                      final next = valueForDx(
+                        details.localPosition.dx,
+                        trackWidth,
+                      );
+                      onChangeStart(next);
+                      onChanged(next);
+                    },
+                    onTapUp: (details) => onChangeEnd(
+                      valueForDx(details.localPosition.dx, trackWidth),
+                    ),
+                    onTapCancel: () => onChangeEnd(clamped),
+                    onHorizontalDragStart: (details) {
+                      final next = valueForDx(
+                        details.localPosition.dx,
+                        trackWidth,
+                      );
+                      onChangeStart(next);
+                      onChanged(next);
+                    },
+                    onHorizontalDragUpdate: (details) =>
+                        update(details.localPosition),
+                    onHorizontalDragEnd: (_) => onChangeEnd(clamped),
+                    child: SizedBox(
+                      height: 34,
+                      child: Stack(
+                        alignment: Alignment.centerLeft,
+                        children: [
+                          Positioned.fill(
+                            top: 14,
+                            bottom: 14,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.28),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: trackWidth * (1 - percent),
+                            top: 14,
+                            bottom: 14,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF60A5FA),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: (trackWidth * percent - 7).clamp(
+                              0.0,
+                              math.max(0.0, trackWidth - 14),
+                            ),
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.16),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
-          const Spacer(),
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 4,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              activeTrackColor: const Color(0xFF60A5FA),
-              inactiveTrackColor: Colors.white.withValues(alpha: 0.28),
-              thumbColor: Colors.white,
-              overlayColor: const Color(0x3360A5FA),
-            ),
-            child: Slider(
-              value: clamped,
-              min: min,
-              max: max,
-              divisions: math.max(1, (max - min).round()),
-              onChangeStart: onChangeStart,
-              onChanged: onChanged,
-              onChangeEnd: onChangeEnd,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -5458,63 +5546,71 @@ class _LayerStyleColorSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hsv = HSVColor.fromColor(color);
-    final width = math.min(320.0, MediaQuery.sizeOf(context).width * 0.72);
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        return SizedBox(
+          width: math.min(availableWidth * 0.84, 320.0).clamp(220.0, 320.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Spacer(),
+                  _LayerStyleColorDot(
+                    color: Colors.black,
+                    selected: color.computeLuminance() <= 0.02,
+                    onTap: onBlack,
+                  ),
+                  const SizedBox(width: 8),
+                  _LayerStyleColorDot(
+                    color: Colors.white,
+                    selected: hsv.saturation <= 0.04 && hsv.value >= 0.96,
+                    onTap: onWhite,
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 26,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const Spacer(),
-              _LayerStyleColorDot(
-                color: Colors.black,
-                selected: color.computeLuminance() <= 0.02,
-                onTap: onBlack,
-              ),
-              const SizedBox(width: 8),
-              _LayerStyleColorDot(
-                color: Colors.white,
-                selected: hsv.saturation <= 0.04 && hsv.value >= 0.96,
-                onTap: onWhite,
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 26,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.45),
-                  ),
-                ),
+              _LayerStyleAllColorsSlider(
+                hue: hsv.hue.clamp(0.0, 359.0).toDouble(),
+                onChangeStart: onChangeStart,
+                onChanged: (hue) {
+                  final saturation = hsv.saturation <= 0.04
+                      ? 1.0
+                      : hsv.saturation;
+                  final value = hsv.value <= 0.02 ? 1.0 : hsv.value;
+                  onHueChanged(
+                    HSVColor.fromAHSV(1, hue, saturation, value).toColor(),
+                  );
+                },
+                onChangeEnd: onChangeEnd,
               ),
             ],
           ),
-          const Spacer(),
-          _LayerStyleAllColorsSlider(
-            hue: hsv.hue.clamp(0.0, 359.0).toDouble(),
-            onChangeStart: onChangeStart,
-            onChanged: (hue) {
-              final saturation = hsv.saturation <= 0.04 ? 1.0 : hsv.saturation;
-              final value = hsv.value <= 0.02 ? 1.0 : hsv.value;
-              onHueChanged(
-                HSVColor.fromAHSV(1, hue, saturation, value).toColor(),
-              );
-            },
-            onChangeEnd: onChangeEnd,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

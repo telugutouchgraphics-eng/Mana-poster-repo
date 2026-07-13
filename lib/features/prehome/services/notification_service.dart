@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -51,6 +52,8 @@ class NotificationService {
   static const String _homeNotificationPayload = 'home';
   static const String _nativeNotificationTapRouteKey = 'notificationTapRoute';
   static const String _nativeNotificationTapAtKey = 'notificationTapAt';
+  static const String _nativeNotificationTapCategoryKey =
+      'notificationTapCategory';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -219,7 +222,13 @@ class NotificationService {
           title: resolved.title,
           body: resolved.body,
         );
-    const payload = _homeNotificationPayload;
+    final String route = _normalizeNotificationRoute(
+      _readDataValue(message.data, 'route'),
+    );
+    final String payload = jsonEncode(<String, String>{
+      'route': route,
+      'categoryKey': categoryKey,
+    });
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
     await plugin.show(
       id,
@@ -244,10 +253,24 @@ class NotificationService {
       settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final String payload = response.payload ?? '';
-        if (payload.trim().isEmpty ||
-            payload.trim().toLowerCase() == _homeNotificationPayload) {
+        final _NotificationTapPayload parsed = _parseNotificationTapPayload(
+          payload,
+        );
+        unawaited(
+          _logNotificationOpen(
+            route: parsed.route,
+            categoryKey: parsed.categoryKey,
+            source: 'local_notification',
+          ),
+        );
+        if (_isHomeNotificationRoute(parsed.route)) {
           _openHomeWithRetry();
+          return;
         }
+        AppNavigator.openNotificationRoute(
+          parsed.route,
+          arguments: parsed.toArguments(),
+        );
       },
     );
 
@@ -476,11 +499,25 @@ class NotificationService {
     final String route = _normalizeNotificationRoute(
       _readDataValue(message.data, 'route'),
     );
+    final String categoryKey = _readDataValue(message.data, 'categoryKey');
+    unawaited(
+      _logNotificationOpen(
+        route: route,
+        categoryKey: categoryKey,
+        source: 'fcm_opened_app',
+      ),
+    );
     if (_isHomeNotificationRoute(route)) {
       _openHomeWithRetry();
       return;
     }
-    AppNavigator.openNotificationRoute(route);
+    AppNavigator.openNotificationRoute(
+      route,
+      arguments: <String, dynamic>{
+        if (categoryKey.isNotEmpty) 'categoryKey': categoryKey,
+        'source': 'notification',
+      },
+    );
   }
 
   Future<void> _consumeNativeNotificationTap() async {
@@ -491,6 +528,8 @@ class NotificationService {
     final route = _normalizeNotificationRoute(
       state[_nativeNotificationTapRouteKey]?.toString() ?? '',
     );
+    final categoryKey =
+        state[_nativeNotificationTapCategoryKey]?.toString().trim() ?? '';
     final tappedAt = _readInt(state[_nativeNotificationTapAtKey]);
     if (route.isEmpty || tappedAt <= 0) {
       return;
@@ -502,12 +541,71 @@ class NotificationService {
     await NativeStartupStateStore.writeEntries(<String, Object?>{
       _nativeNotificationTapRouteKey: null,
       _nativeNotificationTapAtKey: null,
+      _nativeNotificationTapCategoryKey: null,
     });
+    unawaited(
+      _logNotificationOpen(
+        route: route,
+        categoryKey: categoryKey,
+        source: 'native_notification',
+      ),
+    );
     if (_isHomeNotificationRoute(route)) {
       _openHomeWithRetry();
       return;
     }
-    AppNavigator.openNotificationRoute(route);
+    AppNavigator.openNotificationRoute(
+      route,
+      arguments: <String, dynamic>{
+        if (categoryKey.isNotEmpty) 'categoryKey': categoryKey,
+        'source': 'notification',
+      },
+    );
+  }
+
+  static _NotificationTapPayload _parseNotificationTapPayload(String payload) {
+    final trimmed = payload.trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == _homeNotificationPayload) {
+      return const _NotificationTapPayload(route: _homeNotificationPayload);
+    }
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) {
+        return _NotificationTapPayload(
+          route: _normalizeNotificationRoute(
+            decoded['route']?.toString() ?? '',
+          ),
+          categoryKey: decoded['categoryKey']?.toString().trim() ?? '',
+        );
+      }
+    } catch (_) {
+      // Fall through to treating the payload as a route.
+    }
+    return _NotificationTapPayload(route: _normalizeNotificationRoute(trimmed));
+  }
+
+  static Future<void> _logNotificationOpen({
+    required String route,
+    required String source,
+    String categoryKey = '',
+  }) async {
+    try {
+      await FirebaseAnalytics.instance.logEvent(
+        name: 'notification_open',
+        parameters: <String, Object>{
+          'route': route.isEmpty ? _homeNotificationPayload : route,
+          'source': source,
+          if (categoryKey.trim().isNotEmpty) 'category_key': categoryKey.trim(),
+        },
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification open analytics skipped: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   static void _openHomeWithRetry([int attempt = 0]) {
@@ -1013,6 +1111,20 @@ class _NotificationArtifactBundle {
 
   final NotificationDetails details;
   final List<String> disposablePaths;
+}
+
+class _NotificationTapPayload {
+  const _NotificationTapPayload({required this.route, this.categoryKey = ''});
+
+  final String route;
+  final String categoryKey;
+
+  Map<String, dynamic> toArguments() {
+    return <String, dynamic>{
+      if (categoryKey.trim().isNotEmpty) 'categoryKey': categoryKey.trim(),
+      'source': 'notification',
+    };
+  }
 }
 
 class _ResolvedNotificationText {

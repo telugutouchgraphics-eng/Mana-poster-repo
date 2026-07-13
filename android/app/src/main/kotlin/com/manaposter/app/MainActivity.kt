@@ -32,14 +32,15 @@ class MainActivity : FlutterFragmentActivity() {
     private val startupStatePrefsName = "mana_poster_startup_state_v1"
     private val notificationTapRouteKey = "notificationTapRoute"
     private val notificationTapAtKey = "notificationTapAt"
+    private val notificationTapCategoryKey = "notificationTapCategory"
     private val appUpdateRequestCode = 3017
     private val appUpdateManager: AppUpdateManager by lazy {
         AppUpdateManagerFactory.create(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
@@ -346,12 +347,17 @@ class MainActivity : FlutterFragmentActivity() {
             ?.getStringExtra("notification_route")
             ?.trim()
             .orEmpty()
+        val category = intent
+            ?.getStringExtra("notification_category")
+            ?.trim()
+            .orEmpty()
         if (route.isBlank()) {
             return
         }
         writeStartupState(
             mapOf(
                 notificationTapRouteKey to route,
+                notificationTapCategoryKey to category,
                 notificationTapAtKey to System.currentTimeMillis(),
             )
         )

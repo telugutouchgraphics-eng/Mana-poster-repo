@@ -562,6 +562,84 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     );
   }
 
+  String _communityUploadReviewNote(AppLanguage language) {
+    return switch (language) {
+      AppLanguage.telugu =>
+        'మీ photo, quote లేదా design idea ను review కోసం upload చేయండి. మా team దాన్ని పరిశీలించి, అవసరమైతే edit/improve చేసి సరైన app categoryలో publish చేయవచ్చు. Approved content upload చేసిన userతో పాటు ఇతర usersకూ కనిపించవచ్చు. మీరు upload చేసే content‌కు మీరు బాధ్యత వహించాలి. Terms & Conditions apply.',
+      AppLanguage.hindi =>
+        'अपना photo, quote या design idea review के लिए upload करें। हमारी team इसे जांचकर जरूरत पड़ने पर edit/improve करके सही app category में publish कर सकती है। Approved content upload करने वाले user और अन्य users को दिख सकता है। Upload किए गए content की जिम्मेदारी आपकी होगी। Terms & Conditions apply.',
+      AppLanguage.english =>
+        'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.',
+      AppLanguage.tamil =>
+        'உங்கள் photo, quote அல்லது design idea வை review க்காக upload செய்யுங்கள். எங்கள் team அதை பார்த்து, தேவைப்பட்டால் edit/improve செய்து சரியான app category யில் publish செய்யலாம். Approved content upload செய்த user க்கும் மற்ற users க்கும் காணப்படலாம். நீங்கள் upload செய்யும் content க்கு நீங்கள் பொறுப்பு. Terms & Conditions apply.',
+      AppLanguage.kannada =>
+        'ನಿಮ್ಮ photo, quote ಅಥವಾ design idea ಅನ್ನು review ಗಾಗಿ upload ಮಾಡಿ. ನಮ್ಮ team ಅದನ್ನು ಪರಿಶೀಲಿಸಿ, ಅಗತ್ಯವಿದ್ದರೆ edit/improve ಮಾಡಿ ಸರಿಯಾದ app category ಯಲ್ಲಿ publish ಮಾಡಬಹುದು. Approved content upload ಮಾಡಿದ user ಜೊತೆಗೆ ಇತರ users ಗೂ ಕಾಣಬಹುದು. ನೀವು upload ಮಾಡುವ content ಗೆ ನೀವು ಜವಾಬ್ದಾರರು. Terms & Conditions apply.',
+      AppLanguage.malayalam =>
+        'നിങ്ങളുടെ photo, quote അല്ലെങ്കിൽ design idea review നായി upload ചെയ്യുക. ഞങ്ങളുടെ team അത് പരിശോധിച്ച്, ആവശ്യമെങ്കിൽ edit/improve ചെയ്ത് ശരിയായ app category യിൽ publish ചെയ്യാം. Approved content upload ചെയ്ത user ക്കും മറ്റു users ക്കും കാണാം. നിങ്ങൾ upload ചെയ്യുന്ന content ന് ഉത്തരവാദിത്വം നിങ്ങളുടേതാണ്. Terms & Conditions apply.',
+      AppLanguage.assamese =>
+        'আপোনাৰ photo, quote অথবা design idea review ৰ বাবে upload কৰক। আমাৰ team এয়া পৰীক্ষা কৰি, প্ৰয়োজন হলে edit/improve কৰি সঠিক app category ত publish কৰিব পাৰে। Approved content upload কৰা user আৰু অন্য users ক দেখা যাব পাৰে। আপুনি upload কৰা content ৰ দায়িত্ব আপোনাৰ। Terms & Conditions apply.',
+      AppLanguage.konkani =>
+        'तुमचो photo, quote वा design idea review खातीर upload करात. आमची team तो तपासून, गरज आसल्यार edit/improve करून योग्य app category न publish करूंक शकता. Approved content upload करपी user आनी हेर users क दिसूंक शकता. तुमी upload केल्ल्या content ची जबाबदारी तुमची आसतली. Terms & Conditions apply.',
+      AppLanguage.gujarati =>
+        'તમારો photo, quote અથવા design idea review માટે upload કરો. અમારી team તેને તપાસીને, જરૂર પડે તો edit/improve કરીને યોગ્ય app category માં publish કરી શકે છે. Approved content upload કરનાર user અને અન્ય users ને દેખાઈ શકે છે. તમે upload કરેલા content માટે તમે જવાબદાર છો. Terms & Conditions apply.',
+      AppLanguage.marathi =>
+        'तुमचा photo, quote किंवा design idea review साठी upload करा. आमची team ते तपासून, गरज असल्यास edit/improve करून योग्य app category मध्ये publish करू शकते. Approved content upload करणाऱ्या user सोबत इतर users ना दिसू शकते. तुम्ही upload केलेल्या content ची जबाबदारी तुमची असेल. Terms & Conditions apply.',
+      AppLanguage.meitei =>
+        'নহাক্কী photo, quote নত্রগা design idea review গীদমক upload তৌবিয়ু। ঐখোয়গী team না মসি check তৌরগা, দরকার ওইরবদি edit/improve তৌদুনা চুম্বা app category দা publish তৌবা যাই। Approved content অসি upload তৌবা user অমসুং অতোপ্পা users দা উবা যাই। নহাক্না upload তৌবা content গী responsibility নহাক্কীনি। Terms & Conditions apply.',
+      AppLanguage.mizo =>
+        'I photo, quote emaw design idea review atan upload rawh. Kan team in a en ang a, tul chuan edit/improve in app category dikah publish thei. Approved content chu upload tu user leh users dangte tan a lang thei. I upload content chungchangah nangmah i mawhphurhna a ni. Terms & Conditions apply.',
+      AppLanguage.odia =>
+        'ଆପଣଙ୍କ photo, quote କିମ୍ବା design idea review ପାଇଁ upload କରନ୍ତୁ। ଆମ team ଏହାକୁ ଯାଞ୍ଚ କରି, ଆବଶ୍ୟକ ହେଲେ edit/improve କରି ସଠିକ୍ app category ରେ publish କରିପାରେ। Approved content upload କରିଥିବା user ଓ ଅନ୍ୟ users ଙ୍କୁ ଦେଖାଯାଇପାରେ। ଆପଣ upload କରୁଥିବା content ପାଇଁ ଆପଣ ଦାୟୀ। Terms & Conditions apply.',
+      AppLanguage.punjabi =>
+        'ਆਪਣਾ photo, quote ਜਾਂ design idea review ਲਈ upload ਕਰੋ। ਸਾਡੀ team ਇਸਨੂੰ ਚੈੱਕ ਕਰਕੇ, ਲੋੜ ਪੈਣ ਤੇ edit/improve ਕਰਕੇ ਸਹੀ app category ਵਿੱਚ publish ਕਰ ਸਕਦੀ ਹੈ। Approved content upload ਕਰਨ ਵਾਲੇ user ਅਤੇ ਹੋਰ users ਨੂੰ ਦਿਖ ਸਕਦਾ ਹੈ। ਤੁਸੀਂ upload ਕੀਤੇ content ਲਈ ਤੁਸੀਂ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। Terms & Conditions apply.',
+      AppLanguage.nepali =>
+        'आफ्नो photo, quote वा design idea review का लागि upload गर्नुहोस्। हाम्रो team ले यसलाई जाँचेर, आवश्यक परे edit/improve गरी सही app category मा publish गर्न सक्छ। Approved content upload गर्ने user र अन्य users लाई देखिन सक्छ। तपाईंले upload गर्ने content को जिम्मेवारी तपाईंको हुनेछ। Terms & Conditions apply.',
+      AppLanguage.bengali =>
+        'আপনার photo, quote বা design idea review-এর জন্য upload করুন। আমাদের team এটি দেখে, প্রয়োজন হলে edit/improve করে সঠিক app category-তে publish করতে পারে। Approved content upload করা user এবং অন্য users দেখতে পারেন। আপনি যে content upload করছেন তার দায়িত্ব আপনার। Terms & Conditions apply.',
+      AppLanguage.kashmiri =>
+        'اپنا photo، quote یا design idea review کے لیے upload کریں۔ ہماری team اسے دیکھ کر ضرورت پڑنے پر edit/improve کرکے صحیح app category میں publish کر سکتی ہے۔ Approved content upload کرنے والے user اور دوسرے users کو دکھ سکتا ہے۔ آپ کے upload کیے گئے content کی ذمہ داری آپ کی ہوگی۔ Terms & Conditions apply.',
+      AppLanguage.ladakhi =>
+        'ཁྱེད་ཀྱི photo, quote ཡང་ན design idea review ཆེད upload གནང་རོགས། ང་ཚོའི team གིས་དེ་ཞིབ་བཤེར་བྱས་ནས་དགོས་ན edit/improve བྱས་ཏེ app category འོས་པར publish བྱེད་ཐུབ། Approved content ནི upload བྱེད་མཁན user དང users གཞན་ལ་མཐོང་ཐུབ། ཁྱེད་ཀྱིས upload བྱས་པའི content ལ་འགན་ཁུར་ཁྱེད་རང་ཡིན། Terms & Conditions apply.',
+    };
+  }
+
+  Widget _buildCommunityUploadReviewNote(AppLanguage language) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.82),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(
+                Icons.verified_user_outlined,
+                size: 18,
+                color: Color(0xFFD81B60),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _communityUploadReviewNote(language),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    height: 1.35,
+                    color: const Color(0xFF334155),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRoundActionButton({
     required VoidCallback? onPressed,
     required String label,
@@ -756,6 +834,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   ),
                 ),
               ),
+              _buildCommunityUploadReviewNote(language),
             ],
           ),
         ),

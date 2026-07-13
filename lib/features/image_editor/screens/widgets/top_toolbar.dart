@@ -430,159 +430,171 @@ class _TopBar extends StatelessWidget {
                         () => Navigator.of(context).maybePop(),
                       ),
                     ),
-                    const Spacer(),
-                    ...[
-                      _EditorIconButton(
-                        icon: Icons.undo_rounded,
-                        tooltip: strings.localized(
-                          telugu: 'అండు',
-                          english: 'Undo',
-                        ),
-                        onTap: _withHaptic(canUndo ? onUndoTap : null),
-                      ),
-                      _EditorIconButton(
-                        icon: Icons.redo_rounded,
-                        tooltip: strings.localized(
-                          telugu: 'రీడో',
-                          english: 'Redo',
-                        ),
-                        onTap: _withHaptic(canRedo ? onRedoTap : null),
-                      ),
-                      const SizedBox(width: 4),
-                      _EditorIconButton(
-                        icon: autoSelectCanvasLayer
-                            ? Icons.touch_app_rounded
-                            : Icons.pan_tool_alt_outlined,
-                        tooltip: autoSelectCanvasLayer
-                            ? 'Auto Select On'
-                            : 'Auto Select Off',
-                        onTap: _withHaptic(onAutoSelectCanvasLayerTap),
-                      ),
-                      if (selectedLayer != null)
-                        _EditorIconButton(
-                          icon: Icons.select_all_rounded,
-                          tooltip: selectionHandlesVisible
-                              ? 'Deselect'
-                              : 'Select',
-                          onTap: _withHaptic(onSelectLayerTap),
-                        ),
-                      const SizedBox(width: 4),
-                      if (compact)
-                        _EditorIconButton(
-                          icon: isExporting
-                              ? Icons.hourglass_top_rounded
-                              : Icons.download_rounded,
-                          tooltip: strings.localized(
-                            telugu: isExporting ? 'సేవ్ అవుతోంది' : 'సేవ్',
-                            english: isExporting ? 'Downloading' : 'Download',
-                          ),
-                          onTap: isExporting ? null : onDownloadTap,
-                        )
-                      else
-                        _TopPrimaryPillButton(
-                          label: strings.localized(
-                            telugu: isExporting ? 'సేవ్...' : 'సేవ్',
-                            english: isExporting
-                                ? 'Downloading...'
-                                : 'Download',
-                          ),
-                          onTap: isExporting ? null : onDownloadTap,
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          borderColor: Colors.white,
-                          icon: isExporting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.download_rounded,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        reverse: true,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            _EditorIconButton(
+                              icon: Icons.undo_rounded,
+                              tooltip: strings.localized(
+                                telugu: 'అండు',
+                                english: 'Undo',
+                              ),
+                              onTap: _withHaptic(canUndo ? onUndoTap : null),
+                            ),
+                            _EditorIconButton(
+                              icon: Icons.redo_rounded,
+                              tooltip: strings.localized(
+                                telugu: 'రీడో',
+                                english: 'Redo',
+                              ),
+                              onTap: _withHaptic(canRedo ? onRedoTap : null),
+                            ),
+                            const SizedBox(width: 4),
+                            _EditorIconButton(
+                              icon: autoSelectCanvasLayer
+                                  ? Icons.touch_app_rounded
+                                  : Icons.pan_tool_alt_outlined,
+                              tooltip: autoSelectCanvasLayer
+                                  ? 'Auto Select On'
+                                  : 'Auto Select Off',
+                              onTap: _withHaptic(onAutoSelectCanvasLayerTap),
+                            ),
+                            if (selectedLayer != null)
+                              _EditorIconButton(
+                                icon: Icons.select_all_rounded,
+                                tooltip: selectionHandlesVisible
+                                    ? 'Deselect'
+                                    : 'Select',
+                                onTap: _withHaptic(onSelectLayerTap),
+                              ),
+                            const SizedBox(width: 4),
+                            if (compact)
+                              _EditorIconButton(
+                                icon: isExporting
+                                    ? Icons.hourglass_top_rounded
+                                    : Icons.download_rounded,
+                                tooltip: strings.localized(
+                                  telugu: isExporting
+                                      ? 'సేవ్ అవుతోంది'
+                                      : 'సేవ్',
+                                  english: isExporting
+                                      ? 'Downloading'
+                                      : 'Download',
+                                ),
+                                onTap: isExporting ? null : onDownloadTap,
+                              )
+                            else
+                              _TopPrimaryPillButton(
+                                label: strings.localized(
+                                  telugu: isExporting ? 'సేవ్...' : 'సేవ్',
+                                  english: isExporting
+                                      ? 'Downloading...'
+                                      : 'Download',
+                                ),
+                                onTap: isExporting ? null : onDownloadTap,
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                borderColor: Colors.white,
+                                icon: isExporting
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.black,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.download_rounded,
+                                        size: 17,
+                                        color: Colors.black,
+                                      ),
+                              ),
+                            if (!compact) ...<Widget>[
+                              const SizedBox(width: 6),
+                              _TopPrimaryPillButton(
+                                label: 'Export',
+                                onTap: isExporting ? null : onExportTap,
+                                backgroundColor: const Color(0xFF38BDF8),
+                                foregroundColor: Colors.black,
+                                borderColor: const Color(0xFF38BDF8),
+                                icon: const Icon(
+                                  Icons.file_upload_outlined,
                                   size: 17,
                                   color: Colors.black,
                                 ),
-                        ),
-                      if (!compact) ...<Widget>[
-                        const SizedBox(width: 6),
-                        _TopPrimaryPillButton(
-                          label: 'Export',
-                          onTap: isExporting ? null : onExportTap,
-                          backgroundColor: const Color(0xFF38BDF8),
-                          foregroundColor: Colors.black,
-                          borderColor: const Color(0xFF38BDF8),
-                          icon: const Icon(
-                            Icons.file_upload_outlined,
-                            size: 17,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ] else
-                        _EditorIconButton(
-                          icon: Icons.file_upload_outlined,
-                          tooltip: 'Export',
-                          onTap: isExporting ? null : onExportTap,
-                        ),
-                      PopupMenuButton<String>(
-                        tooltip: strings.localized(
-                          telugu: 'మరిన్ని',
-                          english: 'More',
-                        ),
-                        color: const Color(0xFF303236),
-                        surfaceTintColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        icon: const Icon(
-                          Icons.more_vert_rounded,
-                          color: _editorChromeTextPrimary,
-                        ),
-                        onSelected: (value) {
-                          HapticFeedback.selectionClick();
-                          if (value == 'share') onShareTap();
-                          if (value == 'drafts') onDraftsTap();
-                        },
-                        itemBuilder: (_) => <PopupMenuEntry<String>>[
-                          PopupMenuItem<String>(
-                            value: 'share',
-                            enabled: !isSharing,
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.share_rounded,
+                              ),
+                            ] else
+                              _EditorIconButton(
+                                icon: Icons.file_upload_outlined,
+                                tooltip: 'Export',
+                                onTap: isExporting ? null : onExportTap,
+                              ),
+                            PopupMenuButton<String>(
+                              tooltip: strings.localized(
+                                telugu: 'మరిన్ని',
+                                english: 'More',
+                              ),
+                              color: const Color(0xFF303236),
+                              surfaceTintColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              icon: const Icon(
+                                Icons.more_vert_rounded,
                                 color: _editorChromeTextPrimary,
                               ),
-                              title: Text(
-                                isSharing ? 'Sharing...' : 'Share',
-                                style: const TextStyle(
-                                  color: _editorChromeTextPrimary,
+                              onSelected: (value) {
+                                HapticFeedback.selectionClick();
+                                if (value == 'share') onShareTap();
+                                if (value == 'drafts') onDraftsTap();
+                              },
+                              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                                PopupMenuItem<String>(
+                                  value: 'share',
+                                  enabled: !isSharing,
+                                  child: ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const Icon(
+                                      Icons.share_rounded,
+                                      color: _editorChromeTextPrimary,
+                                    ),
+                                    title: Text(
+                                      isSharing ? 'Sharing...' : 'Share',
+                                      style: const TextStyle(
+                                        color: _editorChromeTextPrimary,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'drafts',
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                Icons.folder_copy_outlined,
-                                color: _editorChromeTextPrimary,
-                              ),
-                              title: Text(
-                                'Drafts',
-                                style: TextStyle(
-                                  color: _editorChromeTextPrimary,
+                                const PopupMenuItem<String>(
+                                  value: 'drafts',
+                                  child: ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Icon(
+                                      Icons.folder_copy_outlined,
+                                      color: _editorChromeTextPrimary,
+                                    ),
+                                    title: Text(
+                                      'Drafts',
+                                      style: TextStyle(
+                                        color: _editorChromeTextPrimary,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                     _EditorIconButton(
                       icon: Icons.layers_rounded,
                       assetIcon:

@@ -4,10 +4,11 @@ import 'dart:ui' as ui;
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -430,13 +431,13 @@ class PersonalizedVideoExportService {
       }
       return file;
     }
-    final response = await http.get(uri).timeout(const Duration(minutes: 2));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PersonalizedVideoExportException(
-        'Video download failed: ${response.statusCode}',
-      );
+    final cachedFile = await DefaultCacheManager()
+        .getSingleFile(uri.toString())
+        .timeout(const Duration(minutes: 2));
+    if (!await cachedFile.exists() || await cachedFile.length() <= 0) {
+      throw const PersonalizedVideoExportException('Video download failed.');
     }
-    await file.writeAsBytes(response.bodyBytes, flush: true);
+    await cachedFile.copy(file.path);
     return file;
   }
 
@@ -483,13 +484,33 @@ class PersonalizedVideoExportService {
     if (uri == null) {
       return null;
     }
-    final response = await http.get(uri).timeout(const Duration(seconds: 45));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
+    final cached = await _loadResizedRemoteImageFile(
+      uri.toString(),
+    ).timeout(const Duration(seconds: 45), onTimeout: () => null);
+    if (cached == null ||
+        !await cached.exists() ||
+        await cached.length() <= 0) {
       return null;
     }
     final file = File('${workDir.path}${Platform.pathSeparator}$outputName');
-    await file.writeAsBytes(response.bodyBytes, flush: true);
+    await cached.copy(file.path);
     return _applyPhotoMaskIfNeeded(file, maskConfig, workDir, outputName);
+  }
+
+  Future<File?> _loadResizedRemoteImageFile(String url) async {
+    FileInfo? cachedFile;
+    final imageCache = PosterNetworkImageCache.instance as ImageCacheManager;
+    await for (final response in imageCache.getImageFile(
+      url,
+      maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+      maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+      withProgress: false,
+    )) {
+      if (response is FileInfo) {
+        cachedFile = response;
+      }
+    }
+    return cachedFile?.file;
   }
 
   Future<File> _applyPhotoMaskIfNeeded(

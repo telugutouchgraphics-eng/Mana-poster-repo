@@ -3243,7 +3243,7 @@ class _CanvasWorkspace extends StatelessWidget {
                                                   Widget? child,
                                                 ) {
                                                   return Stack(
-                                                    clipBehavior: Clip.hardEdge,
+                                                    clipBehavior: Clip.none,
                                                     children: <Widget>[
                                                       Positioned(
                                                         left: 0,
@@ -3271,6 +3271,8 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                       transformLayerSize
                                                                           .height,
                                                                   child: Stack(
+                                                                    clipBehavior:
+                                                                        Clip.none,
                                                                     fit: StackFit
                                                                         .expand,
                                                                     children: <Widget>[
@@ -3495,24 +3497,25 @@ class _CanvasWorkspace extends StatelessWidget {
                                                                               isBrushEditingLayer
                                                                               ? null
                                                                               : (_) => onSelectedLayerInteractionEnd(),
-                                                                          child: RepaintBoundary(
-                                                                            child: _EraserPreviewLayer(
-                                                                              layerId: layer.id,
-                                                                              previewListenable: eraserPreviewListenable,
-                                                                              brushScale:
-                                                                                  isPhotoStretchMode ||
-                                                                                      isContentAwareMode ||
-                                                                                      isPhotoCloneMode ||
-                                                                                      isPhotoEraserMode ||
-                                                                                      isLayerMaskBrushMode
-                                                                                  ? 1 /
-                                                                                        math.max(
-                                                                                          0.1,
-                                                                                          viewportScale,
-                                                                                        )
-                                                                                  : 1,
-                                                                              child: contentLayerChild,
-                                                                            ),
+                                                                          child: _EraserPreviewLayer(
+                                                                            layerId:
+                                                                                layer.id,
+                                                                            previewListenable:
+                                                                                eraserPreviewListenable,
+                                                                            brushScale:
+                                                                                isPhotoStretchMode ||
+                                                                                    isContentAwareMode ||
+                                                                                    isPhotoCloneMode ||
+                                                                                    isPhotoEraserMode ||
+                                                                                    isLayerMaskBrushMode
+                                                                                ? 1 /
+                                                                                      math.max(
+                                                                                        0.1,
+                                                                                        viewportScale,
+                                                                                      )
+                                                                                : 1,
+                                                                            child:
+                                                                                contentLayerChild,
                                                                           ),
                                                                         ),
                                                                       ),
@@ -5712,10 +5715,15 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
     double scaled(double value) => value * decorationScale;
     final sideHandleHitSize = scaled(44);
     final cornerHandleHitSize = scaled(48);
+    final rotateHandleHitSize = scaled(48);
     final stretchHandleHitSize = scaled(44);
     final sideHandleVisualSize = scaled(7.5);
     final cornerHandleVisualSize = scaled(13);
+    final rotateHandleVisualSize = scaled(13);
     final stretchHandleVisualSize = scaled(10);
+    final rotateHandleCenter = transformedPoint(
+      Offset(0, boxSize.height / 2 + scaled(30)),
+    );
     Widget cornerResizeHandle({required Offset center, required Color color}) {
       return Positioned(
         left: center.dx - (cornerHandleHitSize / 2),
@@ -5836,6 +5844,22 @@ class _LayerSelectionBoxOverlay extends StatelessWidget {
         cornerResizeHandle(
           center: topRight,
           color: topOverflow || rightOverflow ? overflowColor : validColor,
+        ),
+        Positioned(
+          left: rotateHandleCenter.dx - (rotateHandleHitSize / 2),
+          top: rotateHandleCenter.dy - (rotateHandleHitSize / 2),
+          child: _TextBoxHandle(
+            visualSize: rotateHandleVisualSize,
+            hitSize: rotateHandleHitSize,
+            decorationScale: decorationScale,
+            isRound: true,
+            color: topOverflow || rightOverflow ? overflowColor : validColor,
+            icon: Icons.rotate_right_rounded,
+            onPointerDown: onPointerDown,
+            onPanStart: onRotatePanStart,
+            onPanUpdate: onRotatePanUpdate,
+            onPanEnd: onPanEnd,
+          ),
         ),
       ],
     );
