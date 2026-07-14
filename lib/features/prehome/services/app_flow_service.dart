@@ -345,9 +345,10 @@ class AppFlowService {
       return AppRoutes.religion;
     }
     final PosterProfileData profile = await PosterProfileService.load();
-    return PosterProfileService.isSetupComplete(profile)
-        ? AppRoutes.home
-        : AppRoutes.profileSetup;
+    final bool canEnterHome =
+        PosterProfileService.isSetupComplete(profile) ||
+        await PosterProfileService.hasSkippedSetup();
+    return canEnterHome ? AppRoutes.home : AppRoutes.profileSetup;
   }
 
   static Future<String> resolvePostRegionEntryRoute() async {
@@ -368,6 +369,12 @@ class AppFlowService {
     final hasAuthenticatedUser =
         currentUser?.uid.trim().isNotEmpty == true ||
         (Firebase.apps.isEmpty && (cachedAuthUid?.trim().isNotEmpty ?? false));
+    if (hasAuthenticatedUser) {
+      return resolveAuthenticatedEntryRouteForStartup(
+        startupUidHint: currentUser?.uid ?? cachedAuthUid,
+        prefs: resolvedPrefs,
+      );
+    }
     final hasSelectedRegion = await AppRegionService.hasSelection(
       prefs: resolvedPrefs,
     );
@@ -416,12 +423,17 @@ class AppFlowService {
       fallbackUid: startupUidHint,
       prefs: prefs,
     );
-    if (PosterProfileService.isSetupComplete(localProfile)) {
+    final bool hasSkippedSetup = await PosterProfileService.hasSkippedSetup(
+      fallbackUid: startupUidHint,
+      prefs: prefs,
+    );
+    if (PosterProfileService.isSetupComplete(localProfile) || hasSkippedSetup) {
       return AppRoutes.home;
     }
 
     if (!allowRemoteProfileRefresh) {
-      return PosterProfileService.isSetupComplete(localProfile)
+      return PosterProfileService.isSetupComplete(localProfile) ||
+              hasSkippedSetup
           ? AppRoutes.home
           : AppRoutes.profileSetup;
     }
@@ -432,11 +444,12 @@ class AppFlowService {
             localProfile: localProfile,
           ).timeout(const Duration(seconds: 2), onTimeout: () => null);
       final PosterProfileData resolved = remoteProfile ?? localProfile;
-      return PosterProfileService.isSetupComplete(resolved)
+      return PosterProfileService.isSetupComplete(resolved) || hasSkippedSetup
           ? AppRoutes.home
           : AppRoutes.profileSetup;
     } catch (_) {
-      return PosterProfileService.isSetupComplete(localProfile)
+      return PosterProfileService.isSetupComplete(localProfile) ||
+              hasSkippedSetup
           ? AppRoutes.home
           : AppRoutes.profileSetup;
     }

@@ -76,7 +76,6 @@ class _PosterProfileDetailsScreenState
   bool _personalPhotoBusy = false;
   bool _businessLogoBusy = false;
   bool _pickerBusy = false;
-  bool _autoPlayedGuide = false;
   Future<void>? _backgroundRemoverInitialization;
   AppLanguageController? _languageController;
 
@@ -119,15 +118,6 @@ class _PosterProfileDetailsScreenState
     _languageController?.removeListener(_handleLanguageChanged);
     _languageController = controller;
     _languageController?.addListener(_handleLanguageChanged);
-    if (!_autoPlayedGuide && _isOnboardingFlow) {
-      _autoPlayedGuide = true;
-      unawaited(
-        _onboardingAudio.autoplayIfSupported(
-          language: context.currentLanguage,
-          cue: OnboardingAudioCue.profileSetup,
-        ),
-      );
-    }
   }
 
   void _handleLanguageChanged() {
@@ -1057,7 +1047,7 @@ class _PosterProfileDetailsScreenState
                       child: TextButton.icon(
                         onPressed: () {
                           unawaited(
-                            _onboardingAudio.replayIfSupported(
+                            _onboardingAudio.toggleIfSupported(
                               language: context.currentLanguage,
                               cue: OnboardingAudioCue.profileSetup,
                             ),

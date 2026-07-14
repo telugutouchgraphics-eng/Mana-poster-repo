@@ -30,27 +30,11 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
   final OnboardingAudioService _onboardingAudio = OnboardingAudioService();
   AppReligionPreference _selected = AppReligionPreference.all;
   bool _saving = false;
-  bool _autoPlayedGuide = false;
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadInitialSelection());
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_autoPlayedGuide) {
-      return;
-    }
-    _autoPlayedGuide = true;
-    unawaited(
-      _onboardingAudio.autoplayIfSupported(
-        language: context.currentLanguage,
-        cue: OnboardingAudioCue.religionSelection,
-      ),
-    );
   }
 
   @override
@@ -289,7 +273,7 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
                                     child: TextButton.icon(
                                       onPressed: () {
                                         unawaited(
-                                          _onboardingAudio.replayIfSupported(
+                                          _onboardingAudio.toggleIfSupported(
                                             language: context.currentLanguage,
                                             cue: OnboardingAudioCue
                                                 .religionSelection,

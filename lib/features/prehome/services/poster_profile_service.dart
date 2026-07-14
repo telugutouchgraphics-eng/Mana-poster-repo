@@ -47,6 +47,7 @@ class PosterProfileData {
     this.businessLogoStyleId = 'style_1',
     this.originalPhotoPath = '',
     this.originalPhotoUrl = '',
+    this.setupCompleted = false,
   });
 
   final String nameTelugu;
@@ -65,6 +66,7 @@ class PosterProfileData {
   final String businessLogoStyleId;
   final String originalPhotoPath;
   final String originalPhotoUrl;
+  final bool setupCompleted;
 
   String get displayName {
     final te = nameTelugu.trim();
@@ -119,6 +121,7 @@ class PosterProfileData {
     String? businessLogoStyleId,
     String? originalPhotoPath,
     String? originalPhotoUrl,
+    bool? setupCompleted,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
     final nextTelugu =
@@ -146,6 +149,7 @@ class PosterProfileData {
       businessLogoStyleId: businessLogoStyleId ?? this.businessLogoStyleId,
       originalPhotoPath: originalPhotoPath ?? this.originalPhotoPath,
       originalPhotoUrl: originalPhotoUrl ?? this.originalPhotoUrl,
+      setupCompleted: setupCompleted ?? this.setupCompleted,
     );
   }
 
@@ -208,7 +212,8 @@ class PosterProfileData {
             other.businessLogoUrl == businessLogoUrl &&
             other.businessLogoStyleId == businessLogoStyleId &&
             other.originalPhotoPath == originalPhotoPath &&
-            other.originalPhotoUrl == originalPhotoUrl;
+            other.originalPhotoUrl == originalPhotoUrl &&
+            other.setupCompleted == setupCompleted;
   }
 
   @override
@@ -229,6 +234,7 @@ class PosterProfileData {
     businessLogoStyleId,
     originalPhotoPath,
     originalPhotoUrl,
+    setupCompleted,
   );
 }
 
@@ -359,6 +365,8 @@ class PosterProfileService {
       'poster_profile_original_photo_path';
   static const String _originalPhotoUrlKey =
       'poster_profile_original_photo_url';
+  static const String _setupCompletedKey = 'poster_profile_setup_completed';
+  static const String _setupSkippedKey = 'poster_profile_setup_skipped';
   static const String _legacyMigrationPrefix = 'poster_profile_migrated_';
 
   static const List<PosterNameFontOption> nameFontOptions =
@@ -414,9 +422,16 @@ class PosterProfileService {
 
   static String get defaultName => _defaultName;
 
+  static User? _currentFirebaseUserOrNull() {
+    try {
+      return FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static bool isSetupComplete(PosterProfileData profile) {
-    return profile.nameTelugu.trim().isNotEmpty ||
-        profile.nameEnglish.trim().isNotEmpty ||
+    return (profile.setupCompleted && _hasMeaningfulPersonalName(profile)) ||
         profile.whatsappNumber.trim().isNotEmpty ||
         profile.photoPath.trim().isNotEmpty ||
         profile.photoUrl.trim().isNotEmpty ||
@@ -427,6 +442,37 @@ class PosterProfileService {
         profile.businessWhatsappNumber.trim().isNotEmpty ||
         profile.businessLogoPath.trim().isNotEmpty ||
         profile.businessLogoUrl.trim().isNotEmpty;
+  }
+
+  static Future<bool> hasSkippedSetup({
+    String? fallbackUid,
+    SharedPreferences? prefs,
+  }) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    return resolvedPrefs.getBool(
+          _scopedKey(_setupSkippedKey, fallbackUid: fallbackUid),
+        ) ??
+        false;
+  }
+
+  static Future<void> markSetupSkipped({SharedPreferences? prefs}) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    await resolvedPrefs.setBool(_scopedKey(_setupSkippedKey), true);
+  }
+
+  static bool _hasMeaningfulPersonalName(PosterProfileData profile) {
+    return _isMeaningfulProfileName(profile.nameTelugu) ||
+        _isMeaningfulProfileName(profile.nameEnglish);
+  }
+
+  static bool _isMeaningfulProfileName(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return false;
+    }
+    return normalized != _defaultName.toLowerCase() &&
+        normalized != 'mana poster ai user' &&
+        normalized != 'add photo';
   }
 
   static Future<PosterProfileData> load() async {
@@ -463,8 +509,18 @@ class PosterProfileService {
                 ) ??
                 '')
             .trim();
+    final hasPersistedName =
+        resolvedPrefs.containsKey(
+          _scopedKey(_nameTeluguKey, fallbackUid: fallbackUid),
+        ) ||
+        resolvedPrefs.containsKey(
+          _scopedKey(_nameEnglishKey, fallbackUid: fallbackUid),
+        ) ||
+        resolvedPrefs.containsKey(
+          _scopedKey(_nameKey, fallbackUid: fallbackUid),
+        );
     final firebaseDisplayName =
-        FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
+        _currentFirebaseUserOrNull()?.displayName?.trim() ?? '';
     final resolvedLegacyName = legacyName.isNotEmpty
         ? legacyName
         : (legacyTeluguName.isNotEmpty
@@ -560,6 +616,14 @@ class PosterProfileService {
                   ) ??
                   '')
               .trim(),
+      setupCompleted:
+          resolvedPrefs.getBool(
+            _scopedKey(_setupCompletedKey, fallbackUid: fallbackUid),
+          ) ??
+          (hasPersistedName &&
+              (_isMeaningfulProfileName(legacyTeluguName) ||
+                  _isMeaningfulProfileName(legacyEnglishName) ||
+                  _isMeaningfulProfileName(legacyName))),
     );
     return localProfile;
   }
@@ -567,7 +631,7 @@ class PosterProfileService {
   static Future<PosterProfileData?> refreshFromRemote({
     PosterProfileData? localProfile,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return localProfile;
     }
@@ -772,12 +836,14 @@ class PosterProfileService {
   }
 
   static Future<void> save(PosterProfileData data) async {
-    await _saveLocal(data);
-    final user = FirebaseAuth.instance.currentUser;
+    final completedData = data.copyWith(setupCompleted: true);
+    await _saveLocal(completedData);
+    await _clearSetupSkipped();
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return;
     }
-    unawaited(_saveRemoteProfile(user.uid, data));
+    unawaited(_saveRemoteProfile(user.uid, completedData));
   }
 
   static Future<void> _saveRemoteProfile(
@@ -806,6 +872,7 @@ class PosterProfileService {
             'businessWhatsappNumber': data.businessWhatsappNumber.trim(),
             'businessLogoUrl': data.businessLogoUrl.trim(),
             'businessLogoStyleId': data.businessLogoStyleId.trim(),
+            'setupCompleted': data.setupCompleted,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     } catch (error, stackTrace) {
@@ -862,7 +929,7 @@ class PosterProfileService {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return;
     }
@@ -981,7 +1048,7 @@ class PosterProfileService {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return;
     }
@@ -1015,7 +1082,7 @@ class PosterProfileService {
     required String extension,
     bool isOriginal = false,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return '';
     }
@@ -1038,7 +1105,7 @@ class PosterProfileService {
     required File file,
     required String extension,
   }) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return '';
     }
@@ -1101,6 +1168,7 @@ class PosterProfileService {
           ? 'style_1'
           : data.businessLogoStyleId.trim(),
     );
+    await prefs.setBool(_scopedKey(_setupCompletedKey), data.setupCompleted);
     if (data.photoPath.trim().isEmpty) {
       await prefs.remove(_scopedKey(_photoPathKey));
     } else {
@@ -1145,8 +1213,13 @@ class PosterProfileService {
     }
   }
 
+  static Future<void> _clearSetupSkipped() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_scopedKey(_setupSkippedKey));
+  }
+
   static Future<void> clearLocalCacheForCurrentUser() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = _currentFirebaseUserOrNull()?.uid;
     if (uid == null || uid.trim().isEmpty) {
       return;
     }
@@ -1176,6 +1249,8 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _setupCompletedKey,
+      _setupSkippedKey,
     ];
     for (final key in keys) {
       await prefs.remove('${key}_$trimmedUid');
@@ -1184,7 +1259,7 @@ class PosterProfileService {
   }
 
   static String _scopedKey(String baseKey, {String? fallbackUid}) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? fallbackUid;
+    final uid = _currentFirebaseUserOrNull()?.uid ?? fallbackUid;
     if (uid == null || uid.trim().isEmpty) {
       return baseKey;
     }
@@ -1195,7 +1270,7 @@ class PosterProfileService {
     SharedPreferences prefs, {
     String? fallbackUid,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? fallbackUid;
+    final uid = _currentFirebaseUserOrNull()?.uid ?? fallbackUid;
     if (uid == null || uid.trim().isEmpty) {
       return;
     }
@@ -1220,6 +1295,8 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _setupCompletedKey,
+      _setupSkippedKey,
     ];
     for (final key in keys) {
       final scopedKey = '${key}_$uid';
@@ -1229,6 +1306,8 @@ class PosterProfileService {
       final value = prefs.get(key);
       if (value is String) {
         await prefs.setString(scopedKey, value);
+      } else if (value is bool) {
+        await prefs.setBool(scopedKey, value);
       }
     }
     await prefs.setBool(markerKey, true);
@@ -1264,6 +1343,11 @@ class PosterProfileService {
           .trim(),
       originalPhotoPath: '',
       originalPhotoUrl: (data['originalPhotoUrl'] as String? ?? '').trim(),
+      setupCompleted:
+          data['setupCompleted'] == true ||
+          _isMeaningfulProfileName(remoteNameTelugu) ||
+          _isMeaningfulProfileName(remoteNameEnglish) ||
+          _isMeaningfulProfileName(remoteName),
     );
   }
 

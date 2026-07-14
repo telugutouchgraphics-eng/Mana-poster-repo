@@ -57,8 +57,8 @@ object ManaPosterNotificationRenderer {
         val deviceProfile = loadDeviceProfile(context)
         val payloadUserName = data["userName"].orEmpty().trim()
         val payloadUserPhotoUrl = data["userPhoto"].orEmpty().trim()
-        val resolvedUserName = deviceProfile.resolvedName.ifBlank { payloadUserName }
-        val resolvedUserPhotoUrl = deviceProfile.resolvedPhotoUrl.ifBlank { payloadUserPhotoUrl }
+        val resolvedUserName = payloadUserName.ifBlank { deviceProfile.resolvedName }
+        val resolvedUserPhotoUrl = payloadUserPhotoUrl.ifBlank { deviceProfile.resolvedPhotoUrl }
         val effectiveLanguageCode = data["languageCode"].orEmpty().trim().ifBlank { deviceProfile.languageCode }
         val localizedCopy = localizedReminderCopy(categoryKey, resolvedUserName, effectiveLanguageCode)
         val title = sanitizeNotificationText(data["title"].orEmpty().trim(), localizedCopy.title).ifEmpty { appName }

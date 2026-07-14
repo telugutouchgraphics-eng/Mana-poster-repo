@@ -42,7 +42,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _loadingEmail = false;
   bool _loadingReset = false;
   bool _showPassword = false;
-  bool _autoPlayedGuide = false;
 
   bool get _isBusy =>
       _authBootstrapping || _loadingGoogle || _loadingEmail || _loadingReset;
@@ -62,21 +61,6 @@ class _LoginScreenState extends State<LoginScreen>
     _passwordController.dispose();
     unawaited(_onboardingAudio.dispose());
     super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_autoPlayedGuide) {
-      return;
-    }
-    _autoPlayedGuide = true;
-    unawaited(
-      _onboardingAudio.autoplayIfSupported(
-        language: context.currentLanguage,
-        cue: OnboardingAudioCue.login,
-      ),
-    );
   }
 
   @override
@@ -518,7 +502,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: TextButton.icon(
                                     onPressed: () {
                                       unawaited(
-                                        _onboardingAudio.replayIfSupported(
+                                        _onboardingAudio.toggleIfSupported(
                                           language: context.currentLanguage,
                                           cue: OnboardingAudioCue.login,
                                         ),
