@@ -49,7 +49,10 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
     setState(() => _savingRegionId = region.id);
     final saved = await AppRegionService.persistSelection(region);
     final languageSaved = saved
-        ? await AppFlowService.persistLanguageSelection(region.appLanguage)
+        ? await AppFlowService.persistLanguageSelection(
+            region.appLanguage,
+            userInitiated: false,
+          )
         : false;
     if (!mounted) {
       return;
@@ -63,7 +66,11 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
       );
       return;
     }
-    context.languageController.setLanguage(region.appLanguage);
+    final snapshot = await AppFlowService.loadSnapshot();
+    if (!mounted) {
+      return;
+    }
+    context.languageController.setLanguage(snapshot.language);
     unawaited(NotificationService.instance.syncCurrentPreferences());
     if (widget.returnToPreviousOnSave) {
       Navigator.of(context).pop(true);

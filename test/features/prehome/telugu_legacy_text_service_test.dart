@@ -110,6 +110,46 @@ void main() {
     }
   });
 
+  test('preserves legacy ASCII symbol glyph codes exactly', () {
+    const source = '" \' & + ; = | - . , : ! ? ()[]{}';
+    const expected = <int>[
+      0xF022,
+      0xF020,
+      0xF0BB,
+      0xF020,
+      0xF0CA,
+      0xF020,
+      0xF047,
+      0xF020,
+      0xF0D1,
+      0xF020,
+      0xF052,
+      0xF020,
+      0xF0F6,
+      0xF020,
+      0xF060,
+      0xF020,
+      0xF02E,
+      0xF020,
+      0xF02C,
+      0xF020,
+      0xF03A,
+      0xF020,
+      0xF021,
+      0xF020,
+      0xF03F,
+      0xF020,
+      0xF028,
+      0xF029,
+      0xF05B,
+      0xF05D,
+      0xF07B,
+      0xF07D,
+    ];
+
+    expect(TeluguLegacyOfflineConverter.convert(source).runes, expected);
+  });
+
   test('repairs split ksha input before legacy conversion', () {
     final legacy = TeluguLegacyTextService.convertSync(
       String.fromCharCodes(const <int>[

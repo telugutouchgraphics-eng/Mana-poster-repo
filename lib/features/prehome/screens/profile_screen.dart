@@ -323,7 +323,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       return;
     }
 
-    context.languageController.setLanguage(selection.appLanguage);
+    final snapshot = await AppFlowService.loadSnapshot();
+    if (!mounted) {
+      return;
+    }
+    context.languageController.setLanguage(snapshot.language);
     setState(() => _selectedRegionName = selection.name);
     await AppPartyPreferenceService.persistSelection(<String>{});
     if (!mounted) {

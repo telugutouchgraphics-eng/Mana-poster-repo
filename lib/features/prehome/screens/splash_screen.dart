@@ -73,6 +73,10 @@ class _SplashScreenState extends State<SplashScreen>
         startupPrefs = await SharedPreferences.getInstance();
       } catch (_) {}
       final snapshot = await AppFlowService.loadSnapshot(prefs: startupPrefs);
+      if (!mounted) {
+        return;
+      }
+      context.languageController.setLanguage(snapshot.language);
       _startupLog(
         'snapshot languageSelected=${snapshot.languageSelected}'
         ' permissionsHandled=${snapshot.permissionsStepHandled}'

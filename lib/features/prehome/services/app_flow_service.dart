@@ -64,6 +64,8 @@ class AppFlowService {
 
   static const String _selectedLanguageKey = 'selected_language';
   static const String _languageSelectedKey = 'language_selected';
+  static const String _manualLanguageSelectedKey =
+      'manual_language_selected_v1';
   static const String _permissionsHandledKey = 'permissions_step_handled';
   static const String _initialSetupCompletedKey = 'initial_setup_completed';
   static const String _lastKnownAuthUidKey = 'last_known_auth_uid_v1';
@@ -104,20 +106,36 @@ class AppFlowService {
     final String prefsLanguage = prefs.getString(_selectedLanguageKey) ?? '';
     final bool prefsLanguageSelected =
         prefs.getBool(_languageSelectedKey) ?? false;
+    final bool manualLanguageSelected =
+        prefs.getBool(_manualLanguageSelectedKey) ?? false;
     final String fileLanguage =
         (fileState[_selectedLanguageKey] as String? ?? '').trim();
     final bool fileLanguageSelected = fileState[_languageSelectedKey] == true;
+    final bool fileManualLanguageSelected =
+        fileState[_manualLanguageSelectedKey] == true;
     final String nativeLanguage =
         (nativeState[_selectedLanguageKey] as String? ?? '').trim();
     final bool nativeLanguageSelected =
         nativeState[_languageSelectedKey] == true;
-    final String resolvedLanguageRaw = prefsLanguage.isNotEmpty
+    final bool nativeManualLanguageSelected =
+        nativeState[_manualLanguageSelectedKey] == true;
+    final bool hasManualLanguageSelection =
+        manualLanguageSelected ||
+        nativeManualLanguageSelected ||
+        fileManualLanguageSelected;
+    final String manualLanguageRaw = prefsLanguage.isNotEmpty
         ? prefsLanguage
-        : (nativeLanguage.isNotEmpty
-              ? nativeLanguage
-              : (fileLanguage.isNotEmpty
-                    ? fileLanguage
-                    : (selectedRegion?.appLanguage.name ?? '')));
+        : (nativeLanguage.isNotEmpty ? nativeLanguage : fileLanguage);
+    final String resolvedLanguageRaw =
+        hasManualLanguageSelection && manualLanguageRaw.isNotEmpty
+        ? manualLanguageRaw
+        : (selectedRegion?.appLanguage.name.isNotEmpty == true
+              ? selectedRegion!.appLanguage.name
+              : (prefsLanguage.isNotEmpty
+                    ? prefsLanguage
+                    : (nativeLanguage.isNotEmpty
+                          ? nativeLanguage
+                          : (fileLanguage.isNotEmpty ? fileLanguage : ''))));
     final bool languageSelected =
         prefsLanguageSelected ||
         nativeLanguageSelected ||
@@ -204,9 +222,17 @@ class AppFlowService {
     }
   }
 
-  static Future<bool> persistLanguageSelection(AppLanguage language) async {
+  static Future<bool> persistLanguageSelection(
+    AppLanguage language, {
+    bool userInitiated = true,
+  }) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final bool hasExistingManualLanguageSelection =
+          !userInitiated && await _hasManualLanguageSelection(prefs: prefs);
+      if (hasExistingManualLanguageSelection) {
+        return true;
+      }
       await _secureStorage.write(
         key: _selectedLanguageKey,
         value: language.name,
@@ -222,6 +248,19 @@ class AppFlowService {
       });
       await prefs.setString(_selectedLanguageKey, language.name);
       await prefs.setBool(_languageSelectedKey, true);
+      if (userInitiated) {
+        await _secureStorage.write(
+          key: _manualLanguageSelectedKey,
+          value: 'true',
+        );
+        await NativeStartupStateStore.writeEntries(<String, Object?>{
+          _manualLanguageSelectedKey: true,
+        });
+        await _writeStartupStateFile(<String, Object?>{
+          _manualLanguageSelectedKey: true,
+        });
+        await prefs.setBool(_manualLanguageSelectedKey, true);
+      }
       final secureLanguage = await _secureStorage.read(
         key: _selectedLanguageKey,
       );
@@ -243,6 +282,32 @@ class AppFlowService {
       );
       unawaited(_syncLanguageToRemote(language));
       return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> _hasManualLanguageSelection({
+    required SharedPreferences prefs,
+  }) async {
+    if (prefs.getBool(_manualLanguageSelectedKey) ?? false) {
+      return true;
+    }
+    try {
+      if (await _secureStorage.read(key: _manualLanguageSelectedKey) ==
+          'true') {
+        return true;
+      }
+    } catch (_) {}
+    try {
+      final nativeState = await NativeStartupStateStore.readAll();
+      if (nativeState[_manualLanguageSelectedKey] == true) {
+        return true;
+      }
+    } catch (_) {}
+    try {
+      final fileState = await _readStartupStateFile();
+      return fileState[_manualLanguageSelectedKey] == true;
     } catch (_) {
       return false;
     }
@@ -527,6 +592,19 @@ class AppFlowService {
     final String prefsLanguage = prefs.getString(_selectedLanguageKey) ?? '';
     final bool prefsLanguageSelected =
         prefs.getBool(_languageSelectedKey) ?? false;
+    final bool manualLanguageSelected =
+        prefs.getBool(_manualLanguageSelectedKey) ?? false;
+    final bool secureManualLanguageSelected =
+        await _secureStorage.read(key: _manualLanguageSelectedKey) == 'true';
+    final bool fileManualLanguageSelected =
+        resolvedFileState[_manualLanguageSelectedKey] == true;
+    final bool nativeManualLanguageSelected =
+        resolvedNativeState[_manualLanguageSelectedKey] == true;
+    final bool hasManualLanguageSelection =
+        manualLanguageSelected ||
+        secureManualLanguageSelected ||
+        fileManualLanguageSelected ||
+        nativeManualLanguageSelected;
     final bool secureFlag = secureLanguageSelected == 'true';
     final String fileLanguage =
         (resolvedFileState[_selectedLanguageKey] as String? ?? '').trim();
@@ -536,15 +614,25 @@ class AppFlowService {
         (resolvedNativeState[_selectedLanguageKey] as String? ?? '').trim();
     final bool nativeLanguageSelected =
         resolvedNativeState[_languageSelectedKey] == true;
-    final String resolvedLanguageRaw = prefsLanguage.isNotEmpty
+    final String manualLanguageRaw = prefsLanguage.isNotEmpty
         ? prefsLanguage
         : (nativeLanguage.isNotEmpty
               ? nativeLanguage
               : (fileLanguage.isNotEmpty
                     ? fileLanguage
-                    : (secureLanguage ??
-                          selectedRegion?.appLanguage.name ??
-                          '')));
+                    : (secureLanguage ?? '')));
+    final String resolvedLanguageRaw =
+        hasManualLanguageSelection && manualLanguageRaw.isNotEmpty
+        ? manualLanguageRaw
+        : (selectedRegion?.appLanguage.name.isNotEmpty == true
+              ? selectedRegion!.appLanguage.name
+              : (prefsLanguage.isNotEmpty
+                    ? prefsLanguage
+                    : (nativeLanguage.isNotEmpty
+                          ? nativeLanguage
+                          : (fileLanguage.isNotEmpty
+                                ? fileLanguage
+                                : (secureLanguage ?? '')))));
     final bool languageSelected =
         prefsLanguageSelected ||
         nativeLanguageSelected ||
@@ -568,18 +656,31 @@ class AppFlowService {
     if (languageSelected && !secureFlag) {
       await _secureStorage.write(key: _languageSelectedKey, value: 'true');
     }
+    if (hasManualLanguageSelection && !manualLanguageSelected) {
+      await prefs.setBool(_manualLanguageSelectedKey, true);
+    }
+    if (hasManualLanguageSelection && !secureManualLanguageSelected) {
+      await _secureStorage.write(
+        key: _manualLanguageSelectedKey,
+        value: 'true',
+      );
+    }
     if (nativeLanguage != language.name ||
-        nativeLanguageSelected != languageSelected) {
+        nativeLanguageSelected != languageSelected ||
+        nativeManualLanguageSelected != hasManualLanguageSelection) {
       await NativeStartupStateStore.writeEntries(<String, Object?>{
         _selectedLanguageKey: language.name,
         _languageSelectedKey: languageSelected,
+        _manualLanguageSelectedKey: hasManualLanguageSelection,
       });
     }
     if (fileLanguage != language.name ||
-        fileLanguageSelected != languageSelected) {
+        fileLanguageSelected != languageSelected ||
+        fileManualLanguageSelected != hasManualLanguageSelection) {
       await _writeStartupStateFile(<String, Object?>{
         _selectedLanguageKey: language.name,
         _languageSelectedKey: languageSelected,
+        _manualLanguageSelectedKey: hasManualLanguageSelection,
       });
     }
 

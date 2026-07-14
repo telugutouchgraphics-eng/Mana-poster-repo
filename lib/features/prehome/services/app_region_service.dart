@@ -15,6 +15,8 @@ class AppRegionService {
 
   static const String _selectedLanguageKey = 'selected_language';
   static const String _languageSelectedKey = 'language_selected';
+  static const String _manualLanguageSelectedKey =
+      'manual_language_selected_v1';
   static const String selectedRegionKey = 'selected_region_v1';
   static const String selectedRegionLanguageKey = 'selected_region_language_v1';
   static const String selectedRegionLanguageCodeKey =
@@ -95,19 +97,24 @@ class AppRegionService {
     AppRegion region,
     SharedPreferences prefs,
   ) async {
-    await prefs.setString(_selectedLanguageKey, region.appLanguage.name);
-    await prefs.setBool(_languageSelectedKey, true);
+    final bool hasManualLanguageSelection = await _hasManualLanguageSelection(
+      prefs,
+    );
+    if (!hasManualLanguageSelection) {
+      await prefs.setString(_selectedLanguageKey, region.appLanguage.name);
+      await prefs.setBool(_languageSelectedKey, true);
+      await _secureStorage.write(
+        key: _selectedLanguageKey,
+        value: region.appLanguage.name,
+      );
+      await _secureStorage.write(key: _languageSelectedKey, value: 'true');
+    }
     await prefs.setString(selectedRegionKey, region.id);
     await prefs.setString(selectedRegionLanguageKey, region.primaryLanguage);
     await prefs.setString(
       selectedRegionLanguageCodeKey,
       region.primaryLanguageCode,
     );
-    await _secureStorage.write(
-      key: _selectedLanguageKey,
-      value: region.appLanguage.name,
-    );
-    await _secureStorage.write(key: _languageSelectedKey, value: 'true');
     await _secureStorage.write(key: selectedRegionKey, value: region.id);
     await _secureStorage.write(
       key: selectedRegionLanguageKey,
@@ -118,8 +125,10 @@ class AppRegionService {
       value: region.primaryLanguageCode,
     );
     await NativeStartupStateStore.writeEntries(<String, Object?>{
-      _selectedLanguageKey: region.appLanguage.name,
-      _languageSelectedKey: true,
+      if (!hasManualLanguageSelection) ...<String, Object?>{
+        _selectedLanguageKey: region.appLanguage.name,
+        _languageSelectedKey: true,
+      },
       selectedRegionKey: region.id,
       selectedRegionLanguageKey: region.primaryLanguage,
       selectedRegionLanguageCodeKey: region.primaryLanguageCode,
@@ -143,6 +152,26 @@ class AppRegionService {
     }
   }
 
+  static Future<bool> _hasManualLanguageSelection(
+    SharedPreferences prefs,
+  ) async {
+    if (prefs.getBool(_manualLanguageSelectedKey) ?? false) {
+      return true;
+    }
+    try {
+      if (await _secureStorage.read(key: _manualLanguageSelectedKey) ==
+          'true') {
+        return true;
+      }
+    } catch (_) {}
+    try {
+      final nativeState = await NativeStartupStateStore.readAll();
+      return nativeState[_manualLanguageSelectedKey] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> _syncToRemote(AppRegion region) async {
     if (Firebase.apps.isEmpty) {
       return;
@@ -153,6 +182,9 @@ class AppRegionService {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
+      final hasManualLanguageSelection = await _hasManualLanguageSelection(
+        prefs,
+      );
       final syncValue =
           '${user.uid}:${region.id}:${region.primaryLanguageCode}';
       if (prefs.getString(_lastRemoteSyncKey) == syncValue) {
@@ -166,7 +198,8 @@ class AppRegionService {
             'selectedRegionName': region.name,
             'selectedRegionLanguage': region.primaryLanguage,
             'selectedRegionLanguageCode': region.primaryLanguageCode,
-            'preferredLanguage': region.appLanguage.name,
+            if (!hasManualLanguageSelection)
+              'preferredLanguage': region.appLanguage.name,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true))
           .timeout(const Duration(seconds: 4));
