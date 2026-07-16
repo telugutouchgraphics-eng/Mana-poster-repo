@@ -191,7 +191,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
               _PermissionTile(
                 icon: Icons.photo_camera_outlined,
                 title: context.strings.localized(
-                  telugu: 'కెమెరా',
+                  telugu: 'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾',
                   english: 'Camera',
                 ),
                 statusLabel: copy.statusLabel(_snapshot.camera),
@@ -213,7 +213,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
               _PermissionTile(
                 icon: Icons.location_on_outlined,
                 title: context.strings.localized(
-                  telugu: 'లొకేషన్',
+                  telugu: 'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â',
                   english: 'Location',
                 ),
                 statusLabel: copy.statusLabel(_snapshot.location),
@@ -304,129 +304,118 @@ class _PermissionCopy {
 
   final AppLanguage language;
 
-  String get settingsTitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'అనుమతులు',
-    SupportedUiLanguage.hindi => 'अनुमतियां',
-    SupportedUiLanguage.english => 'Permissions',
-    SupportedUiLanguage.tamil => 'அனுமதிகள்',
-    SupportedUiLanguage.kannada => 'ಅನುಮತಿಗಳು',
-    SupportedUiLanguage.malayalam => 'അനുമതികൾ',
-  };
+  String get settingsTitle =>
+      _localized(telugu: 'à°…à°¨à±à°®à°¤à±à°²à±', english: 'Permissions');
 
-  String get openSettingsLabel => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరువు',
-    SupportedUiLanguage.hindi => 'ऐप सेटिंग्स खोलें',
-    SupportedUiLanguage.english => 'Open App Settings',
-    SupportedUiLanguage.tamil => 'ஆப் அமைப்புகளை திற',
-    SupportedUiLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಿರಿ',
-    SupportedUiLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറക്കുക',
-  };
+  String get openSettingsLabel => _localized(
+    telugu:
+        'à°¯à°¾à°ªà± à°¸à±†à°Ÿà±à°Ÿà°¿à°‚à°—à±à°¸à± à°¤à±†à°°à°µà°‚à°¡à°¿',
+    english: 'Open App Settings',
+  );
 
-  String get fallbackInfo => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      'స్టేటస్ రిఫ్రెష్ కాలేదు. కిందికి లాగి మళ్లీ ప్రయత్నించండి.',
-    SupportedUiLanguage.hindi =>
-      'स्टेटस रीफ्रेश नहीं हुआ। नीचे खींचकर फिर कोशिश करें।',
-    SupportedUiLanguage.english =>
-      'Could not refresh status. Pull down to retry.',
-    SupportedUiLanguage.tamil =>
-      'நிலை புதுப்பிக்கப்படவில்லை. கீழே இழுத்து மீண்டும் முயற்சிக்கவும்.',
-    SupportedUiLanguage.kannada =>
-      'ಸ್ಥಿತಿ ನವೀಕರಿಸಲಿಲ್ಲ. ಕೆಳಗೆ ಎಳೆದು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-    SupportedUiLanguage.malayalam =>
-      'സ്ഥിതി പുതുക്കാനായില്ല. താഴേക്ക് വലിച്ച് വീണ്ടും ശ്രമിക്കുക.',
-  };
+  String get fallbackInfo => _localized(
+    telugu: 'స్టేటస్ రిఫ్రెష్ కాలేదు. కిందికి లాగి మళ్లీ ప్రయత్నించండి.',
+    english: 'Could not refresh status. Pull down to retry.',
+  );
 
-  String get settingsOpened => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'యాప్ సెట్టింగ్స్ తెరుచుకున్నాయి.',
-    SupportedUiLanguage.hindi => 'ऐप सेटिंग्स खुल गई हैं।',
-    SupportedUiLanguage.english => 'App settings opened.',
-    SupportedUiLanguage.tamil => 'ஆப் அமைப்புகள் திறக்கப்பட்டன.',
-    SupportedUiLanguage.kannada => 'ಆಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಿದೆ.',
-    SupportedUiLanguage.malayalam => 'ആപ്പ് ക്രമീകരണങ്ങൾ തുറന്നു.',
-  };
+  String get settingsOpened => _localized(
+    telugu: 'యాప్ సెట్టింగ్స్ తెరుచుకున్నాయి.',
+    english: 'App settings opened.',
+  );
 
-  String get settingsOpenFailed => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      'సెట్టింగ్స్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
-    SupportedUiLanguage.hindi => 'सेटिंग्स नहीं खुलीं। फिर कोशिश करें।',
-    SupportedUiLanguage.english => 'Could not open settings. Please try again.',
-    SupportedUiLanguage.tamil =>
-      'அமைப்புகளை திறக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
-    SupportedUiLanguage.kannada =>
-      'ಸೆಟ್ಟಿಂಗ್ಸ್ ತೆರೆಯಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-    SupportedUiLanguage.malayalam =>
-      'ക്രമീകരണങ്ങൾ തുറക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
-  };
+  String get settingsOpenFailed => _localized(
+    telugu: 'సెట్టింగ్స్ తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+    english: 'Could not open settings. Please try again.',
+  );
 
   String permissionGranted(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu: 'ఫోటోలు అనుమతి ఇచ్చారు.',
+      telugu:
+          'Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
       english: 'Photos access granted.',
     ),
     AppPermissionType.camera => _localized(
-      telugu: 'కెమెరా అనుమతి ఇచ్చారు.',
+      telugu:
+          'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
       english: 'Camera access granted.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu: 'నోటిఫికేషన్ అనుమతి ఇచ్చారు.',
+      telugu:
+          'Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
       english: 'Notifications access granted.',
     ),
     AppPermissionType.location => _localized(
-      telugu: 'లొకేషన్ అనుమతి ఇచ్చారు.',
+      telugu:
+          'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
       english: 'Location access granted.',
     ),
   };
 
   String permissionDenied(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu: 'ఫోటోలు అనుమతి ఆఫ్‌లో ఉంది.',
+      telugu:
+          'Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
       english: 'Photos access is off.',
     ),
     AppPermissionType.camera => _localized(
-      telugu: 'కెమెరా అనుమతి ఆఫ్‌లో ఉంది.',
+      telugu:
+          'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
       english: 'Camera access is off.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu: 'నోటిఫికేషన్లు ఆఫ్‌లో ఉన్నాయి.',
+      telugu:
+          'Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±ÂÃ Â°Â²Ã Â±Â Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¾Ã Â°Â¯Ã Â°Â¿.',
       english: 'Notifications are off.',
     ),
     AppPermissionType.location => _localized(
-      telugu: 'లొకేషన్ అనుమతి ఆఫ్‌లో ఉంది.',
+      telugu:
+          'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
       english: 'Location access is off.',
     ),
   };
 
   String permissionNeedsSettings(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu: 'సెట్టింగ్స్‌లో ఫోటోలు అనుమతించండి.',
+      telugu:
+          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
       english: 'Allow photos from settings.',
     ),
     AppPermissionType.camera => _localized(
-      telugu: 'సెట్టింగ్స్‌లో కెమెరా అనుమతించండి.',
+      telugu:
+          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
       english: 'Allow camera from settings.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu: 'సెట్టింగ్స్‌లో నోటిఫికేషన్లు అనుమతించండి.',
+      telugu:
+          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±ÂÃ Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
       english: 'Allow notifications from settings.',
     ),
     AppPermissionType.location => _localized(
-      telugu: 'సెట్టింగ్స్‌లో లొకేషన్ అనుమతించండి.',
+      telugu:
+          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
       english: 'Allow location from settings.',
     ),
   };
 
   String statusLabel(AppPermissionState state) {
     if (state.isGranted) {
-      return _localized(telugu: 'అనుమతించారు', english: 'Allowed');
+      return _localized(
+        telugu:
+            'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â',
+        english: 'Allowed',
+      );
     }
     if (state.needsSettings) {
       return _localized(
-        telugu: 'సెట్టింగ్స్‌లో అనుమతించండి',
+        telugu:
+            'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
         english: 'Allow from Settings',
       );
     }
-    return _localized(telugu: 'అనుమతి లేదు', english: 'Not allowed');
+    return _localized(
+      telugu: 'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â',
+      english: 'Not allowed',
+    );
   }
 
   Color statusColor(AppPermissionState state) {
@@ -441,20 +430,16 @@ class _PermissionCopy {
 
   String actionLabel(AppPermissionState state) {
     if (state.needsSettings || state.isGranted) {
-      return _localized(telugu: 'చూడు', english: 'Check');
+      return _localized(telugu: 'Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â±Â', english: 'Check');
     }
-    return _localized(telugu: 'అనుమతించు', english: 'Allow');
+    return _localized(
+      telugu: 'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â±Â',
+      english: 'Allow',
+    );
   }
 
   String _localized({required String telugu, required String english}) =>
-      switch (language.supportedUiLanguage) {
-        SupportedUiLanguage.telugu => telugu,
-        SupportedUiLanguage.hindi => english,
-        SupportedUiLanguage.english => english,
-        SupportedUiLanguage.tamil => english,
-        SupportedUiLanguage.kannada => english,
-        SupportedUiLanguage.malayalam => english,
-      };
+      AppStrings(language).localized(telugu: telugu, english: english);
 }
 
 _PermissionCopy _copy(BuildContext context) =>

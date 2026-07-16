@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'dart:developer' as developer;
 
@@ -170,10 +170,22 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       );
     }
 
+    final staticLabels = AppStrings(language).localizedHomeCategories();
+    final staticLabelById = <String, String>{};
+    for (var index = 0;
+        index < HomeCategoryCatalog.all.length && index < staticLabels.length;
+        index += 1) {
+      staticLabelById[_normalizeCategoryId(HomeCategoryCatalog.all[index].id)] =
+          staticLabels[index];
+    }
     for (final entry in _uploadableCategories) {
+      // HomeCategoryCatalog keeps canonical English labels for IDs/search.
+      // UI must use the selected app language.
+      final localizedLabel =
+          staticLabelById[_normalizeCategoryId(entry.id)] ?? entry.label;
       addOption(
         entry.id,
-        CategoryDisplayHelper.withIcon(entry.id, entry.label),
+        CategoryDisplayHelper.withIcon(entry.id, localizedLabel),
       );
     }
     for (final item in _dynamicCategoryService.categoriesForDate(
@@ -207,14 +219,11 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
     final formatted = UserPosterUploadsService.formatIstDateLabelFromMillis(
       date.millisecondsSinceEpoch,
     );
-    return switch (language.supportedUiLanguage) {
-      SupportedUiLanguage.telugu => 'ఈవెంట్ డేట్: $formatted',
-      SupportedUiLanguage.hindi => 'इवेंट डेट: $formatted',
-      SupportedUiLanguage.english ||
-      SupportedUiLanguage.tamil ||
-      SupportedUiLanguage.kannada ||
-      SupportedUiLanguage.malayalam => 'Event date: $formatted',
-    };
+    return AppStrings(language).localized(
+      telugu: 'ఈవెంట్ డేట్: $formatted',
+      english: 'Event date: $formatted',
+      hindi: 'इवेंट डेट: $formatted',
+    );
   }
 
   Future<void> _openCategorySelectionScreen(
@@ -333,7 +342,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'ఇది మీ My Uploads లిస్ట్ నుండి మాత్రమే తొలగుతుంది. ఇతర users కి ఇది delete కాదు.',
+                  'ఇది మీ అప్‌లోడ్‌ల జాబితా నుండి మాత్రమే తొలగుతుంది. ఇతర వినియోగదారుల కోసం ఇది తొలగించబడదు.',
               english:
                   'This will be removed only from your My Uploads list. It will not be deleted for other users.',
             ),
@@ -348,7 +357,10 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(
-                strings.localized(telugu: 'డిలీట్', english: 'Delete'),
+                strings.localized(
+                  telugu: 'డిలీట్',
+                  english: 'Delete',
+                ),
               ),
             ),
           ],
@@ -373,7 +385,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       AppSnackBar.build(
         content: Text(
           strings.localized(
-            telugu: 'ఈ ఐటమ్ మీ లిస్ట్ నుంచి తొలగించబడింది',
+            telugu:
+                'ఈ ఐటమ్ మీ లిస్ట్ నుంచి తొలగించబడింది',
             english: 'This item was removed from your list',
           ),
         ),
@@ -395,7 +408,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'అప్‌లోడ్ మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
+              telugu:
+                  'అప్‌లోడ్ మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
               english: 'Upload is supported on mobile app only',
             ),
           ),
@@ -413,7 +427,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'ఇమేజ్ సైజ్ 500KB లేదా దానికంటే తక్కువ ఉండాలి',
+              telugu:
+                  'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
               english: 'Image size must be 500KB or less',
             ),
           ),
@@ -439,7 +454,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'దయచేసి ఇమేజ్ లేదా quote ఇవ్వండి',
+              telugu:
+                  'దయచేసి చిత్రం ఎంచుకోండి లేదా సూక్తి రాయండి',
               english: 'Please select an image or write a quote',
             ),
           ),
@@ -476,7 +492,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'అప్‌లోడ్ రివ్యూ కోసం పంపబడింది',
+              telugu:
+                  'అప్‌లోడ్ రివ్యూ కోసం పంపబడింది',
               english: 'Upload submitted for review',
             ),
           ),
@@ -494,12 +511,21 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   String _statusLabel(UserPosterUpload upload) {
     final strings = context.strings;
     if (upload.isApproved) {
-      return strings.localized(telugu: 'ఆమోదించబడింది', english: 'Approved');
+      return strings.localized(
+        telugu: 'ఆమోదించబడింది',
+        english: 'Approved',
+      );
     }
     if (upload.isRejected) {
-      return strings.localized(telugu: 'తిరస్కరించబడింది', english: 'Rejected');
+      return strings.localized(
+        telugu: 'తిరస్కరించబడింది',
+        english: 'Rejected',
+      );
     }
-    return strings.localized(telugu: 'పెండింగ్', english: 'Pending');
+    return strings.localized(
+      telugu: 'పెండింగ్',
+      english: 'Pending',
+    );
   }
 
   Color _statusColor(UserPosterUpload upload) {
@@ -529,22 +555,25 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         );
       case UserPosterUploadSubmitCode.contentRequired:
         return strings.localized(
-          telugu: 'ఇమేజ్ లేదా quote అవసరం',
+          telugu: 'చిత్రం లేదా సూక్తి అవసరం',
           english: 'Image or quote is required',
         );
       case UserPosterUploadSubmitCode.imageTooLarge:
         return strings.localized(
-          telugu: 'ఇమేజ్ సైజ్ 500KB లేదా దానికంటే తక్కువ ఉండాలి',
+          telugu:
+              'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
           english: 'Image size must be 500KB or less',
         );
       case UserPosterUploadSubmitCode.quoteTooLong:
         return strings.localized(
-          telugu: 'Quote 600 అక్షరాల లోపు ఉండాలి',
+          telugu:
+              'సూక్తి 600 అక్షరాల లోపు ఉండాలి',
           english: 'Quote must be 600 characters or less',
         );
       case UserPosterUploadSubmitCode.uploadFailed:
         return strings.localized(
-          telugu: 'అప్‌లోడ్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'అప్‌లోడ్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
           english: 'Upload failed. Please try again.',
         );
     }
@@ -557,52 +586,30 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
           UserPosterUploadsService.resolveApplicableFromMillis(),
         );
     return strings.localized(
-      telugu: 'Upload timing: 10:00 PM IST లోపు. Date: $applicableDate',
+      telugu:
+          '\u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c38\u0c2e\u0c2f\u0c02: \u0c30\u0c3e\u0c24\u0c4d\u0c30\u0c3f 10:00 IST \u0c32\u0c4b\u0c2a\u0c41. \u0c24\u0c47\u0c26\u0c40: $applicableDate',
       english: 'Upload timing: before 10:00 PM IST. Date: $applicableDate',
     );
   }
 
   String _communityUploadReviewNote(AppLanguage language) {
-    return switch (language) {
-      AppLanguage.telugu =>
-        'మీ photo, quote లేదా design idea ను review కోసం upload చేయండి. మా team దాన్ని పరిశీలించి, అవసరమైతే edit/improve చేసి సరైన app categoryలో publish చేయవచ్చు. Approved content upload చేసిన userతో పాటు ఇతర usersకూ కనిపించవచ్చు. మీరు upload చేసే content‌కు మీరు బాధ్యత వహించాలి. Terms & Conditions apply.',
-      AppLanguage.hindi =>
-        'अपना photo, quote या design idea review के लिए upload करें। हमारी team इसे जांचकर जरूरत पड़ने पर edit/improve करके सही app category में publish कर सकती है। Approved content upload करने वाले user और अन्य users को दिख सकता है। Upload किए गए content की जिम्मेदारी आपकी होगी। Terms & Conditions apply.',
-      AppLanguage.english =>
-        'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.',
-      AppLanguage.tamil =>
-        'உங்கள் photo, quote அல்லது design idea வை review க்காக upload செய்யுங்கள். எங்கள் team அதை பார்த்து, தேவைப்பட்டால் edit/improve செய்து சரியான app category யில் publish செய்யலாம். Approved content upload செய்த user க்கும் மற்ற users க்கும் காணப்படலாம். நீங்கள் upload செய்யும் content க்கு நீங்கள் பொறுப்பு. Terms & Conditions apply.',
-      AppLanguage.kannada =>
-        'ನಿಮ್ಮ photo, quote ಅಥವಾ design idea ಅನ್ನು review ಗಾಗಿ upload ಮಾಡಿ. ನಮ್ಮ team ಅದನ್ನು ಪರಿಶೀಲಿಸಿ, ಅಗತ್ಯವಿದ್ದರೆ edit/improve ಮಾಡಿ ಸರಿಯಾದ app category ಯಲ್ಲಿ publish ಮಾಡಬಹುದು. Approved content upload ಮಾಡಿದ user ಜೊತೆಗೆ ಇತರ users ಗೂ ಕಾಣಬಹುದು. ನೀವು upload ಮಾಡುವ content ಗೆ ನೀವು ಜವಾಬ್ದಾರರು. Terms & Conditions apply.',
-      AppLanguage.malayalam =>
-        'നിങ്ങളുടെ photo, quote അല്ലെങ്കിൽ design idea review നായി upload ചെയ്യുക. ഞങ്ങളുടെ team അത് പരിശോധിച്ച്, ആവശ്യമെങ്കിൽ edit/improve ചെയ്ത് ശരിയായ app category യിൽ publish ചെയ്യാം. Approved content upload ചെയ്ത user ക്കും മറ്റു users ക്കും കാണാം. നിങ്ങൾ upload ചെയ്യുന്ന content ന് ഉത്തരവാദിത്വം നിങ്ങളുടേതാണ്. Terms & Conditions apply.',
-      AppLanguage.assamese =>
-        'আপোনাৰ photo, quote অথবা design idea review ৰ বাবে upload কৰক। আমাৰ team এয়া পৰীক্ষা কৰি, প্ৰয়োজন হলে edit/improve কৰি সঠিক app category ত publish কৰিব পাৰে। Approved content upload কৰা user আৰু অন্য users ক দেখা যাব পাৰে। আপুনি upload কৰা content ৰ দায়িত্ব আপোনাৰ। Terms & Conditions apply.',
-      AppLanguage.konkani =>
-        'तुमचो photo, quote वा design idea review खातीर upload करात. आमची team तो तपासून, गरज आसल्यार edit/improve करून योग्य app category न publish करूंक शकता. Approved content upload करपी user आनी हेर users क दिसूंक शकता. तुमी upload केल्ल्या content ची जबाबदारी तुमची आसतली. Terms & Conditions apply.',
-      AppLanguage.gujarati =>
-        'તમારો photo, quote અથવા design idea review માટે upload કરો. અમારી team તેને તપાસીને, જરૂર પડે તો edit/improve કરીને યોગ્ય app category માં publish કરી શકે છે. Approved content upload કરનાર user અને અન્ય users ને દેખાઈ શકે છે. તમે upload કરેલા content માટે તમે જવાબદાર છો. Terms & Conditions apply.',
-      AppLanguage.marathi =>
-        'तुमचा photo, quote किंवा design idea review साठी upload करा. आमची team ते तपासून, गरज असल्यास edit/improve करून योग्य app category मध्ये publish करू शकते. Approved content upload करणाऱ्या user सोबत इतर users ना दिसू शकते. तुम्ही upload केलेल्या content ची जबाबदारी तुमची असेल. Terms & Conditions apply.',
-      AppLanguage.meitei =>
-        'নহাক্কী photo, quote নত্রগা design idea review গীদমক upload তৌবিয়ু। ঐখোয়গী team না মসি check তৌরগা, দরকার ওইরবদি edit/improve তৌদুনা চুম্বা app category দা publish তৌবা যাই। Approved content অসি upload তৌবা user অমসুং অতোপ্পা users দা উবা যাই। নহাক্না upload তৌবা content গী responsibility নহাক্কীনি। Terms & Conditions apply.',
-      AppLanguage.mizo =>
-        'I photo, quote emaw design idea review atan upload rawh. Kan team in a en ang a, tul chuan edit/improve in app category dikah publish thei. Approved content chu upload tu user leh users dangte tan a lang thei. I upload content chungchangah nangmah i mawhphurhna a ni. Terms & Conditions apply.',
-      AppLanguage.odia =>
-        'ଆପଣଙ୍କ photo, quote କିମ୍ବା design idea review ପାଇଁ upload କରନ୍ତୁ। ଆମ team ଏହାକୁ ଯାଞ୍ଚ କରି, ଆବଶ୍ୟକ ହେଲେ edit/improve କରି ସଠିକ୍ app category ରେ publish କରିପାରେ। Approved content upload କରିଥିବା user ଓ ଅନ୍ୟ users ଙ୍କୁ ଦେଖାଯାଇପାରେ। ଆପଣ upload କରୁଥିବା content ପାଇଁ ଆପଣ ଦାୟୀ। Terms & Conditions apply.',
-      AppLanguage.punjabi =>
-        'ਆਪਣਾ photo, quote ਜਾਂ design idea review ਲਈ upload ਕਰੋ। ਸਾਡੀ team ਇਸਨੂੰ ਚੈੱਕ ਕਰਕੇ, ਲੋੜ ਪੈਣ ਤੇ edit/improve ਕਰਕੇ ਸਹੀ app category ਵਿੱਚ publish ਕਰ ਸਕਦੀ ਹੈ। Approved content upload ਕਰਨ ਵਾਲੇ user ਅਤੇ ਹੋਰ users ਨੂੰ ਦਿਖ ਸਕਦਾ ਹੈ। ਤੁਸੀਂ upload ਕੀਤੇ content ਲਈ ਤੁਸੀਂ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। Terms & Conditions apply.',
-      AppLanguage.nepali =>
-        'आफ्नो photo, quote वा design idea review का लागि upload गर्नुहोस्। हाम्रो team ले यसलाई जाँचेर, आवश्यक परे edit/improve गरी सही app category मा publish गर्न सक्छ। Approved content upload गर्ने user र अन्य users लाई देखिन सक्छ। तपाईंले upload गर्ने content को जिम्मेवारी तपाईंको हुनेछ। Terms & Conditions apply.',
-      AppLanguage.bengali =>
-        'আপনার photo, quote বা design idea review-এর জন্য upload করুন। আমাদের team এটি দেখে, প্রয়োজন হলে edit/improve করে সঠিক app category-তে publish করতে পারে। Approved content upload করা user এবং অন্য users দেখতে পারেন। আপনি যে content upload করছেন তার দায়িত্ব আপনার। Terms & Conditions apply.',
-      AppLanguage.kashmiri =>
-        'اپنا photo، quote یا design idea review کے لیے upload کریں۔ ہماری team اسے دیکھ کر ضرورت پڑنے پر edit/improve کرکے صحیح app category میں publish کر سکتی ہے۔ Approved content upload کرنے والے user اور دوسرے users کو دکھ سکتا ہے۔ آپ کے upload کیے گئے content کی ذمہ داری آپ کی ہوگی۔ Terms & Conditions apply.',
-      AppLanguage.ladakhi =>
-        'ཁྱེད་ཀྱི photo, quote ཡང་ན design idea review ཆེད upload གནང་རོགས། ང་ཚོའི team གིས་དེ་ཞིབ་བཤེར་བྱས་ནས་དགོས་ན edit/improve བྱས་ཏེ app category འོས་པར publish བྱེད་ཐུབ། Approved content ནི upload བྱེད་མཁན user དང users གཞན་ལ་མཐོང་ཐུབ། ཁྱེད་ཀྱིས upload བྱས་པའི content ལ་འགན་ཁུར་ཁྱེད་རང་ཡིན། Terms & Conditions apply.',
-    };
+    return AppStrings(language).localized(
+      telugu:
+          'మీ ఫోటో, సూక్తి లేదా రూపకల్పన ఆలోచనను సమీక్ష కోసం పంపండి. మా బృందం దాన్ని పరిశీలించి, అవసరమైతే మెరుగుపరిచి సరైన అనువర్తన విభాగంలో ప్రచురించవచ్చు. ఆమోదించిన విషయం మీకూ, ఇతర వినియోగదారులకూ కనిపించవచ్చు. మీరు పంపే విషయానికి మీరే బాధ్యత వహించాలి. నిబంధనలు మరియు షరతులు వర్తిస్తాయి.',
+      english:
+          'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.',
+      hindi:
+          'अपनी फोटो, सुविचार या डिज़ाइन विचार को समीक्षा के लिए भेजें। हमारी टीम उसे जाँचकर, आवश्यकता होने पर सुधारकर सही ऐप श्रेणी में प्रकाशित कर सकती है। स्वीकृत सामग्री आपको और अन्य उपयोगकर्ताओं को दिखाई दे सकती है। भेजी गई सामग्री की जिम्मेदारी आपकी होगी। नियम और शर्तें लागू होंगी।',
+      tamil:
+          'உங்கள் புகைப்படம், மேற்கோள் அல்லது வடிவமைப்பு யோசனையை ஆய்வுக்காக அனுப்புங்கள். எங்கள் குழு அதை பரிசீலித்து, தேவையெனில் மேம்படுத்தி சரியான செயலி பிரிவில் வெளியிடலாம். அங்கீகரிக்கப்பட்ட உள்ளடக்கம் உங்களுக்கும் பிற பயனர்களுக்கும் தெரியலாம். நீங்கள் அனுப்பும் உள்ளடக்கத்திற்கு நீங்களே பொறுப்பு. விதிமுறைகள் மற்றும் நிபந்தனைகள் பொருந்தும்.',
+      kannada:
+          'ನಿಮ್ಮ ಫೋಟೋ, ಉಲ್ಲೇಖ ಅಥವಾ ವಿನ್ಯಾಸ ಕಲ್ಪನೆಯನ್ನು ಪರಿಶೀಲನೆಗಾಗಿ ಕಳುಹಿಸಿ. ನಮ್ಮ ತಂಡ ಅದನ್ನು ಪರಿಶೀಲಿಸಿ, ಅಗತ್ಯವಿದ್ದರೆ ಸುಧಾರಿಸಿ ಸರಿಯಾದ ಆಪ್ ವಿಭಾಗದಲ್ಲಿ ಪ್ರಕಟಿಸಬಹುದು. ಅನುಮೋದಿತ ವಿಷಯವು ನಿಮಗೂ ಇತರ ಬಳಕೆದಾರರಿಗೂ ಕಾಣಿಸಬಹುದು. ನೀವು ಕಳುಹಿಸುವ ವಿಷಯಕ್ಕೆ ನೀವೇ ಜವಾಬ್ದಾರರು. ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು ಅನ್ವಯಿಸುತ್ತವೆ.',
+      malayalam:
+          'നിങ്ങളുടെ ഫോട്ടോ, ഉദ്ധരണി അല്ലെങ്കിൽ രൂപകൽപ്പന ആശയം പരിശോധനയ്ക്കായി അയയ്ക്കുക. ഞങ്ങളുടെ സംഘം അത് പരിശോധിച്ച്, ആവശ്യമെങ്കിൽ മെച്ചപ്പെടുത്തി ശരിയായ ആപ്പ് വിഭാഗത്തിൽ പ്രസിദ്ധീകരിക്കാം. അംഗീകരിച്ച ഉള്ളടക്കം നിങ്ങളും മറ്റ് ഉപയോക്താക്കളും കാണാനിടയുണ്ട്. നിങ്ങൾ അയക്കുന്ന ഉള്ളടക്കത്തിന് ഉത്തരവാദിത്തം നിങ്ങളുടേതാണ്. നിബന്ധനകളും വ്യവസ്ഥകളും ബാധകം.',
+    );
   }
 
+  // ignore: unused_element
   Widget _buildCommunityUploadReviewNote(AppLanguage language) {
     return Padding(
       padding: const EdgeInsets.only(top: 14),
@@ -633,6 +640,91 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openCommunityUploadInstructions() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const _CommunityUploadInstructionsScreen(),
+      ),
+    );
+  }
+
+  Widget _buildCommunityUploadInstructionsEntry() {
+    final strings = context.strings;
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: InkWell(
+        onTap: _openCommunityUploadInstructions,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: <Widget>[
+              const Icon(
+                Icons.menu_book_outlined,
+                size: 20,
+                color: Color(0xFFD81B60),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      strings.localized(
+                        telugu:
+                            '\u0c38\u0c42\u0c1a\u0c28\u0c32\u0c41 \u0c1a\u0c26\u0c35\u0c02\u0c21\u0c3f',
+                        english: 'Read Instructions',
+                        hindi:
+                            '\u0928\u093f\u0930\u094d\u0926\u0947\u0936 \u092a\u0922\u093c\u0947\u0902',
+                        tamil:
+                            '\u0bb5\u0bb4\u0bbf\u0bae\u0bc1\u0bb1\u0bc8\u0b95\u0bb3\u0bc8 \u0baa\u0b9f\u0bbf\u0b95\u0bcd\u0b95\u0bb5\u0bc1\u0bae\u0bcd',
+                        kannada:
+                            '\u0cb8\u0cc2\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0c93\u0ca6\u0cbf',
+                        malayalam:
+                            '\u0d28\u0d3f\u0d30\u0d4d\u0d26\u0d4d\u0d26\u0d47\u0d36\u0d19\u0d4d\u0d19\u0d7e \u0d35\u0d3e\u0d2f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+                      ),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: const Color(0xFF0F172A),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      strings.localized(
+                        telugu:
+                            'పంపే ముందు సమీక్ష నియమాలను తెలుసుకోండి.',
+                        english:
+                            'Check review rules before submitting your content.',
+                        hindi:
+                            'अपनी सामग्री भेजने से पहले समीक्षा नियम देखें।',
+                        tamil:
+                            'உங்கள் உள்ளடக்கத்தை அனுப்பும் முன் ஆய்வு விதிகளைப் பாருங்கள்.',
+                        kannada:
+                            'ನಿಮ್ಮ ವಿಷಯವನ್ನು ಕಳುಹಿಸುವ ಮೊದಲು ಪರಿಶೀಲನಾ ನಿಯಮಗಳನ್ನು ನೋಡಿ.',
+                        malayalam:
+                            'നിങ്ങളുടെ ഉള്ളടക്കം അയയ്ക്കുന്നതിന് മുമ്പ് പരിശോധനാ നിയമങ്ങൾ വായിക്കുക.',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF64748B),
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFF64748B)),
             ],
           ),
         ),
@@ -693,7 +785,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                 onPressed: _submitting ? null : _pickImage,
                 icon: Icons.add_rounded,
                 label: strings.localized(
-                  telugu: 'ఇమేజ్ ఎంపిక చేయండి',
+                  telugu: 'చిత్రం ఎంచుకోండి',
                   english: 'Select Image',
                 ),
               ),
@@ -709,7 +801,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                 Text(
                   strings.localized(
                     telugu:
-                        'ఎంపిక చేసినది: ${(_selectedImageBytes / 1024).toStringAsFixed(1)} KB',
+                        'ఎంచుకున్నది: ${(_selectedImageBytes / 1024).toStringAsFixed(1)} KB',
                     english:
                         'Selected: ${(_selectedImageBytes / 1024).toStringAsFixed(1)} KB',
                   ),
@@ -724,7 +816,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               const SizedBox(height: 16),
               Text(
                 strings.localized(
-                  telugu: 'మీ quote రాయండి (optional)',
+                  telugu: 'మీ సూక్తి రాయండి (ఐచ్ఛికం)',
                   english: 'Write your quote (optional)',
                 ),
                 style: Theme.of(
@@ -741,7 +833,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: strings.localized(
-                    telugu: 'ఇక్కడ మీ quote లేదా message రాయండి...',
+                    telugu: 'ఇక్కడ మీ సూక్తి లేదా సందేశం రాయండి...',
                     english: 'Write your quote or message here...',
                   ),
                   filled: true,
@@ -758,7 +850,10 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                strings.localized(telugu: 'కేటగిరీ', english: 'Category'),
+                strings.localized(
+                  telugu: 'విభాగం',
+                  english: 'Category',
+                ),
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -788,7 +883,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                               _selectedCategoryLabel.isNotEmpty
                                   ? _selectedCategoryLabel
                                   : strings.localized(
-                                      telugu: 'కేటగిరీ ఎంపిక చేయండి',
+                                      telugu: 'విభాగం ఎంచుకోండి',
                                       english: 'Select category',
                                     ),
                               style: const TextStyle(
@@ -824,17 +919,19 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   child: Text(
                     _submitting
                         ? strings.localized(
-                            telugu: 'సబ్మిట్ అవుతోంది...',
+                            telugu:
+                                '\u0c38\u0c2c\u0c4d\u0c2e\u0c3f\u0c1f\u0c4d \u0c05\u0c35\u0c41\u0c24\u0c4b\u0c02\u0c26\u0c3f...',
                             english: 'Submitting...',
                           )
                         : strings.localized(
-                            telugu: 'సబ్మిట్',
+                            telugu:
+                                '\u0c38\u0c2c\u0c4d\u0c2e\u0c3f\u0c1f\u0c4d',
                             english: 'Submit',
                           ),
                   ),
                 ),
               ),
-              _buildCommunityUploadReviewNote(language),
+              _buildCommunityUploadInstructionsEntry(),
             ],
           ),
         ),
@@ -875,7 +972,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               OnboardingSurfaceCard(
                 child: Text(
                   strings.localized(
-                    telugu: 'ఇంకా అప్‌లోడ్లు లేవు',
+                    telugu:
+                        '\u0c07\u0c02\u0c15\u0c3e \u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d\u0c32\u0c41 \u0c32\u0c47\u0c35\u0c41',
                     english: 'No uploads yet',
                   ),
                   textAlign: TextAlign.center,
@@ -952,7 +1050,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                               ),
                               IconButton(
                                 tooltip: strings.localized(
-                                  telugu: 'నా లిస్ట్ నుండి తొలగించు',
+                                  telugu:
+                                      'నా లిస్ట్ నుండి తొలగించు',
                                   english: 'Remove from my list',
                                 ),
                                 onPressed: () => _hideUploadLocally(upload),
@@ -987,7 +1086,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                           Text(
                             strings.localized(
                               telugu:
-                                  'యాప్‌లో కనిపించే డేట్: ${UserPosterUploadsService.formatIstDateLabelFromMillis(upload.appVisibleFromMillis)}',
+                                  'యాప్‌లో కనిపించే తేదీ: ${UserPosterUploadsService.formatIstDateLabelFromMillis(upload.appVisibleFromMillis)}',
                               english:
                                   'App visible date: ${UserPosterUploadsService.formatIstDateLabelFromMillis(upload.appVisibleFromMillis)}',
                             ),
@@ -1002,7 +1101,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                             const SizedBox(height: 8),
                             Text(
                               strings.localized(
-                                telugu: 'కారణం: ${upload.rejectionReason}',
+                                telugu:
+                                    'కారణం: ${upload.rejectionReason}',
                                 english: 'Reason: ${upload.rejectionReason}',
                               ),
                               style: const TextStyle(color: Color(0xFFB91C1C)),
@@ -1059,7 +1159,8 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   english: 'My Uploads',
                 )
               : context.strings.localized(
-                  telugu: 'కమ్యూనిటీ కాంట్రిబ్యూషన్',
+                  telugu:
+                      'కమ్యూనిటీ కాంట్రిబ్యూషన్',
                   english: 'Community Contribution',
                 ),
         ),
@@ -1098,6 +1199,361 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   }
 }
 
+class _CommunityUploadInstructionsScreen extends StatelessWidget {
+  const _CommunityUploadInstructionsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    final sections = _sections(strings);
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        leading: const BackButton(),
+        title: Text(_title(strings)),
+      ),
+      body: GradientShell(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: <Widget>[
+            OnboardingSurfaceCard(
+              maxWidth: 620,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFE4EF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.verified_user_outlined,
+                      color: Color(0xFFD81B60),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    _title(strings),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _subtitle(strings),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.45,
+                      color: const Color(0xFF475569),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  for (final section in sections) ...<Widget>[
+                    _CommunityInstructionSection(section: section),
+                    const SizedBox(height: 14),
+                  ],
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFFED7AA)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFFEA580C),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _responsibility(strings),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    height: 1.4,
+                                    color: const Color(0xFF7C2D12),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        strings.localized(
+                          telugu:
+                              '\u0c05\u0c30\u0c4d\u0c25\u0c2e\u0c48\u0c02\u0c26\u0c3f',
+                          english: 'Got it',
+                          hindi: '\u0938\u092e\u091d \u0917\u092f\u093e',
+                          tamil:
+                              '\u0baa\u0bc1\u0bb0\u0bbf\u0ba8\u0bcd\u0ba4\u0ba4\u0bc1',
+                          kannada:
+                              '\u0c85\u0cb0\u0ccd\u0ca5\u0cb5\u0cbe\u0caf\u0cbf\u0ca4\u0cc1',
+                          malayalam:
+                              '\u0d2e\u0d28\u0d38\u0d4d\u0d38\u0d3f\u0d32\u0d3e\u0d2f\u0d3f',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _title(AppStrings strings) {
+    return strings.localized(
+      telugu:
+          '\u0c15\u0c2e\u0c4d\u0c2f\u0c42\u0c28\u0c3f\u0c1f\u0c40 \u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c38\u0c42\u0c1a\u0c28\u0c32\u0c41',
+      english: 'Community Upload Instructions',
+      hindi:
+          '\u0915\u092e\u094d\u092f\u0941\u0928\u093f\u091f\u0940 \u0905\u092a\u0932\u094b\u0921 \u0928\u093f\u0930\u094d\u0926\u0947\u0936',
+      tamil: 'சமூக பதிவேற்ற வழிமுறைகள்',
+      kannada: 'ಸಮುದಾಯ ಅಪ್ಲೋಡ್ ಸೂಚನೆಗಳು',
+      malayalam: 'സമൂഹ അപ്‌ലോഡ് നിർദ്ദേശങ്ങൾ',
+    );
+  }
+
+  String _subtitle(AppStrings strings) {
+    return strings.localized(
+      telugu:
+          'మీ సూక్తి, వచనం లేదా సూక్తి ఉన్న చిత్రాన్ని మన పోస్టర్ సమీక్ష బృందానికి పంపండి.',
+      english:
+          'Send your quote, text, or quote image to the Mana Poster review team.',
+      hindi:
+          'अपना सुविचार, पाठ या सुविचार वाली छवि मन पोस्टर समीक्षा टीम को भेजें।',
+      tamil:
+          'உங்கள் மேற்கோள், உரை அல்லது மேற்கோள் உள்ள படத்தை மன போஸ்டர் ஆய்வுக் குழுவிற்கு அனுப்புங்கள்.',
+      kannada:
+          'ನಿಮ್ಮ ಉಲ್ಲೇಖ, ಪಠ್ಯ ಅಥವಾ ಉಲ್ಲೇಖ ಇರುವ ಚಿತ್ರವನ್ನು ಮನ ಪೋಸ್ಟರ್ ಪರಿಶೀಲನಾ ತಂಡಕ್ಕೆ ಕಳುಹಿಸಿ.',
+      malayalam:
+          'നിങ്ങളുടെ ഉദ്ധരണി, വാചകം അല്ലെങ്കിൽ ഉദ്ധരണിയുള്ള ചിത്രം മന പോസ്റ്റർ പരിശോധനാ സംഘത്തിന് അയയ്ക്കുക.',
+    );
+  }
+
+  String _responsibility(AppStrings strings) {
+    return strings.localized(
+      telugu:
+          'మీరు పంపే విషయానికి మీరే బాధ్యులు. పంపినప్పుడు మన పోస్టర్ నిబంధనలు మరియు సమాజ మార్గదర్శకాలను అంగీకరించినట్లుగా పరిగణిస్తాము.',
+      english:
+          'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.',
+      hindi:
+          'आपके द्वारा भेजी गई सामग्री की जिम्मेदारी आपकी है। भेजने पर यह माना जाएगा कि आप मन पोस्टर के नियमों और सामुदायिक दिशानिर्देशों को स्वीकार करते हैं।',
+      tamil:
+          'நீங்கள் அனுப்பும் உள்ளடக்கத்திற்கு நீங்களே பொறுப்பு. அனுப்புவதன் மூலம் மன போஸ்டர் விதிமுறைகளையும் சமூக வழிகாட்டுதல்களையும் ஏற்றுக்கொள்கிறீர்கள் என்று கருதப்படும்.',
+      kannada:
+          'ನೀವು ಕಳುಹಿಸುವ ವಿಷಯಕ್ಕೆ ನೀವೇ ಜವಾಬ್ದಾರರು. ಕಳುಹಿಸಿದಾಗ ಮನ ಪೋಸ್ಟರ್ ನಿಯಮಗಳು ಮತ್ತು ಸಮುದಾಯ ಮಾರ್ಗಸೂಚಿಗಳನ್ನು ಒಪ್ಪಿಕೊಂಡಂತೆ ಪರಿಗಣಿಸಲಾಗುತ್ತದೆ.',
+      malayalam:
+          'നിങ്ങൾ അയക്കുന്ന ഉള്ളടക്കത്തിന് ഉത്തരവാദിത്തം നിങ്ങളുടേതാണ്. അയയ്ക്കുന്നതിലൂടെ മന പോസ്റ്ററിന്റെ നിബന്ധനകളും സമൂഹ മാർഗ്ഗനിർദ്ദേശങ്ങളും അംഗീകരിക്കുന്നതായി കണക്കാക്കും.',
+    );
+  }
+
+  List<_CommunityInstructionSectionData> _sections(AppStrings strings) {
+    return <_CommunityInstructionSectionData>[
+      _CommunityInstructionSectionData(
+        title: strings.localized(
+          telugu: 'ఇది ఎలా పనిచేస్తుంది',
+          english: 'How it works',
+          hindi: 'यह कैसे काम करता है',
+          tamil: 'இது எப்படி செயல்படும்',
+          kannada: 'ಇದು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ',
+          malayalam: 'ഇത് എങ്ങനെ പ്രവർത്തിക്കും',
+        ),
+        bullets: <String>[
+          strings.localized(
+            telugu: 'సూక్తి వచనం, సూక్తి చిత్రం లేదా రెండింటినీ పంపవచ్చు.',
+            english: 'You can upload quote text, a quote image, or both.',
+            hindi: 'आप सुविचार का पाठ, सुविचार वाली छवि या दोनों भेज सकते हैं।',
+            tamil: 'மேற்கோள் உரை, மேற்கோள் உள்ள படம் அல்லது இரண்டையும் அனுப்பலாம்.',
+            kannada: 'ಉಲ್ಲೇಖ ಪಠ್ಯ, ಉಲ್ಲೇಖ ಇರುವ ಚಿತ್ರ ಅಥವಾ ಎರಡನ್ನೂ ಕಳುಹಿಸಬಹುದು.',
+            malayalam: 'ഉദ്ധരണി വാചകം, ഉദ്ധരണിയുള്ള ചിത്രം അല്ലെങ്കിൽ രണ്ടും അയയ്ക്കാം.',
+          ),
+          strings.localized(
+            telugu: 'మీరు పంపినది ముందుగా నిర్వాహకుని సమీక్షకు వెళ్తుంది.',
+            english: 'Your upload first goes to the manager review queue.',
+            hindi: 'आपकी भेजी हुई सामग्री पहले प्रबंधक की समीक्षा में जाएगी।',
+            tamil: 'நீங்கள் அனுப்பியது முதலில் நிர்வாகியின் ஆய்வுக்கு செல்லும்.',
+            kannada: 'ನೀವು ಕಳುಹಿಸಿದುದು ಮೊದಲು ನಿರ್ವಾಹಕರ ಪರಿಶೀಲನೆಗೆ ಹೋಗುತ್ತದೆ.',
+            malayalam: 'നിങ്ങൾ അയച്ചത് ആദ്യം മാനേജറുടെ പരിശോധനയ്ക്കായി പോകും.',
+          ),
+          strings.localized(
+            telugu: 'ఆమోదం లభిస్తే బృందం దాన్ని మెరుగుపరిచి సంబంధిత విభాగంలో ప్రచురించవచ్చు.',
+            english: 'If approved, the team may redesign it and publish it in the related category.',
+            hindi: 'स्वीकृति मिलने पर टीम उसे बेहतर बनाकर संबंधित श्रेणी में प्रकाशित कर सकती है।',
+            tamil: 'அங்கீகாரம் கிடைத்தால் குழு அதை மேம்படுத்தி தொடர்புடைய பிரிவில் வெளியிடலாம்.',
+            kannada: 'ಅನುಮೋದನೆ ಸಿಕ್ಕರೆ ತಂಡ ಅದನ್ನು ಸುಧಾರಿಸಿ ಸಂಬಂಧಿತ ವಿಭಾಗದಲ್ಲಿ ಪ್ರಕಟಿಸಬಹುದು.',
+            malayalam: 'അംഗീകാരം ലഭിച്ചാൽ സംഘം അത് മെച്ചപ്പെടുത്തി ബന്ധപ്പെട്ട വിഭാഗത്തിൽ പ്രസിദ്ധീകരിക്കാം.',
+          ),
+        ],
+      ),
+      _CommunityInstructionSectionData(
+        title: strings.localized(
+          telugu: 'ఏవి ఆమోదించబడతాయి',
+          english: 'What can be approved',
+          hindi: 'क्या स्वीकृत हो सकता है',
+          tamil: 'எவை அங்கீகரிக்கப்படலாம்',
+          kannada: 'ಯಾವುದು ಅನುಮೋದನೆ ಪಡೆಯಬಹುದು',
+          malayalam: 'എന്തൊക്കെ അംഗീകരിക്കാം',
+        ),
+        bullets: <String>[
+          strings.localized(
+            telugu: 'ఎంచుకున్న విభాగానికి సరిపోయే పరిశుభ్రమైన సూక్తి లేదా చిత్రం.',
+            english: 'Clean quote or image that matches the selected category.',
+            hindi: 'चुनी हुई श्रेणी से मेल खाने वाला साफ सुविचार या चित्र।',
+            tamil: 'தேர்ந்தெடுத்த பிரிவிற்கு பொருந்தும் தெளிவான மேற்கோள் அல்லது படம்.',
+            kannada: 'ಆಯ್ದ ವಿಭಾಗಕ್ಕೆ ಹೊಂದುವ ಸ್ವಚ್ಛವಾದ ಉಲ್ಲೇಖ ಅಥವಾ ಚಿತ್ರ.',
+            malayalam: 'തിരഞ്ഞെടുത്ത വിഭാഗത്തിന് ചേരുന്ന ശുദ്ധമായ ഉദ്ധരണി അല്ലെങ്കിൽ ചിത്രം.',
+          ),
+          strings.localized(
+            telugu: 'మీరు స్వయంగా సృష్టించినది లేదా ఉపయోగించడానికి మీకు అనుమతి ఉన్న విషయం.',
+            english: 'Content created by you or content you have permission to use.',
+            hindi: 'आपके द्वारा बनाई गई सामग्री या जिसके उपयोग की अनुमति आपके पास है।',
+            tamil: 'நீங்கள் உருவாக்கியது அல்லது பயன்படுத்த அனுமதி உள்ள உள்ளடக்கம்.',
+            kannada: 'ನೀವು ರಚಿಸಿದುದು ಅಥವಾ ಬಳಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇರುವ ವಿಷಯ.',
+            malayalam: 'നിങ്ങൾ സൃഷ്ടിച്ചതോ ഉപയോഗിക്കാൻ അനുമതിയുള്ളതോ ആയ ഉള്ളടക്കം.',
+          ),
+          strings.localized(
+            telugu: 'ప్రచురించిన తర్వాత అది మీకూ, ఆ విభాగంలోని వినియోగదారులకూ కనిపించవచ్చు.',
+            english: 'After publishing, it may be visible to you and all users in that category.',
+            hindi: 'प्रकाशित होने के बाद वह आपको और उस श्रेणी के उपयोगकर्ताओं को दिखाई दे सकता है।',
+            tamil: 'வெளியிடப்பட்ட பிறகு அது உங்களுக்கும் அந்த பிரிவின் பயனர்களுக்கும் தெரியலாம்.',
+            kannada: 'ಪ್ರಕಟಿಸಿದ ನಂತರ ಅದು ನಿಮಗೂ ಆ ವಿಭಾಗದ ಬಳಕೆದಾರರಿಗೂ ಕಾಣಿಸಬಹುದು.',
+            malayalam: 'പ്രസിദ്ധീകരിച്ചതിന് ശേഷം അത് നിങ്ങളും ആ വിഭാഗത്തിലെ ഉപയോക്താക്കളും കാണാനിടയുണ്ട്.',
+          ),
+        ],
+      ),
+      _CommunityInstructionSectionData(
+        title: strings.localized(
+          telugu: 'తిరస్కరణకు కారణాలు',
+          english: 'Rejection reasons',
+          hindi: 'अस्वीकृति के कारण',
+          tamil: 'நிராகரிப்பு காரணங்கள்',
+          kannada: 'ತಿರಸ್ಕಾರದ ಕಾರಣಗಳು',
+          malayalam: 'നിരസിക്കുന്നതിനുള്ള കാരണങ്ങൾ',
+        ),
+        bullets: <String>[
+          strings.localized(
+            telugu: 'తప్పు విభాగం, సంబంధం లేని విషయం, నకిలీ విషయం లేదా నాణ్యత తక్కువగా ఉన్న చిత్రం.',
+            english: 'Wrong category, unrelated content, duplicate, or low quality image.',
+            hindi: 'गलत श्रेणी, असंबंधित सामग्री, दोहराई गई सामग्री या कम गुणवत्ता वाली छवि।',
+            tamil: 'தவறான பிரிவு, தொடர்பில்லாத உள்ளடக்கம், நகல் அல்லது குறைந்த தரமான படம்.',
+            kannada: 'ತಪ್ಪು ವಿಭಾಗ, ಸಂಬಂಧವಿಲ್ಲದ ವಿಷಯ, ನಕಲಿ ಅಥವಾ ಕಡಿಮೆ ಗುಣಮಟ್ಟದ ಚಿತ್ರ.',
+            malayalam: 'തെറ്റായ വിഭാഗം, ബന്ധമില്ലാത്ത ഉള്ളടക്കം, പകർപ്പ് അല്ലെങ്കിൽ കുറഞ്ഞ നിലവാരത്തിലുള്ള ചിത്രം.',
+          ),
+          strings.localized(
+            telugu: 'హక్కులు కలిగిన చిత్రం, కాపీ చేసిన సూక్తి, అభ్యంతరకరమైన లేదా తప్పుదారి పట్టించే విషయం.',
+            english: 'Copyright image, copied quote, offensive, or misleading content.',
+            hindi: 'कॉपीराइट वाली छवि, नकल किया गया सुविचार, आपत्तिजनक या भ्रामक सामग्री।',
+            tamil: 'பதிப்புரிமை உள்ள படம், நகலெடுத்த மேற்கோள், அவமதிப்பான அல்லது தவறாக வழிநடத்தும் உள்ளடக்கம்.',
+            kannada: 'ಹಕ್ಕುಸ್ವಾಮ್ಯ ಹೊಂದಿರುವ ಚಿತ್ರ, ನಕಲಿಸಿದ ಉಲ್ಲೇಖ, ಅವಮಾನಕಾರಿ ಅಥವಾ ತಪ್ಪು ದಾರಿಗೆಳೆಯುವ ವಿಷಯ.',
+            malayalam: 'പകർപ്പവകാശമുള്ള ചിത്രം, പകർത്തിയ ഉദ്ധരണി, അപമാനകരമോ തെറ്റിദ്ധരിപ്പിക്കുന്നതോ ആയ ഉള്ളടക്കം.',
+          ),
+          strings.localized(
+            telugu: 'వ్యక్తిగత వివరాలు, రాజకీయ దుర్వినియోగం, అవాంఛిత ప్రచారం లేదా సురక్షితం కాని విషయం.',
+            english: 'Private details, political misuse, spam, or unsafe content.',
+            hindi: 'निजी विवरण, राजनीतिक दुरुपयोग, अवांछित प्रचार या असुरक्षित सामग्री।',
+            tamil: 'தனிப்பட்ட விவரங்கள், அரசியல் தவறான பயன்பாடு, தேவையற்ற விளம்பரம் அல்லது பாதுகாப்பற்ற உள்ளடக்கம்.',
+            kannada: 'ಖಾಸಗಿ ವಿವರಗಳು, ರಾಜಕೀಯ ದುರುಪಯೋಗ, ಅನಗತ್ಯ ಪ್ರಚಾರ ಅಥವಾ ಸುರಕ್ಷಿತವಲ್ಲದ ವಿಷಯ.',
+            malayalam: 'സ്വകാര്യ വിവരങ്ങൾ, രാഷ്ട്രീയ ദുരുപയോഗം, അനാവശ്യ പ്രചാരം അല്ലെങ്കിൽ സുരക്ഷിതമല്ലാത്ത ഉള്ളടക്കം.',
+          ),
+        ],
+      ),
+    ];
+  }}
+
+class _CommunityInstructionSectionData {
+  const _CommunityInstructionSectionData({
+    required this.title,
+    required this.bullets,
+  });
+
+  final String title;
+  final List<String> bullets;
+}
+
+class _CommunityInstructionSection extends StatelessWidget {
+  const _CommunityInstructionSection({required this.section});
+
+  final _CommunityInstructionSectionData section;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              section.title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: const Color(0xFF0F172A),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 10),
+            for (final bullet in section.bullets) ...<Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 7),
+                    child: SizedBox(
+                      width: 6,
+                      height: 6,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Color(0xFFD81B60),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      bullet,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        height: 1.38,
+                        color: const Color(0xFF334155),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!identical(bullet, section.bullets.last))
+                const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _UploadCategorySelectionScreen extends StatelessWidget {
   const _UploadCategorySelectionScreen({
     required this.options,
@@ -1117,7 +1573,7 @@ class _UploadCategorySelectionScreen extends StatelessWidget {
         leading: const BackButton(),
         title: Text(
           strings.localized(
-            telugu: 'కేటగిరీ ఎంపిక చేయండి',
+            telugu: 'విభాగం ఎంచుకోండి',
             english: 'Select Category',
           ),
         ),

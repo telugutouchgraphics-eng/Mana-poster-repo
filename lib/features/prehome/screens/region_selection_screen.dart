@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -51,7 +51,7 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
     final languageSaved = saved
         ? await AppFlowService.persistLanguageSelection(
             region.appLanguage,
-            userInitiated: false,
+            userInitiated: true,
           )
         : false;
     if (!mounted) {
@@ -61,7 +61,12 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
       setState(() => _savingRegionId = null);
       ScaffoldMessenger.of(context).showTopSnackBar(
         AppSnackBar.build(
-          content: Text('Could not save region. Please try again.'),
+          content: Text(
+            context.strings.localized(
+              telugu: 'రాష్ట్రం సేవ్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+              english: 'Could not save region. Please try again.',
+            ),
+          ),
         ),
       );
       return;
@@ -315,7 +320,7 @@ class _RegionTile extends StatelessWidget {
                     fit: BoxFit.contain,
                     errorBuilder: (_, _, _) => Center(
                       child: Text(
-                        region.name.characters.first,
+                        region.nativeName.characters.first,
                         style: TextStyle(
                           color: color,
                           fontSize: 18,
@@ -332,7 +337,7 @@ class _RegionTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      region.name,
+                      region.nativeName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -342,7 +347,7 @@ class _RegionTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      region.primaryLanguage,
+                      region.nativePrimaryLanguage,
                       style: const TextStyle(
                         color: Color(0xFF475569),
                         fontSize: 13,

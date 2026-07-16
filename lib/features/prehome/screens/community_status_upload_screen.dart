@@ -78,7 +78,8 @@ class _CommunityStatusUploadScreenState
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'Status upload మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
+              telugu:
+                  '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c2e\u0c4a\u0c2c\u0c48\u0c32\u0c4d \u0c2f\u0c3e\u0c2a\u0c4d\u200c\u0c32\u0c4b \u0c2e\u0c3e\u0c24\u0c4d\u0c30\u0c2e\u0c47 \u0c05\u0c02\u0c26\u0c41\u0c2c\u0c3e\u0c1f\u0c41\u0c32\u0c4b \u0c09\u0c02\u0c26\u0c3f',
               english: 'Status upload is supported on mobile app only',
             ),
           ),
@@ -96,7 +97,8 @@ class _CommunityStatusUploadScreenState
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'Status image 12MB లేదా దానికంటే తక్కువ ఉండాలి',
+              telugu:
+                  '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c07\u0c2e\u0c47\u0c1c\u0c4d 12MB \u0c32\u0c47\u0c26\u0c3e \u0c26\u0c3e\u0c28\u0c3f\u0c15\u0c02\u0c1f\u0c47 \u0c24\u0c15\u0c4d\u0c15\u0c41\u0c35 \u0c09\u0c02\u0c21\u0c3e\u0c32\u0c3f',
               english: 'Status image must be 12MB or less',
             ),
           ),
@@ -129,7 +131,8 @@ class _CommunityStatusUploadScreenState
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'Image లేదా text లో ఒకటి ఇవ్వండి',
+              telugu:
+                  '\u0c07\u0c2e\u0c47\u0c1c\u0c4d \u0c32\u0c47\u0c26\u0c3e \u0c1f\u0c46\u0c15\u0c4d\u0c38\u0c4d\u0c1f\u0c4d \u0c32\u0c4b \u0c12\u0c15\u0c1f\u0c3f \u0c07\u0c35\u0c4d\u0c35\u0c02\u0c21\u0c3f',
               english: 'Please add an image or text',
             ),
           ),
@@ -157,7 +160,8 @@ class _CommunityStatusUploadScreenState
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'Status upload అయింది',
+              telugu:
+                  '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c05\u0c2f\u0c3f\u0c02\u0c26\u0c3f',
               english: 'Status uploaded',
             ),
           ),
@@ -191,23 +195,28 @@ class _CommunityStatusUploadScreenState
     return switch (code) {
       CommunityStatusSubmitCode.success => '',
       CommunityStatusSubmitCode.loginRequired => strings.localized(
-        telugu: 'లాగిన్ అవసరం',
+        telugu:
+            '\u0c32\u0c3e\u0c17\u0c3f\u0c28\u0c4d \u0c05\u0c35\u0c38\u0c30\u0c02',
         english: 'Login required',
       ),
       CommunityStatusSubmitCode.regionRequired => strings.localized(
-        telugu: 'ముందుగా State/Union Territory select చేయండి',
+        telugu:
+            '\u0c2e\u0c41\u0c02\u0c26\u0c41\u0c17\u0c3e \u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c4d / \u0c2f\u0c42\u0c28\u0c3f\u0c2f\u0c28\u0c4d \u0c1f\u0c46\u0c30\u0c3f\u0c1f\u0c30\u0c40 \u0c0e\u0c02\u0c2a\u0c3f\u0c15 \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
         english: 'Please select State/Union Territory first',
       ),
       CommunityStatusSubmitCode.contentRequired => strings.localized(
-        telugu: 'Image లేదా text అవసరం',
+        telugu:
+            '\u0c07\u0c2e\u0c47\u0c1c\u0c4d \u0c32\u0c47\u0c26\u0c3e \u0c1f\u0c46\u0c15\u0c4d\u0c38\u0c4d\u0c1f\u0c4d \u0c05\u0c35\u0c38\u0c30\u0c02',
         english: 'Image or text is required',
       ),
       CommunityStatusSubmitCode.textTooLong => strings.localized(
-        telugu: 'Status text 300 అక్షరాల లోపు ఉండాలి',
+        telugu:
+            '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c1f\u0c46\u0c15\u0c4d\u0c38\u0c4d\u0c1f\u0c4d 300 \u0c05\u0c15\u0c4d\u0c37\u0c30\u0c3e\u0c32 \u0c32\u0c4b\u0c2a\u0c41 \u0c09\u0c02\u0c21\u0c3e\u0c32\u0c3f',
         english: 'Status text must be 300 characters or less',
       ),
       CommunityStatusSubmitCode.imageTooLarge => strings.localized(
-        telugu: 'Status image 12MB లేదా దానికంటే తక్కువ ఉండాలి',
+        telugu:
+            '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c07\u0c2e\u0c47\u0c1c\u0c4d 12MB \u0c32\u0c47\u0c26\u0c3e \u0c26\u0c3e\u0c28\u0c3f\u0c15\u0c02\u0c1f\u0c47 \u0c24\u0c15\u0c4d\u0c15\u0c41\u0c35 \u0c09\u0c02\u0c21\u0c3e\u0c32\u0c3f',
         english: 'Status image must be 12MB or less',
       ),
       CommunityStatusSubmitCode.imageDailyLimitReached => strings.localized(
@@ -223,7 +232,8 @@ class _CommunityStatusUploadScreenState
             'You can upload only 5 text statuses in 24 hours. Delete an old text status to upload again.',
       ),
       CommunityStatusSubmitCode.uploadFailed => strings.localized(
-        telugu: 'Status upload విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+        telugu:
+            '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d \u0c05\u0c2a\u0c4d\u200c\u0c32\u0c4b\u0c21\u0c4d \u0c35\u0c3f\u0c2b\u0c32\u0c2e\u0c48\u0c02\u0c26\u0c3f. \u0c2e\u0c33\u0c4d\u0c32\u0c40 \u0c2a\u0c4d\u0c30\u0c2f\u0c24\u0c4d\u0c28\u0c3f\u0c02\u0c1a\u0c02\u0c21\u0c3f.',
         english: 'Status upload failed. Please try again.',
       ),
     };
@@ -275,7 +285,10 @@ class _CommunityStatusUploadScreenState
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    strings.localized(telugu: 'Status', english: 'Status'),
+                    strings.localized(
+                      telugu: '\u0c38\u0c4d\u0c1f\u0c47\u0c1f\u0c38\u0c4d',
+                      english: 'Status',
+                    ),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -292,7 +305,7 @@ class _CommunityStatusUploadScreenState
                   ),
                   IconButton(
                     tooltip: strings.localized(
-                      telugu: 'Gallery',
+                      telugu: '\u0c17\u0c4d\u0c2f\u0c3e\u0c32\u0c30\u0c40',
                       english: 'Gallery',
                     ),
                     onPressed: _submitting ? null : _pickImage,
@@ -390,7 +403,8 @@ class _CommunityStatusUploadScreenState
                       ),
                       decoration: InputDecoration(
                         hintText: strings.localized(
-                          telugu: 'Caption రాయండి',
+                          telugu:
+                              '\u0c15\u0c4d\u0c2f\u0c3e\u0c2a\u0c4d\u0c37\u0c28\u0c4d \u0c30\u0c3e\u0c2f\u0c02\u0c21\u0c3f',
                           english: 'Add a caption',
                         ),
                         hintStyle: TextStyle(

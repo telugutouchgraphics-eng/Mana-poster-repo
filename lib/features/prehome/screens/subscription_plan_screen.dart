@@ -1782,7 +1782,14 @@ class _PlanSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _CompactPriceLine(
-            title: 'Trial',
+            title: context.strings.localized(
+              telugu: 'ట్రయల్',
+              english: 'Trial',
+              hindi: 'ट्रायल',
+              tamil: 'சோதனை',
+              kannada: 'ಪ್ರಯೋಗ',
+              malayalam: 'ട്രയൽ',
+            ),
             value: SubscriptionPlanConfig.trialValueDisplay,
             accent: const Color(0xFF16A34A),
           ),

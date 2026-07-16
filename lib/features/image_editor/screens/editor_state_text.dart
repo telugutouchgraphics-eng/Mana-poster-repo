@@ -427,11 +427,19 @@ extension _EditorTextState on _ImageEditorScreenState {
       return;
     }
     final textChanged = (_layers[index].text ?? '') != result.text;
+    final typingDefaultFont = _typingDefaultFontFamilyForText(result.text);
+    final shouldApplyTypingDefaultFont =
+        typingDefaultFont != null &&
+        _layers[index].fontFamily != typingDefaultFont &&
+        _shouldApplyTypingDefaultFont(_layers[index]);
     final alignChanged = _layers[index].textAlign != result.textAlign;
     final colorChanged =
         _layers[index].textColor.toARGB32() != result.textColor.toARGB32() ||
         _layers[index].textGradientIndex != -1;
-    if (!textChanged && !alignChanged && !colorChanged) {
+    if (!textChanged &&
+        !shouldApplyTypingDefaultFont &&
+        !alignChanged &&
+        !colorChanged) {
       _syncSelectedTextEditor();
       return;
     }
@@ -441,17 +449,66 @@ extension _EditorTextState on _ImageEditorScreenState {
       text: result.text,
       selection: TextSelection.collapsed(offset: result.text.length),
     );
+    final nextFontFamily = shouldApplyTypingDefaultFont
+        ? typingDefaultFont
+        : _layers[index].fontFamily;
+    final nextLegacyRenderText = _legacyRenderTextForTextEdit(
+      text: result.text,
+      fontFamily: nextFontFamily,
+    );
     final styledLayer = _layers[index].copyWith(
+      text: result.text,
+      legacyRenderText: nextLegacyRenderText,
       textAlign: result.textAlign,
       textColor: result.textColor,
       textGradientIndex: -1,
+      fontFamily: nextFontFamily,
       isParagraphText: true,
     );
     setState(() {
       _layers[index] = styledLayer;
     });
-    _handleSelectedTextChanged(result.text);
     _commitSelectedTextContentEdit();
+  }
+
+  String? _typingDefaultFontFamilyForText(String text) {
+    if (_containsTeluguText(text)) {
+      return 'Pallavi Bold';
+    }
+    if (_containsDevanagariText(text)) {
+      return 'Noto Sans Devanagari';
+    }
+    if (_containsLatinText(text)) {
+      return 'Poppins';
+    }
+    return null;
+  }
+
+  bool _shouldApplyTypingDefaultFont(_CanvasLayer layer) {
+    final currentText = (layer.text ?? '').trim();
+    return currentText.isEmpty || _isTypingDefaultFontFamily(layer.fontFamily);
+  }
+
+  bool _isTypingDefaultFontFamily(String fontFamily) {
+    return fontFamily == 'Pallavi Bold' ||
+        fontFamily == 'Poppins' ||
+        fontFamily == 'Noto Sans Devanagari';
+  }
+
+  bool _containsTeluguText(String text) {
+    return text.runes.any((rune) => rune >= 0x0C00 && rune <= 0x0C7F);
+  }
+
+  bool _containsDevanagariText(String text) {
+    return text.runes.any((rune) => rune >= 0x0900 && rune <= 0x097F);
+  }
+
+  bool _containsLatinText(String text) {
+    return text.runes.any(
+      (rune) =>
+          (rune >= 0x0041 && rune <= 0x005A) ||
+          (rune >= 0x0061 && rune <= 0x007A),
+    );
   }
 
   void _beginSelectedTextContentEdit() {

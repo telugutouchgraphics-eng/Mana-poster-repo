@@ -91,15 +91,18 @@ class _PermissionsScreenState extends State<PermissionsScreen>
         AppSnackBar.build(
           content: Text(
             context.strings.localized(
-              telugu: 'Permissions request పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.',
+              telugu:
+                  'Permissions request à°ªà±‚à°°à±à°¤à°¿ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
               english:
                   'Permissions request could not be completed. Please try again.',
-              hindi: 'Permissions request पूरी नहीं हो सकी। फिर से कोशिश करें.',
+              hindi:
+                  'Permissions request à¤ªà¥‚à¤°à¥€ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹ à¤¸à¤•à¥€à¥¤ à¤«à¤¿à¤° à¤¸à¥‡ à¤•à¥‹à¤¶à¤¿à¤¶ à¤•à¤°à¥‡à¤‚.',
               tamil:
-                  'Permissions request முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
-              kannada: 'Permissions request ಪೂರ್ಣಗೊಳ್ಳಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                  'Permissions request à®®à¯à®Ÿà®¿à®•à¯à®• à®®à¯à®Ÿà®¿à®¯à®µà®¿à®²à¯à®²à¯ˆ. à®®à¯€à®£à¯à®Ÿà¯à®®à¯ à®®à¯à®¯à®±à¯à®šà®¿à®•à¯à®•à®µà¯à®®à¯.',
+              kannada:
+                  'Permissions request à²ªà³‚à²°à³à²£à²—à³Šà²³à³à²³à²²à²¿à²²à³à²². à²®à²¤à³à²¤à³† à²ªà³à²°à²¯à²¤à³à²¨à²¿à²¸à²¿.',
               malayalam:
-                  'Permissions request പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+                  'Permissions request à´ªàµ‚àµ¼à´¤àµà´¤à´¿à´¯à´¾à´•àµà´•à´¾à´¨à´¾à´¯à´¿à´²àµà´². à´µàµ€à´£àµà´Ÿàµà´‚ à´¶àµà´°à´®à´¿à´•àµà´•àµà´•.',
             ),
           ),
         ),
@@ -199,7 +202,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                                   iconColor: const Color(0xFF8B5CF6),
                                   badgeColor: const Color(0xFFEDE9FE),
                                   title: strings.localized(
-                                    telugu: 'కెమెరా',
+                                    telugu: 'à°•à±†à°®à±†à°°à°¾',
                                     english: 'Camera',
                                   ),
                                   subtitle: copy.cameraSubtitle,
@@ -220,7 +223,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                                   iconColor: const Color(0xFF16A34A),
                                   badgeColor: const Color(0xFFDCFCE7),
                                   title: strings.localized(
-                                    telugu: 'లొకేషన్',
+                                    telugu: 'à°²à±Šà°•à±‡à°·à°¨à±',
                                     english: 'Location',
                                   ),
                                   subtitle: copy.locationSubtitle,
@@ -348,11 +351,12 @@ class _PermissionRow extends StatelessWidget {
           child: Text(
             granted
                 ? context.strings.localized(
-                    telugu: 'అనుమతి ఉంది',
+                    telugu: 'à°…à°¨à±à°®à°¤à°¿ à°‰à°‚à°¦à°¿',
                     english: 'Allowed',
                   )
                 : context.strings.localized(
-                    telugu: 'తరువాత కూడా చేయొచ్చు',
+                    telugu:
+                        'à°¤à°°à±à°µà°¾à°¤ à°•à±‚à°¡à°¾ à°šà±‡à°¯à±Šà°šà±à°šà±',
                     english: 'Optional now',
                   ),
             style: TextStyle(
@@ -372,66 +376,47 @@ class _PermissionIntroCopy {
 
   final AppLanguage language;
 
-  String get title => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'అనుమతులు',
-    SupportedUiLanguage.english => 'Permissions',
-    SupportedUiLanguage.hindi => 'अनुमतियाँ',
-    SupportedUiLanguage.tamil => 'அனுமதிகள்',
-    SupportedUiLanguage.kannada => 'ಅನುಮತಿಗಳು',
-    SupportedUiLanguage.malayalam => 'അനുമതികൾ',
-  };
+  String _localized({required String telugu, required String english}) =>
+      AppStrings(language).localized(telugu: telugu, english: english);
 
-  String get subtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'త్వరగా పూర్తిచేయండి',
-    SupportedUiLanguage.english => 'Quick setup',
-    SupportedUiLanguage.hindi => 'Quick setup',
-    SupportedUiLanguage.tamil => 'Quick setup',
-    SupportedUiLanguage.kannada => 'Quick setup',
-    SupportedUiLanguage.malayalam => 'Quick setup',
-  };
+  String get title => _localized(
+    telugu: '\u0C05\u0C28\u0C41\u0C2E\u0C24\u0C41\u0C32\u0C41',
+    english: 'Permissions',
+  );
 
-  String get photosSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'పోస్టర్లు సేవ్ చేయడానికి.',
-    SupportedUiLanguage.english => 'To save posters.',
-    SupportedUiLanguage.hindi => 'पोस्टर सेव करने के लिए।',
-    SupportedUiLanguage.tamil => 'போஸ்டர்களை சேமிக்க.',
-    SupportedUiLanguage.kannada => 'ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಲು.',
-    SupportedUiLanguage.malayalam => 'പോസ്റ്ററുകൾ സേവ് ചെയ്യാൻ.',
-  };
+  String get subtitle => _localized(
+    telugu:
+        '\u0C24\u0C4D\u0C35\u0C30\u0C17\u0C3E \u0C2A\u0C42\u0C30\u0C4D\u0C24\u0C3F\u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F',
+    english: 'Quick setup',
+  );
 
-  String get cameraSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'ఫోటో తీసుకోవడానికి.',
-    SupportedUiLanguage.english => 'To capture your photo.',
-    SupportedUiLanguage.hindi => 'फोटो लेने के लिए।',
-    SupportedUiLanguage.tamil => 'புகைப்படம் எடுக்க.',
-    SupportedUiLanguage.kannada => 'ಫೋಟೋ ತೆಗೆದುಕೊಳ್ಳಲು.',
-    SupportedUiLanguage.malayalam => 'ഫോട്ടോ എടുക്കാൻ.',
-  };
+  String get photosSubtitle => _localized(
+    telugu:
+        '\u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D\u0C32\u0C41 \u0C38\u0C47\u0C35\u0C4D \u0C1A\u0C47\u0C2F\u0C21\u0C3E\u0C28\u0C3F\u0C15\u0C3F.',
+    english: 'To save posters.',
+  );
 
-  String get notificationsSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'అప్డేట్స్ కోసం.',
-    SupportedUiLanguage.english => 'For updates.',
-    SupportedUiLanguage.hindi => 'अपडेट्स के लिए।',
-    SupportedUiLanguage.tamil => 'புதிய தகவல்களுக்கு.',
-    SupportedUiLanguage.kannada => 'ಅಪ್ಡೇಟ್‌ಗಳಿಗಾಗಿ.',
-    SupportedUiLanguage.malayalam => 'അപ്ഡേറ്റുകൾക്കായി.',
-  };
+  String get cameraSubtitle => _localized(
+    telugu:
+        '\u0C2B\u0C4B\u0C1F\u0C4B \u0C24\u0C40\u0C38\u0C41\u0C15\u0C4B\u0C35\u0C21\u0C3E\u0C28\u0C3F\u0C15\u0C3F.',
+    english: 'To capture your photo.',
+  );
 
-  String get locationSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'దగ్గరలోని స్టేటస్‌లు చూపడానికి.',
-    SupportedUiLanguage.english => 'To show nearby statuses.',
-    SupportedUiLanguage.hindi => 'Nearby statuses दिखाने के लिए।',
-    SupportedUiLanguage.tamil => 'Nearby statuses காட்ட.',
-    SupportedUiLanguage.kannada => 'Nearby statuses ತೋರಿಸಲು.',
-    SupportedUiLanguage.malayalam => 'Nearby statuses കാണിക്കാൻ.',
-  };
+  String get notificationsSubtitle => _localized(
+    telugu:
+        '\u0C05\u0C2A\u0C4D\u0C21\u0C47\u0C1F\u0C4D\u0C38\u0C4D \u0C15\u0C4B\u0C38\u0C02.',
+    english: 'For updates.',
+  );
 
-  String get footerHint => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'తర్వాత settings లో కూడా ఇవ్వొచ్చు.',
-    SupportedUiLanguage.english => 'You can allow them later in settings.',
-    SupportedUiLanguage.hindi => 'बाद में सेटिंग्स में भी अनुमति दे सकते हैं।',
-    SupportedUiLanguage.tamil => 'பிறகு settings-ல் அனுமதி தரலாம்.',
-    SupportedUiLanguage.kannada => 'ನಂತರ settings ನಲ್ಲಿ ಅನುಮತಿ ನೀಡಬಹುದು.',
-    SupportedUiLanguage.malayalam => 'പിന്നീട് settings-ൽ അനുവദിക്കാം.',
-  };
+  String get locationSubtitle => _localized(
+    telugu:
+        '\u0C26\u0C17\u0C4D\u0C17\u0C30\u0C32\u0C4B\u0C28\u0C3F \u0C38\u0C4D\u0C1F\u0C47\u0C1F\u0C38\u0C4D\u0C32\u0C41 \u0C1A\u0C42\u0C2A\u0C21\u0C3E\u0C28\u0C3F\u0C15\u0C3F.',
+    english: 'To show nearby statuses.',
+  );
+
+  String get footerHint => _localized(
+    telugu:
+        '\u0C24\u0C30\u0C4D\u0C35\u0C3E\u0C24 settings \u0C32\u0C4B \u0C15\u0C42\u0C21\u0C3E \u0C07\u0C35\u0C4D\u0C35\u0C4A\u0C1A\u0C4D\u0C1A\u0C41.',
+    english: 'You can allow them later in settings.',
+  );
 }

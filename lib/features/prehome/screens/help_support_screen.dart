@@ -549,42 +549,108 @@ class _HelpSupportCopy {
 
   bool get _isTelugu => language == AppLanguage.telugu;
 
-  String get title => _isTelugu ? 'సహాయం & సపోర్ట్' : 'Help & support';
-  String get faqLabel =>
-      _isTelugu ? 'తరచుగా వచ్చే ప్రశ్నలు' : 'Frequently asked questions';
-  String get headerTitle => _isTelugu
-      ? 'సమస్యకి వెంటనే మార్గదర్శకం'
-      : 'Quick guidance for common issues';
-  String get headerSubtitle => _isTelugu
-      ? 'లాగిన్, ఫోటో ఎంపిక, సేవ్, ఎగుమతి, సబ్‌స్క్రిప్షన్ లేదా సాధారణ యాప్ వినియోగానికి సంబంధించిన సాధారణ ప్రశ్నలకు ఇక్కడే సమాధానాలు ఉన్నాయి. యాప్‌లో కనిపించే పోస్టర్లు ప్రచురణకు ముందు review చేయబడతాయి.'
-      : 'Find quick answers for login, photo import, save/export, subscription, and other common app issues. Posters shown in the app are reviewed before publishing.';
-  String get legalTitle =>
-      _isTelugu ? 'ప్రైవసీ మరియు నిబంధనలు' : 'Privacy and terms';
-  String get legalSubtitle => _isTelugu
-      ? 'యాప్ వినియోగం, డేటా నిర్వహణ మరియు నిబంధనల వివరాలు ఇక్కడ చూడవచ్చు.'
-      : 'Read the app privacy policy and terms of use here.';
-  String get privacyLabel => _isTelugu ? 'ప్రైవసీ పాలసీ' : 'Privacy Policy';
-  String get termsLabel => _isTelugu ? 'నిబంధనలు' : 'Terms & Conditions';
-  String get stillNeedHelpTitle =>
-      _isTelugu ? 'ఇంకా సహాయం కావాలా?' : 'Still need help?';
-  String get stillNeedHelpSubtitle => _isTelugu
-      ? 'మీ సమస్య వివరాలను మాకు మెయిల్ చేయండి. మీరు ఎంచుకున్న ప్రశ్నకు సంబంధించిన వివరాలు కూడా ఆటోమేటిక్‌గా జోడించబడతాయి.'
-      : 'Email us with the issue details. If you opened a question above, that context will also be added to the draft email.';
-  String get contactButton =>
-      _isTelugu ? 'సపోర్ట్‌కు ఇమెయిల్ పంపండి' : 'Email support';
-  String get copyEmailButton =>
-      _isTelugu ? 'సపోర్ట్ ఇమెయిల్ కాపీ చేయండి' : 'Copy support email';
-  String get defaultSubject => 'Mana Poster Ai Support Request';
-  String get defaultBody => _isTelugu
-      ? 'నమస్కారం Mana Poster Ai టీమ్,\n\nనా సమస్య వివరాలు:\n-'
-      : 'Hello Mana Poster Ai team,\n\nIssue details:\n-';
-  String get contextLabel => _isTelugu ? 'ఎంచుకున్న విషయం' : 'Selected topic';
-  String get emailOpenFailed => _isTelugu
-      ? 'ఇమెయిల్ యాప్ ఓపెన్ కాలేదు. దయచేసి సపోర్ట్ ఇమెయిల్‌ను మాన్యువల్‌గా ఉపయోగించండి.'
-      : 'Could not open the email app. Please use the support email manually.';
-  String get emailCopied =>
-      _isTelugu ? 'సపోర్ట్ ఇమెయిల్ కాపీ అయింది.' : 'Support email copied.';
+  String _localized({required String telugu, required String english}) =>
+      AppStrings(language).localized(telugu: telugu, english: english);
 
+  String get title => _localized(
+    telugu:
+        '\u0C38\u0C39\u0C3E\u0C2F\u0C02 & \u0C38\u0C2A\u0C4B\u0C30\u0C4D\u0C1F\u0C4D',
+    english: 'Help & Support',
+  );
+
+  String get faqLabel => _localized(
+    telugu:
+        '\u0C24\u0C30\u0C1A\u0C41\u0C17\u0C3E \u0C35\u0C1A\u0C4D\u0C1A\u0C47 \u0C2A\u0C4D\u0C30\u0C36\u0C4D\u0C28\u0C32\u0C41',
+    english: 'Frequently asked questions',
+  );
+
+  String get headerTitle => _localized(
+    telugu:
+        '\u0C38\u0C2E\u0C38\u0C4D\u0C2F\u0C15\u0C3F \u0C35\u0C46\u0C02\u0C1F\u0C28\u0C47 \u0C2E\u0C3E\u0C30\u0C4D\u0C17\u0C26\u0C30\u0C4D\u0C36\u0C15\u0C02',
+    english: 'Quick guidance for common issues',
+  );
+
+  String get headerSubtitle => _localized(
+    telugu:
+        '\u0C32\u0C3E\u0C17\u0C3F\u0C28\u0C4D, \u0C2B\u0C4B\u0C1F\u0C4B \u0C0E\u0C02\u0C2A\u0C3F\u0C15, \u0C38\u0C47\u0C35\u0C4D, \u0C0E\u0C17\u0C41\u0C2E\u0C24\u0C3F, \u0C38\u0C2C\u0C4D\u0C38\u0C4D\u0C15\u0C4D\u0C30\u0C3F\u0C2A\u0C4D\u0C37\u0C28\u0C4D \u0C32\u0C47\u0C26\u0C3E \u0C38\u0C3E\u0C27\u0C3E\u0C30\u0C23 \u0C2F\u0C3E\u0C2A\u0C4D \u0C35\u0C3F\u0C28\u0C3F\u0C2F\u0C4B\u0C17\u0C3E\u0C28\u0C3F\u0C15\u0C3F \u0C38\u0C02\u0C2C\u0C02\u0C27\u0C3F\u0C02\u0C1A\u0C3F\u0C28 \u0C38\u0C3E\u0C27\u0C3E\u0C30\u0C23 \u0C2A\u0C4D\u0C30\u0C36\u0C4D\u0C28\u0C32\u0C15\u0C41 \u0C07\u0C15\u0C4D\u0C15\u0C21\u0C47 \u0C38\u0C2E\u0C3E\u0C27\u0C3E\u0C28\u0C3E\u0C32\u0C41 \u0C09\u0C28\u0C4D\u0C28\u0C3E\u0C2F\u0C3F. \u0C2F\u0C3E\u0C2A\u0C4D\u0C32\u0C4B \u0C15\u0C28\u0C3F\u0C2A\u0C3F\u0C02\u0C1A\u0C47 \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D\u0C32\u0C41 \u0C2A\u0C4D\u0C30\u0C1A\u0C41\u0C30\u0C23\u0C15\u0C41 \u0C2E\u0C41\u0C02\u0C26\u0C41 review \u0C1A\u0C47\u0C2F\u0C2C\u0C21\u0C24\u0C3E\u0C2F\u0C3F.',
+    english:
+        'Find quick answers for login, photo import, save/export, subscription, and other common app issues. Posters shown in the app are reviewed before publishing.',
+  );
+
+  String get legalTitle => _localized(
+    telugu:
+        '\u0C2A\u0C4D\u0C30\u0C48\u0C35\u0C38\u0C40 \u0C2E\u0C30\u0C3F\u0C2F\u0C41 \u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C41',
+    english: 'Privacy and terms',
+  );
+
+  String get legalSubtitle => _localized(
+    telugu:
+        '\u0C2F\u0C3E\u0C2A\u0C4D \u0C35\u0C3F\u0C28\u0C3F\u0C2F\u0C4B\u0C17\u0C02, \u0C21\u0C47\u0C1F\u0C3E \u0C28\u0C3F\u0C30\u0C4D\u0C35\u0C39\u0C23 \u0C2E\u0C30\u0C3F\u0C2F\u0C41 \u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32 \u0C35\u0C3F\u0C35\u0C30\u0C3E\u0C32\u0C41 \u0C07\u0C15\u0C4D\u0C15\u0C21 \u0C1A\u0C42\u0C21\u0C35\u0C1A\u0C4D\u0C1A\u0C41.',
+    english: 'Read the app privacy policy and terms of use here.',
+  );
+
+  String get privacyLabel => _localized(
+    telugu:
+        '\u0C2A\u0C4D\u0C30\u0C48\u0C35\u0C38\u0C40 \u0C2A\u0C3E\u0C32\u0C38\u0C40',
+    english: 'Privacy Policy',
+  );
+
+  String get termsLabel => _localized(
+    telugu: '\u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C41',
+    english: 'Terms & Conditions',
+  );
+
+  String get stillNeedHelpTitle => _localized(
+    telugu:
+        '\u0C07\u0C02\u0C15\u0C3E \u0C38\u0C39\u0C3E\u0C2F\u0C02 \u0C15\u0C3E\u0C35\u0C3E\u0C32\u0C3E?',
+    english: 'Still need help?',
+  );
+
+  String get stillNeedHelpSubtitle => _localized(
+    telugu:
+        '\u0C2E\u0C40 \u0C38\u0C2E\u0C38\u0C4D\u0C2F \u0C35\u0C3F\u0C35\u0C30\u0C3E\u0C32\u0C28\u0C41 \u0C2E\u0C3E\u0C15\u0C41 \u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F. \u0C2E\u0C40\u0C30\u0C41 \u0C0E\u0C02\u0C1A\u0C41\u0C15\u0C41\u0C28\u0C4D\u0C28 \u0C2A\u0C4D\u0C30\u0C36\u0C4D\u0C28\u0C15\u0C41 \u0C38\u0C02\u0C2C\u0C02\u0C27\u0C3F\u0C02\u0C1A\u0C3F\u0C28 \u0C35\u0C3F\u0C35\u0C30\u0C3E\u0C32\u0C41 \u0C15\u0C42\u0C21\u0C3E \u0C06\u0C1F\u0C4B\u0C2E\u0C47\u0C1F\u0C3F\u0C15\u0C4D\u0C17\u0C3E \u0C1C\u0C4B\u0C21\u0C3F\u0C02\u0C1A\u0C2C\u0C21\u0C24\u0C3E\u0C2F\u0C3F.',
+    english:
+        'Email us with the issue details. If you opened a question above, that context will also be added to the draft email.',
+  );
+
+  String get contactButton => _localized(
+    telugu:
+        '\u0C38\u0C2A\u0C4B\u0C30\u0C4D\u0C1F\u0C4D\u0C15\u0C41 \u0C07\u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C2A\u0C02\u0C2A\u0C02\u0C21\u0C3F',
+    english: 'Email support',
+  );
+
+  String get copyEmailButton => _localized(
+    telugu:
+        '\u0C38\u0C2A\u0C4B\u0C30\u0C4D\u0C1F\u0C4D \u0C07\u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C15\u0C3E\u0C2A\u0C40 \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F',
+    english: 'Copy support email',
+  );
+
+  String get defaultSubject => 'Mana Poster Ai Support Request';
+
+  String get defaultBody => _localized(
+    telugu:
+        '\u0C28\u0C2E\u0C38\u0C4D\u0C15\u0C3E\u0C30\u0C02 Mana Poster Ai \u0C1F\u0C40\u0C2E\u0C4D,\n\n\u0C28\u0C3E \u0C38\u0C2E\u0C38\u0C4D\u0C2F \u0C35\u0C3F\u0C35\u0C30\u0C3E\u0C32\u0C41:\n-',
+    english: 'Hello Mana Poster Ai team,\n\nIssue details:\n-',
+  );
+
+  String get contextLabel => _localized(
+    telugu:
+        '\u0C0E\u0C02\u0C1A\u0C41\u0C15\u0C41\u0C28\u0C4D\u0C28 \u0C35\u0C3F\u0C37\u0C2F\u0C02',
+    english: 'Selected topic',
+  );
+
+  String get emailOpenFailed => _localized(
+    telugu:
+        '\u0C07\u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C2F\u0C3E\u0C2A\u0C4D \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C15\u0C3E\u0C32\u0C47\u0C26\u0C41. \u0C26\u0C2F\u0C1A\u0C47\u0C38\u0C3F \u0C38\u0C2A\u0C4B\u0C30\u0C4D\u0C1F\u0C4D \u0C07\u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D\u0C28\u0C41 \u0C2E\u0C3E\u0C28\u0C4D\u0C2F\u0C41\u0C35\u0C32\u0C4D\u0C17\u0C3E \u0C09\u0C2A\u0C2F\u0C4B\u0C17\u0C3F\u0C02\u0C1A\u0C02\u0C21\u0C3F.',
+    english:
+        'Could not open the email app. Please use the support email manually.',
+  );
+
+  String get emailCopied => _localized(
+    telugu:
+        '\u0C38\u0C2A\u0C4B\u0C30\u0C4D\u0C1F\u0C4D \u0C07\u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C15\u0C3E\u0C2A\u0C40 \u0C05\u0C2F\u0C3F\u0C02\u0C26\u0C3F.',
+    english: 'Support email copied.',
+  );
   List<_HelpFaqItem> get faqs => _isTelugu
       ? const <_HelpFaqItem>[
           _HelpFaqItem(

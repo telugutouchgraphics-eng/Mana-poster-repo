@@ -692,6 +692,11 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /editorFonts/{fontId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
     // Admin-created manual event categories used to show event chips in app.
     match /manualEventCategories/{categoryId} {
       allow read: if resource.data.active == true;

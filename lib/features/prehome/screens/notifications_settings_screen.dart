@@ -362,35 +362,84 @@ class _NotificationsCopy {
 
   final AppLanguage language;
 
-  bool get _isTelugu => language == AppLanguage.telugu;
+  String _localized({required String telugu, required String english}) =>
+      AppStrings(language).localized(telugu: telugu, english: english);
 
-  String get title =>
-      _isTelugu ? 'నోటిఫికేషన్ సెట్టింగ్స్' : 'Notification settings';
-  String get cardTitle =>
-      _isTelugu ? 'నోటిఫికేషన్ల నియంత్రణ' : 'Notification controls';
-  String get cardSubtitle => _isTelugu
-      ? 'యాప్‌లో ఏ రకం అలర్ట్‌లు రావాలో ఇక్కడ నుంచి నియంత్రించవచ్చు.'
-      : 'Choose which app alerts you want to receive from here.';
-  String get preferencesTitle =>
-      _isTelugu ? 'వ్యక్తిగత ప్రాధాన్యాలు' : 'Preferences';
-  String get allNotificationsTitle =>
-      _isTelugu ? 'అన్ని నోటిఫికేషన్లు' : 'All notifications';
-  String get allNotificationsSubtitle => _isTelugu
-      ? 'దీన్ని ఆఫ్ చేస్తే క్రింద ఉన్న అన్ని ఎంపికలు కూడా ఆగిపోతాయి.'
-      : 'Turning this off also disables the options below.';
-  String get newPostersTitle => _isTelugu ? 'కొత్త పోస్టర్లు' : 'New posters';
-  String get newPostersSubtitle => _isTelugu
-      ? 'కొత్త డిజైన్లు లేదా టెంప్లేట్లు వచ్చినప్పుడు తెలియజేస్తుంది.'
-      : 'When new templates and poster designs are available.';
-  String get offersTitle =>
-      _isTelugu ? 'ఆఫర్లు & అప్‌డేట్లు' : 'Offers & updates';
-  String get offersSubtitle => _isTelugu
-      ? 'ప్రత్యేక ఆఫర్లు, ప్లాన్ సమాచారం, ముఖ్యమైన యాప్ అప్‌డేట్లు.'
-      : 'Special offers, promos, and important app updates.';
-  String get subscriptionTitle =>
-      _isTelugu ? 'సబ్‌స్క్రిప్షన్ గుర్తింపులు' : 'Subscription reminders';
-  String get subscriptionSubtitle => _isTelugu
-      ? 'ట్రయల్ ముగింపు లేదా రీన్యువల్ తేదీలకు గుర్తింపులు.'
-      : 'Trial end and renewal reminders.';
-  String get savingLabel => _isTelugu ? 'సేవ్ అవుతోంది...' : 'Saving...';
+  String get title => _localized(
+    telugu:
+        '\u0C28\u0C4B\u0C1F\u0C3F\u0C2B\u0C3F\u0C15\u0C47\u0C37\u0C28\u0C4D \u0C38\u0C46\u0C1F\u0C4D\u0C1F\u0C3F\u0C02\u0C17\u0C4D\u0C38\u0C4D',
+    english: 'Notification settings',
+  );
+
+  String get cardTitle => _localized(
+    telugu:
+        '\u0C28\u0C4B\u0C1F\u0C3F\u0C2B\u0C3F\u0C15\u0C47\u0C37\u0C28\u0C4D\u0C32 \u0C28\u0C3F\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C23',
+    english: 'Notification controls',
+  );
+
+  String get cardSubtitle => _localized(
+    telugu:
+        '\u0C2F\u0C3E\u0C2A\u0C4D\u0C32\u0C4B \u0C0F \u0C30\u0C15\u0C02 \u0C05\u0C32\u0C30\u0C4D\u0C1F\u0C4D\u0C32\u0C41 \u0C30\u0C3E\u0C35\u0C3E\u0C32\u0C4B \u0C07\u0C15\u0C4D\u0C15\u0C21 \u0C28\u0C41\u0C02\u0C1A\u0C3F \u0C28\u0C3F\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C3F\u0C02\u0C1A\u0C35\u0C1A\u0C4D\u0C1A\u0C41.',
+    english: 'Choose which app alerts you want to receive from here.',
+  );
+
+  String get preferencesTitle => _localized(
+    telugu:
+        '\u0C35\u0C4D\u0C2F\u0C15\u0C4D\u0C24\u0C3F\u0C17\u0C24 \u0C2A\u0C4D\u0C30\u0C3E\u0C27\u0C3E\u0C28\u0C4D\u0C2F\u0C3E\u0C32\u0C41',
+    english: 'Preferences',
+  );
+
+  String get allNotificationsTitle => _localized(
+    telugu:
+        '\u0C05\u0C28\u0C4D\u0C28\u0C3F \u0C28\u0C4B\u0C1F\u0C3F\u0C2B\u0C3F\u0C15\u0C47\u0C37\u0C28\u0C4D\u0C32\u0C41',
+    english: 'All notifications',
+  );
+
+  String get allNotificationsSubtitle => _localized(
+    telugu:
+        '\u0C26\u0C40\u0C28\u0C4D\u0C28\u0C3F \u0C06\u0C2B\u0C4D \u0C1A\u0C47\u0C38\u0C4D\u0C24\u0C47 \u0C15\u0C4D\u0C30\u0C3F\u0C02\u0C26 \u0C09\u0C28\u0C4D\u0C28 \u0C05\u0C28\u0C4D\u0C28\u0C3F \u0C0E\u0C02\u0C2A\u0C3F\u0C15\u0C32\u0C41 \u0C15\u0C42\u0C21\u0C3E \u0C06\u0C17\u0C3F\u0C2A\u0C4B\u0C24\u0C3E\u0C2F\u0C3F.',
+    english: 'Turning this off also disables the options below.',
+  );
+
+  String get newPostersTitle => _localized(
+    telugu:
+        '\u0C15\u0C4A\u0C24\u0C4D\u0C24 \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D\u0C32\u0C41',
+    english: 'New posters',
+  );
+
+  String get newPostersSubtitle => _localized(
+    telugu:
+        '\u0C15\u0C4A\u0C24\u0C4D\u0C24 \u0C21\u0C3F\u0C1C\u0C48\u0C28\u0C4D\u0C32\u0C41 \u0C32\u0C47\u0C26\u0C3E \u0C1F\u0C46\u0C02\u0C2A\u0C4D\u0C32\u0C47\u0C1F\u0C4D\u0C32\u0C41 \u0C35\u0C1A\u0C4D\u0C1A\u0C3F\u0C28\u0C2A\u0C4D\u0C2A\u0C41\u0C21\u0C41 \u0C24\u0C46\u0C32\u0C3F\u0C2F\u0C1C\u0C47\u0C38\u0C4D\u0C24\u0C41\u0C02\u0C26\u0C3F.',
+    english: 'When new templates and poster designs are available.',
+  );
+
+  String get offersTitle => _localized(
+    telugu:
+        '\u0C06\u0C2B\u0C30\u0C4D\u0C32\u0C41 & \u0C05\u0C2A\u0C4D\u0C21\u0C47\u0C1F\u0C4D\u0C32\u0C41',
+    english: 'Offers & updates',
+  );
+
+  String get offersSubtitle => _localized(
+    telugu:
+        '\u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15 \u0C06\u0C2B\u0C30\u0C4D\u0C32\u0C41, \u0C2A\u0C4D\u0C30\u0C4B\u0C2E\u0C4B\u0C32\u0C41, \u0C2E\u0C41\u0C16\u0C4D\u0C2F\u0C2E\u0C48\u0C28 \u0C2F\u0C3E\u0C2A\u0C4D \u0C05\u0C2A\u0C4D\u0C21\u0C47\u0C1F\u0C4D\u0C32\u0C41.',
+    english: 'Special offers, promos, and important app updates.',
+  );
+
+  String get subscriptionTitle => _localized(
+    telugu:
+        '\u0C38\u0C2C\u0C4D\u0C38\u0C4D\u0C15\u0C4D\u0C30\u0C3F\u0C2A\u0C4D\u0C37\u0C28\u0C4D \u0C17\u0C41\u0C30\u0C4D\u0C24\u0C3F\u0C02\u0C2A\u0C41\u0C32\u0C41',
+    english: 'Subscription reminders',
+  );
+
+  String get subscriptionSubtitle => _localized(
+    telugu:
+        '\u0C1F\u0C4D\u0C30\u0C2F\u0C32\u0C4D \u0C2E\u0C41\u0C17\u0C3F\u0C02\u0C2A\u0C41 \u0C32\u0C47\u0C26\u0C3E \u0C30\u0C40\u0C28\u0C4D\u0C2F\u0C41\u0C35\u0C32\u0C4D \u0C24\u0C47\u0C26\u0C40\u0C32\u0C15\u0C41 \u0C17\u0C41\u0C30\u0C4D\u0C24\u0C3F\u0C02\u0C2A\u0C41\u0C32\u0C41.',
+    english: 'Trial end and renewal reminders.',
+  );
+
+  String get savingLabel => _localized(
+    telugu:
+        '\u0C38\u0C47\u0C35\u0C4D \u0C05\u0C35\u0C41\u0C24\u0C4B\u0C02\u0C26\u0C3F...',
+    english: 'Saving...',
+  );
 }

@@ -380,6 +380,901 @@ _regionalCommonFallbacks = <AppLanguage, Map<String, String>>{
   },
 };
 
+const Map<AppLanguage, Map<String, String>>
+_regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
+  AppLanguage.assamese: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'আপোনাৰ ফটো, উদ্ধৃতি বা ডিজাইন ধাৰণা পৰ্যালোচনাৰ বাবে পঠিয়াওক। আমাৰ দলটোৱে সেয়া পৰীক্ষা কৰি, প্ৰয়োজন হলে সম্পাদনা/উন্নত কৰি উপযুক্ত এপ শ্ৰেণীত প্ৰকাশ কৰিব পাৰে। অনুমোদিত বিষয়বস্তু আপোনাৰ লগতে আন ব্যৱহাৰকাৰীকো দেখা যাব পাৰে। আপুনি পঠিওৱা বিষয়বস্তুৰ দায়িত্ব আপোনাৰ। নিয়ম আৰু চৰ্ত প্ৰযোজ্য।',
+    'Check review rules before submitting your content.':
+        'বিষয়বস্তু পঠিওৱাৰ আগতে পৰ্যালোচনা নিয়ম চাওক।',
+    'Community Upload Instructions': 'সমাজ আপলোড নিৰ্দেশনা',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'আপোনাৰ উদ্ধৃতি, লিখনি বা উদ্ধৃতি থকা ছবি Mana Poster পৰ্যালোচনা দললৈ পঠিয়াওক।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'আপুনি পঠিওৱা বিষয়বস্তুৰ দায়িত্ব আপোনাৰ। পঠিওৱাৰ অৰ্থ হৈছে সেয়া Mana Poster ৰ নিয়ম আৰু সমাজ নীতি মানি চলে বুলি আপুনি নিশ্চিত কৰিছে।',
+    'How it works': 'ই কেনেকৈ কাম কৰে',
+    'You can upload quote text, a quote image, or both.':
+        'আপুনি উদ্ধৃতি লিখনি, উদ্ধৃতি ছবি বা দুয়োটাই পঠিয়াব পাৰে।',
+    'Your upload first goes to the manager review queue.':
+        'আপোনাৰ আপলোড প্ৰথমে মেনেজাৰ পৰ্যালোচনা শাৰীত যায়।',
+    'If approved, the team may redesign it and publish it in the related category.':
+        'অনুমোদিত হলে দলটোৱে সেয়া নতুনকৈ সাজি সংশ্লিষ্ট শ্ৰেণীত প্ৰকাশ কৰিব পাৰে।',
+    'What can be approved': 'কি অনুমোদিত হব পাৰে',
+    'Clean quote or image that matches the selected category.':
+        'বাছনি কৰা শ্ৰেণীৰ সৈতে মিলা পৰিষ্কাৰ উদ্ধৃতি বা ছবি।',
+    'Content created by you or content you have permission to use.':
+        'আপুনি নিজে সৃষ্টি কৰা বা ব্যৱহাৰৰ অনুমতি থকা বিষয়বস্তু।',
+    'After publishing, it may be visible to you and all users in that category.':
+        'প্ৰকাশৰ পিছত সেয়া আপোনাক আৰু সেই শ্ৰেণীৰ সকলো ব্যৱহাৰকাৰীক দেখা যাব পাৰে।',
+    'Rejection reasons': 'নাকচ কৰাৰ কাৰণ',
+    'Wrong category, unrelated content, duplicate, or low quality image.':
+        'ভুল শ্ৰেণী, অসংলগ্ন বিষয়বস্তু, পুনৰাবৃত্তি বা নিম্ন মানৰ ছবি।',
+    'Copyright image, copied quote, offensive, or misleading content.':
+        'কপিৰাইট ছবি, নকল উদ্ধৃতি, অপমানজনক বা ভ্ৰান্তিকৰ বিষয়বস্তু।',
+    'Private details, political misuse, spam, or unsafe content.':
+        'ব্যক্তিগত তথ্য, ৰাজনৈতিক অপব্যৱহাৰ, স্পেম বা অসুৰক্ষিত বিষয়বস্তু।',
+  },
+  AppLanguage.gujarati: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'તમારો ફોટો, સુવાક્ય અથવા ડિઝાઇન વિચાર સમીક્ષા માટે મોકલો. અમારી ટીમ તેને તપાસી, જરૂર પડે તો સુધારી અને યોગ્ય એપ કેટેગરીમાં પ્રકાશિત કરી શકે છે. મંજૂર થયેલું કન્ટેન્ટ તમને અને અન્ય વપરાશકર્તાઓને દેખાઈ શકે છે. તમે અપલોડ કરેલા કન્ટેન્ટ માટે તમે જવાબદાર છો. નિયમો અને શરતો લાગુ પડે છે.',
+    'Check review rules before submitting your content.':
+        'કન્ટેન્ટ મોકલતા પહેલાં સમીક્ષા નિયમો વાંચો.',
+    'Community Upload Instructions': 'સમુદાય અપલોડ સૂચનાઓ',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'તમારું સુવાક્ય, લખાણ અથવા સુવાક્યવાળો ફોટો Mana Poster સમીક્ષા ટીમને મોકલો.',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'તમે અપલોડ કરેલા કન્ટેન્ટ માટે તમે જવાબદાર છો. મોકલવાથી તમે ખાતરી આપો છો કે તમારું અપલોડ Mana Poster નિયમો અને સમુદાય માર્ગદર્શિકા અનુસરે છે.',
+    'How it works': 'આ કેવી રીતે કામ કરે છે',
+    'You can upload quote text, a quote image, or both.':
+        'તમે સુવાક્ય લખાણ, સુવાક્યવાળો ફોટો અથવા બંને મોકલી શકો છો.',
+    'Your upload first goes to the manager review queue.':
+        'તમારું અપલોડ પહેલા મેનેજર સમીક્ષા કતારમાં જશે.',
+    'If approved, the team may redesign it and publish it in the related category.':
+        'મંજૂર થાય તો ટીમ તેને ફરી ડિઝાઇન કરીને સંબંધિત કેટેગરીમાં પ્રકાશિત કરી શકે છે.',
+    'What can be approved': 'શું મંજૂર થઈ શકે',
+    'Clean quote or image that matches the selected category.':
+        'પસંદ કરેલી કેટેગરીને મેળ ખાતું સ્વચ્છ સુવાક્ય અથવા ફોટો.',
+    'Content created by you or content you have permission to use.':
+        'તમારા દ્વારા બનાવેલું અથવા ઉપયોગની પરવાનગી ધરાવતું કન્ટેન્ટ.',
+    'After publishing, it may be visible to you and all users in that category.':
+        'પ્રકાશિત થયા પછી તે તમને અને તે કેટેગરીના બધા વપરાશકર્તાઓને દેખાઈ શકે છે.',
+    'Rejection reasons': 'નકારવાના કારણો',
+    'Wrong category, unrelated content, duplicate, or low quality image.':
+        'ખોટી કેટેગરી, અસંબંધિત કન્ટેન્ટ, ડુપ્લિકેટ અથવા ઓછી ગુણવત્તાનો ફોટો.',
+    'Copyright image, copied quote, offensive, or misleading content.':
+        'કૉપિરાઇટ ફોટો, નકલ કરેલું સુવાક્ય, અપમાનજનક અથવા ભ્રામક કન્ટેન્ટ.',
+    'Private details, political misuse, spam, or unsafe content.':
+        'ખાનગી માહિતી, રાજકીય દુરુપયોગ, સ્પામ અથવા અસુરક્ષિત કન્ટેન્ટ.',
+  },
+  AppLanguage.marathi: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'तुमचा फोटो, सुविचार किंवा डिझाइन कल्पना पुनरावलोकनासाठी पाठवा. आमची टीम ते तपासून, गरज असल्यास सुधारून योग्य अ‍ॅप श्रेणीत प्रकाशित करू शकते. मंजूर झालेले कंटेंट तुम्हाला आणि इतर वापरकर्त्यांना दिसू शकते. तुम्ही अपलोड केलेल्या कंटेंटची जबाबदारी तुमची असेल. नियम व अटी लागू आहेत.',
+    'Check review rules before submitting your content.':
+        'कंटेंट पाठवण्यापूर्वी पुनरावलोकन नियम वाचा.',
+    'Community Upload Instructions': 'समुदाय अपलोड सूचना',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'तुमचा सुविचार, मजकूर किंवा सुविचार असलेला फोटो Mana Poster पुनरावलोकन टीमकडे पाठवा.',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'तुम्ही अपलोड केलेल्या कंटेंटची जबाबदारी तुमची आहे. पाठवल्यानंतर तुम्ही ते Mana Poster नियम आणि समुदाय मार्गदर्शक तत्त्वांनुसार आहे याची खात्री देता.',
+    'How it works': 'हे कसे काम करते',
+    'You can upload quote text, a quote image, or both.':
+        'तुम्ही सुविचार मजकूर, सुविचार असलेला फोटो किंवा दोन्ही पाठवू शकता.',
+    'Your upload first goes to the manager review queue.':
+        'तुमचे अपलोड आधी व्यवस्थापक पुनरावलोकन रांगेत जाते.',
+    'If approved, the team may redesign it and publish it in the related category.':
+        'मंजूर झाल्यास टीम ते पुन्हा डिझाइन करून संबंधित श्रेणीत प्रकाशित करू शकते.',
+    'What can be approved': 'काय मंजूर होऊ शकते',
+    'Clean quote or image that matches the selected category.':
+        'निवडलेल्या श्रेणीशी जुळणारा स्वच्छ सुविचार किंवा फोटो.',
+    'Content created by you or content you have permission to use.':
+        'तुम्ही तयार केलेले किंवा वापरण्याची परवानगी असलेले कंटेंट.',
+    'After publishing, it may be visible to you and all users in that category.':
+        'प्रकाशित झाल्यानंतर ते तुम्हाला आणि त्या श्रेणीतील सर्व वापरकर्त्यांना दिसू शकते.',
+    'Rejection reasons': 'नाकारण्याची कारणे',
+    'Wrong category, unrelated content, duplicate, or low quality image.':
+        'चुकीची श्रेणी, असंबंधित कंटेंट, डुप्लिकेट किंवा कमी गुणवत्तेचा फोटो.',
+    'Copyright image, copied quote, offensive, or misleading content.':
+        'कॉपीराइट फोटो, कॉपी केलेला सुविचार, आक्षेपार्ह किंवा दिशाभूल करणारे कंटेंट.',
+    'Private details, political misuse, spam, or unsafe content.':
+        'खाजगी माहिती, राजकीय गैरवापर, स्पॅम किंवा असुरक्षित कंटेंट.',
+  },
+  AppLanguage.odia: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'ଆପଣଙ୍କ ଫଟୋ, ଉକ୍ତି କିମ୍ବା ଡିଜାଇନ ଧାରଣାକୁ ସମୀକ୍ଷା ପାଇଁ ପଠାନ୍ତୁ। ଆମ ଦଳ ଏହାକୁ ଯାଞ୍ଚ କରି, ଆବଶ୍ୟକ ହେଲେ ସୁଧାରି, ଉପଯୁକ୍ତ ଆପ୍ ଶ୍ରେଣୀରେ ପ୍ରକାଶ କରିପାରେ। ଅନୁମୋଦିତ ବିଷୟବସ୍ତୁ ଆପଣଙ୍କୁ ଓ ଅନ୍ୟ ବ୍ୟବହାରକାରୀଙ୍କୁ ଦେଖାଯାଇପାରେ। ଆପଣ ପଠାଇଥିବା ବିଷୟବସ୍ତୁ ପାଇଁ ଆପଣ ଦାୟୀ। ନିୟମ ଓ ସର୍ତ୍ତ ଲାଗୁ ହେବ।',
+    'Check review rules before submitting your content.':
+        'ବିଷୟବସ୍ତୁ ପଠାଇବା ପୂର୍ବରୁ ସମୀକ୍ଷା ନିୟମ ଦେଖନ୍ତୁ।',
+    'Community Upload Instructions': 'ସମୁଦାୟ ଅପଲୋଡ୍ ନିର୍ଦ୍ଦେଶ',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'ଆପଣଙ୍କ ଉକ୍ତି, ଲେଖା କିମ୍ବା ଉକ୍ତି ଥିବା ଫଟୋକୁ Mana Poster ସମୀକ୍ଷା ଦଳକୁ ପଠାନ୍ତୁ।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'ଆପଣ ଅପଲୋଡ୍ କରୁଥିବା ବିଷୟବସ୍ତୁ ପାଇଁ ଆପଣ ଦାୟୀ। ପଠାଇବା ମାଧ୍ୟମରେ ଏହା Mana Poster ନିୟମ ଓ ସମୁଦାୟ ନିର୍ଦ୍ଦେଶିକା ମାନୁଛି ବୋଲି ଆପଣ ନିଶ୍ଚିତ କରୁଛନ୍ତି।',
+  },
+  AppLanguage.punjabi: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'ਆਪਣੀ ਫੋਟੋ, ਵਿਚਾਰ-ਵਾਕ ਜਾਂ ਡਿਜ਼ਾਇਨ ਆਈਡੀਆ ਸਮੀਖਿਆ ਲਈ ਭੇਜੋ। ਸਾਡੀ ਟੀਮ ਇਸਨੂੰ ਵੇਖ ਕੇ, ਲੋੜ ਪੈਣ ਤੇ ਸੁਧਾਰ ਕੇ, ਠੀਕ ਐਪ ਕੈਟੇਗਰੀ ਵਿੱਚ ਪ੍ਰਕਾਸ਼ਿਤ ਕਰ ਸਕਦੀ ਹੈ। ਮਨਜ਼ੂਰ ਸਮੱਗਰੀ ਤੁਹਾਨੂੰ ਅਤੇ ਹੋਰ ਵਰਤੋਂਕਾਰਾਂ ਨੂੰ ਦਿਖ ਸਕਦੀ ਹੈ। ਤੁਸੀਂ ਅਪਲੋਡ ਕੀਤੀ ਸਮੱਗਰੀ ਲਈ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। ਨਿਯਮ ਅਤੇ ਸ਼ਰਤਾਂ ਲਾਗੂ ਹਨ।',
+    'Check review rules before submitting your content.':
+        'ਸਮੱਗਰੀ ਭੇਜਣ ਤੋਂ ਪਹਿਲਾਂ ਸਮੀਖਿਆ ਨਿਯਮ ਵੇਖੋ।',
+    'Community Upload Instructions': 'ਕਮਿਊਨਿਟੀ ਅਪਲੋਡ ਹਦਾਇਤਾਂ',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'ਆਪਣਾ ਵਿਚਾਰ-ਵਾਕ, ਲਿਖਤ ਜਾਂ ਵਿਚਾਰ-ਵਾਕ ਵਾਲੀ ਫੋਟੋ Mana Poster ਸਮੀਖਿਆ ਟੀਮ ਨੂੰ ਭੇਜੋ।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'ਤੁਸੀਂ ਅਪਲੋਡ ਕੀਤੀ ਸਮੱਗਰੀ ਲਈ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। ਭੇਜਣ ਨਾਲ ਤੁਸੀਂ ਪੁਸ਼ਟੀ ਕਰਦੇ ਹੋ ਕਿ ਇਹ Mana Poster ਨਿਯਮਾਂ ਅਤੇ ਕਮਿਊਨਿਟੀ ਹਦਾਇਤਾਂ ਦੀ ਪਾਲਣਾ ਕਰਦੀ ਹੈ।',
+  },
+  AppLanguage.bengali: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'আপনার ছবি, উক্তি বা ডিজাইন ধারণা পর্যালোচনার জন্য পাঠান। আমাদের দল সেটি পরীক্ষা করে, প্রয়োজনে সম্পাদনা/উন্নত করে উপযুক্ত অ্যাপ বিভাগে প্রকাশ করতে পারে। অনুমোদিত কনটেন্ট আপনাকে এবং অন্যান্য ব্যবহারকারীদের দেখা যেতে পারে। আপনি যে কনটেন্ট পাঠাচ্ছেন তার দায় আপনার। নিয়ম ও শর্ত প্রযোজ্য।',
+    'Check review rules before submitting your content.':
+        'কনটেন্ট পাঠানোর আগে পর্যালোচনা নিয়ম দেখুন।',
+    'Community Upload Instructions': 'কমিউনিটি আপলোড নির্দেশনা',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'আপনার উক্তি, লেখা বা উক্তিসহ ছবি Mana Poster পর্যালোচনা দলে পাঠান।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'আপনি যে কনটেন্ট আপলোড করছেন তার দায়িত্ব আপনার। পাঠানোর মাধ্যমে আপনি নিশ্চিত করছেন যে এটি Mana Poster নিয়ম ও কমিউনিটি নির্দেশিকা মেনে চলছে।',
+  },
+  AppLanguage.konkani: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'तुमचो फोटो, सुविचार वा डिझायन कल्पना तपासणी खातीर धाडात. आमची टीम ती तपासून, गरज आसल्यार सुधारून, योग्य ऍप विभागांत प्रकाशित करूंक शकता. मान्य जाल्लें सामग्री तुमका आनी हेर वापरपींक दिसूंक शकता. तुमी अपलोड केल्ल्या सामग्रीची जबाबदारी तुमची. नियम आनी अटी लागू.',
+    'Check review rules before submitting your content.':
+        'सामग्री धाडचे पयलीं तपासणी नियम वाचात.',
+    'Community Upload Instructions': 'समुदाय अपलोड सूचना',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'तुमचो सुविचार, मजकूर वा सुविचाराचो फोटो Mana Poster तपासणी टीमक धाडात.',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'तुमी अपलोड केल्ल्या सामग्रीची जबाबदारी तुमची. धाडल्यार ती Mana Poster नियम आनी समुदाय मार्गदर्शक तत्त्वां प्रमाणें आसा हाची खात्री तुमी दिता.',
+  },
+  AppLanguage.meitei: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'ꯅꯍꯥꯛꯀꯤ ꯐꯣꯇꯣ, ꯋꯥꯍꯩ ꯅꯠꯠꯔꯒꯥ ꯗꯤꯖꯥꯏꯟ ꯑꯥꯏꯗꯤꯌꯥ ꯌꯦꯡꯁꯤꯟꯕꯒꯤꯗꯃꯛ ꯊꯥꯕꯤꯌꯨ। ꯑꯩꯈꯣꯌꯒꯤ ꯇꯤꯝꯅ ꯌꯦꯡꯁꯤꯟꯗꯨꯅ, ꯃꯊꯧ ꯇꯥꯔꯕꯗꯤ ꯁꯦꯝꯗꯣꯛꯇꯨꯅ, ꯃꯥꯟꯅꯕ ꯑꯦꯞ ꯀꯦꯇꯦꯒꯣꯔꯤꯗ ꯐꯣꯡꯗꯣꯛꯄ ꯌꯥꯏ। ꯑꯌꯥꯕ ꯐꯪꯈ꯭ꯔꯕ ꯀꯟꯇꯦꯟꯇ ꯅꯍꯥꯛꯇꯥ ꯑꯃꯁꯨꯡ ꯑꯇꯩ ꯌꯨꯖꯔꯁꯤꯡꯗ ꯎꯕ ꯌꯥꯏ। ꯅꯍꯥꯛꯅ ꯊꯥꯕ ꯀꯟꯇꯦꯟꯇꯀꯤ ꯃꯁꯤꯡ ꯅꯍꯥꯛꯀꯤ ꯃꯊꯧꯅꯤ। ꯅꯤꯌꯝ ꯑꯃꯁꯨꯡ ꯁꯔꯇꯁꯤꯡ ꯌꯥꯎꯏ।',
+    'Check review rules before submitting your content.':
+        'ꯀꯟꯇꯦꯟꯇ ꯊꯥꯕꯒꯤ ꯃꯃꯥꯡꯗ ꯌꯦꯡꯁꯤꯟ ꯅꯤꯌꯝꯁꯤꯡ ꯌꯦꯡꯕꯤꯌꯨ।',
+    'Community Upload Instructions': 'ꯀꯝꯌꯨꯅꯤꯇꯤ ꯑꯄꯂꯣꯗ ꯋꯥꯌꯦꯜ',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'ꯅꯍꯥꯛꯀꯤ ꯋꯥꯍꯩ, ꯇꯦꯛꯁꯇ ꯅꯠꯠꯔꯒꯥ ꯋꯥꯍꯩ ꯐꯣꯇꯣ Mana Poster ꯌꯦꯡꯁꯤꯟ ꯇꯤꯝꯗ ꯊꯥꯕꯤꯌꯨ।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'ꯅꯍꯥꯛꯅ ꯊꯥꯕ ꯀꯟꯇꯦꯟꯇꯀꯤ ꯃꯁꯤꯡ ꯅꯍꯥꯛꯀꯤ ꯃꯊꯧꯅꯤ। ꯊꯥꯕꯗꯨꯅ ꯃꯁꯤ Mana Poster ꯅꯤꯌꯝ ꯑꯃꯁꯨꯡ ꯀꯝꯌꯨꯅꯤꯇꯤ ꯒꯥꯏꯗꯂꯥꯏꯟ ꯏꯅꯕꯅꯤ ꯍꯥꯌꯕ ꯅꯍꯥꯛꯅ ꯌꯥꯏꯐꯕꯤ।',
+  },
+  AppLanguage.mizo: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'I thlalak, thu chhuah, emaw design ngaihtuahna chu en-fiah turin thawn rawh. Kan team-in a en-fiah ang a, a tul chuan a siamthat ang a, app category inmil-ah a chhuah thei ang. Pawm tawh content chu nang leh user dangte hnenah a lang thei ang. I upload content chungchangah nangmah i mawhphurh. Terms & Conditions a berlaku.',
+    'Check review rules before submitting your content.':
+        'Content i thawn hmain review dan te en rawh.',
+    'Community Upload Instructions': 'Community Upload Kaihhruaina',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'I quote, text, emaw quote thlalak chu Mana Poster review team hnenah thawn rawh.',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'I upload content chungchangah nangmah i mawhphurh. I thawn chuan Mana Poster terms leh community guidelines i zawm tih i nemnghet a ni.',
+  },
+  AppLanguage.nepali: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'आफ्नो फोटो, उद्धरण वा डिजाइन विचार समीक्षा लागि पठाउनुहोस्। हाम्रो टोलीले त्यसलाई जाँचेर, आवश्यक परे सुधार गरेर, मिल्दो एप श्रेणीमा प्रकाशित गर्न सक्छ। स्वीकृत सामग्री तपाईं र अन्य प्रयोगकर्तालाई देखिन सक्छ। तपाईंले पठाएको सामग्रीको जिम्मेवारी तपाईंको हुनेछ। नियम र सर्तहरू लागू हुन्छन्।',
+    'Check review rules before submitting your content.':
+        'सामग्री पठाउनु अघि समीक्षा नियमहरू पढ्नुहोस्।',
+    'Community Upload Instructions': 'समुदाय अपलोड निर्देशन',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'आफ्नो उद्धरण, पाठ वा उद्धरण भएको फोटो Mana Poster समीक्षा टोलीलाई पठाउनुहोस्।',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'तपाईंले अपलोड गरेको सामग्रीको जिम्मेवारी तपाईंको हो। पठाउँदा तपाईंले यो Mana Poster का नियम र समुदाय दिशानिर्देशअनुसार छ भनी पुष्टि गर्नुहुन्छ।',
+  },
+  AppLanguage.kashmiri: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'پنن فوٹو، قول یا ڈیزائن خیال جائزہ خٲطرٕ بھیزو۔ اسٕند ٹیم یہٕ چیک کرتھ، ضرورت آسہ تٔمۍ بہتر کرتھ، صحیح ایپ زمرس منز شایع کرتھ ہیکہ۔ منظور شدہ مواد تہندۍ تٕ باقۍ صارفن ہندۍ نظر آوتھ ہیکہ۔ تہندۍ اپلوڈ کردٕ موادس خٲطرٕ تہیہ ذمہ دار چھو۔ شرطٕ تٕ ضابطہ لاگو چھ۔',
+    'Check review rules before submitting your content.':
+        'مواد بھیزنہٕ برونہہ جائزہ ضابطہ چیک کریو۔',
+    'Community Upload Instructions': 'کمیونٹی اپلوڈ ہدایات',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'پنن قول، متن یا قول والی تصویر Mana Poster جائزہ ٹیمس بھیزو۔',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'تہندۍ اپلوڈ کردٕ موادس خٲطرٕ تہیہ ذمہ دار چھو۔ بھیزنٕ سٕتۍ تہیہ تصدیق کران چھو ز یہٕ Mana Poster شرطٕ تٕ کمیونٹی ہدایاتن مطابق چھ۔',
+  },
+  AppLanguage.ladakhi: <String, String>{
+    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
+        'ཁྱེད་རང་གི་པར། ཚིག་བརྗོད། ཡང་ན་ཇུས་འགོད་བསམ་ཚུལ་ཞིབ་བཤེར་ཆེད་སྐུར་རོགས། ང་ཚོའི་ཚོགས་པས་ཞིབ་བཤེར་བྱས་ནས་དགོས་ན་བཅོས་སྒྲིག་བྱེད་དེ་འོས་འཚམ་གྱི་ཨེཔ་སྡེ་ཚན་ནང་སྤེལ་ཐུབ། ཆོག་མཆན་ཐོབ་པའི་ནང་དོན་ཁྱེད་དང་སྤྱོད་མཁན་གཞན་ཚོས་མཐོང་ཐུབ། ཁྱེད་རང་གིས་སྐུར་བའི་ནང་དོན་ལ་ཁྱེད་རང་འགན་འཁུར་དགོས། སྒྲིག་གཞི་དང་ཆ་རྐྱེན་ཁྱབ་འཇུག་ཡིན།',
+    'Check review rules before submitting your content.':
+        'ནང་དོན་སྐུར་གོང་ཞིབ་བཤེར་སྒྲིག་གཞི་ལྟ་རོགས།',
+    'Community Upload Instructions': 'སྤྱི་ཚོགས་ནང་སྐུར་སྟངས་ཀྱི་ལམ་སྟོན',
+    'Send your quote, text, or quote image to the Mana Poster review team.':
+        'ཁྱེད་ཀྱི་ཚིག་བརྗོད། ཡི་གེ། ཡང་ན་ཚིག་བརྗོད་ཡོད་པའི་པར་ Mana Poster ཞིབ་བཤེར་ཚོགས་པར་སྐུར་རོགས།',
+    'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
+        'ཁྱེད་རང་གིས་སྐུར་བའི་ནང་དོན་ལ་ཁྱེད་རང་འགན་འཁུར་དགོས། སྐུར་བའི་སྐབས་སུ་དེ་ Mana Poster སྒྲིག་གཞི་དང་སྤྱི་ཚོགས་ལམ་སྟོན་ལ་མཐུན་པ་ཡིན་པ་ཁྱེད་རང་གིས་ངེས་བརྟན་བྱེད།',
+  },
+};
+
+const Map<AppLanguage, Map<String, String>>
+_regionalExtraFallbacks = <AppLanguage, Map<String, String>>{
+  AppLanguage.assamese: <String, String>{
+    'A few permissions are needed': 'কিছুমান অনুমতি প্ৰয়োজন',
+    'About App': 'এপৰ বিষয়ে',
+    'Account': 'একাউণ্ট',
+    'Allow': 'অনুমতি দিয়ক',
+    'App details and version info': 'এপৰ বিৱৰণ আৰু সংস্কৰণৰ তথ্য',
+    'App Settings': 'এপ ছেটিংছ',
+    'Buy': 'কিনক',
+    'Choose your app language': 'আপোনাৰ এপৰ ভাষা বাছক',
+    'Control alerts and updates': 'সতৰ্কবাণী আৰু আপডেট নিয়ন্ত্ৰণ কৰক',
+    'Current language': 'বৰ্তমান ভাষা',
+    'Enter valid email': 'সঠিক ইমেইল দিয়ক',
+    'Get help and contact support': 'সহায় লওক আৰু সমৰ্থনৰ সৈতে যোগাযোগ কৰক',
+    'Help & Support': 'সহায় আৰু সমৰ্থন',
+    'Language Settings': 'ভাষা ছেটিংছ',
+    'Later': 'পিছত',
+    'Manage current plan and upgrades':
+        'বৰ্তমান প্লেন আৰু আপগ্ৰেড নিয়ন্ত্ৰণ কৰক',
+    'Minimum 6 characters required': 'কমেও ৬টা আখৰ প্ৰয়োজন',
+    'Notifications': 'জাননীসমূহ',
+    'Password reset will be available soon.':
+        'পাছৱৰ্ড ৰিছেট শীঘ্ৰে উপলব্ধ হ’ব।',
+    'Photos, storage and other access': 'ফটো, সংৰক্ষণ আৰু আন প্ৰৱেশাধিকাৰ',
+    'Photos/Gallery': 'ফটো / গেলাৰী',
+    'Ready': 'সাজু',
+    'Save / Apply': 'সংৰক্ষণ / প্ৰয়োগ',
+    'Share WhatsApp': 'WhatsAppত শ্বেয়াৰ কৰক',
+    'Sign out logic can be connected later':
+        'ছাইন আউট ব্যৱস্থা পাছত সংযোগ কৰিব পাৰি',
+    'Special': 'বিশেষ',
+    'Subscription': 'চাবস্ক্ৰিপচন',
+    'Support': 'সমৰ্থন',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai লৈ স্বাগতম',
+  },
+  AppLanguage.konkani: <String, String>{
+    'A few permissions are needed': 'कांय अनुमती गरजेची आसात',
+    'About App': 'ऍप विशीं',
+    'Account': 'खातें',
+    'Allow': 'परवानगी दियात',
+    'App details and version info': 'ऍप तपशील आनी आवृत्ती माहिती',
+    'App Settings': 'ऍप सेटिंग्स',
+    'Buy': 'विकत घेवप',
+    'Choose your app language': 'तुमची ऍप भास निवडात',
+    'Control alerts and updates': 'सूचना आनी अपडेट नियंत्रण करात',
+    'Current language': 'सध्याची भास',
+    'Enter valid email': 'वैध ईमेल दियात',
+    'Get help and contact support': 'मदत घेवची आनी सपोर्टाक संपर्क करात',
+    'Help & Support': 'मदत आनी सपोर्ट',
+    'Language Settings': 'भास सेटिंग्स',
+    'Later': 'उपरांत',
+    'Manage current plan and upgrades': 'सध्याचो प्लॅन आनी अपग्रेड सांभाळात',
+    'Minimum 6 characters required': 'किमान ६ अक्षरां गरजेची',
+    'Notifications': 'सूचना',
+    'Password reset will be available soon.':
+        'पासवर्ड रीसेट लवकरच उपलब्ध जातलो.',
+    'Photos, storage and other access': 'फोटो, स्टोरेज आनी हेर प्रवेश',
+    'Photos/Gallery': 'फोटो / गॅलरी',
+    'Ready': 'तयार',
+    'Save / Apply': 'सेव्ह / लागू करात',
+    'Share WhatsApp': 'WhatsApp चेर शेअर करात',
+    'Sign out logic can be connected later':
+        'साइन आउट व्यवस्था उपरांत जोडूं शकता',
+    'Special': 'खास',
+    'Subscription': 'सदस्यता',
+    'Support': 'सपोर्ट',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai क स्वागत',
+  },
+  AppLanguage.gujarati: <String, String>{
+    'A few permissions are needed': 'થોડી પરવાનગીઓ જરૂરી છે',
+    'About App': 'એપ વિશે',
+    'Account': 'એકાઉન્ટ',
+    'Allow': 'મંજૂરી આપો',
+    'App details and version info': 'એપ વિગતો અને વર્ઝન માહિતી',
+    'App Settings': 'એપ સેટિંગ્સ',
+    'Buy': 'ખરીદો',
+    'Choose your app language': 'તમારી એપ ભાષા પસંદ કરો',
+    'Control alerts and updates': 'ચેતવણીઓ અને અપડેટ્સ નિયંત્રિત કરો',
+    'Current language': 'હાલની ભાષા',
+    'Enter valid email': 'માન્ય ઈમેલ દાખલ કરો',
+    'Get help and contact support': 'મદદ મેળવો અને સપોર્ટનો સંપર્ક કરો',
+    'Help & Support': 'મદદ અને સપોર્ટ',
+    'Language Settings': 'ભાષા સેટિંગ્સ',
+    'Later': 'પછી',
+    'Manage current plan and upgrades': 'હાલનો પ્લાન અને અપગ્રેડ મેનેજ કરો',
+    'Minimum 6 characters required': 'ઓછામાં ઓછા ૬ અક્ષરો જરૂરી છે',
+    'Notifications': 'સૂચનાઓ',
+    'Password reset will be available soon.':
+        'પાસવર્ડ રીસેટ ટૂંક સમયમાં ઉપલબ્ધ થશે.',
+    'Photos, storage and other access': 'ફોટા, સ્ટોરેજ અને અન્ય ઍક્સેસ',
+    'Photos/Gallery': 'ફોટા / ગેલેરી',
+    'Ready': 'તૈયાર',
+    'Save / Apply': 'સાચવો / લાગુ કરો',
+    'Share WhatsApp': 'WhatsApp પર શેર કરો',
+    'Sign out logic can be connected later':
+        'સાઇન આઉટ વ્યવસ્થા પછી જોડાઈ શકે છે',
+    'Special': 'ખાસ',
+    'Subscription': 'સબ્સ્ક્રિપ્શન',
+    'Support': 'સપોર્ટ',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai માં આપનું સ્વાગત છે',
+  },
+  AppLanguage.marathi: <String, String>{
+    'A few permissions are needed': 'काही परवानग्या आवश्यक आहेत',
+    'About App': 'अ‍ॅप बद्दल',
+    'Account': 'खाते',
+    'Allow': 'परवानगी द्या',
+    'App details and version info': 'अ‍ॅप तपशील आणि आवृत्ती माहिती',
+    'App Settings': 'अ‍ॅप सेटिंग्ज',
+    'Buy': 'खरेदी करा',
+    'Choose your app language': 'तुमची अ‍ॅप भाषा निवडा',
+    'Control alerts and updates': 'सूचना आणि अपडेट्स नियंत्रित करा',
+    'Current language': 'सध्याची भाषा',
+    'Enter valid email': 'वैध ईमेल टाका',
+    'Get help and contact support': 'मदत घ्या आणि सपोर्टशी संपर्क करा',
+    'Help & Support': 'मदत आणि सपोर्ट',
+    'Language Settings': 'भाषा सेटिंग्ज',
+    'Later': 'नंतर',
+    'Manage current plan and upgrades':
+        'सध्याचा प्लॅन आणि अपग्रेड्स व्यवस्थापित करा',
+    'Minimum 6 characters required': 'किमान ६ अक्षरे आवश्यक आहेत',
+    'Notifications': 'सूचना',
+    'Password reset will be available soon.':
+        'पासवर्ड रीसेट लवकरच उपलब्ध होईल.',
+    'Photos, storage and other access': 'फोटो, स्टोरेज आणि इतर प्रवेश',
+    'Photos/Gallery': 'फोटो / गॅलरी',
+    'Ready': 'तयार',
+    'Save / Apply': 'जतन करा / लागू करा',
+    'Share WhatsApp': 'WhatsApp वर शेअर करा',
+    'Sign out logic can be connected later':
+        'साइन आउट व्यवस्था नंतर जोडता येईल',
+    'Special': 'विशेष',
+    'Subscription': 'सदस्यता',
+    'Support': 'सपोर्ट',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai मध्ये स्वागत',
+  },
+  AppLanguage.meitei: <String, String>{
+    'A few permissions are needed': 'খরা অনুমতি দরকার অই',
+    'About App': 'এপকী মরমদা',
+    'Account': 'একাউন্ট',
+    'Allow': 'অনুমতি পীয়ু',
+    'App details and version info': 'এপকী মচাক অমসুং ভার্সনগী তথ্য',
+    'App Settings': 'এপ সেটিংস',
+    'Buy': 'লৌবিয়ু',
+    'Choose your app language': 'নহাক্কী এপ লোল খনবিয়ু',
+    'Control alerts and updates': 'এলার্ট অমসুং আপডেট কন্ট্রোল তৌবিয়ু',
+    'Current language': 'হৌজিক্কী লোল',
+    'Enter valid email': 'চুম্বা ইমেইল পীবিয়ু',
+    'Get help and contact support': 'মতেং লৌবিয়ু অমসুং সাপোর্টদা পাও ফাওবিয়ু',
+    'Help & Support': 'মতেং অমসুং সাপোর্ট',
+    'Language Settings': 'লোল সেটিংস',
+    'Later': 'তুংদা',
+    'Manage current plan and upgrades':
+        'হৌজিক্কী প্লান অমসুং আপগ্রেড মেনেজ তৌবিয়ু',
+    'Minimum 6 characters required': 'অচমবা ৬ character দরকার',
+    'Notifications': 'নোটিফিকেশনশিং',
+    'Password reset will be available soon.': 'পাসৱার্ড রিসেট থুনা ফংগনি।',
+    'Photos, storage and other access': 'ফোটো, স্টোরেজ অমসুং অতোপ্পা এক্সেস',
+    'Photos/Gallery': 'ফোটো / গ্যালারি',
+    'Ready': 'রেডি',
+    'Save / Apply': 'সেভ / এপ্লাই',
+    'Share WhatsApp': 'WhatsApp দা শেয়ার তৌবিয়ু',
+    'Sign out logic can be connected later':
+        'সাইন আউট ব্যবস্থা তুংদা কানেক্ট তৌবা যায়',
+    'Special': 'অখন্নবা',
+    'Subscription': 'সাবস্ক্রিপশন',
+    'Support': 'সাপোর্ট',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai দা তরাম্না অকৌবা',
+  },
+  AppLanguage.mizo: <String, String>{
+    'A few permissions are needed': 'Permission thenkhat a ngai',
+    'About App': 'App chungchang',
+    'Account': 'Account',
+    'Allow': 'Phal',
+    'App details and version info': 'App details leh version info',
+    'App Settings': 'App settings',
+    'Buy': 'Lei',
+    'Choose your app language': 'I app tawng thlang rawh',
+    'Control alerts and updates': 'Alerts leh updates control rawh',
+    'Current language': 'Tuna tawng',
+    'Enter valid email': 'Email dik tak ziak rawh',
+    'Get help and contact support': 'Tanpuina la la, support biak rawh',
+    'Help & Support': 'Tanpuina leh support',
+    'Language Settings': 'Tawng settings',
+    'Later': 'Nakinah',
+    'Manage current plan and upgrades': 'Tuna plan leh upgrades enkawl rawh',
+    'Minimum 6 characters required': 'Character 6 tal a ngai',
+    'Notifications': 'Notifications',
+    'Password reset will be available soon.':
+        'Password reset chu rei lo teah a awm ang.',
+    'Photos, storage and other access': 'Photos, storage leh access dangte',
+    'Photos/Gallery': 'Photos / Gallery',
+    'Ready': 'Ready',
+    'Save / Apply': 'Save / Apply',
+    'Share WhatsApp': 'WhatsApp-ah share rawh',
+    'Sign out logic can be connected later':
+        'Sign out system chu nakinah connect theih a ni',
+    'Special': 'Special',
+    'Subscription': 'Subscription',
+    'Support': 'Support',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai-ah kan lo lawm a che',
+  },
+  AppLanguage.odia: <String, String>{
+    'A few permissions are needed': 'କିଛି ଅନୁମତି ଆବଶ୍ୟକ',
+    'About App': 'ଆପ୍ ବିଷୟରେ',
+    'Account': 'ଆକାଉଣ୍ଟ',
+    'Allow': 'ଅନୁମତି ଦିଅନ୍ତୁ',
+    'App details and version info': 'ଆପ୍ ବିବରଣୀ ଏବଂ ଭର୍ସନ ସୂଚନା',
+    'App Settings': 'ଆପ୍ ସେଟିଂସ୍',
+    'Buy': 'କିଣନ୍ତୁ',
+    'Choose your app language': 'ଆପଣଙ୍କ ଆପ୍ ଭାଷା ବାଛନ୍ତୁ',
+    'Control alerts and updates': 'ସତର୍କତା ଏବଂ ଅପଡେଟ୍ ନିୟନ୍ତ୍ରଣ କରନ୍ତୁ',
+    'Current language': 'ବର୍ତ୍ତମାନ ଭାଷା',
+    'Enter valid email': 'ଠିକ୍ ଇମେଲ୍ ଦିଅନ୍ତୁ',
+    'Get help and contact support':
+        'ସହାୟତା ନିଅନ୍ତୁ ଏବଂ ସପୋର୍ଟ ସହିତ ଯୋଗାଯୋଗ କରନ୍ତୁ',
+    'Help & Support': 'ସହାୟତା ଏବଂ ସପୋର୍ଟ',
+    'Language Settings': 'ଭାଷା ସେଟିଂସ୍',
+    'Later': 'ପରେ',
+    'Manage current plan and upgrades':
+        'ବର୍ତ୍ତମାନ ପ୍ଲାନ୍ ଏବଂ ଅପଗ୍ରେଡ୍ ପରିଚାଳନା କରନ୍ତୁ',
+    'Minimum 6 characters required': 'କମରେ କମ ୬ଟି ଅକ୍ଷର ଆବଶ୍ୟକ',
+    'Notifications': 'ସୂଚନା',
+    'Password reset will be available soon.':
+        'ପାସୱାର୍ଡ ରିସେଟ୍ ଶୀଘ୍ର ଉପଲବ୍ଧ ହେବ।',
+    'Photos, storage and other access': 'ଫଟୋ, ଷ୍ଟୋରେଜ୍ ଏବଂ ଅନ୍ୟ ଆକ୍ସେସ୍',
+    'Photos/Gallery': 'ଫଟୋ / ଗ୍ୟାଲେରୀ',
+    'Ready': 'ପ୍ରସ୍ତୁତ',
+    'Save / Apply': 'ସେଭ୍ / ପ୍ରୟୋଗ',
+    'Share WhatsApp': 'WhatsApp ରେ ସେୟାର୍ କରନ୍ତୁ',
+    'Sign out logic can be connected later':
+        'ସାଇନ୍ ଆଉଟ୍ ବ୍ୟବସ୍ଥା ପରେ ଯୋଡାଯାଇପାରିବ',
+    'Special': 'ବିଶେଷ',
+    'Subscription': 'ସବସ୍କ୍ରିପସନ୍',
+    'Support': 'ସପୋର୍ଟ',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai କୁ ସ୍ୱାଗତ',
+  },
+  AppLanguage.punjabi: <String, String>{
+    'A few permissions are needed': 'ਕੁਝ ਇਜਾਜ਼ਤਾਂ ਦੀ ਲੋੜ ਹੈ',
+    'About App': 'ਐਪ ਬਾਰੇ',
+    'Account': 'ਖਾਤਾ',
+    'Allow': 'ਇਜਾਜ਼ਤ ਦਿਓ',
+    'App details and version info': 'ਐਪ ਵੇਰਵੇ ਅਤੇ ਵਰਜਨ ਜਾਣਕਾਰੀ',
+    'App Settings': 'ਐਪ ਸੈਟਿੰਗਾਂ',
+    'Buy': 'ਖਰੀਦੋ',
+    'Choose your app language': 'ਆਪਣੀ ਐਪ ਭਾਸ਼ਾ ਚੁਣੋ',
+    'Control alerts and updates': 'ਅਲਰਟ ਅਤੇ ਅਪਡੇਟ ਕੰਟਰੋਲ ਕਰੋ',
+    'Current language': 'ਮੌਜੂਦਾ ਭਾਸ਼ਾ',
+    'Enter valid email': 'ਸਹੀ ਈਮੇਲ ਦਰਜ ਕਰੋ',
+    'Get help and contact support': 'ਮਦਦ ਲਵੋ ਅਤੇ ਸਪੋਰਟ ਨਾਲ ਸੰਪਰਕ ਕਰੋ',
+    'Help & Support': 'ਮਦਦ ਅਤੇ ਸਪੋਰਟ',
+    'Language Settings': 'ਭਾਸ਼ਾ ਸੈਟਿੰਗਾਂ',
+    'Later': 'ਬਾਅਦ ਵਿੱਚ',
+    'Manage current plan and upgrades': 'ਮੌਜੂਦਾ ਪਲਾਨ ਅਤੇ ਅਪਗ੍ਰੇਡ ਮੈਨੇਜ ਕਰੋ',
+    'Minimum 6 characters required': 'ਘੱਟੋ-ਘੱਟ ੬ ਅੱਖਰ ਲੋੜੀਂਦੇ ਹਨ',
+    'Notifications': 'ਸੂਚਨਾਵਾਂ',
+    'Password reset will be available soon.': 'ਪਾਸਵਰਡ ਰੀਸੈਟ ਜਲਦੀ ਉਪਲਬਧ ਹੋਵੇਗਾ।',
+    'Photos, storage and other access': 'ਫੋਟੋਆਂ, ਸਟੋਰੇਜ ਅਤੇ ਹੋਰ ਪਹੁੰਚ',
+    'Photos/Gallery': 'ਫੋਟੋਆਂ / ਗੈਲਰੀ',
+    'Ready': 'ਤਿਆਰ',
+    'Save / Apply': 'ਸੇਵ / ਲਾਗੂ ਕਰੋ',
+    'Share WhatsApp': 'WhatsApp ਤੇ ਸ਼ੇਅਰ ਕਰੋ',
+    'Sign out logic can be connected later':
+        'ਸਾਈਨ ਆਉਟ ਪ੍ਰਬੰਧ ਬਾਅਦ ਵਿੱਚ ਜੋੜਿਆ ਜਾ ਸਕਦਾ ਹੈ',
+    'Special': 'ਖਾਸ',
+    'Subscription': 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ',
+    'Support': 'ਸਪੋਰਟ',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai ਵਿੱਚ ਸੁਆਗਤ ਹੈ',
+  },
+  AppLanguage.nepali: <String, String>{
+    'A few permissions are needed': 'केही अनुमतिहरू आवश्यक छन्',
+    'About App': 'एपको बारेमा',
+    'Account': 'खाता',
+    'Allow': 'अनुमति दिनुहोस्',
+    'App details and version info': 'एप विवरण र संस्करण जानकारी',
+    'App Settings': 'एप सेटिङहरू',
+    'Buy': 'किन्नुहोस्',
+    'Choose your app language': 'आफ्नो एप भाषा छान्नुहोस्',
+    'Control alerts and updates': 'सूचना र अपडेट नियन्त्रण गर्नुहोस्',
+    'Current language': 'हालको भाषा',
+    'Enter valid email': 'मान्य इमेल लेख्नुहोस्',
+    'Get help and contact support':
+        'मद्दत लिनुहोस् र सपोर्टमा सम्पर्क गर्नुहोस्',
+    'Help & Support': 'मद्दत र सपोर्ट',
+    'Language Settings': 'भाषा सेटिङहरू',
+    'Later': 'पछि',
+    'Manage current plan and upgrades':
+        'हालको प्लान र अपग्रेड व्यवस्थापन गर्नुहोस्',
+    'Minimum 6 characters required': 'कम्तीमा ६ अक्षर आवश्यक छ',
+    'Notifications': 'सूचनाहरू',
+    'Password reset will be available soon.':
+        'पासवर्ड रिसेट छिट्टै उपलब्ध हुनेछ।',
+    'Photos, storage and other access': 'फोटो, स्टोरेज र अन्य पहुँच',
+    'Photos/Gallery': 'फोटो / ग्यालरी',
+    'Ready': 'तयार',
+    'Save / Apply': 'सेभ / लागू गर्नुहोस्',
+    'Share WhatsApp': 'WhatsApp मा शेयर गर्नुहोस्',
+    'Sign out logic can be connected later':
+        'साइन आउट व्यवस्था पछि जोड्न सकिन्छ',
+    'Special': 'विशेष',
+    'Subscription': 'सदस्यता',
+    'Support': 'सपोर्ट',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai मा स्वागत छ',
+  },
+  AppLanguage.bengali: <String, String>{
+    'A few permissions are needed': 'কিছু অনুমতি প্রয়োজন',
+    'About App': 'অ্যাপ সম্পর্কে',
+    'Account': 'অ্যাকাউন্ট',
+    'Allow': 'অনুমতি দিন',
+    'App details and version info': 'অ্যাপের বিবরণ ও সংস্করণ তথ্য',
+    'App Settings': 'অ্যাপ সেটিংস',
+    'Buy': 'কিনুন',
+    'Choose your app language': 'আপনার অ্যাপের ভাষা বেছে নিন',
+    'Control alerts and updates': 'সতর্কতা ও আপডেট নিয়ন্ত্রণ করুন',
+    'Current language': 'বর্তমান ভাষা',
+    'Enter valid email': 'সঠিক ইমেল লিখুন',
+    'Get help and contact support': 'সহায়তা নিন এবং সাপোর্টে যোগাযোগ করুন',
+    'Help & Support': 'সহায়তা ও সাপোর্ট',
+    'Language Settings': 'ভাষা সেটিংস',
+    'Later': 'পরে',
+    'Manage current plan and upgrades':
+        'বর্তমান প্ল্যান ও আপগ্রেড পরিচালনা করুন',
+    'Minimum 6 characters required': 'কমপক্ষে ৬টি অক্ষর প্রয়োজন',
+    'Notifications': 'নোটিফিকেশন',
+    'Password reset will be available soon.':
+        'পাসওয়ার্ড রিসেট শীঘ্রই পাওয়া যাবে।',
+    'Photos, storage and other access': 'ফটো, স্টোরেজ এবং অন্যান্য অ্যাক্সেস',
+    'Photos/Gallery': 'ফটো / গ্যালারি',
+    'Ready': 'প্রস্তুত',
+    'Save / Apply': 'সেভ / প্রয়োগ',
+    'Share WhatsApp': 'WhatsApp-এ শেয়ার করুন',
+    'Sign out logic can be connected later':
+        'সাইন আউট ব্যবস্থা পরে যুক্ত করা যাবে',
+    'Special': 'বিশেষ',
+    'Subscription': 'সাবস্ক্রিপশন',
+    'Support': 'সাপোর্ট',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai-এ স্বাগতম',
+  },
+  AppLanguage.kashmiri: <String, String>{
+    'A few permissions are needed': 'کچھ اجازتیں ضروری ہیں',
+    'About App': 'ایپ کے بارے میں',
+    'Account': 'اکاؤنٹ',
+    'Allow': 'اجازت دیں',
+    'App details and version info': 'ایپ کی تفصیل اور ورژن معلومات',
+    'App Settings': 'ایپ سیٹنگز',
+    'Buy': 'خریدیں',
+    'Choose your app language': 'اپنی ایپ زبان منتخب کریں',
+    'Control alerts and updates': 'الرٹس اور اپ ڈیٹس کنٹرول کریں',
+    'Current language': 'موجودہ زبان',
+    'Enter valid email': 'درست ای میل درج کریں',
+    'Get help and contact support': 'مدد حاصل کریں اور سپورٹ سے رابطہ کریں',
+    'Help & Support': 'مدد اور سپورٹ',
+    'Language Settings': 'زبان کی سیٹنگز',
+    'Later': 'بعد میں',
+    'Manage current plan and upgrades':
+        'موجودہ پلان اور اپ گریڈز کا انتظام کریں',
+    'Minimum 6 characters required': 'کم از کم ۶ حروف ضروری ہیں',
+    'Notifications': 'اطلاعات',
+    'Password reset will be available soon.': 'پاس ورڈ ری سیٹ جلد دستیاب ہوگا۔',
+    'Photos, storage and other access': 'فوٹوز، اسٹوریج اور دیگر رسائی',
+    'Photos/Gallery': 'فوٹوز / گیلری',
+    'Ready': 'تیار',
+    'Save / Apply': 'محفوظ / لاگو کریں',
+    'Share WhatsApp': 'WhatsApp پر شیئر کریں',
+    'Sign out logic can be connected later':
+        'سائن آؤٹ نظام بعد میں جوڑا جا سکتا ہے',
+    'Special': 'خاص',
+    'Subscription': 'سبسکرپشن',
+    'Support': 'سپورٹ',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai میں خوش آمدید',
+  },
+  AppLanguage.ladakhi: <String, String>{
+    'A few permissions are needed': 'Permission ཁ་ཤས་དགོས།',
+    'About App': 'App སྐོར།',
+    'Account': 'Account',
+    'Allow': 'ཆོག',
+    'App details and version info': 'App details དང version info',
+    'App Settings': 'App settings',
+    'Buy': 'ཉོ',
+    'Choose your app language': 'App language འདེམས།',
+    'Control alerts and updates': 'Alerts དང updates སྟངས་འཛིན།',
+    'Current language': 'ད་ལྟའི language',
+    'Enter valid email': 'Valid email འཇུག',
+    'Get help and contact support': 'Help ལེན། support ལ་འབྲེལ།',
+    'Help & Support': 'Help & Support',
+    'Language Settings': 'Language settings',
+    'Later': 'རྗེས་ལ',
+    'Manage current plan and upgrades': 'Current plan དང upgrades སྟངས་འཛིན།',
+    'Minimum 6 characters required': 'Character 6 ཉུང་མཐའ་དགོས།',
+    'Notifications': 'Notifications',
+    'Password reset will be available soon.':
+        'Password reset མགྱོགས་པོར་ཡོང་རྒྱུ།',
+    'Photos, storage and other access': 'Photos, storage དང access གཞན།',
+    'Photos/Gallery': 'Photos / Gallery',
+    'Ready': 'Ready',
+    'Save / Apply': 'Save / Apply',
+    'Share WhatsApp': 'WhatsApp ནང share',
+    'Sign out logic can be connected later':
+        'Sign out system རྗེས་ལ connect བྱེད་ཆོག',
+    'Special': 'Special',
+    'Subscription': 'Subscription',
+    'Support': 'Support',
+    'Welcome to Mana Poster Ai': 'Mana Poster Ai-la julley',
+  },
+};
+
+const Map<AppLanguage, Map<String, String>>
+_regionalProfileFallbacks = <AppLanguage, Map<String, String>>{
+  AppLanguage.assamese: <String, String>{
+    'Quick actions': 'দ্ৰুত বিকল্প',
+    'More': 'অধিক',
+    'Remaining options': 'বাকী বিকল্পসমূহ',
+    'Change State / UT': 'ৰাজ্য / কেন্দ্ৰীয় শাসিত অঞ্চল সলনি কৰক',
+    'Update app language and state categories':
+        'এপৰ ভাষা আৰু ৰাজ্যৰ কেটেগৰী আপডেট কৰক',
+    'Political parties': 'ৰাজনৈতিক দলসমূহ',
+    'Update political party categories shown in home':
+        'হোমত দেখা ৰাজনৈতিক দলৰ কেটেগৰী আপডেট কৰক',
+    'Change religion': 'ধৰ্ম সলনি কৰক',
+    'Update which categories appear in home':
+        'হোমত কোনবোৰ কেটেগৰী দেখাব আপডেট কৰক',
+    'Location-based status': 'স্থানভিত্তিক ষ্টেটাছ',
+    'View plan details': 'প্লেনৰ বিৱৰণ চাওক',
+    'Referral rewards': 'ৰেফাৰেল পুৰস্কাৰ',
+    'Restore subscriptions': 'চাবস্ক্ৰিপচন পুনৰুদ্ধাৰ কৰক',
+    'Share App': 'এপ শ্বেয়াৰ কৰক',
+    'Report a poster or issue': 'পোষ্টাৰ বা সমস্যা ৰিপোৰ্ট কৰক',
+    'Delete account': 'একাউণ্ট ডিলিট কৰক',
+    'Privacy Policy': 'গোপনীয়তা নীতি',
+    'Ad privacy choices': 'বিজ্ঞাপন গোপনীয়তা বিকল্প',
+    'Terms & Conditions': 'নিয়ম আৰু চৰ্তসমূহ',
+  },
+  AppLanguage.konkani: <String, String>{
+    'Quick actions': 'वेगळीं कृतीं',
+    'More': 'आनीक',
+    'Remaining options': 'उरिल्लीं पर्याय',
+    'Change State / UT': 'राज्य / केंद्रशासित प्रदेश बदलात',
+    'Update app language and state categories':
+        'ऍप भास आनी राज्य कॅटेगरी अपडेट करात',
+    'Political parties': 'राजकीय पक्ष',
+    'Update political party categories shown in home':
+        'होमांत दिसपी पक्ष कॅटेगरी अपडेट करात',
+    'Change religion': 'धर्म बदलात',
+    'Update which categories appear in home': 'होमांत दिसपी कॅटेगरी अपडेट करात',
+    'Location-based status': 'स्थानाचेर आधारित स्टेटस',
+    'View plan details': 'प्लॅन तपशील पळयात',
+    'Referral rewards': 'रेफरल बक्षिसां',
+    'Restore subscriptions': 'सदस्यता रिस्टोर करात',
+    'Share App': 'ऍप शेअर करात',
+    'Report a poster or issue': 'पोस्टर वा समस्या रिपोर्ट करात',
+    'Delete account': 'खातें डिलीट करात',
+    'Privacy Policy': 'गोपनीयता धोरण',
+    'Ad privacy choices': 'जाहिरात गोपनीयता पर्याय',
+    'Terms & Conditions': 'नियम आनी अटी',
+  },
+  AppLanguage.gujarati: <String, String>{
+    'Quick actions': 'ઝડપી વિકલ્પો',
+    'More': 'વધુ',
+    'Remaining options': 'બાકી વિકલ્પો',
+    'Change State / UT': 'રાજ્ય / કેન્દ્રશાસિત પ્રદેશ બદલો',
+    'Update app language and state categories':
+        'એપ ભાષા અને રાજ્ય કેટેગરી અપડેટ કરો',
+    'Political parties': 'રાજકીય પક્ષો',
+    'Update political party categories shown in home':
+        'હોમમાં દેખાતી પક્ષ કેટેગરી અપડેટ કરો',
+    'Change religion': 'ધર્મ બદલો',
+    'Update which categories appear in home': 'હોમમાં દેખાતી કેટેગરી અપડેટ કરો',
+    'Location-based status': 'સ્થાન આધારિત સ્ટેટસ',
+    'View plan details': 'પ્લાન વિગતો જુઓ',
+    'Referral rewards': 'રેફરલ રિવોર્ડ્સ',
+    'Restore subscriptions': 'સબ્સ્ક્રિપ્શન રિસ્ટોર કરો',
+    'Share App': 'એપ શેર કરો',
+    'Report a poster or issue': 'પોસ્ટર અથવા સમસ્યા રિપોર્ટ કરો',
+    'Delete account': 'એકાઉન્ટ ડિલીટ કરો',
+    'Privacy Policy': 'પ્રાઇવસી પોલિસી',
+    'Ad privacy choices': 'જાહેરાત પ્રાઇવસી વિકલ્પો',
+    'Terms & Conditions': 'નિયમો અને શરતો',
+  },
+  AppLanguage.marathi: <String, String>{
+    'Quick actions': 'झटपट पर्याय',
+    'More': 'अधिक',
+    'Remaining options': 'उरलेले पर्याय',
+    'Change State / UT': 'राज्य / केंद्रशासित प्रदेश बदला',
+    'Update app language and state categories':
+        'अ‍ॅप भाषा आणि राज्य कॅटेगरी अपडेट करा',
+    'Political parties': 'राजकीय पक्ष',
+    'Update political party categories shown in home':
+        'होममध्ये दिसणाऱ्या पक्ष कॅटेगरी अपडेट करा',
+    'Change religion': 'धर्म बदला',
+    'Update which categories appear in home':
+        'होममध्ये दिसणाऱ्या कॅटेगरी अपडेट करा',
+    'Location-based status': 'स्थानावर आधारित स्टेटस',
+    'View plan details': 'प्लॅन तपशील पहा',
+    'Referral rewards': 'रेफरल बक्षिसे',
+    'Restore subscriptions': 'सदस्यता रिस्टोर करा',
+    'Share App': 'अ‍ॅप शेअर करा',
+    'Report a poster or issue': 'पोस्टर किंवा समस्या रिपोर्ट करा',
+    'Delete account': 'खाते डिलीट करा',
+    'Privacy Policy': 'गोपनीयता धोरण',
+    'Ad privacy choices': 'जाहिरात गोपनीयता पर्याय',
+    'Terms & Conditions': 'नियम आणि अटी',
+  },
+  AppLanguage.meitei: <String, String>{
+    'Quick actions': 'থুনা তৌবা অপশনশিং',
+    'More': 'হেন্না',
+    'Remaining options': 'লৈরিবা অপশনশিং',
+    'Change State / UT': 'স্টেট / UT হোংদোকউ',
+    'Update app language and state categories':
+        'এপ লোল অমসুং স্টেট কেটেগরি আপডেট তৌবিয়ু',
+    'Political parties': 'পোলিটিকেল পার্টিশিং',
+    'Update political party categories shown in home':
+        'হোমদা উৎলিবা পার্টি কেটেগরি আপডেট তৌবিয়ু',
+    'Change religion': 'ধর্ম হোংদোকউ',
+    'Update which categories appear in home':
+        'হোমদা উৎকদবা কেটেগরি আপডেট তৌবিয়ু',
+    'Location-based status': 'লোকেশনগী স্টেটস',
+    'View plan details': 'প্লান ডিটেলস ইয়েংবিয়ু',
+    'Referral rewards': 'রেফারেল রিওয়ার্ডশিং',
+    'Restore subscriptions': 'সাবস্ক্রিপশন রিস্টোর তৌবিয়ু',
+    'Share App': 'এপ শেয়ার তৌবিয়ু',
+    'Report a poster or issue': 'পোস্টার নত্রগা ইস্যু রিপোর্ট তৌবিয়ু',
+    'Delete account': 'একাউন্ট ডিলিট তৌবিয়ু',
+    'Privacy Policy': 'প্রাইভেসি পলিসি',
+    'Ad privacy choices': 'এড প্রাইভেসি অপশনশিং',
+    'Terms & Conditions': 'নিয়ম অমসুং শর্তশিং',
+  },
+  AppLanguage.mizo: <String, String>{
+    'Quick actions': 'Action rang',
+    'More': 'Tam zawk',
+    'Remaining options': 'Option la awmte',
+    'Change State / UT': 'State / UT thlak',
+    'Update app language and state categories':
+        'App tawng leh state category update rawh',
+    'Political parties': 'Political party-te',
+    'Update political party categories shown in home':
+        'Home-a party category langte update rawh',
+    'Change religion': 'Sakhua thlak',
+    'Update which categories appear in home':
+        'Home-a category lang tur update rawh',
+    'Location-based status': 'Location status',
+    'View plan details': 'Plan details en rawh',
+    'Referral rewards': 'Referral reward',
+    'Restore subscriptions': 'Subscription restore rawh',
+    'Share App': 'App share rawh',
+    'Report a poster or issue': 'Poster emaw issue report rawh',
+    'Delete account': 'Account delete rawh',
+    'Privacy Policy': 'Privacy Policy',
+    'Ad privacy choices': 'Ad privacy choices',
+    'Terms & Conditions': 'Terms & Conditions',
+  },
+  AppLanguage.odia: <String, String>{
+    'Quick actions': 'ଦ୍ରୁତ ବିକଳ୍ପ',
+    'More': 'ଅଧିକ',
+    'Remaining options': 'ଅବଶିଷ୍ଟ ବିକଳ୍ପ',
+    'Change State / UT': 'ରାଜ୍ୟ / କେନ୍ଦ୍ରଶାସିତ ଅଞ୍ଚଳ ବଦଳାନ୍ତୁ',
+    'Update app language and state categories':
+        'ଆପ୍ ଭାଷା ଏବଂ ରାଜ୍ୟ କ୍ୟାଟେଗୋରୀ ଅପଡେଟ୍ କରନ୍ତୁ',
+    'Political parties': 'ରାଜନୈତିକ ଦଳ',
+    'Update political party categories shown in home':
+        'ହୋମ୍‌ରେ ଦେଖାଯାଉଥିବା ଦଳ କ୍ୟାଟେଗୋରୀ ଅପଡେଟ୍ କରନ୍ତୁ',
+    'Change religion': 'ଧର୍ମ ବଦଳାନ୍ତୁ',
+    'Update which categories appear in home':
+        'ହୋମ୍‌ରେ ଦେଖାଯାଉଥିବା କ୍ୟାଟେଗୋରୀ ଅପଡେଟ୍ କରନ୍ତୁ',
+    'Location-based status': 'ସ୍ଥାନ ଆଧାରିତ ଷ୍ଟେଟସ୍',
+    'View plan details': 'ପ୍ଲାନ୍ ବିବରଣୀ ଦେଖନ୍ତୁ',
+    'Referral rewards': 'ରେଫରାଲ୍ ପୁରସ୍କାର',
+    'Restore subscriptions': 'ସବସ୍କ୍ରିପସନ୍ ରିଷ୍ଟୋର୍ କରନ୍ତୁ',
+    'Share App': 'ଆପ୍ ସେୟାର୍ କରନ୍ତୁ',
+    'Report a poster or issue': 'ପୋଷ୍ଟର୍ କିମ୍ବା ସମସ୍ୟା ରିପୋର୍ଟ କରନ୍ତୁ',
+    'Delete account': 'ଆକାଉଣ୍ଟ ଡିଲିଟ୍ କରନ୍ତୁ',
+    'Privacy Policy': 'ଗୋପନୀୟତା ନୀତି',
+    'Ad privacy choices': 'ବିଜ୍ଞାପନ ଗୋପନୀୟତା ବିକଳ୍ପ',
+    'Terms & Conditions': 'ନିୟମ ଏବଂ ସର୍ତ୍ତାବଳୀ',
+  },
+  AppLanguage.punjabi: <String, String>{
+    'Quick actions': 'ਤੇਜ਼ ਵਿਕਲਪ',
+    'More': 'ਹੋਰ',
+    'Remaining options': 'ਬਾਕੀ ਵਿਕਲਪ',
+    'Change State / UT': 'ਰਾਜ / ਕੇਂਦਰ ਸ਼ਾਸਿਤ ਪ੍ਰਦੇਸ਼ ਬਦਲੋ',
+    'Update app language and state categories':
+        'ਐਪ ਭਾਸ਼ਾ ਅਤੇ ਰਾਜ ਕੈਟੇਗਰੀ ਅਪਡੇਟ ਕਰੋ',
+    'Political parties': 'ਰਾਜਨੀਤਿਕ ਪਾਰਟੀਆਂ',
+    'Update political party categories shown in home':
+        'ਹੋਮ ਵਿੱਚ ਦਿਖਣ ਵਾਲੀਆਂ ਪਾਰਟੀ ਕੈਟੇਗਰੀਆਂ ਅਪਡੇਟ ਕਰੋ',
+    'Change religion': 'ਧਰਮ ਬਦਲੋ',
+    'Update which categories appear in home':
+        'ਹੋਮ ਵਿੱਚ ਦਿਖਣ ਵਾਲੀਆਂ ਕੈਟੇਗਰੀਆਂ ਅਪਡੇਟ ਕਰੋ',
+    'Location-based status': 'ਸਥਾਨ ਆਧਾਰਿਤ ਸਟੇਟਸ',
+    'View plan details': 'ਪਲਾਨ ਵੇਰਵੇ ਵੇਖੋ',
+    'Referral rewards': 'ਰੇਫਰਲ ਇਨਾਮ',
+    'Restore subscriptions': 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਰੀਸਟੋਰ ਕਰੋ',
+    'Share App': 'ਐਪ ਸ਼ੇਅਰ ਕਰੋ',
+    'Report a poster or issue': 'ਪੋਸਟਰ ਜਾਂ ਸਮੱਸਿਆ ਰਿਪੋਰਟ ਕਰੋ',
+    'Delete account': 'ਖਾਤਾ ਡਿਲੀਟ ਕਰੋ',
+    'Privacy Policy': 'ਗੋਪਨੀਯਤਾ ਨੀਤੀ',
+    'Ad privacy choices': 'ਵਿਗਿਆਪਨ ਗੋਪਨੀਯਤਾ ਵਿਕਲਪ',
+    'Terms & Conditions': 'ਨਿਯਮ ਅਤੇ ਸ਼ਰਤਾਂ',
+  },
+  AppLanguage.nepali: <String, String>{
+    'Quick actions': 'छिटो विकल्पहरू',
+    'More': 'थप',
+    'Remaining options': 'बाँकी विकल्पहरू',
+    'Change State / UT': 'राज्य / केन्द्र शासित क्षेत्र परिवर्तन गर्नुहोस्',
+    'Update app language and state categories':
+        'एप भाषा र राज्य क्याटेगरी अपडेट गर्नुहोस्',
+    'Political parties': 'राजनीतिक पार्टीहरू',
+    'Update political party categories shown in home':
+        'होममा देखिने पार्टी क्याटेगरी अपडेट गर्नुहोस्',
+    'Change religion': 'धर्म परिवर्तन गर्नुहोस्',
+    'Update which categories appear in home':
+        'होममा देखिने क्याटेगरी अपडेट गर्नुहोस्',
+    'Location-based status': 'स्थान आधारित स्टेटस',
+    'View plan details': 'प्लान विवरण हेर्नुहोस्',
+    'Referral rewards': 'रेफरल पुरस्कार',
+    'Restore subscriptions': 'सब्स्क्रिप्सन रिस्टोर गर्नुहोस्',
+    'Share App': 'एप शेयर गर्नुहोस्',
+    'Report a poster or issue': 'पोस्टर वा समस्या रिपोर्ट गर्नुहोस्',
+    'Delete account': 'खाता डिलिट गर्नुहोस्',
+    'Privacy Policy': 'गोपनीयता नीति',
+    'Ad privacy choices': 'विज्ञापन गोपनीयता विकल्प',
+    'Terms & Conditions': 'नियम र सर्तहरू',
+  },
+  AppLanguage.bengali: <String, String>{
+    'Quick actions': 'দ্রুত বিকল্প',
+    'More': 'আরও',
+    'Remaining options': 'বাকি বিকল্প',
+    'Change State / UT': 'রাজ্য / কেন্দ্রশাসিত অঞ্চল বদলান',
+    'Update app language and state categories':
+        'অ্যাপ ভাষা এবং রাজ্য ক্যাটেগরি আপডেট করুন',
+    'Political parties': 'রাজনৈতিক দল',
+    'Update political party categories shown in home':
+        'হোমে দেখা রাজনৈতিক দলের ক্যাটেগরি আপডেট করুন',
+    'Change religion': 'ধর্ম বদলান',
+    'Update which categories appear in home':
+        'হোমে কোন ক্যাটেগরি দেখা যাবে আপডেট করুন',
+    'Location-based status': 'লোকেশন ভিত্তিক স্টেটাস',
+    'View plan details': 'প্ল্যানের বিবরণ দেখুন',
+    'Referral rewards': 'রেফারেল পুরস্কার',
+    'Restore subscriptions': 'সাবস্ক্রিপশন রিস্টোর করুন',
+    'Share App': 'অ্যাপ শেয়ার করুন',
+    'Report a poster or issue': 'পোস্টার বা সমস্যা রিপোর্ট করুন',
+    'Delete account': 'অ্যাকাউন্ট ডিলিট করুন',
+    'Privacy Policy': 'প্রাইভেসি পলিসি',
+    'Ad privacy choices': 'বিজ্ঞাপন প্রাইভেসি বিকল্প',
+    'Terms & Conditions': 'নিয়ম ও শর্তাবলী',
+  },
+  AppLanguage.kashmiri: <String, String>{
+    'Quick actions': 'جلدی اختیار',
+    'More': 'مزید',
+    'Remaining options': 'باقی اختیار',
+    'Change State / UT': 'ریاست / UT بدلاؤ',
+    'Update app language and state categories':
+        'ایپ زبان تہ ریاست کیٹگری اپڈیٹ کرو',
+    'Political parties': 'سیاسی پارٹیاں',
+    'Update political party categories shown in home':
+        'ہومس منز دکھن وٲل پارٹۍ کیٹگری اپڈیٹ کرو',
+    'Change religion': 'مذہب بدلاؤ',
+    'Update which categories appear in home':
+        'ہومس منز دکھن وٲل کیٹگری اپڈیٹ کرو',
+    'Location-based status': 'لوکیشن بنیاد سٹیٹس',
+    'View plan details': 'پلان تفصیل وچھیو',
+    'Referral rewards': 'ریفرل انعام',
+    'Restore subscriptions': 'سبسکرپشن بحال کرو',
+    'Share App': 'ایپ شیئر کرو',
+    'Report a poster or issue': 'پوسٹر یا مسئلہ رپورٹ کرو',
+    'Delete account': 'اکاؤنٹ ڈیلیٹ کرو',
+    'Privacy Policy': 'رازداری پالیسی',
+    'Ad privacy choices': 'ایڈ رازداری اختیار',
+    'Terms & Conditions': 'شرائط و ضوابط',
+  },
+  AppLanguage.ladakhi: <String, String>{
+    'Quick actions': 'མགྱོགས་པོའི་གདམ་ཁ།',
+    'More': 'མང་བ།',
+    'Remaining options': 'ལྷག་མའི་གདམ་ཁ།',
+    'Change State / UT': 'State / UT བསྒྱུར།',
+    'Update app language and state categories':
+        'App language དང state category update བྱེད།',
+    'Political parties': 'Political parties',
+    'Update political party categories shown in home':
+        'Home ནང་གི party category update བྱེད།',
+    'Change religion': 'Religion བསྒྱུར།',
+    'Update which categories appear in home':
+        'Home ནང་གི category update བྱེད།',
+    'Location-based status': 'Location status',
+    'View plan details': 'Plan details ལྟ།',
+    'Referral rewards': 'Referral rewards',
+    'Restore subscriptions': 'Subscriptions restore',
+    'Share App': 'App share',
+    'Report a poster or issue': 'Poster ཡང་ན issue report',
+    'Delete account': 'Account delete',
+    'Privacy Policy': 'Privacy Policy',
+    'Ad privacy choices': 'Ad privacy choices',
+    'Terms & Conditions': 'Terms & Conditions',
+  },
+};
+
 class AppLanguageController extends ChangeNotifier {
   AppLanguageController({AppLanguage initialLanguage = AppLanguage.telugu})
     : _language = initialLanguage;
@@ -1119,15 +2014,496 @@ class AppStrings {
 
   String? _regionalFallback(String english) {
     // Regional languages without complete reviewed coverage use one consistent
-    // English UI instead of mixing partial translations with English/Hindi.
-    if (language.supportedUiLanguage == SupportedUiLanguage.english) {
+    // English UI only when the selected language itself is English.
+    if (language == AppLanguage.english) {
       return null;
+    }
+    final profileFallback = _regionalProfileFallbacks[language]?[english];
+    if (profileFallback != null) {
+      return profileFallback;
+    }
+    final communityUploadFallback =
+        _regionalCommunityUploadFallbacks[language]?[english];
+    if (communityUploadFallback != null) {
+      return communityUploadFallback;
+    }
+    final extraFallback = _regionalExtraFallbacks[language]?[english];
+    if (extraFallback != null) {
+      return extraFallback;
+    }
+    final quickUiFallback = _regionalQuickUiFallback(english);
+    if (quickUiFallback != null) {
+      return quickUiFallback;
     }
     if (language == AppLanguage.bengali) {
       return _regionalCommonFallbacks[language]?[english] ??
-          _commonBengaliFallback(english);
+          _commonBengaliFallback(english) ??
+          _regionalCommonPhraseFallback(english);
     }
-    return _regionalCommonFallbacks[language]?[english];
+    return _regionalCommonFallbacks[language]?[english] ??
+        _regionalCommonPhraseFallback(english);
+  }
+
+  String? _regionalQuickUiFallback(String english) {
+    final map = switch (language) {
+      AppLanguage.assamese => const <String, String>{
+        'OK': 'ঠিক আছে',
+        'Cancel': 'বাতিল',
+        'Close': 'বন্ধ কৰক',
+        'Apply': 'প্ৰয়োগ কৰক',
+        'Share': 'শ্বেয়াৰ',
+        'Download': 'ডাউনলোড',
+        'More': 'অধিক',
+        'Remaining options': 'বাকী বিকল্পসমূহ',
+        'Change religion': 'ধৰ্ম সলনি কৰক',
+        'Referral rewards': 'ৰেফাৰেল পুৰস্কাৰ',
+        'Copy code': 'কোড কপি কৰক',
+        'Delete account': 'একাউণ্ট মচক',
+        'Privacy Policy': 'গোপনীয়তা নীতি',
+        'Ad privacy choices': 'বিজ্ঞাপন গোপনীয়তা পছন্দ',
+        'Permissions': 'অনুমতিসমূহ',
+        'Check': 'চাওক',
+        'Subscription Required': 'সদস্যতা প্ৰয়োজন',
+        '3-day trial plan': '৩ দিনৰ পৰীক্ষামূলক প্লেন',
+        'Monthly plan': 'মাহেকীয়া প্লেন',
+        'Terms': 'নিয়মসমূহ',
+        'Skip': 'এৰি যাওক',
+        'Subscribe': 'সদস্যতা লওক',
+        'Trial': 'পৰীক্ষামূলক',
+        'Select Category': 'শ্ৰেণী বাছক',
+      },
+      AppLanguage.konkani => const <String, String>{
+        'OK': 'बरें',
+        'Cancel': 'रद्द',
+        'Close': 'बंद करात',
+        'Apply': 'लागू करात',
+        'Share': 'शेअर',
+        'Download': 'डाउनलोड',
+        'More': 'आनीक',
+        'Remaining options': 'उरिल्ले पर्याय',
+        'Change religion': 'धर्म बदलात',
+        'Referral rewards': 'रेफरल इनाम',
+        'Copy code': 'कोड कॉपी करात',
+        'Delete account': 'खातें काडून उडोवप',
+        'Privacy Policy': 'गोपनीयता धोरण',
+        'Ad privacy choices': 'जाहिरात गोपनीयता पर्याय',
+        'Permissions': 'परवानग्यो',
+        'Check': 'तपासात',
+        'Subscription Required': 'सदस्यता गरजेची',
+        '3-day trial plan': '३ दिसांचो ट्रायल प्लॅन',
+        'Monthly plan': 'म्हयन्याचो प्लॅन',
+        'Terms': 'अटी',
+        'Skip': 'सोडात',
+        'Subscribe': 'सदस्यता घेवप',
+        'Trial': 'ट्रायल',
+        'Select Category': 'विभाग निवडात',
+      },
+      AppLanguage.gujarati => const <String, String>{
+        'OK': 'બરાબર',
+        'Cancel': 'રદ કરો',
+        'Close': 'બંધ કરો',
+        'Apply': 'લાગુ કરો',
+        'Share': 'શેર',
+        'Download': 'ડાઉનલોડ',
+        'More': 'વધુ',
+        'Remaining options': 'બાકીના વિકલ્પો',
+        'Change religion': 'ધર્મ બદલો',
+        'Referral rewards': 'રેફરલ ઈનામ',
+        'Copy code': 'કોડ કૉપી કરો',
+        'Delete account': 'એકાઉન્ટ કાઢી નાખો',
+        'Privacy Policy': 'ગોપનીયતા નીતિ',
+        'Ad privacy choices': 'જાહેરાત ગોપનીયતા પસંદગીઓ',
+        'Permissions': 'પરવાનગીઓ',
+        'Check': 'ચકાસો',
+        'Subscription Required': 'સબ્સ્ક્રિપ્શન જરૂરી',
+        '3-day trial plan': '૩ દિવસનો ટ્રાયલ પ્લાન',
+        'Monthly plan': 'માસિક પ્લાન',
+        'Terms': 'નિયમો',
+        'Skip': 'છોડી દો',
+        'Subscribe': 'સબ્સ્ક્રાઇબ કરો',
+        'Trial': 'ટ્રાયલ',
+        'Select Category': 'કેટેગરી પસંદ કરો',
+      },
+      AppLanguage.marathi => const <String, String>{
+        'OK': 'ठीक आहे',
+        'Cancel': 'रद्द',
+        'Close': 'बंद करा',
+        'Apply': 'लागू करा',
+        'Share': 'शेअर',
+        'Download': 'डाउनलोड',
+        'More': 'अधिक',
+        'Remaining options': 'उरलेले पर्याय',
+        'Change religion': 'धर्म बदला',
+        'Referral rewards': 'रेफरल बक्षिसे',
+        'Copy code': 'कोड कॉपी करा',
+        'Delete account': 'खाते हटवा',
+        'Privacy Policy': 'गोपनीयता धोरण',
+        'Ad privacy choices': 'जाहिरात गोपनीयता पर्याय',
+        'Permissions': 'परवानग्या',
+        'Check': 'तपासा',
+        'Subscription Required': 'सदस्यता आवश्यक',
+        '3-day trial plan': '३ दिवसांचा ट्रायल प्लॅन',
+        'Monthly plan': 'मासिक प्लॅन',
+        'Terms': 'अटी',
+        'Skip': 'वगळा',
+        'Subscribe': 'सदस्यता घ्या',
+        'Trial': 'ट्रायल',
+        'Select Category': 'श्रेणी निवडा',
+      },
+      AppLanguage.meitei => const <String, String>{
+        'OK': 'ꯌꯥꯔꯦ',
+        'Cancel': 'ꯇꯣꯛꯎ',
+        'Close': 'ꯂꯣꯏꯁꯤꯟꯕꯤꯌꯨ',
+        'Apply': 'ꯑꯦꯞꯂꯥꯏ ꯇꯧꯕꯤꯌꯨ',
+        'Share': 'ꯁꯦꯌꯔ',
+        'Download': 'ꯗꯥꯎꯟꯂꯣꯗ',
+        'More': 'ꯍꯦꯟꯅ',
+        'Remaining options': 'ꯂꯩꯔꯤꯕ ꯑꯣꯞꯁꯟꯁꯤꯡ',
+        'Change religion': 'ꯂꯥꯢꯅꯤꯡ ꯍꯣꯡꯗꯣꯛꯎ',
+        'Referral rewards': 'ꯔꯦꯐꯔꯦꯜ ꯃꯅꯥ',
+        'Copy code': 'ꯀꯣꯗ ꯀꯣꯄꯤ ꯇꯧꯕꯤꯌꯨ',
+        'Delete account': 'ꯑꯦꯀꯥꯎꯟꯇ ꯃꯨꯠꯊꯠꯎ',
+        'Privacy Policy': 'ꯄ꯭ꯔꯥꯏꯚꯦꯁꯤ ꯄꯣꯂꯤꯁꯤ',
+        'Ad privacy choices': 'ꯑꯦꯗ ꯄ꯭ꯔꯥꯏꯚꯦꯁꯤ ꯈꯟꯅꯕꯁꯤꯡ',
+        'Permissions': 'ꯑꯌꯥꯕꯁꯤꯡ',
+        'Check': 'ꯌꯦꯡꯕꯤꯌꯨ',
+        'Subscription Required': 'ꯁꯕꯁ꯭ꯛꯔꯤꯞꯁꯟ ꯃꯊꯧ ꯇꯥꯏ',
+        '3-day trial plan': 'ꯅꯨꯃꯤꯠ ꯳ ꯇ꯭ꯔꯥꯏꯌꯜ ꯄ꯭ꯂꯥꯟ',
+        'Monthly plan': 'ꯊꯥꯒꯤ ꯄ꯭ꯂꯥꯟ',
+        'Terms': 'ꯅꯤꯌꯝꯁꯤꯡ',
+        'Skip': 'ꯊꯥꯗꯣꯛꯎ',
+        'Subscribe': 'ꯁꯕꯁ꯭ꯛꯔꯥꯏꯕ ꯇꯧꯕꯤꯌꯨ',
+        'Trial': 'ꯇ꯭ꯔꯥꯏꯌꯜ',
+        'Select Category': 'ꯀꯦꯇꯦꯒꯣꯔꯤ ꯈꯟꯕꯤꯌꯨ',
+      },
+      AppLanguage.mizo => const <String, String>{
+        'OK': 'A tha',
+        'Cancel': 'Sût',
+        'Close': 'Khâr rawh',
+        'Apply': 'Hmang rawh',
+        'Share': 'Sem rawh',
+        'Download': 'Download rawh',
+        'More': 'Tam zawk',
+        'Remaining options': 'Option dangte',
+        'Change religion': 'Sakhua thlak rawh',
+        'Referral rewards': 'Referral lawmman',
+        'Copy code': 'Code copy rawh',
+        'Delete account': 'Account paih rawh',
+        'Privacy Policy': 'Privacy policy',
+        'Ad privacy choices': 'Ad privacy thlan theih',
+        'Permissions': 'Phalna',
+        'Check': 'En rawh',
+        'Subscription Required': 'Subscription a ngai',
+        '3-day trial plan': 'Ni 3 trial plan',
+        'Monthly plan': 'Thla tin plan',
+        'Terms': 'Terms',
+        'Skip': 'Kalsan rawh',
+        'Subscribe': 'Subscribe rawh',
+        'Trial': 'Trial',
+        'Select Category': 'Category thlang rawh',
+      },
+      AppLanguage.odia => const <String, String>{
+        'OK': 'ଠିକ୍ ଅଛି',
+        'Cancel': 'ବାତିଲ୍',
+        'Close': 'ବନ୍ଦ କରନ୍ତୁ',
+        'Apply': 'ଲାଗୁ କରନ୍ତୁ',
+        'Share': 'ସେୟାର',
+        'Download': 'ଡାଉନଲୋଡ୍',
+        'More': 'ଅଧିକ',
+        'Remaining options': 'ଅବଶିଷ୍ଟ ବିକଳ୍ପ',
+        'Change religion': 'ଧର୍ମ ବଦଳାନ୍ତୁ',
+        'Referral rewards': 'ରେଫରାଲ୍ ପୁରସ୍କାର',
+        'Copy code': 'କୋଡ୍ କପି କରନ୍ତୁ',
+        'Delete account': 'ଖାତା ବିଲୋପ କରନ୍ତୁ',
+        'Privacy Policy': 'ଗୋପନୀୟତା ନୀତି',
+        'Ad privacy choices': 'ବିଜ୍ଞାପନ ଗୋପନୀୟତା ପସନ୍ଦ',
+        'Permissions': 'ଅନୁମତି',
+        'Check': 'ଯାଞ୍ଚ କରନ୍ତୁ',
+        'Subscription Required': 'ସବସ୍କ୍ରିପସନ୍ ଆବଶ୍ୟକ',
+        '3-day trial plan': '୩ ଦିନର ଟ୍ରାୟାଲ୍ ପ୍ଲାନ୍',
+        'Monthly plan': 'ମାସିକ ପ୍ଲାନ୍',
+        'Terms': 'ନିୟମ',
+        'Skip': 'ଛାଡ଼ନ୍ତୁ',
+        'Subscribe': 'ସବସ୍କ୍ରାଇବ୍ କରନ୍ତୁ',
+        'Trial': 'ଟ୍ରାୟାଲ୍',
+        'Select Category': 'ଶ୍ରେଣୀ ବାଛନ୍ତୁ',
+      },
+      AppLanguage.punjabi => const <String, String>{
+        'OK': 'ਠੀਕ ਹੈ',
+        'Cancel': 'ਰੱਦ ਕਰੋ',
+        'Close': 'ਬੰਦ ਕਰੋ',
+        'Apply': 'ਲਾਗੂ ਕਰੋ',
+        'Share': 'ਸਾਂਝਾ ਕਰੋ',
+        'Download': 'ਡਾਊਨਲੋਡ',
+        'More': 'ਹੋਰ',
+        'Remaining options': 'ਬਾਕੀ ਵਿਕਲਪ',
+        'Change religion': 'ਧਰਮ ਬਦਲੋ',
+        'Referral rewards': 'ਰੈਫਰਲ ਇਨਾਮ',
+        'Copy code': 'ਕੋਡ ਕਾਪੀ ਕਰੋ',
+        'Delete account': 'ਖਾਤਾ ਮਿਟਾਓ',
+        'Privacy Policy': 'ਗੋਪਨੀਯਤਾ ਨੀਤੀ',
+        'Ad privacy choices': 'ਵਿਗਿਆਪਨ ਗੋਪਨੀਯਤਾ ਚੋਣਾਂ',
+        'Permissions': 'ਇਜਾਜ਼ਤਾਂ',
+        'Check': 'ਜਾਂਚੋ',
+        'Subscription Required': 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਲੋੜੀਂਦੀ ਹੈ',
+        '3-day trial plan': '੩ ਦਿਨਾਂ ਦਾ ਟ੍ਰਾਇਲ ਪਲਾਨ',
+        'Monthly plan': 'ਮਹੀਨਾਵਾਰ ਪਲਾਨ',
+        'Terms': 'ਨਿਯਮ',
+        'Skip': 'ਛੱਡੋ',
+        'Subscribe': 'ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ',
+        'Trial': 'ਟ੍ਰਾਇਲ',
+        'Select Category': 'ਕੈਟੇਗਰੀ ਚੁਣੋ',
+      },
+      AppLanguage.nepali => const <String, String>{
+        'OK': 'ठीक छ',
+        'Cancel': 'रद्द गर्नुहोस्',
+        'Close': 'बन्द गर्नुहोस्',
+        'Apply': 'लागू गर्नुहोस्',
+        'Share': 'शेयर',
+        'Download': 'डाउनलोड',
+        'More': 'थप',
+        'Remaining options': 'बाँकी विकल्पहरू',
+        'Change religion': 'धर्म परिवर्तन गर्नुहोस्',
+        'Referral rewards': 'रेफरल पुरस्कार',
+        'Copy code': 'कोड कपी गर्नुहोस्',
+        'Delete account': 'खाता मेटाउनुहोस्',
+        'Privacy Policy': 'गोपनीयता नीति',
+        'Ad privacy choices': 'विज्ञापन गोपनीयता विकल्प',
+        'Permissions': 'अनुमतिहरू',
+        'Check': 'जाँच गर्नुहोस्',
+        'Subscription Required': 'सदस्यता आवश्यक',
+        '3-day trial plan': '३ दिनको ट्रायल योजना',
+        'Monthly plan': 'मासिक योजना',
+        'Terms': 'सर्तहरू',
+        'Skip': 'छोड्नुहोस्',
+        'Subscribe': 'सदस्यता लिनुहोस्',
+        'Trial': 'ट्रायल',
+        'Select Category': 'श्रेणी छान्नुहोस्',
+      },
+      AppLanguage.bengali => const <String, String>{
+        'OK': 'ঠিক আছে',
+        'Cancel': 'বাতিল',
+        'Close': 'বন্ধ করুন',
+        'Apply': 'প্রয়োগ করুন',
+        'Share': 'শেয়ার',
+        'Download': 'ডাউনলোড',
+        'More': 'আরও',
+        'Remaining options': 'বাকি বিকল্প',
+        'Change religion': 'ধর্ম পরিবর্তন করুন',
+        'Referral rewards': 'রেফারেল পুরস্কার',
+        'Copy code': 'কোড কপি করুন',
+        'Delete account': 'অ্যাকাউন্ট মুছুন',
+        'Privacy Policy': 'গোপনীয়তা নীতি',
+        'Ad privacy choices': 'বিজ্ঞাপন গোপনীয়তা পছন্দ',
+        'Permissions': 'অনুমতি',
+        'Check': 'পরীক্ষা করুন',
+        'Subscription Required': 'সাবস্ক্রিপশন প্রয়োজন',
+        '3-day trial plan': '৩ দিনের ট্রায়াল প্ল্যান',
+        'Monthly plan': 'মাসিক প্ল্যান',
+        'Terms': 'শর্তাবলী',
+        'Skip': 'এড়িয়ে যান',
+        'Subscribe': 'সাবস্ক্রাইব করুন',
+        'Trial': 'ট্রায়াল',
+        'Select Category': 'বিভাগ নির্বাচন করুন',
+      },
+      AppLanguage.kashmiri => const <String, String>{
+        'OK': 'ٹھیک چھ',
+        'Cancel': 'منسوخ',
+        'Close': 'بند کریو',
+        'Apply': 'لاگو کریو',
+        'Share': 'شیئر',
+        'Download': 'ڈاؤن لوڈ',
+        'More': 'مزید',
+        'Remaining options': 'باقی اختیار',
+        'Change religion': 'مذہب بدلٲو',
+        'Referral rewards': 'ریفرل انعام',
+        'Copy code': 'کوڈ کاپی کریو',
+        'Delete account': 'اکاؤنٹ مٹٲو',
+        'Privacy Policy': 'رازداری پالیسی',
+        'Ad privacy choices': 'اشتہار رازداری اختیار',
+        'Permissions': 'اجازت',
+        'Check': 'چیک کریو',
+        'Subscription Required': 'سبسکرپشن ضروری چھ',
+        '3-day trial plan': '۳ دن ٹرائل پلان',
+        'Monthly plan': 'ماہوار پلان',
+        'Terms': 'شرطٕ',
+        'Skip': 'چھوڈٲو',
+        'Subscribe': 'سبسکرائب کریو',
+        'Trial': 'ٹرائل',
+        'Select Category': 'زمرہ چنٲو',
+      },
+      AppLanguage.ladakhi => const <String, String>{
+        'OK': 'འགྲིགས།',
+        'Cancel': 'ཕྱིར་འཐེན།',
+        'Close': 'ཁ་རྒྱག',
+        'Apply': 'ལག་ལེན་བྱེད།',
+        'Share': 'བགོ་སྤྲོད།',
+        'Download': 'ཕབ་ལེན།',
+        'More': 'མང་བ།',
+        'Remaining options': 'ལྷག་མའི་གདམ་ག',
+        'Change religion': 'ཆོས་ལུགས་བསྒྱུར།',
+        'Referral rewards': 'ངོ་སྤྲོད་བྱ་དགའ',
+        'Copy code': 'ཨང་རྟགས་འདྲ་བཤུས།',
+        'Delete account': 'རྩིས་ཐོ་སུབ།',
+        'Privacy Policy': 'གསང་བའི་སྲིད་བྱུས།',
+        'Ad privacy choices': 'བརྡ་ཁྱབ་གསང་བའི་གདམ་ག',
+        'Permissions': 'ཆོག་མཆན།',
+        'Check': 'ཞིབ་བཤེར།',
+        'Subscription Required': 'མངགས་ཉོ་དགོས།',
+        '3-day trial plan': 'ཉིན་༣ ཚོད་ལྟའི་འཆར་གཞི',
+        'Monthly plan': 'ཟླ་རེའི་འཆར་གཞི',
+        'Terms': 'ཆ་རྐྱེན།',
+        'Skip': 'མཆོང།',
+        'Subscribe': 'མངགས་ཉོ་བྱེད།',
+        'Trial': 'ཚོད་ལྟ།',
+        'Select Category': 'སྡེ་ཚན་འདེམས།',
+      },
+      AppLanguage.telugu ||
+      AppLanguage.hindi ||
+      AppLanguage.english ||
+      AppLanguage.tamil ||
+      AppLanguage.kannada ||
+      AppLanguage.malayalam => null,
+    };
+    return map?[english];
+  }
+
+  String? _regionalCommonPhraseFallback(String english) {
+    final map = switch (language) {
+      AppLanguage.assamese => const <String, String>{
+        'Choose and share with your name':
+            'আপোনাৰ নামেৰে বাছক আৰু শ্বেয়াৰ কৰক',
+        'Choose your language': 'আপোনাৰ ভাষা বাছক',
+        'Choose the language you want in the app. You can change it later too.':
+            'এপত ব্যৱহাৰ কৰিব বিচৰা ভাষা বাছক। পিছতো সলনি কৰিব পাৰিব।',
+        'No posters are available in this section':
+            'এই বিভাগত কোনো পোস্টাৰ উপলব্ধ নাই',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'এই কেটেগৰীত এতিয়া কোনো পোস্টাৰ নাই। ৰিফ্ৰেশ কৰি পুনৰ চাওক।',
+      },
+      AppLanguage.konkani => const <String, String>{
+        'Choose and share with your name': 'तुमच्या नावान निवडात आनी शेअर करात',
+        'Choose your language': 'तुमची भास निवडात',
+        'Choose the language you want in the app. You can change it later too.':
+            'एपांत वापरपाची भास निवडात. उपरांत बदलूंक मेळटलें.',
+        'No posters are available in this section':
+            'ह्या विभागांत पोस्टर उपलब्ध ना',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'ह्या कॅटेगरींत आतां पोस्टर ना. रिफ्रेश करून परत पळयात.',
+      },
+      AppLanguage.gujarati => const <String, String>{
+        'Choose and share with your name':
+            'તમારા નામ સાથે પસંદ કરો અને શેર કરો',
+        'Choose your language': 'તમારી ભાષા પસંદ કરો',
+        'Choose the language you want in the app. You can change it later too.':
+            'એપમાં જોઈતી ભાષા પસંદ કરો. પછીથી પણ બદલી શકો છો.',
+        'No posters are available in this section':
+            'આ વિભાગમાં કોઈ પોસ્ટર ઉપલબ્ધ નથી',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'આ કેટેગરીમાં હાલ કોઈ પોસ્ટર નથી. રિફ્રેશ કરીને ફરી તપાસો.',
+      },
+      AppLanguage.marathi => const <String, String>{
+        'Choose and share with your name': 'तुमच्या नावासह निवडा आणि शेअर करा',
+        'Choose your language': 'तुमची भाषा निवडा',
+        'Choose the language you want in the app. You can change it later too.':
+            'अ‍ॅपमध्ये हवी असलेली भाषा निवडा. नंतरही बदलू शकता.',
+        'No posters are available in this section':
+            'या विभागात पोस्टर उपलब्ध नाहीत',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'या कॅटेगरीत सध्या पोस्टर नाहीत. रिफ्रेश करून पुन्हा तपासा.',
+      },
+      AppLanguage.meitei => const <String, String>{
+        'Choose and share with your name':
+            'ꯅꯍꯥꯛꯀꯤ ꯃꯃꯤꯡꯒꯥ ꯂꯣꯌꯅꯅꯥ ꯈꯅꯕꯤꯌꯨ ꯑꯃꯁꯨꯡ ꯁꯦꯌꯥꯔ ꯇꯧꯕꯤꯌꯨ',
+        'Choose your language': 'ꯅꯍꯥꯛꯀꯤ ꯂꯣꯜ ꯈꯅꯕꯤꯌꯨ',
+        'Choose the language you want in the app. You can change it later too.':
+            'ꯑꯦꯞꯇꯥ ꯄꯥꯝꯂꯤꯕꯥ ꯂꯣꯜ ꯈꯅꯕꯤꯌꯨ। ꯇꯨꯡꯗꯥ ꯑꯃꯨꯛ ꯍꯣꯡꯗꯣꯛꯄꯥ ꯌꯥꯏ।',
+        'No posters are available in this section': 'ꯃꯁꯤꯒꯤ ꯁꯦꯛꯁꯅꯗꯥ ꯄꯣꯁ꯭ꯇꯔ ꯂꯩꯇꯦ',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'ꯃꯁꯤꯒꯤ ꯀꯦꯇꯦꯒꯣꯔꯤꯗꯥ ꯍꯧꯖꯤꯛ ꯄꯣꯁ꯭ꯇꯔ ꯂꯩꯇꯦ। ꯔꯤꯐ꯭ꯔꯦꯁ ꯇꯧꯗꯨꯅꯥ ꯑꯃꯨꯛ ꯌꯦꯡꯕꯤꯌꯨ।',
+      },
+      AppLanguage.mizo => const <String, String>{
+        'Choose and share with your name': 'I hming nen thlang la share rawh',
+        'Choose your language': 'I tawng thlang rawh',
+        'Choose the language you want in the app. You can change it later too.':
+            'App-a i duh tawng thlang rawh. A hnuaiah pawh i thlak thei.',
+        'No posters are available in this section':
+            'He section-ah poster a awm lo',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'He category-ah tunah poster a awm lo. Refresh la en leh rawh.',
+      },
+      AppLanguage.odia => const <String, String>{
+        'Choose and share with your name':
+            'ଆପଣଙ୍କ ନାମ ସହିତ ବାଛନ୍ତୁ ଏବଂ ସେୟାର କରନ୍ତୁ',
+        'Choose your language': 'ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ',
+        'Choose the language you want in the app. You can change it later too.':
+            'ଆପ୍‌ରେ ଚାହୁଁଥିବା ଭାଷା ବାଛନ୍ତୁ। ପରେ ମଧ୍ୟ ବଦଳାଇପାରିବେ।',
+        'No posters are available in this section':
+            'ଏହି ବିଭାଗରେ କୌଣସି ପୋଷ୍ଟର ଉପଲବ୍ଧ ନାହିଁ',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'ଏହି କ୍ୟାଟେଗୋରୀରେ ଏବେ ପୋଷ୍ଟର ନାହିଁ। ରିଫ୍ରେଶ କରି ପୁଣି ଦେଖନ୍ତୁ।',
+      },
+      AppLanguage.punjabi => const <String, String>{
+        'Choose and share with your name': 'ਆਪਣੇ ਨਾਮ ਨਾਲ ਚੁਣੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ',
+        'Choose your language': 'ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ',
+        'Choose the language you want in the app. You can change it later too.':
+            'ਐਪ ਵਿੱਚ ਆਪਣੀ ਚਾਹੀਦੀ ਭਾਸ਼ਾ ਚੁਣੋ। ਬਾਅਦ ਵਿੱਚ ਵੀ ਬਦਲ ਸਕਦੇ ਹੋ।',
+        'No posters are available in this section':
+            'ਇਸ ਭਾਗ ਵਿੱਚ ਕੋਈ ਪੋਸਟਰ ਉਪਲਬਧ ਨਹੀਂ',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'ਇਸ ਕੈਟੇਗਰੀ ਵਿੱਚ ਇਸ ਵੇਲੇ ਕੋਈ ਪੋਸਟਰ ਨਹੀਂ। ਰਿਫ੍ਰੈਸ਼ ਕਰਕੇ ਫਿਰ ਵੇਖੋ।',
+      },
+      AppLanguage.nepali => const <String, String>{
+        'Choose and share with your name':
+            'आफ्नो नामसहित छान्नुहोस् र शेयर गर्नुहोस्',
+        'Choose your language': 'आफ्नो भाषा छान्नुहोस्',
+        'Choose the language you want in the app. You can change it later too.':
+            'एपमा चाहिएको भाषा छान्नुहोस्। पछि पनि परिवर्तन गर्न सक्नुहुन्छ।',
+        'No posters are available in this section':
+            'यस खण्डमा कुनै पोस्टर उपलब्ध छैन',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'यस क्याटेगोरीमा अहिले पोस्टर छैन। रिफ्रेश गरेर फेरि हेर्नुहोस्।',
+      },
+      AppLanguage.bengali => const <String, String>{
+        'Choose and share with your name': 'আপনার নাম দিয়ে বেছে শেয়ার করুন',
+        'Choose your language': 'আপনার ভাষা বেছে নিন',
+        'Choose the language you want in the app. You can change it later too.':
+            'অ্যাপে যে ভাষা চান তা বেছে নিন। পরে এটিও পরিবর্তন করতে পারবেন।',
+        'No posters are available in this section':
+            'এই বিভাগে কোনো পোস্টার উপলব্ধ নেই',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'এই ক্যাটেগরিতে এখন কোনো পোস্টার নেই। রিফ্রেশ করে আবার দেখুন।',
+      },
+      AppLanguage.kashmiri => const <String, String>{
+        'Choose and share with your name':
+            'پنُن ناو لگایِتھ ژارِو تہ شیئر کَریو',
+        'Choose your language': 'پنُن زبان ژارِو',
+        'Choose the language you want in the app. You can change it later too.':
+            'ایپ منز پنُن پسند زبان ژارِو۔ پتہ تہ بدلٲوِتھ ہیکیو۔',
+        'No posters are available in this section':
+            'یمس حصس منز کانہہ پوسٹر دستیاب چھُنہ',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'یمس کیٹگری منز وۄنہ پوسٹر چھُنہ۔ ریفریش کَریتھ بیاکھ لٹہ وُچھو۔',
+      },
+      AppLanguage.ladakhi => const <String, String>{
+        'Choose and share with your name':
+            'རང་གི་མིང་དང་མཉམ་དུ་འདེམས་ནས་བགོ་སྤྲོད་བྱེད།',
+        'Choose your language': 'རང་གི་སྐད་ཡིག་འདེམས།',
+        'Choose the language you want in the app. You can change it later too.':
+            'App ནང་དགོས་པའི་སྐད་ཡིག་འདེམས། རྗེས་སུ་ཡང་བསྒྱུར་ཆོག',
+        'No posters are available in this section':
+            'འདིའི་སྡེ་ཚན་ནང་པོསྟར་མེད།',
+        'There are no posters for this category right now. Pull down to refresh and check again.':
+            'འདིའི་རིགས་ནང་ད་ལྟ་པོསྟར་མེད། རི་ཕྲེཤ་བྱས་ནས་ཡང་ལྟོས།',
+      },
+      AppLanguage.telugu ||
+      AppLanguage.hindi ||
+      AppLanguage.english ||
+      AppLanguage.tamil ||
+      AppLanguage.kannada ||
+      AppLanguage.malayalam => null,
+    };
+    return map?[english];
   }
 
   String? _commonBengaliFallback(String english) {
@@ -1529,48 +2905,56 @@ class AppStrings {
     };
   }
 
-  String get splashTagline => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      '\u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f, \u0c2e\u0c40 \u0c2a\u0c47\u0c30\u0c41\u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
-    SupportedUiLanguage.hindi =>
-      '\u091a\u0941\u0928\u0947\u0902, \u0905\u092a\u0928\u0947 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
-    SupportedUiLanguage.english => 'Choose and share with your name',
-    SupportedUiLanguage.tamil =>
-      '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0b89\u0b9f\u0ba9\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bc1 \u0baa\u0b95\u0bbf\u0bb0\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
-    SupportedUiLanguage.kannada =>
-      '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cb9\u0cc6\u0cb8\u0cb0\u0cbf\u0ca8 \u0c9c\u0cca\u0ca4\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0abe\u0ca1\u0cbf \u0cb9\u0c82\u0c9a\u0cbf',
-    SupportedUiLanguage.malayalam =>
-      '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2a\u0d47\u0d30\u0d3f\u0d28\u0d4a\u0d2a\u0dcd\u0d2a\u0d02 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d \u0d36\u0d47\u0d2f\u0d7c \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d42',
-  };
+  String get splashTagline =>
+      _regionalFallback('Choose and share with your name') ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu =>
+          '\u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f, \u0c2e\u0c40 \u0c2a\u0c47\u0c30\u0c41\u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
+        SupportedUiLanguage.hindi =>
+          '\u091a\u0941\u0928\u0947\u0902, \u0905\u092a\u0928\u0947 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
+        SupportedUiLanguage.english => 'Choose and share with your name',
+        SupportedUiLanguage.tamil =>
+          '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0baa\u0bc6\u0baf\u0bb0\u0bcd \u0b89\u0b9f\u0ba9\u0bcd \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0ba4\u0bc1 \u0baa\u0b95\u0bbf\u0bb0\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+        SupportedUiLanguage.kannada =>
+          '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cb9\u0cc6\u0cb8\u0cb0\u0cbf\u0ca8 \u0c9c\u0cca\u0ca4\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0abe\u0ca1\u0cbf \u0cb9\u0c82\u0c9a\u0cbf',
+        SupportedUiLanguage.malayalam =>
+          '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2a\u0d47\u0d30\u0d3f\u0d28\u0d4a\u0d2a\u0dcd\u0d2a\u0d02 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d \u0d36\u0d47\u0d2f\u0d7c \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d42',
+      };
 
-  String get languageScreenTitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      '\u0c2e\u0c40 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
-    SupportedUiLanguage.hindi =>
-      '\u0905\u092a\u0928\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902',
-    SupportedUiLanguage.english => 'Choose your language',
-    SupportedUiLanguage.tamil =>
-      '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
-    SupportedUiLanguage.kannada =>
-      '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf',
-    SupportedUiLanguage.malayalam =>
-      '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
-  };
+  String get languageScreenTitle =>
+      _regionalFallback('Choose your language') ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu =>
+          '\u0c2e\u0c40 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f',
+        SupportedUiLanguage.hindi =>
+          '\u0905\u092a\u0928\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902',
+        SupportedUiLanguage.english => 'Choose your language',
+        SupportedUiLanguage.tamil =>
+          '\u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+        SupportedUiLanguage.kannada =>
+          '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf',
+        SupportedUiLanguage.malayalam =>
+          '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
+      };
 
-  String get languageScreenSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      '\u0c2f\u0c3e\u0c2a\u0c4d\u200c\u0c32\u0c4b \u0c2e\u0c40\u0c15\u0c41 \u0c15\u0c3e\u0c35\u0c3e\u0c32\u0c4d\u0c38\u0c3f\u0c28 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f. \u0c24\u0c30\u0c4d\u0c35\u0c3e\u0c24 \u0c15\u0c42\u0c21\u0c3e \u0c2e\u0c3e\u0c30\u0c4d\u0c1a\u0c41\u0c15\u0c4b\u0c35\u0c1a\u0c4d\u0c1a\u0c41.',
-    SupportedUiLanguage.hindi =>
-      '\u0910\u092a \u092e\u0947\u0902 \u0905\u092a\u0928\u0940 \u092a\u0938\u0902\u0926 \u0915\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902\u0964 \u092c\u093e\u0926 \u092e\u0947\u0902 \u092d\u0940 \u092c\u0926\u0932 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
-    SupportedUiLanguage.english =>
-      'Choose the language you want in the app. You can change it later too.',
-    SupportedUiLanguage.tamil =>
-      '\u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bbf\u0baf \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd. \u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0bb0\u0bcd \u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bb5\u0bc1\u0bae\u0bcd \u0bae\u0bc1\u0b9f\u0bbf\u0baf\u0bc1\u0bae\u0bcd.',
-    SupportedUiLanguage.kannada =>
-      '\u0c86\u0ccd\u0caf\u0ccd\u0caa\u0ccd\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0ca8\u0cbf\u0cae\u0c97\u0cc6 \u0cac\u0cc7\u0c95\u0cbe\u0ca6 \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf. \u0ca8\u0c82\u0ca4\u0cb0 \u0cb8\u0cb9 \u0cac\u0ca6\u0cb2\u0cbe\u0caf\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
-    SupportedUiLanguage.malayalam =>
-      '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d32\u0d4d \u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d35\u0d47\u0d23\u0d4d\u0d1f \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42. \u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d \u0d2e\u0d3e\u0d31\u0d4d\u0d31\u0d3e\u0d28\u0d41\u0d02 \u0d15\u0d34\u0d3f\u0d2f\u0d41\u0d02.',
-  };
+  String get languageScreenSubtitle =>
+      _regionalFallback(
+        'Choose the language you want in the app. You can change it later too.',
+      ) ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu =>
+          '\u0c2f\u0c3e\u0c2a\u0c4d\u200c\u0c32\u0c4b \u0c2e\u0c40\u0c15\u0c41 \u0c15\u0c3e\u0c35\u0c3e\u0c32\u0c4d\u0c38\u0c3f\u0c28 \u0c2d\u0c3e\u0c37\u0c28\u0c41 \u0c0e\u0c02\u0c1a\u0c41\u0c15\u0c4b\u0c02\u0c21\u0c3f. \u0c24\u0c30\u0c4d\u0c35\u0c3e\u0c24 \u0c15\u0c42\u0c21\u0c3e \u0c2e\u0c3e\u0c30\u0c4d\u0c1a\u0c41\u0c15\u0c4b\u0c35\u0c1a\u0c4d\u0c1a\u0c41.',
+        SupportedUiLanguage.hindi =>
+          '\u0910\u092a \u092e\u0947\u0902 \u0905\u092a\u0928\u0940 \u092a\u0938\u0902\u0926 \u0915\u0940 \u092d\u093e\u0937\u093e \u091a\u0941\u0928\u0947\u0902\u0964 \u092c\u093e\u0926 \u092e\u0947\u0902 \u092d\u0940 \u092c\u0926\u0932 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964',
+        SupportedUiLanguage.english =>
+          'Choose the language you want in the app. You can change it later too.',
+        SupportedUiLanguage.tamil =>
+          '\u0b86\u0baa\u0bcd\u0baa\u0bbf\u0bb2\u0bcd \u0b89\u0b99\u0bcd\u0b95\u0bb3\u0bcd \u0bb5\u0bc7\u0ba3\u0bcd\u0b9f\u0bbf\u0baf \u0bae\u0bca\u0bb4\u0bbf\u0baf\u0bc8 \u0ba4\u0bc7\u0bb0\u0bcd\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0bc1\u0b99\u0bcd\u0b95\u0bb3\u0bcd. \u0baa\u0bbf\u0ba9\u0bcd\u0ba9\u0bb0\u0bcd \u0bae\u0bbe\u0bb1\u0bcd\u0bb1\u0bb5\u0bc1\u0bae\u0bcd \u0bae\u0bc1\u0b9f\u0bbf\u0baf\u0bc1\u0bae\u0bcd.',
+        SupportedUiLanguage.kannada =>
+          '\u0c86\u0ccd\u0caf\u0ccd\u0caa\u0ccd\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0ca8\u0cbf\u0cae\u0c97\u0cc6 \u0cac\u0cc7\u0c95\u0cbe\u0ca6 \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf. \u0ca8\u0c82\u0ca4\u0cb0 \u0cb8\u0cb9 \u0cac\u0ca6\u0cb2\u0cbe\u0caf\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
+        SupportedUiLanguage.malayalam =>
+          '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d32\u0d4d \u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d35\u0d47\u0d23\u0d4d\u0d1f \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42. \u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d \u0d2e\u0d3e\u0d31\u0d4d\u0d31\u0d3e\u0d28\u0d41\u0d02 \u0d15\u0d34\u0d3f\u0d2f\u0d41\u0d02.',
+      };
 
   String get continueLabel =>
       _regionalFallback('Continue') ??
@@ -1587,29 +2971,36 @@ class AppStrings {
         SupportedUiLanguage.malayalam => '\u0d24\u0d41\u0d1f\u0d30\u0d41\u0d15',
       };
 
-  String get homeEmptyPostersTitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'ఈ విభాగంలో పోస్టర్లు అందుబాటులో లేవు',
-    SupportedUiLanguage.hindi => 'इस सेक्शन में पोस्टर उपलब्ध नहीं हैं',
-    SupportedUiLanguage.english => 'No posters are available in this section',
-    SupportedUiLanguage.tamil => 'இந்த பகுதியில் போஸ்டர்கள் இல்லை',
-    SupportedUiLanguage.kannada => 'ಈ ವಿಭಾಗದಲ್ಲಿ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ',
-    SupportedUiLanguage.malayalam => 'ഈ വിഭാഗത്തിൽ പോസ്റ്ററുകൾ ലഭ്യമല്ല',
-  };
+  String get homeEmptyPostersTitle =>
+      _regionalFallback('No posters are available in this section') ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu => 'ఈ విభాగంలో పోస్టర్లు అందుబాటులో లేవు',
+        SupportedUiLanguage.hindi => 'इस सेक्शन में पोस्टर उपलब्ध नहीं हैं',
+        SupportedUiLanguage.english =>
+          'No posters are available in this section',
+        SupportedUiLanguage.tamil => 'இந்த பகுதியில் போஸ்டர்கள் இல்லை',
+        SupportedUiLanguage.kannada => 'ಈ ವಿಭಾಗದಲ್ಲಿ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ',
+        SupportedUiLanguage.malayalam => 'ഈ വിഭാഗത്തിൽ പോസ്റ്ററുകൾ ലഭ്യമല്ല',
+      };
 
-  String get homeEmptyPostersSubtitle => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      'ఈ కేటగిరీలో ప్రస్తుతం పోస్టర్లు లేవు. రిఫ్రెష్ చేసి మళ్లీ చూడండి.',
-    SupportedUiLanguage.hindi =>
-      'इस कैटेगरी में अभी पोस्टर नहीं हैं। रिफ्रेश करके फिर देखें।',
-    SupportedUiLanguage.english =>
-      'There are no posters for this category right now. Pull down to refresh and check again.',
-    SupportedUiLanguage.tamil =>
-      'இந்த வகையில் தற்போது போஸ்டர்கள் இல்லை. ரிப்ரெஷ் செய்து மீண்டும் பார்க்கவும்.',
-    SupportedUiLanguage.kannada =>
-      'ಈ ವರ್ಗದಲ್ಲಿ ಈಗ ಪೋಸ್ಟರ್‌ಗಳು ಇಲ್ಲ. ರಿಫ್ರೆಶ್ ಮಾಡಿ ಮತ್ತೆ ನೋಡಿ.',
-    SupportedUiLanguage.malayalam =>
-      'ഈ വിഭാഗത്തിൽ ഇപ്പോൾ പോസ്റ്ററുകൾ ഇല്ല. റിഫ്രെഷ് ചെയ്ത് വീണ്ടും നോക്കൂ.',
-  };
+  String get homeEmptyPostersSubtitle =>
+      _regionalFallback(
+        'There are no posters for this category right now. Pull down to refresh and check again.',
+      ) ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu =>
+          'ఈ కేటగిరీలో ప్రస్తుతం పోస్టర్లు లేవు. రిఫ్రెష్ చేసి మళ్లీ చూడండి.',
+        SupportedUiLanguage.hindi =>
+          'इस कैटेगरी में अभी पोस्टर नहीं हैं। रिफ्रेश करके फिर देखें।',
+        SupportedUiLanguage.english =>
+          'There are no posters for this category right now. Pull down to refresh and check again.',
+        SupportedUiLanguage.tamil =>
+          'இந்த வகையில் தற்போது போஸ்டர்கள் இல்லை. ரிப்ரெஷ் செய்து மீண்டும் பார்க்கவும்.',
+        SupportedUiLanguage.kannada =>
+          'ಈ ವರ್ಗದಲ್ಲಿ ಈಗ ಪೋಸ್ಟರ್‌ಗಳು ಇಲ್ಲ. ರಿಫ್ರೆಶ್ ಮಾಡಿ ಮತ್ತೆ ನೋಡಿ.',
+        SupportedUiLanguage.malayalam =>
+          'ഈ വിഭാഗത്തിൽ ഇപ്പോൾ പോസ്റ്ററുകൾ ഇല്ല. റിഫ്രെഷ് ചെയ്ത് വീണ്ടും നോക്കൂ.',
+      };
 
   String get loginWelcome =>
       _regionalFallback('Welcome to Mana Poster Ai') ??
@@ -2324,150 +3715,398 @@ class AppStrings {
         SupportedUiLanguage.malayalam => '\u0d38\u0d47\u0d35\u0d4d / Apply',
       };
 
-  String languageName(AppLanguage value) => switch (value) {
-    AppLanguage.telugu => '\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41',
-    AppLanguage.hindi => '\u0939\u093f\u0928\u094d\u0926\u0940',
-    AppLanguage.english => 'English',
-    AppLanguage.tamil => '\u0ba4\u0bae\u0bbf\u0bb4\u0bcd',
-    AppLanguage.kannada => '\u0c95\u0ca8\u0ccd\u0ca8\u0ca1',
-    AppLanguage.malayalam => '\u0d2e\u0d32\u0d2f\u0d3e\u0d33\u0d02',
-    AppLanguage.assamese => 'Assamese',
-    AppLanguage.konkani => 'Konkani',
-    AppLanguage.gujarati => 'Gujarati',
-    AppLanguage.marathi => 'Marathi',
-    AppLanguage.meitei => 'Meitei (Manipuri)',
-    AppLanguage.mizo => 'Mizo',
-    AppLanguage.odia => 'Odia',
-    AppLanguage.punjabi => 'Punjabi',
-    AppLanguage.nepali => 'Nepali',
-    AppLanguage.bengali => 'Bengali',
-    AppLanguage.kashmiri => 'Kashmiri',
-    AppLanguage.ladakhi => 'Ladakhi',
-  };
+  String languageName(AppLanguage value) =>
+      _sanitizeDisplayText(switch (value) {
+        AppLanguage.telugu => '\u0c24\u0c46\u0c32\u0c41\u0c17\u0c41',
+        AppLanguage.hindi => '\u0939\u093f\u0928\u094d\u0926\u0940',
+        AppLanguage.english => 'English',
+        AppLanguage.tamil => '\u0ba4\u0bae\u0bbf\u0bb4\u0bcd',
+        AppLanguage.kannada => '\u0c95\u0ca8\u0ccd\u0ca8\u0ca1',
+        AppLanguage.malayalam => '\u0d2e\u0d32\u0d2f\u0d3e\u0d33\u0d02',
+        AppLanguage.assamese => 'অসমীয়া',
+        AppLanguage.konkani => 'कोंकणी',
+        AppLanguage.gujarati => 'ગુજરાતી',
+        AppLanguage.marathi => 'मराठी',
+        AppLanguage.meitei => 'ꯃꯤꯇꯩꯂꯣꯟ',
+        AppLanguage.mizo => 'Mizo',
+        AppLanguage.odia => 'ଓଡ଼ିଆ',
+        AppLanguage.punjabi => 'ਪੰਜਾਬੀ',
+        AppLanguage.nepali => 'नेपाली',
+        AppLanguage.bengali => 'বাংলা',
+        AppLanguage.kashmiri => 'کٲشُر',
+        AppLanguage.ladakhi => 'ལ་དྭགས་སྐད',
+      });
 
-  List<String> localizedHomeCategories() => (switch (language
-      .supportedUiLanguage) {
-    SupportedUiLanguage.telugu => const <String>[
-      '\u0c05\u0c28\u0c4d\u0c28\u0c40',
-      '\u0c36\u0c41\u0c2d\u0c4b\u0c26\u0c2f\u0c02',
-      '\u0c36\u0c41\u0c2d \u0c2e\u0c27\u0c4d\u0c2f\u0c3e\u0c39\u0c4d\u0c28\u0c02',
-      '\u0c36\u0c41\u0c2d\u0c30\u0c3e\u0c24\u0c4d\u0c30\u0c3f',
-      '\u0c2a\u0c4d\u0c30\u0c47\u0c30\u0c23\u0c3e\u0c24\u0c4d\u0c2e\u0c15',
-      '\u0c2a\u0c4d\u0c30\u0c47\u0c2e \u0c15\u0c4b\u0c1f\u0c4d\u0c38\u0c4d',
-      '\u0c08\u0c30\u0c4b\u0c1c\u0c41 \u0c2a\u0c4d\u0c30\u0c24\u0c4d\u0c2f\u0c47\u0c15\u0c02',
-      '\u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41\u0c32\u0c41',
-      '\u0c1c\u0c40\u0c35\u0c3f\u0c24 \u0c38\u0c32\u0c39\u0c3e\u0c32\u0c41',
-      '\u0c17\u0c40\u0c24\u0c3e \u0c1c\u0c4d\u0c1e\u0c3e\u0c28\u0c02',
-      '\u0c2d\u0c15\u0c4d\u0c24\u0c3f',
-      '\u0c2e\u0c39\u0c3e\u0c2d\u0c3e\u0c30\u0c24\u0c02',
-      '\u0c35\u0c3e\u0c30\u0c4d\u0c37\u0c3f\u0c15\u0c4b\u0c24\u0c4d\u0c38\u0c35\u0c02',
-      '\u0c2e\u0c02\u0c1a\u0c3f \u0c06\u0c32\u0c4b\u0c1a\u0c28\u0c32\u0c41',
-      '\u0c2c\u0c48\u0c2c\u0c3f\u0c32\u0c4d',
-      '\u0c07\u0c38\u0c4d\u0c32\u0c3e\u0c02',
-      'జోక్స్',
-      'మరిన్ని',
-    ],
-    SupportedUiLanguage.hindi => const <String>[
-      '\u0938\u092d\u0940',
-      '\u0938\u0941\u092a\u094d\u0930\u092d\u093e\u0924',
-      '\u0936\u0941\u092d \u0926\u094b\u092a\u0939\u0930',
-      '\u0936\u0941\u092d \u0930\u093e\u0924\u094d\u0930\u093f',
-      '\u092a\u094d\u0930\u0947\u0930\u0923\u093e\u0926\u093e\u092f\u0915',
-      '\u092a\u094d\u0930\u0947\u092e \u0909\u0926\u094d\u0927\u0930\u0923',
-      '\u0906\u091c \u0915\u093e \u0935\u093f\u0936\u0947\u0937',
-      '\u091c\u0928\u094d\u092e\u0926\u093f\u0928',
-      '\u091c\u0940\u0935\u0928 \u0938\u0932\u093e\u0939',
-      '\u0917\u0940\u0924\u093e \u091c\u094d\u091e\u093e\u0928',
-      '\u092d\u0915\u094d\u0924\u093f',
-      '\u092e\u0939\u093e\u092d\u093e\u0930\u0924',
-      '\u0935\u0930\u094d\u0937\u0917\u093e\u0901\u0920',
-      '\u0905\u091a\u094d\u091b\u0947 \u0935\u093f\u091a\u093e\u0930',
-      '\u092c\u093e\u0907\u092c\u0932',
-      '\u0907\u0938\u094d\u0932\u093e\u092e',
-      'चुटकुले',
-      'और',
-    ],
-    SupportedUiLanguage.english => const <String>[
-      'All',
-      'Good Morning',
-      'Good Afternoon',
-      'Good Night',
-      'Motivational',
-      'Love Quotes',
-      'Today Special',
-      'Birthdays',
-      'Life Advice',
-      'Gita Wisdom',
-      'Devotional',
-      'Mahabharata',
-      'Anniversary',
-      'Good Thoughts',
-      'Bible',
-      'Islam',
-      'Jokes',
-      'More',
-    ],
-    SupportedUiLanguage.tamil => const <String>[
-      '\u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1\u0bae\u0bcd',
-      '\u0b87\u0ba9\u0bbf\u0baf \u0b95\u0bbe\u0bb2\u0bc8',
-      '\u0b87\u0ba9\u0bbf\u0baf \u0bae\u0ba4\u0bbf\u0baf\u0bae\u0bcd',
-      '\u0b87\u0ba9\u0bbf\u0baf \u0b87\u0bb0\u0bb5\u0bc1',
-      '\u0b8a\u0b95\u0bcd\u0b95\u0bae\u0bb3\u0bbf\u0baa\u0bcd\u0baa\u0bc1',
-      '\u0b95\u0bbe\u0ba4\u0bb2\u0bcd \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
-      '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
-      '\u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
-      '\u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b86\u0bb2\u0bcb\u0b9a\u0ba9\u0bc8',
-      '\u0b95\u0bc0\u0ba4\u0bbe \u0b9e\u0bbe\u0ba9\u0bae\u0bcd',
-      '\u0baa\u0b95\u0bcd\u0ba4\u0bbf',
-      '\u0bae\u0b95\u0bbe\u0baa\u0bbe\u0bb0\u0ba4\u0bae\u0bcd',
-      '\u0b86\u0ba3\u0bcd\u0b9f\u0bc1 \u0bb5\u0bbf\u0bb4\u0bbe',
-      '\u0ba8\u0bb2\u0bcd\u0bb2 \u0b8e\u0ba3\u0bcd\u0ba3\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
-      '\u0baa\u0bc8\u0baa\u0bbf\u0bb3\u0bcd',
-      '\u0b87\u0bb8\u0bcd\u0bb2\u0bbe\u0bae\u0bcd',
-      'நகைச்சுவை',
-      'மேலும்',
-    ],
-    SupportedUiLanguage.kannada => const <String>[
-      '\u0c8e\u0cb2\u0ccd\u0cb2\u0cb5\u0cc2',
-      '\u0cb6\u0cc1\u0cad\u0ccb\u0ca6\u0caf',
-      '\u0cb6\u0cc1\u0cad \u0cae\u0ca7\u0ccd\u0caf\u0cbe\u0cb9\u0ccd\u0ca8',
-      '\u0cb6\u0cc1\u0cad \u0cb0\u0cbe\u0ca4\u0ccd\u0cb0\u0cbf',
-      '\u0caa\u0ccd\u0cb0\u0cc7\u0cb0\u0ca3\u0cbe\u0ca6\u0cbe\u0caf\u0c95',
-      '\u0caa\u0ccd\u0cb0\u0cc0\u0ca4\u0cbf \u0c89\u0c95\u0ccd\u0ca4\u0cbf\u0c97\u0cb3\u0cc1',
-      '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
-      '\u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
-      '\u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
-      '\u0c97\u0cc0\u0ca4\u0cbe \u0c9c\u0ccd\u0c9e\u0cbe\u0ca8',
-      '\u0cad\u0c95\u0ccd\u0ca4\u0cbf',
-      '\u0cae\u0cb9\u0cbe\u0cad\u0cbe\u0cb0\u0ca4',
-      '\u0cb5\u0cbe\u0cb0\u0ccd\u0cb7\u0cbf\u0c95\u0ccb\u0ca4\u0ccd\u0cb8\u0cb5',
-      '\u0c92\u0cb3\u0ccd\u0cb3\u0cc6\u0caf \u0c86\u0cb2\u0ccb\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
-      '\u0cac\u0cc8\u0cac\u0cb2\u0ccd',
-      '\u0c87\u0cb8\u0ccd\u0cb2\u0cbe\u0c82',
-      'ಜೋಕ್ಸ್',
-      'ಇನ್ನಷ್ಟು',
-    ],
-    SupportedUiLanguage.malayalam => const <String>[
-      '\u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02',
-      '\u0d36\u0d41\u0d2d\u0d4b\u0d26\u0d2f\u0d02',
-      '\u0d36\u0d41\u0d2d \u0d09\u0d1a\u0d4d\u0d1a\u0d15\u0d4d\u0d15\u0d4d',
-      '\u0d36\u0d41\u0d2d \u0d30\u0d3e\u0d24\u0d4d\u0d30\u0d3f',
-      '\u0d2a\u0d4d\u0d30\u0d1a\u0d4b\u0d26\u0d28\u0d3e\u0d24\u0d4d\u0d2e\u0d15\u0d02',
-      '\u0d2a\u0d4d\u0d30\u0d23\u0d2f \u0d09\u0d26\u0d4d\u0d27\u0d30\u0d23\u0d3f\u0d15\u0d7e',
-      '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d24',
-      '\u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
-      '\u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',
-      '\u0d17\u0d40\u0d24\u0d3e \u0d1c\u0d4d\u0d1e\u0d3e\u0d28\u0d02',
-      '\u0d2d\u0d15\u0d4d\u0d24\u0d3f',
-      '\u0d2e\u0d39\u0d3e\u0d2d\u0d3e\u0d30\u0d24\u0d02',
-      '\u0d35\u0d3e\u0d30\u0d4d\u0d37\u0d3f\u0d15\u0d02',
-      '\u0d28\u0d32\u0d4d\u0d32 \u0d1a\u0d3f\u0d28\u0d4d\u0d24\u0d15\u0d7e',
-      '\u0d2c\u0d48\u0d2c\u0d3f\u0d7d',
-      '\u0d07\u0d38\u0d4d\u0d32\u0d3e\u0d02',
-      'തമാശകൾ',
-      'കൂടുതൽ',
-    ],
-  }).map((item) => _sanitizeDisplayText(item)).toList(growable: false);
+  static const Map<AppLanguage, List<String>> _regionalHomeCategories =
+      <AppLanguage, List<String>>{
+        AppLanguage.assamese: <String>[
+          'সকলো',
+          'সুপ্ৰভাত',
+          'শুভ দুপৰীয়া',
+          'শুভ ৰাতি',
+          'প্ৰেৰণাদায়ক',
+          'প্ৰেমৰ উদ্ধৃতি',
+          'আজিৰ বিশেষ',
+          'জন্মদিন',
+          'জীৱনৰ পৰামৰ্শ',
+          'গীতা জ্ঞান',
+          'ভক্তি',
+          'মহাভাৰত',
+          'বৰ্ষপূৰ্তি',
+          'ভাল চিন্তা',
+          'বাইবেল',
+          'ইছলাম',
+          'হাস্যকৌতুক',
+          'অধিক',
+        ],
+        AppLanguage.konkani: <String>[
+          'सगळें',
+          'सुप्रभात',
+          'शुभ दुपार',
+          'शुभ रात',
+          'प्रेरणादायी',
+          'मोगाचे उद्धरण',
+          'आयचें खास',
+          'जन्मदीस',
+          'जीवन सल्लो',
+          'गीता ज्ञान',
+          'भक्ती',
+          'महाभारत',
+          'वर्धापन दीस',
+          'बरे विचार',
+          'बायबल',
+          'इस्लाम',
+          'विनोद',
+          'आनीक',
+        ],
+        AppLanguage.gujarati: <String>[
+          'બધું',
+          'સુપ્રભાત',
+          'શુભ બપોર',
+          'શુભ રાત્રી',
+          'પ્રેરણાત્મક',
+          'પ્રેમ કોટ્સ',
+          'આજનું ખાસ',
+          'જન્મદિવસ',
+          'જીવન સલાહ',
+          'ગીતા જ્ઞાન',
+          'ભક્તિ',
+          'મહાભારત',
+          'વર્ષગાંઠ',
+          'સારા વિચારો',
+          'બાઇબલ',
+          'ઇસ્લામ',
+          'જોક્સ',
+          'વધુ',
+        ],
+        AppLanguage.marathi: <String>[
+          'सर्व',
+          'सुप्रभात',
+          'शुभ दुपार',
+          'शुभ रात्री',
+          'प्रेरणादायी',
+          'प्रेम कोट्स',
+          'आजचे विशेष',
+          'वाढदिवस',
+          'जीवन सल्ला',
+          'गीता ज्ञान',
+          'भक्ती',
+          'महाभारत',
+          'वर्धापनदिन',
+          'चांगले विचार',
+          'बायबल',
+          'इस्लाम',
+          'विनोद',
+          'अधिक',
+        ],
+        AppLanguage.meitei: <String>[
+          'ꯄꯨꯝꯅꯃꯛ',
+          'ꯒꯨꯗ ꯃꯣꯔꯅꯤꯡ',
+          'ꯒꯨꯗ ꯑꯐꯇꯔꯅꯨꯟ',
+          'ꯒꯨꯗ ꯅꯥꯏꯠ',
+          'ꯊꯧꯒꯠꯂꯛꯄ',
+          'ꯅꯨꯡꯁꯤ ꯀꯣꯠꯁ',
+          'ꯉꯁꯤꯒꯤ ꯑꯈꯟꯅꯕ',
+          'ꯄꯣꯛꯄ ꯅꯨꯃꯤꯠ',
+          'ꯄꯨꯟꯁꯤ ꯄꯥꯎꯇꯥꯛ',
+          'ꯒꯤꯇꯥ ꯈꯪꯅꯕ',
+          'ꯚꯛꯇꯤ',
+          'ꯃꯍꯥꯚꯥꯔꯇ',
+          'ꯆꯍꯤ ꯃꯥꯏꯂꯥꯏ',
+          'ꯐꯕ ꯋꯥꯈꯜ',
+          'ꯕꯥꯏꯕꯦꯜ',
+          'ꯏꯁ꯭ꯂꯥꯝ',
+          'ꯖꯣꯛꯁ',
+          'ꯍꯦꯟꯅ',
+        ],
+        AppLanguage.mizo: <String>[
+          'Zawng zawng',
+          'Good Morning',
+          'Good Afternoon',
+          'Good Night',
+          'Thlahlelna',
+          'Hmangaihna thu',
+          'Vawiin bik',
+          'Piancham',
+          'Nun thurawn',
+          'Gita hriatna',
+          'Pathian thu',
+          'Mahabharata',
+          'Kum cham',
+          'Ngaihtuahna tha',
+          'Bible',
+          'Islam',
+          'Nuihza',
+          'Tam zawk',
+        ],
+        AppLanguage.odia: <String>[
+          'ସବୁ',
+          'ସୁପ୍ରଭାତ',
+          'ଶୁଭ ଅପରାହ୍ନ',
+          'ଶୁଭ ରାତ୍ରି',
+          'ପ୍ରେରଣାଦାୟକ',
+          'ପ୍ରେମ ଉକ୍ତି',
+          'ଆଜିର ବିଶେଷ',
+          'ଜନ୍ମଦିନ',
+          'ଜୀବନ ପରାମର୍ଶ',
+          'ଗୀତା ଜ୍ଞାନ',
+          'ଭକ୍ତି',
+          'ମହାଭାରତ',
+          'ବାର୍ଷିକୀ',
+          'ଭଲ ଚିନ୍ତା',
+          'ବାଇବେଲ',
+          'ଇସ୍ଲାମ',
+          'ଜୋକ୍ସ',
+          'ଅଧିକ',
+        ],
+        AppLanguage.punjabi: <String>[
+          'ਸਭ',
+          'ਸਤ ਸ੍ਰੀ ਅਕਾਲ ਸਵੇਰ',
+          'ਸ਼ੁਭ ਦੁਪਹਿਰ',
+          'ਸ਼ੁਭ ਰਾਤ',
+          'ਪ੍ਰੇਰਣਾਦਾਇਕ',
+          'ਪਿਆਰ ਦੇ ਕੋਟਸ',
+          'ਅੱਜ ਦਾ ਖਾਸ',
+          'ਜਨਮਦਿਨ',
+          'ਜੀਵਨ ਸਲਾਹ',
+          'ਗੀਤਾ ਗਿਆਨ',
+          'ਭਗਤੀ',
+          'ਮਹਾਭਾਰਤ',
+          'ਵਰ੍ਹੇਗੰਢ',
+          'ਚੰਗੇ ਵਿਚਾਰ',
+          'ਬਾਈਬਲ',
+          'ਇਸਲਾਮ',
+          'ਜੋਕਸ',
+          'ਹੋਰ',
+        ],
+        AppLanguage.nepali: <String>[
+          'सबै',
+          'शुभ प्रभात',
+          'शुभ दिउँसो',
+          'शुभ रात्री',
+          'प्रेरणादायी',
+          'प्रेम उद्धरण',
+          'आजको विशेष',
+          'जन्मदिन',
+          'जीवन सल्लाह',
+          'गीता ज्ञान',
+          'भक्ति',
+          'महाभारत',
+          'वार्षिकोत्सव',
+          'राम्रा विचार',
+          'बाइबल',
+          'इस्लाम',
+          'जोक्स',
+          'थप',
+        ],
+        AppLanguage.bengali: <String>[
+          'সব',
+          'সুপ্রভাত',
+          'শুভ অপরাহ্ন',
+          'শুভ রাত্রি',
+          'অনুপ্রেরণামূলক',
+          'প্রেমের উক্তি',
+          'আজকের বিশেষ',
+          'জন্মদিন',
+          'জীবনের পরামর্শ',
+          'গীতা জ্ঞান',
+          'ভক্তি',
+          'মহাভারত',
+          'বার্ষিকী',
+          'ভালো চিন্তা',
+          'বাইবেল',
+          'ইসলাম',
+          'জোকস',
+          'আরও',
+        ],
+        AppLanguage.kashmiri: <String>[
+          'سارے',
+          'صبح بخیر',
+          'دوپہر بخیر',
+          'شب بخیر',
+          'حوصلہ افزا',
+          'محبت کے اقوال',
+          'آج کا خاص',
+          'سالگرہ',
+          'زندگی مشورہ',
+          'گیتا گیان',
+          'عقیدت',
+          'مہابھارت',
+          'سالگرہ تقریب',
+          'اچھے خیالات',
+          'بائبل',
+          'اسلام',
+          'لطیفے',
+          'مزید',
+        ],
+        AppLanguage.ladakhi: <String>[
+          'ཐམས་ཅད',
+          'སྔ་དྲོ་བདེ་ལེགས',
+          'ཉིན་གུང་བདེ་ལེགས',
+          'མཚན་མོ་བདེ་ལེགས',
+          'སེམས་ཤུགས',
+          'བརྩེ་བའི་ཚིག',
+          'དེ་རིང་གི་ཁྱད་པར',
+          'སྐྱེས་སྐར',
+          'མི་ཚེའི་སློབ་སྟོན',
+          'གི་ཏཱ་ཤེས་རབ',
+          'དད་པ',
+          'མ་ཧཱ་བྷཱ་ར་ཏ',
+          'ལོ་འཁོར',
+          'བསམ་བློ་བཟང་པོ',
+          'བཱའི་བལ',
+          'ཨིས་ལཱམ',
+          'ཀུ་རེ',
+          'མང་བ',
+        ],
+      };
+
+  List<String> localizedHomeCategories() =>
+      (_regionalHomeCategories[language] ??
+              (switch (language.supportedUiLanguage) {
+                SupportedUiLanguage.telugu => const <String>[
+                  '\u0c05\u0c28\u0c4d\u0c28\u0c40',
+                  '\u0c36\u0c41\u0c2d\u0c4b\u0c26\u0c2f\u0c02',
+                  '\u0c36\u0c41\u0c2d \u0c2e\u0c27\u0c4d\u0c2f\u0c3e\u0c39\u0c4d\u0c28\u0c02',
+                  '\u0c36\u0c41\u0c2d\u0c30\u0c3e\u0c24\u0c4d\u0c30\u0c3f',
+                  '\u0c2a\u0c4d\u0c30\u0c47\u0c30\u0c23\u0c3e\u0c24\u0c4d\u0c2e\u0c15',
+                  '\u0c2a\u0c4d\u0c30\u0c47\u0c2e \u0c15\u0c4b\u0c1f\u0c4d\u0c38\u0c4d',
+                  '\u0c08\u0c30\u0c4b\u0c1c\u0c41 \u0c2a\u0c4d\u0c30\u0c24\u0c4d\u0c2f\u0c47\u0c15\u0c02',
+                  '\u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41\u0c32\u0c41',
+                  '\u0c1c\u0c40\u0c35\u0c3f\u0c24 \u0c38\u0c32\u0c39\u0c3e\u0c32\u0c41',
+                  '\u0c17\u0c40\u0c24\u0c3e \u0c1c\u0c4d\u0c1e\u0c3e\u0c28\u0c02',
+                  '\u0c2d\u0c15\u0c4d\u0c24\u0c3f',
+                  '\u0c2e\u0c39\u0c3e\u0c2d\u0c3e\u0c30\u0c24\u0c02',
+                  '\u0c35\u0c3e\u0c30\u0c4d\u0c37\u0c3f\u0c15\u0c4b\u0c24\u0c4d\u0c38\u0c35\u0c02',
+                  '\u0c2e\u0c02\u0c1a\u0c3f \u0c06\u0c32\u0c4b\u0c1a\u0c28\u0c32\u0c41',
+                  '\u0c2c\u0c48\u0c2c\u0c3f\u0c32\u0c4d',
+                  '\u0c07\u0c38\u0c4d\u0c32\u0c3e\u0c02',
+                  'జోక్స్',
+                  'మరిన్ని',
+                ],
+                SupportedUiLanguage.hindi => const <String>[
+                  '\u0938\u092d\u0940',
+                  '\u0938\u0941\u092a\u094d\u0930\u092d\u093e\u0924',
+                  '\u0936\u0941\u092d \u0926\u094b\u092a\u0939\u0930',
+                  '\u0936\u0941\u092d \u0930\u093e\u0924\u094d\u0930\u093f',
+                  '\u092a\u094d\u0930\u0947\u0930\u0923\u093e\u0926\u093e\u092f\u0915',
+                  '\u092a\u094d\u0930\u0947\u092e \u0909\u0926\u094d\u0927\u0930\u0923',
+                  '\u0906\u091c \u0915\u093e \u0935\u093f\u0936\u0947\u0937',
+                  '\u091c\u0928\u094d\u092e\u0926\u093f\u0928',
+                  '\u091c\u0940\u0935\u0928 \u0938\u0932\u093e\u0939',
+                  '\u0917\u0940\u0924\u093e \u091c\u094d\u091e\u093e\u0928',
+                  '\u092d\u0915\u094d\u0924\u093f',
+                  '\u092e\u0939\u093e\u092d\u093e\u0930\u0924',
+                  '\u0935\u0930\u094d\u0937\u0917\u093e\u0901\u0920',
+                  '\u0905\u091a\u094d\u091b\u0947 \u0935\u093f\u091a\u093e\u0930',
+                  '\u092c\u093e\u0907\u092c\u0932',
+                  '\u0907\u0938\u094d\u0932\u093e\u092e',
+                  'चुटकुले',
+                  'और',
+                ],
+                SupportedUiLanguage.english => const <String>[
+                  'All',
+                  'Good Morning',
+                  'Good Afternoon',
+                  'Good Night',
+                  'Motivational',
+                  'Love Quotes',
+                  'Today Special',
+                  'Birthdays',
+                  'Life Advice',
+                  'Gita Wisdom',
+                  'Devotional',
+                  'Mahabharata',
+                  'Anniversary',
+                  'Good Thoughts',
+                  'Bible',
+                  'Islam',
+                  'Jokes',
+                  'More',
+                ],
+                SupportedUiLanguage.tamil => const <String>[
+                  '\u0b85\u0ba9\u0bc8\u0ba4\u0bcd\u0ba4\u0bc1\u0bae\u0bcd',
+                  '\u0b87\u0ba9\u0bbf\u0baf \u0b95\u0bbe\u0bb2\u0bc8',
+                  '\u0b87\u0ba9\u0bbf\u0baf \u0bae\u0ba4\u0bbf\u0baf\u0bae\u0bcd',
+                  '\u0b87\u0ba9\u0bbf\u0baf \u0b87\u0bb0\u0bb5\u0bc1',
+                  '\u0b8a\u0b95\u0bcd\u0b95\u0bae\u0bb3\u0bbf\u0baa\u0bcd\u0baa\u0bc1',
+                  '\u0b95\u0bbe\u0ba4\u0bb2\u0bcd \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
+                  '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
+                  '\u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
+                  '\u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b86\u0bb2\u0bcb\u0b9a\u0ba9\u0bc8',
+                  '\u0b95\u0bc0\u0ba4\u0bbe \u0b9e\u0bbe\u0ba9\u0bae\u0bcd',
+                  '\u0baa\u0b95\u0bcd\u0ba4\u0bbf',
+                  '\u0bae\u0b95\u0bbe\u0baa\u0bbe\u0bb0\u0ba4\u0bae\u0bcd',
+                  '\u0b86\u0ba3\u0bcd\u0b9f\u0bc1 \u0bb5\u0bbf\u0bb4\u0bbe',
+                  '\u0ba8\u0bb2\u0bcd\u0bb2 \u0b8e\u0ba3\u0bcd\u0ba3\u0b99\u0bcd\u0b95\u0bb3\u0bcd',
+                  '\u0baa\u0bc8\u0baa\u0bbf\u0bb3\u0bcd',
+                  '\u0b87\u0bb8\u0bcd\u0bb2\u0bbe\u0bae\u0bcd',
+                  'நகைச்சுவை',
+                  'மேலும்',
+                ],
+                SupportedUiLanguage.kannada => const <String>[
+                  '\u0c8e\u0cb2\u0ccd\u0cb2\u0cb5\u0cc2',
+                  '\u0cb6\u0cc1\u0cad\u0ccb\u0ca6\u0caf',
+                  '\u0cb6\u0cc1\u0cad \u0cae\u0ca7\u0ccd\u0caf\u0cbe\u0cb9\u0ccd\u0ca8',
+                  '\u0cb6\u0cc1\u0cad \u0cb0\u0cbe\u0ca4\u0ccd\u0cb0\u0cbf',
+                  '\u0caa\u0ccd\u0cb0\u0cc7\u0cb0\u0ca3\u0cbe\u0ca6\u0cbe\u0caf\u0c95',
+                  '\u0caa\u0ccd\u0cb0\u0cc0\u0ca4\u0cbf \u0c89\u0c95\u0ccd\u0ca4\u0cbf\u0c97\u0cb3\u0cc1',
+                  '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
+                  '\u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
+                  '\u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
+                  '\u0c97\u0cc0\u0ca4\u0cbe \u0c9c\u0ccd\u0c9e\u0cbe\u0ca8',
+                  '\u0cad\u0c95\u0ccd\u0ca4\u0cbf',
+                  '\u0cae\u0cb9\u0cbe\u0cad\u0cbe\u0cb0\u0ca4',
+                  '\u0cb5\u0cbe\u0cb0\u0ccd\u0cb7\u0cbf\u0c95\u0ccb\u0ca4\u0ccd\u0cb8\u0cb5',
+                  '\u0c92\u0cb3\u0ccd\u0cb3\u0cc6\u0caf \u0c86\u0cb2\u0ccb\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
+                  '\u0cac\u0cc8\u0cac\u0cb2\u0ccd',
+                  '\u0c87\u0cb8\u0ccd\u0cb2\u0cbe\u0c82',
+                  'ಜೋಕ್ಸ್',
+                  'ಇನ್ನಷ್ಟು',
+                ],
+                SupportedUiLanguage.malayalam => const <String>[
+                  '\u0d0e\u0d32\u0d4d\u0d32\u0d3e\u0d02',
+                  '\u0d36\u0d41\u0d2d\u0d4b\u0d26\u0d2f\u0d02',
+                  '\u0d36\u0d41\u0d2d \u0d09\u0d1a\u0d4d\u0d1a\u0d15\u0d4d\u0d15\u0d4d',
+                  '\u0d36\u0d41\u0d2d \u0d30\u0d3e\u0d24\u0d4d\u0d30\u0d3f',
+                  '\u0d2a\u0d4d\u0d30\u0d1a\u0d4b\u0d26\u0d28\u0d3e\u0d24\u0d4d\u0d2e\u0d15\u0d02',
+                  '\u0d2a\u0d4d\u0d30\u0d23\u0d2f \u0d09\u0d26\u0d4d\u0d27\u0d30\u0d23\u0d3f\u0d15\u0d7e',
+                  '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d24',
+                  '\u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
+                  '\u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',
+                  '\u0d17\u0d40\u0d24\u0d3e \u0d1c\u0d4d\u0d1e\u0d3e\u0d28\u0d02',
+                  '\u0d2d\u0d15\u0d4d\u0d24\u0d3f',
+                  '\u0d2e\u0d39\u0d3e\u0d2d\u0d3e\u0d30\u0d24\u0d02',
+                  '\u0d35\u0d3e\u0d30\u0d4d\u0d37\u0d3f\u0d15\u0d02',
+                  '\u0d28\u0d32\u0d4d\u0d32 \u0d1a\u0d3f\u0d28\u0d4d\u0d24\u0d15\u0d7e',
+                  '\u0d2c\u0d48\u0d2c\u0d3f\u0d7d',
+                  '\u0d07\u0d38\u0d4d\u0d32\u0d3e\u0d02',
+                  'തമാശകൾ',
+                  'കൂടുതൽ',
+                ],
+              }))
+          .map((item) => _sanitizeDisplayText(item))
+          .toList(growable: false);
 
   List<String> homeCategories() => localizedHomeCategories();
 }

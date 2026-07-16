@@ -62,7 +62,8 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
     AppSnackBar.build(
       content: Text(
         context.strings.localized(
-          telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Could not open the link. Please try again.',
         ),
       ),
@@ -399,13 +400,11 @@ class _ProfileScreenState extends State<ProfileScreen>
             Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => _ProfileMoreScreen(
-                  copy: copy,
-                  onShareApp: () => _shareApp(copy),
-                  onOpenRegionSelection: () => _openRegionSelection(copy),
-                  onOpenPoliticalPartySelection: () =>
-                      _openPoliticalPartySelection(copy),
-                  onOpenReligionSelection: () => _openReligionSelection(copy),
-                  onLogout: () => _logout(copy),
+                  onShareApp: _shareApp,
+                  onOpenRegionSelection: _openRegionSelection,
+                  onOpenPoliticalPartySelection: _openPoliticalPartySelection,
+                  onOpenReligionSelection: _openReligionSelection,
+                  onLogout: _logout,
                   showAdPrivacyChoices: _privacyChoicesVisible,
                 ),
               ),
@@ -600,7 +599,6 @@ class _ProfileOptionTile extends StatelessWidget {
 
 class _ProfileMoreScreen extends StatelessWidget {
   const _ProfileMoreScreen({
-    required this.copy,
     required this.onShareApp,
     required this.onOpenRegionSelection,
     required this.onOpenPoliticalPartySelection,
@@ -609,12 +607,11 @@ class _ProfileMoreScreen extends StatelessWidget {
     required this.showAdPrivacyChoices,
   });
 
-  final _ProfileCopy copy;
-  final Future<void> Function() onShareApp;
-  final Future<void> Function() onOpenRegionSelection;
-  final Future<void> Function() onOpenPoliticalPartySelection;
-  final Future<void> Function() onOpenReligionSelection;
-  final Future<void> Function() onLogout;
+  final Future<void> Function(_ProfileCopy copy) onShareApp;
+  final Future<void> Function(_ProfileCopy copy) onOpenRegionSelection;
+  final Future<void> Function(_ProfileCopy copy) onOpenPoliticalPartySelection;
+  final Future<void> Function(_ProfileCopy copy) onOpenReligionSelection;
+  final Future<void> Function(_ProfileCopy copy) onLogout;
   final bool showAdPrivacyChoices;
 
   Future<void> _openSubscriptionPlan(
@@ -641,14 +638,20 @@ class _ProfileMoreScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _openReferralRewards(BuildContext context) async {
+  Future<void> _openReferralRewards(
+    BuildContext context,
+    _ProfileCopy copy,
+  ) async {
     await showDialog<void>(
       context: context,
       builder: (_) => _ReferralRewardsDialog(copy: copy),
     );
   }
 
-  Future<void> _enableLocationSuggestions(BuildContext context) async {
+  Future<void> _enableLocationSuggestions(
+    BuildContext context,
+    _ProfileCopy copy,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -713,6 +716,8 @@ class _ProfileMoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = _ProfileCopy(context.currentLanguage, context.strings);
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -755,7 +760,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.ios_share_rounded,
                   title: copy.shareAppTitle,
                   subtitle: copy.shareAppSubtitle,
-                  onTap: () => unawaited(onShareApp()),
+                  onTap: () => unawaited(onShareApp(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.language_rounded,
@@ -773,25 +778,26 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.map_rounded,
                   title: copy.stateTitle,
                   subtitle: copy.stateSubtitle,
-                  onTap: () => unawaited(onOpenRegionSelection()),
+                  onTap: () => unawaited(onOpenRegionSelection(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.how_to_vote_rounded,
                   title: copy.politicalPartyTitle,
                   subtitle: copy.politicalPartySubtitle,
-                  onTap: () => unawaited(onOpenPoliticalPartySelection()),
+                  onTap: () => unawaited(onOpenPoliticalPartySelection(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.account_balance_rounded,
                   title: copy.religionTitle,
                   subtitle: copy.religionSubtitle,
-                  onTap: () => unawaited(onOpenReligionSelection()),
+                  onTap: () => unawaited(onOpenReligionSelection(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.location_on_outlined,
                   title: copy.locationTitle,
                   subtitle: copy.locationSubtitle,
-                  onTap: () => unawaited(_enableLocationSuggestions(context)),
+                  onTap: () =>
+                      unawaited(_enableLocationSuggestions(context, copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.card_membership_rounded,
@@ -804,7 +810,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.group_add_rounded,
                   title: copy.referralRewardsTitle,
                   subtitle: copy.referralRewardsSubtitle,
-                  onTap: () => unawaited(_openReferralRewards(context)),
+                  onTap: () => unawaited(_openReferralRewards(context, copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.restore_rounded,
@@ -918,7 +924,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                   title: copy.logoutTitle,
                   subtitle: copy.logoutSubtitle,
                   isDestructive: true,
-                  onTap: () => unawaited(onLogout()),
+                  onTap: () => unawaited(onLogout(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.delete_forever_outlined,
@@ -1247,190 +1253,329 @@ class _ProfileCopy {
   final AppLanguage language;
   final AppStrings strings;
 
-  bool get _isTelugu => language == AppLanguage.telugu;
-
-  String get quickActionsTitle =>
-      _isTelugu ? 'త్వరిత ఎంపికలు' : 'Quick actions';
-  String get supportTitle =>
-      _isTelugu ? '\u0c38\u0c39\u0c3e\u0c2f\u0c02' : strings.supportSection;
-
-  String get posterProfileTitle => _isTelugu
-      ? 'వ్యక్తిగత & బిజినెస్ వివరాలు'
-      : 'Personal & Business Details';
-  String get posterProfileSubtitle => _isTelugu
-      ? 'ఫోటో, పేరు, బిజినెస్ వివరాలు అప్డేట్ చేయండి'
-      : 'Update photo, personal, and business details';
-  String get moreTitle => _isTelugu ? 'మరిన్ని' : 'More';
-  String get moreSubtitle =>
-      _isTelugu ? 'మిగతా అన్ని ఆప్షన్లు' : 'Remaining options';
-  String get settingsTitle => _isTelugu ? 'సెట్టింగ్స్' : 'Settings';
-  String get religionTitle => _isTelugu ? 'మతం మార్చండి' : 'Change religion';
-  String get religionSubtitle => _isTelugu
-      ? 'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి'
-      : 'Update which categories appear in home';
-  String get religionSavedHinduMessage =>
-      _isTelugu ? 'హిందూ ఎంపిక సేవ్ అయింది' : 'Hindu preference saved';
-  String get religionSavedMuslimMessage =>
-      _isTelugu ? 'ముస్లిం ఎంపిక సేవ్ అయింది' : 'Muslim preference saved';
-  String get religionSavedChristianMessage => _isTelugu
-      ? 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది'
-      : 'Christian preference saved';
-  String get religionSavedAllMessage => _isTelugu
-      ? 'అన్ని కేటగిరీలు చూపించే ఎంపిక సేవ్ అయింది'
-      : 'All categories preference saved';
-
-  String get languageTitle =>
-      _isTelugu ? '\u0c2d\u0c3e\u0c37' : strings.languageOption;
-  String? get languageSubtitle =>
-      _isTelugu ? 'యాప్ భాష మార్చండి' : 'Change app language';
-  String get stateTitle =>
-      _isTelugu ? 'రాష్ట్రం మార్చండి' : 'Change State / UT';
-  String get stateSubtitle => _isTelugu
-      ? 'యాప్ భాష మరియు రాష్ట్ర కేటగిరీలు అప్డేట్ అవుతాయి'
-      : 'Update app language and state categories';
-  String get stateSavedMessage => _isTelugu
-      ? 'రాష్ట్రం అప్డేట్ అయింది. రాజకీయ పార్టీలు మళ్లీ ఎంచుకోండి'
-      : 'State updated. Please review political parties';
-  String get politicalPartyTitle =>
-      _isTelugu ? 'రాజకీయ పార్టీలు' : 'Political parties';
-  String get politicalPartySubtitle => _isTelugu
-      ? 'హోమ్‌లో కనిపించే పార్టీ కేటగిరీలను మార్చండి'
-      : 'Update political party categories shown in home';
-  String get politicalPartySavedMessage => _isTelugu
-      ? 'రాజకీయ పార్టీలు అప్డేట్ అయ్యాయి'
-      : 'Political parties updated';
-  String get locationTitle =>
-      _isTelugu ? 'లొకేషన్ ఆధారిత స్టేటస్' : 'Location-based status';
-  String get locationSubtitle => _isTelugu
-      ? 'మీ city/district ఆధారంగా దగ్గరలోని స్టేటస్‌లకు ప్రాధాన్యం ఇవ్వండి'
-      : 'Prioritize nearby city/district statuses';
-  String get locationDialogMessage => _isTelugu
-      ? 'దగ్గరలోని స్టేటస్‌ల కోసం లొకేషన్ అనుమతి ఇవ్వండి.'
-      : 'Allow location to show nearby statuses.';
-  String get locationSavedMessage => _isTelugu
-      ? 'లొకేషన్ స్టేటస్ సూచనలు ఆన్ అయ్యాయి'
-      : 'Location-based status suggestions enabled';
-  String get locationPermissionDeniedMessage => _isTelugu
-      ? 'లొకేషన్ permission ఇవ్వలేదు. Settings నుంచి ఎప్పుడైనా ఆన్ చేయవచ్చు'
-      : 'Location permission was not allowed. You can enable it later from settings.';
-  String get locationServiceDisabledMessage => _isTelugu
-      ? 'ఫోన్‌లో location service off ఉంది'
-      : 'Location service is turned off on this phone.';
-  String get locationFailedMessage => _isTelugu
-      ? 'లొకేషన్ update కాలేదు. మళ్లీ ప్రయత్నించండి'
-      : 'Location could not be updated. Please try again.';
-  String get cancelAction => _isTelugu ? 'వద్దు' : 'Cancel';
-  String get allowAction => _isTelugu ? 'Allow చేయండి' : 'Allow';
-
-  String get subscriptionTitle =>
-      _isTelugu ? 'ప్లాన్ వివరాలు' : strings.subscriptionOption;
-  String get subscriptionSubtitle =>
-      _isTelugu ? 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి' : 'View plan details';
-  String get referralRewardsTitle =>
-      _isTelugu ? 'రిఫరల్ బహుమతులు' : 'Referral rewards';
-  String get referralRewardsSubtitle => _isTelugu
-      ? 'రిఫరల్ కోడ్ మరియు ప్రస్తుత చక్రం చూడండి'
-      : 'View referral code and current cycle';
-  String referralProgressText(int current, int required) {
-    return _isTelugu
-        ? 'ప్రస్తుత చక్రం: $current / $required'
-        : 'Current cycle: $current / $required';
+  String _localized({
+    required String telugu,
+    required String english,
+    String? hindi,
+    String? tamil,
+    String? kannada,
+    String? malayalam,
+  }) {
+    return strings.localized(
+      telugu: telugu,
+      english: english,
+      hindi: hindi,
+      tamil: tamil,
+      kannada: kannada,
+      malayalam: malayalam,
+    );
   }
 
-  String get copyReferralCodeAction => _isTelugu ? 'కోడ్ కాపీ' : 'Copy code';
-  String get shareReferralAction => _isTelugu ? 'షేర్' : 'Share';
-  String get referralTermsAction =>
-      _isTelugu ? 'నిబంధనలు మరియు షరతులు చూడండి' : 'View Terms & Conditions';
-  String get applyReferralCodeLabel =>
-      _isTelugu ? 'రిఫరల్ కోడ్ నమోదు చేయండి' : 'Enter referral code';
-  String get applyReferralCodeAction => _isTelugu ? 'అప్లై' : 'Apply';
-  String get referralCodeCopiedMessage =>
-      _isTelugu ? 'రిఫరల్ కోడ్ కాపీ అయింది' : 'Referral code copied';
-  String get referralCodeAppliedMessage =>
-      _isTelugu ? 'రిఫరల్ కోడ్ అప్లై అయింది' : 'Referral code applied';
-  String get referralCodeAlreadyAppliedMessage =>
-      _isTelugu ? 'రిఫరల్ ఇప్పటికే అప్లై అయింది' : 'Referral already applied';
-  String get referralCodeApplyFailedMessage => _isTelugu
-      ? 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి'
-      : 'Referral code apply failed. Please try again.';
-  String get referralLoadFailedMessage => _isTelugu
-      ? 'రిఫరల్ వివరాలు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి'
-      : 'Referral details could not load. Please try again.';
-  String get closeAction => _isTelugu ? 'మూసివేయండి' : 'Close';
-  String get restoreSubscriptionTitle =>
-      _isTelugu ? 'సబ్‌స్క్రిప్షన్ రీస్టోర్ చేయండి' : 'Restore subscriptions';
-  String get restoreSubscriptionSubtitle => _isTelugu
-      ? 'అదే అకౌంట్ కొనుగోళ్లు మళ్లీ తెచ్చుకోండి'
-      : 'Restore purchases for this account';
+  String get quickActionsTitle => _localized(
+    telugu: 'à°¤à±à°µà°°à°¿à°¤ à°Žà°‚à°ªà°¿à°•à°²à±',
+    english: 'Quick actions',
+    hindi: 'à¤¤à¥à¤µà¤°à¤¿à¤¤ à¤µà¤¿à¤•à¤²à¥à¤ª',
+    tamil: 'à®µà®¿à®°à¯ˆà®µà¯ à®šà¯†à®¯à®²à¯à®•à®³à¯',
+    kannada: 'à²¤à³à²µà²°à²¿à²¤ à²†à²¯à³à²•à³†à²—à²³à³',
+    malayalam: 'à´µàµ‡à´—à´¤àµà´¤à´¿à´²àµà´³àµà´³ à´“à´ªàµà´·à´¨àµà´•àµ¾',
+  );
+  String get supportTitle => strings.supportSection;
 
-  String get permissionsTitle => _isTelugu
-      ? '\u0c2a\u0c30\u0c4d\u0c2e\u0c3f\u0c37\u0c28\u0c4d\u0c38\u0c4d'
-      : strings.permissionsTitle;
-  String? get permissionsSubtitle =>
-      _isTelugu ? 'యాక్సెస్ అనుమతులు' : 'Access controls';
+  String get posterProfileTitle => _localized(
+    telugu: 'వ్యక్తిగత & బిజినెస్ వివరాలు',
+    english: 'Personal & Business Details',
+  );
+  String get posterProfileSubtitle => _localized(
+    telugu: 'ఫోటో, పేరు, బిజినెస్ వివరాలు అప్‌డేట్ చేయండి',
+    english: 'Update photo, personal, and business details',
+  );
+  String get moreTitle => _localized(telugu: 'మరిన్ని', english: 'More');
+  String get moreSubtitle =>
+      _localized(telugu: 'మిగతా అన్ని ఆప్షన్లు', english: 'Remaining options');
+  String get settingsTitle => strings.appSettingsSection;
+  String get religionTitle =>
+      _localized(telugu: 'మతం మార్చండి', english: 'Change religion');
+  String get religionSubtitle => _localized(
+    telugu: 'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి',
+    english: 'Update which categories appear in home',
+  );
+  String get religionSavedHinduMessage => _localized(
+    telugu: 'హిందూ ఎంపిక సేవ్ అయింది',
+    english: 'Hindu preference saved',
+  );
+  String get religionSavedMuslimMessage => _localized(
+    telugu: 'ముస్లిం ఎంపిక సేవ్ అయింది',
+    english: 'Muslim preference saved',
+  );
+  String get religionSavedChristianMessage => _localized(
+    telugu: 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది',
+    english: 'Christian preference saved',
+  );
+  String get religionSavedAllMessage => _localized(
+    telugu: 'అన్ని కేటగిరీల ఎంపిక సేవ్ అయింది',
+    english: 'All categories preference saved',
+  );
 
-  String get notificationsTitle => _isTelugu
-      ? '\u0c28\u0c4b\u0c1f\u0c3f\u0c2b\u0c3f\u0c15\u0c47\u0c37\u0c28\u0c4d\u0c38\u0c4d'
-      : strings.notifications;
-  String? get notificationsSubtitle =>
-      _isTelugu ? 'అలర్ట్ సెట్టింగ్స్' : 'Notification preferences';
+  String get languageTitle => strings.languageOption;
+  String? get languageSubtitle => strings.languageOptionSubtitle;
+  String get stateTitle => _localized(
+    telugu:
+        'à°°à°¾à°·à±à°Ÿà±à°°à°‚ / à°•à±‡à°‚à°¦à±à°° à°ªà°¾à°²à°¿à°¤ à°ªà±à°°à°¾à°‚à°¤à°‚ à°®à°¾à°°à±à°šà°‚à°¡à°¿',
+    english: 'Change State / UT',
+    hindi:
+        'à¤°à¤¾à¤œà¥à¤¯ / à¤•à¥‡à¤‚à¤¦à¥à¤° à¤¶à¤¾à¤¸à¤¿à¤¤ à¤ªà¥à¤°à¤¦à¥‡à¤¶ à¤¬à¤¦à¤²à¥‡à¤‚',
+    tamil:
+        'à®®à®¾à®¨à®¿à®²à®®à¯ / à®¯à¯‚à®©à®¿à®¯à®©à¯ à®ªà®¿à®°à®¤à¯‡à®šà®®à¯ à®®à®¾à®±à¯à®±à®µà¯à®®à¯',
+    kannada:
+        'à²°à²¾à²œà³à²¯ / à²•à³‡à²‚à²¦à³à²°à²¾à²¡à²³à²¿à²¤ à²ªà³à²°à²¦à³‡à²¶ à²¬à²¦à²²à²¿à²¸à²¿',
+    malayalam:
+        'à´¸à´‚à´¸àµà´¥à´¾à´¨à´‚ / à´•àµ‡à´¨àµà´¦àµà´°à´­à´°à´£ à´ªàµà´°à´¦àµ‡à´¶à´‚ à´®à´¾à´±àµà´±àµà´•',
+  );
+  String get stateSubtitle => _localized(
+    telugu:
+        'à°¯à°¾à°ªà± à°­à°¾à°· à°®à°°à°¿à°¯à± à°°à°¾à°·à±à°Ÿà±à°° à°•à±‡à°Ÿà°—à°¿à°°à±€à°²à± à°…à°ªà±à°¡à±‡à°Ÿà± à°…à°µà±à°¤à°¾à°¯à°¿',
+    english: 'Update app language and state categories',
+    hindi:
+        'à¤à¤ª à¤­à¤¾à¤·à¤¾ à¤”à¤° à¤°à¤¾à¤œà¥à¤¯ à¤•à¥ˆà¤Ÿà¥‡à¤—à¤°à¥€ à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¤°à¥‡à¤‚',
+    tamil:
+        'à®†à®ªà¯ à®®à¯Šà®´à®¿ à®®à®±à¯à®±à¯à®®à¯ à®®à®¾à®¨à®¿à®² à®µà®•à¯ˆà®•à®³à¯ˆ à®ªà¯à®¤à¯à®ªà¯à®ªà®¿à®•à¯à®•à®µà¯à®®à¯',
+    kannada:
+        'à²†à²ªà³ à²­à²¾à²·à³† à²®à²¤à³à²¤à³ à²°à²¾à²œà³à²¯ à²µà²¿à²­à²¾à²—à²—à²³à²¨à³à²¨à³ à²…à²ªà³à²¡à³‡à²Ÿà³ à²®à²¾à²¡à²¿',
+    malayalam:
+        'à´†à´ªàµà´ªàµ à´­à´¾à´·à´¯àµà´‚ à´¸à´‚à´¸àµà´¥à´¾à´¨ à´µà´¿à´­à´¾à´—à´™àµà´™à´³àµà´‚ à´…à´ªàµà´¡àµ‡à´±àµà´±àµ à´šàµ†à´¯àµà´¯àµà´•',
+  );
+  String get stateSavedMessage => _localized(
+    telugu: 'రాష్ట్రం అప్‌డేట్ అయింది. రాజకీయ పార్టీలను మళ్లీ ఎంచుకోండి',
+    english: 'State updated. Please review political parties',
+  );
+  String get politicalPartyTitle => _localized(
+    telugu: 'à°°à°¾à°œà°•à±€à°¯ à°ªà°¾à°°à±à°Ÿà±€à°²à±',
+    english: 'Political parties',
+    hindi: 'à¤°à¤¾à¤œà¤¨à¥€à¤¤à¤¿à¤• à¤ªà¤¾à¤°à¥à¤Ÿà¤¿à¤¯à¤¾à¤‚',
+    tamil: 'à®…à®°à®šà®¿à®¯à®²à¯ à®•à®Ÿà¯à®šà®¿à®•à®³à¯',
+    kannada: 'à²°à²¾à²œà²•à³€à²¯ à²ªà²•à³à²·à²—à²³à³',
+    malayalam: 'à´°à´¾à´·àµà´Ÿàµà´°àµ€à´¯ à´ªà´¾àµ¼à´Ÿàµà´Ÿà´¿à´•àµ¾',
+  );
+  String get politicalPartySubtitle => _localized(
+    telugu:
+        'à°¹à±‹à°®à±â€Œà°²à±‹ à°•à°¨à°¿à°ªà°¿à°‚à°šà±‡ à°ªà°¾à°°à±à°Ÿà±€ à°•à±‡à°Ÿà°—à°¿à°°à±€à°²à°¨à± à°®à°¾à°°à±à°šà°‚à°¡à°¿',
+    english: 'Update political party categories shown in home',
+    hindi:
+        'à¤¹à¥‹à¤® à¤®à¥‡à¤‚ à¤¦à¤¿à¤–à¤¨à¥‡ à¤µà¤¾à¤²à¥€ à¤ªà¤¾à¤°à¥à¤Ÿà¥€ à¤•à¥ˆà¤Ÿà¥‡à¤—à¤°à¥€ à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¤°à¥‡à¤‚',
+    tamil:
+        'à®¹à¯‹à®®à®¿à®²à¯ à®•à®¾à®£à®ªà¯à®ªà®Ÿà¯à®®à¯ à®•à®Ÿà¯à®šà®¿ à®µà®•à¯ˆà®•à®³à¯ˆ à®ªà¯à®¤à¯à®ªà¯à®ªà®¿à®•à¯à®•à®µà¯à®®à¯',
+    kannada:
+        'à²¹à³‹à²®à³â€Œà²¨à²²à³à²²à²¿ à²•à²¾à²£à³à²µ à²ªà²•à³à²· à²µà²¿à²­à²¾à²—à²—à²³à²¨à³à²¨à³ à²…à²ªà³à²¡à³‡à²Ÿà³ à²®à²¾à²¡à²¿',
+    malayalam:
+        'à´¹àµ‹à´®à´¿àµ½ à´•à´¾à´£àµà´¨àµà´¨ à´ªà´¾àµ¼à´Ÿàµà´Ÿà´¿ à´µà´¿à´­à´¾à´—à´™àµà´™àµ¾ à´…à´ªàµà´¡àµ‡à´±àµà´±àµ à´šàµ†à´¯àµà´¯àµà´•',
+  );
+  String get politicalPartySavedMessage => _localized(
+    telugu: 'రాజకీయ పార్టీలు అప్‌డేట్ అయ్యాయి',
+    english: 'Political parties updated',
+  );
+  String get locationTitle => _localized(
+    telugu: 'లొకేషన్ ఆధారిత స్టేటస్',
+    english: 'Location-based status',
+  );
+  String get locationSubtitle => _localized(
+    telugu: 'మీ city/district ఆధారంగా దగ్గరలోని స్టేటస్‌లకు ప్రాధాన్యం ఇవ్వండి',
+    english: 'Prioritize nearby city/district statuses',
+  );
+  String get locationDialogMessage => _localized(
+    telugu: 'దగ్గరలోని స్టేటస్‌ల కోసం లొకేషన్ అనుమతి ఇవ్వండి.',
+    english: 'Allow location to show nearby statuses.',
+  );
+  String get locationSavedMessage => _localized(
+    telugu: 'లొకేషన్ స్టేటస్ సూచనలు ఆన్ అయ్యాయి',
+    english: 'Location-based status suggestions enabled',
+  );
+  String get locationPermissionDeniedMessage => _localized(
+    telugu: 'లొకేషన్ అనుమతి ఇవ్వలేదు. Settings నుంచి తర్వాత ఆన్ చేయవచ్చు.',
+    english:
+        'Location permission was not allowed. You can enable it later from settings.',
+  );
+  String get locationServiceDisabledMessage => _localized(
+    telugu: 'ఈ ఫోన్‌లో లొకేషన్ సర్వీస్ ఆఫ్‌లో ఉంది.',
+    english: 'Location service is turned off on this phone.',
+  );
+  String get locationFailedMessage => _localized(
+    telugu: 'లొకేషన్ అప్‌డేట్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    english: 'Location could not be updated. Please try again.',
+  );
+  String get cancelAction => _localized(telugu: 'వద్దు', english: 'Cancel');
+  String get allowAction =>
+      _localized(telugu: 'Allow చేయండి', english: 'Allow');
 
-  String get shareAppTitle => _isTelugu ? 'యాప్ షేర్ చేయండి' : 'Share App';
-  String get shareAppSubtitle => _isTelugu
-      ? 'యాప్ ఐకాన్, ప్లే స్టోర్ లింక్‌ను పంచుకోండి'
-      : 'Share the app icon and Play Store link';
-  String get shareAppFailedMessage => _isTelugu
-      ? 'యాప్ షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి'
-      : 'App share failed. Please try again.';
-  String get accountEmailFallback => _isTelugu
-      ? 'ఈ అకౌంట్‌కు ఇమెయిల్ అందుబాటులో లేదు'
-      : 'Email not available for this account';
+  String get subscriptionTitle => strings.subscriptionOption;
+  String get subscriptionSubtitle => _localized(
+    telugu:
+        'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°ªà±à°²à°¾à°¨à± à°šà±‚à°¡à°‚à°¡à°¿',
+    english: 'View plan details',
+    hindi: 'à¤ªà¥à¤²à¤¾à¤¨ à¤µà¤¿à¤µà¤°à¤£ à¤¦à¥‡à¤–à¥‡à¤‚',
+    tamil:
+        'à®ªà®¿à®³à®¾à®©à¯ à®µà®¿à®µà®°à®™à¯à®•à®³à¯ˆ à®ªà®¾à®°à¯à®•à¯à®•à®µà¯à®®à¯',
+    kannada: 'à²ªà³à²²à²¾à²¨à³ à²µà²¿à²µà²°à²—à²³à²¨à³à²¨à³ à²¨à³‹à²¡à²¿',
+    malayalam: 'à´ªàµà´²à´¾àµ» à´µà´¿à´µà´°à´™àµà´™àµ¾ à´•à´¾à´£àµà´•',
+  );
+  String get referralRewardsTitle =>
+      _localized(telugu: 'రిఫరల్ బహుమతులు', english: 'Referral rewards');
+  String get referralRewardsSubtitle => _localized(
+    telugu: 'రిఫరల్ కోడ్ మరియు ప్రస్తుత చక్రం చూడండి',
+    english: 'View referral code and current cycle',
+  );
+  String referralProgressText(int current, int required) {
+    return _localized(
+      telugu: 'ప్రస్తుత చక్రం: $current / $required',
+      english: 'Current cycle: $current / $required',
+    );
+  }
 
-  String get helpTitle => _isTelugu
-      ? '\u0c39\u0c46\u0c32\u0c4d\u0c2a\u0c4d \u0c38\u0c2a\u0c4b\u0c30\u0c4d\u0c1f\u0c4d'
-      : strings.helpSupport;
-  String? get helpSubtitle => _isTelugu ? 'సహాయం పొందండి' : 'Get help';
-  String get reportIssueTitle => _isTelugu
-      ? 'పోస్టర్ లేదా సమస్యను రిపోర్ట్ చేయండి'
-      : 'Report a poster or issue';
-  String get reportIssueSubtitle => _isTelugu
-      ? 'అనుచిత పోస్టర్ లేదా యాప్ సమస్యను సపోర్ట్‌కు పంపండి'
-      : 'Send an inappropriate poster or app issue report to support';
+  String get copyReferralCodeAction =>
+      _localized(telugu: 'కోడ్ కాపీ', english: 'Copy code');
+  String get shareReferralAction =>
+      _localized(telugu: 'షేర్', english: 'Share');
+  String get referralTermsAction => _localized(
+    telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+    english: 'View Terms & Conditions',
+  );
+  String get applyReferralCodeLabel => _localized(
+    telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
+    english: 'Enter referral code',
+  );
+  String get applyReferralCodeAction =>
+      _localized(telugu: 'అప్లై', english: 'Apply');
+  String get referralCodeCopiedMessage => _localized(
+    telugu: 'రిఫరల్ కోడ్ కాపీ అయింది',
+    english: 'Referral code copied',
+  );
+  String get referralCodeAppliedMessage => _localized(
+    telugu: 'రిఫరల్ కోడ్ అప్లై అయింది',
+    english: 'Referral code applied',
+  );
+  String get referralCodeAlreadyAppliedMessage => _localized(
+    telugu: 'రిఫరల్ ఇప్పటికే అప్లై అయింది',
+    english: 'Referral already applied',
+  );
+  String get referralCodeApplyFailedMessage => _localized(
+    telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    english: 'Referral code apply failed. Please try again.',
+  );
+  String get referralLoadFailedMessage => _localized(
+    telugu: 'రిఫరల్ వివరాలు లోడ్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    english: 'Referral details could not load. Please try again.',
+  );
+  String get closeAction => _localized(telugu: 'మూసివేయండి', english: 'Close');
+  String get restoreSubscriptionTitle => _localized(
+    telugu: 'సబ్‌స్క్రిప్షన్ రీస్టోర్ చేయండి',
+    english: 'Restore subscriptions',
+  );
+  String get restoreSubscriptionSubtitle => _localized(
+    telugu: 'ఈ అకౌంట్ కొనుగోళ్లను మళ్లీ తెచ్చుకోండి',
+    english: 'Restore purchases for this account',
+  );
+
+  String get permissionsTitle => strings.permissionsTitle;
+  String? get permissionsSubtitle => strings.permissionsOptionSubtitle;
+
+  String get notificationsTitle => strings.notifications;
+  String? get notificationsSubtitle => strings.notificationsOptionSubtitle;
+
+  String get shareAppTitle => _localized(
+    telugu: 'à°¯à°¾à°ªà± à°·à±‡à°°à± à°šà±‡à°¯à°‚à°¡à°¿',
+    english: 'Share App',
+    hindi: 'à¤à¤ª à¤¶à¥‡à¤¯à¤° à¤•à¤°à¥‡à¤‚',
+    tamil: 'à®†à®ªà¯à®ªà¯ˆ à®ªà®•à®¿à®°à®µà¯à®®à¯',
+    kannada: 'à²†à²ªà³ à²¹à²‚à²šà²¿à²•à³Šà²³à³à²³à²¿',
+    malayalam: 'à´†à´ªàµà´ªàµ à´ªà´™àµà´•à´¿à´Ÿàµà´•',
+  );
+  String get shareAppSubtitle => _localized(
+    telugu:
+        'à°¯à°¾à°ªà± à°à°•à°¾à°¨à±, à°ªà±à°²à±‡ à°¸à±à°Ÿà±‹à°°à± à°²à°¿à°‚à°•à±â€Œà°¨à± à°ªà°‚à°šà±à°•à±‹à°‚à°¡à°¿',
+    english: 'Share the app icon and Play Store link',
+    hindi:
+        'à¤à¤ª à¤†à¤‡à¤•à¤¨ à¤”à¤° Play Store à¤²à¤¿à¤‚à¤• à¤¶à¥‡à¤¯à¤° à¤•à¤°à¥‡à¤‚',
+    tamil:
+        'à®†à®ªà¯ à®à®•à®¾à®©à¯ à®®à®±à¯à®±à¯à®®à¯ Play Store à®‡à®£à¯ˆà®ªà¯à®ªà¯ˆ à®ªà®•à®¿à®°à®µà¯à®®à¯',
+    kannada:
+        'à²†à²ªà³ à²à²•à²¾à²¨à³ à²®à²¤à³à²¤à³ Play Store à²²à²¿à²‚à²•à³ à²¹à²‚à²šà²¿à²•à³Šà²³à³à²³à²¿',
+    malayalam:
+        'à´†à´ªàµà´ªàµ à´à´•à´£àµà´‚ Play Store à´²à´¿à´™àµà´•àµà´‚ à´ªà´™àµà´•à´¿à´Ÿàµà´•',
+  );
+  String get shareAppFailedMessage => _localized(
+    telugu: 'యాప్ షేర్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    english: 'App share failed. Please try again.',
+  );
+  String get accountEmailFallback => _localized(
+    telugu: 'ఈ అకౌంట్‌కు ఇమెయిల్ అందుబాటులో లేదు',
+    english: 'Email not available for this account',
+  );
+
+  String get helpTitle => strings.helpSupport;
+  String? get helpSubtitle => strings.helpSupportSubtitle;
+  String get reportIssueTitle => _localized(
+    telugu: 'పోస్టర్ లేదా సమస్యను రిపోర్ట్ చేయండి',
+    english: 'Report a poster or issue',
+  );
+  String get reportIssueSubtitle => _localized(
+    telugu: 'అనుచిత పోస్టర్ లేదా యాప్ సమస్యను సపోర్ట్‌కు పంపండి',
+    english: 'Send an inappropriate poster or app issue report to support',
+  );
   String get reportIssueEmailSubject => 'Mana Poster Ai Poster Report';
-  String get reportIssueEmailBody => _isTelugu
-      ? 'నమస్కారం Mana Poster Ai టీమ్,\n\nనేను ఒక పోస్టర్ లేదా యాప్ సమస్యను రిపోర్ట్ చేయాలనుకుంటున్నాను.\n\nవివరాలు:\n- సమస్య రకం:\n- పోస్టర్ పేరు లేదా కేటగిరీ:\n- Creator ID (తెలిస్తే):\n- ఏమి సమస్యగా అనిపించింది:\n'
-      : 'Hello Mana Poster Ai team,\n\nI want to report a poster or app issue.\n\nDetails:\n- Issue type:\n- Poster title or category:\n- Creator ID (if known):\n- What seems to be the problem:\n';
+  String get reportIssueEmailBody => _localized(
+    telugu: '''నమస్కారం Mana Poster Ai టీమ్,
 
-  String get aboutTitle => _isTelugu
-      ? '\u0c2f\u0c3e\u0c2a\u0c4d \u0c17\u0c41\u0c30\u0c3f\u0c02\u0c1a\u0c3f'
-      : strings.aboutApp;
-  String get aboutSubtitle => _isTelugu ? 'యాప్ వివరాలు' : 'About the app';
-  String get logoutTitle => _isTelugu
-      ? '\u0c32\u0c3e\u0c17\u0c4d \u0c05\u0c35\u0c41\u0c1f\u0c4d'
-      : strings.logout;
-  String get logoutSubtitle => _isTelugu
-      ? 'ఈ డివైస్‌లో మీ అకౌంట్ నుంచి బయటకు రండి'
-      : 'Sign out from this device';
-  String get logoutFailedMessage => _isTelugu
-      ? 'లాగ్ అవుట్ కాలేదు. మళ్లీ ప్రయత్నించండి.'
-      : 'Logout failed. Please try again.';
+నేను ఒక పోస్టర్ లేదా యాప్ సమస్యను రిపోర్ట్ చేయాలనుకుంటున్నాను.
+
+వివరాలు:
+- సమస్య రకం:
+- పోస్టర్ పేరు లేదా కేటగిరీ:
+- Creator ID (తెలిస్తే):
+- ఏమి సమస్యగా అనిపించింది:
+''',
+    english: '''Hello Mana Poster Ai team,
+
+I want to report a poster or app issue.
+
+Details:
+- Issue type:
+- Poster title or category:
+- Creator ID (if known):
+- What seems to be the problem:
+''',
+  );
+
+  String get aboutTitle => strings.aboutApp;
+  String get aboutSubtitle => strings.aboutAppSubtitle;
+  String get logoutTitle => strings.logout;
+  String get logoutSubtitle => strings.logoutSubtitle;
+  String get logoutFailedMessage => _localized(
+    telugu: 'లాగ్ అవుట్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    english: 'Logout failed. Please try again.',
+  );
   String get deleteAccountTitle =>
-      _isTelugu ? 'అకౌంట్ డిలీట్' : 'Delete account';
-  String get deleteAccountSubtitle => _isTelugu
-      ? 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్ ప్రారంభించండి'
-      : 'Start your account and data removal request';
+      _localized(telugu: 'అకౌంట్ డిలీట్', english: 'Delete account');
+  String get deleteAccountSubtitle => _localized(
+    telugu: 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్ ప్రారంభించండి',
+    english: 'Start your account and data removal request',
+  );
   String get privacyPolicyTitle =>
-      _isTelugu ? 'ప్రైవసీ పాలసీ' : 'Privacy Policy';
-  String get privacyPolicySubtitle =>
-      _isTelugu ? 'డేటా వినియోగం చూడండి' : 'Data usage and privacy';
+      _localized(telugu: 'ప్రైవసీ పాలసీ', english: 'Privacy Policy');
+  String get privacyPolicySubtitle => _localized(
+    telugu: 'డేటా వినియోగం మరియు ప్రైవసీ',
+    english: 'Data usage and privacy',
+  );
   String get adPrivacyChoicesTitle =>
-      _isTelugu ? 'యాడ్ ప్రైవసీ ఎంపికలు' : 'Ad privacy choices';
-  String get adPrivacyChoicesSubtitle => _isTelugu
-      ? 'పర్సనలైజ్డ్ యాడ్స్ సెట్టింగ్స్ మార్చండి'
-      : 'Manage personalized ad settings';
-  String get legalNoticesTitle =>
-      _isTelugu ? 'నిబంధనలు మరియు షరతులు' : 'Terms & Conditions';
-  String get legalNoticesSubtitle => _isTelugu
-      ? 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు'
-      : 'Usage and subscription terms';
+      _localized(telugu: 'యాడ్ ప్రైవసీ ఎంపికలు', english: 'Ad privacy choices');
+  String get adPrivacyChoicesSubtitle => _localized(
+    telugu: 'పర్సనలైజ్డ్ యాడ్స్ సెట్టింగ్స్ మార్చండి',
+    english: 'Manage personalized ad settings',
+  );
+  String get legalNoticesTitle => _localized(
+    telugu: 'నిబంధనలు మరియు షరతులు',
+    english: 'Terms & Conditions',
+  );
+  String get legalNoticesSubtitle => _localized(
+    telugu: 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు',
+    english: 'Usage and subscription terms',
+  );
 }

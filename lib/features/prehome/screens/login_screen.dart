@@ -184,13 +184,14 @@ class _LoginScreenState extends State<LoginScreen>
         return AlertDialog(
           title: Text(
             context.strings.localized(
-              telugu: 'ప్రీమియం బహుమతి',
+              telugu: 'à°ªà±à°°à±€à°®à°¿à°¯à°‚ à°¬à°¹à±à°®à°¤à°¿',
               english: 'Premium Gift',
             ),
           ),
           content: Text(
             context.strings.localized(
-              telugu: 'అభినందనలు! మీకు 30 రోజుల ప్రీమియం ఉచితంగా లభించింది.',
+              telugu:
+                  'à°…à°­à°¿à°¨à°‚à°¦à°¨à°²à±! à°®à±€à°•à± 30 à°°à±‹à°œà±à°² à°ªà±à°°à±€à°®à°¿à°¯à°‚ à°‰à°šà°¿à°¤à°‚à°—à°¾ à°²à°­à°¿à°‚à°šà°¿à°‚à°¦à°¿.',
               english: 'Congratulations! You received 30 days Premium free.',
             ),
           ),
@@ -198,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen>
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
-                context.strings.localized(telugu: 'సరే', english: 'OK'),
+                context.strings.localized(telugu: 'à°¸à°°à±‡', english: 'OK'),
               ),
             ),
           ],
@@ -212,7 +213,8 @@ class _LoginScreenState extends State<LoginScreen>
       return _localizedAuthError(error);
     }
     return context.strings.localized(
-      telugu: 'ఇంకోసారి ప్రయత్నించండి.',
+      telugu:
+          'à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'Please try again.',
     );
   }
@@ -224,29 +226,33 @@ class _LoginScreenState extends State<LoginScreen>
         return strings.validEmailError;
       case 'user-disabled':
         return strings.localized(
-          telugu: 'ఈ ఖాతా నిలిపివేయబడింది.',
+          telugu:
+              'à°ˆ à°–à°¾à°¤à°¾ à°¨à°¿à°²à°¿à°ªà°¿à°µà±‡à°¯à°¬à°¡à°¿à°‚à°¦à°¿.',
           english: 'This account has been disabled.',
         );
       case 'user-not-found':
         return strings.localized(
-          telugu: 'ఈ ఇమెయిల్‌కు ఖాతా కనిపించలేదు.',
+          telugu:
+              'à°ˆ à°‡à°®à±†à°¯à°¿à°²à±â€Œà°•à± à°–à°¾à°¤à°¾ à°•à°¨à°¿à°ªà°¿à°‚à°šà°²à±‡à°¦à±.',
           english: 'No account found for this email.',
         );
       case 'wrong-password':
       case 'invalid-credential':
         return strings.localized(
-          telugu: 'ఇమెయిల్ లేదా పాస్‌వర్డ్ సరైనది కాదు.',
+          telugu:
+              'à°‡à°®à±†à°¯à°¿à°²à± à°²à±‡à°¦à°¾ à°ªà°¾à°¸à±â€Œà°µà°°à±à°¡à± à°¸à°°à±ˆà°¨à°¦à°¿ à°•à°¾à°¦à±.',
           english: 'Incorrect email or password.',
         );
       case 'email-already-in-use':
         return strings.localized(
-          telugu: 'ఈ ఇమెయిల్‌తో ఇప్పటికే ఖాతా ఉంది.',
+          telugu:
+              'à°ˆ à°‡à°®à±†à°¯à°¿à°²à±â€Œà°¤à±‹ à°‡à°ªà±à°ªà°Ÿà°¿à°•à±‡ à°–à°¾à°¤à°¾ à°‰à°‚à°¦à°¿.',
           english: 'An account already exists with this email.',
         );
       case 'email-already-in-use-google':
         return strings.localized(
           telugu:
-              'ఈ ఇమెయిల్ ఇప్పటికే Google login తో ఉంది. Google తోనే continue చేయండి.',
+              'à°ˆ à°‡à°®à±†à°¯à°¿à°²à± à°‡à°ªà±à°ªà°Ÿà°¿à°•à±‡ Google login à°¤à±‹ à°‰à°‚à°¦à°¿. Google à°¤à±‹à°¨à±‡ continue à°šà±‡à°¯à°‚à°¡à°¿.',
           english:
               'This email is already linked to Google Sign-In. Continue with Google.',
         );
@@ -254,91 +260,100 @@ class _LoginScreenState extends State<LoginScreen>
         return strings.passwordError;
       case 'operation-not-allowed':
         return strings.localized(
-          telugu: 'ఈ లాగిన్ విధానం ఇంకా అందుబాటులో లేదు.',
+          telugu:
+              'à°ˆ à°²à°¾à°—à°¿à°¨à± à°µà°¿à°§à°¾à°¨à°‚ à°‡à°‚à°•à°¾ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±.',
           english: 'This sign-in method is not enabled yet.',
         );
       case 'unauthorized-domain':
         return strings.localized(
-          telugu: 'ఈ డొమైన్ Firebase Authentication లో అనుమతించబడలేదు.',
+          telugu:
+              'à°ˆ à°¡à±Šà°®à±ˆà°¨à± Firebase Authentication à°²à±‹ à°…à°¨à±à°®à°¤à°¿à°‚à°šà°¬à°¡à°²à±‡à°¦à±.',
           english: 'This domain is not authorized in Firebase Authentication.',
         );
       case 'popup-blocked':
         return strings.localized(
           telugu:
-              'Google login popup block అయింది. Popups allow చేసి మళ్లీ ప్రయత్నించండి.',
+              'Google login popup block à°…à°¯à°¿à°‚à°¦à°¿. Popups allow à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english:
               'Google Sign-In popup was blocked. Allow popups and try again.',
         );
       case 'popup-closed-by-user':
       case 'google-canceled':
         return strings.localized(
-          telugu: 'Google login పూర్తయ్యే ముందే మూసేశారు.',
+          telugu:
+              'Google login à°ªà±‚à°°à±à°¤à°¯à±à°¯à±‡ à°®à±à°‚à°¦à±‡ à°®à±‚à°¸à±‡à°¶à°¾à°°à±.',
           english: 'Google Sign-In was canceled before completing sign-in.',
         );
       case 'cancelled-popup-request':
       case 'google-interrupted':
         return strings.localized(
-          telugu: 'Google login మధ్యలో ఆగింది. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'Google login à°®à°§à±à°¯à°²à±‹ à°†à°—à°¿à°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Google Sign-In was interrupted. Please try again.',
         );
       case 'network-request-failed':
         return strings.localized(
           telugu:
-              'ఇంటర్నెట్ సమస్య ఉంది. కనెక్షన్ చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
+              'à°‡à°‚à°Ÿà°°à±à°¨à±†à°Ÿà± à°¸à°®à°¸à±à°¯ à°‰à°‚à°¦à°¿. à°•à°¨à±†à°•à±à°·à°¨à± à°šà±†à°•à± à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Network issue. Please check your internet connection.',
         );
       case 'too-many-requests':
         return strings.localized(
-          telugu: 'చాలా ప్రయత్నాలు అయ్యాయి. కొంచెం తర్వాత మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'à°šà°¾à°²à°¾ à°ªà±à°°à°¯à°¤à±à°¨à°¾à°²à± à°…à°¯à±à°¯à°¾à°¯à°¿. à°•à±Šà°‚à°šà±†à°‚ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Too many attempts. Please wait and try again.',
         );
       case 'google-sign-in-incomplete':
       case 'google-client-configuration-error':
         return strings.localized(
           telugu:
-              'Google login setup పూర్తిగా లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+              'Google login setup à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°²à±‡à°¦à±. à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english:
               'Google Sign-In setup is incomplete. Please try again later.',
         );
       case 'google-provider-configuration-error':
       case 'google-ui-unavailable':
         return strings.localized(
-          telugu: 'ఈ డివైస్‌లో Google login ప్రస్తుతం అందుబాటులో లేదు.',
+          telugu:
+              'à°ˆ à°¡à°¿à°µà±ˆà°¸à±â€Œà°²à±‹ Google login à°ªà±à°°à°¸à±à°¤à±à°¤à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±.',
           english: 'Google Sign-In is not available on this device right now.',
         );
       case 'google-user-mismatch':
         return strings.localized(
-          telugu: 'Google account mismatch వచ్చింది. మళ్లీ sign in చేయండి.',
+          telugu:
+              'Google account mismatch à°µà°šà±à°šà°¿à°‚à°¦à°¿. à°®à°³à±à°²à±€ sign in à°šà±‡à°¯à°‚à°¡à°¿.',
           english: 'Signed-in account mismatch. Please sign in again.',
         );
       case 'use-google-for-this-email':
         return strings.localized(
           telugu:
-              'ఈ ఇమెయిల్ Google login తో register అయ్యింది. Google తోనే continue చేయండి.',
+              'à°ˆ à°‡à°®à±†à°¯à°¿à°²à± Google login à°¤à±‹ register à°…à°¯à±à°¯à°¿à°‚à°¦à°¿. Google à°¤à±‹à°¨à±‡ continue à°šà±‡à°¯à°‚à°¡à°¿.',
           english:
               'This email is registered with Google Sign-In. Continue with Google.',
         );
       case 'unsupported-platform':
         return strings.localized(
-          telugu: 'ఈ build లో Google login support లేదు.',
+          telugu: 'à°ˆ build à°²à±‹ Google login support à°²à±‡à°¦à±.',
           english: 'Google Sign-In is not supported on this build.',
         );
       case 'not-configured':
         return strings.localized(
-          telugu: 'ఈ build లో authentication setup పూర్తి కాలేదు.',
+          telugu:
+              'à°ˆ build à°²à±‹ authentication setup à°ªà±‚à°°à±à°¤à°¿ à°•à°¾à°²à±‡à°¦à±.',
           english: 'Authentication is not configured on this build.',
         );
       case 'google-timeout':
         return strings.localized(
           telugu:
-              'Google login ఎక్కువ సమయం తీసుకుంటోంది. ఇంటర్నెట్, Google Play Services చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
+              'Google login à°Žà°•à±à°•à±à°µ à°¸à°®à°¯à°‚ à°¤à±€à°¸à±à°•à±à°‚à°Ÿà±‹à°‚à°¦à°¿. à°‡à°‚à°Ÿà°°à±à°¨à±†à°Ÿà±, Google Play Services à°šà±†à°•à± à°šà±‡à°¸à°¿ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english:
               'Google Sign-In is taking too long. Check internet and Google Play Services, then try again.',
         );
       case 'google-sign-in-failed':
       case 'google-unknown-error':
         return strings.localized(
-          telugu: 'Google login విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'Google login à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Google Sign-In failed. Please try again.',
         );
       default:
@@ -416,7 +431,8 @@ class _LoginScreenState extends State<LoginScreen>
       AppSnackBar.build(
         content: Text(
           context.strings.localized(
-            telugu: 'లీగల్ పేజీ తెరవలేకపోయాము. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°²à±€à°—à°²à± à°ªà±‡à°œà±€ à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°®à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Unable to open legal page. Please try again.',
           ),
         ),
@@ -511,7 +527,8 @@ class _LoginScreenState extends State<LoginScreen>
                                     icon: const Icon(Icons.volume_up_rounded),
                                     label: Text(
                                       strings.localized(
-                                        telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
+                                        telugu:
+                                            'à°µà°¾à°¯à°¿à°¸à± à°—à±ˆà°¡à± à°®à°³à±à°²à±€ à°µà°¿à°¨à°‚à°¡à°¿',
                                         english: 'Replay voice guide',
                                       ),
                                     ),
@@ -817,95 +834,63 @@ class _AuthUiCopy {
 
   final AppLanguage language;
 
-  String get passwordRequired => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'పాస్‌వర్డ్ అవసరం',
-    SupportedUiLanguage.hindi => 'पासवर्ड आवश्यक है',
-    SupportedUiLanguage.english => 'Password is required',
-    SupportedUiLanguage.tamil => 'கடவுச்சொல் அவசியம்',
-    SupportedUiLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್ ಅಗತ್ಯವಿದೆ',
-    SupportedUiLanguage.malayalam => 'പാസ്‌വേഡ് ആവശ്യമാണ്',
-  };
+  String _localized({required String telugu, required String english}) =>
+      AppStrings(language).localized(telugu: telugu, english: english);
 
-  String formSubtitle(bool isLogin) => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      isLogin ? 'Continue with your account' : 'Create account',
-    SupportedUiLanguage.hindi => isLogin ? 'जारी रखें' : 'खाता बनाएँ',
-    SupportedUiLanguage.english =>
-      isLogin ? 'Continue with your account' : 'Create account',
-    SupportedUiLanguage.tamil => isLogin ? 'தொடரவும்' : 'கணக்கு உருவாக்கவும்',
-    SupportedUiLanguage.kannada => isLogin ? 'ಮುಂದುವರಿಸಿ' : 'ಖಾತೆ ರಚಿಸಿ',
-    SupportedUiLanguage.malayalam =>
-      isLogin ? 'തുടരുക' : 'അക്കൗണ്ട് സൃഷ്ടിക്കുക',
-  };
+  String get passwordRequired => _localized(
+    telugu:
+        '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C05\u0C35\u0C38\u0C30\u0C02',
+    english: 'Password is required',
+  );
 
-  String resetSuccess(String email) => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      '$email కి పాస్‌వర్డ్ రీసెట్ మెయిల్ పంపించాం.',
-    SupportedUiLanguage.hindi => '$email पर पासवर्ड रीसेट मेल भेज दिया गया है।',
-    SupportedUiLanguage.english => 'Password reset email sent to $email.',
-    SupportedUiLanguage.tamil =>
-      '$email க்கு கடவுச்சொல் ரீசெட் மெயில் அனுப்பப்பட்டது.',
-    SupportedUiLanguage.kannada =>
-      '$email ಗೆ ಪಾಸ್‌ವರ್ಡ್ ರೀಸೆಟ್ ಮೇಲ್ ಕಳುಹಿಸಲಾಗಿದೆ.',
-    SupportedUiLanguage.malayalam =>
-      '$email ലേക്ക് പാസ്‌വേഡ് റീസെറ്റ് മെയിൽ അയച്ചു.',
-  };
+  String formSubtitle(bool isLogin) => isLogin
+      ? _localized(
+          telugu:
+              '\u0C2E\u0C40 \u0C05\u0C15\u0C4C\u0C02\u0C1F\u0C4D\u0C24\u0C4B \u0C15\u0C4A\u0C28\u0C38\u0C3E\u0C17\u0C02\u0C21\u0C3F',
+          english: 'Continue with your account',
+        )
+      : _localized(
+          telugu:
+              '\u0C05\u0C15\u0C4C\u0C02\u0C1F\u0C4D \u0C38\u0C43\u0C37\u0C4D\u0C1F\u0C3F\u0C02\u0C1A\u0C02\u0C21\u0C3F',
+          english: 'Create account',
+        );
 
-  String get legalIntro => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu =>
-      'కొనసాగించడం ద్వారా మీరు మా గోప్యతా విధానం మరియు నిబంధనలకు అంగీకరిస్తారు.',
-    SupportedUiLanguage.hindi =>
-      'जारी रखने पर आप हमारी प्राइवेसी पॉलिसी और नियम एवं शर्तों से सहमत होते हैं।',
-    SupportedUiLanguage.english =>
-      'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
-    SupportedUiLanguage.tamil =>
-      'தொடருவதன் மூலம் எங்கள் தனியுரிமைக் கொள்கை மற்றும் விதிமுறைகளுக்கு நீங்கள் ஒப்புக்கொள்கிறீர்கள்.',
-    SupportedUiLanguage.kannada =>
-      'ಮುಂದುವರಿದರೆ ನಮ್ಮ ಗೌಪ್ಯತಾ ನೀತಿ ಮತ್ತು ನಿಯಮಗಳು ಹಾಗೂ ಷರತ್ತುಗಳಿಗೆ ನೀವು ಒಪ್ಪುತ್ತೀರಿ.',
-    SupportedUiLanguage.malayalam =>
-      'തുടരുന്നതിലൂടെ ഞങ്ങളുടെ സ്വകാര്യതാ നയംയും നിബന്ധനകളും നിങ്ങൾ അംഗീകരിക്കുന്നു.',
-  };
+  String resetSuccess(String email) => _localized(
+    telugu:
+        '$email \u0C15\u0C3F \u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C30\u0C40\u0C38\u0C46\u0C1F\u0C4D \u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C2A\u0C02\u0C2A\u0C3F\u0C02\u0C1A\u0C3E\u0C02.',
+    english: 'Password reset email sent to $email.',
+  );
 
-  String get privacyLabel => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'గోప్యతా విధానం',
-    SupportedUiLanguage.hindi => 'प्राइवेसी पॉलिसी',
-    SupportedUiLanguage.english => 'Privacy Policy',
-    SupportedUiLanguage.tamil => 'தனியுரிமைக் கொள்கை',
-    SupportedUiLanguage.kannada => 'ಗೌಪ್ಯತಾ ನೀತಿ',
-    SupportedUiLanguage.malayalam => 'സ്വകാര്യതാ നയം',
-  };
+  String get legalIntro => _localized(
+    telugu:
+        '\u0C15\u0C4A\u0C28\u0C38\u0C3E\u0C17\u0C3F\u0C02\u0C1A\u0C21\u0C02 \u0C26\u0C4D\u0C35\u0C3E\u0C30\u0C3E \u0C2E\u0C40\u0C30\u0C41 \u0C2E\u0C3E \u0C17\u0C4B\u0C2A\u0C4D\u0C2F\u0C24\u0C3E \u0C35\u0C3F\u0C27\u0C3E\u0C28\u0C02 \u0C2E\u0C30\u0C3F\u0C2F\u0C41 \u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C15\u0C41 \u0C05\u0C02\u0C17\u0C40\u0C15\u0C30\u0C3F\u0C38\u0C4D\u0C24\u0C3E\u0C30\u0C41.',
+    english:
+        'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
+  );
 
-  String get andLabel => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'మరియు',
-    SupportedUiLanguage.hindi => 'और',
-    SupportedUiLanguage.english => 'and',
-    SupportedUiLanguage.tamil => 'மற்றும்',
-    SupportedUiLanguage.kannada => 'ಮತ್ತು',
-    SupportedUiLanguage.malayalam => 'കൂടാതെ',
-  };
+  String get privacyLabel => _localized(
+    telugu:
+        '\u0C17\u0C4B\u0C2A\u0C4D\u0C2F\u0C24\u0C3E \u0C35\u0C3F\u0C27\u0C3E\u0C28\u0C02',
+    english: 'Privacy Policy',
+  );
 
-  String get termsLabel => switch (language.supportedUiLanguage) {
-    SupportedUiLanguage.telugu => 'నిబంధనలు',
-    SupportedUiLanguage.hindi => 'नियम एवं शर्तें',
-    SupportedUiLanguage.english => 'Terms & Conditions',
-    SupportedUiLanguage.tamil => 'விதிமுறைகள் மற்றும் நிபந்தனைகள்',
-    SupportedUiLanguage.kannada => 'ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು',
-    SupportedUiLanguage.malayalam => 'നിബന്ധനകളും വ്യവസ്ഥകളും',
-  };
+  String get andLabel =>
+      _localized(telugu: '\u0C2E\u0C30\u0C3F\u0C2F\u0C41', english: 'and');
 
-  String passwordVisibilityTooltip(bool isVisible) =>
-      switch (language.supportedUiLanguage) {
-        SupportedUiLanguage.telugu =>
-          isVisible ? 'పాస్‌వర్డ్ దాచు' : 'పాస్‌వర్డ్ చూపు',
-        SupportedUiLanguage.hindi =>
-          isVisible ? 'पासवर्ड छिपाएँ' : 'पासवर्ड दिखाएँ',
-        SupportedUiLanguage.english =>
-          isVisible ? 'Hide password' : 'Show password',
-        SupportedUiLanguage.tamil =>
-          isVisible ? 'கடவுச்சொல்லை மறை' : 'கடவுச்சொல்லை காட்டு',
-        SupportedUiLanguage.kannada =>
-          isVisible ? 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆಮಾಡಿ' : 'ಪಾಸ್‌ವರ್ಡ್ ತೋರಿಸಿ',
-        SupportedUiLanguage.malayalam =>
-          isVisible ? 'പാസ്‌വേഡ് മറയ്ക്കുക' : 'പാസ്‌വേഡ് കാണിക്കുക',
-      };
+  String get termsLabel => _localized(
+    telugu: '\u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C41',
+    english: 'Terms & Conditions',
+  );
+
+  String passwordVisibilityTooltip(bool isVisible) => isVisible
+      ? _localized(
+          telugu:
+              '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C26\u0C3E\u0C1A\u0C41',
+          english: 'Hide password',
+        )
+      : _localized(
+          telugu:
+              '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C1A\u0C42\u0C2A\u0C41',
+          english: 'Show password',
+        );
 }

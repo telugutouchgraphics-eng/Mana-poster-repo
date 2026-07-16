@@ -30,16 +30,9 @@ class DynamicLocalizedTitle {
   final String english;
   final String hindi;
 
-  String resolve(AppLanguage language) {
-    return switch (language.supportedUiLanguage) {
-      SupportedUiLanguage.telugu => telugu,
-      SupportedUiLanguage.hindi => hindi,
-      SupportedUiLanguage.english ||
-      SupportedUiLanguage.tamil ||
-      SupportedUiLanguage.kannada ||
-      SupportedUiLanguage.malayalam => english,
-    };
-  }
+  String resolve(AppLanguage language) => AppStrings(
+    language,
+  ).localized(telugu: telugu, english: english, hindi: hindi);
 }
 
 class DynamicCategory {

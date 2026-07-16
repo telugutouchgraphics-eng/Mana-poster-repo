@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
+import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 
 class AppHomeBannerService {
   const AppHomeBannerService({FirebaseFirestore? firestore})
@@ -21,14 +23,15 @@ class AppHomeBannerService {
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   Future<List<AppHomeBanner>> fetchBanners({int maxItems = 8}) async {
+    final queryLimit = maxItems * 20;
     try {
       final snapshot = await firestore
           .collection('appBanners')
           .where('active', isEqualTo: true)
           .orderBy('sortOrder')
-          .limit(maxItems)
+          .limit(queryLimit)
           .get(const GetOptions(source: Source.server));
-      return _filterForArea(_mapSnapshot(snapshot));
+      return _filterForSelectedRegion(_mapSnapshot(snapshot), maxItems);
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBanners failed: $error',
@@ -39,9 +42,12 @@ class AppHomeBannerService {
             .collection('appBanners')
             .where('active', isEqualTo: true)
             .orderBy('sortOrder')
-            .limit(maxItems)
+            .limit(queryLimit)
             .get();
-        return _filterForArea(_mapSnapshot(fallbackSnapshot));
+        return _filterForSelectedRegion(
+          _mapSnapshot(fallbackSnapshot),
+          maxItems,
+        );
       } catch (_) {
         return const <AppHomeBanner>[];
       }
@@ -49,14 +55,15 @@ class AppHomeBannerService {
   }
 
   Future<List<AppHomeBanner>> fetchBannersFromCache({int maxItems = 8}) async {
+    final queryLimit = maxItems * 20;
     try {
       final snapshot = await firestore
           .collection('appBanners')
           .where('active', isEqualTo: true)
           .orderBy('sortOrder')
-          .limit(maxItems)
+          .limit(queryLimit)
           .get(const GetOptions(source: Source.cache));
-      return _filterForArea(_mapSnapshot(snapshot));
+      return _filterForSelectedRegion(_mapSnapshot(snapshot), maxItems);
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBannersFromCache failed: $error',
@@ -66,34 +73,84 @@ class AppHomeBannerService {
     }
   }
 
-  Future<List<AppHomeBanner>> _filterForArea(
+  Future<List<AppHomeBanner>> _filterForSelectedRegion(
     List<AppHomeBanner> banners,
+    int maxItems,
   ) async {
+    final selectedRegion = await AppRegionService.loadSelection();
     final area = await AppLocationService.instance.loadLocationArea();
     final filtered = banners
         .where((banner) {
+          final hasRegionTargets = banner.targetRegionIds.isNotEmpty;
           final hasTarget =
+              hasRegionTargets ||
               banner.targetState.isNotEmpty ||
               banner.targetDistrict.isNotEmpty ||
               banner.targetCity.isNotEmpty;
           if (!hasTarget) {
+            return false;
+          }
+          if (hasRegionTargets &&
+              !_regionIdsMatch(selectedRegion, banner.targetRegionIds)) {
+            return false;
+          }
+          if (!hasRegionTargets &&
+              banner.targetState.isNotEmpty &&
+              !_regionMatches(selectedRegion, area, banner.targetState)) {
+            return false;
+          }
+          final needsPreciseArea =
+              banner.targetDistrict.isNotEmpty || banner.targetCity.isNotEmpty;
+          if (!needsPreciseArea) {
             return true;
           }
           if (area == null) {
             return false;
           }
           return _areaMatches(
-            localState: area.state,
+            localState: selectedRegion?.name ?? area.state,
             localDistrict: area.district,
             localCity: area.city,
-            targetState: banner.targetState,
+            targetState: '',
             targetDistrict: banner.targetDistrict,
             targetCity: banner.targetCity,
           );
         })
         .toList(growable: false);
     filtered.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    return filtered;
+    return filtered.take(maxItems).toList(growable: false);
+  }
+
+  bool _regionMatches(
+    AppRegion? selectedRegion,
+    AppLocationArea? area,
+    String targetState,
+  ) {
+    final target = _normalizeAreaToken(targetState);
+    if (target.isEmpty) {
+      return true;
+    }
+    final regionName = _normalizeAreaToken(selectedRegion?.name ?? '');
+    final regionId = _normalizeAreaToken(selectedRegion?.id ?? '');
+    if (regionName == target || regionId == target) {
+      return true;
+    }
+    final localState = _normalizeAreaToken(area?.state ?? '');
+    return localState.isNotEmpty && localState == target;
+  }
+
+  bool _regionIdsMatch(
+    AppRegion? selectedRegion,
+    List<String> targetRegionIds,
+  ) {
+    final selected = _normalizeAreaToken(selectedRegion?.id ?? '');
+    if (selected.isEmpty) {
+      return false;
+    }
+    return targetRegionIds
+        .map(_normalizeAreaToken)
+        .where((item) => item.isNotEmpty)
+        .contains(selected);
   }
 
   bool _areaMatches({
@@ -115,6 +172,10 @@ class AppHomeBannerService {
           targetDistrict,
         ) &&
         same(localCity, targetCity);
+  }
+
+  String _normalizeAreaToken(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
   }
 
   List<AppHomeBanner> _mapSnapshot(
@@ -147,9 +208,21 @@ class AppHomeBannerService {
       targetState: (data['targetState'] as String? ?? '').trim(),
       targetDistrict: (data['targetDistrict'] as String? ?? '').trim(),
       targetCity: (data['targetCity'] as String? ?? '').trim(),
+      targetRegionIds: _stringList(data['targetRegionIds']),
       sortOrder: _toInt(data['sortOrder']),
       active: data['active'] is bool ? data['active'] as bool : true,
     );
+  }
+
+  List<String> _stringList(Object? value) {
+    if (value is Iterable) {
+      return value
+          .whereType<String>()
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList(growable: false);
+    }
+    return const <String>[];
   }
 
   int _toInt(Object? value) {

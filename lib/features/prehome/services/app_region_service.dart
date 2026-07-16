@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +26,7 @@ class AppRegionService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   static AppRegion? _memoryRegion;
+  static final ValueNotifier<int> selectionVersion = ValueNotifier<int>(0);
 
   static Future<AppRegion?> loadSelection({SharedPreferences? prefs}) async {
     final cached = _memoryRegion;
@@ -78,6 +80,7 @@ class AppRegionService {
       final prefs = await SharedPreferences.getInstance();
       await _mirrorLocalSelection(region, prefs);
       _memoryRegion = region;
+      selectionVersion.value++;
       unawaited(_syncToRemote(region));
       return true;
     } catch (_) {

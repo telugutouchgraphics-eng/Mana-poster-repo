@@ -3188,29 +3188,6 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
   }
 }
 
-async function getRandomApprovedPosterImage() {
-  try {
-    const snap = await db
-        .collection("creatorPosters")
-        .where("status", "==", "approved")
-        .orderBy("createdAt", "desc")
-        .limit(300)
-        .get();
-
-    const images = snap.docs
-        .map((doc) => String((doc.data() || {}).imageUrl || "").trim())
-        .filter((imageUrl) => imageUrl.length > 0);
-    if (images.length === 0) {
-      return "";
-    }
-    const index = Math.floor(Math.random() * images.length);
-    return images[index] || "";
-  } catch (error) {
-    logger.warn("getRandomApprovedPosterImage failed", error);
-    return "";
-  }
-}
-
 async function pickImageForReminder(keywords, seed = "", regionId = "") {
   const resolvedRegionId = normalizeRegionId(regionId);
   if (!resolvedRegionId) {
@@ -3455,9 +3432,6 @@ async function sendDailyPersonalizedReminder({
           resolvedRegionId,
       );
     }
-    if (!imageUrl) {
-      imageUrl = await getRandomApprovedPosterImage();
-    }
     imageCache.set(cacheKey, imageUrl || "");
     return imageUrl || "";
   }
@@ -3657,9 +3631,6 @@ async function sendDirectReminderToEligibleTokens({
     } else if (!eventTitle) {
       regionalImageUrl = String(imageUrl || "").trim();
     }
-    if (!regionalImageUrl) {
-      regionalImageUrl = await getRandomApprovedPosterImage();
-    }
     imageCache.set(cacheKey, regionalImageUrl || "");
     return regionalImageUrl || "";
   }
@@ -3811,9 +3782,6 @@ async function sendLocalizedGreetingReminder({
           `${categoryKey}-${reminderKind}-${dayKey}-${resolvedRegionId}`,
           resolvedRegionId,
       );
-    }
-    if (!imageUrl) {
-      imageUrl = await getRandomApprovedPosterImage();
     }
     imageCache.set(cacheKey, imageUrl || "");
     return imageUrl || "";

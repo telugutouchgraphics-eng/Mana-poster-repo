@@ -1305,6 +1305,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _manualEventCategoriesLoadFuture;
   Future<void>? _partyPreferenceLoadFuture;
   Future<void>? _regionSelectionLoadFuture;
+  Future<void>? _regionDependentReloadFuture;
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
@@ -1387,6 +1388,9 @@ class _HomeScreenState extends State<HomeScreen>
       _selectedCategorySlug = initialCategory;
     }
     WidgetsBinding.instance.addObserver(this);
+    AppRegionService.selectionVersion.addListener(
+      _handleRegionSelectionChanged,
+    );
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_resolveAndScheduleRemoteHomeStartupTasks());
@@ -1437,6 +1441,13 @@ class _HomeScreenState extends State<HomeScreen>
       }
       await task();
     }());
+  }
+
+  void _handleRegionSelectionChanged() {
+    if (!mounted) {
+      return;
+    }
+    unawaited(_loadRegionSelection());
   }
 
   Future<void> _resolveAndScheduleRemoteHomeStartupTasks() async {
@@ -1697,6 +1708,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AppRegionService.selectionVersion.removeListener(
+      _handleRegionSelectionChanged,
+    );
     AppNavigator.routeObserver.unsubscribe(this);
     _startupSnapshotPersistTimer?.cancel();
     _posterScrollController
@@ -1750,11 +1764,29 @@ class _HomeScreenState extends State<HomeScreen>
       }
       setState(() {
         _selectedRegionId = regionId;
+        _homeBanners = const <AppHomeBanner>[];
+        _remoteApprovedTemplates = const <_TemplateItem>[];
+        _manualEventCategories = const <DynamicCategory>[];
+        _templatesLoading = true;
+        _templatesLoadingMore = false;
+        _templatesHasMore = true;
+        _templatesLastDocument = null;
+        _lockedAllFeedTemplates = null;
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _allFeedRankingInFlight = false;
+        _hydratedCategorySlugs.clear();
+        _recentAllFeedTemplateKeys.clear();
+        _dynamicCategoryAvailabilityBySlug.clear();
+        _dynamicCategoryAvailabilityInFlight.clear();
+        _lastCategoryDebugSnapshot = '';
+        _dynamicCategoryAvailabilitySignature = '';
         _categoryListCache = null;
         _categoryListIdentity = null;
         _templateProjectionCache = null;
         _templateProjectionIdentity = null;
       });
+      unawaited(_reloadRegionDependentHomeContent());
     }();
     _regionSelectionLoadFuture = future;
     try {
@@ -1762,6 +1794,28 @@ class _HomeScreenState extends State<HomeScreen>
     } finally {
       if (identical(_regionSelectionLoadFuture, future)) {
         _regionSelectionLoadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _reloadRegionDependentHomeContent() async {
+    final inFlight = _regionDependentReloadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      await Future.wait<void>(<Future<void>>[
+        _loadHomeBanners(),
+        _loadManualEventCategories(),
+        _loadApprovedCreatorTemplates(forceRefresh: true),
+      ]);
+    }();
+    _regionDependentReloadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_regionDependentReloadFuture, future)) {
+        _regionDependentReloadFuture = null;
       }
     }
   }
@@ -4325,6 +4379,9 @@ class _HomeScreenState extends State<HomeScreen>
     for (var index = 0; index < left.length; index++) {
       final a = left[index];
       final b = right[index];
+      final sameTargetRegionIds =
+          a.targetRegionIds.length == b.targetRegionIds.length &&
+          a.targetRegionIds.every(b.targetRegionIds.contains);
       if (a.id != b.id ||
           a.imageUrl != b.imageUrl ||
           a.sortOrder != b.sortOrder ||
@@ -4334,6 +4391,7 @@ class _HomeScreenState extends State<HomeScreen>
           a.ctaLabel != b.ctaLabel ||
           a.ctaTarget != b.ctaTarget ||
           a.placement != b.placement ||
+          !sameTargetRegionIds ||
           a.targetState != b.targetState ||
           a.targetDistrict != b.targetDistrict ||
           a.targetCity != b.targetCity) {

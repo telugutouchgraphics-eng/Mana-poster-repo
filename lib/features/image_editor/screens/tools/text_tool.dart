@@ -280,6 +280,17 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
               )
               .toList(growable: false)
         : const <String>[];
+    final remoteTeluguFonts = _activeFontTab == 0
+        ? tabFonts
+              .where(
+                (String family) =>
+                    !_unicodeTeluguFontFamilies.contains(family) &&
+                    !_isLegacyTeluguFontFamily(family) &&
+                    !_favoriteFonts.contains(family) &&
+                    !recentFonts.contains(family),
+              )
+              .toList(growable: false)
+        : const <String>[];
     final activeLanguageFonts = _activeFontTab == 0
         ? const <String>[]
         : tabFonts
@@ -399,32 +410,38 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
                     children: <Widget>[
                       if (recentFonts.isNotEmpty) ...<Widget>[
                         _buildSectionLabel('Recent'),
-                        ...recentFonts.map(_buildFontRow),
+                        _buildFontGrid(recentFonts),
                         const SizedBox(height: 8),
                       ],
                       if (favoriteFonts.isNotEmpty) ...<Widget>[
                         _buildSectionLabel('Favorites'),
-                        ...favoriteFonts.map(_buildFontRow),
+                        _buildFontGrid(favoriteFonts),
                         const SizedBox(height: 8),
                       ],
                       if (unicodeTeluguFonts.isNotEmpty) ...<Widget>[
                         _buildSectionLabel('Unicode Telugu'),
-                        ...unicodeTeluguFonts.map(_buildFontRow),
+                        _buildFontGrid(unicodeTeluguFonts),
                         const SizedBox(height: 8),
                       ],
                       if (legacyTeluguFonts.isNotEmpty) ...<Widget>[
                         _buildSectionLabel('Legacy Telugu'),
-                        ...legacyTeluguFonts.map(_buildFontRow),
+                        _buildFontGrid(legacyTeluguFonts),
+                        const SizedBox(height: 8),
+                      ],
+                      if (remoteTeluguFonts.isNotEmpty) ...<Widget>[
+                        _buildSectionLabel('Remote Telugu'),
+                        _buildFontGrid(remoteTeluguFonts),
                         const SizedBox(height: 8),
                       ],
                       if (activeLanguageFonts.isNotEmpty) ...<Widget>[
                         _buildSectionLabel(_activeTabLabel()),
-                        ...activeLanguageFonts.map(_buildFontRow),
+                        _buildFontGrid(activeLanguageFonts),
                       ],
                       if (recentFonts.isEmpty &&
                           favoriteFonts.isEmpty &&
                           unicodeTeluguFonts.isEmpty &&
                           legacyTeluguFonts.isEmpty &&
+                          remoteTeluguFonts.isEmpty &&
                           activeLanguageFonts.isEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 32),
@@ -474,6 +491,197 @@ class _TextFontFullscreenOverlayState extends State<TextFontFullscreenOverlay> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFontGrid(List<String> fonts) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 2),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1,
+      ),
+      itemCount: fonts.length,
+      itemBuilder: (context, index) => _buildFontTile(fonts[index]),
+    );
+  }
+
+  Widget _buildFontTile(String family) {
+    final selected = family == _selectedFont;
+    final cachedReady = _hasCachedLegacyRenderText(
+      text: widget.previewText,
+      fontFamily: family,
+    );
+    final isFavorite = _favoriteFonts.contains(family);
+    final isPremiumTeluguFont = widget.teluguFonts.contains(family);
+    return _PressableSurface(
+      onTap: () {
+        setState(() {
+          _selectedFont = family;
+        });
+        unawaited(_rememberRecentFont(family));
+      },
+      borderRadius: BorderRadius.circular(15),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.fromLTRB(7, 7, 7, 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF44475A) : const Color(0xFF33363D),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF8B7FFF)
+                : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 1.3 : 1,
+          ),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: const Color(0xFF8B7FFF).withValues(alpha: 0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: Stack(
+          children: <Widget>[
+            Positioned(
+              top: 0,
+              right: 0,
+              child: _PressableSurface(
+                onTap: () => unawaited(_toggleFavoriteFont(family)),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+                    size: 15,
+                    color: isFavorite
+                        ? const Color(0xFFFACC15)
+                        : Colors.white.withValues(alpha: 0.58),
+                  ),
+                ),
+              ),
+            ),
+            if (selected)
+              Positioned(
+                top: 1,
+                left: 1,
+                child: Container(
+                  width: 21,
+                  height: 21,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8B7FFF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            if (!selected && cachedReady)
+              Positioned(
+                top: 2,
+                left: 2,
+                child: Container(
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: cachedReady
+                        ? const Color(0xFF16A34A).withValues(alpha: 0.85)
+                        : Colors.black.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Ready',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            if (isPremiumTeluguFont)
+              Positioned(
+                bottom: 22,
+                right: 1,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[Color(0xFFFF4DA6), Color(0xFF8B5CF6)],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 11,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            Positioned.fill(
+              top: 16,
+              bottom: 23,
+              child: Center(
+                child: Text(
+                  _previewTextForFontFamily(
+                    _sampleForFontFamily(family),
+                    family,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: _previewFontFamilyForFontFamily(family),
+                    fontSize: _previewFontSizeForFontFamily(family, 18.5),
+                    height: _previewLineHeightForFontFamily(family, 0.98),
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Text(
+                family,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: selected ? 0.96 : 0.72),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

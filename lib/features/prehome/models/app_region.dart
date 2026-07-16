@@ -19,6 +19,11 @@ class AppRegion {
   final AppRegionType type;
   final AppLanguage appLanguage;
 
+  String get nativeName => _nativeRegionNames[id] ?? name;
+
+  String get nativePrimaryLanguage =>
+      _nativeLanguageNames[primaryLanguageCode] ?? primaryLanguage;
+
   String get logoAssetPath {
     final assetId = id == 'andaman_nicobar' ? 'andaman_nicobar_islands' : id;
     return 'assets/elements/regions/logos/$assetId.png';
@@ -30,9 +35,71 @@ class AppRegion {
       return true;
     }
     return name.toLowerCase().contains(normalized) ||
-        primaryLanguage.toLowerCase().contains(normalized);
+        nativeName.toLowerCase().contains(normalized) ||
+        primaryLanguage.toLowerCase().contains(normalized) ||
+        nativePrimaryLanguage.toLowerCase().contains(normalized);
   }
 }
+
+const Map<String, String> _nativeRegionNames = <String, String>{
+  'andhra_pradesh': 'ఆంధ్రప్రదేశ్',
+  'arunachal_pradesh': 'Arunachal Pradesh',
+  'assam': 'অসম',
+  'bihar': 'बिहार',
+  'chhattisgarh': 'छत्तीसगढ़',
+  'goa': 'गोवा',
+  'gujarat': 'ગુજરાત',
+  'haryana': 'हरियाणा',
+  'himachal_pradesh': 'हिमाचल प्रदेश',
+  'jharkhand': 'झारखंड',
+  'karnataka': 'ಕರ್ನಾಟಕ',
+  'kerala': 'കേരളം',
+  'madhya_pradesh': 'मध्य प्रदेश',
+  'maharashtra': 'महाराष्ट्र',
+  'manipur': 'ꯃꯅꯤꯄꯨꯔ',
+  'meghalaya': 'Meghalaya',
+  'mizoram': 'Mizoram',
+  'nagaland': 'Nagaland',
+  'odisha': 'ଓଡ଼ିଶା',
+  'punjab': 'ਪੰਜਾਬ',
+  'rajasthan': 'राजस्थान',
+  'sikkim': 'सिक्किम',
+  'tamil_nadu': 'தமிழ்நாடு',
+  'telangana': 'తెలంగాణ',
+  'tripura': 'ত্রিপুরা',
+  'uttar_pradesh': 'उत्तर प्रदेश',
+  'uttarakhand': 'उत्तराखंड',
+  'west_bengal': 'পশ্চিমবঙ্গ',
+  'delhi': 'दिल्ली',
+  'jammu_kashmir': 'جموں و کشمیر',
+  'ladakh': 'ལ་དྭགས',
+  'puducherry': 'புதுச்சேரி',
+  'chandigarh': 'ਚੰਡੀਗੜ੍ਹ',
+  'andaman_nicobar': 'अंडमान और निकोबार द्वीपसमूह',
+  'lakshadweep': 'ലക്ഷദ്വീപ്',
+  'dadra_nagar_haveli_daman_diu': 'દાદરા અને નગર હવેલી અને દમણ અને દીવ',
+};
+
+const Map<String, String> _nativeLanguageNames = <String, String>{
+  'as': 'অসমীয়া',
+  'bn': 'বাংলা',
+  'en': 'English',
+  'gu': 'ગુજરાતી',
+  'hi': 'हिन्दी',
+  'kn': 'ಕನ್ನಡ',
+  'kok': 'कोंकणी',
+  'ks': 'کٲشُر',
+  'lbj': 'ལ་དྭགས་སྐད',
+  'lus': 'Mizo',
+  'ml': 'മലയാളം',
+  'mni': 'ꯃꯤꯇꯩꯂꯣꯟ',
+  'mr': 'मराठी',
+  'ne': 'नेपाली',
+  'or': 'ଓଡ଼ିଆ',
+  'pa': 'ਪੰਜਾਬੀ',
+  'ta': 'தமிழ்',
+  'te': 'తెలుగు',
+};
 
 const List<AppRegion> appRegions = <AppRegion>[
   AppRegion(

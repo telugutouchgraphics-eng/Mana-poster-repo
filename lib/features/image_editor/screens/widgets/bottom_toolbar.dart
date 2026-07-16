@@ -149,12 +149,10 @@ class _EditorMainToolsStrip extends StatelessWidget {
     required this.onRemoveBgTap,
     required this.onFitTap,
     required this.onBrushesTap,
-    required this.onCalloutTap,
     required this.onFramesTap,
     required this.onReplayTap,
     required this.onCropTap,
     required this.onStickersTap,
-    required this.onShapesTap,
     required this.onBorderTap,
     this.vertical = false,
   });
@@ -171,12 +169,10 @@ class _EditorMainToolsStrip extends StatelessWidget {
   final VoidCallback onRemoveBgTap;
   final VoidCallback onFitTap;
   final VoidCallback onBrushesTap;
-  final VoidCallback onCalloutTap;
   final VoidCallback onFramesTap;
   final VoidCallback onReplayTap;
   final Future<void> Function() onCropTap;
   final VoidCallback onStickersTap;
-  final VoidCallback onShapesTap;
   final VoidCallback onBorderTap;
 
   @override
@@ -238,22 +234,6 @@ class _EditorMainToolsStrip extends StatelessWidget {
         compact: compact,
         premium: true,
         onTap: onStickersTap,
-      ),
-      _ToolItem(
-        label: strings.localized(telugu: 'కాలౌట్', english: 'Callout'),
-        icon: Icons.chat_bubble_outline_rounded,
-        active: activeToolLabel == 'Callout',
-        compact: compact,
-        onTap: onCalloutTap,
-      ),
-      _ToolItem(
-        label: strings.localized(telugu: 'షేప్స్', english: 'Shape'),
-        icon: Icons.category_outlined,
-        assetIcon:
-            'assets/designpro_reference_full/res/drawable-xxhdpi-v4/icon_shapes.png',
-        active: activeToolLabel == 'Shapes',
-        compact: compact,
-        onTap: onShapesTap,
       ),
       _ToolItem(
         label: strings.localized(telugu: 'బార్డర్', english: 'Border'),

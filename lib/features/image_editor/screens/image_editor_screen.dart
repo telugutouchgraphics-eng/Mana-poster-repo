@@ -47,6 +47,7 @@ import '../models/editor_stage_background.dart';
 import '../services/background_removal_service.dart';
 import '../services/editor_draft_storage_service.dart';
 import '../services/editor_asset_catalog_service.dart';
+import '../services/editor_font_catalog_service.dart';
 
 part 'editor_constants.dart';
 part 'editor_models.dart';
@@ -610,8 +611,12 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   String _activeStickerCategory = 'Emojis';
   final EditorAssetCatalogService _editorAssetCatalogService =
       EditorAssetCatalogService();
+  final EditorFontCatalogService _editorFontCatalogService =
+      EditorFontCatalogService();
   EditorAssetCatalog _remoteEditorAssetCatalog = EditorAssetCatalog.empty;
+  EditorFontCatalog _remoteEditorFontCatalog = EditorFontCatalog.empty;
   bool _isEditorAssetCatalogLoading = false;
+  bool _isEditorFontCatalogLoading = false;
   _BorderStyle _borderStyle = _BorderStyle.none;
   double _borderWidth = 1.5;
   double _borderRadius = 0;
@@ -1168,7 +1173,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   }
 
   bool _isPremiumTeluguFontFamily(String family) =>
-      _textFontFamilies.contains(family);
+      _textFontFamilies.contains(family) ||
+      _remoteTeluguFontFamilies.contains(family);
 
   Future<bool> _ensureRewardedAccessForFeature(
     _EditorRewardGateFeature feature,
@@ -1766,12 +1772,25 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     if (layer == null || !layer.isText) {
       return;
     }
+    if (_remoteEditorFontCatalog.fonts.isEmpty &&
+        !_isEditorFontCatalogLoading) {
+      await _loadEditorFontCatalog();
+    }
     final selected = await _pushPremiumOverlay<String>(
       TextFontFullscreenOverlay(
         selectedFontFamily: layer.fontFamily,
-        teluguFonts: _textFontFamilies,
-        englishFonts: _englishTextFontFamilies,
-        hindiFonts: _hindiTextFontFamilies,
+        teluguFonts: <String>[
+          ..._textFontFamilies,
+          ..._remoteTeluguFontFamilies,
+        ],
+        englishFonts: <String>[
+          ..._englishTextFontFamilies,
+          ..._remoteEnglishFontFamilies,
+        ],
+        hindiFonts: <String>[
+          ..._hindiTextFontFamilies,
+          ..._remoteHindiFontFamilies,
+        ],
         previewText: (layer.text ?? '').trim().isEmpty
             ? 'తెలుగు Poster Title नमस्ते'
             : layer.text!,
@@ -1785,6 +1804,18 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         _EditorRewardGateFeature.teluguFonts,
       );
       if (!mounted || !granted) {
+        return;
+      }
+    }
+    if (_isRemoteFontFamily(selected)) {
+      final ready = await _editorFontCatalogService.ensureRegisteredByFamily(
+        selected,
+        _remoteEditorFontCatalog,
+      );
+      if (!mounted || !ready) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('Font download failed.')),
+        );
         return;
       }
     }
@@ -1935,6 +1966,47 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     } catch (_) {}
   }
 
+  Future<void> _loadEditorFontCatalog() async {
+    if (_isEditorFontCatalogLoading) return;
+    _isEditorFontCatalogLoading = true;
+    try {
+      final catalog = await _editorFontCatalogService.loadCatalog();
+      if (mounted) {
+        setState(() => _remoteEditorFontCatalog = catalog);
+      }
+    } catch (_) {
+      // Bundled fonts remain available when remote fonts are unavailable.
+    } finally {
+      _isEditorFontCatalogLoading = false;
+    }
+  }
+
+  List<String> get _remoteTeluguFontFamilies =>
+      _remoteFontsForLanguage(EditorRemoteFontLanguage.telugu);
+
+  List<String> get _remoteEnglishFontFamilies =>
+      _remoteFontsForLanguage(EditorRemoteFontLanguage.english);
+
+  List<String> get _remoteHindiFontFamilies =>
+      _remoteFontsForLanguage(EditorRemoteFontLanguage.hindi);
+
+  List<String> _remoteFontsForLanguage(EditorRemoteFontLanguage language) {
+    final bundled = <String>{
+      ..._textFontFamilies,
+      ..._englishTextFontFamilies,
+      ..._hindiTextFontFamilies,
+    };
+    return _remoteEditorFontCatalog.fonts
+        .where(
+          (font) => font.language == language && !bundled.contains(font.family),
+        )
+        .map((font) => font.family)
+        .toList(growable: false);
+  }
+
+  bool _isRemoteFontFamily(String family) =>
+      _remoteEditorFontCatalog.fonts.any((font) => font.family == family);
+
   Future<String> _downloadEditorAsset(
     EditorRemoteAsset asset,
     void Function(double progress) onProgress,
@@ -1942,13 +2014,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   Future<String?> _localEditorAssetPath(EditorRemoteAsset asset) =>
       _editorAssetCatalogService.localPath(asset);
-
-  Future<void> _openShapesBrowserOverlay() async {
-    await _openStickerBrowserOverlay(
-      initialCategory: 'DesignPro Shapes',
-      categories: const <String>['DesignPro Shapes', 'SVG Marks', 'Shapes'],
-    );
-  }
 
   Future<void> _openLayersAdvancedOverlay() async {
     if (!mounted) {
@@ -2799,6 +2864,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     }
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
     unawaited(_loadEditorAssetCatalog());
+    unawaited(_loadEditorFontCatalog());
     unawaited(_refreshEditorAdEntitlementInBackground());
     unawaited(
       _rewardedAccessService.preloadRewardedAd(
@@ -2983,6 +3049,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _selectedTextFocusNode.dispose();
     _rewardedAccessService.dispose();
     _editorAssetCatalogService.dispose();
+    _editorFontCatalogService.dispose();
     _canvasLayerPickerEntry?.remove();
     _canvasLayerPickerEntry = null;
     _autosaveTimer?.cancel();
@@ -4592,16 +4659,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                       });
                                       _openBrushesTool();
                                     },
-                                    onCalloutTap: () {
-                                      setState(() {
-                                        _activeMainToolLabel = 'Callout';
-                                      });
-                                      unawaited(
-                                        _openStickerBrowserOverlay(
-                                          initialCategory: 'Callouts',
-                                        ),
-                                      );
-                                    },
                                     onFramesTap: () {
                                       setState(() {
                                         _activeMainToolLabel = 'Frames';
@@ -4617,12 +4674,6 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     onCropTap: _handleCropPhotoTap,
                                     onStickersTap: () =>
                                         unawaited(_openStickerBrowserOverlay()),
-                                    onShapesTap: () {
-                                      setState(() {
-                                        _activeMainToolLabel = 'Shapes';
-                                      });
-                                      unawaited(_openShapesBrowserOverlay());
-                                    },
                                     onBorderTap: () => _openInlineMode(
                                       _BottomInlineMode.border,
                                     ),
