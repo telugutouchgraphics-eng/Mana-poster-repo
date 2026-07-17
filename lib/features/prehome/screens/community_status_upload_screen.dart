@@ -48,7 +48,7 @@ class _CommunityStatusUploadScreenState
   @override
   void initState() {
     super.initState();
-    unawaited(ScreenSecurityService.enableSecure());
+    unawaited(ScreenSecurityService.protectScreen());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusTextEditor();
@@ -58,7 +58,7 @@ class _CommunityStatusUploadScreenState
 
   @override
   void dispose() {
-    unawaited(ScreenSecurityService.disableSecure());
+    unawaited(ScreenSecurityService.unprotectScreen());
     _textFocusNode.dispose();
     _textController.dispose();
     super.dispose();

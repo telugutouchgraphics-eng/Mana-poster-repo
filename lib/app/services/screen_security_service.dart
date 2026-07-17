@@ -1,22 +1,53 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-import 'package:mana_poster/app/config/app_public_info.dart';
 
 class ScreenSecurityService {
   ScreenSecurityService._();
 
   static const bool _screenProtectionEnabled = true;
-  static const String _adminScreenProtectionBypassEmail =
-      String.fromEnvironment(
-        'MANA_POSTER_SCREEN_PROTECTION_BYPASS_EMAIL',
-        defaultValue: AppPublicInfo.supportEmail,
-      );
+  static const Set<String> _screenProtectionBypassEmails = <String>{
+    'manaposter2026@gmail.com',
+    'supportmanaposter@gmail.com',
+    String.fromEnvironment(
+      'MANA_POSTER_SCREEN_PROTECTION_BYPASS_EMAIL',
+      defaultValue: '',
+    ),
+  };
 
   static const MethodChannel _channel = MethodChannel(
     'mana_poster/screen_security',
   );
+
+  static int _protectedScreenDepth = 0;
+  static StreamSubscription<User?>? _authSubscription;
+
+  static Future<void> protectScreen() async {
+    _ensureAuthListener();
+    _protectedScreenDepth++;
+    await enableSecure();
+  }
+
+  static Future<void> unprotectScreen() async {
+    if (_protectedScreenDepth > 0) {
+      _protectedScreenDepth--;
+    }
+    await disableSecure();
+  }
+
+  static void _ensureAuthListener() {
+    _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((
+      User? _,
+    ) {
+      if (_protectedScreenDepth > 0) {
+        unawaited(enableSecure());
+      } else {
+        unawaited(disableSecure());
+      }
+    });
+  }
 
   static Future<void> enableSecure() async {
     if (kIsWeb || !_screenProtectionEnabled) {
@@ -36,19 +67,25 @@ class ScreenSecurityService {
       return;
     }
     try {
+      if (_protectedScreenDepth > 0 && !_isAdminBypassUser()) {
+        await _channel.invokeMethod<void>('enableSecure');
+        return;
+      }
       await _channel.invokeMethod<void>('disableSecure');
     } catch (_) {}
   }
 
   static bool _isAdminBypassUser() {
-    final configuredEmail = _normalizeEmail(_adminScreenProtectionBypassEmail);
-    if (configuredEmail.isEmpty) {
-      return false;
-    }
     final currentEmail = _normalizeEmail(
       FirebaseAuth.instance.currentUser?.email,
     );
-    return currentEmail == configuredEmail;
+    if (currentEmail.isEmpty) {
+      return false;
+    }
+    return _screenProtectionBypassEmails
+        .map(_normalizeEmail)
+        .where((email) => email.isNotEmpty)
+        .contains(currentEmail);
   }
 
   static String _normalizeEmail(String? email) =>

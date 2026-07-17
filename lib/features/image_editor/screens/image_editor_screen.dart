@@ -2859,9 +2859,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (kReleaseMode) {
-      unawaited(ScreenSecurityService.enableSecure());
-    }
+    unawaited(ScreenSecurityService.protectScreen());
     _selectedTextFocusNode.addListener(_handleSelectedTextFocusChange);
     unawaited(_loadEditorAssetCatalog());
     unawaited(_loadEditorFontCatalog());
@@ -3014,9 +3012,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_enterEditorImmersiveMode());
-      if (kReleaseMode) {
-        unawaited(ScreenSecurityService.enableSecure());
-      }
+      unawaited(ScreenSecurityService.enableSecure());
     }
   }
 
@@ -3060,7 +3056,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _transformationController.dispose();
     _cropTransformationController.dispose();
     unawaited(_restoreSystemUiMode());
-    unawaited(ScreenSecurityService.disableSecure());
+    unawaited(ScreenSecurityService.unprotectScreen());
     super.dispose();
   }
 

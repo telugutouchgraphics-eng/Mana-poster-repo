@@ -26,13 +26,13 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
   @override
   void initState() {
     super.initState();
-    unawaited(ScreenSecurityService.enableSecure());
+    unawaited(ScreenSecurityService.protectScreen());
     _itemsFuture = PosterDownloadsService.listForDisplay();
   }
 
   @override
   void dispose() {
-    unawaited(ScreenSecurityService.disableSecure());
+    unawaited(ScreenSecurityService.unprotectScreen());
     super.dispose();
   }
 

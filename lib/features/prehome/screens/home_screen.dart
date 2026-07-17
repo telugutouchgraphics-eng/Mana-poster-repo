@@ -1341,6 +1341,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _startupSnapshotHydrationDeferred = false;
   bool _startupSnapshotAttemptCompleted = false;
   bool _startupPermissionPromptQueued = false;
+  bool _screenSecurityProtected = false;
   List<_TemplateItem>? _rankedAllFeedTemplates;
   List<_TemplateItem>? _lockedAllFeedTemplates;
   Set<String> _recentAllFeedTemplateKeys = <String>{};
@@ -1382,6 +1383,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _protectHomeScreen();
     _homeDebugLog('[StartupTiming] home_init_start t=0ms');
     final initialCategory = widget.initialCategorySlug?.trim();
     if (initialCategory != null && initialCategory.isNotEmpty) {
@@ -1662,19 +1664,35 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _protectHomeScreen() {
+    if (_screenSecurityProtected) {
+      return;
+    }
+    _screenSecurityProtected = true;
+    unawaited(ScreenSecurityService.protectScreen());
+  }
+
+  void _unprotectHomeScreen() {
+    if (!_screenSecurityProtected) {
+      return;
+    }
+    _screenSecurityProtected = false;
+    unawaited(ScreenSecurityService.unprotectScreen());
+  }
+
   @override
   void didPush() {
+    _protectHomeScreen();
     if (_shouldRunRemoteHomeStartupTasks) {
       unawaited(_hidePhoneNavigationButtons());
-      unawaited(ScreenSecurityService.enableSecure());
     }
   }
 
   @override
   void didPopNext() {
+    _protectHomeScreen();
     if (_shouldRunRemoteHomeStartupTasks) {
       unawaited(_hidePhoneNavigationButtons());
-      unawaited(ScreenSecurityService.enableSecure());
       unawaited(_loadViewerPosterProfile());
       unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
@@ -1688,7 +1706,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void didPushNext() {
     unawaited(_restorePhoneNavigationButtons());
-    unawaited(ScreenSecurityService.disableSecure());
+    _unprotectHomeScreen();
   }
 
   @override
@@ -1719,7 +1737,7 @@ class _HomeScreenState extends State<HomeScreen>
     _searchController.dispose();
     _searchFocusNode.dispose();
     unawaited(_restorePhoneNavigationButtons());
-    unawaited(ScreenSecurityService.disableSecure());
+    _unprotectHomeScreen();
     super.dispose();
   }
 

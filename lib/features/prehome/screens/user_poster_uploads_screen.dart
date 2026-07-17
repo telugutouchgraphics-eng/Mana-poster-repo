@@ -76,7 +76,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   @override
   void initState() {
     super.initState();
-    unawaited(ScreenSecurityService.enableSecure());
+    unawaited(ScreenSecurityService.protectScreen());
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(
       length: widget.profileOnly ? 1 : 2,
@@ -104,7 +104,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
 
   @override
   void dispose() {
-    unawaited(ScreenSecurityService.disableSecure());
+    unawaited(ScreenSecurityService.unprotectScreen());
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _quoteController.dispose();

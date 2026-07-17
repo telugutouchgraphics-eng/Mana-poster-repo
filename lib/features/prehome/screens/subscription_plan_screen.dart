@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/config/subscription_plan_config.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
+import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
@@ -84,6 +85,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   @override
   void initState() {
     super.initState();
+    unawaited(ScreenSecurityService.protectScreen());
     _backendService = _isEditorPlan
         ? SubscriptionBackendService.editor()
         : SubscriptionBackendService.app();
@@ -110,6 +112,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   @override
   void dispose() {
+    unawaited(ScreenSecurityService.unprotectScreen());
     WidgetsBinding.instance.removeObserver(this);
     if (_purchaseGateway.isPurchaseFlowActive) {
       unawaited(_purchaseGateway.abandonPendingPurchaseFlow());
