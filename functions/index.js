@@ -2853,18 +2853,8 @@ async function sendReminderToToken({
   const normalizedCategory = reminderCategoryKey(categoryKey);
   const message = {
     token,
-    notification: {
-      title: normalizedTitle,
-      body: normalizedBody,
-    },
     android: {
       priority: "high",
-      notification: {
-        channelId: "mana_poster_general",
-        clickAction: "FLUTTER_NOTIFICATION_CLICK",
-        title: normalizedTitle,
-        body: normalizedBody,
-      },
     },
     apns: {
       payload: {
@@ -2897,8 +2887,14 @@ async function sendReminderToToken({
     },
   };
 
-  if (normalizedImageUrl) {
-    message.android.notification.imageUrl = normalizedImageUrl;
+  if (String(platform || "").trim().toLowerCase() === "ios") {
+    message.notification = {
+      title: normalizedTitle,
+      body: normalizedBody,
+    };
+  }
+
+  if (normalizedImageUrl && String(platform || "").trim().toLowerCase() === "ios") {
     message.apns.fcmOptions = {image: normalizedImageUrl};
   }
 
@@ -3078,12 +3074,16 @@ async function getRelatedPosterImagesByKeywords(keywords, regionId = "") {
         .get();
 
     const matchedImages = [];
+    const nowMillis = Date.now();
     for (const doc of snap.docs) {
       const data = doc.data() || {};
       const categoryId = String(data.categoryId || "");
       const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl) {
+        continue;
+      }
+      if (!posterIsCurrentlyVisible(data, nowMillis)) {
         continue;
       }
       const matched = keyList.some((keyword) =>
@@ -3143,6 +3143,20 @@ function categoryMatchesStrictAlias(categoryId, categoryLabel, alias) {
   );
 }
 
+function posterIsCurrentlyVisible(data, nowMillis = Date.now()) {
+  const publishAt = toMillis(data.publishAt);
+  const createdAt = toMillis(data.createdAt);
+  const eventEndAt = toMillis(data.eventEndAt);
+  const visibleFrom = publishAt > 0 ? publishAt : (createdAt > 0 ? createdAt : nowMillis);
+  if (visibleFrom > nowMillis) {
+    return false;
+  }
+  if (eventEndAt > 0 && nowMillis > eventEndAt) {
+    return false;
+  }
+  return true;
+}
+
 async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId = "") {
   const aliases = reminderCategoryAliases(categoryKey)
       .map((item) => normalizeText(item))
@@ -3162,12 +3176,16 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
         .get();
 
     const matchedImages = [];
+    const nowMillis = Date.now();
     for (const doc of snap.docs) {
       const data = doc.data() || {};
       const categoryId = String(data.categoryId || "");
       const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
       if (!imageUrl) {
+        continue;
+      }
+      if (!posterIsCurrentlyVisible(data, nowMillis)) {
         continue;
       }
       const matched = aliases.some((alias) =>
