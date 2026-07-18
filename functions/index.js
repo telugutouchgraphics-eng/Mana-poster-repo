@@ -1098,8 +1098,6 @@ function getIstDayKey(now = new Date()) {
   return formatter.format(now);
 }
 
-const maxDailyReminderNotificationsPerToken = 3;
-
 function safeNotificationMetricKey(value) {
   const normalized = normalizeText(value)
       .replace(/[^a-z0-9_-]+/g, "-")
@@ -1157,9 +1155,6 @@ async function reserveNotificationDelivery({
       }
       if (categories[category] === true) {
         return {allowed: false, reason: "same_category_already_sent"};
-      }
-      if (count >= maxDailyReminderNotificationsPerToken) {
-        return {allowed: false, reason: "daily_limit_reached"};
       }
       tx.set(ref, {
         tokenHash,
