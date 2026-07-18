@@ -73,50 +73,7 @@ const allowedCorsOrigins = parseAllowedOrigins(
     process.env.MANA_POSTER_ALLOWED_ORIGINS || process.env.ALLOW_ORIGIN || "*",
 );
 
-const dynamicEventCatalog = [
-  {
-    id: "ambedkar-jayanthi",
-    title: "Dr. B.R. Ambedkar Jayanthi",
-    month: 4,
-    day: 14,
-    keywords: ["ambedkar", "jayanthi"],
-  },
-  {
-    id: "independence-day",
-    title: "Independence Day",
-    month: 8,
-    day: 15,
-    keywords: ["independence", "national"],
-  },
-  {
-    id: "teachers-day",
-    title: "Teachers Day",
-    month: 9,
-    day: 5,
-    keywords: ["teachers", "teacher"],
-  },
-  {
-    id: "gandhi-jayanthi",
-    title: "Gandhi Jayanthi",
-    month: 10,
-    day: 2,
-    keywords: ["gandhi", "jayanthi"],
-  },
-  {
-    id: "children-day",
-    title: "Children Day",
-    month: 11,
-    day: 14,
-    keywords: ["children", "childrens day"],
-  },
-  {
-    id: "republic-day",
-    title: "Republic Day",
-    month: 1,
-    day: 26,
-    keywords: ["republic", "national"],
-  },
-];
+const dynamicEventCatalog = require("./dynamic_event_catalog.json");
 
 const posterRetentionWindowMillis = 7 * 24 * 60 * 60 * 1000;
 const posterCleanupBatchSize = 250;
