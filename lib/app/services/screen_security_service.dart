@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class ScreenSecurityService {
   ScreenSecurityService._();
@@ -38,6 +39,9 @@ class ScreenSecurityService {
   }
 
   static void _ensureAuthListener() {
+    if (Firebase.apps.isEmpty) {
+      return;
+    }
     _authSubscription ??= FirebaseAuth.instance.authStateChanges().listen((
       User? _,
     ) {
@@ -76,6 +80,9 @@ class ScreenSecurityService {
   }
 
   static bool _isAdminBypassUser() {
+    if (Firebase.apps.isEmpty) {
+      return false;
+    }
     final currentEmail = _normalizeEmail(
       FirebaseAuth.instance.currentUser?.email,
     );

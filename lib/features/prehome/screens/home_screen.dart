@@ -143,17 +143,9 @@ bool _posterStringLooksFirebaseResolvable(String raw) {
       lower.contains('firebasestorage.app');
 }
 
-/// Already-public HTTP(S) poster asset URLs can be rendered directly without
-/// minting another authenticated Firebase Storage download URL.
-bool _posterStringLooksDirectHttpDownloadUrl(String raw) {
-  final s = raw.trim();
-  if (s.isEmpty) {
-    return false;
-  }
-  final lower = s.toLowerCase();
-  return (lower.startsWith('http://') || lower.startsWith('https://')) &&
-      !lower.startsWith('gs://') &&
-      !_posterStringLooksFirebaseResolvable(s);
+bool _posterStringLooksHttpUrl(String raw) {
+  final lower = raw.trim().toLowerCase();
+  return lower.startsWith('http://') || lower.startsWith('https://');
 }
 
 /// Looks like a Storage object path for [FirebaseStorage.ref], not http(s).
@@ -1253,7 +1245,7 @@ class _HomeScreenState extends State<HomeScreen>
     milliseconds: 450,
   );
   static const Duration _homeStartupRemoteTimeout = Duration(seconds: 7);
-  static const double _homeFeedCacheExtent = 48.0;
+  static const double _homeFeedCacheExtent = 360.0;
   static const bool _enableDebugHomeStartupServices = bool.fromEnvironment(
     'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
     defaultValue: false,
@@ -1336,8 +1328,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _allFeedRankingInFlight = false;
   bool _progressiveHydrationQueued = false;
   bool _posterFeedLoadMoreArmed = false;
-  bool _startupRichPosterPreviewReady = false;
-  bool _startupRichPosterPreviewActivationQueued = false;
+  String _startupFeedWarmupSignature = '';
   bool _startupSnapshotHydrationDeferred = false;
   bool _startupSnapshotAttemptCompleted = false;
   bool _startupPermissionPromptQueued = false;
@@ -3309,6 +3300,10 @@ class _HomeScreenState extends State<HomeScreen>
     final setStateStopwatch = Stopwatch()..start();
     setState(() {
       _remoteApprovedTemplates = templates;
+      if (_selectedCategorySlug == _allCategorySlug &&
+          _lockedAllFeedTemplates == null) {
+        _lockedAllFeedTemplates = List<_TemplateItem>.of(templates);
+      }
       _rankedAllFeedTemplates = null;
       _allFeedRankingReady = false;
       _startupSnapshotHydrationDeferred = false;
@@ -3330,6 +3325,7 @@ class _HomeScreenState extends State<HomeScreen>
     _hydratedCategorySlugs.clear();
     _scheduleSelectedCategoryPrefetchAfterVisibleTemplates();
     _scheduleDeferredAllFeedRanking();
+    _scheduleStartupFeedImageWarmup(templates);
     _scheduleStartupRichPosterPreviewActivation();
     if (logFirstRemotePaint) {
       _logPostPaintTimingOnce(
@@ -3346,62 +3342,67 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _scheduleStartupRichPosterPreviewActivation({
-    Duration initialDelay = const Duration(milliseconds: 2200),
-  }) {
-    if (_startupRichPosterPreviewReady ||
-        _startupRichPosterPreviewActivationQueued) {
+  void _scheduleStartupFeedImageWarmup(List<_TemplateItem> templates) {
+    final urls = templates
+        .where((item) => !item.isVideo)
+        .map((item) {
+          final thumb = (item.thumbnailUrl ?? '').trim();
+          if (_posterStringLooksHttpUrl(thumb)) {
+            return thumb;
+          }
+          final image = (item.imageUrl ?? '').trim();
+          return _posterStringLooksHttpUrl(image) ? image : '';
+        })
+        .where((url) => url.isNotEmpty)
+        .take(2)
+        .toList(growable: false);
+    if (urls.isEmpty) {
       return;
     }
-    _startupRichPosterPreviewActivationQueued = true;
+    final signature = urls.join('|');
+    if (_startupFeedWarmupSignature == signature) {
+      return;
+    }
+    _startupFeedWarmupSignature = signature;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(() async {
-        await Future<void>.delayed(initialDelay);
+        await Future<void>.delayed(const Duration(milliseconds: 80));
         if (!mounted) {
           return;
         }
-        if (!PostSplashStartupGate.isReady) {
-          _startupRichPosterPreviewActivationQueued = false;
-          await Future<void>.delayed(const Duration(milliseconds: 320));
+        for (final url in urls) {
           if (!mounted) {
             return;
           }
-          _scheduleStartupRichPosterPreviewActivation(
-            initialDelay: const Duration(milliseconds: 640),
-          );
-          return;
-        }
-        if (_posterScrollController.hasClients &&
-            _posterScrollController.position.isScrollingNotifier.value) {
-          _startupRichPosterPreviewActivationQueued = false;
-          await Future<void>.delayed(const Duration(milliseconds: 900));
-          if (!mounted) {
-            return;
+          try {
+            final provider = ResizeImage.resizeIfNeeded(
+              960,
+              null,
+              CachedNetworkImageProvider(
+                url,
+                cacheManager: PosterNetworkImageCache.instance,
+                maxWidth: PosterNetworkImageLimits.diskFeedMaxWidth,
+                maxHeight: PosterNetworkImageLimits.diskFeedMaxHeight,
+              ),
+            );
+            await precacheImage(
+              provider,
+              context,
+            ).timeout(const Duration(milliseconds: 900));
+          } catch (error, stackTrace) {
+            _homeDebugLogStack(
+              'startup feed image warmup skipped: $error',
+              stackTrace,
+            );
           }
-          _scheduleStartupRichPosterPreviewActivation();
-          return;
         }
-        if (_templatesLoading ||
-            _templatesLoadingMore ||
-            _posterPhotoDragInProgress) {
-          _startupRichPosterPreviewActivationQueued = false;
-          await Future<void>.delayed(const Duration(milliseconds: 1100));
-          if (!mounted) {
-            return;
-          }
-          _scheduleStartupRichPosterPreviewActivation();
-          return;
-        }
-        _startupRichPosterPreviewActivationQueued = false;
-        if (_startupRichPosterPreviewReady) {
-          return;
-        }
-        setState(() {
-          _startupRichPosterPreviewReady = true;
-        });
       }());
     });
   }
+
+  void _scheduleStartupRichPosterPreviewActivation({
+    Duration initialDelay = const Duration(milliseconds: 2200),
+  }) {}
 
   Future<void> _awaitStartupUiSettled({
     Duration minimumDelay = const Duration(milliseconds: 420),
@@ -5663,12 +5664,8 @@ class _HomeScreenState extends State<HomeScreen>
                                 item: item,
                                 hostContext: context,
                                 language: language,
-                                preferUltraLightImage:
-                                    activeCategorySlug == _allCategorySlug &&
-                                    index == 0 &&
-                                    !_startupRichPosterPreviewReady,
-                                deferRichPosterPreview:
-                                    !_startupRichPosterPreviewReady,
+                                preferUltraLightImage: false,
+                                deferRichPosterPreview: false,
                                 onOpenSubscriptionPlan:
                                     _pushSubscriptionPlanRoute,
                                 viewerPosterProfile: _viewerPosterProfile,
@@ -9540,6 +9537,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   String? _queuedVideoWarmupSignature;
   bool _posterWarmupQueued = false;
   String? _queuedPosterWarmupSignature;
+  bool _renderOriginalPosterForCapture = false;
   static bool _globalAutoPosterWarmupActive = false;
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
   static const List<_PosterPhotoPreset>
@@ -10347,6 +10345,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Future<void> _doPreparePosterExport(String signature) async {
     try {
       await ScreenSecurityService.disableSecure();
+      if (item.preferOriginalPosterQuality &&
+          !_renderOriginalPosterForCapture) {
+        setState(() => _renderOriginalPosterForCapture = true);
+        await _settlePosterCaptureFrame();
+      }
       await _ensurePosterCaptureResourcesReady();
       await _prepareLegacyTextForExport();
       final bytes = await _capturePosterBytes();
@@ -10365,6 +10368,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     } catch (error, stackTrace) {
       _homeDebugLogStack('poster export warmup failed: $error', stackTrace);
     } finally {
+      if (mounted && _renderOriginalPosterForCapture) {
+        setState(() => _renderOriginalPosterForCapture = false);
+      }
       await ScreenSecurityService.enableSecure();
     }
   }
@@ -10832,6 +10838,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     ValueChanged<bool>? onPosterReadyChanged,
   }) {
     final personalizationConfig = item.personalizationConfig;
+    final renderOriginalPosterQuality =
+        item.preferOriginalPosterQuality && _renderOriginalPosterForCapture;
     if (deferRichPosterPreview) {
       return item.pageConfig != null
           ? AspectRatio(
@@ -10842,8 +10850,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 imageStoragePath: item.imageStoragePath,
                 thumbnailStoragePath: item.thumbnailStoragePath,
                 thumbnailUrl: item.thumbnailUrl,
+                fixedAspectRatio: item.pageConfig!.aspectRatio,
                 posterIdForDebug: item.templateId,
-                preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+                preferOriginalPosterQuality: renderOriginalPosterQuality,
                 preferUltraLightDecode: preferUltraLightImage,
                 onFirstFrameReady: () => onPosterReadyChanged?.call(true),
               ),
@@ -10855,7 +10864,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
               posterIdForDebug: item.templateId,
-              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+              preferOriginalPosterQuality: renderOriginalPosterQuality,
               preferUltraLightDecode: preferUltraLightImage,
               onFirstFrameReady: () => onPosterReadyChanged?.call(true),
             );
@@ -10885,7 +10894,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       ),
                   videoReplayTickListenable: _videoReplayTickNotifier,
                   personalizationConfig: personalizationConfig,
-                  preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+                  preferOriginalPosterQuality: renderOriginalPosterQuality,
                   viewerPosterProfile: viewerPosterProfile,
                   language: language,
                   showProfilePhoto: isPhotoVisible,
@@ -10927,7 +10936,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             thumbnailUrl: item.thumbnailUrl,
             pageConfig: item.pageConfig,
             personalizationConfig: personalizationConfig,
-            preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+            preferOriginalPosterQuality: renderOriginalPosterQuality,
             viewerPosterProfile: viewerPosterProfile,
             language: language,
             showProfilePhoto: isPhotoVisible,
@@ -10959,8 +10968,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               imageStoragePath: item.imageStoragePath,
               thumbnailStoragePath: item.thumbnailStoragePath,
               thumbnailUrl: item.thumbnailUrl,
+              fixedAspectRatio: item.pageConfig!.aspectRatio,
               posterIdForDebug: item.templateId,
-              preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+              preferOriginalPosterQuality: renderOriginalPosterQuality,
               onFirstFrameReady: () => onPosterReadyChanged?.call(true),
             ),
           )
@@ -10971,7 +10981,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             thumbnailStoragePath: item.thumbnailStoragePath,
             thumbnailUrl: item.thumbnailUrl,
             posterIdForDebug: item.templateId,
-            preferOriginalPosterQuality: item.preferOriginalPosterQuality,
+            preferOriginalPosterQuality: renderOriginalPosterQuality,
             onFirstFrameReady: () => onPosterReadyChanged?.call(true),
           );
   }
@@ -12006,6 +12016,7 @@ class _TemplatePosterImage extends StatefulWidget {
     required this.imageAssetPath,
     required this.imageUrl,
     this.thumbnailUrl,
+    this.fixedAspectRatio,
     this.preferOriginalPosterQuality = false,
     this.preferUltraLightDecode = false,
     this.onFirstFrameReady,
@@ -12014,6 +12025,7 @@ class _TemplatePosterImage extends StatefulWidget {
   final String? imageAssetPath;
   final String? imageUrl;
   final String? thumbnailUrl;
+  final double? fixedAspectRatio;
   final bool preferOriginalPosterQuality;
   final bool preferUltraLightDecode;
   final VoidCallback? onFirstFrameReady;
@@ -12024,11 +12036,11 @@ class _TemplatePosterImage extends StatefulWidget {
 
 class _TemplatePosterImageState extends State<_TemplatePosterImage> {
   static const int _feedPosterDecodeMinWidth = 280;
-  static const int _feedPosterDecodeMaxWidth = 560;
+  static const int _feedPosterDecodeMaxWidth = 960;
   static const int _feedPosterUltraLightMinWidth = 180;
-  static const int _feedPosterUltraLightMaxWidth = 280;
-  static const int _feedPosterThumbMinWidth = 140;
-  static const int _feedPosterThumbMaxWidth = 240;
+  static const int _feedPosterUltraLightMaxWidth = 420;
+  static const int _feedPosterThumbMinWidth = 180;
+  static const int _feedPosterThumbMaxWidth = 360;
   ImageProvider<Object>? _mainNetworkProvider;
   ImageProvider<Object>? _thumbnailProvider;
   String? _mainProviderUrl;
@@ -12047,7 +12059,8 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
         oldWidget.thumbnailUrl != widget.thumbnailUrl ||
         oldWidget.preferOriginalPosterQuality !=
             widget.preferOriginalPosterQuality ||
-        oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode) {
+        oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode ||
+        oldWidget.fixedAspectRatio != widget.fixedAspectRatio) {
       _mainNetworkProvider = null;
       _thumbnailProvider = null;
       _mainProviderUrl = null;
@@ -12272,22 +12285,7 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   if (thumbnailProvider == null) {
                     return child;
                   }
-                  return Stack(
-                    fit: StackFit.passthrough,
-                    children: <Widget>[
-                      Image(
-                        image: thumbnailProvider,
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.topCenter,
-                        gaplessPlayback: true,
-                        filterQuality: widget.preferOriginalPosterQuality
-                            ? FilterQuality.high
-                            : FilterQuality.low,
-                      ),
-                      child,
-                    ],
-                  );
+                  return child;
                 }
                 if (thumbnailProvider != null) {
                   return Image(
@@ -12324,8 +12322,14 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                       unawaited(
                         PosterNetworkImageCache.instance.removeFile(failed),
                       );
-                      return Image.network(
-                        failed,
+                      return Image(
+                        image: widget.preferOriginalPosterQuality
+                            ? NetworkImage(failed)
+                            : ResizeImage.resizeIfNeeded(
+                                decodeWidth,
+                                null,
+                                NetworkImage(failed),
+                              ),
                         width: double.infinity,
                         fit: BoxFit.contain,
                         alignment: Alignment.topCenter,
@@ -12454,22 +12458,29 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   notifyWhenLoaded: true,
                 );
 
-          if (widget.imageAssetPath != null) {
-            _resolveAspectRatio(
-              sourceKey: 'asset:${widget.imageAssetPath!}',
-              provider: AssetImage(widget.imageAssetPath!),
-            );
-          } else if (primaryNetworkUrl.isNotEmpty) {
-            _resolveAspectRatio(
-              sourceKey: 'network:$primaryNetworkUrl',
-              provider: _mainProviderFor(primaryNetworkUrl, cacheWidth),
-            );
+          final fixedAspectRatio = widget.fixedAspectRatio;
+          if (fixedAspectRatio == null || fixedAspectRatio <= 0) {
+            if (widget.imageAssetPath != null) {
+              _resolveAspectRatio(
+                sourceKey: 'asset:${widget.imageAssetPath!}',
+                provider: AssetImage(widget.imageAssetPath!),
+              );
+            } else if (primaryNetworkUrl.isNotEmpty) {
+              _resolveAspectRatio(
+                sourceKey: 'network:$primaryNetworkUrl',
+                provider: _mainProviderFor(primaryNetworkUrl, cacheWidth),
+              );
+            }
           }
 
+          final effectiveAspectRatio =
+              fixedAspectRatio != null && fixedAspectRatio > 0
+              ? fixedAspectRatio
+              : _resolvedAspectRatio;
           final wrappedImageWidget =
-              _resolvedAspectRatio != null && _resolvedAspectRatio! > 0
+              effectiveAspectRatio != null && effectiveAspectRatio > 0
               ? AspectRatio(
-                  aspectRatio: _resolvedAspectRatio!,
+                  aspectRatio: effectiveAspectRatio,
                   child: imageWidget,
                 )
               : imageWidget;
@@ -12494,6 +12505,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
     this.imageStoragePath,
     this.thumbnailStoragePath,
     this.thumbnailUrl,
+    this.fixedAspectRatio,
     this.posterIdForDebug,
     this.preferOriginalPosterQuality = false,
     this.preferUltraLightDecode = false,
@@ -12505,6 +12517,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
   final String? imageStoragePath;
   final String? thumbnailStoragePath;
   final String? thumbnailUrl;
+  final double? fixedAspectRatio;
   final String? posterIdForDebug;
   final bool preferOriginalPosterQuality;
   final bool preferUltraLightDecode;
@@ -12539,6 +12552,7 @@ class _ResolvedTemplatePosterImageState
         oldWidget.imageStoragePath != widget.imageStoragePath ||
         oldWidget.thumbnailStoragePath != widget.thumbnailStoragePath ||
         oldWidget.thumbnailUrl != widget.thumbnailUrl ||
+        oldWidget.fixedAspectRatio != widget.fixedAspectRatio ||
         oldWidget.preferOriginalPosterQuality !=
             widget.preferOriginalPosterQuality) {
       _resetResolvedImageUrl();
@@ -12553,10 +12567,7 @@ class _ResolvedTemplatePosterImageState
     final direct = widget.imageUrl?.trim() ?? '';
     final thumb = widget.thumbnailUrl?.trim() ?? '';
 
-    final hasDirectDownloadUrl = _posterStringLooksDirectHttpDownloadUrl(
-      direct,
-    );
-    if (hasDirectDownloadUrl) {
+    if (_posterStringLooksHttpUrl(direct)) {
       _resolvedImageUrl = direct;
       return;
     }
@@ -12703,6 +12714,7 @@ class _ResolvedTemplatePosterImageState
       thumbnailUrl: widget.preferOriginalPosterQuality
           ? null
           : widget.thumbnailUrl,
+      fixedAspectRatio: widget.fixedAspectRatio,
       preferOriginalPosterQuality: widget.preferOriginalPosterQuality,
       preferUltraLightDecode: widget.preferUltraLightDecode,
       onFirstFrameReady: widget.onFirstFrameReady,
@@ -13990,6 +14002,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 imageStoragePath: widget.imageStoragePath,
                 thumbnailStoragePath: widget.thumbnailStoragePath,
                 thumbnailUrl: widget.thumbnailUrl,
+                fixedAspectRatio: widget.pageConfig!.aspectRatio,
                 preferOriginalPosterQuality: widget.preferOriginalPosterQuality,
                 onFirstFrameReady: _handleBasePosterReady,
               ),
