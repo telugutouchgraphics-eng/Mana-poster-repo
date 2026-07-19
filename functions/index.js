@@ -2099,6 +2099,52 @@ function normalizeRegionId(value) {
       .replace(/^_+|_+$/g, "");
 }
 
+const teluguSharedContentRegionIds = ["andhra_pradesh", "telangana"];
+const hindiSharedContentRegionIds = [
+  "bihar",
+  "chhattisgarh",
+  "haryana",
+  "himachal_pradesh",
+  "jharkhand",
+  "madhya_pradesh",
+  "rajasthan",
+  "uttar_pradesh",
+  "uttarakhand",
+  "delhi",
+  "andaman_nicobar",
+];
+
+function isPoliticalCategoryId(categoryId) {
+  return normalizeRegionId(categoryId).startsWith("party_");
+}
+
+function sharedContentRegionIdsFor(regionId, categoryId = "") {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  if (!resolvedRegionId) {
+    return [];
+  }
+  if (isPoliticalCategoryId(categoryId)) {
+    return [resolvedRegionId];
+  }
+  if (teluguSharedContentRegionIds.includes(resolvedRegionId)) {
+    return teluguSharedContentRegionIds;
+  }
+  if (hindiSharedContentRegionIds.includes(resolvedRegionId)) {
+    return hindiSharedContentRegionIds;
+  }
+  return [resolvedRegionId];
+}
+
+function applyRegionScope(query, regionIds) {
+  const uniqueRegionIds = Array.from(new Set((regionIds || [])
+      .map((item) => normalizeRegionId(item))
+      .filter((item) => item.length > 0)));
+  if (uniqueRegionIds.length > 1) {
+    return query.where("regionId", "in", uniqueRegionIds.slice(0, 10));
+  }
+  return query.where("regionId", "==", uniqueRegionIds[0] || "__none__");
+}
+
 function notificationRegionFromData(data) {
   return normalizeRegionId(
       data && (
@@ -3017,10 +3063,10 @@ async function getRelatedPosterImagesByKeywords(keywords, regionId = "") {
   }
 
   try {
-    const snap = await db
+    const lookupRegionIds = sharedContentRegionIdsFor(resolvedRegionId);
+    const snap = await applyRegionScope(db
         .collection("creatorPosters")
-        .where("status", "==", "approved")
-        .where("regionId", "==", resolvedRegionId)
+        .where("status", "==", "approved"), lookupRegionIds)
         .orderBy("createdAt", "desc")
         .limit(300)
         .get();
@@ -3119,10 +3165,10 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
   }
 
   try {
-    const snap = await db
+    const lookupRegionIds = sharedContentRegionIdsFor(resolvedRegionId, categoryKey);
+    const snap = await applyRegionScope(db
         .collection("creatorPosters")
-        .where("status", "==", "approved")
-        .where("regionId", "==", resolvedRegionId)
+        .where("status", "==", "approved"), lookupRegionIds)
         .orderBy("createdAt", "desc")
         .limit(300)
         .get();
@@ -5246,6 +5292,7 @@ exports.dailyJokesReminder1630 = onSchedule(
 exports.dailyDynamicEventReminder = onSchedule(
     {
       region: "asia-south1",
+      memory: "1GiB",
       schedule: "30 7 * * *",
       timeZone: "Asia/Kolkata",
     },
