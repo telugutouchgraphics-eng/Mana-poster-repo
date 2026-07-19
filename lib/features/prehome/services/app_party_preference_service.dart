@@ -107,7 +107,6 @@ class AppPartyPreferenceService {
             'selectedRegionName': region.name,
             'selectedRegionLanguage': region.primaryLanguage,
             'selectedRegionLanguageCode': region.primaryLanguageCode,
-            'preferredLanguage': region.appLanguage.name,
             'selectedPartyIds': sortedIds,
             'selectedParties': selectedParties
                 .map(

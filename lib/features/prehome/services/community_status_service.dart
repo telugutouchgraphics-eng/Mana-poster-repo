@@ -11,7 +11,6 @@ import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
-import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 enum CommunityStatusSubmitCode {
@@ -234,14 +233,11 @@ class CommunityStatusService {
     return null;
   }
 
-  Future<({AppRegion region, AppReligionPreference religion})?>
-  _currentVisibilityScope() async {
+  Future<AppRegion?> _currentVisibilityScope() async {
     final region = await AppRegionService.loadSelection();
     if (region == null) {
       return null;
     }
-    final religion =
-        await AppReligionService.loadSelection() ?? AppReligionPreference.all;
     final user = _auth.currentUser;
     if (user != null) {
       try {
@@ -253,7 +249,6 @@ class CommunityStatusService {
               'selectedRegionName': region.name,
               'selectedRegionLanguage': region.primaryLanguage,
               'selectedRegionLanguageCode': region.primaryLanguageCode,
-              'religionPreference': religion.name,
               'updatedAt': FieldValue.serverTimestamp(),
             }, SetOptions(merge: true))
             .timeout(const Duration(seconds: 3));
@@ -261,7 +256,7 @@ class CommunityStatusService {
         // Local scope still drives writes; remote sync will retry later.
       }
     }
-    return (region: region, religion: religion);
+    return region;
   }
 
   Stream<List<CommunityStatus>> watchVisibleStatuses({
@@ -323,13 +318,7 @@ class CommunityStatusService {
       );
     }
 
-    void listenForReligion(String religionName) {
-      final query = _firestore
-          .collection('communityStatuses')
-          .where('regionId', isEqualTo: scope.region.id)
-          .where('religionPreference', isEqualTo: religionName)
-          .orderBy('createdAt', descending: true)
-          .limit(safeLimit);
+    void listenToQuery(Query<Map<String, dynamic>> query) {
       subscriptions.add(
         query.snapshots().listen((snapshot) {
           for (final change in snapshot.docChanges) {
@@ -348,14 +337,31 @@ class CommunityStatusService {
       );
     }
 
-    final religionName = scope.religion.name;
-    if (religionName == AppReligionPreference.all.name) {
-      for (final item in AppReligionPreference.values) {
-        listenForReligion(item.name);
+    void listenForNearbyField(String field, String value) {
+      final safeValue = value.trim();
+      if (safeValue.isEmpty) {
+        return;
       }
+      final query = _firestore
+          .collection('communityStatuses')
+          .where(field, isEqualTo: safeValue)
+          .orderBy('createdAt', descending: true)
+          .limit(safeLimit);
+      listenToQuery(query);
+    }
+
+    if (area != null && area.hasArea) {
+      listenForNearbyField('locationCity', area.city);
+      listenForNearbyField('locationDistrict', area.district);
+      listenForNearbyField('locationState', area.state);
     } else {
-      listenForReligion(religionName);
-      listenForReligion(AppReligionPreference.all.name);
+      listenToQuery(
+        _firestore
+            .collection('communityStatuses')
+            .where('regionId', isEqualTo: scope.id)
+            .orderBy('createdAt', descending: true)
+            .limit(safeLimit),
+      );
     }
 
     controller.onCancel = () async {
@@ -496,9 +502,9 @@ class CommunityStatusService {
         'imagePath': imagePath,
         'text': safeText,
         'statusType': statusType,
-        'regionId': scope.region.id,
-        'regionName': scope.region.name,
-        'religionPreference': scope.religion.name,
+        'regionId': scope.id,
+        'regionName': scope.name,
+        'religionPreference': 'all',
         'locationState': area?.state.trim() ?? '',
         'locationDistrict': area?.district.trim() ?? '',
         'locationCity': area?.city.trim() ?? '',

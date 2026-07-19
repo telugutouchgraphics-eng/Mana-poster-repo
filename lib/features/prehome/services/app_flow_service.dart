@@ -33,7 +33,7 @@ class AppFlowSnapshot {
 
   String nextRoute({required bool isAuthenticated}) {
     if (!languageSelected) {
-      return AppRoutes.language;
+      return AppRoutes.appLanguage;
     }
     return isAuthenticated ? AppRoutes.home : AppRoutes.politicalParties;
   }
@@ -102,7 +102,6 @@ class AppFlowService {
     required Map<String, Object?> fileState,
     required Map<String, Object?> nativeState,
   }) async {
-    final selectedRegion = await AppRegionService.loadSelection(prefs: prefs);
     final String prefsLanguage = prefs.getString(_selectedLanguageKey) ?? '';
     final bool prefsLanguageSelected =
         prefs.getBool(_languageSelectedKey) ?? false;
@@ -129,18 +128,13 @@ class AppFlowService {
     final String resolvedLanguageRaw =
         hasManualLanguageSelection && manualLanguageRaw.isNotEmpty
         ? manualLanguageRaw
-        : (selectedRegion?.appLanguage.name.isNotEmpty == true
-              ? selectedRegion!.appLanguage.name
-              : (prefsLanguage.isNotEmpty
-                    ? prefsLanguage
-                    : (nativeLanguage.isNotEmpty
-                          ? nativeLanguage
-                          : (fileLanguage.isNotEmpty ? fileLanguage : ''))));
+        : (prefsLanguage.isNotEmpty
+              ? prefsLanguage
+              : (nativeLanguage.isNotEmpty
+                    ? nativeLanguage
+                    : (fileLanguage.isNotEmpty ? fileLanguage : '')));
     final bool languageSelected =
-        prefsLanguageSelected ||
-        nativeLanguageSelected ||
-        fileLanguageSelected ||
-        selectedRegion != null;
+        prefsLanguageSelected || nativeLanguageSelected || fileLanguageSelected;
     final language = _readLanguage(resolvedLanguageRaw);
     if (languageSelected) {
       _memoryLanguage = language;
@@ -168,6 +162,7 @@ class AppFlowService {
     final resolvedRoute = determineStartupRoute(
       hasAuthenticatedUser: hasAuthenticatedUser,
       hasSelectedRegion: hasSelectedRegion,
+      hasSelectedLanguage: snapshot.languageSelected,
       hasHandledPoliticalParties: hasHandledParties,
     );
 
@@ -429,6 +424,7 @@ class AppFlowService {
   }) async {
     final SharedPreferences resolvedPrefs =
         prefs ?? await SharedPreferences.getInstance();
+    final snapshot = await loadSnapshot(prefs: resolvedPrefs);
     final currentUser = await _resolveInitialCurrentUser();
     final cachedAuthUid = await loadLastKnownAuthUid(prefs: resolvedPrefs);
     final hasAuthenticatedUser =
@@ -450,6 +446,7 @@ class AppFlowService {
     return determineStartupRoute(
       hasAuthenticatedUser: hasAuthenticatedUser,
       hasSelectedRegion: hasSelectedRegion,
+      hasSelectedLanguage: snapshot.languageSelected,
       hasHandledPoliticalParties: hasHandledParties,
     );
   }
@@ -457,6 +454,7 @@ class AppFlowService {
   static String determineStartupRoute({
     required bool hasAuthenticatedUser,
     required bool hasSelectedRegion,
+    required bool hasSelectedLanguage,
     required bool hasHandledPoliticalParties,
   }) {
     if (hasAuthenticatedUser) {
@@ -464,6 +462,9 @@ class AppFlowService {
     }
     if (!hasSelectedRegion) {
       return AppRoutes.language;
+    }
+    if (!hasSelectedLanguage) {
+      return AppRoutes.appLanguage;
     }
     if (!hasHandledPoliticalParties) {
       return AppRoutes.politicalParties;
@@ -570,7 +571,7 @@ class AppFlowService {
     }
     return AppLanguage.values.firstWhere(
       (AppLanguage item) => item.name == rawValue,
-      orElse: () => AppLanguage.telugu,
+      orElse: () => AppLanguage.english,
     );
   }
 
@@ -582,7 +583,6 @@ class AppFlowService {
     final resolvedNativeState =
         nativeState ?? await NativeStartupStateStore.readAll();
     final resolvedFileState = fileState ?? await _readStartupStateFile();
-    final selectedRegion = await AppRegionService.loadSelection(prefs: prefs);
     final String? secureLanguage = await _secureStorage.read(
       key: _selectedLanguageKey,
     );
@@ -624,21 +624,18 @@ class AppFlowService {
     final String resolvedLanguageRaw =
         hasManualLanguageSelection && manualLanguageRaw.isNotEmpty
         ? manualLanguageRaw
-        : (selectedRegion?.appLanguage.name.isNotEmpty == true
-              ? selectedRegion!.appLanguage.name
-              : (prefsLanguage.isNotEmpty
-                    ? prefsLanguage
-                    : (nativeLanguage.isNotEmpty
-                          ? nativeLanguage
-                          : (fileLanguage.isNotEmpty
-                                ? fileLanguage
-                                : (secureLanguage ?? '')))));
+        : (prefsLanguage.isNotEmpty
+              ? prefsLanguage
+              : (nativeLanguage.isNotEmpty
+                    ? nativeLanguage
+                    : (fileLanguage.isNotEmpty
+                          ? fileLanguage
+                          : (secureLanguage ?? ''))));
     final bool languageSelected =
         prefsLanguageSelected ||
         nativeLanguageSelected ||
         fileLanguageSelected ||
-        secureFlag ||
-        selectedRegion != null;
+        secureFlag;
     final AppLanguage language = _readLanguage(resolvedLanguageRaw);
 
     if (prefsLanguage != language.name) {

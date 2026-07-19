@@ -90,10 +90,87 @@ void main() {
         language: AppLanguage.english,
       );
 
-      expect(
-        categories.any((item) => item.slug == 'sankranti_range'),
-        isTrue,
+      expect(categories.any((item) => item.slug == 'sankranti_range'), isTrue);
+    });
+
+    test('weekday categories do not use broad today special tags', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[]),
       );
+
+      final categories = service.categoriesForDate(
+        DateTime(2026, 7, 20),
+        language: AppLanguage.english,
+      );
+      final monday = categories.singleWhere(
+        (item) => item.slug == 'weekday_monday_special',
+      );
+
+      expect(monday.tags, contains('weekday_monday_special'));
+      expect(monday.tags, contains('weekday_special'));
+      expect(monday.tags, isNot(contains('today_special')));
+      expect(monday.tags, isNot(contains('important_day')));
+    });
+
+    test('dynamic event categories keep category tags exact', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[
+          DynamicCalendarEvent(
+            id: 'festival_exact',
+            slug: 'festival_exact',
+            type: DynamicCategoryType.festival,
+            scope: DynamicEventScope.india,
+            priority: 90,
+            sortOrder: 1,
+            startMonth: 7,
+            startDay: 20,
+            title: DynamicLocalizedTitle(
+              telugu: 'Festival Exact',
+              english: 'Festival Exact',
+              hindi: 'Festival Exact',
+            ),
+          ),
+          DynamicCalendarEvent(
+            id: 'jayanthi_exact',
+            slug: 'jayanthi_exact',
+            type: DynamicCategoryType.jayanthi,
+            scope: DynamicEventScope.india,
+            priority: 89,
+            sortOrder: 2,
+            startMonth: 7,
+            startDay: 20,
+            title: DynamicLocalizedTitle(
+              telugu: 'Jayanthi Exact',
+              english: 'Jayanthi Exact',
+              hindi: 'Jayanthi Exact',
+            ),
+          ),
+        ]),
+      );
+
+      final categories = service.categoriesForDate(
+        DateTime(2026, 7, 20),
+        language: AppLanguage.english,
+      );
+      final festival = categories.singleWhere(
+        (item) => item.slug == 'festival_exact',
+      );
+      final jayanthi = categories.singleWhere(
+        (item) => item.slug == 'jayanthi_exact',
+      );
+
+      expect(
+        festival.tags,
+        containsAll(<String>['festival_exact', 'festival']),
+      );
+      expect(festival.tags, isNot(contains('devotional')));
+      expect(festival.tags, isNot(contains('today_special')));
+      expect(
+        jayanthi.tags,
+        containsAll(<String>['jayanthi_exact', 'jayanthi']),
+      );
+      expect(jayanthi.tags, isNot(contains('important_day')));
+      expect(jayanthi.tags, isNot(contains('today_special')));
     });
 
     test('shows event categories only from the event date by default', () {
@@ -172,10 +249,7 @@ void main() {
         allowedScopes: <DynamicEventScope>{DynamicEventScope.india},
       );
 
-      expect(
-        categories.any((item) => item.slug == 'telangana_event'),
-        isFalse,
-      );
+      expect(categories.any((item) => item.slug == 'telangana_event'), isFalse);
       expect(categories.any((item) => item.slug == 'india_event'), isTrue);
     });
 

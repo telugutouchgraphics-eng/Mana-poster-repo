@@ -7,7 +7,6 @@ import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/models/app_region.dart';
-import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart';
@@ -48,16 +47,10 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
     }
     setState(() => _savingRegionId = region.id);
     final saved = await AppRegionService.persistSelection(region);
-    final languageSaved = saved
-        ? await AppFlowService.persistLanguageSelection(
-            region.appLanguage,
-            userInitiated: true,
-          )
-        : false;
     if (!mounted) {
       return;
     }
-    if (!saved || !languageSaved) {
+    if (!saved) {
       setState(() => _savingRegionId = null);
       ScaffoldMessenger.of(context).showTopSnackBar(
         AppSnackBar.build(
@@ -71,18 +64,13 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
       );
       return;
     }
-    final snapshot = await AppFlowService.loadSnapshot();
-    if (!mounted) {
-      return;
-    }
-    context.languageController.setLanguage(snapshot.language);
     unawaited(NotificationService.instance.syncCurrentPreferences());
     if (widget.returnToPreviousOnSave) {
       Navigator.of(context).pop(true);
       return;
     }
     Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.politicalParties,
+      AppRoutes.appLanguage,
       (Route<dynamic> route) => false,
     );
   }

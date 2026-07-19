@@ -79,7 +79,7 @@ Future<void> main() async {
         _attachFrameProfiler();
       }
 
-      runApp(const ManaPosterApp(initialLanguage: AppLanguage.telugu));
+      runApp(const ManaPosterApp(initialLanguage: AppLanguage.english));
       SchedulerBinding.instance.addPostFrameCallback((_) {
         FlutterNativeSplash.remove();
         if (!kIsWeb && _shouldRunNonEssentialStartupServices) {

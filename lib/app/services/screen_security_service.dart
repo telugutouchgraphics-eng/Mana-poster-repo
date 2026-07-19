@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 
 class ScreenSecurityService {
   ScreenSecurityService._();
@@ -24,6 +25,7 @@ class ScreenSecurityService {
 
   static int _protectedScreenDepth = 0;
   static StreamSubscription<User?>? _authSubscription;
+  static Future<void>? _firebaseReadyFuture;
 
   static Future<void> protectScreen() async {
     _ensureAuthListener();
@@ -58,6 +60,7 @@ class ScreenSecurityService {
       return;
     }
     try {
+      await _ensureFirebaseReadyForBypass();
       if (_isAdminBypassUser()) {
         await _channel.invokeMethod<void>('disableSecure');
         return;
@@ -71,6 +74,7 @@ class ScreenSecurityService {
       return;
     }
     try {
+      await _ensureFirebaseReadyForBypass();
       if (_protectedScreenDepth > 0 && !_isAdminBypassUser()) {
         await _channel.invokeMethod<void>('enableSecure');
         return;
@@ -83,18 +87,41 @@ class ScreenSecurityService {
     if (Firebase.apps.isEmpty) {
       return false;
     }
-    final currentEmail = _normalizeEmail(
-      FirebaseAuth.instance.currentUser?.email,
-    );
-    if (currentEmail.isEmpty) {
+    final user = FirebaseAuth.instance.currentUser;
+    final currentEmails = <String>{
+      _normalizeEmail(user?.email),
+      ...?user?.providerData.map((provider) => _normalizeEmail(provider.email)),
+    }..removeWhere((email) => email.isEmpty);
+    if (currentEmails.isEmpty) {
       return false;
     }
-    return _screenProtectionBypassEmails
+    final bypassEmails = _screenProtectionBypassEmails
         .map(_normalizeEmail)
         .where((email) => email.isNotEmpty)
-        .contains(currentEmail);
+        .toSet();
+    return currentEmails.any(bypassEmails.contains);
   }
 
   static String _normalizeEmail(String? email) =>
       (email ?? '').trim().toLowerCase();
+
+  static Future<void> _ensureFirebaseReadyForBypass() async {
+    if (Firebase.apps.isEmpty) {
+      final inFlight = _firebaseReadyFuture;
+      if (inFlight != null) {
+        await inFlight;
+      } else {
+        final future = FirebaseBootstrap.ensureInitialized(
+          activateAppCheck: false,
+        );
+        _firebaseReadyFuture = future;
+        try {
+          await future;
+        } finally {
+          _firebaseReadyFuture = null;
+        }
+      }
+    }
+    _ensureAuthListener();
+  }
 }

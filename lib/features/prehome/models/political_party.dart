@@ -315,8 +315,10 @@ const Map<String, Map<AppLanguage, String>> _localizedPartyNames =
         AppLanguage.malayalam: 'കേരള കോൺഗ്രസ്',
       },
       'cpi_ml_l': <AppLanguage, String>{
-        AppLanguage.telugu: 'భారత కమ్యూనిస్టు పార్టీ (మార్క్సిస్టు-లెనినిస్టు) లిబరేషన్',
-        AppLanguage.hindi: 'भारतीय कम्युनिस्ट पार्टी (मार्क्सवादी-लेनिनवादी) लिबरेशन',
+        AppLanguage.telugu:
+            'భారత కమ్యూనిస్టు పార్టీ (మార్క్సిస్టు-లెనినిస్టు) లిబరేషన్',
+        AppLanguage.hindi:
+            'भारतीय कम्युनिस्ट पार्टी (मार्क्सवादी-लेनिनवादी) लिबरेशन',
       },
       'aimim': <AppLanguage, String>{
         AppLanguage.telugu: 'ఆల్ ఇండియా మజ్లిస్-ఏ-ఇత్తెహాదుల్ ముస్లిమీన్',

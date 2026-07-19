@@ -26,7 +26,7 @@ import 'package:mana_poster/app/theme/app_theme.dart';
 class ManaPosterApp extends StatefulWidget {
   const ManaPosterApp({
     super.key,
-    this.initialLanguage = AppLanguage.telugu,
+    this.initialLanguage = AppLanguage.english,
     this.forcedHome,
     this.forceSingleRoute = false,
   });

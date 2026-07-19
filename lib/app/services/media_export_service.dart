@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -51,9 +52,11 @@ class MediaExportService {
   }
 
   static void _debugLogStack(String message, StackTrace stackTrace) {
-    if (!kDebugMode) {
-      return;
-    }
+    developer.log(
+      message,
+      name: 'ManaPosterMediaExport',
+      stackTrace: stackTrace,
+    );
     debugPrint(message);
     debugPrintStack(stackTrace: stackTrace);
   }
@@ -295,20 +298,58 @@ class MediaExportService {
     String? text,
     Rect? sharePositionOrigin,
   }) async {
+    final sourceFile = File(filePath);
+    if (!await sourceFile.exists() || await sourceFile.length() <= 0) {
+      throw MediaShareException(
+        code: 'file_missing',
+        message: 'Video file is not ready for sharing.',
+      );
+    }
     try {
       await SharePlus.instance.share(
         ShareParams(
-          files: <XFile>[XFile(filePath, mimeType: 'video/mp4')],
+          files: <XFile>[
+            XFile(
+              sourceFile.path,
+              mimeType: 'video/mp4',
+              name: sourceFile.path.split(Platform.pathSeparator).last,
+            ),
+          ],
           text: text,
           sharePositionOrigin: sharePositionOrigin,
         ),
       );
     } catch (error, stackTrace) {
       _debugLogStack('shareVideoFile error: $error', stackTrace);
-      throw MediaShareException(
-        code: 'share_failed',
-        message: error.toString(),
-      );
+      try {
+        final tempCopy = File(
+          '${Directory.systemTemp.path}${Platform.pathSeparator}'
+          'mana_poster_share_${DateTime.now().microsecondsSinceEpoch}.mp4',
+        );
+        await sourceFile.copy(tempCopy.path);
+        await SharePlus.instance.share(
+          ShareParams(
+            files: <XFile>[
+              XFile(
+                tempCopy.path,
+                mimeType: 'video/mp4',
+                name: 'mana_poster_video.mp4',
+              ),
+            ],
+            text: text,
+            sharePositionOrigin: sharePositionOrigin,
+          ),
+        );
+      } catch (fallbackError, fallbackStackTrace) {
+        _debugLogStack(
+          'shareVideoFile fallback error: $fallbackError',
+          fallbackStackTrace,
+        );
+        throw MediaShareException(
+          code: 'share_failed',
+          message: fallbackError.toString(),
+        );
+      }
     }
   }
 }

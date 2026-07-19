@@ -1353,7 +1353,7 @@ extension AppLanguageContextX on BuildContext {
 
   AppLanguage get currentLanguage => _usesEditorEnglishUi
       ? AppLanguage.english
-      : AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.telugu;
+      : AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.english;
   AppStrings get strings => AppStrings(currentLanguage);
 }
 

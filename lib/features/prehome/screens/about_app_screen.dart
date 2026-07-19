@@ -723,7 +723,7 @@ class _AboutCopy {
       telugu:
           'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; అదే region/religion scope users కు కనిపిస్తుంది, 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
       english:
-          'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; they are shown within the matching region/religion scope, deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
+          'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; if location is allowed, statuses are shown to nearby city/district/state users, otherwise the selected State/Union Territory is used as fallback. Statuses are deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
       hindi:
           'Status feature में 24 घंटे में 5 text statuses और 2 image/image + caption statuses तक upload किए जा सकते हैं; यह matching region/religion scope में दिखता है, 24 घंटे बाद backend cleanup से delete होता है, और replies status owner पढ़ सकता है।',
       tamil:
@@ -833,7 +833,7 @@ class _AboutCopy {
       telugu:
           'Status upload చేస్తే అది temporary గా backend లో save అయి same region/religion users కు చూపబడుతుంది; 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
       english:
-          'When a status is uploaded, it is stored temporarily in the backend and shown to same-region/religion users; active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
+          'When a status is uploaded, it is stored temporarily in the backend and shown to nearby city/district/state users when location is allowed; if location is not available, selected State/Union Territory fallback is used. Active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
       hindi:
           'Status upload होने पर वह backend में temporarily save होकर same region/religion users को दिखता है; 24 घंटे में 5 text और 2 image/image + caption active statuses की limit रहती है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
       tamil:

@@ -706,7 +706,7 @@ class _HelpSupportCopy {
             answer:
                 '1) A status can be text, image, or image with caption.\n'
                 '2) A user can keep up to 5 text statuses and 2 image/image + caption statuses active in 24 hours. Deleting an old active status or waiting for expiry frees the limit again.\n'
-                '3) Status visibility is limited to users in the same State/Union Territory and matching religion scope.\n'
+                '3) If location is allowed, statuses are shown to nearby city/district/state users. If location is not available, the selected State/Union Territory is used as fallback.\n'
                 '4) Image status files are compressed before upload to reduce file size.\n'
                 '5) Other users can reply/comment; the status owner can swipe up on the status screen to read replies.\n'
                 '6) Statuses, images, and replies/comments are deleted by backend cleanup after the 24-hour expiry. Because cleanup is scheduled, deletion may not happen at the exact second.\n'

@@ -460,13 +460,44 @@ service cloud.firestore {
       return signedIn() &&
         (
           status.userId == request.auth.uid ||
+          statusMatchesViewerLocation(status, viewer) ||
           (
-            status.regionId == viewer.selectedRegion &&
-            (
-              viewer.religionPreference == "all" ||
-              status.religionPreference == "all" ||
-              status.religionPreference == viewer.religionPreference
-            )
+            !viewerHasLocationArea(viewer) &&
+            status.regionId == viewer.selectedRegion
+          )
+        );
+    }
+
+    function viewerHasLocationArea(viewer) {
+      return viewer.locationEnabled == true &&
+        viewer.locationArea is map &&
+        (
+          (viewer.locationArea.city is string && viewer.locationArea.city.size() > 0) ||
+          (viewer.locationArea.district is string && viewer.locationArea.district.size() > 0) ||
+          (viewer.locationArea.state is string && viewer.locationArea.state.size() > 0)
+        );
+    }
+
+    function statusMatchesViewerLocation(status, viewer) {
+      return viewerHasLocationArea(viewer) &&
+        (
+          (
+            status.locationCity is string &&
+            status.locationCity.size() > 0 &&
+            viewer.locationArea.city is string &&
+            status.locationCity == viewer.locationArea.city
+          ) ||
+          (
+            status.locationDistrict is string &&
+            status.locationDistrict.size() > 0 &&
+            viewer.locationArea.district is string &&
+            status.locationDistrict == viewer.locationArea.district
+          ) ||
+          (
+            status.locationState is string &&
+            status.locationState.size() > 0 &&
+            viewer.locationArea.state is string &&
+            status.locationState == viewer.locationArea.state
           )
         );
     }
@@ -723,7 +754,8 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Short-lived community statuses visible only inside matching region/religion scope.
+    // Short-lived community statuses are visible to nearby users when location is available,
+    // with selected State/UT fallback when the viewer has no location area.
     match /communityStatuses/{statusId} {
       allow read: if canReadCommunityStatus();
       allow create: if signedIn() &&

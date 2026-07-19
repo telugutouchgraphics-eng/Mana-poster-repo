@@ -9,9 +9,22 @@ void main() {
         AppFlowService.determineStartupRoute(
           hasAuthenticatedUser: false,
           hasSelectedRegion: false,
+          hasSelectedLanguage: false,
           hasHandledPoliticalParties: false,
         ),
         AppRoutes.language,
+      );
+    });
+
+    test('moves to app language selection after state selection', () {
+      expect(
+        AppFlowService.determineStartupRoute(
+          hasAuthenticatedUser: false,
+          hasSelectedRegion: true,
+          hasSelectedLanguage: false,
+          hasHandledPoliticalParties: false,
+        ),
+        AppRoutes.appLanguage,
       );
     });
 
@@ -20,6 +33,7 @@ void main() {
         AppFlowService.determineStartupRoute(
           hasAuthenticatedUser: false,
           hasSelectedRegion: true,
+          hasSelectedLanguage: true,
           hasHandledPoliticalParties: false,
         ),
         AppRoutes.politicalParties,
@@ -31,6 +45,7 @@ void main() {
         AppFlowService.determineStartupRoute(
           hasAuthenticatedUser: false,
           hasSelectedRegion: true,
+          hasSelectedLanguage: true,
           hasHandledPoliticalParties: true,
         ),
         AppRoutes.login,
@@ -44,6 +59,7 @@ void main() {
             AppFlowService.determineStartupRoute(
               hasAuthenticatedUser: true,
               hasSelectedRegion: hasSelectedRegion,
+              hasSelectedLanguage: false,
               hasHandledPoliticalParties: hasHandledParties,
             ),
             AppRoutes.home,

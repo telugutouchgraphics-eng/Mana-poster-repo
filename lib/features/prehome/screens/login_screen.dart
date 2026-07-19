@@ -782,7 +782,13 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<String> _resolveBackRoute() async {
     final hasRegion = await AppRegionService.hasSelection();
-    return hasRegion ? AppRoutes.politicalParties : AppRoutes.language;
+    final snapshot = await AppFlowService.loadSnapshot();
+    if (!hasRegion) {
+      return AppRoutes.language;
+    }
+    return snapshot.languageSelected
+        ? AppRoutes.politicalParties
+        : AppRoutes.appLanguage;
   }
 }
 

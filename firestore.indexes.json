@@ -127,7 +127,63 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "communityStatuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "regionId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "religionPreference",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "communityStatuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "locationCity",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "communityStatuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "locationDistrict",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "communityStatuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "locationState",
           "order": "ASCENDING"
         },
         {

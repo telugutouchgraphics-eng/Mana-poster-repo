@@ -6,6 +6,7 @@ import 'package:mana_poster/features/image_editor/screens/image_editor_screen_we
     if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
+import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
@@ -18,6 +19,7 @@ import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 class AppRoutes {
   static const splash = '/';
   static const language = '/language';
+  static const appLanguage = '/app-language';
   static const politicalParties = '/political-parties';
   static const login = '/login';
   static const permissions = '/permissions';
@@ -51,6 +53,8 @@ class AppRoutes {
     switch (routeName) {
       case language:
         return _readyEntry(const RegionSelectionScreen());
+      case appLanguage:
+        return _readyEntry(const LanguageSettingsScreen(onboardingMode: true));
       case politicalParties:
         return _readyEntry(const PoliticalPartiesScreen());
       case login:
@@ -65,6 +69,8 @@ class AppRoutes {
   static final Map<String, WidgetBuilder> map = <String, WidgetBuilder>{
     splash: (_) => _webEntry(const SplashScreen()),
     language: (_) => _readyEntry(const RegionSelectionScreen()),
+    appLanguage: (_) =>
+        _readyEntry(const LanguageSettingsScreen(onboardingMode: true)),
     politicalParties: (_) => _readyEntry(const PoliticalPartiesScreen()),
     login: (_) => _readyEntry(const LoginScreen()),
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),

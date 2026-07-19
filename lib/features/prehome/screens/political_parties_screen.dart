@@ -182,7 +182,7 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
               child: AppScreenBackButton(
                 fallbackRoute: widget.returnToPreviousOnSave
                     ? null
-                    : AppRoutes.language,
+                    : AppRoutes.appLanguage,
               ),
             ),
           ),

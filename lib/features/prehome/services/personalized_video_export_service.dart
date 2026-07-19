@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as developer;
 import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -64,7 +65,7 @@ class PersonalizedVideoExportService {
   static const int outputWidth = 1080;
   static const int outputHeight = 1920;
   static const double _animationSeconds = 1.15;
-  static const int _exportLayoutVersion = 5;
+  static const int _exportLayoutVersion = 6;
   static final Map<String, Future<File>> _remoteVideoCache =
       <String, Future<File>>{};
   static final Map<String, Future<String>> _exportCache =
@@ -240,16 +241,20 @@ class PersonalizedVideoExportService {
       }
       lastCode = returnCode?.getValue();
       lastLogs = await session.getAllLogsAsString();
+      final logs = lastLogs?.trim();
+      final excerpt = logs == null || logs.isEmpty
+          ? ''
+          : (logs.length > 1800 ? logs.substring(logs.length - 1800) : logs);
+      developer.log(
+        'Personalized video export ${attempt.name} failed code=${lastCode ?? 'unknown'} $excerpt',
+        name: 'ManaPosterVideoExport',
+      );
       if (kDebugMode) {
         debugPrint(
           'Personalized video export ${attempt.name} failed in ${elapsedMs}ms '
           'code=${lastCode ?? 'unknown'}',
         );
-        final logs = lastLogs?.trim();
         if (logs != null && logs.isNotEmpty) {
-          final excerpt = logs.length > 1800
-              ? logs.substring(logs.length - 1800)
-              : logs;
           debugPrint(
             'Personalized video export ${attempt.name} logs: $excerpt',
           );
@@ -746,6 +751,7 @@ class PersonalizedVideoExportService {
               ? ui.Offset(outputWidth.toDouble(), stripHeight.toDouble())
               : ui.Offset(outputWidth.toDouble(), 0),
           stripGradient,
+          _gradientStops(stripGradient.length),
         ),
     );
     _drawStripAccent(
@@ -1064,6 +1070,18 @@ class PersonalizedVideoExportService {
     return gradients[resolvedIndex];
   }
 
+  List<double>? _gradientStops(int colorCount) {
+    if (colorCount <= 2) {
+      return null;
+    }
+    final lastIndex = colorCount - 1;
+    return List<double>.generate(
+      colorCount,
+      (index) => index / lastIndex,
+      growable: false,
+    );
+  }
+
   int _resolvePosterStripModel({
     required String previewSeed,
     required double stripHeight,
@@ -1288,6 +1306,8 @@ class PersonalizedVideoExportService {
       '-shortest',
       '-avoid_negative_ts',
       'make_zero',
+      '-movflags',
+      '+faststart',
       if (copyAudio) ...<String>['-c:a', 'copy'] else ...<String>[
         '-c:a',
         'aac',
@@ -1336,6 +1356,20 @@ class PersonalizedVideoExportService {
         '28',
         '-threads',
         '0',
+        '-pix_fmt',
+        'yuv420p',
+        ...tail(copyAudio: false),
+      ]),
+      _FfmpegExportAttempt('mpeg4_aac', <String>[
+        ...baseInputs(),
+        '-c:v',
+        'mpeg4',
+        '-q:v',
+        '3',
+        '-maxrate',
+        '9000k',
+        '-bufsize',
+        '18000k',
         '-pix_fmt',
         'yuv420p',
         ...tail(copyAudio: false),

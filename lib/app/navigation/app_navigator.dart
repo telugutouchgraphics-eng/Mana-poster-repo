@@ -22,6 +22,7 @@ class AppNavigator {
     AppRoutes.politicalParties,
     AppRoutes.profileSetup,
     AppRoutes.language,
+    AppRoutes.appLanguage,
     AppRoutes.notificationUnavailable,
   };
 

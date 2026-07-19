@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 
 class LanguageSettingsScreen extends StatefulWidget {
-  const LanguageSettingsScreen({super.key});
+  const LanguageSettingsScreen({super.key, this.onboardingMode = false});
+
+  final bool onboardingMode;
 
   @override
   State<LanguageSettingsScreen> createState() => _LanguageSettingsScreenState();
@@ -30,6 +33,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        automaticallyImplyLeading: !widget.onboardingMode,
         backgroundColor: const Color(0xFFF3F6FB),
         elevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -130,7 +134,14 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
                     return;
                   }
                   context.languageController.setLanguage(_selected);
-                  Navigator.of(context).pop();
+                  if (widget.onboardingMode) {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      AppRoutes.politicalParties,
+                      (Route<dynamic> route) => false,
+                    );
+                  } else {
+                    Navigator.of(context).pop();
+                  }
                 },
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),

@@ -202,7 +202,7 @@ class DynamicCategoryService {
       scope: DynamicEventScope.global,
       priority: 10,
       sortOrder: 10000,
-      tags: <String>['weekday_special', 'today_special', slug],
+      tags: <String>['weekday_special', slug],
       regionIds: const <String>{},
     );
   }
@@ -352,30 +352,12 @@ class DynamicCategoryService {
 
   Iterable<String> _categoryTypeTags(DynamicCategoryType type) {
     return switch (type) {
-      DynamicCategoryType.festival => const <String>['festival', 'devotional'],
-      DynamicCategoryType.jayanthi => const <String>[
-        'jayanthi',
-        'important_day',
-        'today_special',
-      ],
-      DynamicCategoryType.vardhanthi => const <String>[
-        'vardhanthi',
-        'important_day',
-        'today_special',
-      ],
-      DynamicCategoryType.importantDay => const <String>[
-        'important_day',
-        'today_special',
-      ],
-      DynamicCategoryType.weekdaySpecial => const <String>[
-        'weekday_special',
-        'today_special',
-      ],
-      DynamicCategoryType.regionalSpecial => const <String>[
-        'regional_special',
-        'important_day',
-        'today_special',
-      ],
+      DynamicCategoryType.festival => const <String>['festival'],
+      DynamicCategoryType.jayanthi => const <String>['jayanthi'],
+      DynamicCategoryType.vardhanthi => const <String>['vardhanthi'],
+      DynamicCategoryType.importantDay => const <String>['important_day'],
+      DynamicCategoryType.weekdaySpecial => const <String>['weekday_special'],
+      DynamicCategoryType.regionalSpecial => const <String>['regional_special'],
     };
   }
 
