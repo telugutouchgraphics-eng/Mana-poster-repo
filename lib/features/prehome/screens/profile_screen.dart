@@ -19,7 +19,6 @@ import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
-import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
@@ -291,21 +290,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     ).showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
-  Future<void> _openPoliticalPartySelection(_ProfileCopy copy) async {
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) =>
-            const PoliticalPartiesScreen(returnToPreviousOnSave: true),
-      ),
-    );
-    if (!mounted || changed != true) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showTopSnackBar(
-      AppSnackBar.build(content: Text(copy.politicalPartySavedMessage)),
-    );
-  }
-
   Future<void> _openRegionSelection(_ProfileCopy copy) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
@@ -333,23 +317,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) {
       return;
     }
-    final partiesChanged = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) =>
-            const PoliticalPartiesScreen(returnToPreviousOnSave: true),
-      ),
-    );
-    if (!mounted) {
-      return;
-    }
     ScaffoldMessenger.of(context).showTopSnackBar(
-      AppSnackBar.build(
-        content: Text(
-          partiesChanged == true
-              ? copy.politicalPartySavedMessage
-              : copy.stateSavedMessage,
-        ),
-      ),
+      AppSnackBar.build(content: Text(copy.stateSavedMessage)),
     );
   }
 
@@ -401,7 +370,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 builder: (_) => _ProfileMoreScreen(
                   onShareApp: _shareApp,
                   onOpenRegionSelection: _openRegionSelection,
-                  onOpenPoliticalPartySelection: _openPoliticalPartySelection,
                   onOpenReligionSelection: _openReligionSelection,
                   onLogout: _logout,
                   showAdPrivacyChoices: _privacyChoicesVisible,
@@ -600,7 +568,6 @@ class _ProfileMoreScreen extends StatelessWidget {
   const _ProfileMoreScreen({
     required this.onShareApp,
     required this.onOpenRegionSelection,
-    required this.onOpenPoliticalPartySelection,
     required this.onOpenReligionSelection,
     required this.onLogout,
     required this.showAdPrivacyChoices,
@@ -608,7 +575,6 @@ class _ProfileMoreScreen extends StatelessWidget {
 
   final Future<void> Function(_ProfileCopy copy) onShareApp;
   final Future<void> Function(_ProfileCopy copy) onOpenRegionSelection;
-  final Future<void> Function(_ProfileCopy copy) onOpenPoliticalPartySelection;
   final Future<void> Function(_ProfileCopy copy) onOpenReligionSelection;
   final Future<void> Function(_ProfileCopy copy) onLogout;
   final bool showAdPrivacyChoices;
@@ -778,18 +744,6 @@ class _ProfileMoreScreen extends StatelessWidget {
                   title: copy.stateTitle,
                   subtitle: copy.stateSubtitle,
                   onTap: () => unawaited(onOpenRegionSelection(copy)),
-                ),
-                _ProfileItemData(
-                  icon: Icons.how_to_vote_rounded,
-                  title: copy.politicalPartyTitle,
-                  subtitle: copy.politicalPartySubtitle,
-                  onTap: () => unawaited(onOpenPoliticalPartySelection(copy)),
-                ),
-                _ProfileItemData(
-                  icon: Icons.account_balance_rounded,
-                  title: copy.religionTitle,
-                  subtitle: copy.religionSubtitle,
-                  onTap: () => unawaited(onOpenReligionSelection(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.location_on_outlined,

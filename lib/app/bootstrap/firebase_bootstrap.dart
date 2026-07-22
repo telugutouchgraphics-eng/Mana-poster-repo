@@ -23,6 +23,10 @@ const bool _enableReleaseAppCheck = bool.fromEnvironment(
   'MANA_POSTER_ENABLE_RELEASE_APP_CHECK',
   defaultValue: true,
 );
+const bool _forceAndroidDebugAppCheck = bool.fromEnvironment(
+  'MANA_POSTER_FORCE_ANDROID_DEBUG_APP_CHECK',
+  defaultValue: false,
+);
 
 class FirebaseBootstrap {
   const FirebaseBootstrap._();
@@ -143,6 +147,18 @@ class FirebaseBootstrap {
 
   static Future<AndroidAppCheckProvider?> _resolveAndroidProvider() async {
     if (!kReleaseMode) {
+      return AndroidDebugProvider(
+        debugToken: _androidAppCheckDebugToken.isEmpty
+            ? null
+            : _androidAppCheckDebugToken,
+      );
+    }
+
+    if (_forceAndroidDebugAppCheck) {
+      developer.log(
+        'Using debug App Check provider for explicitly flagged Android release validation.',
+        name: 'bootstrap.firebase',
+      );
       return AndroidDebugProvider(
         debugToken: _androidAppCheckDebugToken.isEmpty
             ? null

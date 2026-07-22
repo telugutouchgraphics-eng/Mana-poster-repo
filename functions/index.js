@@ -1110,7 +1110,7 @@ async function reserveNotificationDelivery({
       if (slots[slot] === true) {
         return {allowed: false, reason: "same_slot_already_sent"};
       }
-      if (categories[category] === true) {
+      if (category !== "dynamic_event" && categories[category] === true) {
         return {allowed: false, reason: "same_category_already_sent"};
       }
       tx.set(ref, {
@@ -1145,6 +1145,9 @@ function reminderCategoryKey(input) {
   const normalized = normalizeText(input);
   if (normalized.includes("welcome")) {
     return "welcome";
+  }
+  if (normalized.includes("dynamic") || normalized.includes("event")) {
+    return "dynamic_event";
   }
   if (normalized.includes("motivation") || normalized.includes("inspiration")) {
     return "motivation";
@@ -2116,6 +2119,51 @@ const hindiSharedContentRegionIds = [
 
 function isPoliticalCategoryId(categoryId) {
   return normalizeRegionId(categoryId).startsWith("party_");
+}
+
+function isPoliticalDynamicEvent(event) {
+  const parts = [
+    event?.id,
+    event?.title,
+    event?.type,
+    event?.scope,
+    ...(Array.isArray(event?.keywords) ? event.keywords : []),
+    ...(Array.isArray(event?.tags) ? event.tags : []),
+  ].map((item) => normalizeText(item));
+  return parts.some((item) =>
+    item.includes("political") ||
+    item.includes("politics") ||
+    item.includes("party_") ||
+    item.includes("party "),
+  );
+}
+
+function eventRegionIds(event) {
+  return Array.from(new Set((Array.isArray(event?.regionIds) ? event.regionIds : [])
+      .map((item) => normalizeRegionId(item))
+      .filter((item) => item.length > 0)));
+}
+
+function dynamicEventAppliesToRegion(event, regionId) {
+  const resolvedRegionId = normalizeRegionId(regionId);
+  const scopedRegionIds = eventRegionIds(event);
+  if (scopedRegionIds.length === 0) {
+    return true;
+  }
+  if (!resolvedRegionId) {
+    return false;
+  }
+  if (scopedRegionIds.includes(resolvedRegionId)) {
+    return true;
+  }
+  if (
+    !isPoliticalDynamicEvent(event) &&
+    teluguSharedContentRegionIds.includes(resolvedRegionId) &&
+    scopedRegionIds.some((item) => teluguSharedContentRegionIds.includes(item))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function sharedContentRegionIdsFor(regionId, categoryId = "") {
@@ -3623,6 +3671,7 @@ async function sendDirectReminderToEligibleTokens({
   eventTitle = "",
   eventTiming = "",
   eventKeywords = [],
+  dynamicEvent = null,
 }) {
   const userTokenSnap = await db.collectionGroup("deviceTokens").get();
   const publicSnap = await db.collection("publicDeviceTokens").get();
@@ -3702,6 +3751,16 @@ async function sendDirectReminderToEligibleTokens({
           profileCache.set(uid, profile);
         }
         resolvedRegionId = normalizeRegionId(resolvedRegionId || profile?.selectedRegion);
+        if (dynamicEvent && !dynamicEventAppliesToRegion(dynamicEvent, resolvedRegionId)) {
+          logger.info("direct dynamic reminder skipped by region scope", {
+            tokenSuffix: String(token || "").slice(-12),
+            uid,
+            eventId: dynamicEvent.id || "",
+            eventTitle,
+            regionId: resolvedRegionId,
+          });
+          return;
+        }
         const copy = buildNotificationCopy(
             "dynamic_event",
             language || profile?.preferredLanguage,
@@ -4046,6 +4105,94 @@ function toMillis(value) {
   }
   return 0;
 }
+
+function serializeApprovedCreatorPoster(doc) {
+  const data = doc.data() || {};
+  return {
+    id: doc.id,
+    title: String(data.title || "Creator Poster"),
+    imageUrl: String(data.imageUrl || data.downloadUrl || data.publicUrl || ""),
+    imagePath: String(data.imagePath || data.posterImagePath || data.storagePath || ""),
+    thumbnailPath: String(data.thumbnailPath || data.posterThumbnailPath || data.thumbPath || ""),
+    thumbnailUrl: String(data.thumbnailUrl || data.thumbUrl || data.previewUrl || ""),
+    videoUrl: String(data.videoUrl || data.videoPreviewUrl || ""),
+    mediaType: String(data.mediaType || data.type || ""),
+    categoryId: String(data.categoryId || ""),
+    categoryLabel: String(data.categoryLabel || ""),
+    regionId: String(data.regionId || ""),
+    creatorPublicId: String(data.creatorPublicId || ""),
+    createdAt: toMillis(data.createdAt),
+    widthPx: Number(data.widthPx) || null,
+    heightPx: Number(data.heightPx) || null,
+    personalizationConfig: data.personalizationConfig || data.personalization || null,
+  };
+}
+
+async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 40, 120));
+  const normalizedCategoryId = normalizeRegionId(categoryId);
+  const lookupRegionIds = sharedContentRegionIdsFor(regionId || "telangana", normalizedCategoryId);
+  const seen = new Set();
+  const docs = [];
+  const baseQuery = db.collection("creatorPosters").where("status", "==", "approved");
+  if (normalizedCategoryId) {
+    for (const lookupRegionId of lookupRegionIds) {
+      const snap = await baseQuery
+          .where("regionId", "==", lookupRegionId)
+          .where("categoryId", "==", normalizedCategoryId)
+          .orderBy("createdAt", "desc")
+          .limit(safeLimit)
+          .get();
+      for (const doc of snap.docs) {
+        if (!seen.has(doc.id)) {
+          seen.add(doc.id);
+          docs.push(doc);
+        }
+      }
+    }
+  } else {
+    const snap = await applyRegionScope(baseQuery, lookupRegionIds)
+        .orderBy("createdAt", "desc")
+        .limit(safeLimit * 2)
+        .get();
+    for (const doc of snap.docs) {
+      if (!seen.has(doc.id)) {
+        seen.add(doc.id);
+        docs.push(doc);
+      }
+    }
+  }
+  const nowMillis = Date.now();
+  return docs
+      .filter((doc) => posterIsCurrentlyVisible(doc.data(), nowMillis))
+      .sort((left, right) => posterVisibleFromMillis(right.data()) - posterVisibleFromMillis(left.data()))
+      .slice(0, safeLimit)
+      .map(serializeApprovedCreatorPoster);
+}
+
+exports.appCreatorPostersFeed = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ok: false, error: "Method not allowed."});
+    return;
+  }
+  try {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const posters = await queryApprovedCreatorPosters({
+      regionId: normalizeRegionId(body.regionId || "telangana"),
+      categoryId: normalizeRegionId(body.categoryId || ""),
+      limit: body.limit,
+    });
+    res.status(200).json({ok: true, posters});
+  } catch (error) {
+    logger.error("appCreatorPostersFeed failed", error);
+    res.status(500).json({ok: false, error: "Unable to load posters."});
+  }
+});
 
 function posterVisibleFromMillis(data) {
   const publishAt = toMillis(data.publishAt);
@@ -5330,6 +5477,7 @@ exports.dailyDynamicEventReminder = onSchedule(
           eventTitle: event.title,
           eventTiming,
           eventKeywords: event.keywords || [event.title],
+          dynamicEvent: event,
         });
 
         await sentRef.set({

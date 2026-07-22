@@ -1270,6 +1270,7 @@ class _HomeScreenState extends State<HomeScreen>
     milliseconds: 450,
   );
   static const Duration _homeStartupRemoteTimeout = Duration(seconds: 7);
+  static const Duration _homeResumeRefreshCooldown = Duration(minutes: 7);
   static const bool _enableDebugHomeStartupServices = bool.fromEnvironment(
     'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
     defaultValue: false,
@@ -1370,9 +1371,12 @@ class _HomeScreenState extends State<HomeScreen>
   bool _startupSnapshotAttemptCompleted = false;
   bool _startupPermissionPromptQueued = false;
   bool _screenSecurityProtected = false;
+  DateTime? _lastHomeFeedRefreshAt;
   List<_TemplateItem>? _rankedAllFeedTemplates;
   List<_TemplateItem>? _lockedAllFeedTemplates;
   Set<String> _recentAllFeedTemplateKeys = <String>{};
+  StreamSubscription<User?>? _authStateSubscription;
+  String _lastHomeAuthUid = '';
   Timer? _startupSnapshotPersistTimer;
   Timer? _allFeedInterestSaveTimer;
   Map<String, double> _allFeedInterestScores = <String, double>{};
@@ -1417,6 +1421,10 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     AppRegionService.selectionVersion.addListener(
       _handleRegionSelectionChanged,
+    );
+    _lastHomeAuthUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      _handleHomeAuthStateChanged,
     );
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1987,6 +1995,44 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _handleHomeAuthStateChanged(User? user) {
+    final nextUid = user?.uid.trim() ?? '';
+    if (nextUid == _lastHomeAuthUid) {
+      return;
+    }
+    _lastHomeAuthUid = nextUid;
+    if (!mounted || nextUid.isEmpty) {
+      return;
+    }
+    unawaited(_reloadHomeContentAfterAuthReady());
+  }
+
+  Future<void> _reloadHomeContentAfterAuthReady() async {
+    await FirebaseBootstrap.ensureInitialized();
+    if (!mounted) {
+      return;
+    }
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      await _resolveAndScheduleRemoteHomeStartupTasks();
+    }
+    if (!mounted || !_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
+    _hydratedCategorySlugs.clear();
+    _dynamicCategoryAvailabilityBySlug.clear();
+    _dynamicCategoryAvailabilityInFlight.clear();
+    _dynamicCategoryAvailabilitySignature = '';
+    _categoryListCache = null;
+    _categoryListIdentity = null;
+    _templateProjectionCache = null;
+    _templateProjectionIdentity = null;
+    await _refreshHomeFeed(force: true);
+    if (!mounted) {
+      return;
+    }
+    _triggerSelectedCategoryPrefetch();
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -1994,6 +2040,7 @@ class _HomeScreenState extends State<HomeScreen>
       _handleRegionSelectionChanged,
     );
     AppNavigator.routeObserver.unsubscribe(this);
+    _authStateSubscription?.cancel();
     _startupSnapshotPersistTimer?.cancel();
     _allFeedInterestSaveTimer?.cancel();
     unawaited(_persistAllFeedInterestScores());
@@ -3170,14 +3217,58 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Set<String> _strictDynamicCategorySignals(_CategoryChipData category) {
+    final normalizedSelectionSlug = _normalizeTag(
+      category.effectiveSelectionSlug,
+    );
     final normalizedSlug = _normalizeTag(category.slug);
-    if (normalizedSlug.isEmpty) {
+    final weekdaySlug = normalizedSelectionSlug.isNotEmpty
+        ? normalizedSelectionSlug
+        : normalizedSlug;
+    if (weekdaySlug.isEmpty) {
       return const <String>{};
     }
-    if (_isWeekdaySpecialCategorySlug(normalizedSlug)) {
-      return <String>{normalizedSlug};
+    if (_isWeekdaySpecialCategorySlug(weekdaySlug)) {
+      return <String>{weekdaySlug};
     }
-    return _expandCategoryAliases(normalizedSlug);
+    const broadDynamicTags = <String>{
+      'festival',
+      'festivals',
+      'jayanthi',
+      'jayanthulu',
+      'vardhanthi',
+      'vardhanthulu',
+      'birthday',
+      'birthdays',
+      'important_day',
+      'special_day',
+      'regional_special',
+      'weekday_special',
+    };
+    final output = <String>{};
+
+    void addValue(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isEmpty || broadDynamicTags.contains(normalized)) {
+        return;
+      }
+      output.add(normalized);
+      output.addAll(
+        _expandCategoryAliases(
+          normalized,
+        ).where((alias) => !broadDynamicTags.contains(alias)),
+      );
+    }
+
+    addValue(category.effectiveSelectionSlug);
+    addValue(category.slug);
+    addValue(category.label);
+    for (final tag in category.presenceTags) {
+      addValue(tag);
+    }
+    for (final tag in category.matchTags) {
+      addValue(tag);
+    }
+    return output;
   }
 
   bool _isWeekdaySpecialCategorySlug(String slug) {
@@ -5455,6 +5546,7 @@ class _HomeScreenState extends State<HomeScreen>
       identityHashCode(_lockedAllFeedTemplates),
       _allFeedRankingReady,
       selectedCategory.slug,
+      selectedCategory.effectiveSelectionSlug,
       language,
       _searchController.text,
       _religionPreference,
@@ -5595,9 +5687,16 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // ignore: unused_element
-  Future<void> _refreshHomeFeed() async {
+  Future<void> _refreshHomeFeed({bool force = false}) async {
     if (_homeRefreshing) {
       return;
+    }
+    if (!force) {
+      final lastRefresh = _lastHomeFeedRefreshAt;
+      if (lastRefresh != null &&
+          DateTime.now().difference(lastRefresh) < _homeResumeRefreshCooldown) {
+        return;
+      }
     }
     setState(() {
       _homeRefreshing = true;
@@ -5609,6 +5708,10 @@ class _HomeScreenState extends State<HomeScreen>
     _rankedAllFeedTemplates = null;
     _searchFocusNode.unfocus();
     try {
+      await FirebaseBootstrap.ensureInitialized();
+      if (!mounted) {
+        return;
+      }
       await Future.wait<void>(<Future<void>>[
         _loadHomeBanners(),
         _loadApprovedCreatorTemplates(forceRefresh: true),
@@ -5616,6 +5719,7 @@ class _HomeScreenState extends State<HomeScreen>
         _loadPermanentCategories(),
         _loadViewerPosterProfile(),
       ]);
+      _lastHomeFeedRefreshAt = DateTime.now();
     } finally {
       if (mounted) {
         setState(() => _homeRefreshing = false);
@@ -6277,10 +6381,10 @@ class _HomeScreenState extends State<HomeScreen>
           source: Source.server,
           scanLimit: _templatesPageSize * 2,
         );
-    if (!mounted || generation != _categoryLoadGeneration || targeted.isEmpty) {
-      if (normalizedSlug.isNotEmpty) {
-        _hydratedCategorySlugs.add(normalizedSlug);
-      }
+    if (!mounted || generation != _categoryLoadGeneration) {
+      return;
+    }
+    if (targeted.isEmpty) {
       return;
     }
     final mapped = await _mapTemplatesOffMain(
@@ -6305,6 +6409,12 @@ class _HomeScreenState extends State<HomeScreen>
       _homeDebugLog(
         '[PosterUI] categoryTopUp slug=$slug targeted=${mapped.length} fresh=0',
       );
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+      _hydratedCategorySlugs.add(normalizedSlug);
+      setState(() {});
       return;
     }
     _homeDebugLog(

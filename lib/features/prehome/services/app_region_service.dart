@@ -14,6 +14,7 @@ import 'package:mana_poster/features/prehome/services/device_session_service.dar
 class AppRegionService {
   AppRegionService._();
 
+  static const String fallbackRegionId = 'telangana';
   static const String selectedRegionKey = 'selected_region_v1';
   static const String selectedRegionLanguageKey = 'selected_region_language_v1';
   static const String selectedRegionLanguageCodeKey =
@@ -63,6 +64,15 @@ class AppRegionService {
       _memoryRegion = secureRegion;
       unawaited(_syncToRemote(secureRegion));
       return secureRegion;
+    }
+
+    final remoteRegion = await _loadRemoteRegion();
+    if (remoteRegion != null) {
+      final prefsForMirror =
+          resolvedPrefs ?? prefs ?? await SharedPreferences.getInstance();
+      await _mirrorLocalSelection(remoteRegion, prefsForMirror);
+      _memoryRegion = remoteRegion;
+      return remoteRegion;
     }
     return _memoryRegion;
   }
@@ -130,6 +140,26 @@ class AppRegionService {
   static Future<AppRegion?> _loadSecureRegion() async {
     try {
       return appRegionById(await _secureStorage.read(key: selectedRegionKey));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<AppRegion?> _loadRemoteRegion() async {
+    if (Firebase.apps.isEmpty) {
+      return null;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return null;
+    }
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get()
+          .timeout(const Duration(seconds: 4));
+      return appRegionById(snapshot.data()?['selectedRegion'] as String?);
     } catch (_) {
       return null;
     }

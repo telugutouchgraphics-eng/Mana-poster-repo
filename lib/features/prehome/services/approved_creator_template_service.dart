@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
+import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
@@ -27,6 +31,8 @@ const Set<String> _hindiSharedContentRegionIds = <String>{
   'delhi',
   'andaman_nicobar',
 };
+const String _appCreatorPostersFeedEndpoint =
+    'https://asia-south1-mana-poster-ap.cloudfunctions.net/appCreatorPostersFeed';
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -72,8 +78,11 @@ class ApprovedCreatorTemplateService {
 
   Future<String> _selectedRegionId() async {
     final region = await AppRegionService.loadSelection();
-    await AppRegionService.ensureRemoteSelectionSynced(region);
-    return region?.id.trim() ?? '';
+    final resolvedRegion =
+        region ?? appRegionById(AppRegionService.fallbackRegionId);
+    await AppRegionService.ensureRemoteSelectionSynced(resolvedRegion);
+    final regionId = resolvedRegion?.id.trim() ?? '';
+    return regionId.isNotEmpty ? regionId : AppRegionService.fallbackRegionId;
   }
 
   bool _isPoliticalCategory(String categoryId) {
@@ -85,9 +94,10 @@ class ApprovedCreatorTemplateService {
     required String categoryId,
   }) {
     final regionId = selectedRegionId.trim();
-    if (regionId.isEmpty ||
-        categoryId.trim().isEmpty ||
-        _isPoliticalCategory(categoryId)) {
+    if (regionId.isEmpty) {
+      return const <String>[];
+    }
+    if (_isPoliticalCategory(categoryId)) {
       return regionId.isEmpty ? const <String>[] : <String>[regionId];
     }
     return _sharedContentRegionIdsFor(regionId).toList(growable: false);
@@ -226,12 +236,32 @@ class ApprovedCreatorTemplateService {
         'filtered=${filtered.length} fallbackScan=${fallbackFiltered.length} '
         'source=$source',
       );
+      if (fallbackFiltered.isEmpty && source == Source.server) {
+        final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+          regionId: regionId,
+          categoryId: target,
+          limit: scanLimit,
+        );
+        if (backendTemplates.isNotEmpty) {
+          return backendTemplates;
+        }
+      }
       return fallbackFiltered;
     } catch (error, stackTrace) {
       _debugLogStack(
         'ApprovedCreatorTemplateService.fetchAllApprovedTemplatesForCategory failed: $error',
         stackTrace,
       );
+      if (source == Source.server) {
+        final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+          regionId: regionId,
+          categoryId: target,
+          limit: scanLimit,
+        );
+        if (backendTemplates.isNotEmpty) {
+          return backendTemplates;
+        }
+      }
       final fallbackDocs = await _scanApprovedTemplatesForCategory(
         categoryId: target,
         regionId: regionId,
@@ -471,6 +501,28 @@ class ApprovedCreatorTemplateService {
         'ApprovedCreatorTemplateService.fetchApprovedTemplatesPage failed: $error',
         stackTrace,
       );
+      if (source == Source.server || source == Source.serverAndCache) {
+        try {
+          final regionId = await _selectedRegionId();
+          final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+            regionId: regionId,
+            categoryId: '',
+            limit: pageSize,
+          );
+          if (backendTemplates.isNotEmpty) {
+            return ApprovedCreatorTemplatePage(
+              templates: backendTemplates,
+              lastDocument: null,
+              hasMore: backendTemplates.length >= pageSize,
+            );
+          }
+        } catch (backendError, backendStackTrace) {
+          _debugLogStack(
+            'ApprovedCreatorTemplateService backend page fallback failed: $backendError',
+            backendStackTrace,
+          );
+        }
+      }
       return const ApprovedCreatorTemplatePage(
         templates: <ApprovedCreatorTemplate>[],
         lastDocument: null,
@@ -684,6 +736,103 @@ class ApprovedCreatorTemplateService {
         .toList(growable: false);
     templates.sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
     return templates;
+  }
+
+  Future<List<ApprovedCreatorTemplate>> _fetchApprovedTemplatesFromBackend({
+    required String regionId,
+    required String categoryId,
+    required int limit,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(_appCreatorPostersFeedEndpoint),
+            headers: const <String, String>{
+              'content-type': 'application/json',
+            },
+            body: jsonEncode(<String, Object?>{
+              'regionId': regionId,
+              'categoryId': categoryId,
+              'limit': limit,
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return const <ApprovedCreatorTemplate>[];
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic> || decoded['ok'] != true) {
+        return const <ApprovedCreatorTemplate>[];
+      }
+      final rawPosters = decoded['posters'];
+      if (rawPosters is! List) {
+        return const <ApprovedCreatorTemplate>[];
+      }
+      return rawPosters
+          .whereType<Map<String, dynamic>>()
+          .map(_mapBackendPoster)
+          .whereType<ApprovedCreatorTemplate>()
+          .toList(growable: false);
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService backend fallback failed: $error',
+        stackTrace,
+      );
+      return const <ApprovedCreatorTemplate>[];
+    }
+  }
+
+  ApprovedCreatorTemplate? _mapBackendPoster(Map<String, dynamic> data) {
+    final id = (data['id'] as String?)?.trim() ?? '';
+    if (id.isEmpty) {
+      return null;
+    }
+    final imageUrl = (data['imageUrl'] as String?)?.trim() ?? '';
+    final imageStoragePath = (data['imagePath'] as String?)?.trim() ?? '';
+    final thumbnailStoragePath =
+        (data['thumbnailPath'] as String?)?.trim() ?? '';
+    final thumbnailUrl = (data['thumbnailUrl'] as String?)?.trim() ?? '';
+    final videoUrl = (data['videoUrl'] as String?)?.trim() ?? '';
+    final mediaType = (data['mediaType'] as String?)?.trim() ?? '';
+    final hasVideo = mediaType == 'video' && videoUrl.isNotEmpty;
+    if (!hasVideo &&
+        imageUrl.isEmpty &&
+        imageStoragePath.isEmpty &&
+        thumbnailStoragePath.isEmpty &&
+        thumbnailUrl.isEmpty) {
+      return null;
+    }
+    final widthPx = (data['widthPx'] as num?)?.toInt();
+    final heightPx = (data['heightPx'] as num?)?.toInt();
+    final pageConfig =
+        widthPx != null && heightPx != null && widthPx > 0 && heightPx > 0
+        ? EditorPageConfig(
+            name: '${widthPx}x$heightPx',
+            widthPx: widthPx,
+            heightPx: heightPx,
+          )
+        : null;
+    return ApprovedCreatorTemplate(
+      id: id,
+      title: (data['title'] as String?)?.trim().isNotEmpty == true
+          ? (data['title'] as String).trim()
+          : 'Creator Poster',
+      imageUrl: imageUrl,
+      imageStoragePath: imageStoragePath,
+      thumbnailStoragePath: thumbnailStoragePath,
+      thumbnailUrl: thumbnailUrl,
+      mediaType: hasVideo ? 'video' : 'image',
+      videoUrl: videoUrl,
+      categoryId: (data['categoryId'] as String?)?.trim() ?? '',
+      categoryLabel: (data['categoryLabel'] as String?)?.trim() ?? '',
+      regionId: (data['regionId'] as String?)?.trim() ?? '',
+      createdAtMillis: (data['createdAt'] as num?)?.toInt() ?? 0,
+      personalizationConfig: _parsePersonalization(
+        data['personalizationConfig'],
+      ),
+      creatorPublicId: (data['creatorPublicId'] as String?)?.trim() ?? '',
+      pageConfig: pageConfig,
+    );
   }
 
   bool _docMatchesCategory(Map<String, dynamic> data, String categoryId) {
