@@ -1317,6 +1317,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _templatesLoadingMore = false;
   bool _templatesHasMore = true;
   int _activePosterPage = 0;
+  final ValueNotifier<int> _activePosterPageNotifier = ValueNotifier<int>(0);
   bool _religionSelectionReady = false;
   String? _categoryLoadingSlug;
   int _categoryLoadGeneration = 0;
@@ -2001,6 +2002,7 @@ class _HomeScreenState extends State<HomeScreen>
       ..dispose();
     _categoryScrollController.dispose();
     _posterPageController.dispose();
+    _activePosterPageNotifier.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     unawaited(_restorePhoneNavigationButtons());
@@ -6115,6 +6117,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (_posterPageController.hasClients) {
       _posterPageController.jumpToPage(0);
     }
+    _activePosterPageNotifier.value = 0;
     setState(() {
       _selectedCategorySlug = slug;
       _categoryLoadingSlug = slug == _allCategorySlug ? null : slug;
@@ -6409,7 +6412,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _handlePosterPageChanged(int index, List<_HomeFeedEntry> feedEntries) {
     if (_activePosterPage != index) {
-      setState(() => _activePosterPage = index);
+      _activePosterPage = index;
+      _activePosterPageNotifier.value = index;
     }
     if (_selectedCategorySlug == _allCategorySlug &&
         _lockedAllFeedTemplates == null &&
@@ -6465,9 +6469,6 @@ class _HomeScreenState extends State<HomeScreen>
       templates: templates,
       promoCards: promoCards,
     );
-    final activeFeedPage = feedEntries.isEmpty
-        ? 0
-        : math.min(_activePosterPage, feedEntries.length - 1);
     _debugLogCategoryPipeline(
       language: language,
       selectedCategory: selectedCategory,
@@ -6550,73 +6551,87 @@ class _HomeScreenState extends State<HomeScreen>
                           categoryLabel: selectedCategory.label,
                         ),
                       )
-                    : PageView.builder(
-                        controller: _posterPageController,
-                        scrollDirection: Axis.vertical,
-                        allowImplicitScrolling: true,
-                        physics: _posterPhotoDragInProgress
-                            ? const NeverScrollableScrollPhysics()
-                            : const PageScrollPhysics(
-                                parent: BouncingScrollPhysics(),
-                              ),
-                        onPageChanged: (index) =>
-                            _handlePosterPageChanged(index, feedEntries),
-                        itemCount:
-                            feedEntries.length +
-                            (_templatesLoadingMore ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index >= feedEntries.length) {
-                            return const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                ),
-                              ),
-                            );
-                          }
-                          final entry = feedEntries[index];
-                          if (entry.isPromo) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                10,
-                                16,
-                                18,
-                              ),
-                              child: Center(
-                                child: _HomeInlinePromoCard(
-                                  data: entry.promo!,
-                                  viewerPosterProfile: _viewerPosterProfile,
-                                  slides: promoSlides,
-                                  onTap: () => unawaited(
-                                    _handlePromoTap(entry.promo!.type),
+                    : ValueListenableBuilder<int>(
+                        valueListenable: _activePosterPageNotifier,
+                        builder: (context, activePosterPage, _) {
+                          final activeFeedPage = feedEntries.isEmpty
+                              ? 0
+                              : math.min(
+                                  activePosterPage,
+                                  feedEntries.length - 1,
+                                );
+                          return PageView.builder(
+                            controller: _posterPageController,
+                            scrollDirection: Axis.vertical,
+                            allowImplicitScrolling: true,
+                            physics: _posterPhotoDragInProgress
+                                ? const NeverScrollableScrollPhysics()
+                                : const PageScrollPhysics(
+                                    parent: BouncingScrollPhysics(),
                                   ),
+                            onPageChanged: (index) =>
+                                _handlePosterPageChanged(index, feedEntries),
+                            itemCount:
+                                feedEntries.length +
+                                (_templatesLoadingMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= feedEntries.length) {
+                                return const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.2,
+                                    ),
+                                  ),
+                                );
+                              }
+                              final entry = feedEntries[index];
+                              if (entry.isPromo) {
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    10,
+                                    16,
+                                    18,
+                                  ),
+                                  child: Center(
+                                    child: _HomeInlinePromoCard(
+                                      data: entry.promo!,
+                                      viewerPosterProfile: _viewerPosterProfile,
+                                      slides: promoSlides,
+                                      onTap: () => unawaited(
+                                        _handlePromoTap(entry.promo!.type),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final item = entry.template!;
+                              final isActivePoster = index == activeFeedPage;
+                              return _TemplateFeedItem(
+                                key: ValueKey<String>(
+                                  item.templateId?.trim().isNotEmpty == true
+                                      ? item.templateId!.trim()
+                                      : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
                                 ),
-                              ),
-                            );
-                          }
-                          final item = entry.template!;
-                          return _TemplateFeedItem(
-                            key: ValueKey<String>(
-                              item.templateId?.trim().isNotEmpty == true
-                                  ? item.templateId!.trim()
-                                  : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
-                            ),
-                            item: item,
-                            hostContext: context,
-                            language: language,
-                            preferUltraLightImage: false,
-                            deferRichPosterPreview: false,
-                            fillViewport: true,
-                            playbackEnabled: index == activeFeedPage,
-                            onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
-                            viewerPosterProfile: _viewerPosterProfile,
-                            posterRenderCycle: _posterRenderCycle,
-                            onPosterPhotoDragStateChanged:
-                                _setPosterPhotoDragInProgress,
-                            onInteraction: _recordAllFeedTemplateInteraction,
+                                item: item,
+                                hostContext: context,
+                                language: language,
+                                preferUltraLightImage: !isActivePoster,
+                                deferRichPosterPreview: !isActivePoster,
+                                fillViewport: true,
+                                playbackEnabled: isActivePoster,
+                                onOpenSubscriptionPlan:
+                                    _pushSubscriptionPlanRoute,
+                                viewerPosterProfile: _viewerPosterProfile,
+                                posterRenderCycle: _posterRenderCycle,
+                                onPosterPhotoDragStateChanged:
+                                    _setPosterPhotoDragInProgress,
+                                onInteraction:
+                                    _recordAllFeedTemplateInteraction,
+                              );
+                            },
                           );
                         },
                       ),
@@ -11289,7 +11304,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   void initState() {
     super.initState();
     _resolvedPreviewAspectRatio = _initialPreviewAspectRatioFor(item);
-    if (item.isVideo) {
+    if (item.isVideo && playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
@@ -11303,6 +11318,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   @override
   void didUpdateWidget(covariant _TemplateFeedItem oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.playbackEnabled != widget.playbackEnabled) {
+      updateKeepAlive();
+    }
     if (oldWidget.item.videoUrl != widget.item.videoUrl ||
         oldWidget.item.imageUrl != widget.item.imageUrl ||
         oldWidget.item.imageStoragePath != widget.item.imageStoragePath ||
@@ -11316,7 +11334,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         oldWidget.posterRenderCycle != widget.posterRenderCycle) {
       _resolvedPreviewAspectRatio = _initialPreviewAspectRatioFor(item);
       _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
-      if (item.isVideo) {
+      if (item.isVideo && playbackEnabled) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) {
             return;
@@ -11325,6 +11343,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           _scheduleVideoWarmupRetries();
         });
       }
+    } else if (item.isVideo &&
+        !oldWidget.playbackEnabled &&
+        widget.playbackEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: false);
+        _scheduleVideoWarmupRetries();
+      });
     }
   }
 
@@ -11844,7 +11872,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   void _schedulePosterWarmup({bool force = false}) {
-    if (item.isVideo) {
+    if (item.isVideo && playbackEnabled) {
       _scheduleVideoWarmup();
       return;
     }
@@ -11908,7 +11936,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     bool requireReady = true,
     bool allowScrollDeferral = true,
   }) {
-    if (!item.isVideo || (requireReady && !_posterReadyNotifier.value)) {
+    if (!playbackEnabled ||
+        !item.isVideo ||
+        (requireReady && !_posterReadyNotifier.value)) {
       return;
     }
     final signature = _posterSignature(
@@ -11964,7 +11994,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   void _scheduleVideoWarmupRetries() {
-    if (!item.isVideo) {
+    if (!item.isVideo || !playbackEnabled) {
       return;
     }
     const retryDelays = <Duration>[
@@ -11978,7 +12008,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     ];
     for (final delay in retryDelays) {
       Future<void>.delayed(delay, () {
-        if (!mounted || !item.isVideo || _videoExportReadyNotifier.value) {
+        if (!mounted ||
+            !playbackEnabled ||
+            !item.isVideo ||
+            _videoExportReadyNotifier.value) {
           return;
         }
         _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: false);
@@ -12272,7 +12305,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     _posterReadyNotifier.value = ready;
-    if (ready && item.isVideo) {
+    if (ready && item.isVideo && playbackEnabled) {
       _scheduleVideoWarmup(allowScrollDeferral: false);
       _scheduleVideoWarmupRetries();
     }
@@ -12817,8 +12850,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     switch (result.code) {
       case 'permission_denied':
         return context.strings.localized(
-          telugu:
-              'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
+          telugu: 'Gallery permission was denied.',
           english: 'Gallery permission was denied.',
         );
       case 'file_missing':
@@ -12830,14 +12862,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       case 'platform_exception':
       case 'empty_result':
         return context.strings.localized(
-          telugu:
-              'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          telugu: 'File save failed. Please try again.',
           english: 'File save failed. Please try again.',
         );
       default:
         return context.strings.localized(
-          telugu:
-              'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          telugu: 'Download failed. Please try again.',
           english: 'Download failed. Please try again.',
         );
     }
@@ -13029,28 +13059,23 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final galleryPermissionMessage = context.strings.localized(
-      telugu:
-          'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
+      telugu: 'Gallery permission was denied.',
       english: 'Gallery permission was denied.',
     );
     final posterNotReadyMessage = context.strings.localized(
-      telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'Capture failed. Please try again.',
       english: 'Capture failed. Please try again.',
     );
     final posterSavedMessage = context.strings.localized(
-      telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± à°—à±à°¯à°¾à°²à°°à±€à°²à±‹ à°¸à±‡à°µà± à°…à°¯à°¿à°‚à°¦à°¿.',
+      telugu: 'Poster saved to gallery.',
       english: 'Poster saved to gallery.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu:
-          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'File save failed. Please try again.',
       english: 'File save failed. Please try again.',
     );
     final downloadFailedMessage = context.strings.localized(
-      telugu:
-          'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'Download failed. Please try again.',
       english: 'Download failed. Please try again.',
     );
     try {
@@ -13182,18 +13207,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final posterNotReadyMessage = context.strings.localized(
-      telugu:
-          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'Capture failed. Please try again.',
       english: 'Capture failed. Please try again.',
     );
     final shareFailedMessage = context.strings.localized(
-      telugu:
-          'à°·à±‡à°°à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'Share failed. Please try again.',
       english: 'Share failed. Please try again.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu:
-          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+      telugu: 'File save failed. Please try again.',
       english: 'File save failed. Please try again.',
     );
     final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
@@ -13205,7 +13227,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               ? viewerPosterProfile.resolvedName(language: language).trim()
               : 'User');
     final shareText =
-        'Ã¢Å“Â¨ Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
+        'Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
         'Download the app: ${AppPublicInfo.playStoreUrl}';
     try {
       final hasAccess = await _ensureSubscriptionAccess(context);
@@ -14137,7 +14159,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   @override
-  bool get wantKeepAlive => true;
+  bool get wantKeepAlive => playbackEnabled;
 }
 
 class _TemplatePosterImage extends StatefulWidget {
