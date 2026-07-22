@@ -734,6 +734,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Admin-created always-on categories used to show permanent chips in app.
+    match /permanentCategories/{categoryId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
     // Community contribution uploads. Owners can create/read their own uploads.
     // Manager/Admin review updates are allowed via moderator claims (or server SDK).
     match /userPosterUploads/{uploadId} {

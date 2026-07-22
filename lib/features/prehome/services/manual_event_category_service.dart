@@ -23,8 +23,7 @@ class ManualEventCategoryService {
     if (!_verboseManualEventCategoryLogs || (!kDebugMode && !kProfileMode)) {
       return;
     }
-    // ignore: avoid_print
-    print(message);
+    debugPrint(message);
   }
 
   Future<List<DynamicCategory>> fetchVisibleCategories({
@@ -86,10 +85,7 @@ class ManualEventCategoryService {
       return null;
     }
     final normalizedId = _normalizeTag(id);
-    final localizedLabel = ScriptLocalizationService.localizeCategoryLabel(
-      rawLabel,
-      language,
-    );
+    final localizedLabel = _labelForLanguage(data, rawLabel, language);
     final normalizedLabel = _normalizeTag(rawLabel);
     return DynamicCategory(
       id: id,
@@ -108,6 +104,8 @@ class ManualEventCategoryService {
       ],
       isBlinking: true,
       regionIds: regionId.isEmpty ? const <String>{} : <String>{regionId},
+      eventStartDate: DateTime.fromMillisecondsSinceEpoch(startAt),
+      eventEndDate: DateTime.fromMillisecondsSinceEpoch(endAt),
     );
   }
 
@@ -122,6 +120,26 @@ class ManualEventCategoryService {
       return raw.millisecondsSinceEpoch;
     }
     return 0;
+  }
+
+  String _labelForLanguage(
+    Map<String, dynamic> data,
+    String fallback,
+    AppLanguage language,
+  ) {
+    final labels = data['labelsByLanguage'];
+    if (labels is Map) {
+      final direct = (labels[language.name] as String?)?.trim();
+      if (direct != null && direct.isNotEmpty) {
+        return direct;
+      }
+      final supported = (labels[language.supportedUiLanguage.name] as String?)
+          ?.trim();
+      if (supported != null && supported.isNotEmpty) {
+        return supported;
+      }
+    }
+    return ScriptLocalizationService.localizeCategoryLabel(fallback, language);
   }
 
   String _normalizeTag(String value) {

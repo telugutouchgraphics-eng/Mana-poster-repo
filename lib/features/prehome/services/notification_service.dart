@@ -231,10 +231,10 @@ class NotificationService {
     });
     final int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
     await plugin.show(
-      id,
-      resolved.title,
-      resolved.body,
-      bundle.details,
+      id: id,
+      title: resolved.title,
+      body: resolved.body,
+      notificationDetails: bundle.details,
       payload: payload,
     );
     _scheduleDeleteNotificationTempFiles(bundle.disposablePaths);
@@ -250,7 +250,7 @@ class NotificationService {
       iOS: DarwinInitializationSettings(),
     );
     await plugin.initialize(
-      settings,
+      settings: settings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         final String payload = response.payload ?? '';
         final _NotificationTapPayload parsed = _parseNotificationTapPayload(

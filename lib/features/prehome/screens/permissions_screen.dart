@@ -91,18 +91,15 @@ class _PermissionsScreenState extends State<PermissionsScreen>
         AppSnackBar.build(
           content: Text(
             context.strings.localized(
-              telugu:
-                  'Permissions request à°ªà±‚à°°à±à°¤à°¿ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+              telugu: 'Permissions request పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.',
               english:
                   'Permissions request could not be completed. Please try again.',
-              hindi:
-                  'Permissions request à¤ªà¥‚à¤°à¥€ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹ à¤¸à¤•à¥€à¥¤ à¤«à¤¿à¤° à¤¸à¥‡ à¤•à¥‹à¤¶à¤¿à¤¶ à¤•à¤°à¥‡à¤‚.',
+              hindi: 'Permissions request पूरी नहीं हो सकी। फिर से कोशिश करें.',
               tamil:
-                  'Permissions request à®®à¯à®Ÿà®¿à®•à¯à®• à®®à¯à®Ÿà®¿à®¯à®µà®¿à®²à¯à®²à¯ˆ. à®®à¯€à®£à¯à®Ÿà¯à®®à¯ à®®à¯à®¯à®±à¯à®šà®¿à®•à¯à®•à®µà¯à®®à¯.',
-              kannada:
-                  'Permissions request à²ªà³‚à²°à³à²£à²—à³Šà²³à³à²³à²²à²¿à²²à³à²². à²®à²¤à³à²¤à³† à²ªà³à²°à²¯à²¤à³à²¨à²¿à²¸à²¿.',
+                  'Permissions request முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+              kannada: 'Permissions request ಪೂರ್ಣಗೊಳ್ಳಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
               malayalam:
-                  'Permissions request à´ªàµ‚àµ¼à´¤àµà´¤à´¿à´¯à´¾à´•àµà´•à´¾à´¨à´¾à´¯à´¿à´²àµà´². à´µàµ€à´£àµà´Ÿàµà´‚ à´¶àµà´°à´®à´¿à´•àµà´•àµà´•.',
+                  'Permissions request പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
             ),
           ),
         ),
@@ -202,7 +199,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                                   iconColor: const Color(0xFF8B5CF6),
                                   badgeColor: const Color(0xFFEDE9FE),
                                   title: strings.localized(
-                                    telugu: 'à°•à±†à°®à±†à°°à°¾',
+                                    telugu: 'కెమెరా',
                                     english: 'Camera',
                                   ),
                                   subtitle: copy.cameraSubtitle,
@@ -223,7 +220,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                                   iconColor: const Color(0xFF16A34A),
                                   badgeColor: const Color(0xFFDCFCE7),
                                   title: strings.localized(
-                                    telugu: 'à°²à±Šà°•à±‡à°·à°¨à±',
+                                    telugu: 'లొకేషన్',
                                     english: 'Location',
                                   ),
                                   subtitle: copy.locationSubtitle,
@@ -351,12 +348,11 @@ class _PermissionRow extends StatelessWidget {
           child: Text(
             granted
                 ? context.strings.localized(
-                    telugu: 'à°…à°¨à±à°®à°¤à°¿ à°‰à°‚à°¦à°¿',
+                    telugu: 'అనుమతి ఉంది',
                     english: 'Allowed',
                   )
                 : context.strings.localized(
-                    telugu:
-                        'à°¤à°°à±à°µà°¾à°¤ à°•à±‚à°¡à°¾ à°šà±‡à°¯à±Šà°šà±à°šà±',
+                    telugu: 'తరువాత కూడా చేయొచ్చు',
                     english: 'Optional now',
                   ),
             style: TextStyle(

@@ -155,7 +155,7 @@ class AppLocationService {
           timeLimit: Duration(seconds: 8),
         ),
       );
-      final placemarks = await placemarkFromCoordinates(
+      final placemarks = await Geocoding().placemarkFromCoordinates(
         position.latitude,
         position.longitude,
       ).timeout(const Duration(seconds: 8));

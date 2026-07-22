@@ -33,22 +33,11 @@ class FirebaseAuthService {
 
   FirebaseAuthService({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
     : _firebaseAuthOverride = firebaseAuth,
-      _googleSignIn =
-          googleSignIn ??
-          GoogleSignIn(
-            scopes: const <String>['email'],
-            clientId: kIsWeb
-                ? DefaultFirebaseOptions.webClientId
-                : switch (defaultTargetPlatform) {
-                    TargetPlatform.iOS => DefaultFirebaseOptions.iosClientId,
-                    TargetPlatform.macOS => DefaultFirebaseOptions.iosClientId,
-                    _ => null,
-                  },
-            serverClientId: DefaultFirebaseOptions.webClientId,
-          );
+      _googleSignIn = googleSignIn ?? GoogleSignIn.instance;
 
   final FirebaseAuth? _firebaseAuthOverride;
   final GoogleSignIn _googleSignIn;
+  static Future<void>? _googleSignInInitializeFuture;
 
   FirebaseAuth get _firebaseAuth {
     final override = _firebaseAuthOverride;
@@ -72,15 +61,14 @@ class FirebaseAuthService {
         return _claimFirst150TrialIfEligible(isNewUser: isNewUser);
       }
 
+      await _ensureGoogleSignInInitialized();
       final GoogleSignInAccount googleUser = await _withGoogleTimeout(
         _resolveGoogleAccount(),
       );
-      final googleAuth = await _withGoogleTimeout(googleUser.authentication);
+      final googleAuth = googleUser.authentication;
       final String? idToken = googleAuth.idToken;
-      final String? accessToken = googleAuth.accessToken;
 
-      if ((idToken == null || idToken.isEmpty) &&
-          (accessToken == null || accessToken.isEmpty)) {
+      if (idToken == null || idToken.isEmpty) {
         throw const AuthFailure(
           'Google Sign-In setup is incomplete. Please verify Firebase OAuth configuration.',
           code: 'google-sign-in-incomplete',
@@ -88,7 +76,6 @@ class FirebaseAuthService {
       }
 
       final credential = GoogleAuthProvider.credential(
-        accessToken: accessToken,
         idToken: idToken,
       );
       final userCredential = await _withGoogleTimeout(
@@ -102,6 +89,8 @@ class FirebaseAuthService {
       rethrow;
     } on FirebaseAuthException catch (error) {
       throw _mapFirebaseAuthError(error);
+    } on GoogleSignInException catch (error) {
+      throw _mapGoogleSignInError(error);
     } on PlatformException catch (error) {
       throw _mapGooglePlatformError(error);
     } on UnsupportedError {
@@ -199,6 +188,7 @@ class FirebaseAuthService {
     } catch (_) {}
     if (Firebase.apps.isEmpty) {
       try {
+        await _ensureGoogleSignInInitialized();
         await _googleSignIn.signOut();
       } catch (_) {}
       await AppFlowService.persistLastKnownAuthUid(null);
@@ -212,7 +202,7 @@ class FirebaseAuthService {
 
     await Future.wait<void>(<Future<void>>[
       _firebaseAuth.signOut(),
-      _googleSignIn.signOut(),
+      _ensureGoogleSignInInitialized().then((_) => _googleSignIn.signOut()),
     ]);
     await AppFlowService.persistLastKnownAuthUid(null);
     if (previousUid != null && previousUid.trim().isNotEmpty) {
@@ -266,19 +256,23 @@ class FirebaseAuthService {
   }
 
   Future<GoogleSignInAccount> _resolveGoogleAccount() async {
-    final restored = await _googleSignIn.signInSilently();
+    final restoredFuture = _googleSignIn.attemptLightweightAuthentication();
+    final restored = restoredFuture == null
+        ? null
+        : await _withGoogleTimeout(restoredFuture);
     if (restored != null) {
       return restored;
     }
 
-    final selected = await _googleSignIn.signIn();
-    if (selected == null) {
+    if (!_googleSignIn.supportsAuthenticate()) {
       throw const AuthFailure(
-        'Google Sign-In was canceled.',
-        code: 'google-canceled',
+        'Google Sign-In is not supported on this platform build.',
+        code: 'unsupported-platform',
       );
     }
-    return selected;
+    return _withGoogleTimeout(
+      _googleSignIn.authenticate(scopeHint: const <String>['email']),
+    );
   }
 
   Future<T> _withGoogleTimeout<T>(Future<T> future) {
@@ -393,22 +387,22 @@ class FirebaseAuthService {
 
   AuthFailure _mapGooglePlatformError(PlatformException error) {
     switch (error.code) {
-      case GoogleSignIn.kSignInCanceledError:
+      case 'sign_in_canceled':
         return const AuthFailure(
           'Google Sign-In was canceled.',
           code: 'google-canceled',
         );
-      case GoogleSignIn.kNetworkError:
+      case 'network_error':
         return const AuthFailure(
           'Network issue. Please check your internet connection.',
           code: 'network-request-failed',
         );
-      case GoogleSignIn.kSignInRequiredError:
+      case 'sign_in_required':
         return const AuthFailure(
           'Google Sign-In was interrupted. Please try again.',
           code: 'google-interrupted',
         );
-      case GoogleSignIn.kSignInFailedError:
+      case 'sign_in_failed':
       default:
         return AuthFailure(
           error.message?.trim().isNotEmpty == true
@@ -417,6 +411,51 @@ class FirebaseAuthService {
           code: 'google-unknown-error',
         );
     }
+  }
+
+  AuthFailure _mapGoogleSignInError(GoogleSignInException error) {
+    switch (error.code) {
+      case GoogleSignInExceptionCode.canceled:
+        return const AuthFailure(
+          'Google Sign-In was canceled.',
+          code: 'google-canceled',
+        );
+      case GoogleSignInExceptionCode.interrupted:
+      case GoogleSignInExceptionCode.uiUnavailable:
+        return const AuthFailure(
+          'Google Sign-In was interrupted. Please try again.',
+          code: 'google-interrupted',
+        );
+      case GoogleSignInExceptionCode.clientConfigurationError:
+      case GoogleSignInExceptionCode.providerConfigurationError:
+        return AuthFailure(
+          error.description?.trim().isNotEmpty == true
+              ? error.description!.trim()
+              : 'Google Sign-In setup is incomplete. Please verify Firebase OAuth configuration.',
+          code: 'google-sign-in-incomplete',
+        );
+      case GoogleSignInExceptionCode.userMismatch:
+      case GoogleSignInExceptionCode.unknownError:
+        return AuthFailure(
+          error.description?.trim().isNotEmpty == true
+              ? error.description!.trim()
+              : 'Google Sign-In failed due to an unknown error.',
+          code: 'google-unknown-error',
+        );
+    }
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() {
+    return _googleSignInInitializeFuture ??= _googleSignIn.initialize(
+      clientId: kIsWeb
+          ? DefaultFirebaseOptions.webClientId
+          : switch (defaultTargetPlatform) {
+              TargetPlatform.iOS => DefaultFirebaseOptions.iosClientId,
+              TargetPlatform.macOS => DefaultFirebaseOptions.iosClientId,
+              _ => null,
+            },
+      serverClientId: DefaultFirebaseOptions.webClientId,
+    );
   }
 
   void _ensureFirebaseConfigured() {

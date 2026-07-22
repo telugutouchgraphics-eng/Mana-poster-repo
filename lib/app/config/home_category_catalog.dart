@@ -83,14 +83,14 @@ class HomeCategoryCatalog {
       ],
     ),
     HomeCategoryCatalogEntry(
-      id: 'love-quotes',
-      label: 'Love Quotes',
-      badge: 'LOVE',
-      gradient: <Color>[Color(0xFFF43F5E), Color(0xFFFDA4AF)],
+      id: 'good-evening',
+      label: 'Good Evening',
+      badge: 'EVE',
+      gradient: <Color>[Color(0xFFF59E0B), Color(0xFFFDE68A)],
       sampleTitles: <String>[
-        'Romantic quote poster',
-        'Heartfelt messages',
-        'Love lines design',
+        'Evening wishes',
+        'Peaceful evening',
+        'Good evening poster',
       ],
     ),
     HomeCategoryCatalogEntry(

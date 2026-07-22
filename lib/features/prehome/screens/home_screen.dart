@@ -46,7 +46,8 @@ import 'package:mana_poster/app/services/time_slot_service.dart';
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
-import 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
+import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
+    if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
@@ -54,6 +55,7 @@ import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
 import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
+import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
@@ -68,9 +70,11 @@ import 'package:mana_poster/features/prehome/services/app_religion_service.dart'
 import 'package:mana_poster/features/prehome/services/community_status_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
+import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.dart';
 import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
+import 'package:mana_poster/features/prehome/services/permanent_category_service.dart';
 import 'package:mana_poster/features/prehome/services/personalized_video_export_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
@@ -92,8 +96,7 @@ void _homeDebugLog(String message) {
   if (!_verboseHomeDebugLogs || (!kDebugMode && !kProfileMode)) {
     return;
   }
-  // ignore: avoid_print
-  print(message);
+  debugPrint(message);
 }
 
 void _homeDebugLogStack(String message, StackTrace stackTrace) {
@@ -101,10 +104,8 @@ void _homeDebugLogStack(String message, StackTrace stackTrace) {
     return;
   }
   developer.log(message, name: 'ManaPosterHome', stackTrace: stackTrace);
-  // ignore: avoid_print
-  print(message);
-  // ignore: avoid_print
-  print(stackTrace);
+  debugPrint(message);
+  debugPrint(stackTrace.toString());
 }
 
 Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
@@ -123,7 +124,8 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
       AppSnackBar.build(
         content: Text(
           context.strings.localized(
-            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Could not open the link. Please try again.',
           ),
         ),
@@ -228,14 +230,25 @@ String _repairLegacyUiText(String value) {
       value.contains('\u00E0\u00A4') ||
       value.contains('\u00E0\u00AE') ||
       value.contains('\u00E0\u00B2') ||
-      value.contains('\u00E0\u00B4'))) {
+      value.contains('\u00E0\u00B4') ||
+      value.contains('Ãƒ'))) {
     return value;
   }
+  var repaired = value;
   try {
-    final decoded = utf8.decode(latin1.encode(value), allowMalformed: true);
-    return decoded.trim().isEmpty ? value : decoded;
+    for (var index = 0; index < 3; index++) {
+      final decoded = utf8.decode(
+        latin1.encode(repaired),
+        allowMalformed: true,
+      );
+      if (decoded == repaired || decoded.trim().isEmpty) {
+        break;
+      }
+      repaired = decoded;
+    }
+    return repaired;
   } catch (_) {
-    return value;
+    return repaired;
   }
 }
 
@@ -285,7 +298,7 @@ class _TemplateItem {
   final List<String> categoryTags;
   final int createdAtMillis;
 
-  /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
+  /// Firestore `categoryId` only â€” used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
 
   /// Firestore manual / admin category label for home chip + matching.
@@ -381,6 +394,8 @@ class _CategoryChipData {
     this.presenceTags = const <String>[],
     this.isDynamic = false,
     this.iconAssetPath,
+    this.dateLabel,
+    this.selectionSlug,
   });
 
   final String slug;
@@ -389,6 +404,17 @@ class _CategoryChipData {
   final List<String> presenceTags;
   final bool isDynamic;
   final String? iconAssetPath;
+  final String? dateLabel;
+  final String? selectionSlug;
+
+  String get effectiveSelectionSlug => selectionSlug ?? slug;
+}
+
+class _CategoryChipSlot {
+  const _CategoryChipSlot({required this.row, required this.index});
+
+  final int row;
+  final int index;
 }
 
 enum _HomePromoCardType { subscribe, renewalReminder, update, rate }
@@ -479,7 +505,6 @@ Set<String> _expandCategoryAliasesWorker(String normalizedTag) {
     'good_evening': <String>['good_evening', 'evening'],
     'good_night': <String>['good_night', 'night'],
     'motivational': <String>['motivational'],
-    'love_quotes': <String>['love_quotes', 'love'],
     'today_special': <String>['today_special'],
     'birthdays': <String>['birthdays', 'birthday'],
     'life_advice': <String>['life_advice'],
@@ -1206,7 +1231,7 @@ class _HomeScreenState extends State<HomeScreen>
     'good_afternoon',
     'good_night',
     'motivational',
-    'love_quotes',
+    'good_evening',
     'today_special',
     'birthdays',
     'life_advice',
@@ -1220,6 +1245,18 @@ class _HomeScreenState extends State<HomeScreen>
     'jokes',
     'new',
   ];
+  static const String _moreCategorySlug = 'new';
+  static const String _selectedMoreCategorySlotSlug = 'selected_more_category';
+  static const String _politicalCategorySlug = 'political';
+  static const Set<String> _morePopupCategorySlugs = <String>{
+    'life_advice',
+    'motivational',
+    'mahabharata',
+    'birthdays',
+    'anniversary',
+    'good_thoughts',
+    'jokes',
+  };
   static const int _initialTemplatesPageSize = 8;
   static const int _initialPriorityPrimaryFetchSize = 4;
   static const int _initialPrioritySecondaryFetchSize = 2;
@@ -1241,19 +1278,27 @@ class _HomeScreenState extends State<HomeScreen>
   bool get _shouldRunRemoteHomeStartupTasks =>
       _remoteHomeStartupAllowed || _enableDebugHomeStartupServices;
 
+  static const int _dynamicMorePreviewDays = 3;
   final DynamicCategoryService _dynamicCategoryService =
-      const DynamicCategoryService(daysBeforeEvent: 7);
+      const DynamicCategoryService();
+  final DynamicCategoryService _dynamicPreviewCategoryService =
+      const DynamicCategoryService(daysBeforeEvent: _dynamicMorePreviewDays);
   final AppHomeBannerService _appHomeBannerService =
       const AppHomeBannerService();
   final ApprovedCreatorTemplateService _approvedCreatorTemplateService =
       ApprovedCreatorTemplateService();
   final ManualEventCategoryService _manualEventCategoryService =
       const ManualEventCategoryService();
+  final PermanentCategoryService _permanentCategoryService =
+      const PermanentCategoryService();
   final ScrollController _posterScrollController = ScrollController();
+  final ScrollController _categoryScrollController = ScrollController();
   final PageController _posterPageController = PageController();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _selectedCategorySlug = _allCategorySlug;
+  String? _selectedMoreCategorySlug;
+  _CategoryChipData? _selectedMoreCategoryChip;
   Set<String> _selectedPoliticalPartyIds = <String>{};
   String _selectedRegionId = '';
   AppReligionPreference _religionPreference = AppReligionPreference.all;
@@ -1284,6 +1329,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _manualEventCategoriesLoadFuture;
+  Future<void>? _permanentCategoriesLoadFuture;
   Future<void>? _partyPreferenceLoadFuture;
   Future<void>? _regionSelectionLoadFuture;
   Future<void>? _regionDependentReloadFuture;
@@ -1291,6 +1337,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
   List<DynamicCategory> _manualEventCategories = const <DynamicCategory>[];
+  List<DynamicCategory> _permanentCategories = const <DynamicCategory>[];
   final Map<String, bool> _dynamicCategoryAvailabilityBySlug = <String, bool>{};
   final Set<String> _dynamicCategoryAvailabilityInFlight = <String>{};
   String _lastCategoryDebugSnapshot = '';
@@ -1333,24 +1380,24 @@ class _HomeScreenState extends State<HomeScreen>
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
-      titleTe: 'శుభోదయం పోస్టర్',
-      titleHi: 'गुड मॉर्निंग पोस्टर',
+      titleTe: 'à°¶à±à°­à±‹à°¦à°¯à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤—à¥à¤¡ à¤®à¥‰à¤°à¥à¤¨à¤¿à¤‚à¤— à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Good Morning Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200',
       categoryTags: <String>['good_morning'],
     ),
     _TemplateItem(
-      titleTe: 'బర్త్‌డే పోస్టర్',
-      titleHi: 'बर्थडे पोस्टर',
+      titleTe: 'à°¬à°°à±à°¤à±â€Œà°¡à±‡ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤¬à¤°à¥à¤¥à¤¡à¥‡ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Birthday Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=1200',
       categoryTags: <String>['birthdays'],
     ),
     _TemplateItem(
-      titleTe: 'భక్తి పోస్టర్',
-      titleHi: 'भक्ति पोस्टर',
+      titleTe: 'à°­à°•à±à°¤à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤­à¤•à¥à¤¤à¤¿ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Devotional Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200',
@@ -1663,6 +1710,10 @@ class _HomeScreenState extends State<HomeScreen>
       _loadManualEventCategories,
     );
     _scheduleDeferredHomeStartupTask(
+      const Duration(milliseconds: 7600),
+      _loadPermanentCategories,
+    );
+    _scheduleDeferredHomeStartupTask(
       const Duration(milliseconds: 8200),
       _loadViewerPosterProfile,
     );
@@ -1753,6 +1804,44 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _loadPermanentCategories() async {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
+    final inFlight = _permanentCategoriesLoadFuture;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = () async {
+      await FirebaseBootstrap.ensureInitialized();
+      if (!mounted) {
+        return;
+      }
+      final categories = await _permanentCategoryService.fetchActiveCategories(
+        language: context.currentLanguage,
+      );
+      if (!mounted) {
+        return;
+      }
+      _homeDebugLog(
+        '[PermanentCategories] loaded=${categories.map((item) => item.slug).join(",")}',
+      );
+      setState(() {
+        _permanentCategories = categories;
+      });
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+    }();
+    _permanentCategoriesLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_permanentCategoriesLoadFuture, future)) {
+        _permanentCategoriesLoadFuture = null;
+      }
+    }
+  }
+
   Future<void> _requestStartupPermissionsIfNeeded() async {
     if (_startupPermissionPromptQueued || kIsWeb || !mounted) {
       return;
@@ -1813,6 +1902,7 @@ class _HomeScreenState extends State<HomeScreen>
         _manualCategoryLanguage != currentLanguage) {
       _manualCategoryLanguage = currentLanguage;
       unawaited(_loadManualEventCategories());
+      unawaited(_loadPermanentCategories());
     }
     final route = ModalRoute.of(context);
     if (route is PageRoute<void>) {
@@ -1823,7 +1913,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _hidePhoneNavigationButtons() async {
     await SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
-      overlays: <SystemUiOverlay>[SystemUiOverlay.top],
+      overlays: SystemUiOverlay.values,
     );
   }
 
@@ -1866,6 +1956,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_loadViewerPosterProfile());
       unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
+      unawaited(_loadReligionPreference());
       unawaited(
         _TemplateFeedItem.subscriptionBackendService
             .refreshEntitlementInBackground(forceRefresh: true),
@@ -1886,6 +1977,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_refreshHomeFeed());
       unawaited(_loadRegionSelection());
       unawaited(_loadPartyPreference());
+      unawaited(_loadReligionPreference());
       unawaited(PlayEngagementService.instance.handleAppResume());
       unawaited(
         _TemplateFeedItem.subscriptionBackendService
@@ -1907,6 +1999,7 @@ class _HomeScreenState extends State<HomeScreen>
     _posterScrollController
       ..removeListener(_onPosterScroll)
       ..dispose();
+    _categoryScrollController.dispose();
     _posterPageController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -1999,6 +2092,7 @@ class _HomeScreenState extends State<HomeScreen>
       await Future.wait<void>(<Future<void>>[
         _loadHomeBanners(),
         _loadManualEventCategories(),
+        _loadPermanentCategories(),
         _loadApprovedCreatorTemplates(forceRefresh: true),
       ]);
     }();
@@ -2021,8 +2115,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    final categoryWillReset = _isCategoryHiddenForReligion(
+    final categoryWillReset = _isCategoryHiddenForReligionPreference(
       _selectedCategorySlug,
+      selection,
     );
     if (_religionSelectionReady &&
         _religionPreference == selection &&
@@ -2035,6 +2130,8 @@ class _HomeScreenState extends State<HomeScreen>
       if (categoryWillReset) {
         _selectedCategorySlug = _allCategorySlug;
         _categoryLoadingSlug = null;
+        _selectedMoreCategorySlug = null;
+        _selectedMoreCategoryChip = null;
       }
     });
   }
@@ -2044,11 +2141,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   bool _isCategoryHiddenForReligion(String slug) {
+    return _isCategoryHiddenForReligionPreference(slug, _religionPreference);
+  }
+
+  bool _isCategoryHiddenForReligionPreference(
+    String slug,
+    AppReligionPreference preference,
+  ) {
     final normalized = _normalizeTag(slug);
     if (normalized.isEmpty || normalized == _allCategorySlug) {
       return false;
     }
-    return _hiddenCategorySlugsForReligion().contains(normalized);
+    return AppReligionService.hiddenCategorySlugsFor(
+      preference,
+    ).contains(normalized);
   }
 
   Set<String> _hiddenCategoryTagsForReligion() {
@@ -2091,7 +2197,9 @@ class _HomeScreenState extends State<HomeScreen>
     List<_CategoryChipData> categories,
   ) {
     return categories
-        .where((chip) => !_isCategoryHiddenForReligion(chip.slug))
+        .where(
+          (chip) => !_isCategoryHiddenForReligion(chip.effectiveSelectionSlug),
+        )
         .toList(growable: false);
   }
 
@@ -2386,8 +2494,11 @@ class _HomeScreenState extends State<HomeScreen>
         language: language,
         selectedRegionId: _selectedRegionId,
       ),
-      ..._manualEventCategories,
+      ..._manualEventCategories.where(
+        (item) => _isCategoryActiveOnEventDay(item, now),
+      ),
     ];
+    final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
     _scheduleDynamicCategoryAvailabilityChecks(activeCalendarCategories);
     final loadedTemplateCategoryKeys = _remoteApprovedTemplates
         .map(_normalizedCategoryForDebug)
@@ -2411,23 +2522,33 @@ class _HomeScreenState extends State<HomeScreen>
       debugStates.add(
         '$slug(local=$hasLocalTemplates,server=$hasServerTemplates,loaded=$hasLoadedCategoryKey)',
       );
-      if (!hasLocalTemplates && !hasServerTemplates && !hasLoadedCategoryKey) {
+      if (!hasLocalTemplates &&
+          !hasServerTemplates &&
+          !hasLoadedCategoryKey &&
+          !_shouldShowActiveCategoryWithoutAvailability(item)) {
         continue;
       }
       merged[item.slug] = _CategoryChipData(
         slug: item.slug,
-        label: item.label,
+        label: _localizedDynamicCategoryLabelForCategory(item),
         matchTags: item.tags,
         presenceTags: _dynamicPresenceTags(item).toList(growable: false),
         isDynamic: true,
+        dateLabel: _resolvedDynamicCategoryDateLabel(
+          item,
+          now: now,
+          eventDateLabelBySlug: eventDateLabelBySlug,
+        ),
       );
     }
 
-    final loadedDynamicCategories = _dynamicCategoryService.categoriesForSlugs(
-      loadedTemplateCategoryKeys,
-      language: language,
-    );
+    final loadedDynamicCategories = _dynamicCategoryService
+        .categoriesForSlugs(loadedTemplateCategoryKeys, language: language)
+        .where((item) => _isDynamicCategoryActiveOnEventDay(item, now));
     final templateDrivenManualCategories = _manualEventCategories.where((item) {
+      if (!_isCategoryActiveOnEventDay(item, now)) {
+        return false;
+      }
       final itemSignals = <String>{
         _normalizeTag(item.id),
         _normalizeTag(item.slug),
@@ -2445,15 +2566,20 @@ class _HomeScreenState extends State<HomeScreen>
       }
       merged[item.slug] = _CategoryChipData(
         slug: item.slug,
-        label: item.label,
+        label: _localizedDynamicCategoryLabelForCategory(item),
         matchTags: item.tags,
         presenceTags: _dynamicPresenceTags(item).toList(growable: false),
         isDynamic: true,
+        dateLabel: _resolvedDynamicCategoryDateLabel(
+          item,
+          now: now,
+          eventDateLabelBySlug: eventDateLabelBySlug,
+        ),
       );
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
-    // local calendar JSON — add chips from loaded templates so filters match.
+    // local calendar JSON â€” add chips from loaded templates so filters match.
     final covered = <String>{
       for (final chip in merged.values) ...chip.matchTags.map(_normalizeTag),
       for (final chip in merged.values) _normalizeTag(chip.slug),
@@ -2494,10 +2620,19 @@ class _HomeScreenState extends State<HomeScreen>
       }.where((t) => t.trim().isNotEmpty).toList(growable: false);
       merged[rawId] = _CategoryChipData(
         slug: rawId,
-        label: label.isNotEmpty ? label : rawId,
+        label: _localizedDynamicCategoryLabelForSlug(
+          rawId,
+          label.isNotEmpty ? label : rawId,
+        ),
         matchTags: matchTags,
         presenceTags: matchTags,
         isDynamic: true,
+        dateLabel: _resolvedDynamicCategoryDateLabelForSignals(
+          slug: rawId,
+          tags: matchTags,
+          now: now,
+          eventDateLabelBySlug: eventDateLabelBySlug,
+        ),
       );
       covered.add(norm);
     }
@@ -2511,6 +2646,267 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return _filterCategoriesByReligion(merged.values.toList(growable: false));
+  }
+
+  bool _shouldShowActiveCategoryWithoutAvailability(DynamicCategory category) {
+    final slug = _normalizeTag(category.slug);
+    if (slug != 'bonalu') {
+      return false;
+    }
+    final selectedRegion = _normalizeTag(_selectedRegionId);
+    return selectedRegion.isEmpty ||
+        selectedRegion == 'andhra_pradesh' ||
+        selectedRegion == 'telangana';
+  }
+
+  Map<String, String> _activeDynamicEventDateLabels(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final schedules = const DynamicEventScheduleService()
+        .schedulesForYear(now.year, daysBeforeEvent: _dynamicMorePreviewDays)
+        .where((item) => item.isVisibleOn(today));
+    return <String, String>{
+      for (final schedule in schedules)
+        _normalizeTag(schedule.event.slug): _formatCategoryEventDate(schedule),
+    };
+  }
+
+  String _formatCategoryEventDate(ResolvedDynamicEventSchedule schedule) {
+    return _formatCategoryDateRange(schedule.startDate, schedule.endDate);
+  }
+
+  String? _categoryDateLabel(DynamicCategory category) {
+    final start = category.eventStartDate;
+    final end = category.eventEndDate;
+    if (start == null || end == null) {
+      return null;
+    }
+    return _formatCategoryDateRange(start, end);
+  }
+
+  String? _resolvedDynamicCategoryDateLabel(
+    DynamicCategory category, {
+    required DateTime now,
+    required Map<String, String> eventDateLabelBySlug,
+  }) {
+    final signals = <String>{
+      category.id,
+      category.slug,
+      ...category.tags,
+    }.map(_normalizeTag).where((value) => value.isNotEmpty).toSet();
+    return _resolvedDynamicCategoryDateLabelForSignals(
+      slug: category.slug,
+      tags: signals,
+      now: now,
+      eventDateLabelBySlug: eventDateLabelBySlug,
+    );
+  }
+
+  String? _resolvedDynamicCategoryDateLabelForSignals({
+    required String slug,
+    required Iterable<String> tags,
+    required DateTime now,
+    required Map<String, String> eventDateLabelBySlug,
+  }) {
+    final signals = <String>{
+      _normalizeTag(slug),
+      ...tags.map(_normalizeTag),
+    }.where((value) => value.isNotEmpty).toSet();
+    for (final signal in signals) {
+      final scheduleLabel = eventDateLabelBySlug[signal];
+      if (scheduleLabel != null && scheduleLabel.trim().isNotEmpty) {
+        return scheduleLabel;
+      }
+    }
+    for (final category in _manualEventCategories) {
+      final manualSignals = <String>{
+        category.id,
+        category.slug,
+        ...category.tags,
+      }.map(_normalizeTag).where((value) => value.isNotEmpty).toSet();
+      if (signals.intersection(manualSignals).isNotEmpty) {
+        final manualLabel = _categoryDateLabel(category);
+        if (manualLabel != null && manualLabel.trim().isNotEmpty) {
+          return manualLabel;
+        }
+      }
+    }
+    final directCategoryLabel = _categoryDateLabelForDynamicSlug(
+      _normalizeTag(slug),
+      now,
+    );
+    if (directCategoryLabel != null && directCategoryLabel.trim().isNotEmpty) {
+      return directCategoryLabel;
+    }
+    return null;
+  }
+
+  String? _categoryDateLabelForDynamicSlug(String slug, DateTime now) {
+    if (slug.isEmpty) {
+      return null;
+    }
+    final schedules = const DynamicEventScheduleService().schedulesForYear(
+      now.year,
+      daysBeforeEvent: _dynamicMorePreviewDays,
+    );
+    for (final schedule in schedules) {
+      if (_normalizeTag(schedule.event.slug) == slug &&
+          _dynamicEventMatchesSelectedRegion(schedule.event)) {
+        return _formatCategoryEventDate(schedule);
+      }
+    }
+    return null;
+  }
+
+  String _formatCategoryDateRange(DateTime start, DateTime end) {
+    final startLabel = _shortCategoryDate(start);
+    if (start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day) {
+      return startLabel;
+    }
+    return '$startLabel-${_shortCategoryDate(end)}';
+  }
+
+  String _shortCategoryDate(DateTime date) {
+    const months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
+  List<_CategoryChipData> _buildDynamicPreviewCategoriesForMore(DateTime now) {
+    final language = context.currentLanguage;
+    final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
+    return _dynamicPreviewCategoryService
+        .categoriesForDate(
+          now,
+          language: language,
+          selectedRegionId: _selectedRegionId,
+        )
+        .where((item) => item.type != DynamicCategoryType.weekdaySpecial)
+        .where((item) => !_isCategoryActiveOnEventDay(item, now))
+        .map((item) {
+          return _CategoryChipData(
+            slug: item.slug,
+            label: _localizedDynamicCategoryLabelForCategory(item),
+            matchTags: item.tags,
+            presenceTags: _dynamicPresenceTags(item).toList(growable: false),
+            isDynamic: true,
+            dateLabel: _resolvedDynamicCategoryDateLabel(
+              item,
+              now: now,
+              eventDateLabelBySlug: eventDateLabelBySlug,
+            ),
+          );
+        })
+        .toList(growable: false);
+  }
+
+  bool _isCategoryActiveOnEventDay(DynamicCategory category, DateTime now) {
+    final start = category.eventStartDate;
+    final end = category.eventEndDate;
+    if (start != null && end != null) {
+      final today = DateTime(now.year, now.month, now.day);
+      final startDay = DateTime(start.year, start.month, start.day);
+      final endDay = DateTime(end.year, end.month, end.day);
+      return !today.isBefore(startDay) && !today.isAfter(endDay);
+    }
+    return _isDynamicCategoryActiveOnEventDay(category, now);
+  }
+
+  bool _isDynamicCategoryActiveOnEventDay(
+    DynamicCategory category,
+    DateTime now,
+  ) {
+    final slug = _normalizeTag(category.slug);
+    if (slug.isEmpty) {
+      return false;
+    }
+    final today = DateTime(now.year, now.month, now.day);
+    final schedules = const DynamicEventScheduleService().schedulesForYear(
+      now.year,
+      daysBeforeEvent: 0,
+    );
+    for (final schedule in schedules) {
+      if (_normalizeTag(schedule.event.slug) != slug ||
+          !_dynamicEventMatchesSelectedRegion(schedule.event)) {
+        continue;
+      }
+      if (!today.isBefore(schedule.startDate) &&
+          !today.isAfter(schedule.endDate)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _dynamicEventMatchesSelectedRegion(DynamicCalendarEvent event) {
+    final regionId = _normalizeTag(_selectedRegionId);
+    if (regionId.isEmpty || event.regionIds.isEmpty) {
+      return true;
+    }
+    const teluguSharedRegionIds = <String>{'andhra_pradesh', 'telangana'};
+    final selectedRegions = teluguSharedRegionIds.contains(regionId)
+        ? teluguSharedRegionIds
+        : <String>{regionId};
+    final eventRegions = event.regionIds.map(_normalizeTag).toSet();
+    return eventRegions.intersection(selectedRegions).isNotEmpty;
+  }
+
+  _CategoryChipData? _buildBonaluSharedCategory(DateTime now) {
+    if (!_isTeluguSharedRegion(_selectedRegionId) ||
+        !_isLunarEventActive('bonalu', now)) {
+      return null;
+    }
+    return _CategoryChipData(
+      slug: 'bonalu',
+      label: _localizedDynamicCategoryLabel('Bonalu'),
+      matchTags: const <String>[
+        'bonalu',
+        'festival',
+        'devotional',
+        'andhra_pradesh',
+        'telangana',
+        'regional_special',
+      ],
+      presenceTags: const <String>['bonalu'],
+      isDynamic: true,
+      dateLabel: _activeDynamicEventDateLabels(now)['bonalu'],
+    );
+  }
+
+  bool _isTeluguSharedRegion(String regionId) {
+    final selectedRegion = _normalizeTag(regionId);
+    return selectedRegion == 'andhra_pradesh' || selectedRegion == 'telangana';
+  }
+
+  bool _isLunarEventActive(String slug, DateTime now) {
+    final resolved = resolvedLunarEventDatesForYear(now.year)[slug];
+    if (resolved == null) {
+      return false;
+    }
+    final today = DateTime(now.year, now.month, now.day);
+    final startDate = DateTime(now.year, resolved.month, resolved.day);
+    final endDate = switch ((resolved.endMonth, resolved.endDay)) {
+      (final int endMonth, final int endDay) => DateTime(
+        now.year,
+        endMonth,
+        endDay,
+      ),
+      _ => startDate.add(Duration(days: resolved.durationDays - 1)),
+    };
+    return !today.isBefore(startDate) && !today.isAfter(endDate);
   }
 
   List<_CategoryChipData> _buildLoadedTemplateDynamicCategories(
@@ -2528,6 +2924,9 @@ class _HomeScreenState extends State<HomeScreen>
       language: language,
     );
     final manualCategories = _manualEventCategories.where((item) {
+      if (!_isCategoryActiveOnEventDay(item, IstTimeService.now())) {
+        return false;
+      }
       final signals = <String>{
         _normalizeTag(item.id),
         _normalizeTag(item.slug),
@@ -2542,16 +2941,24 @@ class _HomeScreenState extends State<HomeScreen>
     if (mergedCategories.isEmpty) {
       return const <_CategoryChipData>[];
     }
+    final now = IstTimeService.now();
+    final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
     return mergedCategories
-        .map(
-          (item) => _CategoryChipData(
+        .where((item) => _isCategoryActiveOnEventDay(item, now))
+        .map((item) {
+          return _CategoryChipData(
             slug: item.slug,
-            label: item.label,
+            label: _localizedDynamicCategoryLabelForCategory(item),
             matchTags: item.tags,
             presenceTags: _dynamicPresenceTags(item).toList(growable: false),
             isDynamic: true,
-          ),
-        )
+            dateLabel: _resolvedDynamicCategoryDateLabel(
+              item,
+              now: now,
+              eventDateLabelBySlug: eventDateLabelBySlug,
+            ),
+          );
+        })
         .toList(growable: false);
   }
 
@@ -2817,6 +3224,40 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_CategoryChipData> _buildStaticCategories() {
+    final categories = _allStaticCategories();
+    final selectedMoreSlug = _selectedMoreCategorySlug;
+    final selectedMoreCategory = selectedMoreSlug == null
+        ? null
+        : (_selectedMoreCategoryChip?.slug == selectedMoreSlug
+              ? _selectedMoreCategoryChip
+              : _morePopupCategoryForSlug(selectedMoreSlug));
+    final selectedMoreSlotCategory = selectedMoreCategory == null
+        ? null
+        : _CategoryChipData(
+            slug: _selectedMoreCategorySlotSlug,
+            label: selectedMoreCategory.label,
+            matchTags: selectedMoreCategory.matchTags,
+            presenceTags: selectedMoreCategory.presenceTags,
+            isDynamic: selectedMoreCategory.isDynamic,
+            iconAssetPath: selectedMoreCategory.iconAssetPath,
+            dateLabel: selectedMoreCategory.dateLabel,
+            selectionSlug: selectedMoreCategory.slug,
+          );
+    final visibleCategories = <_CategoryChipData>[];
+    for (final category in categories) {
+      if (_morePopupCategorySlugs.contains(category.slug)) {
+        continue;
+      }
+      if (category.slug == _moreCategorySlug &&
+          selectedMoreSlotCategory != null) {
+        visibleCategories.add(selectedMoreSlotCategory);
+      }
+      visibleCategories.add(category);
+    }
+    return visibleCategories;
+  }
+
+  List<_CategoryChipData> _allStaticCategories() {
     final labels = context.strings.localizedHomeCategories();
     return List<_CategoryChipData>.generate(labels.length, (int index) {
       final slug = index < _staticCategorySlugs.length
@@ -2824,10 +3265,145 @@ class _HomeScreenState extends State<HomeScreen>
           : 'category_$index';
       return _CategoryChipData(
         slug: slug,
-        label: labels[index],
+        label: _localizedCategoryLabel(slug, labels[index]),
         matchTags: _defaultCategoryTagsForSlug(slug),
       );
     }, growable: false);
+  }
+
+  String _localizedCategoryLabel(String slug, String fallbackLabel) {
+    return switch (slug) {
+      'good_evening' => ScriptLocalizationService.localizeCategoryLabel(
+        'Good Evening',
+        context.currentLanguage,
+      ),
+      _ => fallbackLabel,
+    };
+  }
+
+  String _localizedDynamicCategoryLabel(String label) {
+    return ScriptLocalizationService.localizeCategoryLabel(
+      label,
+      context.currentLanguage,
+    );
+  }
+
+  String _localizedDynamicCategoryLabelForSlug(String slug, String label) {
+    final language = context.currentLanguage;
+    final rawLabel = label.trim();
+    final shouldUseTeluguLabel =
+        language.supportedUiLanguage == SupportedUiLanguage.telugu ||
+        context.strings.localizedHomeCategories().any(_containsTeluguScript);
+    if (shouldUseTeluguLabel && !_containsTeluguScript(rawLabel)) {
+      final teluguOverride = _teluguDynamicCategoryLabelOverride(slug);
+      if (teluguOverride != null) {
+        return teluguOverride;
+      }
+    }
+    return _localizedDynamicCategoryLabel(
+      rawLabel.isNotEmpty ? rawLabel : slug,
+    );
+  }
+
+  String _localizedDynamicCategoryLabelForCategory(DynamicCategory category) {
+    final language = context.currentLanguage;
+    final rawLabel = category.label.trim();
+    final shouldUseTeluguLabel =
+        language.supportedUiLanguage == SupportedUiLanguage.telugu ||
+        context.strings.localizedHomeCategories().any(_containsTeluguScript);
+    if (shouldUseTeluguLabel && !_containsTeluguScript(rawLabel)) {
+      final teluguOverride = _teluguDynamicCategoryLabelOverride(category.slug);
+      if (teluguOverride != null) {
+        return teluguOverride;
+      }
+      for (final localized in _dynamicCategoryService.categoriesForSlugs(
+        <String>[category.slug],
+        language: AppLanguage.telugu,
+      )) {
+        if (_normalizeTag(localized.slug) == _normalizeTag(category.slug) &&
+            _containsTeluguScript(localized.label)) {
+          return localized.label;
+        }
+      }
+    }
+    return _localizedDynamicCategoryLabel(
+      rawLabel.isNotEmpty ? rawLabel : category.slug,
+    );
+  }
+
+  bool _containsTeluguScript(String value) =>
+      RegExp(r'[\u0C00-\u0C7F]').hasMatch(value);
+
+  String? _teluguDynamicCategoryLabelOverride(String slug) {
+    return switch (_normalizeTag(slug)) {
+      'gurram_jashuva_jayanthi' => 'గుర్రం జాషువా జయంతి',
+      'gurram_jashuva_vardhanthi' => 'గుర్రం జాషువా వర్ధంతి',
+      _ => null,
+    };
+  }
+
+  List<_CategoryChipData> _morePopupCategories() {
+    final bySlug = <String, _CategoryChipData>{};
+
+    void addCategory(_CategoryChipData category) {
+      final slug = _normalizeTag(category.slug);
+      if (slug.isEmpty || slug == _moreCategorySlug) {
+        return;
+      }
+      bySlug.putIfAbsent(category.slug, () => category);
+    }
+
+    final staticCategories = _allStaticCategories();
+    for (final slug in _morePopupCategorySlugs) {
+      for (final category in staticCategories) {
+        if (category.slug == slug) {
+          addCategory(category);
+          break;
+        }
+      }
+    }
+    final now = IstTimeService.now();
+    for (final category in _buildDynamicPreviewCategoriesForMore(now)) {
+      addCategory(category);
+    }
+    for (final category in _manualEventCategories) {
+      if (!_isCategoryActiveOnEventDay(category, now)) {
+        addCategory(_categoryChipFromDynamicCategory(category));
+      }
+    }
+    for (final category in _permanentCategories) {
+      addCategory(_categoryChipFromDynamicCategory(category));
+    }
+    return bySlug.values.toList(growable: false);
+  }
+
+  _CategoryChipData? _morePopupCategoryForSlug(String slug) {
+    for (final category in _morePopupCategories()) {
+      if (category.slug == slug) {
+        return category;
+      }
+    }
+    return null;
+  }
+
+  _CategoryChipData _categoryChipFromDynamicCategory(DynamicCategory category) {
+    final now = IstTimeService.now();
+    final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
+    return _CategoryChipData(
+      slug: category.slug,
+      label: ScriptLocalizationService.localizeCategoryLabel(
+        category.label,
+        context.currentLanguage,
+      ),
+      matchTags: category.tags,
+      presenceTags: _dynamicPresenceTags(category).toList(growable: false),
+      isDynamic: true,
+      dateLabel: _resolvedDynamicCategoryDateLabel(
+        category,
+        now: now,
+        eventDateLabelBySlug: eventDateLabelBySlug,
+      ),
+    );
   }
 
   List<_CategoryChipData> _buildSelectedPartyCategories(AppLanguage language) {
@@ -2872,12 +3448,32 @@ class _HomeScreenState extends State<HomeScreen>
     List<_CategoryChipData> partyCategories,
   ) {
     final merged = <_CategoryChipData>[];
+    final allowedSlugs = _filterCategoriesByReligion(<_CategoryChipData>[
+      ...staticCategories,
+      ...dynamicCategories,
+      ...partyCategories,
+      _politicalCategoryChip(),
+    ]).map((chip) => _normalizeTag(chip.slug)).toSet();
     final seenSlugs = <String>{};
+    final seenSelectionSlugs = <String>{};
 
     void addChip(_CategoryChipData chip) {
-      if (seenSlugs.add(chip.slug)) {
-        merged.add(chip);
+      final slug = _normalizeTag(chip.slug);
+      final selectionSlug = _normalizeTag(chip.effectiveSelectionSlug);
+      if (slug.isEmpty ||
+          !allowedSlugs.contains(slug) ||
+          _morePopupCategorySlugs.contains(slug) ||
+          !seenSlugs.add(slug) ||
+          !seenSelectionSlugs.add(selectionSlug)) {
+        return;
       }
+      if (chip.slug == _selectedMoreCategorySlotSlug) {
+        final selectedMoreSlug = _normalizeTag(_selectedMoreCategorySlug ?? '');
+        if (selectedMoreSlug.isNotEmpty) {
+          seenSlugs.add(selectedMoreSlug);
+        }
+      }
+      merged.add(chip);
     }
 
     if (staticCategories.isNotEmpty) {
@@ -2886,24 +3482,50 @@ class _HomeScreenState extends State<HomeScreen>
       addChip(_allCategoryChip());
     }
 
+    addChip(_politicalCategoryChip());
     for (final chip in partyCategories) {
       addChip(chip);
+    }
+    final selectedMoreSlug = _selectedMoreCategorySlug;
+    for (final chip in staticCategories.skip(1)) {
+      if (selectedMoreSlug != null &&
+          chip.effectiveSelectionSlug == selectedMoreSlug) {
+        addChip(chip);
+      }
     }
     for (final chip in dynamicCategories) {
       addChip(chip);
     }
     for (final chip in staticCategories.skip(1)) {
+      if (selectedMoreSlug != null &&
+          chip.effectiveSelectionSlug == selectedMoreSlug) {
+        continue;
+      }
       addChip(chip);
     }
 
-    return _filterCategoriesByReligion(merged);
+    return merged;
   }
 
   _CategoryChipData _allCategoryChip() {
     return _CategoryChipData(
       slug: _allCategorySlug,
-      label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
+      label: context.strings.localized(
+        telugu: 'à°…à°¨à±à°¨à±€',
+        english: 'All',
+      ),
       matchTags: const <String>['all'],
+    );
+  }
+
+  _CategoryChipData _politicalCategoryChip() {
+    return _CategoryChipData(
+      slug: _politicalCategorySlug,
+      label: ScriptLocalizationService.localizeCategoryLabel(
+        'Political',
+        context.currentLanguage,
+      ),
+      matchTags: const <String>['political', 'politics'],
     );
   }
 
@@ -2914,7 +3536,7 @@ class _HomeScreenState extends State<HomeScreen>
       'good_afternoon' => const <String>['good_afternoon', 'afternoon'],
       'good_night' => const <String>['good_night', 'night'],
       'motivational' => const <String>['motivational'],
-      'love_quotes' => const <String>['love_quotes', 'love'],
+      'good_evening' => const <String>['good_evening', 'evening'],
       'today_special' => const <String>['today_special'],
       'birthdays' => const <String>['birthdays', 'birthday'],
       'life_advice' => const <String>['life_advice'],
@@ -2961,9 +3583,9 @@ class _HomeScreenState extends State<HomeScreen>
       'all': <String>['all'],
       'good_morning': <String>['good_morning', 'morning'],
       'good_afternoon': <String>['good_afternoon', 'afternoon'],
+      'good_evening': <String>['good_evening', 'evening'],
       'good_night': <String>['good_night', 'night'],
       'motivational': <String>['motivational'],
-      'love_quotes': <String>['love_quotes', 'love'],
       'today_special': <String>['today_special'],
       'birthdays': <String>['birthdays', 'birthday'],
       'life_advice': <String>['life_advice'],
@@ -3003,17 +3625,17 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'వెబ్‌లో editor అందుబాటులో లేదు. పోస్టర్ create చేయాలంటే mobile app ఉపయోగించండి.',
+                  'à°µà±†à°¬à±â€Œà°²à±‹ editor à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°ªà±‹à°¸à±à°Ÿà°°à± create à°šà±‡à°¯à°¾à°²à°‚à°Ÿà±‡ mobile app à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.',
               english:
                   'Editor is not available on web. Use the mobile app to create posters.',
               hindi:
-                  'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
+                  'à¤µà¥‡à¤¬ à¤ªà¤° editor à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ mobile app à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¥‡à¤‚à¥¤',
               tamil:
-                  'வெபில் editor கிடைக்காது. Poster create செய்ய mobile app பயன்படுத்துங்கள்.',
+                  'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
               kannada:
-                  'ವೆಬ್‌ನಲ್ಲಿ editor ಲಭ್ಯವಿಲ್ಲ. Poster create ಮಾಡಲು mobile app ಬಳಸಿ.',
+                  'à²µà³†à²¬à³â€Œà²¨à²²à³à²²à²¿ editor à²²à²­à³à²¯à²µà²¿à²²à³à²². Poster create à²®à²¾à²¡à²²à³ mobile app à²¬à²³à²¸à²¿.',
               malayalam:
-                  'വെബിൽ editor ലഭ്യമല്ല. Poster create ചെയ്യാൻ mobile app ഉപയോഗിക്കുക.',
+                  'à´µàµ†à´¬à´¿àµ½ editor à´²à´­àµà´¯à´®à´²àµà´². Poster create à´šàµ†à´¯àµà´¯à´¾àµ» mobile app à´‰à´ªà´¯àµ‹à´—à´¿à´•àµà´•àµà´•.',
             ),
           ),
         ),
@@ -3684,8 +4306,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
       _templateProjectionCache = null;
       _templateProjectionIdentity = null;
-      _categoryListCache = null;
-      _categoryListIdentity = null;
       _scheduleDeferredAllFeedRanking();
       if (phase.contains('merge') && merged.isNotEmpty) {
         _scheduleStartupTemplateSnapshotPersist(merged);
@@ -3725,8 +4345,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
       _templateProjectionCache = null;
       _templateProjectionIdentity = null;
-      _categoryListCache = null;
-      _categoryListIdentity = null;
       _scheduleDeferredAllFeedRanking();
       if (phase.contains('merge') && merged.isNotEmpty) {
         _scheduleStartupTemplateSnapshotPersist(merged);
@@ -4713,8 +5331,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
       _templateProjectionCache = null;
       _templateProjectionIdentity = null;
-      _categoryListCache = null;
-      _categoryListIdentity = null;
       _scheduleDeferredAllFeedRanking();
       return freshCount > 0 || page.hasMore;
     } catch (error, stackTrace) {
@@ -4914,17 +5530,24 @@ class _HomeScreenState extends State<HomeScreen>
           .toList(growable: false)
         ..sort(),
     );
+    final permanentCategoryIdentity = Object.hashAll(
+      _permanentCategories
+          .map((item) => '${item.slug}:${item.label}')
+          .toList(growable: false)
+        ..sort(),
+    );
     final identity = Object.hash(
-      identityHashCode(_remoteApprovedTemplates),
       language,
       _templatesLoading,
       _religionPreference,
       _religionSelectionReady,
+      _selectedMoreCategorySlug,
       Object.hashAll(
         _selectedPoliticalPartyIds.toList(growable: false)..sort(),
       ),
       availabilityIdentity,
       manualCategoryIdentity,
+      permanentCategoryIdentity,
       _startupSnapshotHydrationDeferred,
       DateTime.now().year,
       DateTime.now().month,
@@ -4938,12 +5561,15 @@ class _HomeScreenState extends State<HomeScreen>
     final staticCategories = _buildStaticCategories();
     final templateDrivenDynamicCategories =
         _buildLoadedTemplateDynamicCategories(language);
+    final now = IstTimeService.now();
     final scheduledDynamicCategories = _buildDynamicCategories(
-      IstTimeService.now(),
+      now,
       language,
       templatesLoading: _templatesLoading,
     );
+    final bonaluSharedCategory = _buildBonaluSharedCategory(now);
     final dynamicCategories = <_CategoryChipData>[
+      ?bonaluSharedCategory,
       ...templateDrivenDynamicCategories,
       ...scheduledDynamicCategories,
     ];
@@ -4985,6 +5611,7 @@ class _HomeScreenState extends State<HomeScreen>
         _loadHomeBanners(),
         _loadApprovedCreatorTemplates(forceRefresh: true),
         _loadManualEventCategories(),
+        _loadPermanentCategories(),
         _loadViewerPosterProfile(),
       ]);
     } finally {
@@ -5103,12 +5730,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.subscribe,
           title: strings.localized(
-            telugu: 'మరిన్ని పోస్టర్ల కోసం మెంబర్‌షిప్ తీసుకోండి',
+            telugu:
+                'à°®à°°à°¿à°¨à±à°¨à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±à°² à°•à±‹à°¸à°‚ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±€à°¸à±à°•à±‹à°‚à°¡à°¿',
             english: 'Unlock more posters with membership',
           ),
           subtitle: strings.localized(
             telugu:
-                'డౌన్‌లోడ్, షేరింగ్ మరియు మెంబర్‌షిప్ సౌకర్యాల కోసం సబ్‌స్క్రైబ్ చేయండి.',
+                'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à±, à°·à±‡à°°à°¿à°‚à°—à± à°®à°°à°¿à°¯à± à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¸à±Œà°•à°°à±à°¯à°¾à°² à°•à±‹à°¸à°‚ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'Subscribe for downloads, sharing, and membership benefits.',
           ),
@@ -5121,12 +5749,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.renewalReminder,
           title: strings.localized(
-            telugu: 'మీ మెంబర్‌షిప్ త్వరలో ముగియబోతోంది',
+            telugu:
+                'à°®à±€ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±à°µà°°à°²à±‹ à°®à±à°—à°¿à°¯à°¬à±‹à°¤à±‹à°‚à°¦à°¿',
             english: 'Your membership is expiring soon',
           ),
           subtitle: strings.localized(
             telugu:
-                'ఇంకా 3 రోజులలోపు ప్లాన్ ముగుస్తుంది. అంతరాయం లేకుండా పోస్టర్లు వాడాలంటే ఇప్పుడే renew చేయండి.',
+                'à°‡à°‚à°•à°¾ 3 à°°à±‹à°œà±à°²à°²à±‹à°ªà± à°ªà±à°²à°¾à°¨à± à°®à±à°—à±à°¸à±à°¤à±à°‚à°¦à°¿. à°…à°‚à°¤à°°à°¾à°¯à°‚ à°²à±‡à°•à±à°‚à°¡à°¾ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°¾à°¡à°¾à°²à°‚à°Ÿà±‡ à°‡à°ªà±à°ªà±à°¡à±‡ renew à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'Your plan ends within the next 3 days. Renew now to keep using posters without interruption.',
           ),
@@ -5139,12 +5768,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.update,
           title: strings.localized(
-            telugu: 'కొత్త యాప్ అప్‌డేట్ సిద్ధంగా ఉంది',
+            telugu:
+                'à°•à±Šà°¤à±à°¤ à°¯à°¾à°ªà± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°¸à°¿à°¦à±à°§à°‚à°—à°¾ à°‰à°‚à°¦à°¿',
             english: 'A new app update is ready',
           ),
           subtitle: strings.localized(
             telugu:
-                'Play Store లో కొత్త version అందుబాటులో ఉంది. తాజా మెరుగుదలల కోసం ఇప్పుడు అప్‌డేట్ చేయండి.',
+                'Play Store à°²à±‹ à°•à±Šà°¤à±à°¤ version à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°‰à°‚à°¦à°¿. à°¤à°¾à°œà°¾ à°®à±†à°°à±à°—à±à°¦à°²à°² à°•à±‹à°¸à°‚ à°‡à°ªà±à°ªà±à°¡à± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'A newer version is available on the Play Store. Update now for the latest improvements.',
           ),
@@ -5157,12 +5787,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.rate,
           title: strings.localized(
-            telugu: 'Mana Poster Ai కి రేటింగ్ ఇవ్వండి',
+            telugu:
+                'Mana Poster Ai à°•à°¿ à°°à±‡à°Ÿà°¿à°‚à°—à± à°‡à°µà±à°µà°‚à°¡à°¿',
             english: 'Rate Mana Poster Ai',
           ),
           subtitle: strings.localized(
             telugu:
-                'మీ rating మరియు review వల్ల మరింత మందికి యాప్ గురించి తెలుస్తుంది.',
+                'à°®à±€ rating à°®à°°à°¿à°¯à± review à°µà°²à±à°² à°®à°°à°¿à°‚à°¤ à°®à°‚à°¦à°¿à°•à°¿ à°¯à°¾à°ªà± à°—à±à°°à°¿à°‚à°šà°¿ à°¤à±†à°²à±à°¸à±à°¤à±à°‚à°¦à°¿.',
             english:
                 'Your rating and review help more people discover the app.',
           ),
@@ -5241,7 +5872,8 @@ class _HomeScreenState extends State<HomeScreen>
         AppSnackBar.build(
           content: Text(
             context.strings.localized(
-              telugu: 'Play Store తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+              telugu:
+                  'Play Store à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
               english: 'Could not open the Play Store. Please try again.',
             ),
           ),
@@ -5465,6 +6097,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _selectCategory(String slug) {
+    if (slug == _moreCategorySlug) {
+      unawaited(_openMoreCategorySheet());
+      return;
+    }
+    if (slug == _politicalCategorySlug) {
+      unawaited(_openPoliticalPartyPicker());
+      return;
+    }
     if (slug == _selectedCategorySlug) {
       return;
     }
@@ -5483,6 +6123,96 @@ class _HomeScreenState extends State<HomeScreen>
     _resetAllFeedScrollOrderLock();
     _schedulePosterFeedResetToTop();
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
+  }
+
+  Future<void> _openPoliticalPartyPicker() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) =>
+            const PoliticalPartiesScreen(returnToPreviousOnSave: true),
+      ),
+    );
+    if (!mounted || changed != true) {
+      return;
+    }
+    await _loadPartyPreference();
+  }
+
+  Future<void> _openMoreCategorySheet() async {
+    final popupCategories = _morePopupCategories();
+    if (popupCategories.isEmpty) {
+      return;
+    }
+    final selectedSlug = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'More Categories',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    for (final category in popupCategories)
+                      _CategoryChip(
+                        data: category,
+                        isSelected: category.slug == _selectedMoreCategorySlug,
+                        onTap: () =>
+                            Navigator.of(sheetContext).pop(category.slug),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!mounted || selectedSlug == null) {
+      return;
+    }
+    _CategoryChipData? selectedCategory;
+    for (final category in popupCategories) {
+      if (category.slug == selectedSlug) {
+        selectedCategory = category;
+        break;
+      }
+    }
+    setState(() {
+      _selectedMoreCategorySlug = selectedSlug;
+      _selectedMoreCategoryChip = selectedCategory;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+    });
+    _selectCategory(selectedSlug);
   }
 
   Future<void> _loadSelectedCategoryUntilVisible(
@@ -5591,6 +6321,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   _CategoryChipData _categoryForSlug(String slug, AppLanguage language) {
+    final morePopupCategory = _morePopupCategoryForSlug(slug);
+    if (morePopupCategory != null) {
+      return morePopupCategory;
+    }
     final staticCategories = _buildStaticCategories();
     final dynamicCategories = _buildDynamicCategories(
       IstTimeService.now(),
@@ -5701,11 +6435,13 @@ class _HomeScreenState extends State<HomeScreen>
     final language = context.currentLanguage;
     final categories = _buildCategoriesForHome(language);
     final activeCategorySlug =
-        categories.any((chip) => chip.slug == _selectedCategorySlug)
+        categories.any(
+          (chip) => chip.effectiveSelectionSlug == _selectedCategorySlug,
+        )
         ? _selectedCategorySlug
         : _allCategorySlug;
     final selectedCategory = categories.firstWhere(
-      (chip) => chip.slug == activeCategorySlug,
+      (chip) => chip.effectiveSelectionSlug == activeCategorySlug,
       orElse: _allCategoryChip,
     );
     final strings = context.strings;
@@ -5746,139 +6482,205 @@ class _HomeScreenState extends State<HomeScreen>
         (!_religionSelectionReady && _remoteApprovedTemplates.isEmpty);
     final loadingSelectedCategory =
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
+    final mediaSize = MediaQuery.sizeOf(context);
+    final useCompactLandscapeHome = mediaSize.width > mediaSize.height;
+    final safePadding = MediaQuery.paddingOf(context);
+    final uploadTabTop = (mediaSize.height * 0.32).clamp(
+      safePadding.top + 220,
+      mediaSize.height - safePadding.bottom - 260,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
       resizeToAvoidBottomInset: false,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 96),
-        child: FloatingActionButton(
-          onPressed: () => unawaited(_openUserUploadsSheet()),
-          tooltip: 'Community Uploads',
-          backgroundColor: Colors.white.withValues(alpha: 0.38),
-          foregroundColor: const Color(0xFFD81B60),
-          elevation: 0,
-          focusElevation: 0,
-          hoverElevation: 0,
-          highlightElevation: 0,
-          child: const Icon(Icons.add_rounded),
-        ),
-      ),
-      body: Column(
+      body: Stack(
         children: <Widget>[
-          RepaintBoundary(
-            child: _HomeHeader(
-              onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
-              onCreateTap: _onCreateTap,
-              onStatusTap: _shouldRunRemoteHomeStartupTasks
-                  ? () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const _CommunityStatusGridScreen(),
-                      ),
-                    )
-                  : () {},
-              onProfileTap: _openProfile,
-              viewerPosterProfile: _viewerPosterProfile,
-              searchController: _searchController,
-              searchFocusNode: _searchFocusNode,
-              onSearchChanged: (_) {},
-              onSearchSubmitted: _openWebsiteSearch,
-            ),
-          ),
-          _HomePinnedFeedControls(
-            categories: categories,
-            activeCategorySlug: activeCategorySlug,
-            onCategoryTap: _selectCategory,
-            banners: _homeBanners,
-            showAdFallback: _adFallbackSlotEnabled,
-            shouldShowAdFallback: _shouldShowHomeBannerAdFallback(
-              effectiveEntitlement,
-            ),
-            homeRefreshing: _homeRefreshing,
-          ),
-          Expanded(
-            child: hidePosterFeed || loadingSelectedCategory
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: _PosterFeedSkeletonViewport(),
-                  )
-                : templates.isEmpty
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _EmptyPosterGameState(
-                      key: ValueKey<String>(
-                        'empty-poster-game-$activeCategorySlug',
-                      ),
-                      icon: Icons.collections_outlined,
-                      title: strings.homeEmptyPostersTitle,
-                      subtitle: strings.homeEmptyPostersSubtitle,
-                      categorySlug: selectedCategory.slug,
-                      categoryLabel: selectedCategory.label,
-                    ),
-                  )
-                : PageView.builder(
-                    controller: _posterPageController,
-                    scrollDirection: Axis.vertical,
-                    allowImplicitScrolling: true,
-                    physics: _posterPhotoDragInProgress
-                        ? const NeverScrollableScrollPhysics()
-                        : const PageScrollPhysics(
-                            parent: BouncingScrollPhysics(),
+          Column(
+            children: <Widget>[
+              RepaintBoundary(
+                child: _HomeHeader(
+                  onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
+                  onCreateTap: _onCreateTap,
+                  onStatusTap: _shouldRunRemoteHomeStartupTasks
+                      ? () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const _CommunityStatusGridScreen(),
                           ),
-                    onPageChanged: (index) =>
-                        _handlePosterPageChanged(index, feedEntries),
-                    itemCount:
-                        feedEntries.length + (_templatesLoadingMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index >= feedEntries.length) {
-                        return const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                        )
+                      : () {},
+                  onProfileTap: _openProfile,
+                  viewerPosterProfile: _viewerPosterProfile,
+                  searchController: _searchController,
+                  searchFocusNode: _searchFocusNode,
+                  onSearchChanged: (_) {},
+                  onSearchSubmitted: _openWebsiteSearch,
+                  compact: useCompactLandscapeHome,
+                ),
+              ),
+              _HomePinnedFeedControls(
+                categories: categories,
+                activeCategorySlug: activeCategorySlug,
+                scrollController: _categoryScrollController,
+                onCategoryTap: _selectCategory,
+                banners: _homeBanners,
+                showAdFallback: _adFallbackSlotEnabled,
+                shouldShowAdFallback: _shouldShowHomeBannerAdFallback(
+                  effectiveEntitlement,
+                ),
+                homeRefreshing: _homeRefreshing,
+                compact: useCompactLandscapeHome,
+              ),
+              Expanded(
+                child: hidePosterFeed || loadingSelectedCategory
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: _PosterFeedSkeletonViewport(),
+                      )
+                    : templates.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _EmptyPosterGameState(
+                          key: ValueKey<String>(
+                            'empty-poster-game-$activeCategorySlug',
                           ),
-                        );
-                      }
-                      final entry = feedEntries[index];
-                      if (entry.isPromo) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
-                          child: Center(
-                            child: _HomeInlinePromoCard(
-                              data: entry.promo!,
-                              viewerPosterProfile: _viewerPosterProfile,
-                              slides: promoSlides,
-                              onTap: () =>
-                                  unawaited(_handlePromoTap(entry.promo!.type)),
-                            ),
-                          ),
-                        );
-                      }
-                      final item = entry.template!;
-                      return _TemplateFeedItem(
-                        key: ValueKey<String>(
-                          item.templateId?.trim().isNotEmpty == true
-                              ? item.templateId!.trim()
-                              : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
+                          icon: Icons.collections_outlined,
+                          title: strings.homeEmptyPostersTitle,
+                          subtitle: strings.homeEmptyPostersSubtitle,
+                          categorySlug: selectedCategory.slug,
+                          categoryLabel: selectedCategory.label,
                         ),
-                        item: item,
-                        hostContext: context,
-                        language: language,
-                        preferUltraLightImage: false,
-                        deferRichPosterPreview: false,
-                        fillViewport: true,
-                        playbackEnabled: index == activeFeedPage,
-                        onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
-                        viewerPosterProfile: _viewerPosterProfile,
-                        posterRenderCycle: _posterRenderCycle,
-                        onPosterPhotoDragStateChanged:
-                            _setPosterPhotoDragInProgress,
-                        onInteraction: _recordAllFeedTemplateInteraction,
-                      );
-                    },
-                  ),
+                      )
+                    : PageView.builder(
+                        controller: _posterPageController,
+                        scrollDirection: Axis.vertical,
+                        allowImplicitScrolling: true,
+                        physics: _posterPhotoDragInProgress
+                            ? const NeverScrollableScrollPhysics()
+                            : const PageScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                        onPageChanged: (index) =>
+                            _handlePosterPageChanged(index, feedEntries),
+                        itemCount:
+                            feedEntries.length +
+                            (_templatesLoadingMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= feedEntries.length) {
+                            return const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                ),
+                              ),
+                            );
+                          }
+                          final entry = feedEntries[index];
+                          if (entry.isPromo) {
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                10,
+                                16,
+                                18,
+                              ),
+                              child: Center(
+                                child: _HomeInlinePromoCard(
+                                  data: entry.promo!,
+                                  viewerPosterProfile: _viewerPosterProfile,
+                                  slides: promoSlides,
+                                  onTap: () => unawaited(
+                                    _handlePromoTap(entry.promo!.type),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          final item = entry.template!;
+                          return _TemplateFeedItem(
+                            key: ValueKey<String>(
+                              item.templateId?.trim().isNotEmpty == true
+                                  ? item.templateId!.trim()
+                                  : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}',
+                            ),
+                            item: item,
+                            hostContext: context,
+                            language: language,
+                            preferUltraLightImage: false,
+                            deferRichPosterPreview: false,
+                            fillViewport: true,
+                            playbackEnabled: index == activeFeedPage,
+                            onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
+                            viewerPosterProfile: _viewerPosterProfile,
+                            posterRenderCycle: _posterRenderCycle,
+                            onPosterPhotoDragStateChanged:
+                                _setPosterPhotoDragInProgress,
+                            onInteraction: _recordAllFeedTemplateInteraction,
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+          PositionedDirectional(
+            top: uploadTabTop,
+            end: 0,
+            child: _CommunityUploadEdgeTab(
+              onTap: () => unawaited(_openUserUploadsSheet()),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CommunityUploadEdgeTab extends StatelessWidget {
+  const _CommunityUploadEdgeTab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      left: false,
+      child: Material(
+        color: Colors.transparent,
+        child: Tooltip(
+          message: 'Community Uploads',
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: const BorderRadius.horizontal(
+              left: Radius.circular(14),
+            ),
+            child: Container(
+              width: 36,
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.86),
+                borderRadius: const BorderRadiusDirectional.horizontal(
+                  start: Radius.circular(14),
+                ),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: const <BoxShadow>[
+                  BoxShadow(
+                    color: Color(0x1A0F172A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.cloud_upload_rounded,
+                  color: Color(0xFFD81B60),
+                  size: 21,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -5912,7 +6714,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
     if (code.isEmpty) {
       setState(() {
         _errorText = context.strings.localized(
-          telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
+          telugu:
+              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°¨à°®à±‹à°¦à± à°šà±‡à°¯à°‚à°¡à°¿',
           english: 'Enter referral code',
         );
       });
@@ -5938,7 +6741,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
         _applying = false;
         _errorText = result.message.isEmpty
             ? context.strings.localized(
-                telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు',
+                telugu:
+                    'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±',
                 english: 'Referral code could not be applied',
               )
             : result.message;
@@ -5950,7 +6754,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
       setState(() {
         _applying = false;
         _errorText = context.strings.localized(
-          telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి',
+          telugu:
+              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
           english: 'Referral code apply failed. Please try again.',
         );
       });
@@ -5993,7 +6798,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'రిఫరల్ కోడ్',
+                        telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
                         english: 'Referral code',
                       ),
                       textAlign: TextAlign.center,
@@ -6004,7 +6809,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     Text(
                       strings.localized(
                         telugu:
-                            'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
+                            'à°®à±€ à°¦à°—à±à°—à°° referral code à°‰à°‚à°Ÿà±‡ à°‡à°•à±à°•à°¡ enter à°šà±‡à°¯à°‚à°¡à°¿.',
                         english: 'Enter a referral code if you have one.',
                       ),
                       textAlign: TextAlign.center,
@@ -6019,7 +6824,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
                         labelText: strings.localized(
-                          telugu: 'రిఫరల్ కోడ్',
+                          telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
                           english: 'Referral code',
                         ),
                         errorText: _errorText,
@@ -6038,14 +6843,15 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       ),
                       child: Text(
                         strings.localized(
-                          telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+                          telugu:
+                              'à°¨à°¿à°¬à°‚à°§à°¨à°²à± à°®à°°à°¿à°¯à± à°·à°°à°¤à±à°²à± à°šà±‚à°¡à°‚à°¡à°¿',
                           english: 'View Terms & Conditions',
                         ),
                       ),
                     ),
                     PrimaryButton(
                       label: strings.localized(
-                        telugu: 'అప్లై',
+                        telugu: 'à°…à°ªà±à°²à±ˆ',
                         english: 'Apply',
                       ),
                       loading: _applying,
@@ -6063,7 +6869,10 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                         ),
                       ),
                       child: Text(
-                        strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+                        strings.localized(
+                          telugu: 'à°¸à±à°•à°¿à°ªà±',
+                          english: 'Skip',
+                        ),
                       ),
                     ),
                   ],
@@ -6276,12 +7085,13 @@ class _CommunityStatusGridScreenState
                             Expanded(
                               child: Text(
                                 strings.localized(
-                                  telugu: 'స్టేటస్లు',
+                                  telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±à°²à±',
                                   english: 'Statuses',
-                                  hindi: 'स्टेटस',
-                                  tamil: 'நிலைகள்',
-                                  kannada: 'ಸ್ಟೇಟಸ್‌ಗಳು',
-                                  malayalam: 'സ്റ്റാറ്റസുകൾ',
+                                  hindi: 'à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
+                                  tamil: 'à®¨à®¿à®²à¯ˆà®•à®³à¯',
+                                  kannada: 'à²¸à³à²Ÿà³‡à²Ÿà²¸à³â€Œà²—à²³à³',
+                                  malayalam:
+                                      'à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµà´•àµ¾',
                                 ),
                                 style: const TextStyle(
                                   color: Color(0xFF0F172A),
@@ -6328,12 +7138,14 @@ class _CommunityStatusGridScreenState
                                           statuses: myStatuses,
                                         ),
                                   label: strings.localized(
-                                    telugu: 'నా స్టేటస్',
+                                    telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
                                     english: 'My Status',
-                                    hindi: 'मेरा स्टेटस',
-                                    tamil: 'என் நிலை',
-                                    kannada: 'ನನ್ನ ಸ್ಟೇಟಸ್',
-                                    malayalam: 'എന്റെ സ്റ്റാറ്റസ്',
+                                    hindi: 'à¤®à¥‡à¤°à¤¾ à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
+                                    tamil: 'à®Žà®©à¯ à®¨à®¿à®²à¯ˆ',
+                                    kannada:
+                                        'à²¨à²¨à³à²¨ à²¸à³à²Ÿà³‡à²Ÿà²¸à³',
+                                    malayalam:
+                                        'à´Žà´¨àµà´±àµ† à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµ',
                                   ),
                                   isMine: true,
                                   onAdd: () => unawaited(_openUpload()),
@@ -6348,12 +7160,14 @@ class _CommunityStatusGridScreenState
                                 group: group,
                                 label: group.displayName.isEmpty
                                     ? strings.localized(
-                                        telugu: 'వినియోగదారు',
+                                        telugu:
+                                            'à°µà°¿à°¨à°¿à°¯à±‹à°—à°¦à°¾à°°à±',
                                         english: 'User',
-                                        hindi: 'उपयोगकर्ता',
-                                        tamil: 'பயனர்',
-                                        kannada: 'ಬಳಕೆದಾರ',
-                                        malayalam: 'ഉപയോക്താവ്',
+                                        hindi: 'à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾',
+                                        tamil: 'à®ªà®¯à®©à®°à¯',
+                                        kannada: 'à²¬à²³à²•à³†à²¦à²¾à²°',
+                                        malayalam:
+                                            'à´‰à´ªà´¯àµ‹à´•àµà´¤à´¾à´µàµ',
                                       )
                                     : group.displayName,
                                 onOpen: () =>
@@ -6633,7 +7447,8 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                     children: <Widget>[
                       Text(
                         strings.localized(
-                          telugu: 'సోషల్ మీడియా క్యాలెండర్',
+                          telugu:
+                              'à°¸à±‹à°·à°²à± à°®à±€à°¡à°¿à°¯à°¾ à°•à±à°¯à°¾à°²à±†à°‚à°¡à°°à±',
                           english: 'Social Media Calendar',
                           hindi: 'Social Media Calendar',
                           tamil: 'Social Media Calendar',
@@ -6670,12 +7485,16 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                   ? Center(
                       child: Text(
                         strings.localized(
-                          telugu: 'ఈ నెలలో events లేవు',
+                          telugu: 'à°ˆ à°¨à±†à°²à°²à±‹ events à°²à±‡à°µà±',
                           english: 'No events for this month',
-                          hindi: 'इस महीने कोई event नहीं है',
-                          tamil: 'இந்த மாதத்தில் events இல்லை',
-                          kannada: 'ಈ ತಿಂಗಳಲ್ಲಿ events ಇಲ್ಲ',
-                          malayalam: 'ഈ മാസത്തിൽ events ഇല്ല',
+                          hindi:
+                              'à¤‡à¤¸ à¤®à¤¹à¥€à¤¨à¥‡ à¤•à¥‹à¤ˆ event à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ',
+                          tamil:
+                              'à®‡à®¨à¯à®¤ à®®à®¾à®¤à®¤à¯à®¤à®¿à®²à¯ events à®‡à®²à¯à®²à¯ˆ',
+                          kannada:
+                              'à²ˆ à²¤à²¿à²‚à²—à²³à²²à³à²²à²¿ events à²‡à²²à³à²²',
+                          malayalam:
+                              'à´ˆ à´®à´¾à´¸à´¤àµà´¤à´¿àµ½ events à´‡à´²àµà´²',
                         ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -6829,6 +7648,7 @@ String _statusCalendarNormalize(String value) {
 Color _statusCalendarTypeColor(DynamicCategoryType type) {
   return switch (type) {
     DynamicCategoryType.festival => const Color(0xFFD97706),
+    DynamicCategoryType.birthday => const Color(0xFFDB2777),
     DynamicCategoryType.jayanthi => const Color(0xFF2563EB),
     DynamicCategoryType.vardhanthi => const Color(0xFF64748B),
     DynamicCategoryType.importantDay => const Color(0xFFD81B60),
@@ -6986,7 +7806,13 @@ class _CommunityStatusViewerScreenState
     extends State<_CommunityStatusViewerScreen>
     with SingleTickerProviderStateMixin {
   static const Duration _viewDuration = Duration(seconds: 7);
-  static const List<String> _reactions = <String>['🔥', '👏', '😍', '🙏', '😠'];
+  static const List<String> _reactions = <String>[
+    'Ã°Å¸â€Â¥',
+    'Ã°Å¸â€˜Â',
+    'Ã°Å¸ËœÂ',
+    'Ã°Å¸â„¢Â',
+    'Ã°Å¸ËœÂ ',
+  ];
 
   late final AnimationController _progressController;
   bool _isDeleting = false;
@@ -7044,7 +7870,7 @@ class _CommunityStatusViewerScreenState
     unawaited(
       SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,
-        overlays: <SystemUiOverlay>[SystemUiOverlay.top],
+        overlays: SystemUiOverlay.values,
       ),
     );
     super.dispose();
@@ -7307,7 +8133,10 @@ class _CommunityStatusViewerScreenState
         final isOwner =
             FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
         final statusTitle = isOwner
-            ? strings.localized(telugu: 'నా స్టేటస్', english: 'My Status')
+            ? strings.localized(
+                telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
+                english: 'My Status',
+              )
             : (status.userName.isNotEmpty ? status.userName : 'User');
         final statusColor = Color(
           status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
@@ -7437,7 +8266,7 @@ class _CommunityStatusViewerScreenState
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
                           tooltip: strings.localized(
-                            telugu: 'మరిన్ని',
+                            telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
                             english: 'More',
                           ),
                           icon: const Icon(
@@ -7463,7 +8292,7 @@ class _CommunityStatusViewerScreenState
                               value: 'report',
                               child: Text(
                                 strings.localized(
-                                  telugu: 'రిపోర్ట్',
+                                  telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
                                   english: 'Report',
                                 ),
                                 style: const TextStyle(
@@ -7533,7 +8362,10 @@ class _StatusRepliesSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                strings.localized(telugu: 'రిప్లైలు', english: 'Replies'),
+                strings.localized(
+                  telugu: 'à°°à°¿à°ªà±à°²à±ˆà°²à±',
+                  english: 'Replies',
+                ),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -7553,7 +8385,8 @@ class _StatusRepliesSheet extends StatelessWidget {
                       return Center(
                         child: Text(
                           strings.localized(
-                            telugu: 'ఇంకా రిప్లైలు లేవు',
+                            telugu:
+                                'à°‡à°‚à°•à°¾ à°°à°¿à°ªà±à°²à±ˆà°²à± à°²à±‡à°µà±',
                             english: 'No replies yet',
                           ),
                           style: const TextStyle(
@@ -7583,7 +8416,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                             ),
                             PopupMenuButton<String>(
                               tooltip: strings.localized(
-                                telugu: 'మరిన్ని',
+                                telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
                                 english: 'More',
                               ),
                               icon: const Icon(
@@ -7612,7 +8445,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                                   value: 'report',
                                   child: Text(
                                     strings.localized(
-                                      telugu: 'రిపోర్ట్',
+                                      telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
                                       english: 'Report',
                                     ),
                                     style: const TextStyle(
@@ -7655,43 +8488,50 @@ String _localizedCommunityReportReason(BuildContext context, String reason) {
   final strings = context.strings;
   return switch (reason) {
     'Harassment or bullying' => strings.localized(
-      telugu: 'వేధింపు లేదా బెదిరింపు',
+      telugu: 'à°µà±‡à°§à°¿à°‚à°ªà± à°²à±‡à°¦à°¾ à°¬à±†à°¦à°¿à°°à°¿à°‚à°ªà±',
       english: 'Harassment or bullying',
     ),
     'Hate speech or discrimination' => strings.localized(
-      telugu: 'ద్వేష ప్రసంగం లేదా వివక్ష',
+      telugu:
+          'à°¦à±à°µà±‡à°· à°ªà±à°°à°¸à°‚à°—à°‚ à°²à±‡à°¦à°¾ à°µà°¿à°µà°•à±à°·',
       english: 'Hate speech or discrimination',
     ),
     'Sexual or adult content' => strings.localized(
-      telugu: 'లైంగిక లేదా పెద్దల కంటెంట్',
+      telugu:
+          'à°²à±ˆà°‚à°—à°¿à°• à°²à±‡à°¦à°¾ à°ªà±†à°¦à±à°¦à°² à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Sexual or adult content',
     ),
     'Violence or dangerous content' => strings.localized(
-      telugu: 'హింస లేదా ప్రమాదకర కంటెంట్',
+      telugu:
+          'à°¹à°¿à°‚à°¸ à°²à±‡à°¦à°¾ à°ªà±à°°à°®à°¾à°¦à°•à°° à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Violence or dangerous content',
     ),
     'Spam, scam, or fake content' => strings.localized(
-      telugu: 'స్పామ్, మోసం లేదా నకిలీ కంటెంట్',
+      telugu:
+          'à°¸à±à°ªà°¾à°®à±, à°®à±‹à°¸à°‚ à°²à±‡à°¦à°¾ à°¨à°•à°¿à°²à±€ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Spam, scam, or fake content',
     ),
     'Misinformation or deceptive political content' => strings.localized(
-      telugu: 'తప్పుడు సమాచారం లేదా మోసపూరిత రాజకీయ కంటెంట్',
+      telugu:
+          'à°¤à°ªà±à°ªà±à°¡à± à°¸à°®à°¾à°šà°¾à°°à°‚ à°²à±‡à°¦à°¾ à°®à±‹à°¸à°ªà±‚à°°à°¿à°¤ à°°à°¾à°œà°•à±€à°¯ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Misinformation or deceptive political content',
     ),
     'Privacy violation or personal information' => strings.localized(
-      telugu: 'ప్రైవసీ ఉల్లంఘన లేదా వ్యక్తిగత సమాచారం',
+      telugu:
+          'à°ªà±à°°à±ˆà°µà°¸à±€ à°‰à°²à±à°²à°‚à°˜à°¨ à°²à±‡à°¦à°¾ à°µà±à°¯à°•à±à°¤à°¿à°—à°¤ à°¸à°®à°¾à°šà°¾à°°à°‚',
       english: 'Privacy violation or personal information',
     ),
     'Copyright or trademark issue' => strings.localized(
-      telugu: 'కాపీరైట్ లేదా ట్రేడ్‌మార్క్ సమస్య',
+      telugu:
+          'à°•à°¾à°ªà±€à°°à±ˆà°Ÿà± à°²à±‡à°¦à°¾ à°Ÿà±à°°à±‡à°¡à±â€Œà°®à°¾à°°à±à°•à± à°¸à°®à°¸à±à°¯',
       english: 'Copyright or trademark issue',
     ),
     'Illegal content' => strings.localized(
-      telugu: 'చట్టవిరుద్ధ కంటెంట్',
+      telugu: 'à°šà°Ÿà±à°Ÿà°µà°¿à°°à±à°¦à±à°§ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Illegal content',
     ),
     _ => strings.localized(
-      telugu: 'ఇతర సేఫ్టీ సమస్య',
+      telugu: 'à°‡à°¤à°° à°¸à±‡à°«à±à°Ÿà±€ à°¸à°®à°¸à±à°¯',
       english: 'Other safety issue',
     ),
   };
@@ -7707,8 +8547,8 @@ Future<void> _showCommunityStatusReportSheet(
   var selectedReason = _communityReportReasons.first;
   var submitting = false;
   final reportedLabel = comment == null
-      ? strings.localized(telugu: 'స్టేటస్', english: 'status')
-      : strings.localized(telugu: 'రిప్లై', english: 'reply');
+      ? strings.localized(telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±', english: 'status')
+      : strings.localized(telugu: 'à°°à°¿à°ªà±à°²à±ˆ', english: 'reply');
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -7746,7 +8586,8 @@ Future<void> _showCommunityStatusReportSheet(
                       const SizedBox(height: 16),
                       Text(
                         strings.localized(
-                          telugu: '$reportedLabel రిపోర్ట్ చేయండి',
+                          telugu:
+                              '$reportedLabel à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿',
                           english: 'Report $reportedLabel',
                         ),
                         style: const TextStyle(
@@ -7759,7 +8600,7 @@ Future<void> _showCommunityStatusReportSheet(
                       Text(
                         strings.localized(
                           telugu:
-                              'దగ్గరగా సరిపోయే కారణం ఎంచుకోండి. రిపోర్ట్స్ community safety కోసం team review చేయవచ్చు.',
+                              'à°¦à°—à±à°—à°°à°—à°¾ à°¸à°°à°¿à°ªà±‹à°¯à±‡ à°•à°¾à°°à°£à°‚ à°Žà°‚à°šà±à°•à±‹à°‚à°¡à°¿. à°°à°¿à°ªà±‹à°°à±à°Ÿà±à°¸à± community safety à°•à±‹à°¸à°‚ team review à°šà±‡à°¯à°µà°šà±à°šà±.',
                           english:
                               'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
                         ),
@@ -7824,7 +8665,7 @@ Future<void> _showCommunityStatusReportSheet(
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
                           hintText: strings.localized(
-                            telugu: 'వివరాలు optional',
+                            telugu: 'à°µà°¿à°µà°°à°¾à°²à± optional',
                             english: 'Add details optional',
                           ),
                           hintStyle: TextStyle(
@@ -7858,7 +8699,7 @@ Future<void> _showCommunityStatusReportSheet(
                               ),
                               child: Text(
                                 strings.localized(
-                                  telugu: 'రద్దు',
+                                  telugu: 'à°°à°¦à±à°¦à±',
                                   english: 'Cancel',
                                 ),
                               ),
@@ -7891,13 +8732,13 @@ Future<void> _showCommunityStatusReportSheet(
                                               ok
                                                   ? strings.localized(
                                                       telugu:
-                                                          'రిపోర్ట్ submit అయింది. ధన్యవాదాలు.',
+                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± submit à°…à°¯à°¿à°‚à°¦à°¿. à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±.',
                                                       english:
                                                           'Report submitted. Thank you.',
                                                     )
                                                   : strings.localized(
                                                       telugu:
-                                                          'రిపోర్ట్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                                                       english:
                                                           'Report failed. Please try again.',
                                                     ),
@@ -7925,11 +8766,12 @@ Future<void> _showCommunityStatusReportSheet(
                               label: Text(
                                 submitting
                                     ? strings.localized(
-                                        telugu: 'పంపుతోంది',
+                                        telugu: 'à°ªà°‚à°ªà±à°¤à±‹à°‚à°¦à°¿',
                                         english: 'Sending',
                                       )
                                     : strings.localized(
-                                        telugu: 'సమర్పించండి',
+                                        telugu:
+                                            'à°¸à°®à°°à±à°ªà°¿à°‚à°šà°‚à°¡à°¿',
                                         english: 'Submit',
                                       ),
                               ),
@@ -8001,7 +8843,10 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                strings.localized(telugu: 'మరింత చదవండి', english: 'Read more'),
+                strings.localized(
+                  telugu: 'à°®à°°à°¿à°‚à°¤ à°šà°¦à°µà°‚à°¡à°¿',
+                  english: 'Read more',
+                ),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.w700,
@@ -8197,7 +9042,8 @@ class _StatusEngagementPanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         strings.localized(
-                          telugu: 'రిప్లైలు చూడడానికి పైకి swipe చేయండి',
+                          telugu:
+                              'à°°à°¿à°ªà±à°²à±ˆà°²à± à°šà±‚à°¡à°¡à°¾à°¨à°¿à°•à°¿ à°ªà±ˆà°•à°¿ swipe à°šà±‡à°¯à°‚à°¡à°¿',
                           english: 'Swipe up for replies',
                         ),
                         style: const TextStyle(
@@ -8299,7 +9145,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'రిప్లై పంపబడింది',
+              telugu: 'à°°à°¿à°ªà±à°²à±ˆ à°ªà°‚à°ªà°¬à°¡à°¿à°‚à°¦à°¿',
               english: 'Reply sent',
             ),
           ),
@@ -8311,7 +9157,8 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
       AppSnackBar.build(
         content: Text(
           strings.localized(
-            telugu: 'రిప్లై విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°°à°¿à°ªà±à°²à±ˆ à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Reply failed. Try again.',
           ),
         ),
@@ -8342,7 +9189,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
             decoration: InputDecoration(
               counterText: '',
               hintText: strings.localized(
-                telugu: 'రిప్లై...',
+                telugu: 'à°°à°¿à°ªà±à°²à±ˆ...',
                 english: 'Reply...',
               ),
               hintStyle: TextStyle(
@@ -8476,6 +9323,7 @@ class _HomeHeader extends StatelessWidget {
     required this.searchFocusNode,
     required this.onSearchChanged,
     required this.onSearchSubmitted,
+    required this.compact,
   });
 
   final VoidCallback onHeaderTap;
@@ -8487,6 +9335,7 @@ class _HomeHeader extends StatelessWidget {
   final FocusNode searchFocusNode;
   final ValueChanged<String> onSearchChanged;
   final Future<void> Function() onSearchSubmitted;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -8498,7 +9347,12 @@ class _HomeHeader extends StatelessWidget {
       onTap: onHeaderTap,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.fromLTRB(10, topInset + 8, 10, 9),
+        padding: EdgeInsets.fromLTRB(
+          10,
+          topInset + (compact ? 4 : 8),
+          10,
+          compact ? 5 : 9,
+        ),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -8574,7 +9428,7 @@ class _HomeHeader extends StatelessWidget {
               label: const Text('Create'),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF4F46E5),
+                foregroundColor: const Color(0xFFD81B60),
                 minimumSize: const Size(93, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -8590,7 +9444,7 @@ class _HomeHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Tooltip(
               message: strings.localized(
-                telugu: 'స్టేటస్‌లు',
+                telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±â€Œà°²à±',
                 english: 'Statuses',
               ),
               child: InkWell(
@@ -9195,21 +10049,26 @@ class _HomePinnedFeedControls extends StatelessWidget {
   const _HomePinnedFeedControls({
     required this.categories,
     required this.activeCategorySlug,
+    required this.scrollController,
     required this.onCategoryTap,
     required this.banners,
     required this.showAdFallback,
     required this.shouldShowAdFallback,
     required this.homeRefreshing,
+    required this.compact,
   });
 
   final List<_CategoryChipData> categories;
   final String activeCategorySlug;
+  final ScrollController scrollController;
   final ValueChanged<String> onCategoryTap;
   final List<AppHomeBanner> banners;
   final bool showAdFallback;
   final bool shouldShowAdFallback;
   final bool homeRefreshing;
-  static const double _categoryPanelHeight = 120;
+  final bool compact;
+  static const double _categoryPanelHeight = 94;
+  static const double _compactCategoryPanelHeight = 36;
 
   @override
   Widget build(BuildContext context) {
@@ -9219,25 +10078,31 @@ class _HomePinnedFeedControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 2, 6, 0),
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
             child: RepaintBoundary(
               child: SizedBox(
-                height: _categoryPanelHeight,
+                height: compact
+                    ? _compactCategoryPanelHeight
+                    : _categoryPanelHeight,
                 width: double.infinity,
                 child: ClipRect(
                   child: _CategoryRowsScroller(
                     categories: categories,
                     activeCategorySlug: activeCategorySlug,
+                    scrollController: scrollController,
                     onCategoryTap: onCategoryTap,
+                    compact: compact,
                   ),
                 ),
               ),
             ),
           ),
-          if (banners.isNotEmpty) ...<Widget>[
+          if (!compact && banners.isNotEmpty) ...<Widget>[
             const SizedBox(height: 3),
             RepaintBoundary(child: _HomeHeroBanner(banners: banners)),
-          ] else if (showAdFallback && shouldShowAdFallback) ...<Widget>[
+          ] else if (!compact &&
+              showAdFallback &&
+              shouldShowAdFallback) ...<Widget>[
             const SizedBox(height: 3),
             const RepaintBoundary(child: _HomeBannerAdFallback()),
           ],
@@ -9253,58 +10118,136 @@ class _HomePinnedFeedControls extends StatelessWidget {
   }
 }
 
-class _CategoryRowsScroller extends StatelessWidget {
+class _CategoryRowsScroller extends StatefulWidget {
   const _CategoryRowsScroller({
     required this.categories,
     required this.activeCategorySlug,
+    required this.scrollController,
     required this.onCategoryTap,
+    required this.compact,
   });
 
-  static const int _rowCount = 4;
-  static const double _rowHeight = 28;
-  static const double _rowGap = 2;
-  static const double _chipGap = 5;
+  static const int _rowCount = 3;
+  static const double _minChipWidth = 38;
+  static const double _maxChipWidth = 184;
+  static const double _maxSelectedMoreChipWidth = 132;
+  static const double _maxDynamicChipWidth = 268;
+  static const double _rowHeight = 30;
+  static const double _rowGap = 1;
+  static const double _columnGap = 3;
+  static const int _layoutStrategyVersion = 3;
 
   final List<_CategoryChipData> categories;
   final String activeCategorySlug;
+  final ScrollController scrollController;
   final ValueChanged<String> onCategoryTap;
+  final bool compact;
+
+  @override
+  State<_CategoryRowsScroller> createState() => _CategoryRowsScrollerState();
+}
+
+class _CategoryRowsScrollerState extends State<_CategoryRowsScroller> {
+  final Map<String, _CategoryChipSlot> _slotsBySlug =
+      <String, _CategoryChipSlot>{};
+  final Map<String, double> _slotWidthBySlug = <String, double>{};
+  final List<List<String>> _slugRows = List<List<String>>.generate(
+    _CategoryRowsScroller._rowCount,
+    (_) => <String>[],
+  );
+  int _appliedLayoutStrategyVersion = 0;
 
   @override
   Widget build(BuildContext context) {
-    final rowLength = (categories.length / _rowCount).ceil();
+    if (widget.compact) {
+      final chips = _buildCompactRow();
+      return SingleChildScrollView(
+        key: const PageStorageKey<String>('home-category-horizontal-scroll'),
+        controller: widget.scrollController,
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.only(right: 4),
+        child: Row(
+          children: <Widget>[
+            for (var index = 0; index < chips.length; index++) ...<Widget>[
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: _CategoryRowsScroller._minChipWidth,
+                  maxWidth: _CategoryRowsScroller._maxChipWidth,
+                ),
+                child: _CategoryChip(
+                  data: chips[index],
+                  isSelected:
+                      chips[index].effectiveSelectionSlug ==
+                      widget.activeCategorySlug,
+                  onTap: () =>
+                      widget.onCategoryTap(chips[index].effectiveSelectionSlug),
+                ),
+              ),
+              if (index != chips.length - 1)
+                const SizedBox(width: _CategoryRowsScroller._columnGap),
+            ],
+          ],
+        ),
+      );
+    }
+    final rows = _buildStableRows();
     return SingleChildScrollView(
       key: const PageStorageKey<String>('home-category-horizontal-scroll'),
+      controller: widget.scrollController,
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.only(right: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          for (var row = 0; row < _rowCount; row++)
+          for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
             Padding(
               padding: EdgeInsets.only(
-                bottom: row == _rowCount - 1 ? 0 : _rowGap,
+                bottom: rowIndex == rows.length - 1
+                    ? 0
+                    : _CategoryRowsScroller._rowGap,
               ),
               child: SizedBox(
-                height: _rowHeight,
+                height: _CategoryRowsScroller._rowHeight,
                 child: Row(
                   children: <Widget>[
                     for (
-                      var index = row * rowLength;
-                      index <
-                          math.min((row + 1) * rowLength, categories.length);
+                      var index = 0;
+                      index < rows[rowIndex].length;
                       index++
                     ) ...<Widget>[
-                      _CategoryChip(
-                        data: categories[index],
-                        isSelected:
-                            categories[index].slug == activeCategorySlug,
-                        onTap: () => onCategoryTap(categories[index].slug),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: _CategoryRowsScroller._minChipWidth,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: rows[rowIndex][index].isDynamic
+                                ? _CategoryRowsScroller._maxDynamicChipWidth
+                                : rows[rowIndex][index].slug ==
+                                      _HomeScreenState
+                                          ._selectedMoreCategorySlotSlug
+                                ? _CategoryRowsScroller
+                                      ._maxSelectedMoreChipWidth
+                                : _CategoryRowsScroller._maxChipWidth,
+                          ),
+                          child: _CategoryChip(
+                            key: ValueKey<String>(
+                              'home-category-${rows[rowIndex][index].slug}',
+                            ),
+                            data: rows[rowIndex][index],
+                            isSelected:
+                                rows[rowIndex][index].effectiveSelectionSlug ==
+                                widget.activeCategorySlug,
+                            onTap: () => widget.onCategoryTap(
+                              rows[rowIndex][index].effectiveSelectionSlug,
+                            ),
+                          ),
+                        ),
                       ),
-                      if (index !=
-                          math.min((row + 1) * rowLength, categories.length) -
-                              1)
-                        const SizedBox(width: _chipGap),
+                      if (index != rows[rowIndex].length - 1)
+                        const SizedBox(width: _CategoryRowsScroller._columnGap),
                     ],
                   ],
                 ),
@@ -9313,6 +10256,235 @@ class _CategoryRowsScroller extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<_CategoryChipData> _buildCompactRow() {
+    final utility = <_CategoryChipData>[];
+    final normal = <_CategoryChipData>[];
+    final dynamic = <_CategoryChipData>[];
+    for (final category in widget.categories) {
+      if (category.slug == _HomeScreenState._moreCategorySlug ||
+          category.selectionSlug != null ||
+          category.slug == 'today_special' ||
+          _HomeScreenState._morePopupCategorySlugs.contains(category.slug)) {
+        utility.add(category);
+      } else if (category.isDynamic) {
+        dynamic.add(category);
+      } else {
+        normal.add(category);
+      }
+    }
+    return <_CategoryChipData>[...normal, ...dynamic, ...utility];
+  }
+
+  List<List<_CategoryChipData>> _buildStableRows() {
+    if (_appliedLayoutStrategyVersion !=
+        _CategoryRowsScroller._layoutStrategyVersion) {
+      _slotsBySlug.clear();
+      _slotWidthBySlug.clear();
+      for (final row in _slugRows) {
+        row.clear();
+      }
+      _appliedLayoutStrategyVersion =
+          _CategoryRowsScroller._layoutStrategyVersion;
+    }
+    final bySlug = <String, _CategoryChipData>{
+      for (final category in widget.categories) category.slug: category,
+    };
+    _removeMissingSlugs(bySlug.keys.toSet());
+    final newChips = widget.categories
+        .where((category) => !_slotsBySlug.containsKey(category.slug))
+        .toList(growable: false);
+    _assignNewChips(newChips);
+    _moveSelectedMoreSlotBeforeMore();
+    return <List<_CategoryChipData>>[
+      for (final row in _slugRows)
+        <_CategoryChipData>[
+          for (final slug in row)
+            if (bySlug[slug] != null) bySlug[slug]!,
+        ],
+    ];
+  }
+
+  void _removeMissingSlugs(Set<String> visibleSlugs) {
+    final missing = _slotsBySlug.keys
+        .where((slug) => !visibleSlugs.contains(slug))
+        .toList(growable: false);
+    for (final slug in missing) {
+      final slot = _slotsBySlug.remove(slug);
+      _slotWidthBySlug.remove(slug);
+      if (slot == null) {
+        continue;
+      }
+      _slugRows[slot.row].remove(slug);
+    }
+    for (var rowIndex = 0; rowIndex < _slugRows.length; rowIndex++) {
+      for (var index = 0; index < _slugRows[rowIndex].length; index++) {
+        _slotsBySlug[_slugRows[rowIndex][index]] = _CategoryChipSlot(
+          row: rowIndex,
+          index: index,
+        );
+      }
+    }
+  }
+
+  void _moveSelectedMoreSlotBeforeMore() {
+    const selectedSlotSlug = _HomeScreenState._selectedMoreCategorySlotSlug;
+    const moreSlotSlug = _HomeScreenState._moreCategorySlug;
+    final selectedSlot = _slotsBySlug[selectedSlotSlug];
+    final moreSlot = _slotsBySlug[moreSlotSlug];
+    if (selectedSlot == null || moreSlot == null) {
+      return;
+    }
+    final selectedRow = _slugRows[selectedSlot.row];
+    final moreRow = _slugRows[moreSlot.row];
+    final selectedIndex = selectedRow.indexOf(selectedSlotSlug);
+    final moreIndex = moreRow.indexOf(moreSlotSlug);
+    if (selectedIndex < 0 || moreIndex < 0) {
+      return;
+    }
+    if (selectedSlot.row == moreSlot.row && selectedIndex == moreIndex - 1) {
+      return;
+    }
+    selectedRow.removeAt(selectedIndex);
+    final adjustedMoreIndex =
+        selectedSlot.row == moreSlot.row && selectedIndex < moreIndex
+        ? moreIndex - 1
+        : moreIndex;
+    moreRow.insert(adjustedMoreIndex, selectedSlotSlug);
+    for (var rowIndex = 0; rowIndex < _slugRows.length; rowIndex++) {
+      for (var index = 0; index < _slugRows[rowIndex].length; index++) {
+        _slotsBySlug[_slugRows[rowIndex][index]] = _CategoryChipSlot(
+          row: rowIndex,
+          index: index,
+        );
+      }
+    }
+  }
+
+  void _assignNewChips(List<_CategoryChipData> newChips) {
+    if (newChips.isEmpty) {
+      return;
+    }
+    _CategoryChipData? moreChip;
+    final beforeMoreChips = <_CategoryChipData>[];
+    final regularChips = <_CategoryChipData>[];
+
+    for (final category in newChips) {
+      if (category.slug == _HomeScreenState._moreCategorySlug) {
+        moreChip = category;
+      } else if (category.selectionSlug != null) {
+        beforeMoreChips.add(category);
+      } else if (_HomeScreenState._morePopupCategorySlugs.contains(
+        category.slug,
+      )) {
+        beforeMoreChips.add(category);
+      } else {
+        regularChips.add(category);
+      }
+    }
+
+    void appendToRow(int rowIndex, _CategoryChipData chip) {
+      if (_slotsBySlug.containsKey(chip.slug)) {
+        return;
+      }
+      final safeRowIndex = rowIndex.clamp(0, _slugRows.length - 1);
+      final row = _slugRows[safeRowIndex];
+      _slotsBySlug[chip.slug] = _CategoryChipSlot(
+        row: safeRowIndex,
+        index: row.length,
+      );
+      _slotWidthBySlug[chip.slug] = _estimatedChipWidth(chip);
+      row.add(chip.slug);
+    }
+
+    void insertBeforeSlug(
+      String targetSlug,
+      int fallbackRowIndex,
+      _CategoryChipData chip,
+    ) {
+      if (_slotsBySlug.containsKey(chip.slug)) {
+        return;
+      }
+      final targetSlot = _slotsBySlug[targetSlug];
+      if (targetSlot == null) {
+        appendToRow(fallbackRowIndex, chip);
+        return;
+      }
+      final row = _slugRows[targetSlot.row];
+      final insertIndex = row.indexOf(targetSlug);
+      if (insertIndex < 0) {
+        appendToRow(fallbackRowIndex, chip);
+        return;
+      }
+      row.insert(insertIndex, chip.slug);
+      _slotWidthBySlug[chip.slug] = _estimatedChipWidth(chip);
+      for (var index = insertIndex; index < row.length; index++) {
+        _slotsBySlug[row[index]] = _CategoryChipSlot(
+          row: targetSlot.row,
+          index: index,
+        );
+      }
+    }
+
+    int shortestRowIndex() {
+      var bestRow = 0;
+      var bestWidth = double.infinity;
+      for (var rowIndex = 0; rowIndex < _slugRows.length; rowIndex++) {
+        final width = _rowEstimatedWidth(_slugRows[rowIndex]);
+        if (width < bestWidth) {
+          bestWidth = width;
+          bestRow = rowIndex;
+        }
+      }
+      return bestRow;
+    }
+
+    for (final chip in regularChips) {
+      appendToRow(shortestRowIndex(), chip);
+    }
+    for (final chip in beforeMoreChips) {
+      insertBeforeSlug(
+        _HomeScreenState._moreCategorySlug,
+        shortestRowIndex(),
+        chip,
+      );
+    }
+    if (moreChip != null) {
+      appendToRow(shortestRowIndex(), moreChip);
+    }
+  }
+
+  double _rowEstimatedWidth(List<String> row) {
+    if (row.isEmpty) {
+      return 0;
+    }
+    return row.fold<double>(
+          0,
+          (total, slug) => total + (_slotWidthBySlug[slug] ?? 96),
+        ) +
+        ((row.length - 1) * _CategoryRowsScroller._columnGap);
+  }
+
+  double _estimatedChipWidth(_CategoryChipData chip) {
+    final cleanLabel = CategoryDisplayHelper.stripIcon(chip.label).trim();
+    final dateExtra = (chip.dateLabel?.trim().isNotEmpty ?? false) ? 28 : 0;
+    final iconExtra =
+        chip.iconAssetPath != null ||
+            CategoryDisplayHelper.assetPathFor(
+                  chip.selectionSlug ?? chip.slug,
+                  chip.label,
+                ) !=
+                null
+        ? 22
+        : 0;
+    final rawWidth = 26 + iconExtra + dateExtra + (cleanLabel.length * 8.5);
+    final maxWidth = chip.isDynamic
+        ? _CategoryRowsScroller._maxDynamicChipWidth
+        : chip.slug == _HomeScreenState._selectedMoreCategorySlotSlug
+        ? _CategoryRowsScroller._maxSelectedMoreChipWidth
+        : _CategoryRowsScroller._maxChipWidth;
+    return rawWidth.clamp(_CategoryRowsScroller._minChipWidth, maxWidth);
   }
 }
 
@@ -9391,11 +10563,13 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                 errorWidget: (_, _, _) => _ImageErrorState(
                   compact: true,
                   title: context.strings.localized(
-                    telugu: 'బ్యానర్ అందుబాటులో లేదు',
+                    telugu:
+                        'à°¬à±à°¯à°¾à°¨à°°à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
-                    telugu: 'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+                    telugu:
+                        'à°¦à°¯à°šà±‡à°¸à°¿ à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -9453,10 +10627,9 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     if (!mounted) {
       return;
     }
-    final adaptiveSize =
-        await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-          availableWidth.truncate(),
-        );
+    final adaptiveSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(
+      availableWidth.truncate(),
+    );
     if (!mounted || adaptiveSize == null) {
       return;
     }
@@ -9556,6 +10729,7 @@ class _HeaderProfileAvatar extends StatelessWidget {
 
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({
+    super.key,
     required this.data,
     required this.isSelected,
     required this.onTap,
@@ -9570,7 +10744,14 @@ class _CategoryChip extends StatelessWidget {
     final data = this.data;
     final isSelected = this.isSelected;
     final isAll = data.slug == _HomeScreenState._allCategorySlug;
-    final iconAssetPath = data.iconAssetPath;
+    final displaySlug = data.selectionSlug ?? data.slug;
+    final iconAssetPath =
+        data.iconAssetPath ??
+        CategoryDisplayHelper.assetPathFor(displaySlug, data.label);
+    final cleanLabel = CategoryDisplayHelper.stripIcon(data.label);
+    final dateLabel = data.dateLabel?.trim();
+    final showDate =
+        data.isDynamic && dateLabel != null && dateLabel.isNotEmpty;
     const selectedChipColor = Color(0xFF6D28D9);
     const selectedChipBorder = Color(0xFF5B21B6);
     const allChipColor = Color(0xFF25D366);
@@ -9594,6 +10775,9 @@ class _CategoryChip extends StatelessWidget {
         : data.isDynamic
         ? const Color(0xFF8A5A00)
         : const Color(0xFF334155);
+    final secondaryTextColor = isSelected
+        ? Colors.white.withValues(alpha: 0.82)
+        : textColor.withValues(alpha: 0.78);
 
     return Material(
       color: Colors.transparent,
@@ -9601,8 +10785,11 @@ class _CategoryChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 27),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          constraints: BoxConstraints(minHeight: showDate ? 29 : 27),
+          padding: EdgeInsets.symmetric(
+            horizontal: showDate ? 7 : 8,
+            vertical: showDate ? 2.5 : 3.5,
+          ),
           decoration: BoxDecoration(
             color: chipTint,
             borderRadius: BorderRadius.circular(999),
@@ -9624,18 +10811,49 @@ class _CategoryChip extends StatelessWidget {
                 _CategoryChipAssetIcon(assetPath: iconAssetPath),
                 const SizedBox(width: 4),
               ],
-              Text(
-                iconAssetPath == null
-                    ? CategoryDisplayHelper.withIcon(data.slug, data.label)
-                    : data.label,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: 10.4,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
+              Flexible(
+                child: showDate
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            cleanLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 9.8,
+                              height: 1.02,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                            ),
+                          ),
+                          Text(
+                            dateLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              height: 1.0,
+                              fontWeight: FontWeight.w700,
+                              color: secondaryTextColor,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        cleanLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: 10.4,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
               ),
             ],
           ),
@@ -9684,28 +10902,32 @@ class _CategoryChipFallbackIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('🗳️', style: TextStyle(fontSize: 12)));
+    return const Icon(
+      Icons.category_rounded,
+      size: 11,
+      color: Color(0xFF64748B),
+    );
   }
 }
 
 String _subscriptionPromptCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయాలి.',
+        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°¾à°²à°¿.',
     english: 'Activate subscription to share or download posters.',
   );
 }
 
 String _subscriptionDialogTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
     english: 'Subscription Required',
   );
 }
 
 String _subscriptionTrialTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
     english: '3-day trial plan',
   );
 }
@@ -9713,7 +10935,7 @@ String _subscriptionTrialTitleLocalized(BuildContext context) {
 String _subscriptionTrialValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -9721,14 +10943,15 @@ String _subscriptionTrialValueLocalized(BuildContext context) {
 
 String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'నెలవారీ ప్లాన్',
+    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
     english: 'Monthly plan',
   );
 }
 
 String _subscriptionMonthlyValueLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+    telugu:
+        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -9736,23 +10959,29 @@ String _subscriptionMonthlyValueLocalized(BuildContext context) {
 String _subscriptionRenewalCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజుల ట్రయల్ పూర్తయ్యాక మీరు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రీన్యువల్ అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల లోపు క్యాన్సిల్ చేస్తే నెలవారీ ఛార్జ్ పడదు. క్యాన్సిల్ చేసినా ప్రస్తుత ప్లాన్ గడువు ముగిసే వరకు బెనిఫిట్స్ ఉపయోగించవచ్చు.',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±‚à°°à±à°¤à°¯à±à°¯à°¾à°• à°®à±€à°°à± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±€à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°²à±‹à°ªà± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°µà°šà±à°šà±.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
 }
 
 String _subscriptionTermsLabelLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'నిబంధనలు', english: 'Terms');
+  return context.strings.localized(
+    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
+    english: 'Terms',
+  );
 }
 
 String _subscriptionSkipLabelLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'స్కిప్', english: 'Skip');
+  return context.strings.localized(
+    telugu: 'à°¸à±à°•à°¿à°ªà±',
+    english: 'Skip',
+  );
 }
 
 String _subscriptionButtonLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
     english: 'Subscribe',
   );
 }
@@ -10356,7 +11585,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'బ్యాక్‌గ్రౌండ్ తొలగిస్తోంది...',
+                        telugu:
+                            'à°¬à±à°¯à°¾à°•à±â€Œà°—à±à°°à±Œà°‚à°¡à± à°¤à±Šà°²à°—à°¿à°¸à±à°¤à±‹à°‚à°¦à°¿...',
                         english: 'Removing background...',
                       ),
                       style: const TextStyle(
@@ -10406,7 +11636,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
-              telugu: 'ఫోటో క్రాప్ చేయండి',
+              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
               english: 'Crop Photo',
             ),
             toolbarColor: const Color(0xFF0F172A),
@@ -10418,7 +11648,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           ),
           IOSUiSettings(
             title: strings.localized(
-              telugu: 'ఫోటో క్రాప్ చేయండి',
+              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
               english: 'Crop Photo',
             ),
             aspectRatioLockEnabled: false,
@@ -10480,7 +11710,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'ఫోటో జోడించాం, కానీ background remove పూర్తిగా కాలేదు. ఇప్పటికి original photo వాడుతున్నాం.',
+                'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°¾à°‚, à°•à°¾à°¨à±€ background remove à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°•à°¾à°²à±‡à°¦à±. à°‡à°ªà±à°ªà°Ÿà°¿à°•à°¿ original photo à°µà°¾à°¡à±à°¤à±à°¨à±à°¨à°¾à°‚.',
             english:
                 'Photo was added, but background removal did not complete. Using the original photo for now.',
           ),
@@ -10494,7 +11724,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'అదనపు ఫోటో జోడించలేకపోయాం.',
+            telugu:
+                'à°…à°¦à°¨à°ªà± à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚.',
             english: 'Could not add the extra photo.',
           ),
         );
@@ -11586,7 +12817,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     switch (result.code) {
       case 'permission_denied':
         return context.strings.localized(
-          telugu: 'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
+          telugu:
+              'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
           english: 'Gallery permission was denied.',
         );
       case 'file_missing':
@@ -11598,12 +12830,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       case 'platform_exception':
       case 'empty_result':
         return context.strings.localized(
-          telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'File save failed. Please try again.',
         );
       default:
         return context.strings.localized(
-          telugu: 'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Download failed. Please try again.',
         );
     }
@@ -11658,12 +12892,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       child: Text(
                         screenContext.strings.localized(
                           telugu:
-                              'సబ్‌స్క్రిప్షన్ స్టేటస్ తనిఖీ చేస్తున్నాం...',
+                              'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°¤à°¨à°¿à°–à±€ à°šà±‡à°¸à±à°¤à±à°¨à±à°¨à°¾à°‚...',
                           english: 'Checking subscription status...',
-                          hindi: 'सब्सक्रिप्शन स्थिति जांच रहे हैं...',
-                          tamil: 'சந்தா நிலை சரிபார்க்கிறோம்...',
-                          kannada: 'ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...',
-                          malayalam: 'സബ്സ്ക്രിപ്ഷൻ നില പരിശോധിക്കുന്നു...',
+                          hindi:
+                              'à¤¸à¤¬à¥à¤¸à¤•à¥à¤°à¤¿à¤ªà¥à¤¶à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿ à¤œà¤¾à¤‚à¤š à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚...',
+                          tamil:
+                              'à®šà®¨à¯à®¤à®¾ à®¨à®¿à®²à¯ˆ à®šà®°à®¿à®ªà®¾à®°à¯à®•à¯à®•à®¿à®±à¯‹à®®à¯...',
+                          kannada:
+                              'à²šà²‚à²¦à²¾à²¦à²¾à²°à²¿à²•à³† à²¸à³à²¥à²¿à²¤à²¿ à²ªà²°à²¿à²¶à³€à²²à²¿à²¸à³à²¤à³à²¤à²¿à²¦à³à²¦à³‡à²µà³†...',
+                          malayalam:
+                              'à´¸à´¬àµà´¸àµà´•àµà´°à´¿à´ªàµà´·àµ» à´¨à´¿à´² à´ªà´°à´¿à´¶àµ‹à´§à´¿à´•àµà´•àµà´¨àµà´¨àµ...',
                         ),
                         style: const TextStyle(
                           fontSize: 15,
@@ -11682,12 +12920,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     },
                     child: Text(
                       screenContext.strings.localized(
-                        telugu: 'రద్దు',
+                        telugu: 'à°°à°¦à±à°¦à±',
                         english: 'Cancel',
-                        hindi: 'रद्द करें',
-                        tamil: 'ரத்துசெய்',
-                        kannada: 'ರದ್ದುಮಾಡಿ',
-                        malayalam: 'റദ്ദാക്കുക',
+                        hindi: 'à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚',
+                        tamil: 'à®°à®¤à¯à®¤à¯à®šà¯†à®¯à¯',
+                        kannada: 'à²°à²¦à³à²¦à³à²®à²¾à²¡à²¿',
+                        malayalam: 'à´±à´¦àµà´¦à´¾à´•àµà´•àµà´•',
                       ),
                     ),
                   ),
@@ -11791,23 +13029,28 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final galleryPermissionMessage = context.strings.localized(
-      telugu: 'గ్యాలరీ అనుమతి నిరాకరించబడింది.',
+      telugu:
+          'à°—à±à°¯à°¾à°²à°°à±€ à°…à°¨à±à°®à°¤à°¿ à°¨à°¿à°°à°¾à°•à°°à°¿à°‚à°šà°¬à°¡à°¿à°‚à°¦à°¿.',
       english: 'Gallery permission was denied.',
     );
     final posterNotReadyMessage = context.strings.localized(
-      telugu: 'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'Capture failed. Please try again.',
     );
     final posterSavedMessage = context.strings.localized(
-      telugu: 'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
+      telugu:
+          'à°ªà±‹à°¸à±à°Ÿà°°à± à°—à±à°¯à°¾à°²à°°à±€à°²à±‹ à°¸à±‡à°µà± à°…à°¯à°¿à°‚à°¦à°¿.',
       english: 'Poster saved to gallery.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'File save failed. Please try again.',
     );
     final downloadFailedMessage = context.strings.localized(
-      telugu: 'డౌన్‌లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'Download failed. Please try again.',
     );
     try {
@@ -11939,15 +13182,18 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final messenger = ScaffoldMessenger.of(context);
     bool result = false;
     final posterNotReadyMessage = context.strings.localized(
-      telugu: 'పోస్టర్ capture కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°ªà±‹à°¸à±à°Ÿà°°à± capture à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'Capture failed. Please try again.',
     );
     final shareFailedMessage = context.strings.localized(
-      telugu: 'షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°·à±‡à°°à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'Share failed. Please try again.',
     );
     final fileSaveFailedMessage = context.strings.localized(
-      telugu: 'ఫైల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'à°«à±ˆà°²à± à°¸à±‡à°µà± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
       english: 'File save failed. Please try again.',
     );
     final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
@@ -11959,7 +13205,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               ? viewerPosterProfile.resolvedName(language: language).trim()
               : 'User');
     final shareText =
-        '✨ Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
+        'Ã¢Å“Â¨ Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
         'Download the app: ${AppPublicInfo.playStoreUrl}';
     try {
       final hasAccess = await _ensureSubscriptionAccess(context);
@@ -12139,7 +13385,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à°¿à°¦à±à°§à°‚ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Poster is not ready yet. Please try again.',
           ),
         );
@@ -12179,7 +13426,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'ఎడిటర్ ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°Žà°¡à°¿à°Ÿà°°à± à°“à°ªà±†à°¨à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Could not open editor. Please try again.',
           ),
         );
@@ -12334,11 +13582,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'సిద్ధం...',
+                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                       english: 'Preparing...',
                                     )
                                   : strings.localized(
-                                      telugu: 'షేర్',
+                                      telugu: 'à°·à±‡à°°à±',
                                       english: 'Share',
                                     ),
                               style: const TextStyle(
@@ -12391,7 +13639,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                               label: Text(
                                 strings.localized(
-                                  telugu: 'ఫోటో',
+                                  telugu: 'à°«à±‹à°Ÿà±‹',
                                   english: 'Photo',
                                 ),
                                 style: TextStyle(
@@ -12455,7 +13703,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'సిద్ధం...',
+                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                       english: 'Preparing...',
                                     )
                                   : strings.downloadLabel,
@@ -12510,7 +13758,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                   size: 18,
                                 ),
                           label: Text(
-                            strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
+                            strings.localized(
+                              telugu: 'à°Žà°¡à°¿à°Ÿà±',
+                              english: 'Edit',
+                            ),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
@@ -12610,7 +13861,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             const SizedBox(width: 4),
                             Text(
                               strings.localized(
-                                telugu: 'ఫోటో',
+                                telugu: 'à°«à±‹à°Ÿà±‹',
                                 english: 'Photo',
                               ),
                               style: TextStyle(
@@ -12687,11 +13938,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'సిద్ధం...',
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                 english: 'Preparing...',
                               )
                             : strings.localized(
-                                telugu: 'షేర్',
+                                telugu: 'à°·à±‡à°°à±',
                                 english: 'Share',
                               ),
                         style: const TextStyle(
@@ -12744,7 +13995,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               : const Color(0xFF64748B),
                         ),
                         label: Text(
-                          strings.localized(telugu: 'ఫోటో', english: 'Photo'),
+                          strings.localized(
+                            telugu: 'à°«à±‹à°Ÿà±‹',
+                            english: 'Photo',
+                          ),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -12806,7 +14060,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'సిద్ధం...',
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                 english: 'Preparing...',
                               )
                             : strings.downloadLabel,
@@ -12854,7 +14108,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         )
                       : const Icon(Icons.add_photo_alternate_rounded, size: 18),
                   label: Text(
-                    strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
+                    strings.localized(
+                      telugu: 'à°Žà°¡à°¿à°Ÿà±',
+                      english: 'Edit',
+                    ),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -13186,87 +14443,85 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   child: const _ImageLoadingState(),
                 );
               },
-              errorBuilder:
-                  (BuildContext context, Object error, StackTrace? stackTrace) {
-                    final strings = context.strings;
-                    final failed = resolvedUrl.trim();
-                    final thumb = placeholderUrl;
-                    if (thumb.isNotEmpty && thumb != failed) {
-                      return buildNetworkPosterImage(
-                        resolvedUrl: thumb,
-                        decodeWidth: decodeWidth.clamp(360, 960),
-                        notifyWhenLoaded: true,
-                      );
-                    }
-                    if (failed.startsWith('http://') ||
-                        failed.startsWith('https://')) {
-                      unawaited(
-                        PosterNetworkImageCache.instance.removeFile(failed),
-                      );
-                      return Image(
-                        image: widget.preferOriginalPosterQuality
-                            ? NetworkImage(failed)
-                            : ResizeImage.resizeIfNeeded(
-                                decodeWidth,
-                                null,
-                                NetworkImage(failed),
-                              ),
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.topCenter,
-                        gaplessPlayback: true,
-                        filterQuality: widget.preferOriginalPosterQuality
-                            ? FilterQuality.high
-                            : FilterQuality.medium,
-                        frameBuilder:
-                            (context, child, frame, wasSynchronouslyLoaded) {
-                              if (wasSynchronouslyLoaded || frame != null) {
-                                if (notifyWhenLoaded &&
-                                    widget.onFirstFrameReady != null) {
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    widget.onFirstFrameReady!.call();
-                                  });
-                                }
-                                return child;
-                              }
-                              return SizedBox(
-                                width: double.infinity,
-                                height: posterPlaceholderHeight,
-                                child: const _ImageLoadingState(),
-                              );
-                            },
-                        errorBuilder: (_, _, _) {
-                          schedulePosterReady();
-                          return _ImageErrorState(
-                            title: strings.localized(
-                              telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                              english: 'Template image unavailable',
-                            ),
-                            subtitle: strings.localized(
-                              telugu:
-                                  'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                              english:
-                                  'Please refresh or try another template.',
-                            ),
+              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+                final strings = context.strings;
+                final failed = resolvedUrl.trim();
+                final thumb = placeholderUrl;
+                if (thumb.isNotEmpty && thumb != failed) {
+                  return buildNetworkPosterImage(
+                    resolvedUrl: thumb,
+                    decodeWidth: decodeWidth.clamp(360, 960),
+                    notifyWhenLoaded: true,
+                  );
+                }
+                if (failed.startsWith('http://') ||
+                    failed.startsWith('https://')) {
+                  unawaited(
+                    PosterNetworkImageCache.instance.removeFile(failed),
+                  );
+                  return Image(
+                    image: widget.preferOriginalPosterQuality
+                        ? NetworkImage(failed)
+                        : ResizeImage.resizeIfNeeded(
+                            decodeWidth,
+                            null,
+                            NetworkImage(failed),
+                          ),
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.topCenter,
+                    gaplessPlayback: true,
+                    filterQuality: widget.preferOriginalPosterQuality
+                        ? FilterQuality.high
+                        : FilterQuality.medium,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) {
+                          if (wasSynchronouslyLoaded || frame != null) {
+                            if (notifyWhenLoaded &&
+                                widget.onFirstFrameReady != null) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                widget.onFirstFrameReady!.call();
+                              });
+                            }
+                            return child;
+                          }
+                          return SizedBox(
+                            width: double.infinity,
+                            height: posterPlaceholderHeight,
+                            child: const _ImageLoadingState(),
                           );
                         },
+                    errorBuilder: (_, _, _) {
+                      schedulePosterReady();
+                      return _ImageErrorState(
+                        title: strings.localized(
+                          telugu:
+                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                          english: 'Template image unavailable',
+                        ),
+                        subtitle: strings.localized(
+                          telugu:
+                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                          english: 'Please refresh or try another template.',
+                        ),
                       );
-                    }
-                    schedulePosterReady();
-                    return _ImageErrorState(
-                      title: strings.localized(
-                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                        english: 'Template image unavailable',
-                      ),
-                      subtitle: strings.localized(
-                        telugu:
-                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                        english: 'Please refresh or try another template.',
-                      ),
-                    );
-                  },
+                    },
+                  );
+                }
+                schedulePosterReady();
+                return _ImageErrorState(
+                  title: strings.localized(
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    english: 'Template image unavailable',
+                  ),
+                  subtitle: strings.localized(
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    english: 'Please refresh or try another template.',
+                  ),
+                );
+              },
             );
           }
 
@@ -13279,11 +14534,13 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 constraints: BoxConstraints(minWidth: math.max(width, 1)),
                 child: _ImageErrorState(
                   title: strings.localized(
-                    telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
-                    telugu: 'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -13322,12 +14579,13 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     schedulePosterReady();
                     return _ImageErrorState(
                       title: context.strings.localized(
-                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                        telugu:
+                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
                         telugu:
-                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                         english: 'Please refresh or try another template.',
                       ),
                     );
@@ -14167,11 +15425,12 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     if (_hasError || controller == null) {
       return _ImageErrorState(
         title: context.strings.localized(
-          telugu: 'వీడియో అందుబాటులో లేదు',
+          telugu:
+              'à°µà±€à°¡à°¿à°¯à±‹ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(
-          telugu: 'మళ్లీ ప్రయత్నించండి.',
+          telugu: 'à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Please try again.',
         ),
       );
@@ -16691,7 +17950,7 @@ class _HomeFeedState extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              title,
+              _repairLegacyUiText(title),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 15,
@@ -16701,7 +17960,7 @@ class _HomeFeedState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              subtitle,
+              _repairLegacyUiText(subtitle),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
@@ -16764,12 +18023,16 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
                     label: strings.localized(
-                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
+                      telugu:
+                          'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°šà±à°šà±‡ à°µà°°à°•à± Snake game à°†à°¡à°‚à°¡à°¿',
                       english: 'Play Snake while posters load',
-                      hindi: 'Posters आने तक Snake खेलें',
-                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
-                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
-                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
+                      hindi: 'Posters à¤†à¤¨à¥‡ à¤¤à¤• Snake à¤–à¥‡à¤²à¥‡à¤‚',
+                      tamil:
+                          'Posters à®µà®°à¯à®®à¯ à®µà®°à¯ˆ Snake à®µà®¿à®³à¯ˆà®¯à®¾à®Ÿà¯à®™à¯à®•à®³à¯',
+                      kannada:
+                          'Posters à²¬à²°à³à²µà²µà²°à³†à²—à³† Snake à²†à²¡à²¿',
+                      malayalam:
+                          'Posters à´µà´°àµà´‚ à´µà´°àµ† Snake à´•à´³à´¿à´•àµà´•àµà´•',
                     ),
                     onPlay: () => setState(() => _gameStarted = true),
                   ),
@@ -17136,7 +18399,7 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
                                 ),
                                 child: Text(
                                   strings.localized(
-                                    telugu: 'మళ్ళీ ఆడు',
+                                    telugu: 'à°®à°³à±à°³à±€ à°†à°¡à±',
                                     english: 'Play again',
                                     hindi: 'Play again',
                                     tamil: 'Play again',

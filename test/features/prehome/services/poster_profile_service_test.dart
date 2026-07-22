@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -71,6 +72,42 @@ void main() {
       await PosterProfileService.markSetupSkipped();
 
       expect(await PosterProfileService.hasSkippedSetup(), isTrue);
+    });
+  });
+
+  group('ScriptLocalizationService.localizeCategoryLabel', () {
+    test('does not re-convert dynamic Telugu category labels', () {
+      expect(
+        ScriptLocalizationService.localizeCategoryLabel(
+          'చంద్రశేఖర్ ఆజాద్ జయంతి',
+          AppLanguage.telugu,
+        ),
+        'చంద్రశేఖర్ ఆజాద్ జయంతి',
+      );
+    });
+
+    test('localizes common home category labels to Telugu', () {
+      expect(
+        ScriptLocalizationService.localizeCategoryLabel(
+          'Political',
+          AppLanguage.telugu,
+        ),
+        'రాజకీయం',
+      );
+      expect(
+        ScriptLocalizationService.localizeCategoryLabel(
+          'Good Evening',
+          AppLanguage.telugu,
+        ),
+        'శుభ సాయంత్రం',
+      );
+      expect(
+        ScriptLocalizationService.localizeCategoryLabel(
+          'Bonalu',
+          AppLanguage.telugu,
+        ),
+        'బోనాలు',
+      );
     });
   });
 }

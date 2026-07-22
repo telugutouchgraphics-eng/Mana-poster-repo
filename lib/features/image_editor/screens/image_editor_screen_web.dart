@@ -14,6 +14,17 @@ class ImageEditorScreen extends StatelessWidget {
     this.templateDocumentSource,
     this.initialPosterProfile,
     this.initialPersonalizationConfig,
+    this.includeInitialPosterNameLayer = true,
+    this.autoSelectInitialLayers = true,
+    this.preferFullWidthCanvas = false,
+    this.requireSubscriptionForExportActions = false,
+    this.initialPhotoShapeOverride = '',
+    this.initialPhotoRenderModeOverride = '',
+    this.initialPhotoXOffsetPercent = 0,
+    this.initialPhotoYOffsetPercent = 0,
+    this.lockTemplateLayers = false,
+    this.autoProcessAddedPhotos = false,
+    this.defaultAddedPhotoMaskShape = '',
     this.initialDesignImportPath,
     this.initialDraft,
   });
@@ -23,6 +34,17 @@ class ImageEditorScreen extends StatelessWidget {
   final String? templateDocumentSource;
   final PosterProfileData? initialPosterProfile;
   final CreatorPosterPersonalization? initialPersonalizationConfig;
+  final bool includeInitialPosterNameLayer;
+  final bool autoSelectInitialLayers;
+  final bool preferFullWidthCanvas;
+  final bool requireSubscriptionForExportActions;
+  final String initialPhotoShapeOverride;
+  final String initialPhotoRenderModeOverride;
+  final double initialPhotoXOffsetPercent;
+  final double initialPhotoYOffsetPercent;
+  final bool lockTemplateLayers;
+  final bool autoProcessAddedPhotos;
+  final String defaultAddedPhotoMaskShape;
   final String? initialDesignImportPath;
   final Map<String, dynamic>? initialDraft;
 

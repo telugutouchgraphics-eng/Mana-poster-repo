@@ -2,6 +2,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 
 enum DynamicCategoryType {
   festival,
+  birthday,
   jayanthi,
   vardhanthi,
   importantDay,
@@ -47,6 +48,8 @@ class DynamicCategory {
     this.tags = const <String>[],
     this.isBlinking = true,
     this.regionIds = const <String>{},
+    this.eventStartDate,
+    this.eventEndDate,
   });
 
   final String id;
@@ -59,6 +62,8 @@ class DynamicCategory {
   final List<String> tags;
   final bool isBlinking;
   final Set<String> regionIds;
+  final DateTime? eventStartDate;
+  final DateTime? eventEndDate;
 }
 
 class DynamicCalendarEvent {

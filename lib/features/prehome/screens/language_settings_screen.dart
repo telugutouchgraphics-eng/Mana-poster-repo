@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
-import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 
 class LanguageSettingsScreen extends StatefulWidget {
@@ -135,8 +134,13 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
                   }
                   context.languageController.setLanguage(_selected);
                   if (widget.onboardingMode) {
+                    final nextRoute =
+                        await AppFlowService.resolvePostSplashEntryRoute();
+                    if (!context.mounted) {
+                      return;
+                    }
                     Navigator.of(context).pushNamedAndRemoveUntil(
-                      AppRoutes.politicalParties,
+                      nextRoute,
                       (Route<dynamic> route) => false,
                     );
                   } else {

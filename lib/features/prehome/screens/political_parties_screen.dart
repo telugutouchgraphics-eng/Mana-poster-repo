@@ -128,9 +128,7 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
   @override
   Widget build(BuildContext context) {
     final region = _region;
-    final parties = region == null
-        ? const <PoliticalParty>[]
-        : partiesForRegion(region.id);
+    final parties = _visibleParties();
 
     return Scaffold(
       body: Stack(
@@ -244,10 +242,43 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     if (region == null) {
       return <String>{};
     }
+    if (widget.returnToPreviousOnSave) {
+      final partyIds = politicalParties.map((party) => party.id).toSet();
+      return _selectedPartyIds.where(partyIds.contains).toSet();
+    }
     final partyIds = partiesForRegion(
       region.id,
     ).map((party) => party.id).toSet();
     return _selectedPartyIds.where(partyIds.contains).toSet();
+  }
+
+  List<PoliticalParty> _visibleParties() {
+    final region = _region;
+    if (region == null) {
+      return const <PoliticalParty>[];
+    }
+    if (!widget.returnToPreviousOnSave) {
+      return partiesForRegion(region.id);
+    }
+    final sorted = List<PoliticalParty>.of(politicalParties);
+    int rank(PoliticalParty party) {
+      if (party.regionIds.contains(region.id)) {
+        return 0;
+      }
+      if (party.regionIds.isEmpty) {
+        return 1;
+      }
+      return 2;
+    }
+
+    sorted.sort((left, right) {
+      final rankCompare = rank(left).compareTo(rank(right));
+      if (rankCompare != 0) {
+        return rankCompare;
+      }
+      return left.name.compareTo(right.name);
+    });
+    return sorted;
   }
 }
 

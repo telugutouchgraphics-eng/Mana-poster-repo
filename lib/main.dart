@@ -78,6 +78,11 @@ Future<void> main() async {
       if (_profileFrames) {
         _attachFrameProfiler();
       }
+      if (!kIsWeb) {
+        await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+          DeviceOrientation.portraitUp,
+        ]);
+      }
 
       runApp(const ManaPosterApp(initialLanguage: AppLanguage.english));
       SchedulerBinding.instance.addPostFrameCallback((_) {

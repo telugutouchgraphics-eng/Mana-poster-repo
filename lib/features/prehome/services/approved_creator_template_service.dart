@@ -57,18 +57,15 @@ class ApprovedCreatorTemplateService {
     if (!kDebugMode && !kProfileMode) {
       return;
     }
-    // ignore: avoid_print
-    print(message);
-    // ignore: avoid_print
-    print(stackTrace);
+    debugPrint(message);
+    debugPrint(stackTrace.toString());
   }
 
   void _debugLog(String message) {
     if (!_verboseApprovedTemplateLogs || (!kDebugMode && !kProfileMode)) {
       return;
     }
-    // ignore: avoid_print
-    print(message);
+    debugPrint(message);
   }
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
@@ -112,56 +109,6 @@ class ApprovedCreatorTemplateService {
     return _sharedContentRegionIdsFor(
       regionId,
     ).where((item) => item != regionId).toList(growable: false);
-  }
-
-  List<List<T>> _chunked<T>(Iterable<T> values, int size) {
-    final chunks = <List<T>>[];
-    var chunk = <T>[];
-    for (final value in values) {
-      chunk.add(value);
-      if (chunk.length == size) {
-        chunks.add(chunk);
-        chunk = <T>[];
-      }
-    }
-    if (chunk.isNotEmpty) {
-      chunks.add(chunk);
-    }
-    return chunks;
-  }
-
-  Set<String> _sharedAllFeedCategoryIds(String selectedRegionId) {
-    final activeDynamicTags = _activeDynamicTagsForDate(
-      IstTimeService.now(),
-      selectedRegionId,
-    );
-    return <String>{
-      'good_morning',
-      'good_afternoon',
-      'good_night',
-      'motivational',
-      'love_quotes',
-      'today_special',
-      'birthdays',
-      'life_advice',
-      'gita_wisdom',
-      'devotional',
-      'mahabharata',
-      'anniversary',
-      'good_thoughts',
-      'bible',
-      'islam',
-      'jokes',
-      'new',
-      'weekday_monday_special',
-      'weekday_tuesday_special',
-      'weekday_wednesday_special',
-      'weekday_thursday_special',
-      'weekday_friday_special',
-      'weekday_saturday_special',
-      'weekday_sunday_special',
-      ...activeDynamicTags,
-    }.where((id) => id.isNotEmpty && !_isPoliticalCategory(id)).toSet();
   }
 
   Query<Map<String, dynamic>> _applyRegionScope(
@@ -574,22 +521,32 @@ class ApprovedCreatorTemplateService {
     }
     final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
     final seenIds = <String>{};
-    final categoryIds = _sharedAllFeedCategoryIds(selectedRegionId);
+    const pageSize = 120;
     for (final regionId in otherRegionIds) {
-      for (final chunk in _chunked(categoryIds, 10)) {
-        if (docs.length >= limit) {
-          break;
-        }
+      QueryDocumentSnapshot<Map<String, dynamic>>? cursor;
+      var scanned = 0;
+      while (docs.length < limit && scanned < limit * 4) {
         try {
-          final snapshot = await firestore
+          Query<Map<String, dynamic>> query = firestore
               .collection('creatorPosters')
               .where('status', isEqualTo: 'approved')
               .where('regionId', isEqualTo: regionId)
-              .where('categoryId', whereIn: chunk)
               .orderBy('createdAt', descending: true)
-              .limit(limit)
-              .get(GetOptions(source: source));
+              .limit(pageSize);
+          if (cursor != null) {
+            query = query.startAfterDocument(cursor);
+          }
+          final snapshot = await query.get(GetOptions(source: source));
+          if (snapshot.docs.isEmpty) {
+            break;
+          }
+          cursor = snapshot.docs.last;
+          scanned += snapshot.docs.length;
           for (final doc in snapshot.docs) {
+            final categoryId = (doc.data()['categoryId'] as String?) ?? '';
+            if (_isPoliticalCategory(categoryId)) {
+              continue;
+            }
             if (seenIds.add(doc.id)) {
               docs.add(doc);
               if (docs.length >= limit) {
@@ -597,11 +554,15 @@ class ApprovedCreatorTemplateService {
               }
             }
           }
+          if (snapshot.docs.length < pageSize) {
+            break;
+          }
         } catch (error, stackTrace) {
           _debugLogStack(
-            'ApprovedCreatorTemplateService shared group fetch failed: $error',
+            'ApprovedCreatorTemplateService shared non-political fetch failed: $error',
             stackTrace,
           );
+          break;
         }
       }
       if (docs.length >= limit) {
@@ -627,32 +588,44 @@ class ApprovedCreatorTemplateService {
   }) async {
     try {
       final matched = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      final seenIds = <String>{};
+      final lookupRegionIds = _posterLookupRegionIds(
+        selectedRegionId: regionId,
+        categoryId: categoryId,
+      );
       QueryDocumentSnapshot<Map<String, dynamic>>? cursor;
       const pageSize = 120;
       var scanned = 0;
-      while (matched.length < limit && scanned < limit * 4) {
-        Query<Map<String, dynamic>> query = _applyRegionScope(
-          firestore
-              .collection('creatorPosters')
-              .where('status', isEqualTo: 'approved'),
-          <String>[regionId],
-        ).orderBy('createdAt', descending: true).limit(pageSize);
-        if (cursor != null) {
-          query = query.startAfterDocument(cursor);
-        }
-        final page = await query.get(GetOptions(source: source));
-        if (page.docs.isEmpty) {
-          break;
-        }
-        cursor = page.docs.last;
-        scanned += page.docs.length;
-        for (final doc in page.docs) {
-          if (_docMatchesCategory(doc.data(), categoryId)) {
-            matched.add(doc);
-            if (matched.length >= limit) {
-              break;
+      for (final lookupRegionId in lookupRegionIds) {
+        cursor = null;
+        while (matched.length < limit && scanned < limit * 4) {
+          Query<Map<String, dynamic>> query = _applyRegionScope(
+            firestore
+                .collection('creatorPosters')
+                .where('status', isEqualTo: 'approved'),
+            <String>[lookupRegionId],
+          ).orderBy('createdAt', descending: true).limit(pageSize);
+          if (cursor != null) {
+            query = query.startAfterDocument(cursor);
+          }
+          final page = await query.get(GetOptions(source: source));
+          if (page.docs.isEmpty) {
+            break;
+          }
+          cursor = page.docs.last;
+          scanned += page.docs.length;
+          for (final doc in page.docs) {
+            if (seenIds.add(doc.id) &&
+                _docMatchesCategory(doc.data(), categoryId)) {
+              matched.add(doc);
+              if (matched.length >= limit) {
+                break;
+              }
             }
           }
+        }
+        if (matched.length >= limit || scanned >= limit * 4) {
+          break;
         }
       }
       _debugLog(
@@ -668,7 +641,10 @@ class ApprovedCreatorTemplateService {
       try {
         final page = await _applyRegionScope(
           firestore.collection('creatorPosters'),
-          <String>[regionId],
+          _posterLookupRegionIds(
+            selectedRegionId: regionId,
+            categoryId: categoryId,
+          ),
         ).limit((limit * 4).clamp(120, 800)).get(GetOptions(source: source));
         final matched = page.docs
             .where((doc) {
@@ -741,9 +717,9 @@ class ApprovedCreatorTemplateService {
       'all': <String>['all'],
       'good_morning': <String>['good_morning', 'morning'],
       'good_afternoon': <String>['good_afternoon', 'afternoon'],
+      'good_evening': <String>['good_evening', 'evening'],
       'good_night': <String>['good_night', 'night'],
       'motivational': <String>['motivational'],
-      'love_quotes': <String>['love_quotes', 'love'],
       'today_special': <String>['today_special'],
       'birthdays': <String>['birthdays', 'birthday'],
       'life_advice': <String>['life_advice'],
@@ -1290,6 +1266,7 @@ class ApprovedCreatorTemplateService {
   Iterable<String> _dynamicTypeFilterTags(DynamicCategoryType type) {
     return switch (type) {
       DynamicCategoryType.festival => const <String>['festival'],
+      DynamicCategoryType.birthday => const <String>['birthday', 'birthdays'],
       DynamicCategoryType.jayanthi => const <String>[
         'jayanthi',
         'important_day',

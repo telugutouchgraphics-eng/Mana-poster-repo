@@ -9,7 +9,6 @@ import 'package:mana_poster/features/prehome/screens/home_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notification_unavailable_screen.dart';
-import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
@@ -55,8 +54,6 @@ class AppRoutes {
         return _readyEntry(const RegionSelectionScreen());
       case appLanguage:
         return _readyEntry(const LanguageSettingsScreen(onboardingMode: true));
-      case politicalParties:
-        return _readyEntry(const PoliticalPartiesScreen());
       case login:
         return _readyEntry(const LoginScreen());
       case home:
@@ -71,7 +68,6 @@ class AppRoutes {
     language: (_) => _readyEntry(const RegionSelectionScreen()),
     appLanguage: (_) =>
         _readyEntry(const LanguageSettingsScreen(onboardingMode: true)),
-    politicalParties: (_) => _readyEntry(const PoliticalPartiesScreen()),
     login: (_) => _readyEntry(const LoginScreen()),
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),

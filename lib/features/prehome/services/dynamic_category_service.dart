@@ -1,7 +1,67 @@
+import 'dart:convert';
+
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_repository.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.dart';
+
+const Map<String, Map<AppLanguage, String>>
+_birthdayFallbackLabels = <String, Map<AppLanguage, String>>{
+  'nara_lokesh_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c28\u0c3e\u0c30\u0c3e \u0c32\u0c4b\u0c15\u0c47\u0c37\u0c4d \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'Nara Lokesh Birthday',
+    AppLanguage.hindi: 'Nara Lokesh Birthday',
+  },
+  'n_chandrababu_naidu_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c0e\u0c28\u0c4d. \u0c1a\u0c02\u0c26\u0c4d\u0c30\u0c2c\u0c3e\u0c2c\u0c41 \u0c28\u0c3e\u0c2f\u0c41\u0c21\u0c41 \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'N. Chandrababu Naidu Birthday',
+    AppLanguage.hindi: 'N. Chandrababu Naidu Birthday',
+  },
+  'pawan_kalyan_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c2a\u0c35\u0c28\u0c4d \u0c15\u0c33\u0c4d\u0c2f\u0c3e\u0c23\u0c4d \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'Pawan Kalyan Birthday',
+    AppLanguage.hindi: 'Pawan Kalyan Birthday',
+  },
+  'k_chandrashekar_rao_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c15\u0c46. \u0c1a\u0c02\u0c26\u0c4d\u0c30\u0c36\u0c47\u0c16\u0c30\u0c4d \u0c30\u0c3e\u0c35\u0c41 \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'K. Chandrashekar Rao Birthday',
+    AppLanguage.hindi: 'K. Chandrashekar Rao Birthday',
+  },
+  'k_t_rama_rao_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c15\u0c46.\u0c1f\u0c3f. \u0c30\u0c3e\u0c2e\u0c3e\u0c30\u0c3e\u0c35\u0c41 \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'K.T. Rama Rao Birthday',
+    AppLanguage.hindi: 'K.T. Rama Rao Birthday',
+  },
+  'a_revanth_reddy_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c0e. \u0c30\u0c47\u0c35\u0c02\u0c24\u0c4d \u0c30\u0c46\u0c21\u0c4d\u0c21\u0c3f \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'A. Revanth Reddy Birthday',
+    AppLanguage.hindi: 'A. Revanth Reddy Birthday',
+  },
+  'y_s_jagan_mohan_reddy_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c35\u0c48.\u0c0e\u0c38\u0c4d. \u0c1c\u0c17\u0c28\u0c4d \u0c2e\u0c4b\u0c39\u0c28\u0c4d \u0c30\u0c46\u0c21\u0c4d\u0c21\u0c3f \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'Y.S. Jagan Mohan Reddy Birthday',
+    AppLanguage.hindi: 'Y.S. Jagan Mohan Reddy Birthday',
+  },
+  'nandamuri_balakrishna_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c28\u0c02\u0c26\u0c2e\u0c42\u0c30\u0c3f \u0c2c\u0c3e\u0c32\u0c15\u0c43\u0c37\u0c4d\u0c23 \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'Nandamuri Balakrishna Birthday',
+    AppLanguage.hindi: 'Nandamuri Balakrishna Birthday',
+  },
+  'nandamuri_taraka_rama_rao_jr_birthday': <AppLanguage, String>{
+    AppLanguage.telugu:
+        '\u0c28\u0c02\u0c26\u0c2e\u0c42\u0c30\u0c3f \u0c24\u0c3e\u0c30\u0c15 \u0c30\u0c3e\u0c2e\u0c3e\u0c30\u0c3e\u0c35\u0c41 \u0c1c\u0c42\u0c28\u0c3f\u0c2f\u0c30\u0c4d \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+    AppLanguage.english: 'Nandamuri Taraka Rama Rao Jr. Birthday',
+    AppLanguage.hindi: 'Nandamuri Taraka Rama Rao Jr. Birthday',
+  },
+};
 
 class DynamicCategoryService {
   const DynamicCategoryService({
@@ -211,7 +271,8 @@ class DynamicCategoryService {
     DynamicCalendarEvent event,
     AppLanguage language,
   ) {
-    final tags = <String>{
+    final label = _resolveEventTitle(event, language);
+    final rawTags = <String>{
       event.slug,
       _normalizeToken(event.slug),
       ..._categoryTypeTags(event.type),
@@ -219,11 +280,14 @@ class DynamicCategoryService {
       ...event.tags.expand((tag) => <String>{tag, _normalizeToken(tag)}),
       ..._titleTags(event.title),
     }.where((value) => value.isNotEmpty).toList(growable: false);
+    final tags = event.type == DynamicCategoryType.birthday
+        ? rawTags.where((tag) => !tag.contains('jayanthi')).toList()
+        : rawTags;
 
     return DynamicCategory(
       id: event.id,
       slug: event.slug,
-      label: event.title.resolve(language),
+      label: label,
       type: event.type,
       scope: event.scope,
       priority: event.priority,
@@ -231,6 +295,53 @@ class DynamicCategoryService {
       tags: tags,
       regionIds: event.regionIds,
     );
+  }
+
+  String _resolveEventTitle(DynamicCalendarEvent event, AppLanguage language) {
+    final exactBirthdayLabel =
+        _birthdayFallbackLabels[event.slug]?[language] ??
+        _birthdayFallbackLabels[event.id]?[language];
+    if (exactBirthdayLabel != null) {
+      return exactBirthdayLabel;
+    }
+    final label = event.title.resolve(language).trim();
+    if (!_looksCorruptLabel(label)) {
+      return label;
+    }
+    final repairedLabel = _repairMojibakeTelugu(label);
+    if (repairedLabel != null && !_looksCorruptLabel(repairedLabel)) {
+      return repairedLabel;
+    }
+    return label;
+  }
+
+  bool _looksCorruptLabel(String label) {
+    return label.isEmpty ||
+        label.contains('?') ||
+        label.contains('\u00C3') ||
+        label.contains('\u00E0');
+  }
+
+  String? _repairMojibakeTelugu(String label) {
+    if (!label.contains('\u00C3') && !label.contains('\u00E0')) {
+      return null;
+    }
+    var repaired = label;
+    try {
+      for (var index = 0; index < 3; index++) {
+        final decoded = utf8.decode(
+          latin1.encode(repaired),
+          allowMalformed: true,
+        );
+        if (decoded == repaired || decoded.trim().isEmpty) {
+          break;
+        }
+        repaired = decoded.trim();
+      }
+      return repaired;
+    } on FormatException {
+      return null;
+    }
   }
 
   bool _eventMatchesRegion(DynamicCalendarEvent event, String regionId) {
@@ -353,6 +464,7 @@ class DynamicCategoryService {
   Iterable<String> _categoryTypeTags(DynamicCategoryType type) {
     return switch (type) {
       DynamicCategoryType.festival => const <String>['festival'],
+      DynamicCategoryType.birthday => const <String>['birthday', 'birthdays'],
       DynamicCategoryType.jayanthi => const <String>['jayanthi'],
       DynamicCategoryType.vardhanthi => const <String>['vardhanthi'],
       DynamicCategoryType.importantDay => const <String>['important_day'],

@@ -327,23 +327,24 @@ _regionalCommonFallbacks = <AppLanguage, Map<String, String>>{
   AppLanguage.kashmiri: <String, String>{
     'Select State / Union Territory': 'ریاست / یونین ٹیریٹری منتخب کریں',
     'Search State, UT or language': 'ریاست، علاقہ یا زبان تلاش کریں',
-    'No matching region found.': 'کوئی ملتا جلتا علاقہ نہیں ملا۔',
-    'Political Parties': 'سیاسی جماعتیں',
-    'National': 'قومی',
-    'State': 'ریاست',
-    'Continue': 'جاری رکھیں',
-    'Login': 'لاگ ان',
-    'Sign Up': 'سائن اپ',
-    'Continue with Google': 'Google کے ساتھ جاری رکھیں',
-    'Email address': 'ای میل پتہ',
-    'Password': 'پاس ورڈ',
-    'Forgot Password': 'پاس ورڈ بھول گئے؟',
+    'No matching region found.':
+        'Ú©ÙˆØ¦ÛŒ Ù…Ù„ØªØ§ Ø¬Ù„ØªØ§ Ø¹Ù„Ø§Ù‚Û Ù†ÛÛŒÚº Ù…Ù„Ø§Û”',
+    'Political Parties': 'Ø³ÛŒØ§Ø³ÛŒ Ø¬Ù…Ø§Ø¹ØªÛŒÚº',
+    'National': 'Ù‚ÙˆÙ…ÛŒ',
+    'State': 'Ø±ÛŒØ§Ø³Øª',
+    'Continue': 'Ø¬Ø§Ø±ÛŒ Ø±Ú©Ú¾ÛŒÚº',
+    'Login': 'Ù„Ø§Ú¯ Ø§Ù†',
+    'Sign Up': 'Ø³Ø§Ø¦Ù† Ø§Ù¾',
+    'Continue with Google': 'Google Ú©Û’ Ø³Ø§ØªÚ¾ Ø¬Ø§Ø±ÛŒ Ø±Ú©Ú¾ÛŒÚº',
+    'Email address': 'Ø§ÛŒ Ù…ÛŒÙ„ Ù¾ØªÛ',
+    'Password': 'Ù¾Ø§Ø³ ÙˆØ±Úˆ',
+    'Forgot Password': 'Ù¾Ø§Ø³ ÙˆØ±Úˆ Ø¨Ú¾ÙˆÙ„ Ú¯Ø¦Û’ØŸ',
     "Don't have an account?": 'اکاؤنٹ نہیں ہے؟',
     'Already have an account?': 'پہلے سے اکاؤنٹ ہے؟',
-    'Login with Email': 'ای میل سے لاگ ان کریں',
-    'Sign Up with Email': 'ای میل سے سائن اپ کریں',
+    'Login with Email': 'Ø§ÛŒ Ù…ÛŒÙ„ Ø³Û’ Ù„Ø§Ú¯ Ø§Ù† Ú©Ø±ÛŒÚº',
+    'Sign Up with Email': 'Ø§ÛŒ Ù…ÛŒÙ„ Ø³Û’ Ø³Ø§Ø¦Ù† Ø§Ù¾ Ú©Ø±ÛŒÚº',
     'Create & Share': 'بنائیں اور شیئر کریں',
-    'Create': 'بنائیں',
+    'Create': 'Ø¨Ù†Ø§Ø¦ÛŒÚº',
     'Search templates': 'ٹیمپلیٹس تلاش کریں',
     'Profile & Settings': 'پروفائل اور سیٹنگز',
     'Language': 'زبان',
@@ -560,7 +561,7 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'پنن فوٹو، قول یا ڈیزائن خیال جائزہ خٲطرٕ بھیزو۔ اسٕند ٹیم یہٕ چیک کرتھ، ضرورت آسہ تٔمۍ بہتر کرتھ، صحیح ایپ زمرس منز شایع کرتھ ہیکہ۔ منظور شدہ مواد تہندۍ تٕ باقۍ صارفن ہندۍ نظر آوتھ ہیکہ۔ تہندۍ اپلوڈ کردٕ موادس خٲطرٕ تہیہ ذمہ دار چھو۔ شرطٕ تٕ ضابطہ لاگو چھ۔',
     'Check review rules before submitting your content.':
         'مواد بھیزنہٕ برونہہ جائزہ ضابطہ چیک کریو۔',
-    'Community Upload Instructions': 'کمیونٹی اپلوڈ ہدایات',
+    'Community Upload Instructions': 'Ú©Ù…ÛŒÙˆÙ†Ù¹ÛŒ Ø§Ù¾Ù„ÙˆÚˆ ÛØ¯Ø§ÛŒØ§Øª',
     'Send your quote, text, or quote image to the Mana Poster review team.':
         'پنن قول، متن یا قول والی تصویر Mana Poster جائزہ ٹیمس بھیزو۔',
     'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
@@ -919,35 +920,39 @@ _regionalExtraFallbacks = <AppLanguage, Map<String, String>>{
   },
   AppLanguage.kashmiri: <String, String>{
     'A few permissions are needed': 'کچھ اجازتیں ضروری ہیں',
-    'About App': 'ایپ کے بارے میں',
+    'About App': 'Ø§ÛŒÙ¾ Ú©Û’ Ø¨Ø§Ø±Û’ Ù…ÛŒÚº',
     'Account': 'اکاؤنٹ',
     'Allow': 'اجازت دیں',
-    'App details and version info': 'ایپ کی تفصیل اور ورژن معلومات',
+    'App details and version info':
+        'Ø§ÛŒÙ¾ Ú©ÛŒ ØªÙØµÛŒÙ„ Ø§ÙˆØ± ÙˆØ±Ú˜Ù† Ù…Ø¹Ù„ÙˆÙ…Ø§Øª',
     'App Settings': 'ایپ سیٹنگز',
     'Buy': 'خریدیں',
     'Choose your app language': 'اپنی ایپ زبان منتخب کریں',
-    'Control alerts and updates': 'الرٹس اور اپ ڈیٹس کنٹرول کریں',
+    'Control alerts and updates':
+        'Ø§Ù„Ø±Ù¹Ø³ Ø§ÙˆØ± Ø§Ù¾ ÚˆÛŒÙ¹Ø³ Ú©Ù†Ù¹Ø±ÙˆÙ„ Ú©Ø±ÛŒÚº',
     'Current language': 'موجودہ زبان',
-    'Enter valid email': 'درست ای میل درج کریں',
-    'Get help and contact support': 'مدد حاصل کریں اور سپورٹ سے رابطہ کریں',
-    'Help & Support': 'مدد اور سپورٹ',
+    'Enter valid email': 'Ø¯Ø±Ø³Øª Ø§ÛŒ Ù…ÛŒÙ„ Ø¯Ø±Ø¬ Ú©Ø±ÛŒÚº',
+    'Get help and contact support':
+        'Ù…Ø¯Ø¯ Ø­Ø§ØµÙ„ Ú©Ø±ÛŒÚº Ø§ÙˆØ± Ø³Ù¾ÙˆØ±Ù¹ Ø³Û’ Ø±Ø§Ø¨Ø·Û Ú©Ø±ÛŒÚº',
+    'Help & Support': 'Ù…Ø¯Ø¯ Ø§ÙˆØ± Ø³Ù¾ÙˆØ±Ù¹',
     'Language Settings': 'زبان کی سیٹنگز',
-    'Later': 'بعد میں',
+    'Later': 'Ø¨Ø¹Ø¯ Ù…ÛŒÚº',
     'Manage current plan and upgrades':
         'موجودہ پلان اور اپ گریڈز کا انتظام کریں',
     'Minimum 6 characters required': 'کم از کم ۶ حروف ضروری ہیں',
-    'Notifications': 'اطلاعات',
-    'Password reset will be available soon.': 'پاس ورڈ ری سیٹ جلد دستیاب ہوگا۔',
+    'Notifications': 'Ø§Ø·Ù„Ø§Ø¹Ø§Øª',
+    'Password reset will be available soon.':
+        'Ù¾Ø§Ø³ ÙˆØ±Úˆ Ø±ÛŒ Ø³ÛŒÙ¹ Ø¬Ù„Ø¯ Ø¯Ø³ØªÛŒØ§Ø¨ ÛÙˆÚ¯Ø§Û”',
     'Photos, storage and other access': 'فوٹوز، اسٹوریج اور دیگر رسائی',
     'Photos/Gallery': 'فوٹوز / گیلری',
-    'Ready': 'تیار',
-    'Save / Apply': 'محفوظ / لاگو کریں',
+    'Ready': 'ØªÛŒØ§Ø±',
+    'Save / Apply': 'Ù…Ø­ÙÙˆØ¸ / Ù„Ø§Ú¯Ùˆ Ú©Ø±ÛŒÚº',
     'Share WhatsApp': 'WhatsApp پر شیئر کریں',
     'Sign out logic can be connected later':
         'سائن آؤٹ نظام بعد میں جوڑا جا سکتا ہے',
     'Special': 'خاص',
     'Subscription': 'سبسکرپشن',
-    'Support': 'سپورٹ',
+    'Support': 'Ø³Ù¾ÙˆØ±Ù¹',
     'Welcome to Mana Poster Ai': 'Mana Poster Ai میں خوش آمدید',
   },
   AppLanguage.ladakhi: <String, String>{
@@ -1232,18 +1237,18 @@ _regionalProfileFallbacks = <AppLanguage, Map<String, String>>{
     'Change State / UT': 'ریاست / UT بدلاؤ',
     'Update app language and state categories':
         'ایپ زبان تہ ریاست کیٹگری اپڈیٹ کرو',
-    'Political parties': 'سیاسی پارٹیاں',
+    'Political parties': 'Ø³ÛŒØ§Ø³ÛŒ Ù¾Ø§Ø±Ù¹ÛŒØ§Úº',
     'Update political party categories shown in home':
         'ہومس منز دکھن وٲل پارٹۍ کیٹگری اپڈیٹ کرو',
     'Change religion': 'مذہب بدلاؤ',
     'Update which categories appear in home':
         'ہومس منز دکھن وٲل کیٹگری اپڈیٹ کرو',
     'Location-based status': 'لوکیشن بنیاد سٹیٹس',
-    'View plan details': 'پلان تفصیل وچھیو',
-    'Referral rewards': 'ریفرل انعام',
+    'View plan details': 'Ù¾Ù„Ø§Ù† ØªÙØµÛŒÙ„ ÙˆÚ†Ú¾ÛŒÙˆ',
+    'Referral rewards': 'Ø±ÛŒÙØ±Ù„ Ø§Ù†Ø¹Ø§Ù…',
     'Restore subscriptions': 'سبسکرپشن بحال کرو',
     'Share App': 'ایپ شیئر کرو',
-    'Report a poster or issue': 'پوسٹر یا مسئلہ رپورٹ کرو',
+    'Report a poster or issue': 'Ù¾ÙˆØ³Ù¹Ø± ÛŒØ§ Ù…Ø³Ø¦Ù„Û Ø±Ù¾ÙˆØ±Ù¹ Ú©Ø±Ùˆ',
     'Delete account': 'اکاؤنٹ ڈیلیٹ کرو',
     'Privacy Policy': 'رازداری پالیسی',
     'Ad privacy choices': 'ایڈ رازداری اختیار',
@@ -1955,11 +1960,21 @@ class AppStrings {
     if (!_looksCorrupted(value) && !_containsPlainMojibakeLeadBytes(value)) {
       return value;
     }
+    var repaired = value;
     try {
-      final decoded = utf8.decode(latin1.encode(value), allowMalformed: true);
-      return decoded.trim().isEmpty ? value : decoded;
+      for (var index = 0; index < 3; index++) {
+        final decoded = utf8.decode(
+          latin1.encode(repaired),
+          allowMalformed: true,
+        );
+        if (decoded == repaired || decoded.trim().isEmpty) {
+          break;
+        }
+        repaired = decoded;
+      }
+      return repaired;
     } catch (_) {
-      return value;
+      return repaired;
     }
   }
 
@@ -1990,10 +2005,10 @@ class AppStrings {
         value.contains('\u00E0\u00AE') ||
         value.contains('\u00E0\u00B2') ||
         value.contains('\u00E0\u00B4') ||
-        value.contains('â€') ||
-        value.contains('â€™') ||
-        value.contains('â€œ') ||
-        value.contains('â€');
+        value.contains('Ã¢â‚¬') ||
+        value.contains('Ã¢â‚¬â„¢') ||
+        value.contains('Ã¢â‚¬Å“') ||
+        value.contains('Ã¢â‚¬Â');
   }
 
   String? _commonLocalizedFallback(String english) {
@@ -2151,18 +2166,18 @@ class AppStrings {
         'Select Category': 'श्रेणी निवडा',
       },
       AppLanguage.meitei => const <String, String>{
-        'OK': 'ꯌꯥꯔꯦ',
-        'Cancel': 'ꯇꯣꯛꯎ',
+        'OK': 'ê¯Œê¯¥ê¯”ê¯¦',
+        'Cancel': 'ê¯‡ê¯£ê¯›ê¯Ž',
         'Close': 'ꯂꯣꯏꯁꯤꯟꯕꯤꯌꯨ',
         'Apply': 'ꯑꯦꯞꯂꯥꯏ ꯇꯧꯕꯤꯌꯨ',
-        'Share': 'ꯁꯦꯌꯔ',
-        'Download': 'ꯗꯥꯎꯟꯂꯣꯗ',
-        'More': 'ꯍꯦꯟꯅ',
+        'Share': 'ê¯ê¯¦ê¯Œê¯”',
+        'Download': 'ê¯—ê¯¥ê¯Žê¯Ÿê¯‚ê¯£ê¯—',
+        'More': 'ê¯ê¯¦ê¯Ÿê¯…',
         'Remaining options': 'ꯂꯩꯔꯤꯕ ꯑꯣꯞꯁꯟꯁꯤꯡ',
         'Change religion': 'ꯂꯥꯢꯅꯤꯡ ꯍꯣꯡꯗꯣꯛꯎ',
-        'Referral rewards': 'ꯔꯦꯐꯔꯦꯜ ꯃꯅꯥ',
+        'Referral rewards': 'ê¯”ê¯¦ê¯ê¯”ê¯¦ê¯œ ê¯ƒê¯…ê¯¥',
         'Copy code': 'ꯀꯣꯗ ꯀꯣꯄꯤ ꯇꯧꯕꯤꯌꯨ',
-        'Delete account': 'ꯑꯦꯀꯥꯎꯟꯇ ꯃꯨꯠꯊꯠꯎ',
+        'Delete account': 'ê¯‘ê¯¦ê¯€ê¯¥ê¯Žê¯Ÿê¯‡ ê¯ƒê¯¨ê¯ ê¯Šê¯ ê¯Ž',
         'Privacy Policy': 'ꯄ꯭ꯔꯥꯏꯚꯦꯁꯤ ꯄꯣꯂꯤꯁꯤ',
         'Ad privacy choices': 'ꯑꯦꯗ ꯄ꯭ꯔꯥꯏꯚꯦꯁꯤ ꯈꯟꯅꯕꯁꯤꯡ',
         'Permissions': 'ꯑꯌꯥꯕꯁꯤꯡ',
@@ -2171,9 +2186,9 @@ class AppStrings {
         '3-day trial plan': 'ꯅꯨꯃꯤꯠ ꯳ ꯇ꯭ꯔꯥꯏꯌꯜ ꯄ꯭ꯂꯥꯟ',
         'Monthly plan': 'ꯊꯥꯒꯤ ꯄ꯭ꯂꯥꯟ',
         'Terms': 'ꯅꯤꯌꯝꯁꯤꯡ',
-        'Skip': 'ꯊꯥꯗꯣꯛꯎ',
+        'Skip': 'ê¯Šê¯¥ê¯—ê¯£ê¯›ê¯Ž',
         'Subscribe': 'ꯁꯕꯁ꯭ꯛꯔꯥꯏꯕ ꯇꯧꯕꯤꯌꯨ',
-        'Trial': 'ꯇ꯭ꯔꯥꯏꯌꯜ',
+        'Trial': 'ê¯‡ê¯­ê¯”ê¯¥ê¯ê¯Œê¯œ',
         'Select Category': 'ꯀꯦꯇꯦꯒꯣꯔꯤ ꯈꯟꯕꯤꯌꯨ',
       },
       AppLanguage.mizo => const <String, String>{
@@ -2307,29 +2322,29 @@ class AppStrings {
         'Select Category': 'বিভাগ নির্বাচন করুন',
       },
       AppLanguage.kashmiri => const <String, String>{
-        'OK': 'ٹھیک چھ',
+        'OK': 'Ù¹Ú¾ÛŒÚ© Ú†Ú¾',
         'Cancel': 'منسوخ',
-        'Close': 'بند کریو',
-        'Apply': 'لاگو کریو',
+        'Close': 'Ø¨Ù†Ø¯ Ú©Ø±ÛŒÙˆ',
+        'Apply': 'Ù„Ø§Ú¯Ùˆ Ú©Ø±ÛŒÙˆ',
         'Share': 'شیئر',
         'Download': 'ڈاؤن لوڈ',
         'More': 'مزید',
         'Remaining options': 'باقی اختیار',
         'Change religion': 'مذہب بدلٲو',
-        'Referral rewards': 'ریفرل انعام',
-        'Copy code': 'کوڈ کاپی کریو',
+        'Referral rewards': 'Ø±ÛŒÙØ±Ù„ Ø§Ù†Ø¹Ø§Ù…',
+        'Copy code': 'Ú©ÙˆÚˆ Ú©Ø§Ù¾ÛŒ Ú©Ø±ÛŒÙˆ',
         'Delete account': 'اکاؤنٹ مٹٲو',
         'Privacy Policy': 'رازداری پالیسی',
         'Ad privacy choices': 'اشتہار رازداری اختیار',
         'Permissions': 'اجازت',
-        'Check': 'چیک کریو',
+        'Check': 'Ú†ÛŒÚ© Ú©Ø±ÛŒÙˆ',
         'Subscription Required': 'سبسکرپشن ضروری چھ',
-        '3-day trial plan': '۳ دن ٹرائل پلان',
-        'Monthly plan': 'ماہوار پلان',
+        '3-day trial plan': 'Û³ Ø¯Ù† Ù¹Ø±Ø§Ø¦Ù„ Ù¾Ù„Ø§Ù†',
+        'Monthly plan': 'Ù…Ø§ÛÙˆØ§Ø± Ù¾Ù„Ø§Ù†',
         'Terms': 'شرطٕ',
         'Skip': 'چھوڈٲو',
-        'Subscribe': 'سبسکرائب کریو',
-        'Trial': 'ٹرائل',
+        'Subscribe': 'Ø³Ø¨Ø³Ú©Ø±Ø§Ø¦Ø¨ Ú©Ø±ÛŒÙˆ',
+        'Trial': 'Ù¹Ø±Ø§Ø¦Ù„',
         'Select Category': 'زمرہ چنٲو',
       },
       AppLanguage.ladakhi => const <String, String>{
@@ -3820,24 +3835,24 @@ class AppStrings {
           'अधिक',
         ],
         AppLanguage.meitei: <String>[
-          'ꯄꯨꯝꯅꯃꯛ',
+          'ê¯„ê¯¨ê¯ê¯…ê¯ƒê¯›',
           'ꯒꯨꯗ ꯃꯣꯔꯅꯤꯡ',
-          'ꯒꯨꯗ ꯑꯐꯇꯔꯅꯨꯟ',
-          'ꯒꯨꯗ ꯅꯥꯏꯠ',
-          'ꯊꯧꯒꯠꯂꯛꯄ',
+          'ê¯’ê¯¨ê¯— ê¯‘ê¯ê¯‡ê¯”ê¯…ê¯¨ê¯Ÿ',
+          'ê¯’ê¯¨ê¯— ê¯…ê¯¥ê¯ê¯ ',
+          'ê¯Šê¯§ê¯’ê¯ ê¯‚ê¯›ê¯„',
           'ꯅꯨꯡꯁꯤ ꯀꯣꯠꯁ',
           'ꯉꯁꯤꯒꯤ ꯑꯈꯟꯅꯕ',
           'ꯄꯣꯛꯄ ꯅꯨꯃꯤꯠ',
           'ꯄꯨꯟꯁꯤ ꯄꯥꯎꯇꯥꯛ',
           'ꯒꯤꯇꯥ ꯈꯪꯅꯕ',
           'ꯚꯛꯇꯤ',
-          'ꯃꯍꯥꯚꯥꯔꯇ',
+          'ê¯ƒê¯ê¯¥ê¯šê¯¥ê¯”ê¯‡',
           'ꯆꯍꯤ ꯃꯥꯏꯂꯥꯏ',
-          'ꯐꯕ ꯋꯥꯈꯜ',
-          'ꯕꯥꯏꯕꯦꯜ',
-          'ꯏꯁ꯭ꯂꯥꯝ',
-          'ꯖꯣꯛꯁ',
-          'ꯍꯦꯟꯅ',
+          'ê¯ê¯• ê¯‹ê¯¥ê¯ˆê¯œ',
+          'ê¯•ê¯¥ê¯ê¯•ê¯¦ê¯œ',
+          'ê¯ê¯ê¯­ê¯‚ê¯¥ê¯',
+          'ê¯–ê¯£ê¯›ê¯',
+          'ê¯ê¯¦ê¯Ÿê¯…',
         ],
         AppLanguage.mizo: <String>[
           'Zawng zawng',
@@ -3940,23 +3955,23 @@ class AppStrings {
           'আরও',
         ],
         AppLanguage.kashmiri: <String>[
-          'سارے',
+          'Ø³Ø§Ø±Û’',
           'صبح بخیر',
           'دوپہر بخیر',
           'شب بخیر',
           'حوصلہ افزا',
-          'محبت کے اقوال',
+          'Ù…Ø­Ø¨Øª Ú©Û’ Ø§Ù‚ÙˆØ§Ù„',
           'آج کا خاص',
-          'سالگرہ',
+          'Ø³Ø§Ù„Ú¯Ø±Û',
           'زندگی مشورہ',
-          'گیتا گیان',
-          'عقیدت',
-          'مہابھارت',
-          'سالگرہ تقریب',
+          'Ú¯ÛŒØªØ§ Ú¯ÛŒØ§Ù†',
+          'Ø¹Ù‚ÛŒØ¯Øª',
+          'Ù…ÛØ§Ø¨Ú¾Ø§Ø±Øª',
+          'Ø³Ø§Ù„Ú¯Ø±Û ØªÙ‚Ø±ÛŒØ¨',
           'اچھے خیالات',
-          'بائبل',
-          'اسلام',
-          'لطیفے',
+          'Ø¨Ø§Ø¦Ø¨Ù„',
+          'Ø§Ø³Ù„Ø§Ù…',
+          'Ù„Ø·ÛŒÙÛ’',
           'مزید',
         ],
         AppLanguage.ladakhi: <String>[
@@ -3990,7 +4005,7 @@ class AppStrings {
                   '\u0c36\u0c41\u0c2d \u0c2e\u0c27\u0c4d\u0c2f\u0c3e\u0c39\u0c4d\u0c28\u0c02',
                   '\u0c36\u0c41\u0c2d\u0c30\u0c3e\u0c24\u0c4d\u0c30\u0c3f',
                   '\u0c2a\u0c4d\u0c30\u0c47\u0c30\u0c23\u0c3e\u0c24\u0c4d\u0c2e\u0c15',
-                  '\u0c2a\u0c4d\u0c30\u0c47\u0c2e \u0c15\u0c4b\u0c1f\u0c4d\u0c38\u0c4d',
+                  '\u0c36\u0c41\u0c2d \u0c38\u0c3e\u0c2f\u0c02\u0c24\u0c4d\u0c30\u0c02',
                   '\u0c08\u0c30\u0c4b\u0c1c\u0c41 \u0c2a\u0c4d\u0c30\u0c24\u0c4d\u0c2f\u0c47\u0c15\u0c02',
                   '\u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41\u0c32\u0c41',
                   '\u0c1c\u0c40\u0c35\u0c3f\u0c24 \u0c38\u0c32\u0c39\u0c3e\u0c32\u0c41',
@@ -4010,7 +4025,7 @@ class AppStrings {
                   '\u0936\u0941\u092d \u0926\u094b\u092a\u0939\u0930',
                   '\u0936\u0941\u092d \u0930\u093e\u0924\u094d\u0930\u093f',
                   '\u092a\u094d\u0930\u0947\u0930\u0923\u093e\u0926\u093e\u092f\u0915',
-                  '\u092a\u094d\u0930\u0947\u092e \u0909\u0926\u094d\u0927\u0930\u0923',
+                  '\u0936\u0941\u092d \u0938\u0902\u0927\u094d\u092f\u093e',
                   '\u0906\u091c \u0915\u093e \u0935\u093f\u0936\u0947\u0937',
                   '\u091c\u0928\u094d\u092e\u0926\u093f\u0928',
                   '\u091c\u0940\u0935\u0928 \u0938\u0932\u093e\u0939',
@@ -4030,7 +4045,7 @@ class AppStrings {
                   'Good Afternoon',
                   'Good Night',
                   'Motivational',
-                  'Love Quotes',
+                  'Good Evening',
                   'Today Special',
                   'Birthdays',
                   'Life Advice',
@@ -4050,7 +4065,7 @@ class AppStrings {
                   '\u0b87\u0ba9\u0bbf\u0baf \u0bae\u0ba4\u0bbf\u0baf\u0bae\u0bcd',
                   '\u0b87\u0ba9\u0bbf\u0baf \u0b87\u0bb0\u0bb5\u0bc1',
                   '\u0b8a\u0b95\u0bcd\u0b95\u0bae\u0bb3\u0bbf\u0baa\u0bcd\u0baa\u0bc1',
-                  '\u0b95\u0bbe\u0ba4\u0bb2\u0bcd \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
+                  '\u0b87\u0ba9\u0bbf\u0baf \u0bae\u0bbe\u0bb2\u0bc8',
                   '\u0b87\u0ba9\u0bcd\u0bb1\u0bc8\u0baf \u0b9a\u0bbf\u0bb1\u0baa\u0bcd\u0baa\u0bc1',
                   '\u0baa\u0bbf\u0bb1\u0ba8\u0bcd\u0ba4\u0ba8\u0bbe\u0bb3\u0bcd\u0b95\u0bb3\u0bcd',
                   '\u0bb5\u0bbe\u0bb4\u0bcd\u0b95\u0bcd\u0b95\u0bc8 \u0b86\u0bb2\u0bcb\u0b9a\u0ba9\u0bc8',
@@ -4070,7 +4085,7 @@ class AppStrings {
                   '\u0cb6\u0cc1\u0cad \u0cae\u0ca7\u0ccd\u0caf\u0cbe\u0cb9\u0ccd\u0ca8',
                   '\u0cb6\u0cc1\u0cad \u0cb0\u0cbe\u0ca4\u0ccd\u0cb0\u0cbf',
                   '\u0caa\u0ccd\u0cb0\u0cc7\u0cb0\u0ca3\u0cbe\u0ca6\u0cbe\u0caf\u0c95',
-                  '\u0caa\u0ccd\u0cb0\u0cc0\u0ca4\u0cbf \u0c89\u0c95\u0ccd\u0ca4\u0cbf\u0c97\u0cb3\u0cc1',
+                  '\u0cb6\u0cc1\u0cad \u0cb8\u0c82\u0c9c\u0cc6',
                   '\u0c87\u0c82\u0ca6\u0cbf\u0ca8 \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
                   '\u0c9c\u0ca8\u0ccd\u0cae\u0ca6\u0cbf\u0ca8\u0c97\u0cb3\u0cc1',
                   '\u0c9c\u0cc0\u0cb5\u0ca8 \u0cb8\u0cb2\u0cb9\u0cc6',
@@ -4090,7 +4105,7 @@ class AppStrings {
                   '\u0d36\u0d41\u0d2d \u0d09\u0d1a\u0d4d\u0d1a\u0d15\u0d4d\u0d15\u0d4d',
                   '\u0d36\u0d41\u0d2d \u0d30\u0d3e\u0d24\u0d4d\u0d30\u0d3f',
                   '\u0d2a\u0d4d\u0d30\u0d1a\u0d4b\u0d26\u0d28\u0d3e\u0d24\u0d4d\u0d2e\u0d15\u0d02',
-                  '\u0d2a\u0d4d\u0d30\u0d23\u0d2f \u0d09\u0d26\u0d4d\u0d27\u0d30\u0d23\u0d3f\u0d15\u0d7e',
+                  '\u0d36\u0d41\u0d2d \u0d38\u0d3e\u0d2f\u0d3e\u0d39\u0d4d\u0d28\u0d02',
                   '\u0d07\u0d28\u0d4d\u0d28\u0d24\u0d4d\u0d24\u0d46 \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d24',
                   '\u0d1c\u0d28\u0d4d\u0d2e\u0d26\u0d3f\u0d28\u0d19\u0d4d\u0d19\u0d7e',
                   '\u0d1c\u0d40\u0d35\u0d3f\u0d24 \u0d09\u0d2a\u0d26\u0d47\u0d36\u0d02',

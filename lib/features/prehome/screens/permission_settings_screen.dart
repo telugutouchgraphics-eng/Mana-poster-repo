@@ -191,7 +191,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
               _PermissionTile(
                 icon: Icons.photo_camera_outlined,
                 title: context.strings.localized(
-                  telugu: 'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾',
+                  telugu: 'కెమెరా',
                   english: 'Camera',
                 ),
                 statusLabel: copy.statusLabel(_snapshot.camera),
@@ -213,7 +213,7 @@ class _PermissionSettingsScreenState extends State<PermissionSettingsScreen>
               _PermissionTile(
                 icon: Icons.location_on_outlined,
                 title: context.strings.localized(
-                  telugu: 'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â',
+                  telugu: 'లొకేషన్',
                   english: 'Location',
                 ),
                 statusLabel: copy.statusLabel(_snapshot.location),
@@ -305,11 +305,10 @@ class _PermissionCopy {
   final AppLanguage language;
 
   String get settingsTitle =>
-      _localized(telugu: 'à°…à°¨à±à°®à°¤à±à°²à±', english: 'Permissions');
+      _localized(telugu: 'అనుమతులు', english: 'Permissions');
 
   String get openSettingsLabel => _localized(
-    telugu:
-        'à°¯à°¾à°ªà± à°¸à±†à°Ÿà±à°Ÿà°¿à°‚à°—à±à°¸à± à°¤à±†à°°à°µà°‚à°¡à°¿',
+    telugu: 'యాప్ సెట్టింగ్స్ తెరవండి',
     english: 'Open App Settings',
   );
 
@@ -330,92 +329,72 @@ class _PermissionCopy {
 
   String permissionGranted(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu:
-          'Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
+      telugu: 'ఫోటోలు అనుమతి ఇచ్చారు.',
       english: 'Photos access granted.',
     ),
     AppPermissionType.camera => _localized(
-      telugu:
-          'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
+      telugu: 'కెమెరా అనుమతి ఇచ్చారు.',
       english: 'Camera access granted.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu:
-          'Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
+      telugu: 'నోటిఫికేషన్ అనుమతి ఇచ్చారు.',
       english: 'Notifications access granted.',
     ),
     AppPermissionType.location => _localized(
-      telugu:
-          'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€¡Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â.',
+      telugu: 'లొకేషన్ అనుమతి ఇచ్చారు.',
       english: 'Location access granted.',
     ),
   };
 
   String permissionDenied(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu:
-          'Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
+      telugu: 'ఫోటోలు అనుమతి ఆఫ్‌లో ఉంది.',
       english: 'Photos access is off.',
     ),
     AppPermissionType.camera => _localized(
-      telugu:
-          'Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
+      telugu: 'కెమెరా అనుమతి ఆఫ్‌లో ఉంది.',
       english: 'Camera access is off.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu:
-          'Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±ÂÃ Â°Â²Ã Â±Â Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¾Ã Â°Â¯Ã Â°Â¿.',
+      telugu: 'నోటిఫికేషన్లు ఆఫ్‌లో ఉన్నాయి.',
       english: 'Notifications are off.',
     ),
     AppPermissionType.location => _localized(
-      telugu:
-          'Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°â€ Ã Â°Â«Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€°Ã Â°â€šÃ Â°Â¦Ã Â°Â¿.',
+      telugu: 'లొకేషన్ అనుమతి ఆఫ్‌లో ఉంది.',
       english: 'Location access is off.',
     ),
   };
 
   String permissionNeedsSettings(AppPermissionType type) => switch (type) {
     AppPermissionType.photos => _localized(
-      telugu:
-          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
+      telugu: 'సెట్టింగ్స్‌లో ఫోటోలు అనుమతించండి.',
       english: 'Allow photos from settings.',
     ),
     AppPermissionType.camera => _localized(
-      telugu:
-          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¢Ã Â±â€ Ã Â°Â®Ã Â±â€ Ã Â°Â°Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
+      telugu: 'సెట్టింగ్స్‌లో కెమెరా అనుమతించండి.',
       english: 'Allow camera from settings.',
     ),
     AppPermissionType.notifications => _localized(
-      telugu:
-          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â¨Ã Â±â€¹Ã Â°Å¸Ã Â°Â¿Ã Â°Â«Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±ÂÃ Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
+      telugu: 'సెట్టింగ్స్‌లో నోటిఫికేషన్లు అనుమతించండి.',
       english: 'Allow notifications from settings.',
     ),
     AppPermissionType.location => _localized(
-      telugu:
-          'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°Â²Ã Â±Å Ã Â°â€¢Ã Â±â€¡Ã Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
+      telugu: 'సెట్టింగ్స్‌లో లొకేషన్ అనుమతించండి.',
       english: 'Allow location from settings.',
     ),
   };
 
   String statusLabel(AppPermissionState state) {
     if (state.isGranted) {
-      return _localized(
-        telugu:
-            'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°Â¾Ã Â°Â°Ã Â±Â',
-        english: 'Allowed',
-      );
+      return _localized(telugu: 'అనుమతించారు', english: 'Allowed');
     }
     if (state.needsSettings) {
       return _localized(
-        telugu:
-            'Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
+        telugu: 'సెట్టింగ్స్‌లో అనుమతించండి',
         english: 'Allow from Settings',
       );
     }
-    return _localized(
-      telugu: 'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿ Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â',
-      english: 'Not allowed',
-    );
+    return _localized(telugu: 'అనుమతి లేదు', english: 'Not allowed');
   }
 
   Color statusColor(AppPermissionState state) {
@@ -430,12 +409,9 @@ class _PermissionCopy {
 
   String actionLabel(AppPermissionState state) {
     if (state.needsSettings || state.isGranted) {
-      return _localized(telugu: 'Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â±Â', english: 'Check');
+      return _localized(telugu: 'చూడు', english: 'Check');
     }
-    return _localized(
-      telugu: 'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â±Â',
-      english: 'Allow',
-    );
+    return _localized(telugu: 'అనుమతించు', english: 'Allow');
   }
 
   String _localized({required String telugu, required String english}) =>

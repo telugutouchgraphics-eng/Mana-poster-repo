@@ -173,6 +173,44 @@ void main() {
       expect(jayanthi.tags, isNot(contains('today_special')));
     });
 
+    test('living person birthdays are not shown as jayanthi', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[
+          DynamicCalendarEvent(
+            id: 'k_t_rama_rao_birthday',
+            slug: 'k_t_rama_rao_birthday',
+            type: DynamicCategoryType.birthday,
+            scope: DynamicEventScope.telangana,
+            priority: 90,
+            sortOrder: 1,
+            startMonth: 7,
+            startDay: 24,
+            title: DynamicLocalizedTitle(
+              telugu: 'K.T. Rama Rao Jayanthi',
+              english: 'K.T. Rama Rao Birthday',
+              hindi: 'K.T. Rama Rao Birthday',
+            ),
+          ),
+        ]),
+      );
+
+      final categories = service.categoriesForDate(
+        DateTime(2026, 7, 24),
+        language: AppLanguage.telugu,
+      );
+      final birthday = categories.singleWhere(
+        (item) => item.slug == 'k_t_rama_rao_birthday',
+      );
+
+      expect(
+        birthday.label,
+        '\u0c15\u0c46.\u0c1f\u0c3f. \u0c30\u0c3e\u0c2e\u0c3e\u0c30\u0c3e\u0c35\u0c41 \u0c2a\u0c41\u0c1f\u0c4d\u0c1f\u0c3f\u0c28\u0c30\u0c4b\u0c1c\u0c41',
+      );
+      expect(birthday.type, DynamicCategoryType.birthday);
+      expect(birthday.tags, containsAll(<String>['birthday', 'birthdays']));
+      expect(birthday.tags, isNot(contains('jayanthi')));
+    });
+
     test('shows event categories only from the event date by default', () {
       const service = DynamicCategoryService(
         repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[
@@ -326,6 +364,40 @@ void main() {
       expect(
         categories.where((item) => item.slug == 'duplicate_event').length,
         1,
+      );
+    });
+
+    test('uses readable Telugu for weekday dynamic categories', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[]),
+      );
+
+      final categories = service.categoriesForDate(
+        DateTime(2026, 7, 22),
+        language: AppLanguage.telugu,
+      );
+
+      expect(
+        categories
+            .singleWhere((item) => item.slug == 'weekday_wednesday_special')
+            .label,
+        'బుధవారం స్పెషల్',
+      );
+    });
+
+    test('uses seeded Telugu labels for More preview event categories', () {
+      const service = DynamicCategoryService();
+
+      final categories = service.categoriesForDate(
+        DateTime(2026, 7, 24),
+        language: AppLanguage.telugu,
+      );
+
+      expect(
+        categories
+            .singleWhere((item) => item.slug == 'gurram_jashuva_vardhanthi')
+            .label,
+        'గుర్రం జాషువా వర్ధంతి',
       );
     });
   });

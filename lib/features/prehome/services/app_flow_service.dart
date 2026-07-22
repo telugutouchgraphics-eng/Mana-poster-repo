@@ -13,7 +13,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/native_startup_state_store.dart';
-import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -35,7 +34,7 @@ class AppFlowSnapshot {
     if (!languageSelected) {
       return AppRoutes.appLanguage;
     }
-    return isAuthenticated ? AppRoutes.home : AppRoutes.politicalParties;
+    return isAuthenticated ? AppRoutes.home : AppRoutes.login;
   }
 }
 
@@ -157,13 +156,10 @@ class AppFlowService {
         (Firebase.apps.isEmpty && (cachedAuthUid?.trim().isNotEmpty ?? false));
     final prefs = await SharedPreferences.getInstance();
     final hasSelectedRegion = await AppRegionService.hasSelection(prefs: prefs);
-    final hasHandledParties =
-        await AppPartyPreferenceService.hasSelectionHandled(prefs: prefs);
     final resolvedRoute = determineStartupRoute(
       hasAuthenticatedUser: hasAuthenticatedUser,
       hasSelectedRegion: hasSelectedRegion,
       hasSelectedLanguage: snapshot.languageSelected,
-      hasHandledPoliticalParties: hasHandledParties,
     );
 
     return AppStartupResolution(
@@ -439,15 +435,10 @@ class AppFlowService {
     final hasSelectedRegion = await AppRegionService.hasSelection(
       prefs: resolvedPrefs,
     );
-    final hasHandledParties =
-        await AppPartyPreferenceService.hasSelectionHandled(
-          prefs: resolvedPrefs,
-        );
     return determineStartupRoute(
       hasAuthenticatedUser: hasAuthenticatedUser,
       hasSelectedRegion: hasSelectedRegion,
       hasSelectedLanguage: snapshot.languageSelected,
-      hasHandledPoliticalParties: hasHandledParties,
     );
   }
 
@@ -455,7 +446,6 @@ class AppFlowService {
     required bool hasAuthenticatedUser,
     required bool hasSelectedRegion,
     required bool hasSelectedLanguage,
-    required bool hasHandledPoliticalParties,
   }) {
     if (hasAuthenticatedUser) {
       return AppRoutes.home;
@@ -465,9 +455,6 @@ class AppFlowService {
     }
     if (!hasSelectedLanguage) {
       return AppRoutes.appLanguage;
-    }
-    if (!hasHandledPoliticalParties) {
-      return AppRoutes.politicalParties;
     }
     return AppRoutes.login;
   }

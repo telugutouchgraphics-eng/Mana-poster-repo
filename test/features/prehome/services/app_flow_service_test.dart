@@ -10,7 +10,6 @@ void main() {
           hasAuthenticatedUser: false,
           hasSelectedRegion: false,
           hasSelectedLanguage: false,
-          hasHandledPoliticalParties: false,
         ),
         AppRoutes.language,
       );
@@ -22,31 +21,17 @@ void main() {
           hasAuthenticatedUser: false,
           hasSelectedRegion: true,
           hasSelectedLanguage: false,
-          hasHandledPoliticalParties: false,
         ),
         AppRoutes.appLanguage,
       );
     });
 
-    test('resumes political party selection after state selection', () {
+    test('moves to login after state and language selection', () {
       expect(
         AppFlowService.determineStartupRoute(
           hasAuthenticatedUser: false,
           hasSelectedRegion: true,
           hasSelectedLanguage: true,
-          hasHandledPoliticalParties: false,
-        ),
-        AppRoutes.politicalParties,
-      );
-    });
-
-    test('sends unauthenticated completed party step to login', () {
-      expect(
-        AppFlowService.determineStartupRoute(
-          hasAuthenticatedUser: false,
-          hasSelectedRegion: true,
-          hasSelectedLanguage: true,
-          hasHandledPoliticalParties: true,
         ),
         AppRoutes.login,
       );
@@ -54,17 +39,14 @@ void main() {
 
     test('sends already authenticated users directly home', () {
       for (final hasSelectedRegion in <bool>[false, true]) {
-        for (final hasHandledParties in <bool>[false, true]) {
-          expect(
-            AppFlowService.determineStartupRoute(
-              hasAuthenticatedUser: true,
-              hasSelectedRegion: hasSelectedRegion,
-              hasSelectedLanguage: false,
-              hasHandledPoliticalParties: hasHandledParties,
-            ),
-            AppRoutes.home,
-          );
-        }
+        expect(
+          AppFlowService.determineStartupRoute(
+            hasAuthenticatedUser: true,
+            hasSelectedRegion: hasSelectedRegion,
+            hasSelectedLanguage: false,
+          ),
+          AppRoutes.home,
+        );
       }
     });
   });
