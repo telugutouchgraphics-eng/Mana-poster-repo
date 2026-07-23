@@ -23,7 +23,26 @@ enum AppLanguage {
   ladakhi,
 }
 
-enum SupportedUiLanguage { telugu, hindi, english, tamil, kannada, malayalam }
+enum SupportedUiLanguage {
+  telugu,
+  hindi,
+  english,
+  tamil,
+  kannada,
+  malayalam,
+  assamese,
+  konkani,
+  gujarati,
+  marathi,
+  meitei,
+  mizo,
+  odia,
+  punjabi,
+  nepali,
+  bengali,
+  kashmiri,
+  ladakhi,
+}
 
 extension AppLanguageSupportX on AppLanguage {
   SupportedUiLanguage get supportedUiLanguage {
@@ -34,18 +53,18 @@ extension AppLanguageSupportX on AppLanguage {
       AppLanguage.tamil => SupportedUiLanguage.tamil,
       AppLanguage.kannada => SupportedUiLanguage.kannada,
       AppLanguage.malayalam => SupportedUiLanguage.malayalam,
-      AppLanguage.assamese ||
-      AppLanguage.konkani ||
-      AppLanguage.gujarati ||
-      AppLanguage.marathi ||
-      AppLanguage.meitei ||
-      AppLanguage.mizo ||
-      AppLanguage.odia ||
-      AppLanguage.punjabi ||
-      AppLanguage.nepali ||
-      AppLanguage.bengali ||
-      AppLanguage.kashmiri ||
-      AppLanguage.ladakhi => SupportedUiLanguage.english,
+      AppLanguage.assamese => SupportedUiLanguage.assamese,
+      AppLanguage.konkani => SupportedUiLanguage.konkani,
+      AppLanguage.gujarati => SupportedUiLanguage.gujarati,
+      AppLanguage.marathi => SupportedUiLanguage.marathi,
+      AppLanguage.meitei => SupportedUiLanguage.meitei,
+      AppLanguage.mizo => SupportedUiLanguage.mizo,
+      AppLanguage.odia => SupportedUiLanguage.odia,
+      AppLanguage.punjabi => SupportedUiLanguage.punjabi,
+      AppLanguage.nepali => SupportedUiLanguage.nepali,
+      AppLanguage.bengali => SupportedUiLanguage.bengali,
+      AppLanguage.kashmiri => SupportedUiLanguage.kashmiri,
+      AppLanguage.ladakhi => SupportedUiLanguage.ladakhi,
     };
   }
 }
@@ -1918,6 +1937,18 @@ class AppStrings {
     String? tamil,
     String? kannada,
     String? malayalam,
+    String? assamese,
+    String? konkani,
+    String? gujarati,
+    String? marathi,
+    String? meitei,
+    String? mizo,
+    String? odia,
+    String? punjabi,
+    String? nepali,
+    String? bengali,
+    String? kashmiri,
+    String? ladakhi,
   }) {
     final fallback = _sanitizeDisplayText(english);
     if (language.supportedUiLanguage == SupportedUiLanguage.telugu) {
@@ -1941,6 +1972,30 @@ class AppStrings {
         kannada ?? _commonLocalizedFallback(english) ?? english,
       SupportedUiLanguage.malayalam =>
         malayalam ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.assamese =>
+        assamese ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.konkani =>
+        konkani ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.gujarati =>
+        gujarati ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.marathi =>
+        marathi ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.meitei =>
+        meitei ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.mizo =>
+        mizo ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.odia =>
+        odia ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.punjabi =>
+        punjabi ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.nepali =>
+        nepali ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.bengali =>
+        bengali ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.kashmiri =>
+        kashmiri ?? _commonLocalizedFallback(english) ?? english,
+      SupportedUiLanguage.ladakhi =>
+        ladakhi ?? _commonLocalizedFallback(english) ?? english,
     };
     return _sanitizeDisplayText(preferred, fallback: fallback);
   }
@@ -2035,6 +2090,23 @@ class AppStrings {
         return _commonKannadaFallback(english);
       case SupportedUiLanguage.malayalam:
         return _commonMalayalamFallback(english);
+      case SupportedUiLanguage.assamese:
+      case SupportedUiLanguage.konkani:
+      case SupportedUiLanguage.gujarati:
+      case SupportedUiLanguage.marathi:
+      case SupportedUiLanguage.meitei:
+      case SupportedUiLanguage.mizo:
+      case SupportedUiLanguage.odia:
+      case SupportedUiLanguage.punjabi:
+      case SupportedUiLanguage.nepali:
+      case SupportedUiLanguage.bengali:
+      case SupportedUiLanguage.kashmiri:
+      case SupportedUiLanguage.ladakhi:
+        return _regionalCommonFallbacks[language]?[english] ??
+            (language == AppLanguage.bengali
+                ? _commonBengaliFallback(english)
+                : null) ??
+            _regionalCommonPhraseFallback(english);
       case SupportedUiLanguage.telugu:
       case SupportedUiLanguage.english:
         return null;
@@ -2948,6 +3020,7 @@ class AppStrings {
           '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cb9\u0cc6\u0cb8\u0cb0\u0cbf\u0ca8 \u0c9c\u0cca\u0ca4\u0cc6 \u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0abe\u0ca1\u0cbf \u0cb9\u0c82\u0c9a\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2a\u0d47\u0d30\u0d3f\u0d28\u0d4a\u0d2a\u0dcd\u0d2a\u0d02 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d24\u0d4d \u0d36\u0d47\u0d2f\u0d7c \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d42',
+        _ => 'Choose and share with your name',
       };
 
   String get languageScreenTitle =>
@@ -2964,6 +3037,7 @@ class AppStrings {
           '\u0ca8\u0cbf\u0cae\u0ccd\u0cae \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
+        _ => 'Choose your language',
       };
 
   String get languageScreenSubtitle =>
@@ -2983,6 +3057,8 @@ class AppStrings {
           '\u0c86\u0ccd\u0caf\u0ccd\u0caa\u0ccd\u0ca8\u0cb2\u0ccd\u0cb2\u0cbf \u0ca8\u0cbf\u0cae\u0c97\u0cc6 \u0cac\u0cc7\u0c95\u0cbe\u0ca6 \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf. \u0ca8\u0c82\u0ca4\u0cb0 \u0cb8\u0cb9 \u0cac\u0ca6\u0cb2\u0cbe\u0caf\u0cbf\u0cb8\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
         SupportedUiLanguage.malayalam =>
           '\u0d06\u0d2a\u0d4d\u0d2a\u0d3f\u0d32\u0d4d \u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d4d\u0d15\u0d4d\u0d15\u0d4d \u0d35\u0d47\u0d23\u0d4d\u0d1f \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42. \u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d \u0d2e\u0d3e\u0d31\u0d4d\u0d31\u0d3e\u0d28\u0d41\u0d02 \u0d15\u0d34\u0d3f\u0d2f\u0d41\u0d02.',
+        _ =>
+          'Choose the language you want in the app. You can change it later too.',
       };
 
   String get continueLabel =>
@@ -2998,6 +3074,7 @@ class AppStrings {
         SupportedUiLanguage.kannada =>
           '\u0bae\u0cc1\u0c82\u0ca6\u0cc1\u0cb5\u0cb0\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam => '\u0d24\u0d41\u0d1f\u0d30\u0d41\u0d15',
+        _ => 'Continue',
       };
 
   String get homeEmptyPostersTitle =>
@@ -3010,6 +3087,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'இந்த பகுதியில் போஸ்டர்கள் இல்லை',
         SupportedUiLanguage.kannada => 'ಈ ವಿಭಾಗದಲ್ಲಿ ಪೋಸ್ಟರ್‌ಗಳು ಲಭ್ಯವಿಲ್ಲ',
         SupportedUiLanguage.malayalam => 'ഈ വിഭാഗത്തിൽ പോസ്റ്ററുകൾ ലഭ്യമല്ല',
+        _ => 'No posters are available in this section',
       };
 
   String get homeEmptyPostersSubtitle =>
@@ -3029,6 +3107,8 @@ class AppStrings {
           'ಈ ವರ್ಗದಲ್ಲಿ ಈಗ ಪೋಸ್ಟರ್‌ಗಳು ಇಲ್ಲ. ರಿಫ್ರೆಶ್ ಮಾಡಿ ಮತ್ತೆ ನೋಡಿ.',
         SupportedUiLanguage.malayalam =>
           'ഈ വിഭാഗത്തിൽ ഇപ്പോൾ പോസ്റ്ററുകൾ ഇല്ല. റിഫ്രെഷ് ചെയ്ത് വീണ്ടും നോക്കൂ.',
+        _ =>
+          'There are no posters for this category right now. Pull down to refresh and check again.',
       };
 
   String get loginWelcome =>
@@ -3045,6 +3125,7 @@ class AppStrings {
           '\u0cae\u0ca8 \u0caa\u0ccb\u0cb8\u0ccd\u0c9f\u0cb0\u0ccd\u200c\u0c97\u0cc6 \u0cb8\u0ccd\u0cb5\u0cbe\u0c97\u0ca4',
         SupportedUiLanguage.malayalam =>
           '\u0d2e\u0d28 \u0d2a\u0d4b\u0d38\u0d4d\u0d31\u0d31\u0d3f\u0d32\u0d47\u0d15\u0d4d\u0d15\u0d4d \u0d38\u0d4d\u0d35\u0d3e\u0d17\u0d24\u0d02',
+        _ => 'Welcome to Mana Poster Ai',
       };
 
   String get loginSubtitle =>
@@ -3064,6 +3145,7 @@ class AppStrings {
           'Google \u0c85\u0ca5\u0cb5\u0cbe Email \u0cae\u0cc2\u0cb2\u0c95 login \u0c86\u0c97\u0cbf \u0ca8\u0cbf\u0cae\u0ccd\u0cae poster \u0caf\u0cbe\u0ca4\u0ccd\u0cb0\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0caa\u0ccd\u0cb0\u0cbe\u0cb0\u0c82\u0cad\u0cbf\u0cb8\u0cbf.',
         SupportedUiLanguage.malayalam =>
           'Google \u0d05\u0d32\u0d4d\u0d32\u0d46\u0d19\u0d4d\u0d15\u0d3f\u0d32\u0d4d Email \u0d35\u0d34\u0d3f login \u0d1a\u0d46\u0d2f\u0d4d\u0d24\u0d4d \u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 poster \u0d2f\u0d3e\u0d24\u0d4d\u0d30 \u0d24\u0d41\u0d1f\u0d19\u0d4d\u0d19\u0d42.',
+        _ => 'Login with Google or Email and start your poster journey.',
       };
 
   String get loginLabel =>
@@ -3076,6 +3158,7 @@ class AppStrings {
           '\u0b89\u0bb3\u0bcd\u0ba8\u0bc1\u0bb4\u0bc8',
         SupportedUiLanguage.kannada => '\u0cb2\u0cbe\u0c97\u0cbf\u0ca8\u0ccd',
         SupportedUiLanguage.malayalam => '\u0d32\u0d4b\u0d17\u0d3f\u0d7b',
+        _ => 'Login',
       };
 
   String get signUpLabel =>
@@ -3090,6 +3173,7 @@ class AppStrings {
           '\u0cb8\u0cc8\u0ca8\u0ccd \u0c85\u0baa\u0ccd',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d48\u0d7b \u0d05\u0d2a\u0d4d',
+        _ => 'Sign Up',
       };
 
   String get googleContinue =>
@@ -3106,6 +3190,7 @@ class AppStrings {
           'Google \u0c9c\u0cca\u0ca4\u0cc6 \u0bae\u0cc1\u0c82\u0ca6\u0cc1\u0cb5\u0cb0\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           'Google \u0d09\u0d2e\u0d3e\u0d2f\u0d3f \u0d24\u0d41\u0d1f\u0d30\u0d41\u0d15',
+        _ => 'Continue with Google',
       };
 
   String get emailAddress =>
@@ -3117,6 +3202,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'மின்னஞ்சல் முகவரி',
         SupportedUiLanguage.kannada => 'ಇಮೇಲ್ ವಿಳಾಸ',
         SupportedUiLanguage.malayalam => 'ഇമെയിൽ വിലാസം',
+        _ => 'Email address',
       };
 
   String get password =>
@@ -3128,6 +3214,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'கடவுச்சொல்',
         SupportedUiLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್',
         SupportedUiLanguage.malayalam => 'പാസ്‌വേഡ്',
+        _ => 'Password',
       };
 
   String get forgotPassword =>
@@ -3139,6 +3226,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'கடவுச்சொல் மறந்துவிட்டதா?',
         SupportedUiLanguage.kannada => 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?',
         SupportedUiLanguage.malayalam => 'പാസ്‌വേഡ് മറന്നോ?',
+        _ => 'Forgot Password',
       };
 
   String get noAccount =>
@@ -3153,6 +3241,7 @@ class AppStrings {
           '\u0c96\u0cbe\u0ca4\u0cc6 \u0c87\u0cb2\u0ccd\u0cb5\u0cc7?',
         SupportedUiLanguage.malayalam =>
           '\u0d05\u0d15\u0d4d\u0d15\u0d57\u0d23\u0d4d\u0d1f\u0d4d \u0d07\u0d32\u0d4d\u0d32\u0d47?',
+        _ => "Don't have an account?",
       };
 
   String get alreadyHaveAccount =>
@@ -3167,6 +3256,7 @@ class AppStrings {
           '\u0c88\u0c97\u0abe\u0cb2\u0cc7 \u0c92\u0c82\u0ca6\u0cc1 \u0c96\u0cbe\u0ca4\u0cc6 \u0c87\u0ca6\u0cc6\u0caf\u0cbe?',
         SupportedUiLanguage.malayalam =>
           '\u0d07\u0d24\u0d3f\u0d28\u0d95\u0d02 \u0d12\u0d30\u0d41 \u0d05\u0d15\u0d4d\u0d15\u0d57\u0d23\u0d4d\u0d1f\u0d4d \u0d09\u0d23\u0d4d\u0d1f\u0d4b?',
+        _ => 'Already have an account?',
       };
 
   String get loginWithEmail =>
@@ -3181,6 +3271,7 @@ class AppStrings {
           'Email \u0cae\u0cc2\u0cb2\u0c95 \u0cb2\u0cbe\u0c97\u0cbf\u0ca8\u0ccd',
         SupportedUiLanguage.malayalam =>
           'Email \u0d35\u0d34\u0d3f \u0d32\u0d4b\u0d17\u0d3f\u0d7b',
+        _ => 'Login with Email',
       };
 
   String get signUpWithEmail =>
@@ -3195,6 +3286,7 @@ class AppStrings {
           'Email \u0cae\u0cc2\u0cb2\u0c95 \u0cb8\u0cc8\u0ca8\u0ccd \u0c85\u0baa\u0ccd',
         SupportedUiLanguage.malayalam =>
           'Email \u0d35\u0d34\u0d3f \u0d38\u0d48\u0d7b \u0d05\u0d2a\u0d4d',
+        _ => 'Sign Up with Email',
       };
 
   String get validEmailError =>
@@ -3211,6 +3303,7 @@ class AppStrings {
           '\u0cb8\u0cb0\u0cbf\u0caf\u0cbe\u0ca6 email \u0ca8\u0cae\u0cc2\u0ca6\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d36\u0d30\u0d3f\u0d2f\u0d3e\u0d2f email \u0d28\u0d7d\u0d15\u0d42',
+        _ => 'Enter valid email',
       };
 
   String get passwordError =>
@@ -3227,6 +3320,7 @@ class AppStrings {
           '\u0c95\u0ca8\u0cbf\u0cb7\u0ccd\u0ca0 6 \u0c85\u0c95\u0ccd\u0cb7\u0cb0\u0c97\u0cb3\u0cc1 \u0cac\u0cc7\u0c95\u0cc1',
         SupportedUiLanguage.malayalam =>
           '\u0d15\u0d41\u0d31\u0d1e\u0d4d\u0d1e\u0d24\u0d4d 6 \u0d05\u0d15\u0d4d\u0d37\u0d30\u0d19\u0d4d\u0d19\u0d33\u0d4d \u0d06\u0d35\u0d36\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d',
+        _ => 'Minimum 6 characters required',
       };
 
   String get forgotPasswordPlaceholder =>
@@ -3242,6 +3336,7 @@ class AppStrings {
           'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ಸೌಲಭ್ಯ ಶೀಘ್ರದಲ್ಲೇ ಬರುತ್ತದೆ.',
         SupportedUiLanguage.malayalam =>
           'പാസ്‌വേഡ് റീസെറ്റ് സൗകര്യം ഉടൻ ലഭ്യമാകും.',
+        _ => 'Password reset will be available soon.',
       };
 
   String get permissionsTitle =>
@@ -3254,6 +3349,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'சில அனுமதிகள் தேவை',
         SupportedUiLanguage.kannada => 'ಕೆಲವು ಅನುಮತಿಗಳು ಬೇಕಾಗಿವೆ',
         SupportedUiLanguage.malayalam => 'ചില അനുമതികൾ ആവശ്യമാണ്',
+        _ => 'A few permissions are needed',
       };
 
   String get permissionsSubtitle => switch (language.supportedUiLanguage) {
@@ -3269,6 +3365,8 @@ class AppStrings {
       '\u0cab\u0ccb\u0c9f\u0ccb\u0c97\u0cb3\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6 \u0cae\u0cbe\u0ca1\u0cb2\u0cc1, posters save \u0cae\u0cbe\u0ca1\u0cb2\u0cc1 \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cae\u0cc1\u0c96\u0ccd\u0caf updates \u0caa\u0ca1\u0cc6\u0caf\u0cb2\u0cc1 permissions \u0cac\u0cc7\u0c95\u0cbe\u0c97\u0cbf\u0cb5\u0cc6.',
     SupportedUiLanguage.malayalam =>
       '\u0d2b\u0d4b\u0d1f\u0d4b\u0d15\u0d33\u0d4d \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d3e\u0d28\u0d41\u0d02 posters save \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d3e\u0d28\u0d41\u0d02 \u0d2a\u0d4d\u0d30\u0d27\u0d3e\u0d28 updates \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d3e\u0d28\u0d41\u0d02 permissions \u0d06\u0d35\u0d36\u0d4d\u0d2f\u0d2e\u0d3e\u0d23\u0d4d.',
+    _ =>
+      'Permissions are needed to choose photos, save posters, and receive important updates.',
   };
 
   String get photosGallery =>
@@ -3280,6 +3378,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => 'புகைப்படங்கள் / கேலரி',
         SupportedUiLanguage.kannada => 'ಫೋಟోలు / ಗ್ಯಾಲರಿ',
         SupportedUiLanguage.malayalam => 'ഫോട്ടോകൾ / ഗാലറി',
+        _ => 'Photos/Gallery',
       };
 
   String get notifications =>
@@ -3294,6 +3393,7 @@ class AppStrings {
           '\u0c85\u0ca7\u0cbf\u0cb8\u0cc2\u0c9a\u0ca8\u0cc6\u0c97\u0cb3\u0cc1',
         SupportedUiLanguage.malayalam =>
           '\u0d05\u0d31\u0d3f\u0d2f\u0d3f\u0d2a\u0d4d\u0d2a\u0d41\u0d15\u0d33\u0d4d',
+        _ => 'Notifications',
       };
 
   String get enableLaterHint => switch (language.supportedUiLanguage) {
@@ -3309,6 +3409,7 @@ class AppStrings {
       'ಈ ಅನುಮತಿಗಳನ್ನು ನಂತರ ಸೆಟ್ಟಿಂಗ್ಸ್‌ನಿಂದಲೂ ಆನ್ ಮಾಡಬಹುದು.',
     SupportedUiLanguage.malayalam =>
       'ഈ അനുമതികൾ പിന്നീട് സെറ്റിംഗ്സിൽ നിന്നും ഓൺ ചെയ്യാം.',
+    _ => 'You can enable permissions later from Settings as well.',
   };
 
   String get allowLabel =>
@@ -3324,6 +3425,7 @@ class AppStrings {
           '\u0c85\u0ca8\u0cc1\u0cae\u0ca4\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d05\u0d28\u0d41\u0d35\u0d26\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+        _ => 'Allow',
       };
 
   String get laterLabel =>
@@ -3339,6 +3441,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0ca8\u0c82\u0ca4\u0cb0',
         SupportedUiLanguage.malayalam =>
           '\u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d',
+        _ => 'Later',
       };
 
   String get homeTagline =>
@@ -3355,6 +3458,7 @@ class AppStrings {
           '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cca\u0cb3\u0ccd\u0cb3\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d \u0d2a\u0d19\u0d4d\u0d15\u0d3f\u0d1f\u0d41\u0d15',
+        _ => 'Create & Share',
       };
 
   String get createLabel =>
@@ -3369,6 +3473,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0cb0\u0c9a\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d43\u0d37\u0d4d\u0d1f\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+        _ => 'Create',
       };
 
   String get searchTemplates =>
@@ -3385,6 +3490,7 @@ class AppStrings {
           '\u0c9f\u0cc6\u0c82\u0caa\u0ccd\u0cb2\u0cc7\u0c9f\u0ccd \u0cb9\u0cc1\u0ca1\u0cc1\u0c95\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d1f\u0d46\u0d02\u0d2a\u0d4d\u0d32\u0d47\u0d31\u0d4d\u0d31\u0d41\u0d15\u0d7e \u0d24\u0d3f\u0d30\u0d2f\u0d41\u0d15',
+        _ => 'Search templates',
       };
 
   String get bannerTitle => switch (language.supportedUiLanguage) {
@@ -3399,6 +3505,7 @@ class AppStrings {
       'Mana Poster Ai \u0cb5\u0cbf\u0cb6\u0cc7\u0cb7 banner',
     SupportedUiLanguage.malayalam =>
       'Mana Poster Ai \u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15 banner',
+    _ => 'Mana Poster Ai Featured Banner',
   };
 
   String get freeTab =>
@@ -3411,6 +3518,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0c89\u0c9a\u0cbf\u0ca4',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d57\u0d1c\u0d28\u0d4d\u0d2f\u0d02',
+        _ => 'Ready',
       };
 
   String get premiumTab =>
@@ -3425,6 +3533,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0cb5\u0cbf\u0cb6\u0cc7\u0cb7',
         SupportedUiLanguage.malayalam =>
           '\u0d2a\u0d4d\u0d30\u0d24\u0d4d\u0d2f\u0d47\u0d15\u0d02',
+        _ => 'Special',
       };
 
   String get buyLabel =>
@@ -3438,6 +3547,7 @@ class AppStrings {
           '\u0c96\u0cb0\u0cc0\u0ca6\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d35\u0d3e\u0d19\u0d4d\u0d19\u0d41\u0d15',
+        _ => 'Buy',
       };
 
   String get shareWhatsApp =>
@@ -3449,6 +3559,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => '\u0baa\u0b95\u0bbf\u0bb0\u0bcd',
         SupportedUiLanguage.kannada => '\u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cc6',
         SupportedUiLanguage.malayalam => '\u0d37\u0d46\u0d2f\u0d7c',
+        _ => 'Share WhatsApp',
       };
 
   String get downloadLabel =>
@@ -3465,6 +3576,7 @@ class AppStrings {
           '\u0ca1\u0ccc\u0ca8\u0ccd\u200c\u0cb2\u0ccb\u0ca1\u0ccd',
         SupportedUiLanguage.malayalam =>
           '\u0d21\u0d57\u0d7a\u0d32\u0d4b\u0d21\u0d4d',
+        _ => 'Download',
       };
 
   String get profileTitle =>
@@ -3481,6 +3593,7 @@ class AppStrings {
           '\u0caa\u0ccd\u0cb0\u0cca\u0cab\u0cc8\u0cb2\u0ccd \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0cb8\u0cc6\u0c9f\u0ccd\u0c9f\u0cbf\u0c82\u0c97\u0ccd\u0cb8\u0ccd',
         SupportedUiLanguage.malayalam =>
           '\u0d2a\u0d4d\u0d30\u0d4a\u0d2b\u0d48\u0d7d & \u0d38\u0d46\u0d31\u0d4d\u0d31\u0d3f\u0d02\u0d17\u0d4d\u0d38\u0d4d',
+        _ => 'Profile & Settings',
       };
 
   String get accountSection =>
@@ -3493,6 +3606,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0c96\u0cbe\u0ca4\u0cc6',
         SupportedUiLanguage.malayalam =>
           '\u0d05\u0d15\u0d4d\u0d15\u0d57\u0d23\u0d4d\u0d1f\u0d4d',
+        _ => 'Account',
       };
 
   String get appSettingsSection =>
@@ -3509,6 +3623,7 @@ class AppStrings {
           '\u0c86\u0caa\u0ccd \u0cb8\u0cc6\u0c9f\u0ccd\u0c9f\u0cbf\u0c82\u0c97\u0ccd\u0cb8\u0ccd',
         SupportedUiLanguage.malayalam =>
           '\u0d06\u0d2a\u0d4d\u0d2a\u0d4d \u0d38\u0d46\u0d31\u0d4d\u0d31\u0d3f\u0d02\u0d17\u0d4d\u0d38\u0d4d',
+        _ => 'App Settings',
       };
 
   String get supportSection =>
@@ -3521,6 +3636,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => '\u0b86\u0ba4\u0bb0\u0bb5\u0bc1',
         SupportedUiLanguage.kannada => '\u0cb8\u0cb9\u0cbe\u0caf',
         SupportedUiLanguage.malayalam => '\u0d38\u0d39\u0d3e\u0d2f\u0d02',
+        _ => 'Support',
       };
 
   String get languageOption =>
@@ -3532,6 +3648,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf',
         SupportedUiLanguage.kannada => '\u0cad\u0cbe\u0cb7\u0cc6',
         SupportedUiLanguage.malayalam => '\u0d2d\u0d3e\u0d37',
+        _ => 'Language',
       };
 
   String get languageOptionSubtitle =>
@@ -3548,6 +3665,7 @@ class AppStrings {
           '\u0ca8\u0cbf\u0cae\u0ccd\u0cae app \u0cad\u0bbe\u0cb7\u0cc6\u0caf\u0ca8\u0ccd\u0ca8\u0cc1 \u0c86\u0caf\u0ccd\u0c95\u0cc6\u0cae\u0abe\u0ca1\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d28\u0d3f\u0d19\u0d4d\u0d19\u0d33\u0d41\u0d1f\u0d46 app \u0d2d\u0d3e\u0d37 \u0d24\u0d3f\u0d30\u0d1e\u0d4d\u0d1e\u0d46\u0d1f\u0d41\u0d15\u0d4d\u0d15\u0d42',
+        _ => 'Choose your app language',
       };
 
   String get subscriptionOption =>
@@ -3562,6 +3680,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0c9a\u0c82\u0ca6\u0cbe / Plans',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d2c\u0d4d\u0d38\u0d4d\u0d15\u0d4d\u0d30\u0d3f\u0d2a\u0d4d\u0d37\u0d7b / Plans',
+        _ => 'Subscription / Plans',
       };
 
   String get subscriptionSubtitle =>
@@ -3578,6 +3697,7 @@ class AppStrings {
           '\u0cbf\u0caa\u0ccd\u0caa\u0cbf\u0ca8 current plan \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 upgrades \u0ca8\u0ccd\u0ca8\u0cc1 manage \u0cae\u0cbe\u0ca1\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d28\u0d3f\u0d32\u0d35\u0d3f\u0d32\u0d41\u0d33\u0d4d\u0d33 plan \u0d09\u0d02 upgrades-\u0d09\u0d02 manage \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0d41\u0d15',
+        _ => 'Manage current plan and upgrades',
       };
 
   String get permissionsOptionSubtitle =>
@@ -3594,6 +3714,7 @@ class AppStrings {
           'Photos, storage \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 \u0c87\u0ca4\u0cb0 access',
         SupportedUiLanguage.malayalam =>
           'Photos, storage \u0d15\u0d42\u0d1f\u0d3e\u0d24\u0d46 \u0d2e\u0d31\u0d4d\u0d31 access',
+        _ => 'Photos, storage and other access',
       };
 
   String get notificationsOptionSubtitle =>
@@ -3610,6 +3731,7 @@ class AppStrings {
           'Alerts \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 updates \u0ca8\u0cbf\u0caf\u0c82\u0ca4\u0ccd\u0cb0\u0cbf\u0cb8\u0cbf',
         SupportedUiLanguage.malayalam =>
           'Alerts \u0d09\u0d02 updates-\u0d09\u0d02 \u0d28\u0d3f\u0d2f\u0d28\u0d4d\u0d24\u0d4d\u0d30\u0d3f\u0d15\u0d4d\u0d15\u0d41\u0d15',
+        _ => 'Control alerts and updates',
       };
 
   String get helpSupport =>
@@ -3624,6 +3746,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => '\u0cb8\u0cb9\u0cbe\u0caf & Support',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d39\u0d3e\u0d2f\u0d02 & Support',
+        _ => 'Help & Support',
       };
 
   String get helpSupportSubtitle =>
@@ -3640,6 +3763,7 @@ class AppStrings {
           '\u0cb8\u0cb9\u0cbe\u0caf \u0caa\u0ca1\u0cc6\u0ca6\u0cc1 support \u0ca8\u0cbf\u0c82\u0ca6 \u0cb8\u0c82\u0caa\u0cb0\u0ccd\u0c95 \u0cae\u0cbe\u0ca1\u0cbf',
         SupportedUiLanguage.malayalam =>
           '\u0d38\u0d39\u0d3e\u0d2f\u0d02 \u0d32\u0d2d\u0d3f\u0d15\u0d4d\u0d15\u0d42 \u0d15\u0d42\u0d1f\u0d3e\u0d24\u0d46 support-\u0d28\u0d47\u0d1f\u0d4d\u0d1f\u0d3f \u0d2c\u0d28\u0d4d\u0d27\u0d2a\u0d46\u0d1f\u0d41\u0d15',
+        _ => 'Get help and contact support',
       };
 
   String get aboutApp =>
@@ -3654,6 +3778,7 @@ class AppStrings {
         SupportedUiLanguage.kannada => 'App \u0cac\u0c97\u0ccd\u0c97\u0cc6',
         SupportedUiLanguage.malayalam =>
           'App-\u0d28\u0d46\u0d15\u0dcd\u0d15\u0d41\u0d31\u0d3f\u0d1a\u0d4d\u0d1a\u0d4d',
+        _ => 'About App',
       };
 
   String get aboutAppSubtitle =>
@@ -3669,6 +3794,7 @@ class AppStrings {
           'App details \u0cae\u0ca4\u0ccd\u0ca4\u0cc1 version info',
         SupportedUiLanguage.malayalam =>
           'App details \u0d09\u0d02 version info-\u0d09\u0d02',
+        _ => 'App details and version info',
       };
 
   String get logout =>
@@ -3684,6 +3810,7 @@ class AppStrings {
           '\u0cb2\u0cbe\u0c97\u0ccd\u0c85\u0cb5\u0cc1\u0c9f\u0ccd',
         SupportedUiLanguage.malayalam =>
           '\u0d32\u0d4b\u0d17\u0d4d\u0d05\u0d57\u0d1f\u0d4d',
+        _ => 'Logout',
       };
 
   String get logoutSubtitle =>
@@ -3700,6 +3827,7 @@ class AppStrings {
           'Sign out logic \u0ca8\u0c82\u0ca4\u0cb0 connect \u0cae\u0cbe\u0ca1\u0cac\u0cb9\u0cc1\u0ca6\u0cc1.',
         SupportedUiLanguage.malayalam =>
           'Sign out logic \u0d2a\u0d3f\u0d28\u0d4d\u0d28\u0d40\u0d1f\u0d4d connect \u0d1a\u0d46\u0d2f\u0d4d\u0d2f\u0dbe\u0d35\u0d41\u0d28\u0d4d\u0d28\u0d24\u0d3e\u0d23\u0d4d.',
+        _ => 'Sign out logic can be connected later',
       };
 
   String get languageSettingsTitle =>
@@ -3713,6 +3841,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => '\u0bae\u0bca\u0bb4\u0bbf Settings',
         SupportedUiLanguage.kannada => '\u0cad\u0bbe\u0cb7\u0cc6 Settings',
         SupportedUiLanguage.malayalam => '\u0d2d\u0d3e\u0d37 Settings',
+        _ => 'Language Settings',
       };
 
   String get currentLanguageLabel =>
@@ -3729,6 +3858,7 @@ class AppStrings {
           '\u0caa\u0ccd\u0cb0\u0cb8\u0ccd\u0ca4\u0cc1\u0ca4 \u0cad\u0bbe\u0cb7\u0cc6',
         SupportedUiLanguage.malayalam =>
           '\u0d28\u0d3f\u0d32\u0d35\u0d3f\u0d32\u0d46 \u0d2d\u0d3e\u0d37',
+        _ => 'Current language',
       };
 
   String get saveApply =>
@@ -3742,6 +3872,7 @@ class AppStrings {
         SupportedUiLanguage.tamil => '\u0b9a\u0bc7\u0bae\u0bbf / Apply',
         SupportedUiLanguage.kannada => '\u0c89\u0cb3\u0cbf\u0cb8\u0cbf / Apply',
         SupportedUiLanguage.malayalam => '\u0d38\u0d47\u0d35\u0d4d / Apply',
+        _ => 'Save / Apply',
       };
 
   String languageName(AppLanguage value) =>
@@ -4132,6 +4263,26 @@ class AppStrings {
                   '\u0d07\u0d38\u0d4d\u0d32\u0d3e\u0d02',
                   'തമാശകൾ',
                   'കൂടുതൽ',
+                ],
+                _ => const <String>[
+                  'All',
+                  'Good Morning',
+                  'Good Afternoon',
+                  'Good Night',
+                  'Motivational',
+                  'Good Evening',
+                  'Today Special',
+                  'Birthdays',
+                  'Life Advice',
+                  'Gita Wisdom',
+                  'Devotional',
+                  'Mahabharata',
+                  'Anniversary',
+                  'Good Thoughts',
+                  'Bible',
+                  'Islam',
+                  'Jokes',
+                  'More',
                 ],
               }))
           .map((item) => _sanitizeDisplayText(item))

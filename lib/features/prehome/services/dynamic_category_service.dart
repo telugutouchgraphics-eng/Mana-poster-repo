@@ -443,6 +443,18 @@ class DynamicCategoryService {
           _ => 'ഞായറാഴ്ച സ്പെഷ്യൽ',
         };
       case SupportedUiLanguage.english:
+      case SupportedUiLanguage.assamese:
+      case SupportedUiLanguage.konkani:
+      case SupportedUiLanguage.gujarati:
+      case SupportedUiLanguage.marathi:
+      case SupportedUiLanguage.meitei:
+      case SupportedUiLanguage.mizo:
+      case SupportedUiLanguage.odia:
+      case SupportedUiLanguage.punjabi:
+      case SupportedUiLanguage.nepali:
+      case SupportedUiLanguage.bengali:
+      case SupportedUiLanguage.kashmiri:
+      case SupportedUiLanguage.ladakhi:
         return switch (weekday) {
           DateTime.monday => 'Monday Special',
           DateTime.tuesday => 'Tuesday Special',

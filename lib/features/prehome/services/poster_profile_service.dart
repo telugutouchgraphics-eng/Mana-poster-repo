@@ -1900,6 +1900,7 @@ class _NameScriptConverter {
         SupportedUiLanguage.tamil => _toTamil(word),
         SupportedUiLanguage.kannada => _toKannada(word),
         SupportedUiLanguage.malayalam => _toMalayalam(word),
+        _ => word,
       };
     });
   }

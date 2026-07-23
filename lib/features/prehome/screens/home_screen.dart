@@ -317,7 +317,19 @@ class _TemplateItem {
         SupportedUiLanguage.english ||
         SupportedUiLanguage.tamil ||
         SupportedUiLanguage.kannada ||
-        SupportedUiLanguage.malayalam => titleEn,
+        SupportedUiLanguage.malayalam ||
+        SupportedUiLanguage.assamese ||
+        SupportedUiLanguage.konkani ||
+        SupportedUiLanguage.gujarati ||
+        SupportedUiLanguage.marathi ||
+        SupportedUiLanguage.meitei ||
+        SupportedUiLanguage.mizo ||
+        SupportedUiLanguage.odia ||
+        SupportedUiLanguage.punjabi ||
+        SupportedUiLanguage.nepali ||
+        SupportedUiLanguage.bengali ||
+        SupportedUiLanguage.kashmiri ||
+        SupportedUiLanguage.ladakhi => titleEn,
       });
 }
 

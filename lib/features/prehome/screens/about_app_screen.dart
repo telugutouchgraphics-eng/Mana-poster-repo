@@ -981,31 +981,31 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'ఇంగ్లీష్, హిందీ, తమిళం, కన్నడ, మలయాళం భాషల్లో కూడా ఉపయోగించవచ్చు.',
+          'తెలుగు, హిందీ, ఇంగ్లీష్, తమిళం, కన్నడ, మలయాళం, అస్సామీ, కొంకణి, గుజరాతీ, మరాఠీ, మైతేయి, మిజో, ఒడియా, పంజాబీ, నేపాలి, బెంగాలీ, కాశ్మీరీ మరియు లడాఖీ భాషల్లో ఉపయోగించవచ్చు.',
       english:
-          'It can also be used in English, Hindi, Tamil, Kannada, and Malayalam.',
+          'It can be used in Telugu, Hindi, English, Tamil, Kannada, Malayalam, Assamese, Konkani, Gujarati, Marathi, Meitei, Mizo, Odia, Punjabi, Nepali, Bengali, Kashmiri, and Ladakhi.',
       hindi:
-          'इसे अंग्रेज़ी, हिंदी, तमिल, कन्नड़ और मलयालम में भी उपयोग किया जा सकता है।',
+          'इसे तेलुगु, हिंदी, अंग्रेज़ी, तमिल, कन्नड़, मलयालम, असमिया, कोंकणी, गुजराती, मराठी, मैतेई, मिजो, ओड़िया, पंजाबी, नेपाली, बंगाली, कश्मीरी और लद्दाखी में उपयोग किया जा सकता है।',
       tamil:
-          'இதை ஆங்கிலம், இந்தி, தமிழ், கன்னடம் மற்றும் மலையாளம் மொழிகளிலும் பயன்படுத்தலாம்.',
+          'இதை தெலுங்கு, இந்தி, ஆங்கிலம், தமிழ், கன்னடம், மலையாளம், அசாமி, கொங்கணி, குஜராத்தி, மராத்தி, மெய்தெய், மிசோ, ஒடியா, பஞ்சாபி, நேபாளி, பெங்காலி, காஷ்மீரி மற்றும் லடாக்கி மொழிகளில் பயன்படுத்தலாம்.',
       kannada:
-          'ಇದನ್ನು ಇಂಗ್ಲಿಷ್, ಹಿಂದಿ, ತಮಿಳು, ಕನ್ನಡ ಮತ್ತು ಮಲಯಾಳಂ ಭಾಷೆಗಳಲ್ಲಿಯೂ ಬಳಸಬಹುದು.',
+          'ಇದನ್ನು ತೆಲುಗು, ಹಿಂದಿ, ಇಂಗ್ಲಿಷ್, ತಮಿಳು, ಕನ್ನಡ, ಮಲಯಾಳಂ, ಅಸ್ಸಾಮಿ, ಕೊಂಕಣಿ, ಗುಜರಾತಿ, ಮರಾಠಿ, ಮೈತೇಯಿ, ಮಿಜೋ, ಒಡಿಯಾ, ಪಂಜಾಬಿ, ನೇಪಾಳಿ, ಬೆಂಗಾಳಿ, ಕಾಶ್ಮೀರಿ ಮತ್ತು ಲಡಾಖಿ ಭಾಷೆಗಳಲ್ಲಿ ಬಳಸಬಹುದು.',
       malayalam:
-          'ഇത് ഇംഗ്ലീഷ്, ഹിന്ദി, തമിഴ്, ಕನ್ನಡ, മലയാളം ഭാഷകളിലും ഉപയോഗിക്കാം.',
+          'ഇത് തെലുങ്ക്, ഹിന്ദി, ഇംഗ്ലീഷ്, തമിഴ്, കന്നഡ, മലയാളം, അസമീസ്, കൊങ്കണി, ഗുജറാത്തി, മറാത്തി, മെയ്തെയ്, മിസോ, ഒഡിയ, പഞ്ചാബി, നേപ്പാളി, ബെംഗാളി, കാശ്മീരി, ലഡാക്കി ഭാഷകളിൽ ഉപയോഗിക്കാം.',
     ),
     strings.localized(
       telugu:
-          'State/Union Territory ఎంపిక ఆధారంగా supported regional language apply అవుతుంది; పూర్తి UI support లేని చోట English fallback కనిపించవచ్చు.',
+          'State/Union Territory ఎంపిక ఆధారంగా సరిపోయే భాష apply అవుతుంది; core app screens regional translations ఉపయోగిస్తాయి, కొన్ని editor/file-format technical labels English లో ఉండవచ్చు.',
       english:
-          'The supported regional language is applied from the selected State or Union Territory; English fallback may appear where full UI support is not available.',
+          'The matching language is applied from the selected State or Union Territory; core app screens use regional translations, while some editor or file-format technical labels may remain in English.',
       hindi:
-          'चुने गए राज्य या केंद्रशासित प्रदेश के आधार पर समर्थित क्षेत्रीय भाषा लागू होती है; जहाँ पूरा UI समर्थन उपलब्ध नहीं है वहाँ English fallback दिख सकता है।',
+          'चुने गए राज्य या केंद्रशासित प्रदेश के आधार पर संबंधित भाषा लागू होती है; core app screens में regional translations उपयोग होते हैं, जबकि कुछ editor/file-format technical labels English में रह सकते हैं।',
       tamil:
-          'தேர்ந்தெடுத்த மாநிலம் அல்லது யூனியன் பிரதேசத்தின் அடிப்படையில் ஆதரிக்கப்படும் பிராந்திய மொழி பயன்படுத்தப்படும்; முழு UI ஆதரவு இல்லாத இடங்களில் English fallback தோன்றலாம்.',
+          'தேர்ந்தெடுத்த மாநிலம் அல்லது யூனியன் பிரதேசத்தின் அடிப்படையில் பொருத்தமான மொழி பயன்படுத்தப்படும்; core app screens பிராந்திய மொழிபெயர்ப்புகளைப் பயன்படுத்தும், சில editor/file-format technical labels English-ல் இருக்கலாம்.',
       kannada:
-          'ಆಯ್ದ ರಾಜ್ಯ ಅಥವಾ ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶದ ಆಧಾರದ ಮೇಲೆ ಬೆಂಬಲಿತ ಪ್ರಾದೇಶಿಕ ಭಾಷೆ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ; ಸಂಪೂರ್ಣ UI ಬೆಂಬಲ ಇಲ್ಲದ ಕಡೆ English fallback ಕಾಣಬಹುದು.',
+          'ಆಯ್ದ ರಾಜ್ಯ ಅಥವಾ ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶದ ಆಧಾರದ ಮೇಲೆ ಹೊಂದುವ ಭಾಷೆ ಅನ್ವಯಿಸಲಾಗುತ್ತದೆ; core app screens ಪ್ರಾದೇಶಿಕ ಅನುವಾದಗಳನ್ನು ಬಳಸುತ್ತವೆ, ಕೆಲವು editor/file-format technical labels English ನಲ್ಲಿ ಇರಬಹುದು.',
       malayalam:
-          'തിരഞ്ഞെടുത്ത സംസ്ഥാനം അല്ലെങ്കിൽ കേന്ദ്രഭരണ പ്രദേശത്തെ അടിസ്ഥാനമാക്കി പിന്തുണയ്ക്കുന്ന പ്രാദേശിക ഭാഷ പ്രയോഗിക്കും; പൂർണ്ണ UI പിന്തുണ ഇല്ലാത്തിടത്ത് English fallback കാണാം.',
+          'തിരഞ്ഞെടുത്ത സംസ്ഥാനം അല്ലെങ്കിൽ കേന്ദ്രഭരണ പ്രദേശത്തെ അടിസ്ഥാനമാക്കി അനുയോജ്യമായ ഭാഷ പ്രയോഗിക്കും; core app screens പ്രാദേശിക വിവർത്തനങ്ങൾ ഉപയോഗിക്കും, ചില editor/file-format technical labels English-ൽ തുടരാം.',
     ),
   ];
 

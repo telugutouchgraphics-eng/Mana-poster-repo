@@ -414,5 +414,17 @@ Color _regionColor(AppRegion region) {
     SupportedUiLanguage.tamil => const Color(0xFFBE123C),
     SupportedUiLanguage.kannada => const Color(0xFF7C3AED),
     SupportedUiLanguage.malayalam => const Color(0xFF15803D),
+    SupportedUiLanguage.assamese ||
+    SupportedUiLanguage.konkani ||
+    SupportedUiLanguage.gujarati ||
+    SupportedUiLanguage.marathi ||
+    SupportedUiLanguage.meitei ||
+    SupportedUiLanguage.mizo ||
+    SupportedUiLanguage.odia ||
+    SupportedUiLanguage.punjabi ||
+    SupportedUiLanguage.nepali ||
+    SupportedUiLanguage.bengali ||
+    SupportedUiLanguage.kashmiri ||
+    SupportedUiLanguage.ladakhi => const Color(0xFF2563EB),
   };
 }
