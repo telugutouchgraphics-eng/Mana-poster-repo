@@ -7,8 +7,8 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import org.gradle.api.GradleException
 
-val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-val unsupportedBundleAbis = listOf("x86")
+val supportedReleaseAbis = listOf("arm64-v8a", "armeabi-v7a")
+val unsupportedBundleAbis = listOf("x86", "x86_64")
 
 plugins {
     id("com.android.application")
@@ -79,8 +79,9 @@ android {
 
     packaging {
         jniLibs {
-            // Flutter release builds do not ship 32-bit x86. Keep x86 excluded,
-            // but allow x86_64 so Play can support compatible tablets/Chromebooks.
+            // Mana Poster targets Android phones. Keep x86 variants out of the
+            // release bundle so heavy native editor/video libraries ship only
+            // for ARM devices.
             excludes += unsupportedBundleAbis.map { "**/$it/*.so" }
         }
     }
