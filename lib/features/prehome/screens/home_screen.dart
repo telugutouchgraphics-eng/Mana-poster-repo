@@ -1331,6 +1331,8 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<String, Future<void>> _dynamicCategoryAvailabilityFutureBySlug =
       <String, Future<void>>{};
   final Set<String> _dynamicCategoryAvailabilityInFlight = <String>{};
+  bool _moreCategorySheetOpen = false;
+  bool _categoryAvailabilityChangedWhileMoreSheetOpen = false;
   String _lastCategoryDebugSnapshot = '';
   String _dynamicCategoryAvailabilitySignature = '';
   _HomeTemplateProjection? _templateProjectionCache;
@@ -3132,10 +3134,13 @@ class _HomeScreenState extends State<HomeScreen>
       final previous = _dynamicCategoryAvailabilityBySlug[slug];
       _dynamicCategoryAvailabilityBySlug[slug] = available;
       if (previous != available) {
-        setState(() {
-          _categoryListCache = null;
-          _categoryListIdentity = null;
-        });
+        _categoryListCache = null;
+        _categoryListIdentity = null;
+        if (_moreCategorySheetOpen) {
+          _categoryAvailabilityChangedWhileMoreSheetOpen = true;
+        } else {
+          setState(() {});
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -6344,74 +6349,117 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openMoreCategorySheet() async {
-    await _refreshMoreCategoryAvailabilityBeforeOpeningSheet();
-    if (!mounted) {
+    final initialPopupCategories = _morePopupCategories();
+    if (initialPopupCategories.isEmpty) {
       return;
     }
-    final popupCategories = _morePopupCategories(
-      scheduleAvailabilityChecks: false,
-    );
-    if (popupCategories.isEmpty) {
-      return;
-    }
-    final selectedSlug = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(999),
+    _moreCategorySheetOpen = true;
+    _categoryAvailabilityChangedWhileMoreSheetOpen = false;
+    final availabilityRefreshFuture =
+        _refreshMoreCategoryAvailabilityBeforeOpeningSheet();
+    var popupCategories = initialPopupCategories;
+    var refreshing = true;
+    var refreshListenerAttached = false;
+    final selectedSlug =
+        await showModalBottomSheet<String>(
+          context: context,
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          ),
+          builder: (sheetContext) {
+            return StatefulBuilder(
+              builder: (context, setSheetState) {
+                if (!refreshListenerAttached) {
+                  refreshListenerAttached = true;
+                  availabilityRefreshFuture.whenComplete(() {
+                    if (!sheetContext.mounted || !refreshing) {
+                      return;
+                    }
+                    setSheetState(() {
+                      refreshing = false;
+                      popupCategories = _morePopupCategories(
+                        scheduleAvailabilityChecks: false,
+                      );
+                    });
+                  });
+                }
+                return SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          'More Categories',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: refreshing
+                              ? const LinearProgressIndicator(
+                                  key: ValueKey<String>('more-refreshing'),
+                                  minHeight: 2,
+                                )
+                              : const SizedBox(
+                                  key: ValueKey<String>('more-ready'),
+                                  height: 2,
+                                ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: <Widget>[
+                            for (final category in popupCategories)
+                              _CategoryChip(
+                                data: category,
+                                isSelected:
+                                    category.slug == _selectedMoreCategorySlug,
+                                onTap: () => Navigator.of(
+                                  sheetContext,
+                                ).pop(category.slug),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'More Categories',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    for (final category in popupCategories)
-                      _CategoryChip(
-                        data: category,
-                        isSelected: category.slug == _selectedMoreCategorySlug,
-                        onTap: () =>
-                            Navigator.of(sheetContext).pop(category.slug),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+                );
+              },
+            );
+          },
+        ).whenComplete(() {
+          _moreCategorySheetOpen = false;
+          if (_categoryAvailabilityChangedWhileMoreSheetOpen && mounted) {
+            _categoryAvailabilityChangedWhileMoreSheetOpen = false;
+            setState(() {});
+          }
+        });
     if (!mounted || selectedSlug == null) {
       return;
     }
     _CategoryChipData? selectedCategory;
-    for (final category in popupCategories) {
+    for (final category in _morePopupCategories(
+      scheduleAvailabilityChecks: false,
+    )) {
       if (category.slug == selectedSlug) {
         selectedCategory = category;
         break;

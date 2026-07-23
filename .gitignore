@@ -67,6 +67,7 @@ app.*.map.json
 /lang.xml
 /onboard2.xml
 /window*.xml
+/.codex_tmp_*.xml
 /live_step_start.xml
 /picker_selected.xml
 /picker_window.xml
