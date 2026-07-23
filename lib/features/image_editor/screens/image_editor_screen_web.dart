@@ -20,6 +20,7 @@ class ImageEditorScreen extends StatelessWidget {
     this.requireSubscriptionForExportActions = false,
     this.initialPhotoShapeOverride = '',
     this.initialPhotoRenderModeOverride = '',
+    this.initialPhotoFlipHorizontally = false,
     this.initialPhotoXOffsetPercent = 0,
     this.initialPhotoYOffsetPercent = 0,
     this.lockTemplateLayers = false,
@@ -40,6 +41,7 @@ class ImageEditorScreen extends StatelessWidget {
   final bool requireSubscriptionForExportActions;
   final String initialPhotoShapeOverride;
   final String initialPhotoRenderModeOverride;
+  final bool initialPhotoFlipHorizontally;
   final double initialPhotoXOffsetPercent;
   final double initialPhotoYOffsetPercent;
   final bool lockTemplateLayers;

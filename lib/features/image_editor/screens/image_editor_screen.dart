@@ -247,6 +247,7 @@ class ImageEditorScreen extends StatefulWidget {
     this.requireSubscriptionForExportActions = false,
     this.initialPhotoShapeOverride = '',
     this.initialPhotoRenderModeOverride = '',
+    this.initialPhotoFlipHorizontally = false,
     this.initialPhotoXOffsetPercent = 0,
     this.initialPhotoYOffsetPercent = 0,
     this.lockTemplateLayers = false,
@@ -267,6 +268,7 @@ class ImageEditorScreen extends StatefulWidget {
   final bool requireSubscriptionForExportActions;
   final String initialPhotoShapeOverride;
   final String initialPhotoRenderModeOverride;
+  final bool initialPhotoFlipHorizontally;
   final double initialPhotoXOffsetPercent;
   final double initialPhotoYOffsetPercent;
   final bool lockTemplateLayers;
@@ -3431,6 +3433,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
       originalPhotoBytes: bytes,
       photoAspectRatio: resolvedAspectRatio,
       photoMaskShape: maskShape,
+      flipPhotoHorizontally:
+          widget.initialPhotoFlipHorizontally && !isBusinessProfile,
       transform: transform,
     );
   }

@@ -321,34 +321,21 @@ class _TemplateItem {
       });
 }
 
-class _PosterPhotoPreset {
-  const _PosterPhotoPreset({
-    required this.shape,
-    required this.photoRenderMode,
-  });
-
-  final String shape;
-  final String photoRenderMode;
-}
-
 class _PosterPhotoUserAdjustment {
   const _PosterPhotoUserAdjustment({
     required this.xOffsetPercent,
     required this.yOffsetPercent,
-    this.preset,
+    this.flipHorizontally = false,
   });
 
   final double xOffsetPercent;
   final double yOffsetPercent;
-  final _PosterPhotoPreset? preset;
+  final bool flipHorizontally;
 
   static const _PosterPhotoUserAdjustment none = _PosterPhotoUserAdjustment(
     xOffsetPercent: 0,
     yOffsetPercent: 0,
   );
-
-  String get effectiveShape => preset?.shape ?? '';
-  String get effectivePhotoRenderMode => preset?.photoRenderMode ?? '';
 }
 
 class _PosterExtraPhotoSelection {
@@ -11348,22 +11335,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   String? _queuedPosterWarmupSignature;
   static bool _globalAutoPosterWarmupActive = false;
   static final Set<String> _globalPosterWarmupSignatures = <String>{};
-  static const List<_PosterPhotoPreset>
-  _posterPhotoPresets = <_PosterPhotoPreset>[
-    _PosterPhotoPreset(shape: 'circle', photoRenderMode: 'original'),
-    _PosterPhotoPreset(shape: 'square', photoRenderMode: 'original'),
-    _PosterPhotoPreset(shape: 'flower', photoRenderMode: 'cutout'),
-    _PosterPhotoPreset(shape: 'blob', photoRenderMode: 'cutout'),
-    _PosterPhotoPreset(shape: 'transparent_clean', photoRenderMode: 'cutout'),
-    _PosterPhotoPreset(
-      shape: 'transparent_bottom_fade',
-      photoRenderMode: 'cutout',
-    ),
-    _PosterPhotoPreset(shape: 'arch', photoRenderMode: 'original'),
-    _PosterPhotoPreset(shape: 'scallop_circle', photoRenderMode: 'original'),
-    _PosterPhotoPreset(shape: 'shield', photoRenderMode: 'original'),
-  ];
-
   _PosterPhotoUserAdjustment _photoUserAdjustment =
       _PosterPhotoUserAdjustment.none;
   _PosterExtraPhotoSelection? _extraPhotoSelection;
@@ -11561,7 +11532,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _posterSignature({required bool isPhotoVisible}) {
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.effectiveShape}-${_photoUserAdjustment.effectivePhotoRenderMode}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
   }
 
   void _cyclePosterStripGradient() {
@@ -11894,54 +11865,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         viewerPosterProfile.originalPhotoUrl.trim().isNotEmpty;
   }
 
-  _PosterPhotoPreset? _pickNextPosterPhotoPreset() {
-    final personalizationConfig = item.personalizationConfig;
-    if (_posterPhotoPresets.isEmpty || personalizationConfig == null) {
-      return null;
-    }
-    final defaultShape = personalizationConfig.photoShape.trim();
-    final defaultRenderMode = personalizationConfig.photoRenderMode.trim();
-    final currentShape = _photoUserAdjustment.effectiveShape.isNotEmpty
-        ? _photoUserAdjustment.effectiveShape
-        : defaultShape;
-    final currentRenderMode =
-        _photoUserAdjustment.effectivePhotoRenderMode.isNotEmpty
-        ? _photoUserAdjustment.effectivePhotoRenderMode
-        : defaultRenderMode;
-    final presetsWithDefault = <_PosterPhotoPreset>[
-      _PosterPhotoPreset(
-        shape: defaultShape,
-        photoRenderMode: defaultRenderMode,
-      ),
-      ..._posterPhotoPresets,
-    ];
-    final currentIndex = presetsWithDefault.indexWhere(
-      (_PosterPhotoPreset preset) =>
-          preset.shape == currentShape &&
-          preset.photoRenderMode == currentRenderMode,
-    );
-    final nextIndex = currentIndex < 0
-        ? 1
-        : (currentIndex + 1) % presetsWithDefault.length;
-    final next = presetsWithDefault[nextIndex];
-    if (next.shape == defaultShape &&
-        next.photoRenderMode == defaultRenderMode) {
-      return null;
-    }
-    return next;
-  }
-
-  void _applyPosterPhotoPresetTap() {
+  void _togglePosterPhotoFlipTap() {
     if (!_canInteractWithPosterPhoto) {
       return;
     }
     _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
     setState(() {
-      final nextPreset = _pickNextPosterPhotoPreset();
       _photoUserAdjustment = _PosterPhotoUserAdjustment(
         xOffsetPercent: _photoUserAdjustment.xOffsetPercent,
         yOffsetPercent: _photoUserAdjustment.yOffsetPercent,
-        preset: nextPreset,
+        flipHorizontally: !_photoUserAdjustment.flipHorizontally,
       );
     });
     _schedulePosterWarmup(force: true);
@@ -11964,7 +11897,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       _photoUserAdjustment = _PosterPhotoUserAdjustment(
         xOffsetPercent: nextX,
         yOffsetPercent: nextY,
-        preset: _photoUserAdjustment.preset,
+        flipHorizontally: _photoUserAdjustment.flipHorizontally,
       );
     });
   }
@@ -12766,12 +12699,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   deferLegacyTextPrime: deferRichPosterPreview,
                   posterRenderCycle: posterRenderCycle,
                   interactivePhotoEnabled: false,
-                  photoShapeOverride: _photoUserAdjustment.effectiveShape,
-                  photoRenderModeOverride:
-                      _photoUserAdjustment.effectivePhotoRenderMode,
+                  photoShapeOverride: '',
+                  photoRenderModeOverride: '',
+                  photoFlipHorizontally:
+                      _photoUserAdjustment.flipHorizontally,
                   photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
                   photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
-                  onPhotoTap: _applyPosterPhotoPresetTap,
+                  onPhotoTap: _togglePosterPhotoFlipTap,
                   stripGradientTapOffset: _stripGradientTapOffset,
                   onNameStripTap: _cyclePosterStripGradient,
                   additionalPhotoSelection: _extraPhotoSelection,
@@ -12812,12 +12746,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             deferLegacyTextPrime: deferRichPosterPreview,
             posterRenderCycle: posterRenderCycle,
             interactivePhotoEnabled: _canInteractWithPosterPhoto,
-            photoShapeOverride: _photoUserAdjustment.effectiveShape,
-            photoRenderModeOverride:
-                _photoUserAdjustment.effectivePhotoRenderMode,
+            photoShapeOverride: '',
+            photoRenderModeOverride: '',
+            photoFlipHorizontally: _photoUserAdjustment.flipHorizontally,
             photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
             photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
-            onPhotoTap: _applyPosterPhotoPresetTap,
+            onPhotoTap: _togglePosterPhotoFlipTap,
             stripGradientTapOffset: _stripGradientTapOffset,
             onNameStripTap: _cyclePosterStripGradient,
             additionalPhotoSelection: _extraPhotoSelection,
@@ -13540,9 +13474,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             autoSelectInitialLayers: false,
             preferFullWidthCanvas: true,
             requireSubscriptionForExportActions: true,
-            initialPhotoShapeOverride: _photoUserAdjustment.effectiveShape,
-            initialPhotoRenderModeOverride:
-                _photoUserAdjustment.effectivePhotoRenderMode,
+            initialPhotoShapeOverride: '',
+            initialPhotoRenderModeOverride: '',
+            initialPhotoFlipHorizontally:
+                _photoUserAdjustment.flipHorizontally,
             initialPhotoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
             initialPhotoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             lockTemplateLayers: false,
@@ -15640,6 +15575,7 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.interactivePhotoEnabled,
     required this.photoShapeOverride,
     required this.photoRenderModeOverride,
+    required this.photoFlipHorizontally,
     required this.photoXOffsetPercent,
     required this.photoYOffsetPercent,
     required this.onPhotoTap,
@@ -15672,6 +15608,7 @@ class _CreatorPosterPreview extends StatefulWidget {
   final bool interactivePhotoEnabled;
   final String photoShapeOverride;
   final String photoRenderModeOverride;
+  final bool photoFlipHorizontally;
   final double photoXOffsetPercent;
   final double photoYOffsetPercent;
   final VoidCallback onPhotoTap;
@@ -16711,27 +16648,40 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                           .edgeStyle,
                                       photoRenderMode: effectivePhotoRenderMode,
                                       isBusinessLogo: isBusinessProfile,
-                                      child: PosterIdentityVisual(
-                                        profile: widget.viewerPosterProfile,
-                                        fit: isBusinessProfile
-                                            ? BoxFit.contain
-                                            : effectivePhotoRenderMode ==
-                                                  'cutout'
-                                            ? BoxFit.contain
-                                            : BoxFit.cover,
-                                        preferOriginalPersonalPhoto:
-                                            effectivePhotoRenderMode ==
-                                            'original',
-                                        allowOriginalFallbackWhenCutoutUnavailable:
-                                            effectivePhotoRenderMode ==
-                                            'original',
-                                        textScale:
-                                            widget
-                                                    .viewerPosterProfile
-                                                    .identityMode ==
-                                                PosterIdentityMode.business
-                                            ? 0.84
-                                            : 1.0,
+                                      child: Transform(
+                                        alignment: Alignment.center,
+                                        transform: Matrix4.identity()
+                                          ..scaleByDouble(
+                                            widget.photoFlipHorizontally &&
+                                                    !isBusinessProfile
+                                                ? -1
+                                                : 1,
+                                            1,
+                                            1,
+                                            1,
+                                          ),
+                                        child: PosterIdentityVisual(
+                                          profile: widget.viewerPosterProfile,
+                                          fit: isBusinessProfile
+                                              ? BoxFit.contain
+                                              : effectivePhotoRenderMode ==
+                                                    'cutout'
+                                              ? BoxFit.contain
+                                              : BoxFit.cover,
+                                          preferOriginalPersonalPhoto:
+                                              effectivePhotoRenderMode ==
+                                              'original',
+                                          allowOriginalFallbackWhenCutoutUnavailable:
+                                              effectivePhotoRenderMode ==
+                                              'original',
+                                          textScale:
+                                              widget
+                                                      .viewerPosterProfile
+                                                      .identityMode ==
+                                                  PosterIdentityMode.business
+                                              ? 0.84
+                                              : 1.0,
+                                        ),
                                       ),
                                     ),
                                   ),
