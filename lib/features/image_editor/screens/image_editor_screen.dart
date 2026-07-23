@@ -2859,6 +2859,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
 
   @override
   void initState() {
+    AppLanguageContextX.enableEditorEnglishUi();
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(ScreenSecurityService.protectScreen());
@@ -3059,6 +3060,7 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     _cropTransformationController.dispose();
     unawaited(_restoreSystemUiMode());
     unawaited(ScreenSecurityService.unprotectScreen());
+    AppLanguageContextX.disableEditorEnglishUi();
     super.dispose();
   }
 

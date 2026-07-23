@@ -40,10 +40,11 @@ void main() {
     return tester.widget<FilledButton>(finder);
   }
 
-  AppLanguageScope wrapWithLanguage(Widget child) {
-    final controller = AppLanguageController(
-      initialLanguage: AppLanguage.english,
-    );
+  AppLanguageScope wrapWithLanguage(
+    Widget child, {
+    AppLanguage language = AppLanguage.english,
+  }) {
+    final controller = AppLanguageController(initialLanguage: language);
     return AppLanguageScope(
       language: controller.language,
       controller: controller,
@@ -58,6 +59,24 @@ void main() {
 
     expect(find.text('Custom'), findsNothing);
     expect(resolveStartButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('page setup keeps English UI when app language is Telugu', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapWithLanguage(const PageSetupScreen(), language: AppLanguage.telugu),
+    );
+
+    expect(find.text('Start Design'), findsOneWidget);
+    expect(
+      find.text(
+        '\u0c21\u0c3f\u0c1c\u0c48\u0c28\u0c4d '
+        '\u0c2a\u0c4d\u0c30\u0c3e\u0c30\u0c02\u0c2d\u0c3f'
+        '\u0c02\u0c1a\u0c02\u0c21\u0c3f',
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('gallery source enables the start action without a page size', (

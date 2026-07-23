@@ -1363,10 +1363,25 @@ extension AppLanguageContextX on BuildContext {
       AppLanguageScope.maybeOf(this)?.controller ??
       AppLanguageScope._fallbackController;
 
+  static int _editorEnglishUiLockCount = 0;
+
+  static void enableEditorEnglishUi() {
+    _editorEnglishUiLockCount += 1;
+  }
+
+  static void disableEditorEnglishUi() {
+    if (_editorEnglishUiLockCount > 0) {
+      _editorEnglishUiLockCount -= 1;
+    }
+  }
+
+  static bool get _isEditorEnglishUiLocked => _editorEnglishUiLockCount > 0;
+
   bool get _usesEditorEnglishUi {
     var isEditorContext = false;
     void inspect(Element element) {
-      if (element.widget.runtimeType.toString() == 'ImageEditorScreen') {
+      final typeName = element.widget.runtimeType.toString();
+      if (typeName == 'ImageEditorScreen' || typeName == 'PageSetupScreen') {
         isEditorContext = true;
       }
     }
@@ -1383,7 +1398,8 @@ extension AppLanguageContextX on BuildContext {
     return isEditorContext;
   }
 
-  AppLanguage get currentLanguage => _usesEditorEnglishUi
+  AppLanguage get currentLanguage =>
+      _isEditorEnglishUiLocked || _usesEditorEnglishUi
       ? AppLanguage.english
       : AppLanguageScope.maybeOf(this)?.language ?? AppLanguage.english;
   AppStrings get strings => AppStrings(currentLanguage);
