@@ -1280,6 +1280,14 @@ _regionalProfileFallbacks = <AppLanguage, Map<String, String>>{
   },
 };
 
+const Map<String, String> _cleanTeluguUiFallbacks = <String, String>{
+  'Preparing...': 'సిద్ధం...',
+  'Share': 'షేర్',
+  'Photo': 'ఫోటో',
+  'Edit': 'ఎడిట్',
+  'Add Photo': 'ఫోటో జోడించండి',
+};
+
 class AppLanguageController extends ChangeNotifier {
   AppLanguageController({AppLanguage initialLanguage = AppLanguage.telugu})
     : _language = initialLanguage;
@@ -1912,6 +1920,12 @@ class AppStrings {
     String? malayalam,
   }) {
     final fallback = _sanitizeDisplayText(english);
+    if (language.supportedUiLanguage == SupportedUiLanguage.telugu) {
+      final cleanTelugu = _cleanTeluguUiFallbacks[english];
+      if (cleanTelugu != null) {
+        return cleanTelugu;
+      }
+    }
     final regionalFallback = _regionalFallback(english);
     if (regionalFallback != null) {
       return _sanitizeDisplayText(regionalFallback, fallback: fallback);

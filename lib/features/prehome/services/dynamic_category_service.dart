@@ -89,7 +89,7 @@ class DynamicCategoryService {
     final activeEvents =
         _repository
             .loadEvents()
-            .where((event) => event.enabled)
+            .where(_canEvaluateEvent)
             .where((event) => scopes.contains(event.scope))
             .where((event) => _eventMatchesRegion(event, regionId))
             .where((event) => _isEventActive(event, today))
@@ -133,8 +133,14 @@ class DynamicCategoryService {
     return output;
   }
 
+  bool _canEvaluateEvent(DynamicCalendarEvent event) {
+    return event.enabled ||
+        event.calendarType == DynamicCalendarType.lunarPlaceholder;
+  }
+
   bool _isEventActive(DynamicCalendarEvent event, DateTime today) {
-    if (!event.enabled) {
+    if (!event.enabled &&
+        event.calendarType != DynamicCalendarType.lunarPlaceholder) {
       return false;
     }
     switch (event.calendarType) {

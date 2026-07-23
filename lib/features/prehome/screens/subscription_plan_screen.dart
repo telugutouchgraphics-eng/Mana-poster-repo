@@ -1450,7 +1450,9 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFACC15).withValues(alpha: 0.14),
+                          color: const Color(
+                            0xFFFACC15,
+                          ).withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: const Icon(
@@ -1462,7 +1464,16 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
-                          'Premium editor tools for every design',
+                          _t(
+                            telugu: 'ప్రతి డిజైన్‌కు ప్రీమియం ఎడిటర్ టూల్స్',
+                            english: 'Premium editor tools for every design',
+                            hindi: 'हर डिजाइन के लिए प्रीमियम एडिटर टूल्स',
+                            tamil:
+                                'ஒவ்வொரு டிசைனுக்கும் பிரீமியம் எடிட்டர் கருவிகள்',
+                            kannada:
+                                'ಪ್ರತಿ ವಿನ್ಯಾಸಕ್ಕೂ ಪ್ರೀಮಿಯಂ ಎಡಿಟರ್ ಟೂಲ್‌ಗಳು',
+                            malayalam: 'ഓരോ ഡിസൈനിനും പ്രീമിയം എഡിറ്റർ ടൂളുകൾ',
+                          ),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -1884,10 +1895,7 @@ class _PlanChoiceCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[
-            Colors.white,
-            accent.withValues(alpha: 0.045),
-          ],
+          colors: <Color>[Colors.white, accent.withValues(alpha: 0.045)],
         ),
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: accent.withValues(alpha: 0.26)),

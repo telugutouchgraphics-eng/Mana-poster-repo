@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -324,7 +325,10 @@ class ApprovedCreatorTemplateService {
           source: source,
         );
         if (fallbackDocs.isEmpty) {
-          return false;
+          return _hasPublishedTemplatesFromBackend(
+            categoryId: normalizedTarget,
+            regionId: regionId,
+          );
         }
         final fallbackMapped = _mapSortedTemplates(fallbackDocs);
         final fallbackFiltered = _filterPublished(
@@ -333,7 +337,13 @@ class ApprovedCreatorTemplateService {
           8,
           regionId,
         );
-        return fallbackFiltered.isNotEmpty;
+        if (fallbackFiltered.isNotEmpty) {
+          return true;
+        }
+        return _hasPublishedTemplatesFromBackend(
+          categoryId: normalizedTarget,
+          regionId: regionId,
+        );
       }
 
       final mapped = _mapSortedTemplates(docs);
@@ -349,7 +359,10 @@ class ApprovedCreatorTemplateService {
         source: source,
       );
       if (fallbackDocs.isEmpty) {
-        return false;
+        return _hasPublishedTemplatesFromBackend(
+          categoryId: normalizedTarget,
+          regionId: regionId,
+        );
       }
       final fallbackMapped = _mapSortedTemplates(fallbackDocs);
       final fallbackFiltered = _filterPublished(
@@ -358,14 +371,38 @@ class ApprovedCreatorTemplateService {
         8,
         regionId,
       );
-      return fallbackFiltered.isNotEmpty;
+      if (fallbackFiltered.isNotEmpty) {
+        return true;
+      }
+      return _hasPublishedTemplatesFromBackend(
+        categoryId: normalizedTarget,
+        regionId: regionId,
+      );
     } catch (error, stackTrace) {
       _debugLogStack(
         'ApprovedCreatorTemplateService.hasPublishedTemplatesForExactCategory failed: $error',
         stackTrace,
       );
-      return false;
+      return _hasPublishedTemplatesFromBackend(
+        categoryId: normalizedTarget,
+        regionId: regionId,
+      );
     }
+  }
+
+  Future<bool> _hasPublishedTemplatesFromBackend({
+    required String categoryId,
+    required String regionId,
+  }) async {
+    final templates = await _fetchApprovedTemplatesFromBackend(
+      regionId: regionId,
+      categoryId: categoryId,
+      limit: 8,
+    );
+    final normalizedTarget = _normalizeTag(categoryId);
+    return templates.any(
+      (template) => _normalizeTag(template.categoryId) == normalizedTarget,
+    );
   }
 
   Future<ApprovedCreatorTemplatePage> fetchApprovedTemplatesPage({
@@ -374,6 +411,13 @@ class ApprovedCreatorTemplateService {
     Source source = Source.serverAndCache,
     bool allowFallbackMerge = true,
   }) async {
+    if (_firestore == null && Firebase.apps.isEmpty) {
+      return const ApprovedCreatorTemplatePage(
+        templates: <ApprovedCreatorTemplate>[],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
     try {
       final regionId = await _selectedRegionId();
       if (regionId.isEmpty) {
@@ -542,6 +586,13 @@ class ApprovedCreatorTemplateService {
     int pageSize = 5,
     QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
   }) async {
+    if (_firestore == null && Firebase.apps.isEmpty) {
+      return const ApprovedCreatorTemplatePage(
+        templates: <ApprovedCreatorTemplate>[],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
     try {
       return fetchApprovedTemplatesPage(
         pageSize: pageSize,
@@ -747,9 +798,7 @@ class ApprovedCreatorTemplateService {
       final response = await http
           .post(
             Uri.parse(_appCreatorPostersFeedEndpoint),
-            headers: const <String, String>{
-              'content-type': 'application/json',
-            },
+            headers: const <String, String>{'content-type': 'application/json'},
             body: jsonEncode(<String, Object?>{
               'regionId': regionId,
               'categoryId': categoryId,
@@ -1197,6 +1246,9 @@ class ApprovedCreatorTemplateService {
   }) async {
     final safePosterId = posterId.trim();
     if (safePosterId.isEmpty) {
+      return;
+    }
+    if (_firestore == null && Firebase.apps.isEmpty) {
       return;
     }
     try {

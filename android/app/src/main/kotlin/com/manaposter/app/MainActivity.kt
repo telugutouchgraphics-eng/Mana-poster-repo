@@ -1,6 +1,7 @@
 package com.manaposter.app
 
 import android.content.ContentValues
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.util.Log
 import android.media.MediaScannerConnection
@@ -41,7 +42,11 @@ class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        if (isDebugBuild()) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
@@ -69,7 +74,11 @@ class MainActivity : FlutterFragmentActivity() {
                 when (call.method) {
                     "enableSecure" -> {
                         runOnUiThread {
-                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            if (isDebugBuild()) {
+                                window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            } else {
+                                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                            }
                         }
                         result.success(null)
                     }
@@ -341,6 +350,10 @@ class MainActivity : FlutterFragmentActivity() {
         }
         val committed = editor.commit()
         return committed
+    }
+
+    private fun isDebugBuild(): Boolean {
+        return (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     }
 
     private fun rememberNotificationLaunch(intent: Intent?) {

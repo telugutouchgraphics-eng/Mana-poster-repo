@@ -9,7 +9,7 @@ import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 class ScreenSecurityService {
   ScreenSecurityService._();
 
-  static const bool _screenProtectionEnabled = true;
+  static const bool _screenProtectionEnabled = !kDebugMode;
   static const Set<String> _screenProtectionBypassEmails = <String>{
     'manaposter2026@gmail.com',
     'supportmanaposter@gmail.com',

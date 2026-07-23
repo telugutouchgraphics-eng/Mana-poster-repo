@@ -1328,6 +1328,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<DynamicCategory> _manualEventCategories = const <DynamicCategory>[];
   List<DynamicCategory> _permanentCategories = const <DynamicCategory>[];
   final Map<String, bool> _dynamicCategoryAvailabilityBySlug = <String, bool>{};
+  final Map<String, Future<void>> _dynamicCategoryAvailabilityFutureBySlug =
+      <String, Future<void>>{};
   final Set<String> _dynamicCategoryAvailabilityInFlight = <String>{};
   String _lastCategoryDebugSnapshot = '';
   String _dynamicCategoryAvailabilitySignature = '';
@@ -1364,6 +1366,7 @@ class _HomeScreenState extends State<HomeScreen>
   Set<String> _recentAllFeedTemplateKeys = <String>{};
   StreamSubscription<User?>? _authStateSubscription;
   String _lastHomeAuthUid = '';
+  Timer? _homeAuthReadyRetryTimer;
   Timer? _startupSnapshotPersistTimer;
   Timer? _allFeedInterestSaveTimer;
   Map<String, double> _allFeedInterestScores = <String, double>{};
@@ -1409,10 +1412,7 @@ class _HomeScreenState extends State<HomeScreen>
     AppRegionService.selectionVersion.addListener(
       _handleRegionSelectionChanged,
     );
-    _lastHomeAuthUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen(
-      _handleHomeAuthStateChanged,
-    );
+    _attachHomeAuthStateSubscriptionIfReady();
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.unfocus();
@@ -1994,6 +1994,34 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_reloadHomeContentAfterAuthReady());
   }
 
+  void _attachHomeAuthStateSubscriptionIfReady() {
+    if (_authStateSubscription != null) {
+      return;
+    }
+    if (!_shouldRunFirebaseUiServices) {
+      unawaited(FirebaseBootstrap.ensureInitialized());
+      _homeAuthReadyRetryTimer ??= Timer.periodic(
+        const Duration(milliseconds: 350),
+        (timer) {
+          if (!mounted) {
+            timer.cancel();
+            return;
+          }
+          if (_shouldRunFirebaseUiServices) {
+            timer.cancel();
+            _homeAuthReadyRetryTimer = null;
+            _attachHomeAuthStateSubscriptionIfReady();
+          }
+        },
+      );
+      return;
+    }
+    _lastHomeAuthUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen(
+      _handleHomeAuthStateChanged,
+    );
+  }
+
   Future<void> _reloadHomeContentAfterAuthReady() async {
     await FirebaseBootstrap.ensureInitialized();
     if (!mounted) {
@@ -2028,6 +2056,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     AppNavigator.routeObserver.unsubscribe(this);
     _authStateSubscription?.cancel();
+    _homeAuthReadyRetryTimer?.cancel();
     _startupSnapshotPersistTimer?.cancel();
     _allFeedInterestSaveTimer?.cancel();
     unawaited(_persistAllFeedInterestScores());
@@ -2534,8 +2563,12 @@ class _HomeScreenState extends State<HomeScreen>
         (item) => _isCategoryActiveOnEventDay(item, now),
       ),
     ];
+    final availabilityCandidates = _moreCategoryAvailabilityCandidates(now);
     final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
-    _scheduleDynamicCategoryAvailabilityChecks(activeCalendarCategories);
+    _scheduleDynamicCategoryAvailabilityChecks(<DynamicCategory>[
+      ...activeCalendarCategories,
+      ...availabilityCandidates,
+    ]);
     final loadedTemplateCategoryKeys = _remoteApprovedTemplates
         .map(_normalizedCategoryForDebug)
         .where((value) => value.isNotEmpty)
@@ -2558,10 +2591,7 @@ class _HomeScreenState extends State<HomeScreen>
       debugStates.add(
         '$slug(local=$hasLocalTemplates,server=$hasServerTemplates,loaded=$hasLoadedCategoryKey)',
       );
-      if (!hasLocalTemplates &&
-          !hasServerTemplates &&
-          !hasLoadedCategoryKey &&
-          !_shouldShowActiveCategoryWithoutAvailability(item)) {
+      if (!hasLocalTemplates && !hasServerTemplates && !hasLoadedCategoryKey) {
         continue;
       }
       merged[item.slug] = _CategoryChipData(
@@ -2682,17 +2712,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return _filterCategoriesByReligion(merged.values.toList(growable: false));
-  }
-
-  bool _shouldShowActiveCategoryWithoutAvailability(DynamicCategory category) {
-    final slug = _normalizeTag(category.slug);
-    if (slug != 'bonalu') {
-      return false;
-    }
-    final selectedRegion = _normalizeTag(_selectedRegionId);
-    return selectedRegion.isEmpty ||
-        selectedRegion == 'andhra_pradesh' ||
-        selectedRegion == 'telangana';
   }
 
   Map<String, String> _activeDynamicEventDateLabels(DateTime now) {
@@ -2822,16 +2841,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_CategoryChipData> _buildDynamicPreviewCategoriesForMore(DateTime now) {
-    final language = context.currentLanguage;
     final eventDateLabelBySlug = _activeDynamicEventDateLabels(now);
-    return _dynamicPreviewCategoryService
-        .categoriesForDate(
-          now,
-          language: language,
-          selectedRegionId: _selectedRegionId,
-        )
-        .where((item) => item.type != DynamicCategoryType.weekdaySpecial)
-        .where((item) => !_isCategoryActiveOnEventDay(item, now))
+    return _morePopupDynamicEventCategories(now)
+        .where(_hasApprovedPosterAvailabilityForDynamicCategory)
         .map((item) {
           return _CategoryChipData(
             slug: item.slug,
@@ -2847,6 +2859,25 @@ class _HomeScreenState extends State<HomeScreen>
           );
         })
         .toList(growable: false);
+  }
+
+  List<DynamicCategory> _morePopupDynamicEventCategories(DateTime now) {
+    return _dynamicPreviewCategoryService
+        .categoriesForDate(
+          now,
+          language: context.currentLanguage,
+          selectedRegionId: _selectedRegionId,
+        )
+        .where((item) => item.type != DynamicCategoryType.weekdaySpecial)
+        .toList(growable: false);
+  }
+
+  List<DynamicCategory> _moreCategoryAvailabilityCandidates(DateTime now) {
+    return <DynamicCategory>[
+      ..._morePopupDynamicEventCategories(now),
+      ..._manualEventCategories,
+      ..._permanentCategories,
+    ];
   }
 
   bool _isCategoryActiveOnEventDay(DynamicCategory category, DateTime now) {
@@ -2905,10 +2936,13 @@ class _HomeScreenState extends State<HomeScreen>
         !_isLunarEventActive('bonalu', now)) {
       return null;
     }
-    return _CategoryChipData(
+    const category = DynamicCategory(
+      id: 'bonalu',
       slug: 'bonalu',
-      label: _localizedDynamicCategoryLabel('Bonalu'),
-      matchTags: const <String>[
+      label: 'Bonalu',
+      type: DynamicCategoryType.festival,
+      scope: DynamicEventScope.bothTeluguStates,
+      tags: <String>[
         'bonalu',
         'festival',
         'devotional',
@@ -2916,7 +2950,15 @@ class _HomeScreenState extends State<HomeScreen>
         'telangana',
         'regional_special',
       ],
-      presenceTags: const <String>['bonalu'],
+    );
+    if (!_hasApprovedPosterAvailabilityForDynamicCategory(category)) {
+      return null;
+    }
+    return _CategoryChipData(
+      slug: 'bonalu',
+      label: _localizedDynamicCategoryLabel('Bonalu'),
+      matchTags: category.tags,
+      presenceTags: _dynamicPresenceTags(category).toList(growable: false),
       isDynamic: true,
       dateLabel: _activeDynamicEventDateLabels(now)['bonalu'],
     );
@@ -3020,6 +3062,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (signature != _dynamicCategoryAvailabilitySignature) {
       _dynamicCategoryAvailabilitySignature = signature;
       _dynamicCategoryAvailabilityBySlug.clear();
+      _dynamicCategoryAvailabilityFutureBySlug.clear();
     }
 
     final pending = activeCalendarCategories
@@ -3059,9 +3102,22 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     final slug = _normalizeTag(category.slug);
-    if (slug.isEmpty || _dynamicCategoryAvailabilityInFlight.contains(slug)) {
+    if (slug.isEmpty) {
       return;
     }
+    final existing = _dynamicCategoryAvailabilityFutureBySlug[slug];
+    if (existing != null) {
+      return existing;
+    }
+    final future = _runDynamicCategoryAvailabilityCheck(category, slug);
+    _dynamicCategoryAvailabilityFutureBySlug[slug] = future;
+    return future;
+  }
+
+  Future<void> _runDynamicCategoryAvailabilityCheck(
+    DynamicCategory category,
+    String slug,
+  ) async {
     _dynamicCategoryAvailabilityInFlight.add(slug);
     try {
       final available = await _approvedCreatorTemplateService
@@ -3087,6 +3143,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } finally {
       _dynamicCategoryAvailabilityInFlight.remove(slug);
+      _dynamicCategoryAvailabilityFutureBySlug.remove(slug);
     }
   }
 
@@ -3287,6 +3344,17 @@ class _HomeScreenState extends State<HomeScreen>
     return false;
   }
 
+  bool _hasApprovedPosterAvailabilityForDynamicCategory(
+    DynamicCategory category,
+  ) {
+    final slug = _normalizeTag(category.slug);
+    if (slug.isEmpty) {
+      return false;
+    }
+    return _hasVisibleTemplateForCategoryChip(category) ||
+        _dynamicCategoryAvailabilityBySlug[slug] == true;
+  }
+
   Iterable<String> _categoryLabelTokenTags(String? label) sync* {
     if (label == null || label.trim().isEmpty) {
       return;
@@ -3422,7 +3490,9 @@ class _HomeScreenState extends State<HomeScreen>
     };
   }
 
-  List<_CategoryChipData> _morePopupCategories() {
+  List<_CategoryChipData> _morePopupCategories({
+    bool scheduleAvailabilityChecks = true,
+  }) {
     final bySlug = <String, _CategoryChipData>{};
 
     void addCategory(_CategoryChipData category) {
@@ -3443,16 +3513,22 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     final now = IstTimeService.now();
+    final availabilityCandidates = _moreCategoryAvailabilityCandidates(now);
+    if (scheduleAvailabilityChecks) {
+      _scheduleDynamicCategoryAvailabilityChecks(availabilityCandidates);
+    }
     for (final category in _buildDynamicPreviewCategoriesForMore(now)) {
       addCategory(category);
     }
     for (final category in _manualEventCategories) {
-      if (!_isCategoryActiveOnEventDay(category, now)) {
+      if (_hasApprovedPosterAvailabilityForDynamicCategory(category)) {
         addCategory(_categoryChipFromDynamicCategory(category));
       }
     }
     for (final category in _permanentCategories) {
-      addCategory(_categoryChipFromDynamicCategory(category));
+      if (_hasApprovedPosterAvailabilityForDynamicCategory(category)) {
+        addCategory(_categoryChipFromDynamicCategory(category));
+      }
     }
     return bySlug.values.toList(growable: false);
   }
@@ -3464,6 +3540,41 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     return null;
+  }
+
+  Future<void> _refreshMoreCategoryAvailabilityBeforeOpeningSheet() async {
+    if (!_shouldRunRemoteHomeStartupTasks) {
+      return;
+    }
+    final candidates = _moreCategoryAvailabilityCandidates(
+      IstTimeService.now(),
+    );
+    final pending = <DynamicCategory>[];
+    final futures = <Future<void>>[];
+    final seenSlugs = <String>{};
+    for (final category in candidates) {
+      final slug = _normalizeTag(category.slug);
+      if (slug.isEmpty ||
+          !seenSlugs.add(slug) ||
+          _hasVisibleTemplateForCategoryChip(category)) {
+        continue;
+      }
+      final existing = _dynamicCategoryAvailabilityFutureBySlug[slug];
+      if (existing != null) {
+        futures.add(existing);
+        continue;
+      }
+      pending.add(category);
+    }
+    futures.addAll(pending.map(_checkDynamicCategoryAvailability));
+    if (futures.isEmpty) {
+      return;
+    }
+    try {
+      await Future.wait(futures).timeout(const Duration(seconds: 9));
+    } on TimeoutException {
+      // Open with the availability that has completed instead of blocking UI.
+    }
   }
 
   _CategoryChipData _categoryChipFromDynamicCategory(DynamicCategory category) {
@@ -6233,7 +6344,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openMoreCategorySheet() async {
-    final popupCategories = _morePopupCategories();
+    await _refreshMoreCategoryAvailabilityBeforeOpeningSheet();
+    if (!mounted) {
+      return;
+    }
+    final popupCategories = _morePopupCategories(
+      scheduleAvailabilityChecks: false,
+    );
     if (popupCategories.isEmpty) {
       return;
     }
@@ -7216,7 +7333,10 @@ class _CommunityStatusGridScreenState
                               color: const Color(0xFFD81B60),
                               shape: const CircleBorder(),
                               child: IconButton(
-                                tooltip: 'Add Status',
+                                tooltip: strings.localized(
+                                  telugu: 'స్టేటస్ జోడించండి',
+                                  english: 'Add Status',
+                                ),
                                 onPressed: () => unawaited(_openUpload()),
                                 icon: const Icon(
                                   Icons.add_rounded,
@@ -9537,7 +9657,9 @@ class _HomeHeader extends StatelessWidget {
             FilledButton.icon(
               onPressed: onCreateTap,
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('Create'),
+              label: Text(
+                strings.localized(telugu: 'క్రియేట్', english: 'Create'),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFFD81B60),
@@ -11022,6 +11144,7 @@ class _CategoryChipFallbackIcon extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 String _subscriptionPromptCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -11030,6 +11153,7 @@ String _subscriptionPromptCopyLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionDialogTitleLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
@@ -11037,6 +11161,7 @@ String _subscriptionDialogTitleLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTrialTitleLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
@@ -11044,6 +11169,7 @@ String _subscriptionTrialTitleLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTrialValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -11053,6 +11179,7 @@ String _subscriptionTrialValueLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
@@ -11060,6 +11187,7 @@ String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionMonthlyValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -11068,6 +11196,7 @@ String _subscriptionMonthlyValueLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionRenewalCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -11077,6 +11206,7 @@ String _subscriptionRenewalCopyLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTermsLabelLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
@@ -11084,6 +11214,7 @@ String _subscriptionTermsLabelLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionSkipLabelLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à±à°•à°¿à°ªà±',
@@ -11091,11 +11222,85 @@ String _subscriptionSkipLabelLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionButtonLabelLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
     english: 'Subscribe',
   );
+}
+
+String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu:
+        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయండి.',
+    english: 'Activate subscription to share or download posters.',
+  );
+}
+
+String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    english: 'Subscription Required',
+  );
+}
+
+String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    english: '3-day trial plan',
+  );
+}
+
+String _subscriptionTrialValueCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu:
+        '${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}',
+    english:
+        '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
+  );
+}
+
+String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'నెలవారీ ప్లాన్',
+    english: 'Monthly plan',
+  );
+}
+
+String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+    english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
+  );
+}
+
+String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu:
+        '${SubscriptionPlanConfig.trialDays} రోజుల ట్రయల్ తర్వాత, రద్దు చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రెన్యువల్ అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల్లో రద్దు చేస్తే నెలవారీ ఛార్జ్ పడదు. రద్దు చేసినా ప్రస్తుత ప్లాన్ గడువు ముగిసే వరకు బెనిఫిట్స్ కొనసాగుతాయి.',
+    english:
+        'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
+  );
+}
+
+String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
+  return context.strings.localized(telugu: 'నిబంధనలు', english: 'Terms');
+}
+
+String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
+  return context.strings.localized(telugu: 'స్కిప్', english: 'Skip');
+}
+
+String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe',
+  );
+}
+
+String _posterShareLabel(BuildContext context) {
+  return context.strings.localized(telugu: 'షేర్', english: 'Share');
 }
 
 class _VideoSideActions extends StatelessWidget {
@@ -11113,6 +11318,7 @@ class _VideoSideActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.strings;
     return ValueListenableBuilder<String?>(
       valueListenable: activeActionListenable,
       builder: (context, activeAction, _) {
@@ -11139,7 +11345,7 @@ class _VideoSideActions extends StatelessWidget {
                         errorBuilder: (_, _, _) =>
                             const Icon(Icons.share_rounded, size: 20),
                       ),
-                      label: 'Share',
+                      label: _posterShareLabel(context),
                       color: const Color(0xFF25D366),
                       busy: activeAction == 'share',
                       enabled: actionsEnabled,
@@ -11148,7 +11354,7 @@ class _VideoSideActions extends StatelessWidget {
                     const SizedBox(height: 12),
                     _VideoSideActionButton(
                       icon: const Icon(Icons.download_rounded, size: 23),
-                      label: 'Save',
+                      label: strings.downloadLabel,
                       color: const Color(0xFF334155),
                       busy: activeAction == 'download',
                       enabled: actionsEnabled,
@@ -12701,8 +12907,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   interactivePhotoEnabled: false,
                   photoShapeOverride: '',
                   photoRenderModeOverride: '',
-                  photoFlipHorizontally:
-                      _photoUserAdjustment.flipHorizontally,
+                  photoFlipHorizontally: _photoUserAdjustment.flipHorizontally,
                   photoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
                   photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
                   onPhotoTap: _togglePosterPhotoFlipTap,
@@ -13052,16 +13257,20 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             vertical: 24,
           ),
           child: _SubscriptionAccessDialog(
-            title: _subscriptionDialogTitleLocalized(screenContext),
-            message: _subscriptionPromptCopyLocalized(screenContext),
-            trialTitle: _subscriptionTrialTitleLocalized(screenContext),
-            trialValue: _subscriptionTrialValueLocalized(screenContext),
-            monthlyTitle: _subscriptionMonthlyTitleLocalized(screenContext),
-            monthlyValue: _subscriptionMonthlyValueLocalized(screenContext),
-            renewalCopy: _subscriptionRenewalCopyLocalized(screenContext),
-            termsLabel: _subscriptionTermsLabelLocalized(screenContext),
-            skipLabel: _subscriptionSkipLabelLocalized(screenContext),
-            actionLabel: _subscriptionButtonLabelLocalized(screenContext),
+            title: _subscriptionDialogTitleCleanLocalized(screenContext),
+            message: _subscriptionPromptCopyCleanLocalized(screenContext),
+            trialTitle: _subscriptionTrialTitleCleanLocalized(screenContext),
+            trialValue: _subscriptionTrialValueCleanLocalized(screenContext),
+            monthlyTitle: _subscriptionMonthlyTitleCleanLocalized(
+              screenContext,
+            ),
+            monthlyValue: _subscriptionMonthlyValueCleanLocalized(
+              screenContext,
+            ),
+            renewalCopy: _subscriptionRenewalCopyCleanLocalized(screenContext),
+            termsLabel: _subscriptionTermsLabelCleanLocalized(screenContext),
+            skipLabel: _subscriptionSkipLabelCleanLocalized(screenContext),
+            actionLabel: _subscriptionButtonLabelCleanLocalized(screenContext),
             onTermsTap: () =>
                 _openExternalPublicUrl(dialogContext, AppPublicInfo.termsUrl),
             onSkipTap: () => Navigator.of(dialogContext).pop(false),
@@ -13476,8 +13685,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             requireSubscriptionForExportActions: true,
             initialPhotoShapeOverride: '',
             initialPhotoRenderModeOverride: '',
-            initialPhotoFlipHorizontally:
-                _photoUserAdjustment.flipHorizontally,
+            initialPhotoFlipHorizontally: _photoUserAdjustment.flipHorizontally,
             initialPhotoXOffsetPercent: _photoUserAdjustment.xOffsetPercent,
             initialPhotoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             lockTemplateLayers: false,

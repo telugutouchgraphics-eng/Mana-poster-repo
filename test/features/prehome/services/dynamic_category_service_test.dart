@@ -245,6 +245,61 @@ void main() {
       expect(eventDay.any((item) => item.slug == 'same_day_event'), isTrue);
     });
 
+    test('supports three-day More popup preview through event end', () {
+      const service = DynamicCategoryService(
+        repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[
+          DynamicCalendarEvent(
+            id: 'preview_event',
+            slug: 'preview_event',
+            type: DynamicCategoryType.festival,
+            scope: DynamicEventScope.india,
+            priority: 90,
+            sortOrder: 1,
+            startMonth: 8,
+            startDay: 15,
+            durationDays: 2,
+            title: DynamicLocalizedTitle(
+              telugu: 'Preview Event',
+              english: 'Preview Event',
+              hindi: 'Preview Event',
+            ),
+          ),
+        ]),
+        daysBeforeEvent: 3,
+      );
+
+      bool hasPreviewEvent(DateTime day) {
+        return service
+            .categoriesForDate(day, language: AppLanguage.english)
+            .any((item) => item.slug == 'preview_event');
+      }
+
+      expect(hasPreviewEvent(DateTime(2026, 8, 11)), isFalse);
+      expect(hasPreviewEvent(DateTime(2026, 8, 12)), isTrue);
+      expect(hasPreviewEvent(DateTime(2026, 8, 15)), isTrue);
+      expect(hasPreviewEvent(DateTime(2026, 8, 16)), isTrue);
+      expect(hasPreviewEvent(DateTime(2026, 8, 17)), isFalse);
+    });
+
+    test(
+      'includes Bonalu and Gurram Jashuva for Andhra Pradesh on July 23',
+      () {
+        const service = DynamicCategoryService(daysBeforeEvent: 3);
+
+        final slugs = service
+            .categoriesForDate(
+              DateTime(2026, 7, 23, 10),
+              language: AppLanguage.telugu,
+              selectedRegionId: 'andhra_pradesh',
+            )
+            .map((item) => item.slug)
+            .toSet();
+
+        expect(slugs, contains('bonalu'));
+        expect(slugs, contains('gurram_jashuva_vardhanthi'));
+      },
+    );
+
     test('filters events by scope', () {
       const service = DynamicCategoryService(
         repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[

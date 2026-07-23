@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
@@ -23,6 +24,9 @@ class AppHomeBannerService {
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
   Future<List<AppHomeBanner>> fetchBanners({int maxItems = 8}) async {
+    if (_firestore == null && Firebase.apps.isEmpty) {
+      return const <AppHomeBanner>[];
+    }
     final queryLimit = maxItems * 20;
     try {
       final snapshot = await firestore
@@ -55,6 +59,9 @@ class AppHomeBannerService {
   }
 
   Future<List<AppHomeBanner>> fetchBannersFromCache({int maxItems = 8}) async {
+    if (_firestore == null && Firebase.apps.isEmpty) {
+      return const <AppHomeBanner>[];
+    }
     final queryLimit = maxItems * 20;
     try {
       final snapshot = await firestore

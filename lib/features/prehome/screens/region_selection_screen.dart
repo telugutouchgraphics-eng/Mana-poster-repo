@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -165,6 +165,7 @@ class _RegionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final strings = context.strings;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -203,14 +204,22 @@ class _RegionHeader extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Select State / Union Territory',
+                        strings.localized(
+                          telugu: 'రాష్ట్రం / యూనియన్ టెరిటరీ ఎంచుకోండి',
+                          english: 'Select State / Union Territory',
+                        ),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$stateCount States • $unionTerritoryCount Union Territories',
+                        strings.localized(
+                          telugu:
+                              '$stateCount రాష్ట్రాలు • $unionTerritoryCount యూనియన్ టెరిటరీలు',
+                          english:
+                              '$stateCount States • $unionTerritoryCount Union Territories',
+                        ),
                         style: TextStyle(
                           color: cs.onSurfaceVariant,
                           fontSize: 12.5,
@@ -227,7 +236,10 @@ class _RegionHeader extends StatelessWidget {
               controller: controller,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: 'Search State, UT or language',
+                hintText: strings.localized(
+                  telugu: 'రాష్ట్రం, యూటీ లేదా భాష వెతకండి',
+                  english: 'Search State, UT or language',
+                ),
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
