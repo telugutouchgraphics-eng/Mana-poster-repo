@@ -79,6 +79,43 @@ void main() {
     );
   });
 
+  testWidgets('leaving page setup does not change app language', (
+    WidgetTester tester,
+  ) async {
+    final controller = AppLanguageController(
+      initialLanguage: AppLanguage.telugu,
+    );
+    AppLanguage? resolvedLanguage;
+
+    await tester.pumpWidget(
+      AppLanguageScope(
+        language: controller.language,
+        controller: controller,
+        child: const MaterialApp(home: PageSetupScreen()),
+      ),
+    );
+    expect(find.text('Start Design'), findsOneWidget);
+
+    await tester.pumpWidget(
+      AppLanguageScope(
+        language: controller.language,
+        controller: controller,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              resolvedLanguage = context.currentLanguage;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(resolvedLanguage, AppLanguage.telugu);
+    expect(controller.language, AppLanguage.telugu);
+  });
+
   testWidgets('gallery source enables the start action without a page size', (
     WidgetTester tester,
   ) async {

@@ -115,7 +115,6 @@ class _PageSetupScreenState extends State<PageSetupScreen>
 
   @override
   void initState() {
-    AppLanguageContextX.enableEditorEnglishUi();
     super.initState();
     _widthController.addListener(_onInputChanged);
     _heightController.addListener(_onInputChanged);
@@ -127,7 +126,6 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     _widthController.dispose();
     _heightController.dispose();
     _dpiController.dispose();
-    AppLanguageContextX.disableEditorEnglishUi();
     super.dispose();
   }
 
