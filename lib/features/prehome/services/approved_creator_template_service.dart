@@ -427,6 +427,26 @@ class ApprovedCreatorTemplateService {
           hasMore: false,
         );
       }
+      final lookupRegionIds = _posterLookupRegionIds(
+        selectedRegionId: regionId,
+        categoryId: '',
+      );
+      if (lookupRegionIds.length > 1 &&
+          startAfterDocument == null &&
+          source != Source.cache) {
+        final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+          regionId: regionId,
+          categoryId: '',
+          limit: pageSize,
+        );
+        if (backendTemplates.isNotEmpty) {
+          return ApprovedCreatorTemplatePage(
+            templates: backendTemplates,
+            lastDocument: null,
+            hasMore: backendTemplates.length >= pageSize,
+          );
+        }
+      }
       final totalStopwatch = Stopwatch()..start();
       final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
       final maxQueryPages = source == Source.cache
@@ -452,7 +472,7 @@ class ApprovedCreatorTemplateService {
           firestore
               .collection('creatorPosters')
               .where('status', isEqualTo: 'approved'),
-          _posterLookupRegionIds(selectedRegionId: regionId, categoryId: ''),
+          lookupRegionIds,
         ).orderBy('createdAt', descending: true).limit(queryLimit);
         if (cursor != null) {
           query = query.startAfterDocument(cursor);
