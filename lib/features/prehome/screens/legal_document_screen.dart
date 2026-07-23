@@ -215,8 +215,8 @@ class _LegalCopy {
         );
 
   String get lastUpdated => strings.localized(
-    telugu: 'చివరి నవీకరణ: 11 జూలై 2026',
-    english: 'Last updated: July 11, 2026',
+    telugu: 'చివరి నవీకరణ: 23 జూలై 2026',
+    english: 'Last updated: July 23, 2026',
   );
 
   List<_LegalSection> get sections =>
