@@ -721,17 +721,17 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; location allow చేస్తే nearby city/district/state users కు priority గా కనిపించవచ్చు, లేకపోతే selected State/Union Territory fallback గా ఉంటుంది. 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
+          'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; location allow చేస్తే nearby city/district/state users కు priority గా కనిపించవచ్చు, లేకపోతే selected State/Union Territory fallback గా ఉంటుంది. 24 గంటల తర్వాత automatic cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
       english:
-          'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; if location is allowed, statuses are shown to nearby city/district/state users, otherwise the selected State/Union Territory is used as fallback. Statuses are deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
+          'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; if location is allowed, statuses are shown to nearby city/district/state users, otherwise the selected State/Union Territory is used as fallback. Statuses are deleted by automatic cleanup after 24 hours, and replies can be read by the status owner.',
       hindi:
-          'Status feature में 24 घंटे में 5 text statuses और 2 image/image + caption statuses तक upload किए जा सकते हैं; यह matching region/religion scope में दिखता है, 24 घंटे बाद backend cleanup से delete होता है, और replies status owner पढ़ सकता है।',
+          'Status feature में 24 घंटे में 5 text statuses और 2 image/image + caption statuses तक upload किए जा सकते हैं; यह matching region/religion scope में दिखता है, 24 घंटे बाद automatic cleanup से delete होता है, और replies status owner पढ़ सकता है।',
       tamil:
-          'Status feature இல் 24 மணி நேரத்தில் 5 text statuses மற்றும் 2 image/image + caption statuses வரை upload செய்யலாம்; அது matching region/religion scope இல் காட்டப்படும், 24 மணி நேரத்திற்கு பிறகு backend cleanup மூலம் delete ஆகும், replies ஐ status owner படிக்கலாம்.',
+          'Status feature இல் 24 மணி நேரத்தில் 5 text statuses மற்றும் 2 image/image + caption statuses வரை upload செய்யலாம்; அது matching region/religion scope இல் காட்டப்படும், 24 மணி நேரத்திற்கு பிறகு automatic cleanup மூலம் delete ஆகும், replies ஐ status owner படிக்கலாம்.',
       kannada:
-          'Status feature ನಲ್ಲಿ 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text statuses ಮತ್ತು 2 image/image + caption statuses ವರೆಗೆ upload ಮಾಡಬಹುದು; matching region/religion scope ನಲ್ಲಿ ಕಾಣುತ್ತದೆ, 24 ಗಂಟೆಗಳ ನಂತರ backend cleanup ಮೂಲಕ delete ಆಗುತ್ತದೆ, replies ಅನ್ನು status owner ಓದಬಹುದು.',
+          'Status feature ನಲ್ಲಿ 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text statuses ಮತ್ತು 2 image/image + caption statuses ವರೆಗೆ upload ಮಾಡಬಹುದು; matching region/religion scope ನಲ್ಲಿ ಕಾಣುತ್ತದೆ, 24 ಗಂಟೆಗಳ ನಂತರ automatic cleanup ಮೂಲಕ delete ಆಗುತ್ತದೆ, replies ಅನ್ನು status owner ಓದಬಹುದು.',
       malayalam:
-          'Status feature ൽ 24 മണിക്കൂറിൽ 5 text statuses ഉം 2 image/image + caption statuses ഉം വരെ upload ചെയ്യാം; matching region/religion scope ൽ കാണിക്കും, 24 മണിക്കൂറിന് ശേഷം backend cleanup വഴി delete ചെയ്യും, replies status owner വായിക്കാം.',
+          'Status feature ൽ 24 മണിക്കൂറിൽ 5 text statuses ഉം 2 image/image + caption statuses ഉം വരെ upload ചെയ്യാം; matching region/religion scope ൽ കാണിക്കും, 24 മണിക്കൂറിന് ശേഷം automatic cleanup വഴി delete ചെയ്യും, replies status owner വായിക്കാം.',
     ),
     strings.localized(
       telugu:
@@ -831,17 +831,17 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status upload చేస్తే అది temporary గా backend లో save అవుతుంది; location allow చేస్తే exact GPS store చేయకుండా nearby city/district/state ordering priority ఇవ్వవచ్చు. 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
+          'Status upload చేస్తే అది temporary గా secure server లో save అవుతుంది; location allow చేస్తే exact GPS store చేయకుండా nearby city/district/state ordering priority ఇవ్వవచ్చు. 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
       english:
-          'When a status is uploaded, it is stored temporarily in the backend and shown to nearby city/district/state users when location is allowed; if location is not available, selected State/Union Territory fallback is used. Active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
+          'When a status is uploaded, it is stored temporarily on secure servers and shown to nearby city/district/state users when location is allowed; if location is not available, selected State/Union Territory fallback is used. Active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
       hindi:
-          'Status upload होने पर वह backend में temporarily save होकर same region/religion users को दिखता है; 24 घंटे में 5 text और 2 image/image + caption active statuses की limit रहती है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
+          'Status upload होने पर वह secure server में temporarily save होकर same region/religion users को दिखता है; 24 घंटे में 5 text और 2 image/image + caption active statuses की limit रहती है; दूसरे users reply/comment भेज सकते हैं और owner swipe up करके replies देख सकता है।',
       tamil:
-          'Status upload செய்தால் அது backend இல் temporarily save ஆகி same region/religion users க்கு காட்டப்படும்; 24 மணி நேரத்தில் 5 text மற்றும் 2 image/image + caption active statuses limit இருக்கும்; மற்ற users reply/comment அனுப்பலாம், owner swipe up செய்து replies பார்க்கலாம்.',
+          'Status upload செய்தால் அது secure server இல் temporarily save ஆகி same region/religion users க்கு காட்டப்படும்; 24 மணி நேரத்தில் 5 text மற்றும் 2 image/image + caption active statuses limit இருக்கும்; மற்ற users reply/comment அனுப்பலாம், owner swipe up செய்து replies பார்க்கலாம்.',
       kannada:
-          'Status upload ಮಾಡಿದರೆ ಅದು backend ನಲ್ಲಿ temporarily save ಆಗಿ same region/religion users ಗೆ ಕಾಣುತ್ತದೆ; 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text ಮತ್ತು 2 image/image + caption active statuses limit ಇರುತ್ತದೆ; ಬೇರೆ users reply/comment ಕಳುಹಿಸಬಹುದು, owner swipe up ಮಾಡಿ replies ನೋಡಬಹುದು.',
+          'Status upload ಮಾಡಿದರೆ ಅದು secure server ನಲ್ಲಿ temporarily save ಆಗಿ same region/religion users ಗೆ ಕಾಣುತ್ತದೆ; 24 ಗಂಟೆಗಳಲ್ಲಿ 5 text ಮತ್ತು 2 image/image + caption active statuses limit ಇರುತ್ತದೆ; ಬೇರೆ users reply/comment ಕಳುಹಿಸಬಹುದು, owner swipe up ಮಾಡಿ replies ನೋಡಬಹುದು.',
       malayalam:
-          'Status upload ചെയ്താൽ backend ൽ temporarily save ചെയ്ത് same region/religion users ന് കാണിക്കും; 24 മണിക്കൂറിൽ 5 text ഉം 2 image/image + caption active statuses ഉം limit ആയിരിക്കും; മറ്റു users reply/comment അയയ്ക്കാം, owner swipe up ചെയ്ത് replies കാണാം.',
+          'Status upload ചെയ്താൽ secure server ൽ temporarily save ചെയ്ത് same region/religion users ന് കാണിക്കും; 24 മണിക്കൂറിൽ 5 text ഉം 2 image/image + caption active statuses ഉം limit ആയിരിക്കും; മറ്റു users reply/comment അയയ്ക്കാം, owner swipe up ചെയ്ത് replies കാണാം.',
     ),
     strings.localized(
       telugu:
@@ -859,17 +859,17 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Assets tool ద్వారా backend నుండి వచ్చే premium assets categories చూడవచ్చు; download చేసిన తర్వాత poster canvas లో import చేయవచ్చు.',
+          'Assets tool ద్వారా app-provided premium assets categories చూడవచ్చు; download చేసిన తర్వాత poster canvas లో import చేయవచ్చు.',
       english:
-          'The Assets tool can show premium asset categories from the backend; after download, supported assets can be imported onto the poster canvas.',
+          'The Assets tool can show app-provided premium asset categories; after download, supported assets can be imported onto the poster canvas.',
       hindi:
-          'Assets tool backend से आने वाली premium asset categories दिखा सकता है; download के बाद supported assets poster canvas पर import किए जा सकते हैं।',
+          'Assets tool app-provided premium asset categories दिखा सकता है; download के बाद supported assets poster canvas पर import किए जा सकते हैं।',
       tamil:
-          'Assets tool backend இலிருந்து வரும் premium asset categories காட்டும்; download செய்த பிறகு supported assets poster canvas-க்கு import செய்யலாம்.',
+          'Assets tool app-provided premium asset categories காட்டும்; download செய்த பிறகு supported assets poster canvas-க்கு import செய்யலாம்.',
       kannada:
-          'Assets tool backend ನಿಂದ ಬರುವ premium asset categories ತೋರಿಸಬಹುದು; download ಮಾಡಿದ ನಂತರ supported assets poster canvas ಗೆ import ಮಾಡಬಹುದು.',
+          'Assets tool app-provided premium asset categories ತೋರಿಸಬಹುದು; download ಮಾಡಿದ ನಂತರ supported assets poster canvas ಗೆ import ಮಾಡಬಹುದು.',
       malayalam:
-          'Assets tool backend-ൽ നിന്ന് വരുന്ന premium asset categories കാണിക്കും; download ചെയ്ത ശേഷം supported assets poster canvas-ലേക്ക് import ചെയ്യാം.',
+          'Assets tool app-provided premium asset categories കാണിക്കും; download ചെയ്ത ശേഷം supported assets poster canvas-ലേക്ക് import ചെയ്യാം.',
     ),
     strings.localized(
       telugu:
