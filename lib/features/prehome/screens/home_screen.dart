@@ -124,8 +124,7 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
       AppSnackBar.build(
         content: Text(
           context.strings.localized(
-            telugu:
-                'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
             english: 'Could not open the link. Please try again.',
           ),
         ),
@@ -231,7 +230,7 @@ String _repairLegacyUiText(String value) {
       value.contains('\u00E0\u00AE') ||
       value.contains('\u00E0\u00B2') ||
       value.contains('\u00E0\u00B4') ||
-      value.contains('Ãƒ'))) {
+      value.contains('\u00C3'))) {
     return value;
   }
   var repaired = value;
@@ -298,7 +297,7 @@ class _TemplateItem {
   final List<String> categoryTags;
   final int createdAtMillis;
 
-  /// Firestore `categoryId` only â€” used for home dynamic chips, not label tokens.
+  /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
 
   /// Firestore manual / admin category label for home chip + matching.
@@ -1389,24 +1388,24 @@ class _HomeScreenState extends State<HomeScreen>
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
-      titleTe: 'à°¶à±à°­à±‹à°¦à°¯à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤—à¥à¤¡ à¤®à¥‰à¤°à¥à¤¨à¤¿à¤‚à¤— à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'శుభోదయం పోస్టర్',
+      titleHi: 'गुड मॉर्निंग पोस्टर',
       titleEn: 'Good Morning Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200',
       categoryTags: <String>['good_morning'],
     ),
     _TemplateItem(
-      titleTe: 'à°¬à°°à±à°¤à±â€Œà°¡à±‡ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤¬à¤°à¥à¤¥à¤¡à¥‡ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'బర్త్‌డే పోస్టర్',
+      titleHi: 'बर्थडे पोस्टर',
       titleEn: 'Birthday Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=1200',
       categoryTags: <String>['birthdays'],
     ),
     _TemplateItem(
-      titleTe: 'à°­à°•à±à°¤à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤­à¤•à¥à¤¤à¤¿ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe: 'భక్తి పోస్టర్',
+      titleHi: 'भक्ति पोस्टर',
       titleEn: 'Devotional Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200',
@@ -2659,7 +2658,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
-    // local calendar JSON â€” add chips from loaded templates so filters match.
+    // local calendar JSON — add chips from loaded templates so filters match.
     final covered = <String>{
       for (final chip in merged.values) ...chip.matchTags.map(_normalizeTag),
       for (final chip in merged.values) _normalizeTag(chip.slug),
@@ -3718,10 +3717,7 @@ class _HomeScreenState extends State<HomeScreen>
   _CategoryChipData _allCategoryChip() {
     return _CategoryChipData(
       slug: _allCategorySlug,
-      label: context.strings.localized(
-        telugu: 'à°…à°¨à±à°¨à±€',
-        english: 'All',
-      ),
+      label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
       matchTags: const <String>['all'],
     );
   }
@@ -3833,17 +3829,17 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'à°µà±†à°¬à±â€Œà°²à±‹ editor à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°ªà±‹à°¸à±à°Ÿà°°à± create à°šà±‡à°¯à°¾à°²à°‚à°Ÿà±‡ mobile app à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.',
+                  'వెబ్‌లో editor అందుబాటులో లేదు. పోస్టర్ create చేయాలంటే mobile app ఉపయోగించండి.',
               english:
                   'Editor is not available on web. Use the mobile app to create posters.',
               hindi:
-                  'à¤µà¥‡à¤¬ à¤ªà¤° editor à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ mobile app à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¥‡à¤‚à¥¤',
+                  'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
               tamil:
-                  'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
+                  'வெபில் editor கிடைக்காது. Poster create செய்ய mobile app பயன்படுத்துங்கள்.',
               kannada:
-                  'à²µà³†à²¬à³â€Œà²¨à²²à³à²²à²¿ editor à²²à²­à³à²¯à²µà²¿à²²à³à²². Poster create à²®à²¾à²¡à²²à³ mobile app à²¬à²³à²¸à²¿.',
+                  'ವೆಬ್‌ನಲ್ಲಿ editor ಲಭ್ಯವಿಲ್ಲ. Poster create ಮಾಡಲು mobile app ಬಳಸಿ.',
               malayalam:
-                  'à´µàµ†à´¬à´¿àµ½ editor à´²à´­àµà´¯à´®à´²àµà´². Poster create à´šàµ†à´¯àµà´¯à´¾àµ» mobile app à´‰à´ªà´¯àµ‹à´—à´¿à´•àµà´•àµà´•.',
+                  'വെബിൽ editor ലഭ്യമല്ല. Poster create ചെയ്യാൻ mobile app ഉപയോഗിക്കുക.',
             ),
           ),
         ),
@@ -5951,13 +5947,12 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.subscribe,
           title: strings.localized(
-            telugu:
-                'à°®à°°à°¿à°¨à±à°¨à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±à°² à°•à±‹à°¸à°‚ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±€à°¸à±à°•à±‹à°‚à°¡à°¿',
+            telugu: 'మరిన్ని పోస్టర్ల కోసం మెంబర్‌షిప్ తీసుకోండి',
             english: 'Unlock more posters with membership',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à±, à°·à±‡à°°à°¿à°‚à°—à± à°®à°°à°¿à°¯à± à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¸à±Œà°•à°°à±à°¯à°¾à°² à°•à±‹à°¸à°‚ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿.',
+                'డౌన్‌లోడ్, షేరింగ్ మరియు మెంబర్‌షిప్ సౌకర్యాల కోసం సబ్‌స్క్రైబ్ చేయండి.',
             english:
                 'Subscribe for downloads, sharing, and membership benefits.',
           ),
@@ -5970,13 +5965,12 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.renewalReminder,
           title: strings.localized(
-            telugu:
-                'à°®à±€ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±à°µà°°à°²à±‹ à°®à±à°—à°¿à°¯à°¬à±‹à°¤à±‹à°‚à°¦à°¿',
+            telugu: 'మీ మెంబర్‌షిప్ త్వరలో ముగియబోతోంది',
             english: 'Your membership is expiring soon',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°‡à°‚à°•à°¾ 3 à°°à±‹à°œà±à°²à°²à±‹à°ªà± à°ªà±à°²à°¾à°¨à± à°®à±à°—à±à°¸à±à°¤à±à°‚à°¦à°¿. à°…à°‚à°¤à°°à°¾à°¯à°‚ à°²à±‡à°•à±à°‚à°¡à°¾ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°¾à°¡à°¾à°²à°‚à°Ÿà±‡ à°‡à°ªà±à°ªà±à°¡à±‡ renew à°šà±‡à°¯à°‚à°¡à°¿.',
+                'ఇంకా 3 రోజులలోపు ప్లాన్ ముగుస్తుంది. అంతరాయం లేకుండా పోస్టర్లు వాడాలంటే ఇప్పుడే renew చేయండి.',
             english:
                 'Your plan ends within the next 3 days. Renew now to keep using posters without interruption.',
           ),
@@ -5989,13 +5983,12 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.update,
           title: strings.localized(
-            telugu:
-                'à°•à±Šà°¤à±à°¤ à°¯à°¾à°ªà± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°¸à°¿à°¦à±à°§à°‚à°—à°¾ à°‰à°‚à°¦à°¿',
+            telugu: 'కొత్త యాప్ అప్‌డేట్ సిద్ధంగా ఉంది',
             english: 'A new app update is ready',
           ),
           subtitle: strings.localized(
             telugu:
-                'Play Store à°²à±‹ à°•à±Šà°¤à±à°¤ version à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°‰à°‚à°¦à°¿. à°¤à°¾à°œà°¾ à°®à±†à°°à±à°—à±à°¦à°²à°² à°•à±‹à°¸à°‚ à°‡à°ªà±à°ªà±à°¡à± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿.',
+                'Play Store లో కొత్త version అందుబాటులో ఉంది. తాజా మెరుగుదలల కోసం ఇప్పుడు అప్‌డేట్ చేయండి.',
             english:
                 'A newer version is available on the Play Store. Update now for the latest improvements.',
           ),
@@ -6008,13 +6001,12 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.rate,
           title: strings.localized(
-            telugu:
-                'Mana Poster Ai à°•à°¿ à°°à±‡à°Ÿà°¿à°‚à°—à± à°‡à°µà±à°µà°‚à°¡à°¿',
+            telugu: 'Mana Poster Ai కి రేటింగ్ ఇవ్వండి',
             english: 'Rate Mana Poster Ai',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°®à±€ rating à°®à°°à°¿à°¯à± review à°µà°²à±à°² à°®à°°à°¿à°‚à°¤ à°®à°‚à°¦à°¿à°•à°¿ à°¯à°¾à°ªà± à°—à±à°°à°¿à°‚à°šà°¿ à°¤à±†à°²à±à°¸à±à°¤à±à°‚à°¦à°¿.',
+                'మీ rating మరియు review వల్ల మరింత మందికి యాప్ గురించి తెలుస్తుంది.',
             english:
                 'Your rating and review help more people discover the app.',
           ),
@@ -6093,8 +6085,7 @@ class _HomeScreenState extends State<HomeScreen>
         AppSnackBar.build(
           content: Text(
             context.strings.localized(
-              telugu:
-                  'Play Store à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+              telugu: 'Play Store తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
               english: 'Could not open the Play Store. Please try again.',
             ),
           ),
@@ -7003,8 +6994,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
     if (code.isEmpty) {
       setState(() {
         _errorText = context.strings.localized(
-          telugu:
-              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°¨à°®à±‹à°¦à± à°šà±‡à°¯à°‚à°¡à°¿',
+          telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
           english: 'Enter referral code',
         );
       });
@@ -7030,8 +7020,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
         _applying = false;
         _errorText = result.message.isEmpty
             ? context.strings.localized(
-                telugu:
-                    'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±',
+                telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు',
                 english: 'Referral code could not be applied',
               )
             : result.message;
@@ -7043,8 +7032,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
       setState(() {
         _applying = false;
         _errorText = context.strings.localized(
-          telugu:
-              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+          telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి',
           english: 'Referral code apply failed. Please try again.',
         );
       });
@@ -7087,7 +7075,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
+                        telugu: 'రిఫరల్ కోడ్',
                         english: 'Referral code',
                       ),
                       textAlign: TextAlign.center,
@@ -7098,7 +7086,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     Text(
                       strings.localized(
                         telugu:
-                            'à°®à±€ à°¦à°—à±à°—à°° referral code à°‰à°‚à°Ÿà±‡ à°‡à°•à±à°•à°¡ enter à°šà±‡à°¯à°‚à°¡à°¿.',
+                            'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
                         english: 'Enter a referral code if you have one.',
                       ),
                       textAlign: TextAlign.center,
@@ -7113,7 +7101,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
                         labelText: strings.localized(
-                          telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
+                          telugu: 'రిఫరల్ కోడ్',
                           english: 'Referral code',
                         ),
                         errorText: _errorText,
@@ -7132,15 +7120,14 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       ),
                       child: Text(
                         strings.localized(
-                          telugu:
-                              'à°¨à°¿à°¬à°‚à°§à°¨à°²à± à°®à°°à°¿à°¯à± à°·à°°à°¤à±à°²à± à°šà±‚à°¡à°‚à°¡à°¿',
+                          telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
                           english: 'View Terms & Conditions',
                         ),
                       ),
                     ),
                     PrimaryButton(
                       label: strings.localized(
-                        telugu: 'à°…à°ªà±à°²à±ˆ',
+                        telugu: 'అప్లై',
                         english: 'Apply',
                       ),
                       loading: _applying,
@@ -7158,10 +7145,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                         ),
                       ),
                       child: Text(
-                        strings.localized(
-                          telugu: 'à°¸à±à°•à°¿à°ªà±',
-                          english: 'Skip',
-                        ),
+                        strings.localized(telugu: 'స్కిప్', english: 'Skip'),
                       ),
                     ),
                   ],
@@ -7374,13 +7358,12 @@ class _CommunityStatusGridScreenState
                             Expanded(
                               child: Text(
                                 strings.localized(
-                                  telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±à°²à±',
+                                  telugu: 'స్టేటస్లు',
                                   english: 'Statuses',
-                                  hindi: 'à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
-                                  tamil: 'à®¨à®¿à®²à¯ˆà®•à®³à¯',
-                                  kannada: 'à²¸à³à²Ÿà³‡à²Ÿà²¸à³â€Œà²—à²³à³',
-                                  malayalam:
-                                      'à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµà´•àµ¾',
+                                  hindi: 'स्टेटस',
+                                  tamil: 'நிலைகள்',
+                                  kannada: 'ಸ್ಟೇಟಸ್‌ಗಳು',
+                                  malayalam: 'സ്റ്റാറ്റസുകൾ',
                                 ),
                                 style: const TextStyle(
                                   color: Color(0xFF0F172A),
@@ -7430,14 +7413,12 @@ class _CommunityStatusGridScreenState
                                           statuses: myStatuses,
                                         ),
                                   label: strings.localized(
-                                    telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
+                                    telugu: 'నా స్టేటస్',
                                     english: 'My Status',
-                                    hindi: 'à¤®à¥‡à¤°à¤¾ à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
-                                    tamil: 'à®Žà®©à¯ à®¨à®¿à®²à¯ˆ',
-                                    kannada:
-                                        'à²¨à²¨à³à²¨ à²¸à³à²Ÿà³‡à²Ÿà²¸à³',
-                                    malayalam:
-                                        'à´Žà´¨àµà´±àµ† à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµ',
+                                    hindi: 'मेरा स्टेटस',
+                                    tamil: 'என் நிலை',
+                                    kannada: 'ನನ್ನ ಸ್ಟೇಟಸ್',
+                                    malayalam: 'എന്റെ സ്റ്റാറ്റസ്',
                                   ),
                                   isMine: true,
                                   onAdd: () => unawaited(_openUpload()),
@@ -7452,14 +7433,12 @@ class _CommunityStatusGridScreenState
                                 group: group,
                                 label: group.displayName.isEmpty
                                     ? strings.localized(
-                                        telugu:
-                                            'à°µà°¿à°¨à°¿à°¯à±‹à°—à°¦à°¾à°°à±',
+                                        telugu: 'వినియోగదారు',
                                         english: 'User',
-                                        hindi: 'à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾',
-                                        tamil: 'à®ªà®¯à®©à®°à¯',
-                                        kannada: 'à²¬à²³à²•à³†à²¦à²¾à²°',
-                                        malayalam:
-                                            'à´‰à´ªà´¯àµ‹à´•àµà´¤à´¾à´µàµ',
+                                        hindi: 'उपयोगकर्ता',
+                                        tamil: 'பயனர்',
+                                        kannada: 'ಬಳಕೆದಾರ',
+                                        malayalam: 'ഉപയോക്താവ്',
                                       )
                                     : group.displayName,
                                 onOpen: () =>
@@ -7739,8 +7718,7 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                     children: <Widget>[
                       Text(
                         strings.localized(
-                          telugu:
-                              'à°¸à±‹à°·à°²à± à°®à±€à°¡à°¿à°¯à°¾ à°•à±à°¯à°¾à°²à±†à°‚à°¡à°°à±',
+                          telugu: 'సోషల్ మీడియా క్యాలెండర్',
                           english: 'Social Media Calendar',
                           hindi: 'Social Media Calendar',
                           tamil: 'Social Media Calendar',
@@ -7777,16 +7755,12 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                   ? Center(
                       child: Text(
                         strings.localized(
-                          telugu: 'à°ˆ à°¨à±†à°²à°²à±‹ events à°²à±‡à°µà±',
+                          telugu: 'ఈ నెలలో events లేవు',
                           english: 'No events for this month',
-                          hindi:
-                              'à¤‡à¤¸ à¤®à¤¹à¥€à¤¨à¥‡ à¤•à¥‹à¤ˆ event à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ',
-                          tamil:
-                              'à®‡à®¨à¯à®¤ à®®à®¾à®¤à®¤à¯à®¤à®¿à®²à¯ events à®‡à®²à¯à®²à¯ˆ',
-                          kannada:
-                              'à²ˆ à²¤à²¿à²‚à²—à²³à²²à³à²²à²¿ events à²‡à²²à³à²²',
-                          malayalam:
-                              'à´ˆ à´®à´¾à´¸à´¤àµà´¤à´¿àµ½ events à´‡à´²àµà´²',
+                          hindi: 'इस महीने कोई event नहीं है',
+                          tamil: 'இந்த மாதத்தில் events இல்லை',
+                          kannada: 'ಈ ತಿಂಗಳಲ್ಲಿ events ಇಲ್ಲ',
+                          malayalam: 'ഈ മാസത്തിൽ events ഇല്ല',
                         ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -8098,13 +8072,7 @@ class _CommunityStatusViewerScreenState
     extends State<_CommunityStatusViewerScreen>
     with SingleTickerProviderStateMixin {
   static const Duration _viewDuration = Duration(seconds: 7);
-  static const List<String> _reactions = <String>[
-    'Ã°Å¸â€Â¥',
-    'Ã°Å¸â€˜Â',
-    'Ã°Å¸ËœÂ',
-    'Ã°Å¸â„¢Â',
-    'Ã°Å¸ËœÂ ',
-  ];
+  static const List<String> _reactions = <String>['🔥', '👏', '😍', '🙏', '😠'];
 
   late final AnimationController _progressController;
   bool _isDeleting = false;
@@ -8425,10 +8393,7 @@ class _CommunityStatusViewerScreenState
         final isOwner =
             FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
         final statusTitle = isOwner
-            ? strings.localized(
-                telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
-                english: 'My Status',
-              )
+            ? strings.localized(telugu: 'నా స్టేటస్', english: 'My Status')
             : (status.userName.isNotEmpty ? status.userName : 'User');
         final statusColor = Color(
           status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
@@ -8558,7 +8523,7 @@ class _CommunityStatusViewerScreenState
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
                           tooltip: strings.localized(
-                            telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
+                            telugu: 'మరిన్ని',
                             english: 'More',
                           ),
                           icon: const Icon(
@@ -8584,7 +8549,7 @@ class _CommunityStatusViewerScreenState
                               value: 'report',
                               child: Text(
                                 strings.localized(
-                                  telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
+                                  telugu: 'రిపోర్ట్',
                                   english: 'Report',
                                 ),
                                 style: const TextStyle(
@@ -8654,10 +8619,7 @@ class _StatusRepliesSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                strings.localized(
-                  telugu: 'à°°à°¿à°ªà±à°²à±ˆà°²à±',
-                  english: 'Replies',
-                ),
+                strings.localized(telugu: 'రిప్లైలు', english: 'Replies'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -8677,8 +8639,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                       return Center(
                         child: Text(
                           strings.localized(
-                            telugu:
-                                'à°‡à°‚à°•à°¾ à°°à°¿à°ªà±à°²à±ˆà°²à± à°²à±‡à°µà±',
+                            telugu: 'ఇంకా రిప్లైలు లేవు',
                             english: 'No replies yet',
                           ),
                           style: const TextStyle(
@@ -8708,7 +8669,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                             ),
                             PopupMenuButton<String>(
                               tooltip: strings.localized(
-                                telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
+                                telugu: 'మరిన్ని',
                                 english: 'More',
                               ),
                               icon: const Icon(
@@ -8737,7 +8698,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                                   value: 'report',
                                   child: Text(
                                     strings.localized(
-                                      telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
+                                      telugu: 'రిపోర్ట్',
                                       english: 'Report',
                                     ),
                                     style: const TextStyle(
@@ -8780,50 +8741,43 @@ String _localizedCommunityReportReason(BuildContext context, String reason) {
   final strings = context.strings;
   return switch (reason) {
     'Harassment or bullying' => strings.localized(
-      telugu: 'à°µà±‡à°§à°¿à°‚à°ªà± à°²à±‡à°¦à°¾ à°¬à±†à°¦à°¿à°°à°¿à°‚à°ªà±',
+      telugu: 'వేధింపు లేదా బెదిరింపు',
       english: 'Harassment or bullying',
     ),
     'Hate speech or discrimination' => strings.localized(
-      telugu:
-          'à°¦à±à°µà±‡à°· à°ªà±à°°à°¸à°‚à°—à°‚ à°²à±‡à°¦à°¾ à°µà°¿à°µà°•à±à°·',
+      telugu: 'ద్వేష ప్రసంగం లేదా వివక్ష',
       english: 'Hate speech or discrimination',
     ),
     'Sexual or adult content' => strings.localized(
-      telugu:
-          'à°²à±ˆà°‚à°—à°¿à°• à°²à±‡à°¦à°¾ à°ªà±†à°¦à±à°¦à°² à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
+      telugu: 'లైంగిక లేదా పెద్దల కంటెంట్',
       english: 'Sexual or adult content',
     ),
     'Violence or dangerous content' => strings.localized(
-      telugu:
-          'à°¹à°¿à°‚à°¸ à°²à±‡à°¦à°¾ à°ªà±à°°à°®à°¾à°¦à°•à°° à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
+      telugu: 'హింస లేదా ప్రమాదకర కంటెంట్',
       english: 'Violence or dangerous content',
     ),
     'Spam, scam, or fake content' => strings.localized(
-      telugu:
-          'à°¸à±à°ªà°¾à°®à±, à°®à±‹à°¸à°‚ à°²à±‡à°¦à°¾ à°¨à°•à°¿à°²à±€ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
+      telugu: 'స్పామ్, మోసం లేదా నకిలీ కంటెంట్',
       english: 'Spam, scam, or fake content',
     ),
     'Misinformation or deceptive political content' => strings.localized(
-      telugu:
-          'à°¤à°ªà±à°ªà±à°¡à± à°¸à°®à°¾à°šà°¾à°°à°‚ à°²à±‡à°¦à°¾ à°®à±‹à°¸à°ªà±‚à°°à°¿à°¤ à°°à°¾à°œà°•à±€à°¯ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
+      telugu: 'తప్పుడు సమాచారం లేదా మోసపూరిత రాజకీయ కంటెంట్',
       english: 'Misinformation or deceptive political content',
     ),
     'Privacy violation or personal information' => strings.localized(
-      telugu:
-          'à°ªà±à°°à±ˆà°µà°¸à±€ à°‰à°²à±à°²à°‚à°˜à°¨ à°²à±‡à°¦à°¾ à°µà±à°¯à°•à±à°¤à°¿à°—à°¤ à°¸à°®à°¾à°šà°¾à°°à°‚',
+      telugu: 'ప్రైవసీ ఉల్లంఘన లేదా వ్యక్తిగత సమాచారం',
       english: 'Privacy violation or personal information',
     ),
     'Copyright or trademark issue' => strings.localized(
-      telugu:
-          'à°•à°¾à°ªà±€à°°à±ˆà°Ÿà± à°²à±‡à°¦à°¾ à°Ÿà±à°°à±‡à°¡à±â€Œà°®à°¾à°°à±à°•à± à°¸à°®à°¸à±à°¯',
+      telugu: 'కాపీరైట్ లేదా ట్రేడ్‌మార్క్ సమస్య',
       english: 'Copyright or trademark issue',
     ),
     'Illegal content' => strings.localized(
-      telugu: 'à°šà°Ÿà±à°Ÿà°µà°¿à°°à±à°¦à±à°§ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
+      telugu: 'చట్టవిరుద్ధ కంటెంట్',
       english: 'Illegal content',
     ),
     _ => strings.localized(
-      telugu: 'à°‡à°¤à°° à°¸à±‡à°«à±à°Ÿà±€ à°¸à°®à°¸à±à°¯',
+      telugu: 'ఇతర సేఫ్టీ సమస్య',
       english: 'Other safety issue',
     ),
   };
@@ -8839,8 +8793,8 @@ Future<void> _showCommunityStatusReportSheet(
   var selectedReason = _communityReportReasons.first;
   var submitting = false;
   final reportedLabel = comment == null
-      ? strings.localized(telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±', english: 'status')
-      : strings.localized(telugu: 'à°°à°¿à°ªà±à°²à±ˆ', english: 'reply');
+      ? strings.localized(telugu: 'స్టేటస్', english: 'status')
+      : strings.localized(telugu: 'రిప్లై', english: 'reply');
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -8878,8 +8832,7 @@ Future<void> _showCommunityStatusReportSheet(
                       const SizedBox(height: 16),
                       Text(
                         strings.localized(
-                          telugu:
-                              '$reportedLabel à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿',
+                          telugu: '$reportedLabel రిపోర్ట్ చేయండి',
                           english: 'Report $reportedLabel',
                         ),
                         style: const TextStyle(
@@ -8892,7 +8845,7 @@ Future<void> _showCommunityStatusReportSheet(
                       Text(
                         strings.localized(
                           telugu:
-                              'à°¦à°—à±à°—à°°à°—à°¾ à°¸à°°à°¿à°ªà±‹à°¯à±‡ à°•à°¾à°°à°£à°‚ à°Žà°‚à°šà±à°•à±‹à°‚à°¡à°¿. à°°à°¿à°ªà±‹à°°à±à°Ÿà±à°¸à± community safety à°•à±‹à°¸à°‚ team review à°šà±‡à°¯à°µà°šà±à°šà±.',
+                              'దగ్గరగా సరిపోయే కారణం ఎంచుకోండి. రిపోర్ట్స్ community safety కోసం team review చేయవచ్చు.',
                           english:
                               'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
                         ),
@@ -8957,7 +8910,7 @@ Future<void> _showCommunityStatusReportSheet(
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
                           hintText: strings.localized(
-                            telugu: 'à°µà°¿à°µà°°à°¾à°²à± optional',
+                            telugu: 'వివరాలు optional',
                             english: 'Add details optional',
                           ),
                           hintStyle: TextStyle(
@@ -8991,7 +8944,7 @@ Future<void> _showCommunityStatusReportSheet(
                               ),
                               child: Text(
                                 strings.localized(
-                                  telugu: 'à°°à°¦à±à°¦à±',
+                                  telugu: 'రద్దు',
                                   english: 'Cancel',
                                 ),
                               ),
@@ -9024,13 +8977,13 @@ Future<void> _showCommunityStatusReportSheet(
                                               ok
                                                   ? strings.localized(
                                                       telugu:
-                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± submit à°…à°¯à°¿à°‚à°¦à°¿. à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±.',
+                                                          'రిపోర్ట్ submit అయింది. ధన్యవాదాలు.',
                                                       english:
                                                           'Report submitted. Thank you.',
                                                     )
                                                   : strings.localized(
                                                       telugu:
-                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                                                          'రిపోర్ట్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
                                                       english:
                                                           'Report failed. Please try again.',
                                                     ),
@@ -9058,12 +9011,11 @@ Future<void> _showCommunityStatusReportSheet(
                               label: Text(
                                 submitting
                                     ? strings.localized(
-                                        telugu: 'à°ªà°‚à°ªà±à°¤à±‹à°‚à°¦à°¿',
+                                        telugu: 'పంపుతోంది',
                                         english: 'Sending',
                                       )
                                     : strings.localized(
-                                        telugu:
-                                            'à°¸à°®à°°à±à°ªà°¿à°‚à°šà°‚à°¡à°¿',
+                                        telugu: 'సమర్పించండి',
                                         english: 'Submit',
                                       ),
                               ),
@@ -9135,10 +9087,7 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                strings.localized(
-                  telugu: 'à°®à°°à°¿à°‚à°¤ à°šà°¦à°µà°‚à°¡à°¿',
-                  english: 'Read more',
-                ),
+                strings.localized(telugu: 'మరింత చదవండి', english: 'Read more'),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.w700,
@@ -9334,8 +9283,7 @@ class _StatusEngagementPanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         strings.localized(
-                          telugu:
-                              'à°°à°¿à°ªà±à°²à±ˆà°²à± à°šà±‚à°¡à°¡à°¾à°¨à°¿à°•à°¿ à°ªà±ˆà°•à°¿ swipe à°šà±‡à°¯à°‚à°¡à°¿',
+                          telugu: 'రిప్లైలు చూడడానికి పైకి swipe చేయండి',
                           english: 'Swipe up for replies',
                         ),
                         style: const TextStyle(
@@ -9437,7 +9385,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'à°°à°¿à°ªà±à°²à±ˆ à°ªà°‚à°ªà°¬à°¡à°¿à°‚à°¦à°¿',
+              telugu: 'రిప్లై పంపబడింది',
               english: 'Reply sent',
             ),
           ),
@@ -9449,8 +9397,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
       AppSnackBar.build(
         content: Text(
           strings.localized(
-            telugu:
-                'à°°à°¿à°ªà±à°²à±ˆ à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+            telugu: 'రిప్లై విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
             english: 'Reply failed. Try again.',
           ),
         ),
@@ -9481,7 +9428,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
             decoration: InputDecoration(
               counterText: '',
               hintText: strings.localized(
-                telugu: 'à°°à°¿à°ªà±à°²à±ˆ...',
+                telugu: 'రిప్లై...',
                 english: 'Reply...',
               ),
               hintStyle: TextStyle(
@@ -9738,7 +9685,7 @@ class _HomeHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Tooltip(
               message: strings.localized(
-                telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±â€Œà°²à±',
+                telugu: 'స్టేటస్‌లు',
                 english: 'Statuses',
               ),
               child: InkWell(
@@ -10857,13 +10804,11 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                 errorWidget: (_, _, _) => _ImageErrorState(
                   compact: true,
                   title: context.strings.localized(
-                    telugu:
-                        'à°¬à±à°¯à°¾à°¨à°°à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    telugu: 'బ్యానర్ అందుబాటులో లేదు',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
-                    telugu:
-                        'à°¦à°¯à°šà±‡à°¸à°¿ à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    telugu: 'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -11208,7 +11153,7 @@ class _CategoryChipFallbackIcon extends StatelessWidget {
 String _subscriptionPromptCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°¾à°²à°¿.',
+        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయాలి.',
     english: 'Activate subscription to share or download posters.',
   );
 }
@@ -11216,7 +11161,7 @@ String _subscriptionPromptCopyLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionDialogTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
+    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
     english: 'Subscription Required',
   );
 }
@@ -11224,7 +11169,7 @@ String _subscriptionDialogTitleLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTrialTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
+    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
     english: '3-day trial plan',
   );
 }
@@ -11233,7 +11178,7 @@ String _subscriptionTrialTitleLocalized(BuildContext context) {
 String _subscriptionTrialValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -11242,7 +11187,7 @@ String _subscriptionTrialValueLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
+    telugu: 'నెలవారీ ప్లాన్',
     english: 'Monthly plan',
   );
 }
@@ -11250,8 +11195,7 @@ String _subscriptionMonthlyTitleLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyValueLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu:
-        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+    telugu: 'తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -11260,7 +11204,7 @@ String _subscriptionMonthlyValueLocalized(BuildContext context) {
 String _subscriptionRenewalCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±‚à°°à±à°¤à°¯à±à°¯à°¾à°• à°®à±€à°°à± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±€à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°²à±‹à°ªà± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°µà°šà±à°šà±.',
+        '${SubscriptionPlanConfig.trialDays} రోజుల ట్రయల్ పూర్తయ్యాక మీరు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రీన్యువల్ అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల లోపు క్యాన్సిల్ చేస్తే నెలవారీ ఛార్జ్ పడదు. క్యాన్సిల్ చేసినా ప్రస్తుత ప్లాన్ గడువు ముగిసే వరకు బెనిఫిట్స్ ఉపయోగించవచ్చు.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
@@ -11268,24 +11212,18 @@ String _subscriptionRenewalCopyLocalized(BuildContext context) {
 
 // ignore: unused_element
 String _subscriptionTermsLabelLocalized(BuildContext context) {
-  return context.strings.localized(
-    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
-    english: 'Terms',
-  );
+  return context.strings.localized(telugu: 'నిబంధనలు', english: 'Terms');
 }
 
 // ignore: unused_element
 String _subscriptionSkipLabelLocalized(BuildContext context) {
-  return context.strings.localized(
-    telugu: 'à°¸à±à°•à°¿à°ªà±',
-    english: 'Skip',
-  );
+  return context.strings.localized(telugu: 'స్కిప్', english: 'Skip');
 }
 
 // ignore: unused_element
 String _subscriptionButtonLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
+    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
     english: 'Subscribe',
   );
 }
@@ -11960,8 +11898,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu:
-                            'à°¬à±à°¯à°¾à°•à±â€Œà°—à±à°°à±Œà°‚à°¡à± à°¤à±Šà°²à°—à°¿à°¸à±à°¤à±‹à°‚à°¦à°¿...',
+                        telugu: 'బ్యాక్‌గ్రౌండ్ తొలగిస్తోంది...',
                         english: 'Removing background...',
                       ),
                       style: const TextStyle(
@@ -12011,7 +11948,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
-              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+              telugu: 'ఫోటో క్రాప్ చేయండి',
               english: 'Crop Photo',
             ),
             toolbarColor: const Color(0xFF0F172A),
@@ -12023,7 +11960,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           ),
           IOSUiSettings(
             title: strings.localized(
-              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+              telugu: 'ఫోటో క్రాప్ చేయండి',
               english: 'Crop Photo',
             ),
             aspectRatioLockEnabled: false,
@@ -12085,7 +12022,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°¾à°‚, à°•à°¾à°¨à±€ background remove à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°•à°¾à°²à±‡à°¦à±. à°‡à°ªà±à°ªà°Ÿà°¿à°•à°¿ original photo à°µà°¾à°¡à±à°¤à±à°¨à±à°¨à°¾à°‚.',
+                'ఫోటో జోడించాం, కానీ background remove పూర్తిగా కాలేదు. ఇప్పటికి original photo వాడుతున్నాం.',
             english:
                 'Photo was added, but background removal did not complete. Using the original photo for now.',
           ),
@@ -12099,8 +12036,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu:
-                'à°…à°¦à°¨à°ªà± à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚.',
+            telugu: 'అదనపు ఫోటో జోడించలేకపోయాం.',
             english: 'Could not add the extra photo.',
           ),
         );
@@ -13231,16 +13167,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       child: Text(
                         screenContext.strings.localized(
                           telugu:
-                              'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°¤à°¨à°¿à°–à±€ à°šà±‡à°¸à±à°¤à±à°¨à±à°¨à°¾à°‚...',
+                              'సబ్‌స్క్రిప్షన్ స్టేటస్ తనిఖీ చేస్తున్నాం...',
                           english: 'Checking subscription status...',
-                          hindi:
-                              'à¤¸à¤¬à¥à¤¸à¤•à¥à¤°à¤¿à¤ªà¥à¤¶à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿ à¤œà¤¾à¤‚à¤š à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚...',
-                          tamil:
-                              'à®šà®¨à¯à®¤à®¾ à®¨à®¿à®²à¯ˆ à®šà®°à®¿à®ªà®¾à®°à¯à®•à¯à®•à®¿à®±à¯‹à®®à¯...',
-                          kannada:
-                              'à²šà²‚à²¦à²¾à²¦à²¾à²°à²¿à²•à³† à²¸à³à²¥à²¿à²¤à²¿ à²ªà²°à²¿à²¶à³€à²²à²¿à²¸à³à²¤à³à²¤à²¿à²¦à³à²¦à³‡à²µà³†...',
-                          malayalam:
-                              'à´¸à´¬àµà´¸àµà´•àµà´°à´¿à´ªàµà´·àµ» à´¨à´¿à´² à´ªà´°à´¿à´¶àµ‹à´§à´¿à´•àµà´•àµà´¨àµà´¨àµ...',
+                          hindi: 'सब्सक्रिप्शन स्थिति जांच रहे हैं...',
+                          tamil: 'சந்தா நிலை சரிபார்க்கிறோம்...',
+                          kannada: 'ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...',
+                          malayalam: 'സബ്സ്ക്രിപ്ഷൻ നില പരിശോധിക്കുന്നു...',
                         ),
                         style: const TextStyle(
                           fontSize: 15,
@@ -13259,12 +13191,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     },
                     child: Text(
                       screenContext.strings.localized(
-                        telugu: 'à°°à°¦à±à°¦à±',
+                        telugu: 'రద్దు',
                         english: 'Cancel',
-                        hindi: 'à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚',
-                        tamil: 'à®°à®¤à¯à®¤à¯à®šà¯†à®¯à¯',
-                        kannada: 'à²°à²¦à³à²¦à³à²®à²¾à²¡à²¿',
-                        malayalam: 'à´±à´¦àµà´¦à´¾à´•àµà´•àµà´•',
+                        hindi: 'रद्द करें',
+                        tamil: 'ரத்துசெய்',
+                        kannada: 'ರದ್ದುಮಾಡಿ',
+                        malayalam: 'റദ്ദാക്കുക',
                       ),
                     ),
                   ),
@@ -13720,8 +13652,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu:
-                'à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à°¿à°¦à±à°§à°‚ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+            telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
             english: 'Poster is not ready yet. Please try again.',
           ),
         );
@@ -13761,8 +13692,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu:
-                'à°Žà°¡à°¿à°Ÿà°°à± à°“à°ªà±†à°¨à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+            telugu: 'ఎడిటర్ ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
             english: 'Could not open editor. Please try again.',
           ),
         );
@@ -13917,11 +13847,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                      telugu: 'సిద్ధం...',
                                       english: 'Preparing...',
                                     )
                                   : strings.localized(
-                                      telugu: 'à°·à±‡à°°à±',
+                                      telugu: 'షేర్',
                                       english: 'Share',
                                     ),
                               style: const TextStyle(
@@ -13974,7 +13904,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                               label: Text(
                                 strings.localized(
-                                  telugu: 'à°«à±‹à°Ÿà±‹',
+                                  telugu: 'ఫోటో',
                                   english: 'Photo',
                                 ),
                                 style: TextStyle(
@@ -14038,7 +13968,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                      telugu: 'సిద్ధం...',
                                       english: 'Preparing...',
                                     )
                                   : strings.downloadLabel,
@@ -14093,10 +14023,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                   size: 18,
                                 ),
                           label: Text(
-                            strings.localized(
-                              telugu: 'à°Žà°¡à°¿à°Ÿà±',
-                              english: 'Edit',
-                            ),
+                            strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
@@ -14196,7 +14123,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             const SizedBox(width: 4),
                             Text(
                               strings.localized(
-                                telugu: 'à°«à±‹à°Ÿà±‹',
+                                telugu: 'ఫోటో',
                                 english: 'Photo',
                               ),
                               style: TextStyle(
@@ -14273,11 +14200,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu: 'సిద్ధం...',
                                 english: 'Preparing...',
                               )
                             : strings.localized(
-                                telugu: 'à°·à±‡à°°à±',
+                                telugu: 'షేర్',
                                 english: 'Share',
                               ),
                         style: const TextStyle(
@@ -14330,10 +14257,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               : const Color(0xFF64748B),
                         ),
                         label: Text(
-                          strings.localized(
-                            telugu: 'à°«à±‹à°Ÿà±‹',
-                            english: 'Photo',
-                          ),
+                          strings.localized(telugu: 'ఫోటో', english: 'Photo'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -14395,7 +14319,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu: 'సిద్ధం...',
                                 english: 'Preparing...',
                               )
                             : strings.downloadLabel,
@@ -14443,10 +14367,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         )
                       : const Icon(Icons.add_photo_alternate_rounded, size: 18),
                   label: Text(
-                    strings.localized(
-                      telugu: 'à°Žà°¡à°¿à°Ÿà±',
-                      english: 'Edit',
-                    ),
+                    strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -14778,85 +14699,87 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   child: const _ImageLoadingState(),
                 );
               },
-              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
-                final strings = context.strings;
-                final failed = resolvedUrl.trim();
-                final thumb = placeholderUrl;
-                if (thumb.isNotEmpty && thumb != failed) {
-                  return buildNetworkPosterImage(
-                    resolvedUrl: thumb,
-                    decodeWidth: decodeWidth.clamp(360, 960),
-                    notifyWhenLoaded: true,
-                  );
-                }
-                if (failed.startsWith('http://') ||
-                    failed.startsWith('https://')) {
-                  unawaited(
-                    PosterNetworkImageCache.instance.removeFile(failed),
-                  );
-                  return Image(
-                    image: widget.preferOriginalPosterQuality
-                        ? NetworkImage(failed)
-                        : ResizeImage.resizeIfNeeded(
-                            decodeWidth,
-                            null,
-                            NetworkImage(failed),
-                          ),
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.topCenter,
-                    gaplessPlayback: true,
-                    filterQuality: widget.preferOriginalPosterQuality
-                        ? FilterQuality.high
-                        : FilterQuality.medium,
-                    frameBuilder:
-                        (context, child, frame, wasSynchronouslyLoaded) {
-                          if (wasSynchronouslyLoaded || frame != null) {
-                            if (notifyWhenLoaded &&
-                                widget.onFirstFrameReady != null) {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                widget.onFirstFrameReady!.call();
-                              });
-                            }
-                            return child;
-                          }
-                          return SizedBox(
-                            width: double.infinity,
-                            height: posterPlaceholderHeight,
-                            child: const _ImageLoadingState(),
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? stackTrace) {
+                    final strings = context.strings;
+                    final failed = resolvedUrl.trim();
+                    final thumb = placeholderUrl;
+                    if (thumb.isNotEmpty && thumb != failed) {
+                      return buildNetworkPosterImage(
+                        resolvedUrl: thumb,
+                        decodeWidth: decodeWidth.clamp(360, 960),
+                        notifyWhenLoaded: true,
+                      );
+                    }
+                    if (failed.startsWith('http://') ||
+                        failed.startsWith('https://')) {
+                      unawaited(
+                        PosterNetworkImageCache.instance.removeFile(failed),
+                      );
+                      return Image(
+                        image: widget.preferOriginalPosterQuality
+                            ? NetworkImage(failed)
+                            : ResizeImage.resizeIfNeeded(
+                                decodeWidth,
+                                null,
+                                NetworkImage(failed),
+                              ),
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.topCenter,
+                        gaplessPlayback: true,
+                        filterQuality: widget.preferOriginalPosterQuality
+                            ? FilterQuality.high
+                            : FilterQuality.medium,
+                        frameBuilder:
+                            (context, child, frame, wasSynchronouslyLoaded) {
+                              if (wasSynchronouslyLoaded || frame != null) {
+                                if (notifyWhenLoaded &&
+                                    widget.onFirstFrameReady != null) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    widget.onFirstFrameReady!.call();
+                                  });
+                                }
+                                return child;
+                              }
+                              return SizedBox(
+                                width: double.infinity,
+                                height: posterPlaceholderHeight,
+                                child: const _ImageLoadingState(),
+                              );
+                            },
+                        errorBuilder: (_, _, _) {
+                          schedulePosterReady();
+                          return _ImageErrorState(
+                            title: strings.localized(
+                              telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                              english: 'Template image unavailable',
+                            ),
+                            subtitle: strings.localized(
+                              telugu:
+                                  'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                              english:
+                                  'Please refresh or try another template.',
+                            ),
                           );
                         },
-                    errorBuilder: (_, _, _) {
-                      schedulePosterReady();
-                      return _ImageErrorState(
-                        title: strings.localized(
-                          telugu:
-                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                          english: 'Template image unavailable',
-                        ),
-                        subtitle: strings.localized(
-                          telugu:
-                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                          english: 'Please refresh or try another template.',
-                        ),
                       );
-                    },
-                  );
-                }
-                schedulePosterReady();
-                return _ImageErrorState(
-                  title: strings.localized(
-                    telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
-                    english: 'Template image unavailable',
-                  ),
-                  subtitle: strings.localized(
-                    telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                    english: 'Please refresh or try another template.',
-                  ),
-                );
-              },
+                    }
+                    schedulePosterReady();
+                    return _ImageErrorState(
+                      title: strings.localized(
+                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                        english: 'Template image unavailable',
+                      ),
+                      subtitle: strings.localized(
+                        telugu:
+                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                        english: 'Please refresh or try another template.',
+                      ),
+                    );
+                  },
             );
           }
 
@@ -14869,13 +14792,11 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 constraints: BoxConstraints(minWidth: math.max(width, 1)),
                 child: _ImageErrorState(
                   title: strings.localized(
-                    telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
-                    telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    telugu: 'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -14914,13 +14835,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     schedulePosterReady();
                     return _ImageErrorState(
                       title: context.strings.localized(
-                        telugu:
-                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
                         telugu:
-                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
                         english: 'Please refresh or try another template.',
                       ),
                     );
@@ -15760,12 +15680,11 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     if (_hasError || controller == null) {
       return _ImageErrorState(
         title: context.strings.localized(
-          telugu:
-              'à°µà±€à°¡à°¿à°¯à±‹ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+          telugu: 'వీడియో అందుబాటులో లేదు',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(
-          telugu: 'à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          telugu: 'మళ్లీ ప్రయత్నించండి.',
           english: 'Please try again.',
         ),
       );
@@ -18373,16 +18292,12 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
                     label: strings.localized(
-                      telugu:
-                          'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°šà±à°šà±‡ à°µà°°à°•à± Snake game à°†à°¡à°‚à°¡à°¿',
+                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
                       english: 'Play Snake while posters load',
-                      hindi: 'Posters à¤†à¤¨à¥‡ à¤¤à¤• Snake à¤–à¥‡à¤²à¥‡à¤‚',
-                      tamil:
-                          'Posters à®µà®°à¯à®®à¯ à®µà®°à¯ˆ Snake à®µà®¿à®³à¯ˆà®¯à®¾à®Ÿà¯à®™à¯à®•à®³à¯',
-                      kannada:
-                          'Posters à²¬à²°à³à²µà²µà²°à³†à²—à³† Snake à²†à²¡à²¿',
-                      malayalam:
-                          'Posters à´µà´°àµà´‚ à´µà´°àµ† Snake à´•à´³à´¿à´•àµà´•àµà´•',
+                      hindi: 'Posters आने तक Snake खेलें',
+                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
+                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
+                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
                     ),
                     onPlay: () => setState(() => _gameStarted = true),
                   ),
@@ -18749,7 +18664,7 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
                                 ),
                                 child: Text(
                                   strings.localized(
-                                    telugu: 'à°®à°³à±à°³à±€ à°†à°¡à±',
+                                    telugu: 'మళ్ళీ ఆడు',
                                     english: 'Play again',
                                     hindi: 'Play again',
                                     tamil: 'Play again',

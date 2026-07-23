@@ -2075,10 +2075,10 @@ class AppStrings {
         value.contains('\u00E0\u00AE') ||
         value.contains('\u00E0\u00B2') ||
         value.contains('\u00E0\u00B4') ||
-        value.contains('Ã¢â‚¬') ||
-        value.contains('Ã¢â‚¬â„¢') ||
-        value.contains('Ã¢â‚¬Å“') ||
-        value.contains('Ã¢â‚¬Â');
+        value.contains('\u00E2\u20AC') ||
+        value.contains('\u2019') ||
+        value.contains('\u201C') ||
+        value.contains('\u201D');
   }
 
   String? _commonLocalizedFallback(String english) {
