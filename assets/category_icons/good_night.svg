@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 32 32"><g fill="none"><path fill="#FCD53F" d="M23.41 5.632c.5 2.04.56 4.26.02 6.56c-1.26 5.33-5.64 9.51-11.02 10.48c-2.91.53-5.68.13-8.09-.92c-.56-.25-1.09.39-.8.93c2.65 4.88 8.11 8 14.22 7.19c6.23-.83 11.22-5.91 11.97-12.15c.6-5.18-1.6-9.86-5.28-12.75c-.47-.36-1.16.08-1.02.66"/><path fill="#F9C23C" d="M27.87 12.562a1.57 1.57 0 1 1-3.14 0a1.57 1.57 0 0 1 3.14 0m-12.92 12.88a1.57 1.57 0 1 1-3.14 0a1.57 1.57 0 0 1 3.14 0m11.85-6.47a.99.99 0 1 0 0-1.98a.99.99 0 0 0 0 1.98m-2 3.01a3 3 0 1 1-6 0a3 3 0 0 1 6 0"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="10" x2="110" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#0F172A"/><stop offset="1" stop-color="#312E81"/></linearGradient>
+    <radialGradient id="shine" cx="38" cy="28" r="74" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity="0.78"/><stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0.16"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gold" x1="31" y1="25" x2="96" y2="104" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF7B2"/><stop offset="0.5" stop-color="#FBBF24"/><stop offset="1" stop-color="#B45309"/></linearGradient>
+    <linearGradient id="silver" x1="28" y1="22" x2="101" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="0.55" stop-color="#D8E3F0"/><stop offset="1" stop-color="#7C8EA5"/></linearGradient>
+    <linearGradient id="green" x1="21" y1="25" x2="105" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset="0.55" stop-color="#22C55E"/><stop offset="1" stop-color="#166534"/></linearGradient>
+    <linearGradient id="warm" x1="25" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#FED7AA"/><stop offset="0.48" stop-color="#FB923C"/><stop offset="1" stop-color="#B91C1C"/></linearGradient>
+    <linearGradient id="blue" x1="24" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#BAE6FD"/><stop offset="0.5" stop-color="#38BDF8"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="60" fill="url(#shine)"/>
+  <ellipse cx="64" cy="113" rx="36" ry="7" fill="#111827" opacity="0.16"/>
+  <circle cx="64" cy="64" r="52" fill="#FFFFFF" opacity="0.10"/>
+  <path d="M84 29c-17 4-29 20-29 38 0 11 4 20 11 27-20-3-35-20-35-40 0-17 10-31 25-37 9-4 20-2 28 12Z" fill="url(#silver)"/><circle cx="90" cy="39" r="4" fill="#FDE68A"/><circle cx="38" cy="34" r="3" fill="#FDE68A"/><circle cx="97" cy="79" r="3" fill="#FDE68A"/><path d="M43 93c12 7 30 7 42 0" stroke="#A5B4FC" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+</svg>

@@ -2748,7 +2748,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (start == null || end == null) {
       return null;
     }
-    return _formatCategoryDateRange(start, end);
+    return _shortCategoryDate(end);
   }
 
   String? _resolvedDynamicCategoryDateLabel(
@@ -3605,6 +3605,7 @@ class _HomeScreenState extends State<HomeScreen>
       matchTags: category.tags,
       presenceTags: _dynamicPresenceTags(category).toList(growable: false),
       isDynamic: true,
+      iconAssetPath: category.iconAssetPath,
       dateLabel: _resolvedDynamicCategoryDateLabel(
         category,
         now: now,
@@ -11109,7 +11110,10 @@ class _CategoryChipAssetIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSvg = assetPath.toLowerCase().endsWith('.svg');
+    final normalized = assetPath.trim();
+    final lower = normalized.toLowerCase();
+    final isNetwork = lower.startsWith('https://');
+    final isSvg = lower.endsWith('.svg') || lower.contains('.svg?');
     return Container(
       width: 15,
       height: 15,
@@ -11120,18 +11124,33 @@ class _CategoryChipAssetIcon extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: isSvg
-          ? SvgPicture.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              placeholderBuilder: (_) => const _CategoryChipFallbackIcon(),
-            )
-          : Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  const _CategoryChipFallbackIcon(),
-            ),
+      child: isNetwork
+          ? (isSvg
+                ? SvgPicture.network(
+                    normalized,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (_) =>
+                        const _CategoryChipFallbackIcon(),
+                  )
+                : Image.network(
+                    normalized,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const _CategoryChipFallbackIcon(),
+                  ))
+          : (isSvg
+                ? SvgPicture.asset(
+                    normalized,
+                    fit: BoxFit.contain,
+                    placeholderBuilder: (_) =>
+                        const _CategoryChipFallbackIcon(),
+                  )
+                : Image.asset(
+                    normalized,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const _CategoryChipFallbackIcon(),
+                  )),
     );
   }
 }

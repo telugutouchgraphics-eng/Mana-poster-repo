@@ -47,6 +47,7 @@ class DynamicCategory {
     this.sortOrder = 0,
     this.tags = const <String>[],
     this.isBlinking = true,
+    this.iconAssetPath,
     this.regionIds = const <String>{},
     this.eventStartDate,
     this.eventEndDate,
@@ -61,6 +62,7 @@ class DynamicCategory {
   final int sortOrder;
   final List<String> tags;
   final bool isBlinking;
+  final String? iconAssetPath;
   final Set<String> regionIds;
   final DateTime? eventStartDate;
   final DateTime? eventEndDate;

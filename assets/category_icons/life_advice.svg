@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 32 32"><g fill="none"><path fill="#F4F4F4" d="M15.5 28C21.851 28 27 22.851 27 16.5S21.851 5 15.5 5S4 10.149 4 16.5S9.149 28 15.5 28"/><path fill="#F9C23C" d="M25.766 7.733c.377.171.795.267 1.234.267c1.65 0 3-1.35 3-3s-1.35-3-3-3s-3 1.35-3 3c0 .44.096.857.267 1.234A13.45 13.45 0 0 0 15.5 3C8.044 3 2 9.044 2 16.5S8.044 30 15.5 30S29 23.956 29 16.5a13.45 13.45 0 0 0-3.234-8.767M25.39 4.99a1.609 1.609 0 1 1 3.22 0a1.609 1.609 0 1 1-3.22 0M26 16.5C26 22.299 21.299 27 15.5 27S5 22.299 5 16.5S9.701 6 15.5 6S26 10.701 26 16.5"/><path fill="#FFB02E" d="m25.35 8l-1.36-1.36l1.36-1.36c.37-.37.98-.37 1.36 0c.37.37.37.98 0 1.36z"/><path fill="#9B9B9B" d="M13.223 17.724L11.41 20.21c-.18.24.12.54.37.37l2.494-1.82l.936 5.99c.05.33.53.33.58 0l1.076-6.884l6.884-1.076c.33-.05.33-.53 0-.58l-5.99-.937l1.82-2.493c.18-.24-.12-.54-.37-.37l-2.486 1.813l-.934-5.973c-.05-.33-.53-.33-.58 0l-1.076 6.884L7.25 16.21c-.33.05-.33.53 0 .58z"/><path fill="#9B9B9B" d="m17.338 15l3.601 6.327c.224.398-.214.836-.613.612L14 18.334z"/><path fill="#E5336D" d="m13.676 18l-3.616-6.328a.448.448 0 0 1 .611-.611L17 14.67z"/><path fill="#D3D3D3" d="M15.5 19a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="10" x2="110" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#14B8A6"/><stop offset="1" stop-color="#14532D"/></linearGradient>
+    <radialGradient id="shine" cx="38" cy="28" r="74" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF" stop-opacity="0.78"/><stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0.16"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gold" x1="31" y1="25" x2="96" y2="104" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF7B2"/><stop offset="0.5" stop-color="#FBBF24"/><stop offset="1" stop-color="#B45309"/></linearGradient>
+    <linearGradient id="silver" x1="28" y1="22" x2="101" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFFFF"/><stop offset="0.55" stop-color="#D8E3F0"/><stop offset="1" stop-color="#7C8EA5"/></linearGradient>
+    <linearGradient id="green" x1="21" y1="25" x2="105" y2="105" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset="0.55" stop-color="#22C55E"/><stop offset="1" stop-color="#166534"/></linearGradient>
+    <linearGradient id="warm" x1="25" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#FED7AA"/><stop offset="0.48" stop-color="#FB923C"/><stop offset="1" stop-color="#B91C1C"/></linearGradient>
+    <linearGradient id="blue" x1="24" y1="18" x2="106" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#BAE6FD"/><stop offset="0.5" stop-color="#38BDF8"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="60" fill="url(#shine)"/>
+  <ellipse cx="64" cy="113" rx="36" ry="7" fill="#111827" opacity="0.16"/>
+  <circle cx="64" cy="64" r="52" fill="#FFFFFF" opacity="0.10"/>
+  <path d="M64 99C45 80 34 63 34 45c0-12 9-22 22-22 7 0 13 4 16 10 3-6 9-10 16-10 13 0 22 10 22 22 0 18-11 35-30 54Z" fill="url(#green)"/><path d="M45 61h14l7-17 9 31 7-14h13" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

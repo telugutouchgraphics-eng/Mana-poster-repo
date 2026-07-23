@@ -403,8 +403,6 @@ _regionalCommonFallbacks = <AppLanguage, Map<String, String>>{
 const Map<AppLanguage, Map<String, String>>
 _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
   AppLanguage.assamese: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'আপোনাৰ ফটো, উদ্ধৃতি বা ডিজাইন ধাৰণা পৰ্যালোচনাৰ বাবে পঠিয়াওক। আমাৰ দলটোৱে সেয়া পৰীক্ষা কৰি, প্ৰয়োজন হলে সম্পাদনা/উন্নত কৰি উপযুক্ত এপ শ্ৰেণীত প্ৰকাশ কৰিব পাৰে। অনুমোদিত বিষয়বস্তু আপোনাৰ লগতে আন ব্যৱহাৰকাৰীকো দেখা যাব পাৰে। আপুনি পঠিওৱা বিষয়বস্তুৰ দায়িত্ব আপোনাৰ। নিয়ম আৰু চৰ্ত প্ৰযোজ্য।',
     'Check review rules before submitting your content.':
         'বিষয়বস্তু পঠিওৱাৰ আগতে পৰ্যালোচনা নিয়ম চাওক।',
     'Community Upload Instructions': 'সমাজ আপলোড নিৰ্দেশনা',
@@ -417,15 +415,11 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'আপুনি উদ্ধৃতি লিখনি, উদ্ধৃতি ছবি বা দুয়োটাই পঠিয়াব পাৰে।',
     'Your upload first goes to the manager review queue.':
         'আপোনাৰ আপলোড প্ৰথমে মেনেজাৰ পৰ্যালোচনা শাৰীত যায়।',
-    'If approved, the team may redesign it and publish it in the related category.':
-        'অনুমোদিত হলে দলটোৱে সেয়া নতুনকৈ সাজি সংশ্লিষ্ট শ্ৰেণীত প্ৰকাশ কৰিব পাৰে।',
     'What can be approved': 'কি অনুমোদিত হব পাৰে',
     'Clean quote or image that matches the selected category.':
         'বাছনি কৰা শ্ৰেণীৰ সৈতে মিলা পৰিষ্কাৰ উদ্ধৃতি বা ছবি।',
     'Content created by you or content you have permission to use.':
         'আপুনি নিজে সৃষ্টি কৰা বা ব্যৱহাৰৰ অনুমতি থকা বিষয়বস্তু।',
-    'After publishing, it may be visible to you and all users in that category.':
-        'প্ৰকাশৰ পিছত সেয়া আপোনাক আৰু সেই শ্ৰেণীৰ সকলো ব্যৱহাৰকাৰীক দেখা যাব পাৰে।',
     'Rejection reasons': 'নাকচ কৰাৰ কাৰণ',
     'Wrong category, unrelated content, duplicate, or low quality image.':
         'ভুল শ্ৰেণী, অসংলগ্ন বিষয়বস্তু, পুনৰাবৃত্তি বা নিম্ন মানৰ ছবি।',
@@ -435,8 +429,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'ব্যক্তিগত তথ্য, ৰাজনৈতিক অপব্যৱহাৰ, স্পেম বা অসুৰক্ষিত বিষয়বস্তু।',
   },
   AppLanguage.gujarati: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'તમારો ફોટો, સુવાક્ય અથવા ડિઝાઇન વિચાર સમીક્ષા માટે મોકલો. અમારી ટીમ તેને તપાસી, જરૂર પડે તો સુધારી અને યોગ્ય એપ કેટેગરીમાં પ્રકાશિત કરી શકે છે. મંજૂર થયેલું કન્ટેન્ટ તમને અને અન્ય વપરાશકર્તાઓને દેખાઈ શકે છે. તમે અપલોડ કરેલા કન્ટેન્ટ માટે તમે જવાબદાર છો. નિયમો અને શરતો લાગુ પડે છે.',
     'Check review rules before submitting your content.':
         'કન્ટેન્ટ મોકલતા પહેલાં સમીક્ષા નિયમો વાંચો.',
     'Community Upload Instructions': 'સમુદાય અપલોડ સૂચનાઓ',
@@ -449,15 +441,11 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'તમે સુવાક્ય લખાણ, સુવાક્યવાળો ફોટો અથવા બંને મોકલી શકો છો.',
     'Your upload first goes to the manager review queue.':
         'તમારું અપલોડ પહેલા મેનેજર સમીક્ષા કતારમાં જશે.',
-    'If approved, the team may redesign it and publish it in the related category.':
-        'મંજૂર થાય તો ટીમ તેને ફરી ડિઝાઇન કરીને સંબંધિત કેટેગરીમાં પ્રકાશિત કરી શકે છે.',
     'What can be approved': 'શું મંજૂર થઈ શકે',
     'Clean quote or image that matches the selected category.':
         'પસંદ કરેલી કેટેગરીને મેળ ખાતું સ્વચ્છ સુવાક્ય અથવા ફોટો.',
     'Content created by you or content you have permission to use.':
         'તમારા દ્વારા બનાવેલું અથવા ઉપયોગની પરવાનગી ધરાવતું કન્ટેન્ટ.',
-    'After publishing, it may be visible to you and all users in that category.':
-        'પ્રકાશિત થયા પછી તે તમને અને તે કેટેગરીના બધા વપરાશકર્તાઓને દેખાઈ શકે છે.',
     'Rejection reasons': 'નકારવાના કારણો',
     'Wrong category, unrelated content, duplicate, or low quality image.':
         'ખોટી કેટેગરી, અસંબંધિત કન્ટેન્ટ, ડુપ્લિકેટ અથવા ઓછી ગુણવત્તાનો ફોટો.',
@@ -467,8 +455,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'ખાનગી માહિતી, રાજકીય દુરુપયોગ, સ્પામ અથવા અસુરક્ષિત કન્ટેન્ટ.',
   },
   AppLanguage.marathi: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'तुमचा फोटो, सुविचार किंवा डिझाइन कल्पना पुनरावलोकनासाठी पाठवा. आमची टीम ते तपासून, गरज असल्यास सुधारून योग्य अ‍ॅप श्रेणीत प्रकाशित करू शकते. मंजूर झालेले कंटेंट तुम्हाला आणि इतर वापरकर्त्यांना दिसू शकते. तुम्ही अपलोड केलेल्या कंटेंटची जबाबदारी तुमची असेल. नियम व अटी लागू आहेत.',
     'Check review rules before submitting your content.':
         'कंटेंट पाठवण्यापूर्वी पुनरावलोकन नियम वाचा.',
     'Community Upload Instructions': 'समुदाय अपलोड सूचना',
@@ -481,15 +467,11 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'तुम्ही सुविचार मजकूर, सुविचार असलेला फोटो किंवा दोन्ही पाठवू शकता.',
     'Your upload first goes to the manager review queue.':
         'तुमचे अपलोड आधी व्यवस्थापक पुनरावलोकन रांगेत जाते.',
-    'If approved, the team may redesign it and publish it in the related category.':
-        'मंजूर झाल्यास टीम ते पुन्हा डिझाइन करून संबंधित श्रेणीत प्रकाशित करू शकते.',
     'What can be approved': 'काय मंजूर होऊ शकते',
     'Clean quote or image that matches the selected category.':
         'निवडलेल्या श्रेणीशी जुळणारा स्वच्छ सुविचार किंवा फोटो.',
     'Content created by you or content you have permission to use.':
         'तुम्ही तयार केलेले किंवा वापरण्याची परवानगी असलेले कंटेंट.',
-    'After publishing, it may be visible to you and all users in that category.':
-        'प्रकाशित झाल्यानंतर ते तुम्हाला आणि त्या श्रेणीतील सर्व वापरकर्त्यांना दिसू शकते.',
     'Rejection reasons': 'नाकारण्याची कारणे',
     'Wrong category, unrelated content, duplicate, or low quality image.':
         'चुकीची श्रेणी, असंबंधित कंटेंट, डुप्लिकेट किंवा कमी गुणवत्तेचा फोटो.',
@@ -499,8 +481,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'खाजगी माहिती, राजकीय गैरवापर, स्पॅम किंवा असुरक्षित कंटेंट.',
   },
   AppLanguage.odia: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'ଆପଣଙ୍କ ଫଟୋ, ଉକ୍ତି କିମ୍ବା ଡିଜାଇନ ଧାରଣାକୁ ସମୀକ୍ଷା ପାଇଁ ପଠାନ୍ତୁ। ଆମ ଦଳ ଏହାକୁ ଯାଞ୍ଚ କରି, ଆବଶ୍ୟକ ହେଲେ ସୁଧାରି, ଉପଯୁକ୍ତ ଆପ୍ ଶ୍ରେଣୀରେ ପ୍ରକାଶ କରିପାରେ। ଅନୁମୋଦିତ ବିଷୟବସ୍ତୁ ଆପଣଙ୍କୁ ଓ ଅନ୍ୟ ବ୍ୟବହାରକାରୀଙ୍କୁ ଦେଖାଯାଇପାରେ। ଆପଣ ପଠାଇଥିବା ବିଷୟବସ୍ତୁ ପାଇଁ ଆପଣ ଦାୟୀ। ନିୟମ ଓ ସର୍ତ୍ତ ଲାଗୁ ହେବ।',
     'Check review rules before submitting your content.':
         'ବିଷୟବସ୍ତୁ ପଠାଇବା ପୂର୍ବରୁ ସମୀକ୍ଷା ନିୟମ ଦେଖନ୍ତୁ।',
     'Community Upload Instructions': 'ସମୁଦାୟ ଅପଲୋଡ୍ ନିର୍ଦ୍ଦେଶ',
@@ -510,8 +490,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'ଆପଣ ଅପଲୋଡ୍ କରୁଥିବା ବିଷୟବସ୍ତୁ ପାଇଁ ଆପଣ ଦାୟୀ। ପଠାଇବା ମାଧ୍ୟମରେ ଏହା Mana Poster ନିୟମ ଓ ସମୁଦାୟ ନିର୍ଦ୍ଦେଶିକା ମାନୁଛି ବୋଲି ଆପଣ ନିଶ୍ଚିତ କରୁଛନ୍ତି।',
   },
   AppLanguage.punjabi: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'ਆਪਣੀ ਫੋਟੋ, ਵਿਚਾਰ-ਵਾਕ ਜਾਂ ਡਿਜ਼ਾਇਨ ਆਈਡੀਆ ਸਮੀਖਿਆ ਲਈ ਭੇਜੋ। ਸਾਡੀ ਟੀਮ ਇਸਨੂੰ ਵੇਖ ਕੇ, ਲੋੜ ਪੈਣ ਤੇ ਸੁਧਾਰ ਕੇ, ਠੀਕ ਐਪ ਕੈਟੇਗਰੀ ਵਿੱਚ ਪ੍ਰਕਾਸ਼ਿਤ ਕਰ ਸਕਦੀ ਹੈ। ਮਨਜ਼ੂਰ ਸਮੱਗਰੀ ਤੁਹਾਨੂੰ ਅਤੇ ਹੋਰ ਵਰਤੋਂਕਾਰਾਂ ਨੂੰ ਦਿਖ ਸਕਦੀ ਹੈ। ਤੁਸੀਂ ਅਪਲੋਡ ਕੀਤੀ ਸਮੱਗਰੀ ਲਈ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। ਨਿਯਮ ਅਤੇ ਸ਼ਰਤਾਂ ਲਾਗੂ ਹਨ।',
     'Check review rules before submitting your content.':
         'ਸਮੱਗਰੀ ਭੇਜਣ ਤੋਂ ਪਹਿਲਾਂ ਸਮੀਖਿਆ ਨਿਯਮ ਵੇਖੋ।',
     'Community Upload Instructions': 'ਕਮਿਊਨਿਟੀ ਅਪਲੋਡ ਹਦਾਇਤਾਂ',
@@ -521,8 +499,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'ਤੁਸੀਂ ਅਪਲੋਡ ਕੀਤੀ ਸਮੱਗਰੀ ਲਈ ਜ਼ਿੰਮੇਵਾਰ ਹੋ। ਭੇਜਣ ਨਾਲ ਤੁਸੀਂ ਪੁਸ਼ਟੀ ਕਰਦੇ ਹੋ ਕਿ ਇਹ Mana Poster ਨਿਯਮਾਂ ਅਤੇ ਕਮਿਊਨਿਟੀ ਹਦਾਇਤਾਂ ਦੀ ਪਾਲਣਾ ਕਰਦੀ ਹੈ।',
   },
   AppLanguage.bengali: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'আপনার ছবি, উক্তি বা ডিজাইন ধারণা পর্যালোচনার জন্য পাঠান। আমাদের দল সেটি পরীক্ষা করে, প্রয়োজনে সম্পাদনা/উন্নত করে উপযুক্ত অ্যাপ বিভাগে প্রকাশ করতে পারে। অনুমোদিত কনটেন্ট আপনাকে এবং অন্যান্য ব্যবহারকারীদের দেখা যেতে পারে। আপনি যে কনটেন্ট পাঠাচ্ছেন তার দায় আপনার। নিয়ম ও শর্ত প্রযোজ্য।',
     'Check review rules before submitting your content.':
         'কনটেন্ট পাঠানোর আগে পর্যালোচনা নিয়ম দেখুন।',
     'Community Upload Instructions': 'কমিউনিটি আপলোড নির্দেশনা',
@@ -532,8 +508,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'আপনি যে কনটেন্ট আপলোড করছেন তার দায়িত্ব আপনার। পাঠানোর মাধ্যমে আপনি নিশ্চিত করছেন যে এটি Mana Poster নিয়ম ও কমিউনিটি নির্দেশিকা মেনে চলছে।',
   },
   AppLanguage.konkani: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'तुमचो फोटो, सुविचार वा डिझायन कल्पना तपासणी खातीर धाडात. आमची टीम ती तपासून, गरज आसल्यार सुधारून, योग्य ऍप विभागांत प्रकाशित करूंक शकता. मान्य जाल्लें सामग्री तुमका आनी हेर वापरपींक दिसूंक शकता. तुमी अपलोड केल्ल्या सामग्रीची जबाबदारी तुमची. नियम आनी अटी लागू.',
     'Check review rules before submitting your content.':
         'सामग्री धाडचे पयलीं तपासणी नियम वाचात.',
     'Community Upload Instructions': 'समुदाय अपलोड सूचना',
@@ -543,8 +517,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'तुमी अपलोड केल्ल्या सामग्रीची जबाबदारी तुमची. धाडल्यार ती Mana Poster नियम आनी समुदाय मार्गदर्शक तत्त्वां प्रमाणें आसा हाची खात्री तुमी दिता.',
   },
   AppLanguage.meitei: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'ꯅꯍꯥꯛꯀꯤ ꯐꯣꯇꯣ, ꯋꯥꯍꯩ ꯅꯠꯠꯔꯒꯥ ꯗꯤꯖꯥꯏꯟ ꯑꯥꯏꯗꯤꯌꯥ ꯌꯦꯡꯁꯤꯟꯕꯒꯤꯗꯃꯛ ꯊꯥꯕꯤꯌꯨ। ꯑꯩꯈꯣꯌꯒꯤ ꯇꯤꯝꯅ ꯌꯦꯡꯁꯤꯟꯗꯨꯅ, ꯃꯊꯧ ꯇꯥꯔꯕꯗꯤ ꯁꯦꯝꯗꯣꯛꯇꯨꯅ, ꯃꯥꯟꯅꯕ ꯑꯦꯞ ꯀꯦꯇꯦꯒꯣꯔꯤꯗ ꯐꯣꯡꯗꯣꯛꯄ ꯌꯥꯏ। ꯑꯌꯥꯕ ꯐꯪꯈ꯭ꯔꯕ ꯀꯟꯇꯦꯟꯇ ꯅꯍꯥꯛꯇꯥ ꯑꯃꯁꯨꯡ ꯑꯇꯩ ꯌꯨꯖꯔꯁꯤꯡꯗ ꯎꯕ ꯌꯥꯏ। ꯅꯍꯥꯛꯅ ꯊꯥꯕ ꯀꯟꯇꯦꯟꯇꯀꯤ ꯃꯁꯤꯡ ꯅꯍꯥꯛꯀꯤ ꯃꯊꯧꯅꯤ। ꯅꯤꯌꯝ ꯑꯃꯁꯨꯡ ꯁꯔꯇꯁꯤꯡ ꯌꯥꯎꯏ।',
     'Check review rules before submitting your content.':
         'ꯀꯟꯇꯦꯟꯇ ꯊꯥꯕꯒꯤ ꯃꯃꯥꯡꯗ ꯌꯦꯡꯁꯤꯟ ꯅꯤꯌꯝꯁꯤꯡ ꯌꯦꯡꯕꯤꯌꯨ।',
     'Community Upload Instructions': 'ꯀꯝꯌꯨꯅꯤꯇꯤ ꯑꯄꯂꯣꯗ ꯋꯥꯌꯦꯜ',
@@ -554,8 +526,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'ꯅꯍꯥꯛꯅ ꯊꯥꯕ ꯀꯟꯇꯦꯟꯇꯀꯤ ꯃꯁꯤꯡ ꯅꯍꯥꯛꯀꯤ ꯃꯊꯧꯅꯤ। ꯊꯥꯕꯗꯨꯅ ꯃꯁꯤ Mana Poster ꯅꯤꯌꯝ ꯑꯃꯁꯨꯡ ꯀꯝꯌꯨꯅꯤꯇꯤ ꯒꯥꯏꯗꯂꯥꯏꯟ ꯏꯅꯕꯅꯤ ꯍꯥꯌꯕ ꯅꯍꯥꯛꯅ ꯌꯥꯏꯐꯕꯤ।',
   },
   AppLanguage.mizo: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'I thlalak, thu chhuah, emaw design ngaihtuahna chu en-fiah turin thawn rawh. Kan team-in a en-fiah ang a, a tul chuan a siamthat ang a, app category inmil-ah a chhuah thei ang. Pawm tawh content chu nang leh user dangte hnenah a lang thei ang. I upload content chungchangah nangmah i mawhphurh. Terms & Conditions a berlaku.',
     'Check review rules before submitting your content.':
         'Content i thawn hmain review dan te en rawh.',
     'Community Upload Instructions': 'Community Upload Kaihhruaina',
@@ -565,8 +535,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'I upload content chungchangah nangmah i mawhphurh. I thawn chuan Mana Poster terms leh community guidelines i zawm tih i nemnghet a ni.',
   },
   AppLanguage.nepali: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'आफ्नो फोटो, उद्धरण वा डिजाइन विचार समीक्षा लागि पठाउनुहोस्। हाम्रो टोलीले त्यसलाई जाँचेर, आवश्यक परे सुधार गरेर, मिल्दो एप श्रेणीमा प्रकाशित गर्न सक्छ। स्वीकृत सामग्री तपाईं र अन्य प्रयोगकर्तालाई देखिन सक्छ। तपाईंले पठाएको सामग्रीको जिम्मेवारी तपाईंको हुनेछ। नियम र सर्तहरू लागू हुन्छन्।',
     'Check review rules before submitting your content.':
         'सामग्री पठाउनु अघि समीक्षा नियमहरू पढ्नुहोस्।',
     'Community Upload Instructions': 'समुदाय अपलोड निर्देशन',
@@ -576,8 +544,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'तपाईंले अपलोड गरेको सामग्रीको जिम्मेवारी तपाईंको हो। पठाउँदा तपाईंले यो Mana Poster का नियम र समुदाय दिशानिर्देशअनुसार छ भनी पुष्टि गर्नुहुन्छ।',
   },
   AppLanguage.kashmiri: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'پنن فوٹو، قول یا ڈیزائن خیال جائزہ خٲطرٕ بھیزو۔ اسٕند ٹیم یہٕ چیک کرتھ، ضرورت آسہ تٔمۍ بہتر کرتھ، صحیح ایپ زمرس منز شایع کرتھ ہیکہ۔ منظور شدہ مواد تہندۍ تٕ باقۍ صارفن ہندۍ نظر آوتھ ہیکہ۔ تہندۍ اپلوڈ کردٕ موادس خٲطرٕ تہیہ ذمہ دار چھو۔ شرطٕ تٕ ضابطہ لاگو چھ۔',
     'Check review rules before submitting your content.':
         'مواد بھیزنہٕ برونہہ جائزہ ضابطہ چیک کریو۔',
     'Community Upload Instructions': 'Ú©Ù…ÛŒÙˆÙ†Ù¹ÛŒ Ø§Ù¾Ù„ÙˆÚˆ ÛØ¯Ø§ÛŒØ§Øª',
@@ -587,8 +553,6 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
         'تہندۍ اپلوڈ کردٕ موادس خٲطرٕ تہیہ ذمہ دار چھو۔ بھیزنٕ سٕتۍ تہیہ تصدیق کران چھو ز یہٕ Mana Poster شرطٕ تٕ کمیونٹی ہدایاتن مطابق چھ۔',
   },
   AppLanguage.ladakhi: <String, String>{
-    'Upload your photo, quote, or design idea for review. Our team may review, edit, improve, and publish approved content in the matching app category. Published content can be visible to you and other users. You are responsible for the content you upload. Terms & Conditions apply.':
-        'ཁྱེད་རང་གི་པར། ཚིག་བརྗོད། ཡང་ན་ཇུས་འགོད་བསམ་ཚུལ་ཞིབ་བཤེར་ཆེད་སྐུར་རོགས། ང་ཚོའི་ཚོགས་པས་ཞིབ་བཤེར་བྱས་ནས་དགོས་ན་བཅོས་སྒྲིག་བྱེད་དེ་འོས་འཚམ་གྱི་ཨེཔ་སྡེ་ཚན་ནང་སྤེལ་ཐུབ། ཆོག་མཆན་ཐོབ་པའི་ནང་དོན་ཁྱེད་དང་སྤྱོད་མཁན་གཞན་ཚོས་མཐོང་ཐུབ། ཁྱེད་རང་གིས་སྐུར་བའི་ནང་དོན་ལ་ཁྱེད་རང་འགན་འཁུར་དགོས། སྒྲིག་གཞི་དང་ཆ་རྐྱེན་ཁྱབ་འཇུག་ཡིན།',
     'Check review rules before submitting your content.':
         'ནང་དོན་སྐུར་གོང་ཞིབ་བཤེར་སྒྲིག་གཞི་ལྟ་རོགས།',
     'Community Upload Instructions': 'སྤྱི་ཚོགས་ནང་སྐུར་སྟངས་ཀྱི་ལམ་སྟོན',

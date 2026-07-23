@@ -87,6 +87,7 @@ class ManualEventCategoryService {
     final normalizedId = _normalizeTag(id);
     final localizedLabel = _labelForLanguage(data, rawLabel, language);
     final normalizedLabel = _normalizeTag(rawLabel);
+    final iconAssetPath = (data['iconAssetPath'] as String?)?.trim();
     return DynamicCategory(
       id: id,
       slug: id,
@@ -103,6 +104,9 @@ class ManualEventCategoryService {
         'important_day',
       ],
       isBlinking: true,
+      iconAssetPath: iconAssetPath == null || iconAssetPath.isEmpty
+          ? null
+          : iconAssetPath,
       regionIds: regionId.isEmpty ? const <String>{} : <String>{regionId},
       eventStartDate: DateTime.fromMillisecondsSinceEpoch(startAt),
       eventEndDate: DateTime.fromMillisecondsSinceEpoch(endAt),
