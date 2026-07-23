@@ -721,7 +721,7 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; అదే region/religion scope users కు కనిపిస్తుంది, 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
+          'Status feature లో 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు upload చేయవచ్చు; location allow చేస్తే nearby city/district/state users కు priority గా కనిపించవచ్చు, లేకపోతే selected State/Union Territory fallback గా ఉంటుంది. 24 గంటల తర్వాత backend cleanup ద్వారా delete అవుతుంది, మరియు status owner replies చదవగలడు.',
       english:
           'The Status feature lets users upload up to 5 text statuses and 2 image/image + caption statuses in 24 hours; if location is allowed, statuses are shown to nearby city/district/state users, otherwise the selected State/Union Territory is used as fallback. Statuses are deleted by backend cleanup after 24 hours, and replies can be read by the status owner.',
       hindi:
@@ -831,7 +831,7 @@ class _AboutCopy {
     ),
     strings.localized(
       telugu:
-          'Status upload చేస్తే అది temporary గా backend లో save అయి same region/religion users కు చూపబడుతుంది; 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
+          'Status upload చేస్తే అది temporary గా backend లో save అవుతుంది; location allow చేస్తే exact GPS store చేయకుండా nearby city/district/state ordering priority ఇవ్వవచ్చు. 24 గంటల్లో 5 text మరియు 2 image/image + caption active statuses limit ఉంటుంది; other users reply/comment పంపవచ్చు, owner up swipe చేసి replies చూడవచ్చు.',
       english:
           'When a status is uploaded, it is stored temporarily in the backend and shown to nearby city/district/state users when location is allowed; if location is not available, selected State/Union Territory fallback is used. Active uploads are limited to 5 text statuses and 2 image/image + caption statuses in 24 hours; other users can reply/comment, and the owner can swipe up to view replies.',
       hindi:
