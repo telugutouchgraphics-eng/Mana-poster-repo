@@ -26,8 +26,8 @@ service cloud.firestore {
       return value in ["android", "ios", "web", "other"];
     }
 
-    function profileKeysAllowed() {
-      return request.resource.data.keys().hasOnly([
+    function posterProfileAllowedKeys() {
+      return [
         "displayName",
         "nameTelugu",
         "nameEnglish",
@@ -41,37 +41,68 @@ service cloud.firestore {
         "businessWhatsappNumber",
         "businessLogoUrl",
         "businessLogoStyleId",
+        "setupCompleted",
+        "personalPhotoRevision",
+        "personalPhotoSyncPending",
+        "profileRevision",
         "updatedAt",
-      ]);
+      ];
+    }
+
+    function profileKeysAllowed() {
+      return resource == null
+        ? request.resource.data.keys().hasOnly(posterProfileAllowedKeys())
+        : request.resource.data.diff(resource.data).affectedKeys().hasOnly(posterProfileAllowedKeys());
     }
 
     function validPosterProfileWrite() {
       return profileKeysAllowed() &&
-        request.resource.data.displayName is string &&
-        request.resource.data.displayName.size() <= 120 &&
-        request.resource.data.nameTelugu is string &&
-        request.resource.data.nameTelugu.size() <= 120 &&
-        request.resource.data.nameEnglish is string &&
-        request.resource.data.nameEnglish.size() <= 120 &&
-        request.resource.data.whatsappNumber is string &&
-        request.resource.data.whatsappNumber.size() <= 30 &&
-        request.resource.data.nameFontFamily is string &&
-        request.resource.data.nameFontFamily.size() <= 80 &&
-        request.resource.data.photoUrl is string &&
-        request.resource.data.photoUrl.size() <= 2000 &&
-        request.resource.data.originalPhotoUrl is string &&
-        request.resource.data.originalPhotoUrl.size() <= 2000 &&
-        request.resource.data.identityMode in ["personal", "business"] &&
-        request.resource.data.businessName is string &&
-        request.resource.data.businessName.size() <= 120 &&
-        request.resource.data.businessTagline is string &&
-        request.resource.data.businessTagline.size() <= 180 &&
-        request.resource.data.businessWhatsappNumber is string &&
-        request.resource.data.businessWhatsappNumber.size() <= 30 &&
-        request.resource.data.businessLogoUrl is string &&
-        request.resource.data.businessLogoUrl.size() <= 2000 &&
-        request.resource.data.businessLogoStyleId is string &&
-        request.resource.data.businessLogoStyleId.size() <= 40;
+        (!("displayName" in request.resource.data) ||
+          (request.resource.data.displayName is string &&
+            request.resource.data.displayName.size() <= 120)) &&
+        (!("nameTelugu" in request.resource.data) ||
+          (request.resource.data.nameTelugu is string &&
+            request.resource.data.nameTelugu.size() <= 120)) &&
+        (!("nameEnglish" in request.resource.data) ||
+          (request.resource.data.nameEnglish is string &&
+            request.resource.data.nameEnglish.size() <= 120)) &&
+        (!("whatsappNumber" in request.resource.data) ||
+          (request.resource.data.whatsappNumber is string &&
+            request.resource.data.whatsappNumber.size() <= 30)) &&
+        (!("nameFontFamily" in request.resource.data) ||
+          (request.resource.data.nameFontFamily is string &&
+            request.resource.data.nameFontFamily.size() <= 80)) &&
+        (!("photoUrl" in request.resource.data) ||
+          (request.resource.data.photoUrl is string &&
+            request.resource.data.photoUrl.size() <= 2000)) &&
+        (!("originalPhotoUrl" in request.resource.data) ||
+          (request.resource.data.originalPhotoUrl is string &&
+            request.resource.data.originalPhotoUrl.size() <= 2000)) &&
+        (!("identityMode" in request.resource.data) ||
+          request.resource.data.identityMode in ["personal", "business"]) &&
+        (!("businessName" in request.resource.data) ||
+          (request.resource.data.businessName is string &&
+            request.resource.data.businessName.size() <= 120)) &&
+        (!("businessTagline" in request.resource.data) ||
+          (request.resource.data.businessTagline is string &&
+            request.resource.data.businessTagline.size() <= 180)) &&
+        (!("businessWhatsappNumber" in request.resource.data) ||
+          (request.resource.data.businessWhatsappNumber is string &&
+            request.resource.data.businessWhatsappNumber.size() <= 30)) &&
+        (!("businessLogoUrl" in request.resource.data) ||
+          (request.resource.data.businessLogoUrl is string &&
+            request.resource.data.businessLogoUrl.size() <= 2000)) &&
+        (!("businessLogoStyleId" in request.resource.data) ||
+          (request.resource.data.businessLogoStyleId is string &&
+            request.resource.data.businessLogoStyleId.size() <= 40)) &&
+        (!("setupCompleted" in request.resource.data) ||
+          request.resource.data.setupCompleted is bool) &&
+        (!("personalPhotoRevision" in request.resource.data) ||
+          request.resource.data.personalPhotoRevision is int) &&
+        (!("personalPhotoSyncPending" in request.resource.data) ||
+          request.resource.data.personalPhotoSyncPending is bool) &&
+        (!("profileRevision" in request.resource.data) ||
+          request.resource.data.profileRevision is int);
     }
 
     function validNotificationPreferenceFlags() {

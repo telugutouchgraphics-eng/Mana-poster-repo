@@ -98,7 +98,7 @@ Future<void> main() async {
         FirebaseCrashlytics.instance.recordError(
           error,
           stackTrace,
-          fatal: true,
+          fatal: !_isRecoverableError(error),
         );
         return;
       }
@@ -379,6 +379,9 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('failed host lookup') ||
       normalized.contains('permission-denied') ||
       normalized.contains('already_active') ||
+      normalized.contains('camera_access_denied') ||
+      normalized.contains('photo_access_denied') ||
+      normalized.contains('missingpluginexception') ||
       normalized.contains('zone mismatch') ||
       normalized.contains('connection closed') ||
       normalized.contains('connection reset') ||

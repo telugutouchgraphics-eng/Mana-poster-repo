@@ -299,27 +299,58 @@ class _PosterProfileDetailsScreenState
         _draftProfile.originalPhotoPath,
         keepNewPersonalAssets,
       );
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _draftProfile = _draftProfile.copyWith(
-          photoPath: targetPath,
-          photoUrl: '',
-          originalPhotoPath: originalTargetPath,
-          originalPhotoUrl: '',
-        );
-      });
-      await PosterProfileService.savePersonalPhotoAssets(
+      final previousProfile = _draftProfile;
+      await PosterProfileService.evictRemoteProfilePhotoCache(previousProfile);
+      final personalPhotoRevision = DateTime.now().millisecondsSinceEpoch;
+      final updatedLocalProfile = _draftProfile.copyWith(
         photoPath: targetPath,
+        photoUrl: '',
         originalPhotoPath: originalTargetPath,
+        originalPhotoUrl: '',
+        personalPhotoRevision: personalPhotoRevision,
       );
-      unawaited(
-        _syncPersonalPhotoUploads(
-          originalLocalFile: originalLocalFile,
-          cutoutLocalFile: localFile,
-        ),
+      try {
+        await PosterProfileService.savePersonalPhotoAssets(
+          photoPath: updatedLocalProfile.photoPath,
+          originalPhotoPath: updatedLocalProfile.originalPhotoPath,
+          photoUrl: '',
+          originalPhotoUrl: '',
+          saveRemoteUrls: false,
+          personalPhotoRevision: personalPhotoRevision,
+        );
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _draftProfile = updatedLocalProfile;
+        });
+      }
+      final cloudSynced = await _syncPersonalPhotoUploads(
+        baseProfile: updatedLocalProfile,
+        originalLocalFile: originalLocalFile,
+        cutoutLocalFile: localFile,
       );
+      if (!cloudSynced && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              strings.localized(
+                telugu:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+                english:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+                hindi:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+                tamil:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+                kannada:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+                malayalam:
+                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
+              ),
+            ),
+          ),
+        );
+      }
       if (finalPhotoBytes == null && mounted) {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
@@ -365,7 +396,8 @@ class _PosterProfileDetailsScreenState
     }
   }
 
-  Future<void> _syncPersonalPhotoUploads({
+  Future<bool> _syncPersonalPhotoUploads({
+    required PosterProfileData baseProfile,
     required File originalLocalFile,
     required File? cutoutLocalFile,
   }) async {
@@ -383,17 +415,14 @@ class _PosterProfileDetailsScreenState
         );
       }
 
-      if (!mounted) {
-        return;
-      }
-
-      final updatedProfile = _draftProfile.copyWith(
+      final updatedProfile = baseProfile.copyWith(
         photoUrl: cutoutRemoteUrl.isEmpty
-            ? _draftProfile.photoUrl
+            ? baseProfile.photoUrl
             : cutoutRemoteUrl,
         originalPhotoUrl: originalRemoteUrl.isEmpty
-            ? _draftProfile.originalPhotoUrl
+            ? baseProfile.originalPhotoUrl
             : originalRemoteUrl,
+        personalPhotoRevision: DateTime.now().millisecondsSinceEpoch,
       );
       await PosterProfileService.savePersonalPhotoAssets(
         photoPath: updatedProfile.photoPath,
@@ -401,10 +430,11 @@ class _PosterProfileDetailsScreenState
         photoUrl: updatedProfile.photoUrl,
         originalPhotoUrl: updatedProfile.originalPhotoUrl,
         saveRemoteUrls: true,
+        personalPhotoRevision: updatedProfile.personalPhotoRevision,
       );
 
       if (!mounted) {
-        return;
+        return true;
       }
       setState(() {
         _draftProfile = updatedProfile;
@@ -415,8 +445,10 @@ class _PosterProfileDetailsScreenState
           _savedProfile = updatedProfile;
         }
       });
-    } catch (_) {
-      // Local preview is already ready; remote sync can retry on next upload.
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('Profile photo cloud sync failed: $error\n$stackTrace');
+      return false;
     }
   }
 

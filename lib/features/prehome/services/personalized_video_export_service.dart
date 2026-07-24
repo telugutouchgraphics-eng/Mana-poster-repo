@@ -776,6 +776,7 @@ class PersonalizedVideoExportService {
       displayNameSource,
       previewSeed: previewSeed,
       personalization: personalization,
+      stripGradientTapOffset: stripGradientTapOffset,
     );
     final designationFontFamily = _resolveDesignationFontFamily(rawDesignation);
     final displayName = await _legacyTextForExport(
@@ -952,6 +953,7 @@ class PersonalizedVideoExportService {
     String resolvedName, {
     required String previewSeed,
     required CreatorPosterPersonalization personalization,
+    required int stripGradientTapOffset,
   }) {
     final seedSource =
         '$previewSeed|${personalization.nameX}|${personalization.nameY}|'
@@ -960,13 +962,15 @@ class PersonalizedVideoExportService {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    return _randomPosterNameFonts[hash.abs() % _randomPosterNameFonts.length];
+    return _randomPosterNameFonts[(hash.abs() + stripGradientTapOffset) %
+        _randomPosterNameFonts.length];
   }
 
   String _resolveEnglishPosterNameFontFamily(
     String resolvedName, {
     required String previewSeed,
     required CreatorPosterPersonalization personalization,
+    required int stripGradientTapOffset,
   }) {
     final seedSource =
         '$previewSeed|${personalization.nameX}|${personalization.nameY}|'
@@ -975,7 +979,7 @@ class PersonalizedVideoExportService {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    return _randomEnglishPosterNameFonts[hash.abs() %
+    return _randomEnglishPosterNameFonts[(hash.abs() + stripGradientTapOffset) %
         _randomEnglishPosterNameFonts.length];
   }
 
@@ -983,12 +987,14 @@ class PersonalizedVideoExportService {
     String text, {
     required String previewSeed,
     required CreatorPosterPersonalization personalization,
+    required int stripGradientTapOffset,
   }) {
     if (_teluguTextPattern.hasMatch(text)) {
       return _resolvePosterNameFontFamily(
         text,
         previewSeed: previewSeed,
         personalization: personalization,
+        stripGradientTapOffset: stripGradientTapOffset,
       );
     }
     if (_latinTextPattern.hasMatch(text)) {
@@ -996,6 +1002,7 @@ class PersonalizedVideoExportService {
         text,
         previewSeed: previewSeed,
         personalization: personalization,
+        stripGradientTapOffset: stripGradientTapOffset,
       );
     }
     return null;

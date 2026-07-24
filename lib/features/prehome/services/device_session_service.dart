@@ -54,17 +54,34 @@ class DeviceSessionService {
     await _pushSessionOwnership(user);
   }
 
+  Future<void> _cancelRemoteSessionSubscription() async {
+    try {
+      await _remoteSessionSubscription?.cancel();
+    } catch (_) {
+      // Firestore listener teardown can race with plugin/activity teardown.
+    } finally {
+      _remoteSessionSubscription = null;
+    }
+  }
+
+  Future<void> _cancelAuthSubscription() async {
+    try {
+      await _authSubscription?.cancel();
+    } catch (_) {
+      // Auth listener teardown is best effort during app shutdown.
+    } finally {
+      _authSubscription = null;
+    }
+  }
+
   Future<void> stop() async {
-    await _remoteSessionSubscription?.cancel();
-    _remoteSessionSubscription = null;
-    await _authSubscription?.cancel();
-    _authSubscription = null;
+    await _cancelRemoteSessionSubscription();
+    await _cancelAuthSubscription();
     _started = false;
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
-    await _remoteSessionSubscription?.cancel();
-    _remoteSessionSubscription = null;
+    await _cancelRemoteSessionSubscription();
 
     if (user == null) {
       return;

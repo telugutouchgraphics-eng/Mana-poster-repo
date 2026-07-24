@@ -108,6 +108,7 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   _SetupStartChoice? _selectedStartChoice;
   int? _selectedPresetIndex;
   bool _customSizeSelected = false;
+  bool _pickerBusy = false;
   _UnitMode _unitMode = _UnitMode.pixels;
   _SetupBackgroundChoice _backgroundChoice = _SetupBackgroundChoice.white;
   int _selectedBackgroundColorIndex = 1;
@@ -285,55 +286,92 @@ class _PageSetupScreenState extends State<PageSetupScreen>
   }
 
   Future<void> _openEditorWithDesignImport() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.any,
-      withData: false,
-    );
-    if (!mounted || result == null || result.files.isEmpty) {
+    if (_pickerBusy) {
       return;
     }
-    final picked = result.files.single;
-    final path = picked.path;
-    if (path == null || path.isEmpty) {
-      return;
-    }
-    final pathParts = path.split('.');
-    final extension = (picked.extension ?? pathParts.last)
-        .trim()
-        .toLowerCase()
-        .replaceFirst('.', '');
-    if (extension != 'psd') {
-      ScaffoldMessenger.of(context).showTopSnackBar(
-        AppSnackBar.build(content: const Text('Select a PSD file.')),
+    _pickerBusy = true;
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const <String>['psd'],
+        withData: false,
       );
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ImageEditorScreen(
-          initialStageBackground: const EditorStageBackground.transparent(),
-          initialDesignImportPath: path,
+      if (!mounted || result == null || result.files.isEmpty) {
+        return;
+      }
+      final picked = result.files.single;
+      final path = picked.path;
+      if (path == null || path.isEmpty) {
+        return;
+      }
+      final pathParts = path.split('.');
+      final extension = (picked.extension ?? pathParts.last)
+          .trim()
+          .toLowerCase()
+          .replaceFirst('.', '');
+      if (extension != 'psd') {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(content: const Text('Select a PSD file.')),
+        );
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ImageEditorScreen(
+            initialStageBackground: const EditorStageBackground.transparent(),
+            initialDesignImportPath: path,
+          ),
         ),
-      ),
-    );
+      );
+    } on PlatformException catch (error) {
+      if (error.code != 'already_active' && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open the file picker.'),
+          ),
+        );
+      }
+    } finally {
+      _pickerBusy = false;
+    }
   }
 
   Future<void> _openEditorFromGallery() async {
-    final picked = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      requestFullMetadata: false,
-    );
-    if (!mounted || picked == null || picked.path.trim().isEmpty) {
+    if (_pickerBusy) {
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ImageEditorScreen(
-          initialStageBackground: const EditorStageBackground.transparent(),
-          initialDesignImportPath: picked.path,
+    _pickerBusy = true;
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        requestFullMetadata: false,
+      );
+      if (!mounted || picked == null || picked.path.trim().isEmpty) {
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ImageEditorScreen(
+            initialStageBackground: const EditorStageBackground.transparent(),
+            initialDesignImportPath: picked.path,
+          ),
         ),
-      ),
-    );
+      );
+    } on PlatformException catch (error) {
+      if (error.code != 'already_active' &&
+          error.code != 'camera_access_denied' &&
+          error.code != 'photo_access_denied' &&
+          error.code != 'photo_access_denied_permanently' &&
+          mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
+    } finally {
+      _pickerBusy = false;
+    }
   }
 
   Future<void> _restoreAutosavedDraft() async {

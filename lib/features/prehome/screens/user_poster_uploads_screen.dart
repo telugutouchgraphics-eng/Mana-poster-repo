@@ -1,10 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:mana_poster/app/config/category_display_helper.dart';
@@ -45,6 +46,13 @@ class UserPosterUploadsScreen extends StatefulWidget {
   @override
   State<UserPosterUploadsScreen> createState() =>
       _UserPosterUploadsScreenState();
+}
+
+bool _isExpectedPickerException(PlatformException error) {
+  return error.code == 'already_active' ||
+      error.code == 'camera_access_denied' ||
+      error.code == 'photo_access_denied' ||
+      error.code == 'photo_access_denied_permanently';
 }
 
 class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
@@ -172,9 +180,11 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
 
     final staticLabels = AppStrings(language).localizedHomeCategories();
     final staticLabelById = <String, String>{};
-    for (var index = 0;
-        index < HomeCategoryCatalog.all.length && index < staticLabels.length;
-        index += 1) {
+    for (
+      var index = 0;
+      index < HomeCategoryCatalog.all.length && index < staticLabels.length;
+      index += 1
+    ) {
       staticLabelById[_normalizeCategoryId(HomeCategoryCatalog.all[index].id)] =
           staticLabels[index];
     }
@@ -357,10 +367,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(
-                strings.localized(
-                  telugu: 'డిలీట్',
-                  english: 'Delete',
-                ),
+                strings.localized(telugu: 'డిలీట్', english: 'Delete'),
               ),
             ),
           ],
@@ -385,8 +392,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
       AppSnackBar.build(
         content: Text(
           strings.localized(
-            telugu:
-                'ఈ ఐటమ్ మీ లిస్ట్ నుంచి తొలగించబడింది',
+            telugu: 'ఈ ఐటమ్ మీ లిస్ట్ నుంచి తొలగించబడింది',
             english: 'This item was removed from your list',
           ),
         ),
@@ -396,7 +402,24 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
 
   Future<void> _pickImage() async {
     final strings = context.strings;
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked;
+    try {
+      picked = await _picker.pickImage(source: ImageSource.gallery);
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              strings.localized(
+                telugu: 'చిత్రాన్ని ఎంచుకోలేకపోయాం',
+                english: 'Could not select the image',
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
     if (picked == null) {
       return;
     }
@@ -408,8 +431,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu:
-                  'అప్‌లోడ్ మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
+              telugu: 'అప్‌లోడ్ మొబైల్ యాప్‌లో మాత్రమే అందుబాటులో ఉంది',
               english: 'Upload is supported on mobile app only',
             ),
           ),
@@ -427,8 +449,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu:
-                  'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
+              telugu: 'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
               english: 'Image size must be 500KB or less',
             ),
           ),
@@ -454,8 +475,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu:
-                  'దయచేసి చిత్రం ఎంచుకోండి లేదా సూక్తి రాయండి',
+              telugu: 'దయచేసి చిత్రం ఎంచుకోండి లేదా సూక్తి రాయండి',
               english: 'Please select an image or write a quote',
             ),
           ),
@@ -492,8 +512,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu:
-                  'అప్‌లోడ్ రివ్యూ కోసం పంపబడింది',
+              telugu: 'అప్‌లోడ్ రివ్యూ కోసం పంపబడింది',
               english: 'Upload submitted for review',
             ),
           ),
@@ -511,21 +530,12 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
   String _statusLabel(UserPosterUpload upload) {
     final strings = context.strings;
     if (upload.isApproved) {
-      return strings.localized(
-        telugu: 'ఆమోదించబడింది',
-        english: 'Approved',
-      );
+      return strings.localized(telugu: 'ఆమోదించబడింది', english: 'Approved');
     }
     if (upload.isRejected) {
-      return strings.localized(
-        telugu: 'తిరస్కరించబడింది',
-        english: 'Rejected',
-      );
+      return strings.localized(telugu: 'తిరస్కరించబడింది', english: 'Rejected');
     }
-    return strings.localized(
-      telugu: 'పెండింగ్',
-      english: 'Pending',
-    );
+    return strings.localized(telugu: 'పెండింగ్', english: 'Pending');
   }
 
   Color _statusColor(UserPosterUpload upload) {
@@ -560,20 +570,17 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
         );
       case UserPosterUploadSubmitCode.imageTooLarge:
         return strings.localized(
-          telugu:
-              'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
+          telugu: 'చిత్ర పరిమాణం 500KB లేదా దానికంటే తక్కువ ఉండాలి',
           english: 'Image size must be 500KB or less',
         );
       case UserPosterUploadSubmitCode.quoteTooLong:
         return strings.localized(
-          telugu:
-              'సూక్తి 600 అక్షరాల లోపు ఉండాలి',
+          telugu: 'సూక్తి 600 అక్షరాల లోపు ఉండాలి',
           english: 'Quote must be 600 characters or less',
         );
       case UserPosterUploadSubmitCode.uploadFailed:
         return strings.localized(
-          telugu:
-              'అప్‌లోడ్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+          telugu: 'అప్‌లోడ్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
           english: 'Upload failed. Please try again.',
         );
     }
@@ -703,12 +710,10 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                     const SizedBox(height: 3),
                     Text(
                       strings.localized(
-                        telugu:
-                            'పంపే ముందు సమీక్ష నియమాలను తెలుసుకోండి.',
+                        telugu: 'పంపే ముందు సమీక్ష నియమాలను తెలుసుకోండి.',
                         english:
                             'Check review rules before submitting your content.',
-                        hindi:
-                            'अपनी सामग्री भेजने से पहले समीक्षा नियम देखें।',
+                        hindi: 'अपनी सामग्री भेजने से पहले समीक्षा नियम देखें।',
                         tamil:
                             'உங்கள் உள்ளடக்கத்தை அனுப்பும் முன் ஆய்வு விதிகளைப் பாருங்கள்.',
                         kannada:
@@ -850,10 +855,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                strings.localized(
-                  telugu: 'విభాగం',
-                  english: 'Category',
-                ),
+                strings.localized(telugu: 'విభాగం', english: 'Category'),
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -1050,8 +1052,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                               ),
                               IconButton(
                                 tooltip: strings.localized(
-                                  telugu:
-                                      'నా లిస్ట్ నుండి తొలగించు',
+                                  telugu: 'నా లిస్ట్ నుండి తొలగించు',
                                   english: 'Remove from my list',
                                 ),
                                 onPressed: () => _hideUploadLocally(upload),
@@ -1101,8 +1102,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                             const SizedBox(height: 8),
                             Text(
                               strings.localized(
-                                telugu:
-                                    'కారణం: ${upload.rejectionReason}',
+                                telugu: 'కారణం: ${upload.rejectionReason}',
                                 english: 'Reason: ${upload.rejectionReason}',
                               ),
                               style: const TextStyle(color: Color(0xFFB91C1C)),
@@ -1159,8 +1159,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
                   english: 'My Uploads',
                 )
               : context.strings.localized(
-                  telugu:
-                      'కమ్యూనిటీ కాంట్రిబ్యూషన్',
+                  telugu: 'కమ్యూనిటీ కాంట్రిబ్యూషన్',
                   english: 'Community Contribution',
                 ),
         ),
@@ -1381,25 +1380,34 @@ class _CommunityUploadInstructionsScreen extends StatelessWidget {
             telugu: 'సూక్తి వచనం, సూక్తి చిత్రం లేదా రెండింటినీ పంపవచ్చు.',
             english: 'You can upload quote text, a quote image, or both.',
             hindi: 'आप सुविचार का पाठ, सुविचार वाली छवि या दोनों भेज सकते हैं।',
-            tamil: 'மேற்கோள் உரை, மேற்கோள் உள்ள படம் அல்லது இரண்டையும் அனுப்பலாம்.',
+            tamil:
+                'மேற்கோள் உரை, மேற்கோள் உள்ள படம் அல்லது இரண்டையும் அனுப்பலாம்.',
             kannada: 'ಉಲ್ಲೇಖ ಪಠ್ಯ, ಉಲ್ಲೇಖ ಇರುವ ಚಿತ್ರ ಅಥವಾ ಎರಡನ್ನೂ ಕಳುಹಿಸಬಹುದು.',
-            malayalam: 'ഉദ്ധരണി വാചകം, ഉദ്ധരണിയുള്ള ചിത്രം അല്ലെങ്കിൽ രണ്ടും അയയ്ക്കാം.',
+            malayalam:
+                'ഉദ്ധരണി വാചകം, ഉദ്ധരണിയുള്ള ചിത്രം അല്ലെങ്കിൽ രണ്ടും അയയ്ക്കാം.',
           ),
           strings.localized(
             telugu: 'మీరు పంపినది ముందుగా నిర్వాహకుని సమీక్షకు వెళ్తుంది.',
             english: 'Your upload first goes to the manager review queue.',
             hindi: 'आपकी भेजी हुई सामग्री पहले प्रबंधक की समीक्षा में जाएगी।',
-            tamil: 'நீங்கள் அனுப்பியது முதலில் நிர்வாகியின் ஆய்வுக்கு செல்லும்.',
+            tamil:
+                'நீங்கள் அனுப்பியது முதலில் நிர்வாகியின் ஆய்வுக்கு செல்லும்.',
             kannada: 'ನೀವು ಕಳುಹಿಸಿದುದು ಮೊದಲು ನಿರ್ವಾಹಕರ ಪರಿಶೀಲನೆಗೆ ಹೋಗುತ್ತದೆ.',
             malayalam: 'നിങ്ങൾ അയച്ചത് ആദ്യം മാനേജറുടെ പരിശോധനയ്ക്കായി പോകും.',
           ),
           strings.localized(
-            telugu: 'ఆమోదం లభిస్తే బృందం దాన్ని మెరుగుపరచవచ్చు; అది My Uploads లో మీకే కనిపిస్తుంది.',
-            english: 'If approved, the team may improve it; it will be visible only to you in My Uploads.',
-            hindi: 'स्वीकृति मिलने पर टीम उसे बेहतर बना सकती है; वह केवल आपको My Uploads में दिखाई देगा।',
-            tamil: 'அங்கீகாரம் கிடைத்தால் குழு அதை மேம்படுத்தலாம்; அது My Uploads இல் உங்களுக்கு மட்டும் தெரியும்.',
-            kannada: 'ಅನುಮೋದನೆ ಸಿಕ್ಕರೆ ತಂಡ ಅದನ್ನು ಸುಧಾರಿಸಬಹುದು; ಅದು My Uploads ನಲ್ಲಿ ನಿಮಗೆ ಮಾತ್ರ ಕಾಣಿಸುತ್ತದೆ.',
-            malayalam: 'അംഗീകാരം ലഭിച്ചാൽ സംഘം അത് മെച്ചപ്പെടുത്താം; അത് My Uploads-ൽ നിങ്ങള്‍ക്കു മാത്രമേ കാണൂ.',
+            telugu:
+                'ఆమోదం లభిస్తే బృందం దాన్ని మెరుగుపరచవచ్చు; అది My Uploads లో మీకే కనిపిస్తుంది.',
+            english:
+                'If approved, the team may improve it; it will be visible only to you in My Uploads.',
+            hindi:
+                'स्वीकृति मिलने पर टीम उसे बेहतर बना सकती है; वह केवल आपको My Uploads में दिखाई देगा।',
+            tamil:
+                'அங்கீகாரம் கிடைத்தால் குழு அதை மேம்படுத்தலாம்; அது My Uploads இல் உங்களுக்கு மட்டும் தெரியும்.',
+            kannada:
+                'ಅನುಮೋದನೆ ಸಿಕ್ಕರೆ ತಂಡ ಅದನ್ನು ಸುಧಾರಿಸಬಹುದು; ಅದು My Uploads ನಲ್ಲಿ ನಿಮಗೆ ಮಾತ್ರ ಕಾಣಿಸುತ್ತದೆ.',
+            malayalam:
+                'അംഗീകാരം ലഭിച്ചാൽ സംഘം അത് മെച്ചപ്പെടുത്താം; അത് My Uploads-ൽ നിങ്ങള്‍ക്കു മാത്രമേ കാണൂ.',
           ),
         ],
       ),
@@ -1414,28 +1422,39 @@ class _CommunityUploadInstructionsScreen extends StatelessWidget {
         ),
         bullets: <String>[
           strings.localized(
-            telugu: 'ఎంచుకున్న విభాగానికి సరిపోయే పరిశుభ్రమైన సూక్తి లేదా చిత్రం.',
+            telugu:
+                'ఎంచుకున్న విభాగానికి సరిపోయే పరిశుభ్రమైన సూక్తి లేదా చిత్రం.',
             english: 'Clean quote or image that matches the selected category.',
             hindi: 'चुनी हुई श्रेणी से मेल खाने वाला साफ सुविचार या चित्र।',
-            tamil: 'தேர்ந்தெடுத்த பிரிவிற்கு பொருந்தும் தெளிவான மேற்கோள் அல்லது படம்.',
+            tamil:
+                'தேர்ந்தெடுத்த பிரிவிற்கு பொருந்தும் தெளிவான மேற்கோள் அல்லது படம்.',
             kannada: 'ಆಯ್ದ ವಿಭಾಗಕ್ಕೆ ಹೊಂದುವ ಸ್ವಚ್ಛವಾದ ಉಲ್ಲೇಖ ಅಥವಾ ಚಿತ್ರ.',
-            malayalam: 'തിരഞ്ഞെടുത്ത വിഭാഗത്തിന് ചേരുന്ന ശുദ്ധമായ ഉദ്ധരണി അല്ലെങ്കിൽ ചിത്രം.',
+            malayalam:
+                'തിരഞ്ഞെടുത്ത വിഭാഗത്തിന് ചേരുന്ന ശുദ്ധമായ ഉദ്ധരണി അല്ലെങ്കിൽ ചിത്രം.',
           ),
           strings.localized(
-            telugu: 'మీరు స్వయంగా సృష్టించినది లేదా ఉపయోగించడానికి మీకు అనుమతి ఉన్న విషయం.',
-            english: 'Content created by you or content you have permission to use.',
-            hindi: 'आपके द्वारा बनाई गई सामग्री या जिसके उपयोग की अनुमति आपके पास है।',
-            tamil: 'நீங்கள் உருவாக்கியது அல்லது பயன்படுத்த அனுமதி உள்ள உள்ளடக்கம்.',
+            telugu:
+                'మీరు స్వయంగా సృష్టించినది లేదా ఉపయోగించడానికి మీకు అనుమతి ఉన్న విషయం.',
+            english:
+                'Content created by you or content you have permission to use.',
+            hindi:
+                'आपके द्वारा बनाई गई सामग्री या जिसके उपयोग की अनुमति आपके पास है।',
+            tamil:
+                'நீங்கள் உருவாக்கியது அல்லது பயன்படுத்த அனுமதி உள்ள உள்ளடக்கம்.',
             kannada: 'ನೀವು ರಚಿಸಿದುದು ಅಥವಾ ಬಳಸಲು ನಿಮಗೆ ಅನುಮತಿ ಇರುವ ವಿಷಯ.',
-            malayalam: 'നിങ്ങൾ സൃഷ്ടിച്ചതോ ഉപയോഗിക്കാൻ അനുമതിയുള്ളതോ ആയ ഉള്ളടക്കം.',
+            malayalam:
+                'നിങ്ങൾ സൃഷ്ടിച്ചതോ ഉപയോഗിക്കാൻ അനുമതിയുള്ളതോ ആയ ഉള്ളടക്കം.',
           ),
           strings.localized(
             telugu: 'ఆమోదం తర్వాత అది మీ My Uploads లో మాత్రమే కనిపిస్తుంది.',
             english: 'After approval, it is visible only in your My Uploads.',
             hindi: 'स्वीकृति के बाद वह केवल आपके My Uploads में दिखाई देगा।',
-            tamil: 'அங்கீகாரத்திற்குப் பிறகு அது உங்கள் My Uploads இல் மட்டும் தெரியும்.',
-            kannada: 'ಅನುಮೋದನೆಯ ನಂತರ ಅದು ನಿಮ್ಮ My Uploads ನಲ್ಲಿ ಮಾತ್ರ ಕಾಣಿಸುತ್ತದೆ.',
-            malayalam: 'അംഗീകാരത്തിന് ശേഷം അത് നിങ്ങളുടെ My Uploads-ൽ മാത്രം കാണും.',
+            tamil:
+                'அங்கீகாரத்திற்குப் பிறகு அது உங்கள் My Uploads இல் மட்டும் தெரியும்.',
+            kannada:
+                'ಅನುಮೋದನೆಯ ನಂತರ ಅದು ನಿಮ್ಮ My Uploads ನಲ್ಲಿ ಮಾತ್ರ ಕಾಣಿಸುತ್ತದೆ.',
+            malayalam:
+                'അംഗീകാരത്തിന് ശേഷം അത് നിങ്ങളുടെ My Uploads-ൽ മാത്രം കാണും.',
           ),
         ],
       ),
@@ -1450,33 +1469,52 @@ class _CommunityUploadInstructionsScreen extends StatelessWidget {
         ),
         bullets: <String>[
           strings.localized(
-            telugu: 'తప్పు విభాగం, సంబంధం లేని విషయం, నకిలీ విషయం లేదా నాణ్యత తక్కువగా ఉన్న చిత్రం.',
-            english: 'Wrong category, unrelated content, duplicate, or low quality image.',
-            hindi: 'गलत श्रेणी, असंबंधित सामग्री, दोहराई गई सामग्री या कम गुणवत्ता वाली छवि।',
-            tamil: 'தவறான பிரிவு, தொடர்பில்லாத உள்ளடக்கம், நகல் அல்லது குறைந்த தரமான படம்.',
-            kannada: 'ತಪ್ಪು ವಿಭಾಗ, ಸಂಬಂಧವಿಲ್ಲದ ವಿಷಯ, ನಕಲಿ ಅಥವಾ ಕಡಿಮೆ ಗುಣಮಟ್ಟದ ಚಿತ್ರ.',
-            malayalam: 'തെറ്റായ വിഭാഗം, ബന്ധമില്ലാത്ത ഉള്ളടക്കം, പകർപ്പ് അല്ലെങ്കിൽ കുറഞ്ഞ നിലവാരത്തിലുള്ള ചിത്രം.',
+            telugu:
+                'తప్పు విభాగం, సంబంధం లేని విషయం, నకిలీ విషయం లేదా నాణ్యత తక్కువగా ఉన్న చిత్రం.',
+            english:
+                'Wrong category, unrelated content, duplicate, or low quality image.',
+            hindi:
+                'गलत श्रेणी, असंबंधित सामग्री, दोहराई गई सामग्री या कम गुणवत्ता वाली छवि।',
+            tamil:
+                'தவறான பிரிவு, தொடர்பில்லாத உள்ளடக்கம், நகல் அல்லது குறைந்த தரமான படம்.',
+            kannada:
+                'ತಪ್ಪು ವಿಭಾಗ, ಸಂಬಂಧವಿಲ್ಲದ ವಿಷಯ, ನಕಲಿ ಅಥವಾ ಕಡಿಮೆ ಗುಣಮಟ್ಟದ ಚಿತ್ರ.',
+            malayalam:
+                'തെറ്റായ വിഭാഗം, ബന്ധമില്ലാത്ത ഉള്ളടക്കം, പകർപ്പ് അല്ലെങ്കിൽ കുറഞ്ഞ നിലവാരത്തിലുള്ള ചിത്രം.',
           ),
           strings.localized(
-            telugu: 'హక్కులు కలిగిన చిత్రం, కాపీ చేసిన సూక్తి, అభ్యంతరకరమైన లేదా తప్పుదారి పట్టించే విషయం.',
-            english: 'Copyright image, copied quote, offensive, or misleading content.',
-            hindi: 'कॉपीराइट वाली छवि, नकल किया गया सुविचार, आपत्तिजनक या भ्रामक सामग्री।',
-            tamil: 'பதிப்புரிமை உள்ள படம், நகலெடுத்த மேற்கோள், அவமதிப்பான அல்லது தவறாக வழிநடத்தும் உள்ளடக்கம்.',
-            kannada: 'ಹಕ್ಕುಸ್ವಾಮ್ಯ ಹೊಂದಿರುವ ಚಿತ್ರ, ನಕಲಿಸಿದ ಉಲ್ಲೇಖ, ಅವಮಾನಕಾರಿ ಅಥವಾ ತಪ್ಪು ದಾರಿಗೆಳೆಯುವ ವಿಷಯ.',
-            malayalam: 'പകർപ്പവകാശമുള്ള ചിത്രം, പകർത്തിയ ഉദ്ധരണി, അപമാനകരമോ തെറ്റിദ്ധരിപ്പിക്കുന്നതോ ആയ ഉള്ളടക്കം.',
+            telugu:
+                'హక్కులు కలిగిన చిత్రం, కాపీ చేసిన సూక్తి, అభ్యంతరకరమైన లేదా తప్పుదారి పట్టించే విషయం.',
+            english:
+                'Copyright image, copied quote, offensive, or misleading content.',
+            hindi:
+                'कॉपीराइट वाली छवि, नकल किया गया सुविचार, आपत्तिजनक या भ्रामक सामग्री।',
+            tamil:
+                'பதிப்புரிமை உள்ள படம், நகலெடுத்த மேற்கோள், அவமதிப்பான அல்லது தவறாக வழிநடத்தும் உள்ளடக்கம்.',
+            kannada:
+                'ಹಕ್ಕುಸ್ವಾಮ್ಯ ಹೊಂದಿರುವ ಚಿತ್ರ, ನಕಲಿಸಿದ ಉಲ್ಲೇಖ, ಅವಮಾನಕಾರಿ ಅಥವಾ ತಪ್ಪು ದಾರಿಗೆಳೆಯುವ ವಿಷಯ.',
+            malayalam:
+                'പകർപ്പവകാശമുള്ള ചിത്രം, പകർത്തിയ ഉദ്ധരണി, അപമാനകരമോ തെറ്റിദ്ധരിപ്പിക്കുന്നതോ ആയ ഉള്ളടക്കം.',
           ),
           strings.localized(
-            telugu: 'వ్యక్తిగత వివరాలు, రాజకీయ దుర్వినియోగం, అవాంఛిత ప్రచారం లేదా సురక్షితం కాని విషయం.',
-            english: 'Private details, political misuse, spam, or unsafe content.',
-            hindi: 'निजी विवरण, राजनीतिक दुरुपयोग, अवांछित प्रचार या असुरक्षित सामग्री।',
-            tamil: 'தனிப்பட்ட விவரங்கள், அரசியல் தவறான பயன்பாடு, தேவையற்ற விளம்பரம் அல்லது பாதுகாப்பற்ற உள்ளடக்கம்.',
-            kannada: 'ಖಾಸಗಿ ವಿವರಗಳು, ರಾಜಕೀಯ ದುರುಪಯೋಗ, ಅನಗತ್ಯ ಪ್ರಚಾರ ಅಥವಾ ಸುರಕ್ಷಿತವಲ್ಲದ ವಿಷಯ.',
-            malayalam: 'സ്വകാര്യ വിവരങ്ങൾ, രാഷ്ട്രീയ ദുരുപയോഗം, അനാവശ്യ പ്രചാരം അല്ലെങ്കിൽ സുരക്ഷിതമല്ലാത്ത ഉള്ളടക്കം.',
+            telugu:
+                'వ్యక్తిగత వివరాలు, రాజకీయ దుర్వినియోగం, అవాంఛిత ప్రచారం లేదా సురక్షితం కాని విషయం.',
+            english:
+                'Private details, political misuse, spam, or unsafe content.',
+            hindi:
+                'निजी विवरण, राजनीतिक दुरुपयोग, अवांछित प्रचार या असुरक्षित सामग्री।',
+            tamil:
+                'தனிப்பட்ட விவரங்கள், அரசியல் தவறான பயன்பாடு, தேவையற்ற விளம்பரம் அல்லது பாதுகாப்பற்ற உள்ளடக்கம்.',
+            kannada:
+                'ಖಾಸಗಿ ವಿವರಗಳು, ರಾಜಕೀಯ ದುರುಪಯೋಗ, ಅನಗತ್ಯ ಪ್ರಚಾರ ಅಥವಾ ಸುರಕ್ಷಿತವಲ್ಲದ ವಿಷಯ.',
+            malayalam:
+                'സ്വകാര്യ വിവരങ്ങൾ, രാഷ്ട്രീയ ദുരുപയോഗം, അനാവശ്യ പ്രചാരം അല്ലെങ്കിൽ സുരക്ഷിതമല്ലാത്ത ഉള്ളടക്കം.',
           ),
         ],
       ),
     ];
-  }}
+  }
+}
 
 class _CommunityInstructionSectionData {
   const _CommunityInstructionSectionData({

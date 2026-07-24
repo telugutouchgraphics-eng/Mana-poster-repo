@@ -79,7 +79,8 @@ class SubscriptionBackendService {
         'https://asia-south1-mana-poster-ap.cloudfunctions.net/subscriptionStatus',
   );
   static final Map<SubscriptionEntitlementScope, SubscriptionBackendResult?>
-  _cachedEntitlements = <SubscriptionEntitlementScope, SubscriptionBackendResult?>{};
+  _cachedEntitlements =
+      <SubscriptionEntitlementScope, SubscriptionBackendResult?>{};
   static final Map<SubscriptionEntitlementScope, DateTime?>
   _cachedEntitlementTimes = <SubscriptionEntitlementScope, DateTime?>{};
   static Future<void>? _pendingRecoveryFuture;
@@ -253,7 +254,10 @@ class SubscriptionBackendService {
           productId: evidence.productId,
           trigger: 'verify_purchase_request',
         );
-    if (!bindingCheck.isAllowed) {
+    final allowExplicitRestoreWithoutBinding =
+        evidence.allowRestoreWithoutPendingBinding &&
+        bindingCheck.decision == PendingSubscriptionBindingDecision.noBinding;
+    if (!bindingCheck.isAllowed && !allowExplicitRestoreWithoutBinding) {
       return SubscriptionBackendResult(
         state: SubscriptionBackendState.failed,
         message:
@@ -516,5 +520,7 @@ class SubscriptionBackendService {
 
   String get _platformLabel => kIsWeb ? 'web' : Platform.operatingSystem;
   String get _scopeLabel =>
-      entitlementScope == SubscriptionEntitlementScope.editor ? 'editor' : 'app';
+      entitlementScope == SubscriptionEntitlementScope.editor
+      ? 'editor'
+      : 'app';
 }

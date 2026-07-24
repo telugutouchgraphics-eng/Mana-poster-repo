@@ -366,7 +366,11 @@ class CommunityStatusService {
 
     controller.onCancel = () async {
       for (final subscription in subscriptions) {
-        await subscription.cancel();
+        try {
+          await subscription.cancel();
+        } catch (_) {
+          // Firestore listener teardown can race with plugin/activity teardown.
+        }
       }
     };
     yield* controller.stream;

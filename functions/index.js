@@ -1356,7 +1356,9 @@ async function loadNotificationProfileForUid(uid) {
         ),
       };
     }
-    const baseProfile = notificationProfileFromData(snap.data() || {});
+    const profileData = snap.data() || {};
+    const baseProfile = notificationProfileFromData(profileData);
+    const personalPhotoSyncPending = Boolean(profileData.personalPhotoSyncPending);
     const resolvedName = pickFirstUsablePosterName(
         baseProfile.name,
         authUser?.displayName,
@@ -1372,7 +1374,7 @@ async function loadNotificationProfileForUid(uid) {
       ...profile,
       name: resolvedName,
       photoUrl: String(profile.photoUrl || "").trim() ||
-          String(authUser?.photoURL || "").trim(),
+          (personalPhotoSyncPending ? "" : String(authUser?.photoURL || "").trim()),
       selectedRegion: notificationRegionFromData(
           userSnap.exists ? (userSnap.data() || {}) : {},
       ),

@@ -136,6 +136,20 @@ extension _EditorBackgroundState on _ImageEditorScreenState {
         }
       });
       return true;
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              context.strings.localized(
+                telugu: 'చిత్రాన్ని ఎంచుకోలేకపోయాం',
+                english: 'Could not select the image',
+              ),
+            ),
+          ),
+        );
+      }
+      return false;
     } finally {
       _isPickingMedia = false;
     }

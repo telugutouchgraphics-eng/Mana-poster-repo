@@ -3,6 +3,13 @@ part of 'image_editor_screen.dart';
 const int _designImportLargeWarningBytes = 50 * 1024 * 1024;
 const int _designImportMaxBytes = 100 * 1024 * 1024;
 
+bool _isExpectedPickerException(PlatformException error) {
+  return error.code == 'already_active' ||
+      error.code == 'camera_access_denied' ||
+      error.code == 'photo_access_denied' ||
+      error.code == 'photo_access_denied_permanently';
+}
+
 double? _layerStyleStep(double? value, double step) {
   if (value == null || step <= 0) {
     return value;
@@ -1676,6 +1683,14 @@ extension _EditorLayersState on _ImageEditorScreenState {
         _isPhotoMaskPositionMode = true;
         _activeMainToolLabel = 'Mask Position';
       });
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
     } finally {
       _isPickingMedia = false;
     }
@@ -1745,6 +1760,14 @@ extension _EditorLayersState on _ImageEditorScreenState {
     XFile? pickedFile;
     try {
       pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
     } finally {
       _isPickingMedia = false;
     }
@@ -5739,6 +5762,14 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         if (!mounted) return;
         await _importPickedPhoto(pickedFile);
       }
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
     } finally {
       _isPickingMedia = false;
     }
@@ -5755,7 +5786,8 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     _isPickingMedia = true;
     try {
       final result = await FilePicker.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: const <String>['psd'],
         withData: false,
       );
       if (!mounted || result == null || result.files.isEmpty) {
@@ -5771,6 +5803,14 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         return;
       }
       await _importDesignFilePath(path, extension: extension);
+    } on PlatformException catch (error) {
+      if (error.code != 'already_active' && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open the file picker.'),
+          ),
+        );
+      }
     } finally {
       _isPickingMedia = false;
     }
@@ -6173,6 +6213,14 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         return;
       }
       await _importPickedPhoto(pickedFile);
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
     } finally {
       _isPickingMedia = false;
     }

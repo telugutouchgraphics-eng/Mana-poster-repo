@@ -10,6 +10,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 
@@ -47,6 +48,8 @@ class PosterProfileData {
     this.businessLogoStyleId = 'style_1',
     this.originalPhotoPath = '',
     this.originalPhotoUrl = '',
+    this.personalPhotoRevision = 0,
+    this.profileRevision = 0,
     this.setupCompleted = false,
   });
 
@@ -66,6 +69,8 @@ class PosterProfileData {
   final String businessLogoStyleId;
   final String originalPhotoPath;
   final String originalPhotoUrl;
+  final int personalPhotoRevision;
+  final int profileRevision;
   final bool setupCompleted;
 
   String get displayName {
@@ -121,6 +126,8 @@ class PosterProfileData {
     String? businessLogoStyleId,
     String? originalPhotoPath,
     String? originalPhotoUrl,
+    int? personalPhotoRevision,
+    int? profileRevision,
     bool? setupCompleted,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
@@ -149,6 +156,9 @@ class PosterProfileData {
       businessLogoStyleId: businessLogoStyleId ?? this.businessLogoStyleId,
       originalPhotoPath: originalPhotoPath ?? this.originalPhotoPath,
       originalPhotoUrl: originalPhotoUrl ?? this.originalPhotoUrl,
+      personalPhotoRevision:
+          personalPhotoRevision ?? this.personalPhotoRevision,
+      profileRevision: profileRevision ?? this.profileRevision,
       setupCompleted: setupCompleted ?? this.setupCompleted,
     );
   }
@@ -213,6 +223,8 @@ class PosterProfileData {
             other.businessLogoStyleId == businessLogoStyleId &&
             other.originalPhotoPath == originalPhotoPath &&
             other.originalPhotoUrl == originalPhotoUrl &&
+            other.personalPhotoRevision == personalPhotoRevision &&
+            other.profileRevision == profileRevision &&
             other.setupCompleted == setupCompleted;
   }
 
@@ -234,6 +246,8 @@ class PosterProfileData {
     businessLogoStyleId,
     originalPhotoPath,
     originalPhotoUrl,
+    personalPhotoRevision,
+    profileRevision,
     setupCompleted,
   );
 }
@@ -376,6 +390,9 @@ class PosterProfileService {
       'poster_profile_original_photo_path';
   static const String _originalPhotoUrlKey =
       'poster_profile_original_photo_url';
+  static const String _personalPhotoRevisionKey =
+      'poster_profile_personal_photo_revision';
+  static const String _profileRevisionKey = 'poster_profile_revision';
   static const String _setupCompletedKey = 'poster_profile_setup_completed';
   static const String _setupSkippedKey = 'poster_profile_setup_skipped';
   static const String _legacyMigrationPrefix = 'poster_profile_migrated_';
@@ -627,6 +644,16 @@ class PosterProfileService {
                   ) ??
                   '')
               .trim(),
+      personalPhotoRevision:
+          resolvedPrefs.getInt(
+            _scopedKey(_personalPhotoRevisionKey, fallbackUid: fallbackUid),
+          ) ??
+          0,
+      profileRevision:
+          resolvedPrefs.getInt(
+            _scopedKey(_profileRevisionKey, fallbackUid: fallbackUid),
+          ) ??
+          0,
       setupCompleted:
           resolvedPrefs.getBool(
             _scopedKey(_setupCompletedKey, fallbackUid: fallbackUid),
@@ -659,6 +686,17 @@ class PosterProfileService {
       }
       final remote = _fromRemoteMap(snapshot.data() ?? <String, dynamic>{});
       final fallbackProfile = localProfile ?? await loadLocal();
+      final localPersonalPhotoPendingSync =
+          (fallbackProfile.photoPath.trim().isNotEmpty ||
+              fallbackProfile.originalPhotoPath.trim().isNotEmpty) &&
+          fallbackProfile.photoUrl.trim().isEmpty &&
+          fallbackProfile.originalPhotoUrl.trim().isEmpty;
+      final localPersonalPhotoIsNewer =
+          fallbackProfile.personalPhotoRevision > remote.personalPhotoRevision;
+      final preferLocalPersonalPhoto =
+          localPersonalPhotoPendingSync || localPersonalPhotoIsNewer;
+      final preferLocalProfile =
+          fallbackProfile.profileRevision > remote.profileRevision;
       final localHasBusinessProfile =
           fallbackProfile.identityMode == PosterIdentityMode.business ||
           fallbackProfile.businessName.trim().isNotEmpty ||
@@ -667,23 +705,51 @@ class PosterProfileService {
           fallbackProfile.businessLogoPath.trim().isNotEmpty ||
           fallbackProfile.businessLogoUrl.trim().isNotEmpty;
       final merged = remote.copyWith(
+        nameTelugu: preferLocalProfile
+            ? fallbackProfile.nameTelugu
+            : remote.nameTelugu,
+        nameEnglish: preferLocalProfile
+            ? fallbackProfile.nameEnglish
+            : remote.nameEnglish,
+        whatsappNumber: preferLocalProfile
+            ? fallbackProfile.whatsappNumber
+            : remote.whatsappNumber,
+        nameFontFamily: preferLocalProfile
+            ? fallbackProfile.nameFontFamily
+            : remote.nameFontFamily,
+        displayNameMode: preferLocalProfile
+            ? fallbackProfile.displayNameMode
+            : remote.displayNameMode,
         photoPath: fallbackProfile.photoPath.trim().isNotEmpty
             ? fallbackProfile.photoPath
             : remote.photoPath,
+        photoUrl: preferLocalPersonalPhoto
+            ? fallbackProfile.photoUrl
+            : remote.photoUrl,
         originalPhotoPath: fallbackProfile.originalPhotoPath.trim().isNotEmpty
             ? fallbackProfile.originalPhotoPath
             : remote.originalPhotoPath,
+        originalPhotoUrl: preferLocalPersonalPhoto
+            ? fallbackProfile.originalPhotoUrl
+            : remote.originalPhotoUrl,
+        personalPhotoRevision: preferLocalPersonalPhoto
+            ? fallbackProfile.personalPhotoRevision
+            : remote.personalPhotoRevision,
         identityMode: localHasBusinessProfile
             ? fallbackProfile.identityMode
             : remote.identityMode,
-        businessName: fallbackProfile.businessName.trim().isNotEmpty
+        businessName:
+            preferLocalProfile || fallbackProfile.businessName.trim().isNotEmpty
             ? fallbackProfile.businessName
             : remote.businessName,
-        businessTagline: fallbackProfile.businessTagline.trim().isNotEmpty
+        businessTagline:
+            preferLocalProfile ||
+                fallbackProfile.businessTagline.trim().isNotEmpty
             ? fallbackProfile.businessTagline
             : remote.businessTagline,
         businessWhatsappNumber:
-            fallbackProfile.businessWhatsappNumber.trim().isNotEmpty
+            preferLocalProfile ||
+                fallbackProfile.businessWhatsappNumber.trim().isNotEmpty
             ? fallbackProfile.businessWhatsappNumber
             : remote.businessWhatsappNumber,
         businessLogoPath: fallbackProfile.businessLogoPath.trim().isNotEmpty
@@ -695,6 +761,9 @@ class PosterProfileService {
         businessLogoStyleId: fallbackProfile.businessLogoStyleId.trim().isEmpty
             ? remote.businessLogoStyleId
             : fallbackProfile.businessLogoStyleId,
+        profileRevision: preferLocalProfile
+            ? fallbackProfile.profileRevision
+            : remote.profileRevision,
       );
       await _saveLocal(merged);
       return merged;
@@ -847,14 +916,17 @@ class PosterProfileService {
   }
 
   static Future<void> save(PosterProfileData data) async {
-    final completedData = data.copyWith(setupCompleted: true);
+    final completedData = data.copyWith(
+      setupCompleted: true,
+      profileRevision: DateTime.now().millisecondsSinceEpoch,
+    );
     await _saveLocal(completedData);
     await _clearSetupSkipped();
     final user = _currentFirebaseUserOrNull();
     if (user == null) {
       return;
     }
-    unawaited(_saveRemoteProfile(user.uid, completedData));
+    await _saveRemoteProfile(user.uid, completedData);
   }
 
   static Future<void> _saveRemoteProfile(
@@ -877,6 +949,7 @@ class PosterProfileService {
             'nameFontFamily': _sanitizeFont(data.nameFontFamily),
             'photoUrl': data.photoUrl.trim(),
             'originalPhotoUrl': data.originalPhotoUrl.trim(),
+            'personalPhotoRevision': data.personalPhotoRevision,
             'identityMode': data.identityMode.name,
             'businessName': data.businessName.trim(),
             'businessTagline': data.businessTagline.trim(),
@@ -884,6 +957,7 @@ class PosterProfileService {
             'businessLogoUrl': data.businessLogoUrl.trim(),
             'businessLogoStyleId': data.businessLogoStyleId.trim(),
             'setupCompleted': data.setupCompleted,
+            'profileRevision': data.profileRevision,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
     } catch (error, stackTrace) {
@@ -902,12 +976,15 @@ class PosterProfileService {
     String photoUrl = '',
     String originalPhotoUrl = '',
     bool saveRemoteUrls = false,
+    int? personalPhotoRevision,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final trimmedPhotoPath = photoPath.trim();
     final trimmedOriginalPhotoPath = originalPhotoPath.trim();
     final trimmedPhotoUrl = photoUrl.trim();
     final trimmedOriginalPhotoUrl = originalPhotoUrl.trim();
+    final nextRevision =
+        personalPhotoRevision ?? DateTime.now().millisecondsSinceEpoch;
 
     if (trimmedPhotoPath.isEmpty) {
       await prefs.remove(_scopedKey(_photoPathKey));
@@ -935,6 +1012,7 @@ class PosterProfileService {
         trimmedOriginalPhotoUrl,
       );
     }
+    await prefs.setInt(_scopedKey(_personalPhotoRevisionKey), nextRevision);
 
     if (!saveRemoteUrls) {
       return;
@@ -946,24 +1024,55 @@ class PosterProfileService {
     }
 
     final Map<String, dynamic> payload = <String, dynamic>{
+      'photoUrl': trimmedPhotoUrl,
+      'originalPhotoUrl': trimmedOriginalPhotoUrl,
+      'personalPhotoRevision': nextRevision,
+      'personalPhotoSyncPending':
+          trimmedPhotoUrl.isEmpty &&
+          trimmedOriginalPhotoUrl.isEmpty &&
+          (trimmedPhotoPath.isNotEmpty || trimmedOriginalPhotoPath.isNotEmpty),
       'updatedAt': FieldValue.serverTimestamp(),
     };
-    if (trimmedPhotoUrl.isNotEmpty) {
-      payload['photoUrl'] = trimmedPhotoUrl;
-    }
-    if (trimmedOriginalPhotoUrl.isNotEmpty) {
-      payload['originalPhotoUrl'] = trimmedOriginalPhotoUrl;
-    }
-    if (payload.length == 1) {
-      return;
-    }
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('posterProfile')
-        .doc('main')
-        .set(payload, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('posterProfile')
+          .doc('main')
+          .set(payload, SetOptions(merge: true));
+    } catch (error, stackTrace) {
+      developer.log(
+        'Personal photo remote save deferred: $error',
+        name: 'poster_profile.personal_photo',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  static Future<void> evictRemoteProfilePhotoCache(
+    PosterProfileData profile,
+  ) async {
+    final urls = <String>{
+      profile.photoUrl.trim(),
+      profile.originalPhotoUrl.trim(),
+      profile.businessLogoUrl.trim(),
+    }..removeWhere((url) => url.isEmpty);
+
+    for (final url in urls) {
+      try {
+        await PosterNetworkImageCache.instance.removeFile(url);
+      } catch (_) {}
+      try {
+        await CachedNetworkImageProvider(
+          url,
+          cacheManager: PosterNetworkImageCache.instance,
+          maxWidth: PosterNetworkImageLimits.diskIdentityMaxWidth,
+          maxHeight: PosterNetworkImageLimits.diskIdentityMaxHeight,
+        ).evict();
+      } catch (_) {}
+    }
   }
 
   static Future<PosterProfileData> _ensureRemotePersonalPhotoSynced(
@@ -1011,6 +1120,7 @@ class PosterProfileService {
       final PosterProfileData updated = profile.copyWith(
         photoUrl: nextPhotoUrl,
         originalPhotoUrl: nextOriginalPhotoUrl,
+        personalPhotoRevision: DateTime.now().millisecondsSinceEpoch,
       );
       await savePersonalPhotoAssets(
         photoPath: updated.photoPath,
@@ -1018,6 +1128,7 @@ class PosterProfileService {
         photoUrl: updated.photoUrl,
         originalPhotoUrl: updated.originalPhotoUrl,
         saveRemoteUrls: true,
+        personalPhotoRevision: updated.personalPhotoRevision,
       );
       await _saveLocal(updated);
       return updated;
@@ -1080,12 +1191,21 @@ class PosterProfileService {
       return;
     }
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('posterProfile')
-        .doc('main')
-        .set(payload, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('posterProfile')
+          .doc('main')
+          .set(payload, SetOptions(merge: true));
+    } catch (error, stackTrace) {
+      developer.log(
+        'Business logo remote save deferred: $error',
+        name: 'poster_profile.business_logo',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   static Future<String> uploadProfilePhoto({
@@ -1093,9 +1213,10 @@ class PosterProfileService {
     required String extension,
     bool isOriginal = false,
   }) async {
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
     final user = _currentFirebaseUserOrNull();
     if (user == null) {
-      return '';
+      throw StateError('Cannot upload profile photo without signed-in user.');
     }
     final upload = await _prepareOptimizedUpload(
       file: file,
@@ -1116,9 +1237,10 @@ class PosterProfileService {
     required File file,
     required String extension,
   }) async {
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
     final user = _currentFirebaseUserOrNull();
     if (user == null) {
-      return '';
+      throw StateError('Cannot upload business logo without signed-in user.');
     }
     final upload = await _prepareOptimizedUpload(
       file: file,
@@ -1222,6 +1344,11 @@ class PosterProfileService {
         data.originalPhotoUrl.trim(),
       );
     }
+    await prefs.setInt(
+      _scopedKey(_personalPhotoRevisionKey),
+      data.personalPhotoRevision,
+    );
+    await prefs.setInt(_scopedKey(_profileRevisionKey), data.profileRevision);
   }
 
   static Future<void> _clearSetupSkipped() async {
@@ -1260,6 +1387,8 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _personalPhotoRevisionKey,
+      _profileRevisionKey,
       _setupCompletedKey,
       _setupSkippedKey,
     ];
@@ -1306,6 +1435,8 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _personalPhotoRevisionKey,
+      _profileRevisionKey,
       _setupCompletedKey,
       _setupSkippedKey,
     ];
@@ -1319,6 +1450,8 @@ class PosterProfileService {
         await prefs.setString(scopedKey, value);
       } else if (value is bool) {
         await prefs.setBool(scopedKey, value);
+      } else if (value is int) {
+        await prefs.setInt(scopedKey, value);
       }
     }
     await prefs.setBool(markerKey, true);
@@ -1354,6 +1487,8 @@ class PosterProfileService {
           .trim(),
       originalPhotoPath: '',
       originalPhotoUrl: (data['originalPhotoUrl'] as String? ?? '').trim(),
+      personalPhotoRevision: _parseInt(data['personalPhotoRevision']),
+      profileRevision: _parseInt(data['profileRevision']),
       setupCompleted:
           data['setupCompleted'] == true ||
           _isMeaningfulProfileName(remoteNameTelugu) ||
@@ -1367,6 +1502,16 @@ class PosterProfileService {
       'business' => PosterIdentityMode.business,
       _ => PosterIdentityMode.personal,
     };
+  }
+
+  static int _parseInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   static String _contentTypeForExtension(String extension) {

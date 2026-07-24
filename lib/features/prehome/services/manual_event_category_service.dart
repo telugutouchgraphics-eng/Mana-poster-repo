@@ -8,6 +8,23 @@ import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 const bool _verboseManualEventCategoryLogs = false;
+const Set<String> _teluguSharedContentRegionIds = <String>{
+  'andhra_pradesh',
+  'telangana',
+};
+const Set<String> _hindiSharedContentRegionIds = <String>{
+  'bihar',
+  'chhattisgarh',
+  'haryana',
+  'himachal_pradesh',
+  'jharkhand',
+  'madhya_pradesh',
+  'rajasthan',
+  'uttar_pradesh',
+  'uttarakhand',
+  'delhi',
+  'andaman_nicobar',
+};
 
 class ManualEventCategoryService {
   const ManualEventCategoryService({FirebaseFirestore? firestore})
@@ -44,9 +61,7 @@ class ManualEventCategoryService {
               .whereType<DynamicCategory>()
               .where(
                 (category) =>
-                    selectedRegionId.isEmpty ||
-                    category.regionIds.isEmpty ||
-                    category.regionIds.contains(selectedRegionId),
+                    _matchesSelectedRegion(category, selectedRegionId),
               )
               .toList(growable: false)
             ..sort((left, right) {
@@ -75,6 +90,18 @@ class ManualEventCategoryService {
     final id = (data['id'] as String?)?.trim() ?? doc.id.trim();
     final rawLabel = (data['label'] as String?)?.trim() ?? id;
     final regionId = (data['regionId'] as String?)?.trim() ?? '';
+    final rawRegionIds = data['regionIds'];
+    final regionIds = rawRegionIds is Iterable
+        ? rawRegionIds
+              .map((item) => item.toString().trim())
+              .where((item) => item.isNotEmpty)
+              .toSet()
+        : <String>{};
+    final effectiveRegionIds = regionIds.isNotEmpty
+        ? regionIds
+        : regionId.isEmpty
+        ? <String>{}
+        : <String>{regionId};
     final startAt = _toMillis(data['startAt']);
     final endAt = _toMillis(data['endAt']);
     if (id.isEmpty || rawLabel.isEmpty || startAt <= 0 || endAt <= 0) {
@@ -107,10 +134,31 @@ class ManualEventCategoryService {
       iconAssetPath: iconAssetPath == null || iconAssetPath.isEmpty
           ? null
           : iconAssetPath,
-      regionIds: regionId.isEmpty ? const <String>{} : <String>{regionId},
+      regionIds: effectiveRegionIds,
       eventStartDate: DateTime.fromMillisecondsSinceEpoch(startAt),
       eventEndDate: DateTime.fromMillisecondsSinceEpoch(endAt),
     );
+  }
+
+  bool _matchesSelectedRegion(
+    DynamicCategory category,
+    String selectedRegionId,
+  ) {
+    if (selectedRegionId.isEmpty || category.regionIds.isEmpty) {
+      return true;
+    }
+    final visibleRegionIds = _sharedContentRegionIdsFor(selectedRegionId);
+    return category.regionIds.any(visibleRegionIds.contains);
+  }
+
+  Set<String> _sharedContentRegionIdsFor(String selectedRegionId) {
+    if (_teluguSharedContentRegionIds.contains(selectedRegionId)) {
+      return _teluguSharedContentRegionIds;
+    }
+    if (_hindiSharedContentRegionIds.contains(selectedRegionId)) {
+      return _hindiSharedContentRegionIds;
+    }
+    return <String>{selectedRegionId};
   }
 
   int _toMillis(Object? raw) {

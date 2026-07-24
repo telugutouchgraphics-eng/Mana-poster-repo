@@ -40,6 +40,7 @@ class PurchaseVerificationEvidence {
     this.transactionDate,
     this.status,
     this.completePurchase,
+    this.allowRestoreWithoutPendingBinding = false,
   });
 
   final String productId;
@@ -50,6 +51,25 @@ class PurchaseVerificationEvidence {
   final String? transactionDate;
   final String? status;
   final Future<void> Function()? completePurchase;
+  final bool allowRestoreWithoutPendingBinding;
+
+  PurchaseVerificationEvidence copyWith({
+    bool? allowRestoreWithoutPendingBinding,
+  }) {
+    return PurchaseVerificationEvidence(
+      productId: productId,
+      source: source,
+      serverVerificationData: serverVerificationData,
+      localVerificationData: localVerificationData,
+      transactionId: transactionId,
+      transactionDate: transactionDate,
+      status: status,
+      completePurchase: completePurchase,
+      allowRestoreWithoutPendingBinding:
+          allowRestoreWithoutPendingBinding ??
+          this.allowRestoreWithoutPendingBinding,
+    );
+  }
 
   Future<void> completeStorePurchase() async {
     final completion = completePurchase;
@@ -218,7 +238,7 @@ class BillingPurchaseCoordinator {
     } catch (_) {
       return const PurchaseFlowOutcome(result: PurchaseFlowResult.failed);
     } finally {
-      await subscription.cancel();
+      await _cancelFlowSubscription(subscription);
       if (identical(_activeFlowSubscription, subscription)) {
         _activeFlowSubscription = null;
       }
@@ -243,7 +263,7 @@ class BillingPurchaseCoordinator {
     _purchaseFlowActive = false;
 
     if (subscription != null) {
-      await subscription.cancel();
+      await _cancelFlowSubscription(subscription);
     }
   }
 
@@ -280,8 +300,18 @@ class BillingPurchaseCoordinator {
     } catch (_) {
       return restored;
     } finally {
-      await subscription.cancel();
+      await _cancelFlowSubscription(subscription);
       _purchaseFlowActive = false;
+    }
+  }
+
+  Future<void> _cancelFlowSubscription(
+    StreamSubscription<BillingPurchaseEvent> subscription,
+  ) async {
+    try {
+      await subscription.cancel();
+    } catch (_) {
+      // Purchase stream teardown can race with billing plugin lifecycle changes.
     }
   }
 
@@ -379,10 +409,7 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
   }
 
   Set<String> get _allProductIds {
-    final ids = <String>{
-      productId,
-      ..._fallbackProductIds,
-    };
+    final ids = <String>{productId, ..._fallbackProductIds};
     ids.removeWhere((id) => id.trim().isEmpty);
     return ids;
   }
@@ -512,7 +539,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
         )) {
       return PurchaseFlowOutcome(
         result: PurchaseFlowResult.success,
-        evidence: localActivePurchase,
+        evidence: localActivePurchase.copyWith(
+          allowRestoreWithoutPendingBinding: true,
+        ),
       );
     }
 
@@ -534,7 +563,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
           restoreResult.evidence!,
           trigger: 'restore_purchases',
         )) {
-      return restoreResult;
+      return PurchaseFlowOutcome(
+        result: restoreResult.result,
+        evidence: restoreResult.evidence!.copyWith(
+          allowRestoreWithoutPendingBinding: true,
+        ),
+      );
     }
 
     final fallbackPurchase = await _findExistingPurchaseLocally();
@@ -545,7 +579,9 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
         )) {
       return PurchaseFlowOutcome(
         result: PurchaseFlowResult.success,
-        evidence: fallbackPurchase,
+        evidence: fallbackPurchase.copyWith(
+          allowRestoreWithoutPendingBinding: true,
+        ),
       );
     }
 
@@ -816,6 +852,16 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       }
       return true;
     }
+    if (check.decision == PendingSubscriptionBindingDecision.noBinding &&
+        _isExplicitRestoreClaimTrigger(trigger)) {
+      _debugLog(
+        'Allowing explicit restore without local pending binding'
+        ' trigger=$trigger'
+        ' currentUid=${FirebaseAuth.instance.currentUser?.uid}'
+        ' productId=${evidence.productId}',
+      );
+      return true;
+    }
     _debugLog(
       'Blocked unverified Play purchase claim'
       ' trigger=$trigger'
@@ -824,6 +870,12 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
       ' decision=${check.decision.name}',
     );
     return false;
+  }
+
+  bool _isExplicitRestoreClaimTrigger(String trigger) {
+    return trigger == 'local_query_past_purchases' ||
+        trigger == 'restore_purchases' ||
+        trigger == 'restore_query_past_purchases';
   }
 
   DateTime? _parsePurchaseTime(String? rawValue) {

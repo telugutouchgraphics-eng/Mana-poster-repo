@@ -10830,10 +10830,13 @@ class _HomeBannerAdFallback extends StatefulWidget {
 }
 
 class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
+  static const int _maxLoadAttempts = 3;
+
   BannerAd? _bannerAd;
   AdSize? _adSize;
   bool _loadAttempted = false;
   bool _isLoaded = false;
+  int _loadAttemptCount = 0;
 
   @override
   void didChangeDependencies() {
@@ -10845,10 +10848,23 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     unawaited(_loadBanner());
   }
 
+  void _scheduleRetry() {
+    if (!mounted || _isLoaded || _loadAttemptCount >= _maxLoadAttempts) {
+      return;
+    }
+    Future<void>.delayed(const Duration(seconds: 12), () {
+      if (!mounted || _isLoaded) {
+        return;
+      }
+      unawaited(_loadBanner());
+    });
+  }
+
   Future<void> _loadBanner() async {
     if (kIsWeb || !Platform.isAndroid || !AppPublicInfo.hasHomeBannerAdUnitId) {
       return;
     }
+    _loadAttemptCount += 1;
     try {
       await PostSplashStartupGate.whenReady.timeout(
         const Duration(seconds: 20),
@@ -10862,8 +10878,15 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     }
     final availableWidth = MediaQuery.sizeOf(context).width - 32;
     if (!await AdMobConsentService.instance.canRequestAds()) {
+      await AdMobConsentService.instance.prepareForAds();
+    }
+    if (!await AdMobConsentService.instance.canRequestAds()) {
+      _scheduleRetry();
       return;
     }
+    try {
+      await MobileAds.instance.initialize().timeout(const Duration(seconds: 8));
+    } catch (_) {}
     if (!mounted) {
       return;
     }
@@ -10871,6 +10894,7 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       availableWidth.truncate(),
     );
     if (!mounted || adaptiveSize == null) {
+      _scheduleRetry();
       return;
     }
     final banner = BannerAd(
@@ -10902,10 +10926,17 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
             _adSize = null;
             _isLoaded = false;
           });
+          _scheduleRetry();
         },
       ),
     );
-    await banner.load();
+    try {
+      await banner.load();
+    } catch (error) {
+      banner.dispose();
+      _homeDebugLog('home banner ad load exception: $error');
+      _scheduleRetry();
+    }
   }
 
   @override
@@ -11707,7 +11738,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    final index = hash.abs() % _randomPosterNameFonts.length;
+    final index =
+        (hash.abs() + _stripGradientTapOffset) % _randomPosterNameFonts.length;
     return _randomPosterNameFonts[index];
   }
 
@@ -11723,7 +11755,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    final index = hash.abs() % _randomEnglishPosterNameFonts.length;
+    final index =
+        (hash.abs() + _stripGradientTapOffset) %
+        _randomEnglishPosterNameFonts.length;
     return _randomEnglishPosterNameFonts[index];
   }
 
@@ -11758,7 +11792,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
   }
 
-  void _cyclePosterStripGradient() {
+  void _cyclePosterDesign() {
     setState(() {
       _stripGradientTapOffset =
           (_stripGradientTapOffset + 1) %
@@ -12927,7 +12961,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
                   onPhotoTap: _togglePosterPhotoFlipTap,
                   stripGradientTapOffset: _stripGradientTapOffset,
-                  onNameStripTap: _cyclePosterStripGradient,
+                  onNameStripTap: null,
                   additionalPhotoSelection: _extraPhotoSelection,
                   onAdditionalPhotoTap:
                       personalizationConfig.showVideoExtraPhoto
@@ -12973,7 +13007,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             photoYOffsetPercent: _photoUserAdjustment.yOffsetPercent,
             onPhotoTap: _togglePosterPhotoFlipTap,
             stripGradientTapOffset: _stripGradientTapOffset,
-            onNameStripTap: _cyclePosterStripGradient,
+            onNameStripTap: null,
             additionalPhotoSelection: _extraPhotoSelection,
             onAdditionalPhotoTap: personalizationConfig.showVideoExtraPhoto
                 ? () => unawaited(_pickAdditionalPosterPhoto())
@@ -14021,45 +14055,96 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     valueListenable: _activeActionNotifier,
                     builder: (context, activeAction, _) {
                       final isBusy = activeAction == 'poster_editor';
-                      return SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed:
-                              deferRichPosterPreview || activeAction != null
-                              ? null
-                              : () =>
-                                    unawaited(_openPosterPhotoEditor(context)),
-                          icon: isBusy
-                              ? const SizedBox(
-                                  width: 15,
-                                  height: 15,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.add_photo_alternate_rounded,
-                                  size: 18,
+                      final controlsDisabled =
+                          deferRichPosterPreview || activeAction != null;
+                      return Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: controlsDisabled
+                                  ? null
+                                  : () => unawaited(
+                                      _openPosterPhotoEditor(context),
+                                    ),
+                              icon: isBusy
+                                  ? const SizedBox(
+                                      width: 15,
+                                      height: 15,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.add_photo_alternate_rounded,
+                                      size: 16,
+                                    ),
+                              label: Text(
+                                strings.localized(
+                                  telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
+                                  english: 'Edit',
                                 ),
-                          label: Text(
-                            strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF6D28D9),
+                                side: const BorderSide(
+                                  color: Color(0xFFC4B5FD),
+                                ),
+                                backgroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 8,
+                                ),
+                                minimumSize: const Size.fromHeight(32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF6D28D9),
-                            side: const BorderSide(color: Color(0xFFC4B5FD)),
-                            backgroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            minimumSize: const Size.fromHeight(32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: controlsDisabled
+                                  ? null
+                                  : _cyclePosterDesign,
+                              icon: const Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 16,
+                              ),
+                              label: Text(
+                                strings.localized(
+                                  telugu:
+                                      '\u0C21\u0C3F\u0C1C\u0C48\u0C28\u0C4D \u0C2E\u0C3E\u0C30\u0C4D\u0C1A\u0C41',
+                                  english: 'Change Design',
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF6D28D9),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 8,
+                                ),
+                                minimumSize: const Size.fromHeight(32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                elevation: 0,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       );
                     },
                   )
@@ -14374,34 +14459,86 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               valueListenable: _activeActionNotifier,
               builder: (context, activeAction, _) {
                 final isBusy = activeAction == 'poster_editor';
-                return OutlinedButton.icon(
-                  onPressed: deferRichPosterPreview || activeAction != null
-                      ? null
-                      : () => unawaited(_openPosterPhotoEditor(context)),
-                  icon: isBusy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add_photo_alternate_rounded, size: 18),
-                  label: Text(
-                    strings.localized(telugu: 'ఎడిట్', english: 'Edit'),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                final controlsDisabled =
+                    deferRichPosterPreview || activeAction != null;
+                return Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: controlsDisabled
+                            ? null
+                            : () => unawaited(_openPosterPhotoEditor(context)),
+                        icon: isBusy
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.add_photo_alternate_rounded,
+                                size: 16,
+                              ),
+                        label: Text(
+                          strings.localized(
+                            telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
+                            english: 'Edit',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF6D28D9),
+                          side: const BorderSide(color: Color(0xFFC4B5FD)),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 9,
+                            horizontal: 8,
+                          ),
+                          minimumSize: const Size.fromHeight(36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF6D28D9),
-                    side: const BorderSide(color: Color(0xFFC4B5FD)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    minimumSize: const Size.fromHeight(38),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: controlsDisabled ? null : _cyclePosterDesign,
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                        label: Text(
+                          strings.localized(
+                            telugu:
+                                '\u0C21\u0C3F\u0C1C\u0C48\u0C28\u0C4D \u0C2E\u0C3E\u0C30\u0C4D\u0C1A\u0C41',
+                            english: 'Change Design',
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10.8,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF6D28D9),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 9,
+                            horizontal: 8,
+                          ),
+                          minimumSize: const Size.fromHeight(36),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -15947,6 +16084,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     if (oldWidget.viewerPosterProfile != widget.viewerPosterProfile ||
         oldWidget.language != widget.language ||
         oldWidget.personalizationConfig != widget.personalizationConfig ||
+        oldWidget.stripGradientTapOffset != widget.stripGradientTapOffset ||
         oldWidget.posterRenderCycle != widget.posterRenderCycle) {
       if (!widget.deferLegacyTextPrime) {
         _scheduleLegacyPrime();
@@ -16082,7 +16220,9 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    final index = hash.abs() % _randomPosterNameFonts.length;
+    final index =
+        (hash.abs() + widget.stripGradientTapOffset) %
+        _randomPosterNameFonts.length;
     return _randomPosterNameFonts[index];
   }
 
@@ -16131,7 +16271,9 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
     }
-    final index = hash.abs() % _randomEnglishPosterNameFonts.length;
+    final index =
+        (hash.abs() + widget.stripGradientTapOffset) %
+        _randomEnglishPosterNameFonts.length;
     return _randomEnglishPosterNameFonts[index];
   }
 

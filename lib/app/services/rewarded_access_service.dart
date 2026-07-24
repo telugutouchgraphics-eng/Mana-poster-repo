@@ -135,13 +135,24 @@ class RewardedAccessService {
           unawaited(preloadRewardedAd(adUnitId: adUnitId));
         },
       );
-      ad.show(
-        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-          rewardEarned = true;
-          _debugLog(
-            'RewardedAccessService reward earned for $debugLabel: amount=${reward.amount} type=${reward.type}',
-          );
-        },
+      unawaited(
+        ad
+            .show(
+              onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+                rewardEarned = true;
+                _debugLog(
+                  'RewardedAccessService reward earned for $debugLabel: amount=${reward.amount} type=${reward.type}',
+                );
+              },
+            )
+            .catchError((Object error, StackTrace stackTrace) {
+              _debugLogStack(
+                'RewardedAccessService show exception for $debugLabel: $error',
+                stackTrace,
+              );
+              complete(true);
+              unawaited(preloadRewardedAd(adUnitId: adUnitId));
+            }),
       );
     }
 

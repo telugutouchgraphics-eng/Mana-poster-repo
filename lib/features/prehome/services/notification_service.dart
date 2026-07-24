@@ -159,10 +159,10 @@ class NotificationService {
   }
 
   Future<void> _attachRealtimeListeners(FirebaseMessaging messaging) async {
-    await _onMessageSubscription?.cancel();
-    await _onMessageOpenedAppSubscription?.cancel();
-    await _tokenRefreshSubscription?.cancel();
-    await _authStateSubscription?.cancel();
+    await _cancelRealtimeSubscription(_onMessageSubscription);
+    await _cancelRealtimeSubscription(_onMessageOpenedAppSubscription);
+    await _cancelRealtimeSubscription(_tokenRefreshSubscription);
+    await _cancelRealtimeSubscription(_authStateSubscription);
 
     _onMessageSubscription = FirebaseMessaging.onMessage.listen((
       message,
@@ -179,6 +179,16 @@ class NotificationService {
     ) {
       unawaited(_guardedRegisterCurrentToken());
     });
+  }
+
+  Future<void> _cancelRealtimeSubscription(
+    StreamSubscription<dynamic>? subscription,
+  ) async {
+    try {
+      await subscription?.cancel();
+    } catch (_) {
+      // Listener teardown is best effort during app/plugin lifecycle changes.
+    }
   }
 
   static Future<void> showRemoteMessage(RemoteMessage message) async {
@@ -711,23 +721,18 @@ class NotificationService {
         AppLanguage.kannada: 'ನಿಮಗಾಗಿ ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಈಗ ತೆರೆಯಿರಿ.',
         AppLanguage.malayalam:
             'നിങ്ങൾക്കായി പോസ്റ്ററുകൾ തയ്യാറാണ്. ഇപ്പോൾ തുറക്കൂ.',
-        AppLanguage.assamese:
-            'আপোনাৰ বাবে পোষ্টাৰ সাজু। এতিয়াই এপ খুলক।',
+        AppLanguage.assamese: 'আপোনাৰ বাবে পোষ্টাৰ সাজু। এতিয়াই এপ খুলক।',
         AppLanguage.konkani: 'तुमकां पोस्टर तयार आसात. आतां ऍप उगडात.',
-        AppLanguage.gujarati:
-            'તમારા માટે પોસ્ટર તૈયાર છે. હમણાં એપ ખોલો.',
+        AppLanguage.gujarati: 'તમારા માટે પોસ્ટર તૈયાર છે. હમણાં એપ ખોલો.',
         AppLanguage.marathi: 'तुमच्यासाठी पोस्टर तयार आहेत. आत्ताच अॅप उघडा.',
-        AppLanguage.meitei:
-            'নহাক্কীদমক পোস্টরশিং শেম্লে। হৌজিক এপ হাংদোকউ।',
+        AppLanguage.meitei: 'নহাক্কীদমক পোস্টরশিং শেম্লে। হৌজিক এপ হাংদোকউ।',
         AppLanguage.mizo: 'Poster i tan a peih tawh. App hi hawng rawh.',
-        AppLanguage.odia:
-            'ଆପଣଙ୍କ ପାଇଁ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ଆପ୍ ଖୋଲନ୍ତୁ।',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ପାଇଁ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ଆପ୍ ଖୋଲନ୍ତୁ।',
         AppLanguage.punjabi: 'ਤੁਹਾਡੇ ਲਈ ਪੋਸਟਰ ਤਿਆਰ ਹਨ। ਹੁਣੇ ਐਪ ਖੋਲ੍ਹੋ।',
-        AppLanguage.nepali: 'तपाईंका लागि पोस्टर तयार छन्। अहिले एप खोल्नुहोस्।',
-        AppLanguage.bengali:
-            'আপনার জন্য পোস্টার প্রস্তুত। এখনই অ্যাপ খুলুন।',
-        AppLanguage.kashmiri:
-            'تُہندس خاطر پوسٹر تیار چھ۔ وُنہ ایپ کھولیو۔',
+        AppLanguage.nepali:
+            'तपाईंका लागि पोस्टर तयार छन्। अहिले एप खोल्नुहोस्।',
+        AppLanguage.bengali: 'আপনার জন্য পোস্টার প্রস্তুত। এখনই অ্যাপ খুলুন।',
+        AppLanguage.kashmiri: 'تُہندس خاطر پوسٹر تیار چھ۔ وُنہ ایپ کھولیو۔',
         AppLanguage.ladakhi: 'Khyod-la poster ready in. App da-phye.',
       },
       'morning_title': {
@@ -753,37 +758,25 @@ class NotificationService {
       'morning_body': {
         AppLanguage.telugu:
             'మీ ఉదయ పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.',
-        AppLanguage.hindi:
-            'आपका सुबह का पोस्टर तैयार है। अभी शेयर करें।',
+        AppLanguage.hindi: 'आपका सुबह का पोस्टर तैयार है। अभी शेयर करें।',
         AppLanguage.english: 'Your morning poster is ready. Share it now.',
-        AppLanguage.tamil:
-            'உங்கள் காலை போஸ்டர் தயார். இப்போது பகிருங்கள்.',
-        AppLanguage.kannada:
-            'ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
+        AppLanguage.tamil: 'உங்கள் காலை போஸ்டர் தயார். இப்போது பகிருங்கள்.',
+        AppLanguage.kannada: 'ನಿಮ್ಮ ಬೆಳಗಿನ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
         AppLanguage.malayalam:
             'നിങ്ങളുടെ രാവിലത്തെ പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.',
         AppLanguage.assamese:
             'আপোনাৰ ৰাতিপুৱাৰ পোষ্টাৰ সাজু। এতিয়াই শ্বেয়াৰ কৰক।',
-        AppLanguage.konkani:
-            'तुमचो सकाळचो पोस्टर तयार आसा. आतां शेअर करात.',
-        AppLanguage.gujarati:
-            'તમારું સવારનું પોસ્ટર તૈયાર છે. હમણાં શેર કરો.',
-        AppLanguage.marathi:
-            'तुमचा सकाळचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
-        AppLanguage.meitei:
-            'নহাক্কী অয়ুক্কী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
-        AppLanguage.mizo:
-            'I zing poster a peih tawh. Tunah share rawh.',
-        AppLanguage.odia:
-            'ଆପଣଙ୍କ ସକାଳ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
-        AppLanguage.punjabi:
-            'ਤੁਹਾਡਾ ਸਵੇਰ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
+        AppLanguage.konkani: 'तुमचो सकाळचो पोस्टर तयार आसा. आतां शेअर करात.',
+        AppLanguage.gujarati: 'તમારું સવારનું પોસ્ટર તૈયાર છે. હમણાં શેર કરો.',
+        AppLanguage.marathi: 'तुमचा सकाळचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
+        AppLanguage.meitei: 'নহাক্কী অয়ুক্কী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
+        AppLanguage.mizo: 'I zing poster a peih tawh. Tunah share rawh.',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ସକାଳ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
+        AppLanguage.punjabi: 'ਤੁਹਾਡਾ ਸਵੇਰ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
         AppLanguage.nepali:
             'तपाईंको बिहानको पोस्टर तयार छ। अहिले शेयर गर्नुहोस्।',
-        AppLanguage.bengali:
-            'আপনার সকালের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
-        AppLanguage.kashmiri:
-            'تُہند صبح پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
+        AppLanguage.bengali: 'আপনার সকালের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
+        AppLanguage.kashmiri: 'تُہند صبح پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
         AppLanguage.ladakhi:
             'Khyod-kyi morning poster ready in. Da share chos.',
       },
@@ -810,37 +803,25 @@ class NotificationService {
       'afternoon_body': {
         AppLanguage.telugu:
             'మీ మధ్యాహ్న పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.',
-        AppLanguage.hindi:
-            'आपका दोपहर का पोस्टर तैयार है। अभी शेयर करें।',
+        AppLanguage.hindi: 'आपका दोपहर का पोस्टर तैयार है। अभी शेयर करें।',
         AppLanguage.english: 'Your afternoon poster is ready. Share it now.',
-        AppLanguage.tamil:
-            'உங்கள் மதிய போஸ்டர் தயார். இப்போது பகிருங்கள்.',
-        AppLanguage.kannada:
-            'ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
+        AppLanguage.tamil: 'உங்கள் மதிய போஸ்டர் தயார். இப்போது பகிருங்கள்.',
+        AppLanguage.kannada: 'ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
         AppLanguage.malayalam:
             'നിങ്ങളുടെ ഉച്ചതിരിഞ്ഞുള്ള പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.',
         AppLanguage.assamese:
             'আপোনাৰ দুপৰীয়াৰ পোষ্টাৰ সাজু। এতিয়াই শ্বেয়াৰ কৰক।',
-        AppLanguage.konkani:
-            'तुमचो दनपारचो पोस्टर तयार आसा. आतां शेअर करात.',
-        AppLanguage.gujarati:
-            'તમારું બપોરનું પોસ્ટર તૈયાર છે. હમણાં શેર કરો.',
-        AppLanguage.marathi:
-            'तुमचा दुपारचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
-        AppLanguage.meitei:
-            'নহাক্কী নুমিদাংগী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
-        AppLanguage.mizo:
-            'I chhun poster a peih tawh. Tunah share rawh.',
-        AppLanguage.odia:
-            'ଆପଣଙ୍କ ମଧ୍ୟାହ୍ନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
-        AppLanguage.punjabi:
-            'ਤੁਹਾਡਾ ਦੁਪਹਿਰ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
+        AppLanguage.konkani: 'तुमचो दनपारचो पोस्टर तयार आसा. आतां शेअर करात.',
+        AppLanguage.gujarati: 'તમારું બપોરનું પોસ્ટર તૈયાર છે. હમણાં શેર કરો.',
+        AppLanguage.marathi: 'तुमचा दुपारचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
+        AppLanguage.meitei: 'নহাক্কী নুমিদাংগী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
+        AppLanguage.mizo: 'I chhun poster a peih tawh. Tunah share rawh.',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ମଧ୍ୟାହ୍ନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
+        AppLanguage.punjabi: 'ਤੁਹਾਡਾ ਦੁਪਹਿਰ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
         AppLanguage.nepali:
             'तपाईंको दिउँसोको पोस्टर तयार छ। अहिले शेयर गर्नुहोस्।',
-        AppLanguage.bengali:
-            'আপনার দুপুরের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
-        AppLanguage.kashmiri:
-            'تُہند دوپہر پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
+        AppLanguage.bengali: 'আপনার দুপুরের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
+        AppLanguage.kashmiri: 'تُہند دوپہر پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
         AppLanguage.ladakhi:
             'Khyod-kyi afternoon poster ready in. Da share chos.',
       },
@@ -867,39 +848,26 @@ class NotificationService {
       'night_body': {
         AppLanguage.telugu:
             'మీ రాత్రి పోస్టర్ సిద్ధంగా ఉంది. ఇప్పుడే షేర్ చేయండి.',
-        AppLanguage.hindi:
-            'आपका रात का पोस्टर तैयार है। अभी शेयर करें।',
+        AppLanguage.hindi: 'आपका रात का पोस्टर तैयार है। अभी शेयर करें।',
         AppLanguage.english: 'Your night poster is ready. Share it now.',
-        AppLanguage.tamil:
-            'உங்கள் இரவு போஸ்டர் தயார். இப்போது பகிருங்கள்.',
-        AppLanguage.kannada:
-            'ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
+        AppLanguage.tamil: 'உங்கள் இரவு போஸ்டர் தயார். இப்போது பகிருங்கள்.',
+        AppLanguage.kannada: 'ನಿಮ್ಮ ರಾತ್ರಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಈಗ ಹಂಚಿ.',
         AppLanguage.malayalam:
             'നിങ്ങളുടെ രാത്രി പോസ്റ്റർ തയ്യാറാണ്. ഇപ്പോൾ ഷെയർ ചെയ്യൂ.',
-        AppLanguage.assamese:
-            'আপোনাৰ ৰাতিৰ পোষ্টাৰ সাজু। এতিয়াই শ্বেয়াৰ কৰক।',
-        AppLanguage.konkani:
-            'तुमचो रातचो पोस्टर तयार आसा. आतां शेअर करात.',
+        AppLanguage.assamese: 'আপোনাৰ ৰাতিৰ পোষ্টাৰ সাজু। এতিয়াই শ্বেয়াৰ কৰক।',
+        AppLanguage.konkani: 'तुमचो रातचो पोस्टर तयार आसा. आतां शेअर करात.',
         AppLanguage.gujarati:
             'તમારું રાત્રિનું પોસ્ટર તૈયાર છે. હમણાં શેર કરો.',
-        AppLanguage.marathi:
-            'तुमचा रात्रीचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
-        AppLanguage.meitei:
-            'নহাক্কী নুমিৎকী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
-        AppLanguage.mizo:
-            'I zan poster a peih tawh. Tunah share rawh.',
-        AppLanguage.odia:
-            'ଆପଣଙ୍କ ରାତିର ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
-        AppLanguage.punjabi:
-            'ਤੁਹਾਡਾ ਰਾਤ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
+        AppLanguage.marathi: 'तुमचा रात्रीचा पोस्टर तयार आहे. आत्ताच शेअर करा.',
+        AppLanguage.meitei: 'নহাক্কী নুমিৎকী পোস্টর শেম্লে। হৌজিক শেয়র তৌ।',
+        AppLanguage.mizo: 'I zan poster a peih tawh. Tunah share rawh.',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ରାତିର ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ। ଏବେ ସେୟାର କରନ୍ତୁ।',
+        AppLanguage.punjabi: 'ਤੁਹਾਡਾ ਰਾਤ ਦਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ।',
         AppLanguage.nepali:
             'तपाईंको रातिको पोस्टर तयार छ। अहिले शेयर गर्नुहोस्।',
-        AppLanguage.bengali:
-            'আপনার রাতের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
-        AppLanguage.kashmiri:
-            'تُہند رات پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
-        AppLanguage.ladakhi:
-            'Khyod-kyi night poster ready in. Da share chos.',
+        AppLanguage.bengali: 'আপনার রাতের পোস্টার প্রস্তুত। এখনই শেয়ার করুন।',
+        AppLanguage.kashmiri: 'تُہند رات پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
+        AppLanguage.ladakhi: 'Khyod-kyi night poster ready in. Da share chos.',
       },
     };
 

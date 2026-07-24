@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
+import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 const bool _verbosePermanentCategoryLogs = false;
@@ -27,6 +28,8 @@ class PermanentCategoryService {
     Source source = Source.serverAndCache,
   }) async {
     try {
+      final selectedRegionId =
+          (await AppRegionService.loadSelection())?.id.trim() ?? '';
       final snapshot = await firestore
           .collection('permanentCategories')
           .where('active', isEqualTo: true)
@@ -35,6 +38,12 @@ class PermanentCategoryService {
           snapshot.docs
               .map((doc) => _mapDoc(doc, language: language))
               .whereType<DynamicCategory>()
+              .where(
+                (category) =>
+                    selectedRegionId.isEmpty ||
+                    category.regionIds.isEmpty ||
+                    category.regionIds.contains(selectedRegionId),
+              )
               .toList(growable: false)
             ..sort((left, right) {
               final sortCompare = left.sortOrder.compareTo(right.sortOrder);
@@ -60,12 +69,20 @@ class PermanentCategoryService {
     final data = doc.data();
     final id = (data['id'] as String?)?.trim() ?? doc.id.trim();
     final rawLabel = (data['label'] as String?)?.trim() ?? id;
+    final rawRegionIds = data['regionIds'];
+    final regionIds = rawRegionIds is Iterable
+        ? rawRegionIds
+              .map((item) => item.toString().trim())
+              .where((item) => item.isNotEmpty)
+              .toSet()
+        : <String>{};
     if (id.isEmpty || rawLabel.isEmpty) {
       return null;
     }
     final normalizedId = _normalizeTag(id);
     final localizedLabel = _labelForLanguage(data, rawLabel, language);
     final normalizedLabel = _normalizeTag(localizedLabel);
+    final iconAssetPath = (data['iconAssetPath'] as String?)?.trim();
     return DynamicCategory(
       id: id,
       slug: id,
@@ -82,6 +99,10 @@ class PermanentCategoryService {
         'permanent_category',
       ],
       isBlinking: false,
+      iconAssetPath: iconAssetPath == null || iconAssetPath.isEmpty
+          ? null
+          : iconAssetPath,
+      regionIds: regionIds,
     );
   }
 

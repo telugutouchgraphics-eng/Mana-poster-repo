@@ -19,6 +19,13 @@ class CommunityStatusUploadScreen extends StatefulWidget {
       _CommunityStatusUploadScreenState();
 }
 
+bool _isExpectedPickerException(PlatformException error) {
+  return error.code == 'already_active' ||
+      error.code == 'camera_access_denied' ||
+      error.code == 'photo_access_denied' ||
+      error.code == 'photo_access_denied_permanently';
+}
+
 class _CommunityStatusUploadScreenState
     extends State<CommunityStatusUploadScreen> {
   static const List<Color> _backgroundColors = <Color>[
@@ -66,7 +73,24 @@ class _CommunityStatusUploadScreenState
 
   Future<void> _pickImage() async {
     final strings = context.strings;
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? picked;
+    try {
+      picked = await _picker.pickImage(source: ImageSource.gallery);
+    } on PlatformException catch (error) {
+      if (!_isExpectedPickerException(error) && mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              strings.localized(
+                telugu: 'చిత్రాన్ని ఎంచుకోలేకపోయాం',
+                english: 'Could not select the image',
+              ),
+            ),
+          ),
+        );
+      }
+      return;
+    }
     if (picked == null) {
       return;
     }
