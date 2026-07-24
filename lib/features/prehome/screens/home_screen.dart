@@ -945,7 +945,10 @@ List<_TemplateItem> _blendAllFeedPriorityBucketsWorker({
     };
   }
 
-  _TemplateItem? takeWithoutImmediateRepeat(List<_TemplateItem> queue) {
+  _TemplateItem? takeWithoutImmediateRepeat(
+    List<_TemplateItem> queue, {
+    bool allowRepeat = false,
+  }) {
     if (queue.isEmpty) {
       return null;
     }
@@ -956,6 +959,10 @@ List<_TemplateItem> _blendAllFeedPriorityBucketsWorker({
       (item) => _allCategoryGroupingKeyWorker(item) != lastCategoryKey,
     );
     if (alternateIndex <= 0) {
+      if (!allowRepeat &&
+          _allCategoryGroupingKeyWorker(queue.first) == lastCategoryKey) {
+        return null;
+      }
       return queue.removeAt(0);
     }
     return queue.removeAt(alternateIndex);
@@ -1001,6 +1008,18 @@ List<_TemplateItem> _blendAllFeedPriorityBucketsWorker({
     };
     for (final bucket in fallbackOrder) {
       final item = takeWithoutImmediateRepeat(queueFor(bucket));
+      if (item == null) {
+        continue;
+      }
+      blended.add(item);
+      lastCategoryKey = _allCategoryGroupingKeyWorker(item);
+      return;
+    }
+    for (final bucket in fallbackOrder) {
+      final item = takeWithoutImmediateRepeat(
+        queueFor(bucket),
+        allowRepeat: true,
+      );
       if (item == null) {
         continue;
       }
@@ -1069,28 +1088,24 @@ List<_TemplateItem> _rankAllFeedTemplatesWorker(
     DateTime(request.year, request.month, request.day),
   );
   final endOfTodayMillis = startOfTodayMillis + IstTimeService.dayMillis;
-  final freshTemplates = templates
+  final freshTemplateKeys = templates
       .where((item) {
         final createdAtMillis = item.createdAtMillis;
         return createdAtMillis >= startOfTodayMillis &&
             createdAtMillis < endOfTodayMillis;
       })
-      .toList(growable: false);
-  final effectiveTemplates = freshTemplates.isNotEmpty
-      ? freshTemplates
-      : templates;
-  if (effectiveTemplates.length < 2) {
-    return effectiveTemplates;
-  }
+      .map(_templateSequenceKeyWorker)
+      .where((key) => key.isNotEmpty)
+      .toSet();
 
   final seed = Object.hash(
     request.year,
     request.month,
     request.day,
     request.slot.name,
-    freshTemplates.isNotEmpty,
+    freshTemplateKeys.isNotEmpty,
   );
-  final shuffled = List<_TemplateItem>.of(effectiveTemplates, growable: false)
+  final shuffled = List<_TemplateItem>.of(templates, growable: false)
     ..sort((a, b) {
       final aKey = Object.hash(
         seed,
@@ -1216,6 +1231,8 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _startupTemplateSnapshotKey =
       'home_startup_template_snapshot_v1';
   static const int _templatesPageSize = 12;
+  static const int _allTemplatesWindowPageSize = 24;
+  static const int _categoryTemplatesPageSize = 12;
   static const int _promoSlidesLimit = 5;
   static const int _startupCacheWarmTemplatesPageSize = 3;
   static const String _homeFeedRatedKey = 'home_feed_rate_card_completed_v1';
@@ -1256,14 +1273,18 @@ class _HomeScreenState extends State<HomeScreen>
     'jokes',
   };
   static const int _initialTemplatesPageSize = 8;
-  static const int _initialPriorityPrimaryFetchSize = 4;
-  static const int _initialPrioritySecondaryFetchSize = 2;
-  static const int _startupInitialVisibleTemplateCount = 4;
+  static const int _initialPriorityPrimaryFetchSize = 8;
+  static const int _initialPrioritySecondaryFetchSize = 4;
+  static const int _startupInitialVisibleTemplateCount = 8;
+  static const int _startupMinimumScrollableTemplateCount = 3;
+  static const Duration _startupGenericFirstPaintMergeTimeout = Duration(
+    milliseconds: 900,
+  );
   static const int _startupMergeBatchSize = 6;
   static const int _smallMappingBatchSize = 8;
   static const int _smallMergeBatchInputCount = 16;
   static const int _startupSnapshotTemplateCount = 8;
-  static const int _startupSnapshotMinimumVisibleCount = 4;
+  static const int _startupSnapshotMinimumVisibleCount = 6;
   static const Duration _startupSnapshotHydrationDelay = Duration(
     milliseconds: 450,
   );
@@ -1315,6 +1336,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _templatesLoading = true;
   bool _templatesLoadingMore = false;
   bool _templatesHasMore = true;
+  bool _allTemplatesWindowExhausted = false;
+  int _allTemplatesWindowLimit = _allTemplatesWindowPageSize;
   int _activePosterPage = 0;
   final ValueNotifier<int> _activePosterPageNotifier = ValueNotifier<int>(0);
   bool _religionSelectionReady = false;
@@ -1336,6 +1359,8 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _viewerProfileLoadFuture;
   bool _referralPromptShowing = false;
   final Set<String> _hydratedCategorySlugs = <String>{};
+  final Map<String, int> _categoryFetchLimitBySlug = <String, int>{};
+  final Set<String> _categoryExhaustedSlugs = <String>{};
   List<DynamicCategory> _manualEventCategories = const <DynamicCategory>[];
   List<DynamicCategory> _permanentCategories = const <DynamicCategory>[];
   final Map<String, bool> _dynamicCategoryAvailabilityBySlug = <String, bool>{};
@@ -1367,7 +1392,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _allFeedRankingReady = false;
   bool _allFeedRankingInFlight = false;
   bool _progressiveHydrationQueued = false;
-  bool _posterFeedLoadMoreArmed = false;
+  bool _posterFeedLoadMoreArmed = true;
   String _startupFeedWarmupSignature = '';
   bool _startupSnapshotHydrationDeferred = false;
   bool _startupSnapshotAttemptCompleted = false;
@@ -1637,7 +1662,20 @@ class _HomeScreenState extends State<HomeScreen>
       }
       return a.index.compareTo(b.index);
     });
-    return ranked.map((entry) => entry.item).toList(growable: false);
+    final personalized = ranked
+        .map((entry) => entry.item)
+        .toList(growable: false);
+    final now = IstTimeService.now();
+    return _spreadAllCategoryTemplateGroupsWorker(
+      personalized,
+      seed: Object.hash(
+        now.year,
+        now.month,
+        now.day,
+        _activeHomeFeedTimeSlot.name,
+        'personalized',
+      ),
+    );
   }
 
   void _recordAllFeedTemplateInteraction(_TemplateItem item, String action) {
@@ -2532,7 +2570,14 @@ class _HomeScreenState extends State<HomeScreen>
   List<_TemplateItem> _currentAllFeedDisplaySource() {
     final locked = _lockedAllFeedTemplates;
     if (locked != null) {
-      return _applyAllFeedPersonalization(locked);
+      if (locked.length < _startupMinimumScrollableTemplateCount &&
+          _remoteApprovedTemplates.length > locked.length) {
+        _lockedAllFeedTemplates = null;
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
+      } else {
+        return _applyAllFeedPersonalization(locked);
+      }
     }
     if (_allFeedRankingReady && _rankedAllFeedTemplates != null) {
       return _applyAllFeedPersonalization(_rankedAllFeedTemplates!);
@@ -4340,7 +4385,8 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _remoteApprovedTemplates = templates;
       if (_selectedCategorySlug == _allCategorySlug &&
-          _lockedAllFeedTemplates == null) {
+          _lockedAllFeedTemplates == null &&
+          templates.length >= _startupMinimumScrollableTemplateCount) {
         _lockedAllFeedTemplates = List<_TemplateItem>.of(templates);
       }
       _rankedAllFeedTemplates = null;
@@ -4349,6 +4395,11 @@ class _HomeScreenState extends State<HomeScreen>
       _templatesLoading = false;
       _templatesHasMore = hasMore;
       _templatesLastDocument = lastDocument;
+      _allTemplatesWindowExhausted = false;
+      _allTemplatesWindowLimit = math.max(
+        _allTemplatesWindowPageSize,
+        templates.length,
+      );
     });
     setStateTask.finish(
       arguments: <String, Object?>{
@@ -5026,21 +5077,68 @@ class _HomeScreenState extends State<HomeScreen>
               primaryItems,
               dynamicTags: startupDynamicTags,
             );
+        var firstPaintItems = prioritizedPrimaryItems;
+        var firstPaintHasMore = true;
+        QueryDocumentSnapshot<Map<String, dynamic>>? firstPaintLastDocument;
+        var firstPaintGenericCount = 0;
+        if (firstPaintItems.length < _startupMinimumScrollableTemplateCount) {
+          try {
+            final genericPage = await startupGenericRemoteFuture.timeout(
+              _startupGenericFirstPaintMergeTimeout,
+            );
+            if (!mounted) {
+              return;
+            }
+            final genericItems = await _mapTemplatesOffMain(
+              genericPage.templates,
+              phase: 'generic_first_paint',
+            );
+            if (!mounted) {
+              return;
+            }
+            if (genericItems.isNotEmpty) {
+              firstPaintItems = await _mergeTemplateListsOffMain(
+                <List<_TemplateItem>>[prioritizedPrimaryItems, genericItems],
+                phase: 'primary_generic_first_paint_merge',
+              );
+              if (!mounted) {
+                return;
+              }
+              firstPaintHasMore =
+                  genericPage.hasMore && genericPage.lastDocument != null;
+              firstPaintLastDocument = genericPage.lastDocument;
+              firstPaintGenericCount = genericItems.length;
+              _homeDebugLog(
+                '[StartupTiming] generic_first_paint_merge '
+                't=${_startupStopwatch.elapsedMilliseconds}ms '
+                'primary=${prioritizedPrimaryItems.length} '
+                'generic=${genericItems.length} merged=${firstPaintItems.length} '
+                'hasMore=$firstPaintHasMore',
+              );
+            }
+          } catch (error) {
+            _homeDebugLog(
+              '[StartupTiming] generic_first_paint_merge_skipped '
+              't=${_startupStopwatch.elapsedMilliseconds}ms '
+              'primary=${prioritizedPrimaryItems.length} error=$error',
+            );
+          }
+        }
         final visiblePrimaryCount = math.min(
           _startupInitialVisibleTemplateCount,
-          prioritizedPrimaryItems.length,
+          firstPaintItems.length,
         );
-        final initialVisiblePrimaryItems = prioritizedPrimaryItems
+        final initialVisiblePrimaryItems = firstPaintItems
             .take(visiblePrimaryCount)
             .toList(growable: false);
         final deferredPrimaryItems =
-            prioritizedPrimaryItems.length > visiblePrimaryCount
-            ? prioritizedPrimaryItems.sublist(visiblePrimaryCount)
+            firstPaintItems.length > visiblePrimaryCount
+            ? firstPaintItems.sublist(visiblePrimaryCount)
             : const <_TemplateItem>[];
         if (startupFeedAlreadyVisible) {
           unawaited(
             _completeStartupSecondaryHydration(
-              deferredPrimaryItems: prioritizedPrimaryItems,
+              deferredPrimaryItems: firstPaintItems,
               secondaryFuture: startupSecondaryFuture!,
               genericFuture: startupGenericRemoteFuture,
             ),
@@ -5055,11 +5153,12 @@ class _HomeScreenState extends State<HomeScreen>
         }
         await _applyStartupTemplateState(
           initialVisiblePrimaryItems,
-          hasMore: true,
-          lastDocument: null,
+          hasMore: firstPaintHasMore,
+          lastDocument: firstPaintLastDocument,
           phase: 'primary_ready',
           logFirstRemotePaint: true,
           primaryCount: initialVisiblePrimaryItems.length,
+          genericCount: firstPaintGenericCount,
         );
         _scheduleStartupTemplateSnapshotPersist(initialVisiblePrimaryItems);
         unawaited(
@@ -5473,18 +5572,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<bool> _loadMoreApprovedCreatorTemplates() async {
-    if (_templatesLoading ||
-        _templatesLoadingMore ||
-        !_templatesHasMore ||
-        _templatesLastDocument == null) {
+    if (_templatesLoading || _templatesLoadingMore) {
       return false;
     }
+    if (!_templatesHasMore || _templatesLastDocument == null) {
+      return _loadMoreApprovedCreatorTemplatesWindow();
+    }
+    final startAfterDocument = _templatesLastDocument;
     setState(() => _templatesLoadingMore = true);
     try {
       final page = await _approvedCreatorTemplateService
           .fetchApprovedTemplatesPage(
             pageSize: _templatesPageSize,
-            startAfterDocument: _templatesLastDocument,
+            startAfterDocument: startAfterDocument,
+            source: Source.server,
           );
       if (!mounted) {
         return false;
@@ -5514,12 +5615,22 @@ class _HomeScreenState extends State<HomeScreen>
         merged.length - _remoteApprovedTemplates.length,
         0,
       );
+      final effectiveHasMore = page.hasMore && page.lastDocument != null;
+      if (freshCount == 0 && !effectiveHasMore) {
+        setState(() {
+          _templatesLoadingMore = false;
+          _templatesHasMore = false;
+          _templatesLastDocument = page.lastDocument;
+        });
+        return _loadMoreApprovedCreatorTemplatesWindow();
+      }
       if (kDebugMode) {
         final droppedByDedupe = mapped.length - freshCount;
         _homeDebugLog(
           '[PosterUI] loadMore pageMapped=${mapped.length} fresh=$freshCount '
           'droppedByDedupe=$droppedByDedupe '
-          'remoteBefore=${_remoteApprovedTemplates.length} hasMore=${page.hasMore}',
+          'remoteBefore=${_remoteApprovedTemplates.length} hasMore=${page.hasMore} '
+          'cursorBootstrap=${startAfterDocument == null} effectiveHasMore=$effectiveHasMore',
         );
       }
       setState(() {
@@ -5531,15 +5642,188 @@ class _HomeScreenState extends State<HomeScreen>
         _allFeedRankingReady = false;
         _startupSnapshotHydrationDeferred = false;
         _templatesLoadingMore = false;
-        _templatesHasMore = page.hasMore;
+        _templatesHasMore = effectiveHasMore;
         _templatesLastDocument = page.lastDocument;
+        _allTemplatesWindowLimit = math.max(
+          _allTemplatesWindowLimit,
+          merged.length,
+        );
       });
       _templateProjectionCache = null;
       _templateProjectionIdentity = null;
       _scheduleDeferredAllFeedRanking();
-      return freshCount > 0 || page.hasMore;
+      if (!effectiveHasMore && freshCount < _templatesPageSize) {
+        unawaited(_loadMoreApprovedCreatorTemplatesWindow());
+      }
+      return freshCount > 0 || effectiveHasMore;
     } catch (error, stackTrace) {
       _homeDebugLogStack('loadMore failed: $error', stackTrace);
+      if (mounted) {
+        setState(() => _templatesLoadingMore = false);
+      }
+      return _loadMoreApprovedCreatorTemplatesWindow();
+    }
+  }
+
+  Future<bool> _loadMoreApprovedCreatorTemplatesWindow() async {
+    if (_templatesLoading ||
+        _templatesLoadingMore ||
+        _allTemplatesWindowExhausted) {
+      return false;
+    }
+    final nextLimit = math.max(
+      _allTemplatesWindowLimit + _allTemplatesWindowPageSize,
+      _remoteApprovedTemplates.length + _allTemplatesWindowPageSize,
+    );
+    _allTemplatesWindowLimit = nextLimit;
+    setState(() => _templatesLoadingMore = true);
+    try {
+      final templates = await _approvedCreatorTemplateService
+          .fetchApprovedTemplatesWindow(
+            scanLimit: nextLimit,
+            source: Source.server,
+          );
+      if (!mounted) {
+        return false;
+      }
+      final mapped = await _mapTemplatesOffMain(
+        templates,
+        phase: 'load_more_window',
+      );
+      if (!mounted) {
+        return false;
+      }
+      final lockedMerged = await _extendLockedAllFeedTemplates(
+        mapped,
+        phase: 'load_more_window',
+      );
+      if (!mounted) {
+        return false;
+      }
+      final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+        _remoteApprovedTemplates,
+        mapped,
+      ], phase: 'load_more_window_merge');
+      if (!mounted) {
+        return false;
+      }
+      final freshCount = math.max(
+        merged.length - _remoteApprovedTemplates.length,
+        0,
+      );
+      final exhausted = mapped.length < nextLimit || freshCount == 0;
+      if (kDebugMode) {
+        final droppedByDedupe = mapped.length - freshCount;
+        _homeDebugLog(
+          '[PosterUI] loadMoreWindow limit=$nextLimit mapped=${mapped.length} '
+          'fresh=$freshCount droppedByDedupe=$droppedByDedupe '
+          'remoteBefore=${_remoteApprovedTemplates.length} exhausted=$exhausted',
+        );
+      }
+      setState(() {
+        _remoteApprovedTemplates = merged;
+        if (lockedMerged != null) {
+          _lockedAllFeedTemplates = lockedMerged;
+        }
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _startupSnapshotHydrationDeferred = false;
+        _templatesLoadingMore = false;
+        _templatesHasMore = !exhausted;
+        _allTemplatesWindowExhausted = exhausted;
+      });
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _scheduleDeferredAllFeedRanking();
+      return freshCount > 0 || !exhausted;
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('loadMore window failed: $error', stackTrace);
+      if (mounted) {
+        setState(() => _templatesLoadingMore = false);
+      }
+      return false;
+    }
+  }
+
+  Future<bool> _loadMoreSelectedCategoryTemplates() async {
+    final slug = _selectedCategorySlug;
+    final normalizedSlug = _normalizeTag(slug);
+    if (normalizedSlug.isEmpty ||
+        normalizedSlug == _allCategorySlug ||
+        _templatesLoading ||
+        _templatesLoadingMore ||
+        _categoryExhaustedSlugs.contains(normalizedSlug)) {
+      return false;
+    }
+    final generation = _categoryLoadGeneration;
+    final nextLimit = math.max(
+      (_categoryFetchLimitBySlug[normalizedSlug] ?? (_templatesPageSize * 2)) +
+          _categoryTemplatesPageSize,
+      _templatesPageSize * 2,
+    );
+    _categoryFetchLimitBySlug[normalizedSlug] = nextLimit;
+    setState(() => _templatesLoadingMore = true);
+    try {
+      final targeted = await _approvedCreatorTemplateService
+          .fetchAllApprovedTemplatesForCategory(
+            categoryId: normalizedSlug,
+            source: Source.server,
+            scanLimit: nextLimit,
+          );
+      if (!mounted || generation != _categoryLoadGeneration) {
+        if (mounted && generation != _categoryLoadGeneration) {
+          setState(() => _templatesLoadingMore = false);
+        }
+        return false;
+      }
+      final mapped = await _mapTemplatesOffMain(
+        targeted,
+        phase: 'category_load_more',
+      );
+      if (!mounted || generation != _categoryLoadGeneration) {
+        if (mounted && generation != _categoryLoadGeneration) {
+          setState(() => _templatesLoadingMore = false);
+        }
+        return false;
+      }
+      final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+        _remoteApprovedTemplates,
+        mapped,
+      ], phase: 'category_load_more_merge');
+      if (!mounted || generation != _categoryLoadGeneration) {
+        if (mounted && generation != _categoryLoadGeneration) {
+          setState(() => _templatesLoadingMore = false);
+        }
+        return false;
+      }
+      final freshCount = math.max(
+        merged.length - _remoteApprovedTemplates.length,
+        0,
+      );
+      final exhausted = targeted.length < nextLimit;
+      setState(() {
+        _remoteApprovedTemplates = merged;
+        _rankedAllFeedTemplates = null;
+        _allFeedRankingReady = false;
+        _templatesLoadingMore = false;
+      });
+      _templateProjectionCache = null;
+      _templateProjectionIdentity = null;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+      _hydratedCategorySlugs.add(normalizedSlug);
+      if (exhausted) {
+        _categoryExhaustedSlugs.add(normalizedSlug);
+      } else {
+        _categoryExhaustedSlugs.remove(normalizedSlug);
+      }
+      _homeDebugLog(
+        '[PosterUI] categoryLoadMore slug=$slug limit=$nextLimit '
+        'targeted=${targeted.length} fresh=$freshCount exhausted=$exhausted',
+      );
+      return freshCount > 0 || !exhausted;
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('category loadMore failed: $error', stackTrace);
       if (mounted) {
         setState(() => _templatesLoadingMore = false);
       }
@@ -5561,12 +5845,20 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final hasScrollableExtent = position.maxScrollExtent > 0;
     final userHasActuallyScrolled = position.pixels > 120;
+    if (hasScrollableExtent &&
+        position.pixels < position.maxScrollExtent - 520) {
+      _posterFeedLoadMoreArmed = true;
+    }
     if (_posterFeedLoadMoreArmed &&
         hasScrollableExtent &&
         userHasActuallyScrolled &&
         position.pixels >= position.maxScrollExtent - 320) {
       _posterFeedLoadMoreArmed = false;
-      unawaited(_loadMoreApprovedCreatorTemplates());
+      if (_selectedCategorySlug == _allCategorySlug) {
+        unawaited(_loadMoreApprovedCreatorTemplates());
+      } else {
+        unawaited(_loadMoreSelectedCategoryTemplates());
+      }
     }
   }
 
@@ -6490,27 +6782,25 @@ class _HomeScreenState extends State<HomeScreen>
     final matchingCount = _remoteApprovedTemplates
         .where((item) => _matchesTemplate(item, language, category))
         .length;
+    final normalizedSlug = _normalizeTag(slug);
     if (kDebugMode) {
       _homeDebugLog(
         '[PosterUI] categoryPrefetch slug=$slug localMatches=$matchingCount '
         'remoteCount=${_remoteApprovedTemplates.length} hasMore=$_templatesHasMore',
       );
     }
-    final normalizedSlug = _normalizeTag(slug);
     final needsHydration = !_hydratedCategorySlugs.contains(normalizedSlug);
-    final hasEnoughLocalMatches = matchingCount >= _templatesPageSize;
-    if (hasEnoughLocalMatches && needsHydration) {
-      _hydratedCategorySlugs.add(normalizedSlug);
-      if (kDebugMode) {
-        _homeDebugLog(
-          '[PosterUI] categoryPrefetch slug=$slug skipped=local_satisfied '
-          'localMatches=$matchingCount pageTarget=$_templatesPageSize',
-        );
-      }
+    if (needsHydration) {
+      final currentLimit = _categoryFetchLimitBySlug[normalizedSlug] ?? 0;
+      _categoryFetchLimitBySlug[normalizedSlug] = math.max(
+        currentLimit,
+        math.max(
+          matchingCount + _categoryTemplatesPageSize,
+          _templatesPageSize * 2,
+        ),
+      );
     }
-    if ((matchingCount < _templatesPageSize && needsHydration) &&
-        mounted &&
-        generation == _categoryLoadGeneration) {
+    if (needsHydration && mounted && generation == _categoryLoadGeneration) {
       if (_categoryLoadingSlug != slug) {
         setState(() => _categoryLoadingSlug = slug);
       }
@@ -6531,16 +6821,21 @@ class _HomeScreenState extends State<HomeScreen>
     if (normalizedSlug.isEmpty || normalizedSlug == _allCategorySlug) {
       return;
     }
+    final fetchLimit = math.max(
+      _categoryFetchLimitBySlug[normalizedSlug] ?? (_templatesPageSize * 2),
+      _templatesPageSize * 2,
+    );
     final targeted = await _approvedCreatorTemplateService
         .fetchAllApprovedTemplatesForCategory(
           categoryId: normalizedSlug,
           source: Source.server,
-          scanLimit: _templatesPageSize * 2,
+          scanLimit: fetchLimit,
         );
     if (!mounted || generation != _categoryLoadGeneration) {
       return;
     }
     if (targeted.isEmpty) {
+      _categoryExhaustedSlugs.add(normalizedSlug);
       return;
     }
     final mapped = await _mapTemplatesOffMain(
@@ -6570,6 +6865,11 @@ class _HomeScreenState extends State<HomeScreen>
       _categoryListCache = null;
       _categoryListIdentity = null;
       _hydratedCategorySlugs.add(normalizedSlug);
+      if (targeted.length < fetchLimit) {
+        _categoryExhaustedSlugs.add(normalizedSlug);
+      } else {
+        _categoryExhaustedSlugs.remove(normalizedSlug);
+      }
       setState(() {});
       return;
     }
@@ -6587,6 +6887,11 @@ class _HomeScreenState extends State<HomeScreen>
     _categoryListIdentity = null;
     _scheduleDeferredAllFeedRanking();
     _hydratedCategorySlugs.add(normalizedSlug);
+    if (targeted.length < fetchLimit) {
+      _categoryExhaustedSlugs.add(normalizedSlug);
+    } else {
+      _categoryExhaustedSlugs.remove(normalizedSlug);
+    }
   }
 
   _CategoryChipData _categoryForSlug(String slug, AppLanguage language) {
@@ -6696,7 +7001,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final feedEntryCount = feedEntries.length;
     if (feedEntryCount > 0 && index >= feedEntryCount - 3) {
-      unawaited(_loadMoreApprovedCreatorTemplates());
+      if (_selectedCategorySlug == _allCategorySlug) {
+        unawaited(_loadMoreApprovedCreatorTemplates());
+      } else {
+        unawaited(_loadMoreSelectedCategoryTemplates());
+      }
     }
   }
 
@@ -16471,6 +16780,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
             fontFamily == 'Pallavi Medium');
   }
 
+  bool _usesLegacyTeluguStripFont(String text, String? fontFamily) {
+    return _shouldConvertForLegacyTelugu(text, fontFamily);
+  }
+
   String _legacyTextCacheKey(String text, String fontFamily) {
     return '$fontFamily::$text';
   }
@@ -16652,24 +16965,40 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         : '';
     final isTeluguName = _teluguTextPattern.hasMatch(resolvedName);
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
+    final usesLegacyTeluguNameFont = _usesLegacyTeluguStripFont(
+      resolvedName,
+      displayNameFontFamily,
+    );
     final nameScaleFactor = (widget.personalizationConfig.nameScale / 100)
         .clamp(0.45, 1.6);
     final designationScaleFactor =
         (widget.personalizationConfig.designationScale / 100).clamp(0.45, 1.6);
-    final personalNameFontSize = (isTeluguName ? 42.0 : 36.0) * nameScaleFactor;
-    final personalNameLineHeight = isTeluguName ? 0.82 : 0.95;
-    final businessNameFontSize = (isTeluguName ? 34.0 : 28.0) * nameScaleFactor;
-    final personalDesignationFontSize = 20.0 * designationScaleFactor;
-    final businessDesignationFontSize = 18.0 * designationScaleFactor;
-    final englishDesignationFontSize = 13.5 * designationScaleFactor;
-    final englishPersonalNameFontSize = 26.0 * nameScaleFactor;
-    final englishSplitNameFontSize = 24.0 * nameScaleFactor;
+    final legacyTeluguNameBoost = usesLegacyTeluguNameFont ? 1.52 : 1.0;
+    final personalNameFontSize =
+        (isTeluguName ? 42.0 : 36.0) * nameScaleFactor * legacyTeluguNameBoost;
+    final personalNameLineHeight = usesLegacyTeluguNameFont
+        ? 0.94
+        : (isTeluguName ? 0.82 : 0.95);
+    final businessNameFontSize =
+        (isTeluguName ? 34.0 : 28.0) * nameScaleFactor * legacyTeluguNameBoost;
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
     );
+    final usesLegacyTeluguDesignationFont = _usesLegacyTeluguStripFont(
+      resolvedDesignation,
+      designationFontFamily,
+    );
+    final legacyTeluguDesignationBoost = usesLegacyTeluguDesignationFont
+        ? 1.34
+        : 1.0;
+    final personalDesignationFontSize =
+        26.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+    final businessDesignationFontSize =
+        23.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+    final englishDesignationFontSize = 18.0 * designationScaleFactor;
+    final englishPersonalNameFontSize = 26.0 * nameScaleFactor;
+    final englishSplitNameFontSize = 24.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
-    final bottomStripPadding = (widget.personalizationConfig.stripHeight * 0.3)
-        .clamp(4.0, 8.0);
     final stripOverflowAllowance = 0.0;
 
     final showPhotoOverlay = _basePosterReady;
@@ -16677,7 +17006,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         widget.personalizationConfig.showBottomStrip &&
         (widget.basePosterBuilder == null || _basePosterReady);
 
-    Widget buildBottomStrip() {
+    Widget buildBottomStrip({
+      required double stripScale,
+      required double bottomStripPadding,
+    }) {
       return _buildPosterBottomStrip(
         resolvedName: resolvedName,
         resolvedDesignation: resolvedDesignation,
@@ -16685,13 +17017,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         designationFontFamily: designationFontFamily,
         isBusinessProfile: isBusinessProfile,
         isTeluguName: isTeluguName,
-        businessNameFontSize: businessNameFontSize,
-        personalNameFontSize: personalNameFontSize,
-        personalDesignationFontSize: personalDesignationFontSize,
-        businessDesignationFontSize: businessDesignationFontSize,
-        englishDesignationFontSize: englishDesignationFontSize,
-        englishPersonalNameFontSize: englishPersonalNameFontSize,
-        englishSplitNameFontSize: englishSplitNameFontSize,
+        businessNameFontSize: businessNameFontSize * stripScale,
+        personalNameFontSize: personalNameFontSize * stripScale,
+        personalDesignationFontSize: personalDesignationFontSize * stripScale,
+        businessDesignationFontSize: businessDesignationFontSize * stripScale,
+        englishDesignationFontSize: englishDesignationFontSize * stripScale,
+        englishPersonalNameFontSize: englishPersonalNameFontSize * stripScale,
+        englishSplitNameFontSize: englishSplitNameFontSize * stripScale,
         personalNameLineHeight: personalNameLineHeight,
         showPhoneInStrip: showPhoneInStrip,
         resolvedPhone: resolvedPhone,
@@ -16713,7 +17045,28 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                   constraints.maxHeight * aspectRatio,
                 )
               : constraints.maxWidth;
-          const visualLeft = 0.0;
+          final visualHeight = aspectRatio != null && aspectRatio > 0
+              ? visualWidth / aspectRatio
+              : constraints.maxHeight;
+          final visualLeft = math.max(
+            0.0,
+            (constraints.maxWidth - visualWidth) / 2,
+          );
+          final stripPixelHeight = math
+              .max(
+                1.0,
+                visualHeight *
+                    (widget.personalizationConfig.stripHeight / 100) *
+                    0.64,
+              )
+              .clamp(66.0, math.max(66.0, visualHeight * 0.22))
+              .toDouble();
+          final stripScale = (stripPixelHeight / 68.0)
+              .clamp(0.84, 1.55)
+              .toDouble();
+          final scaledBottomStripPadding = (stripPixelHeight * 0.08)
+              .clamp(4.0, 12.0)
+              .toDouble();
           return Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
@@ -17146,7 +17499,13 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                   left: visualLeft,
                   width: visualWidth,
                   bottom: 0,
-                  child: buildBottomStrip(),
+                  child: SizedBox(
+                    height: stripPixelHeight,
+                    child: buildBottomStrip(
+                      stripScale: stripScale,
+                      bottomStripPadding: scaledBottomStripPadding,
+                    ),
+                  ),
                 ),
             ],
           );
@@ -17208,6 +17567,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       return Row(
         children: <Widget>[
           Expanded(
+            flex: 58,
             child: _legacyAwareText(
               text: resolvedName,
               fontFamily: displayNameFontFamily,
@@ -17222,10 +17582,11 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           _buildNameDesignationSeparator(fallbackColor: dividerColor),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
+            flex: 42,
             child: _legacyAwareText(
               text: resolvedDesignation,
               fontFamily: designationFontFamily,
@@ -17517,7 +17878,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               horizontal: stripModel == 3 ? 24 : 14,
               vertical: bottomStripPadding,
             ),
-            child: content,
+            child: Align(alignment: Alignment.center, child: content),
           ),
         ],
       ),

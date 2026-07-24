@@ -157,6 +157,91 @@ class ApprovedCreatorTemplateService {
     return page.templates;
   }
 
+  Future<List<ApprovedCreatorTemplate>> fetchApprovedTemplatesWindow({
+    int scanLimit = 80,
+    Source source = Source.serverAndCache,
+  }) async {
+    final regionId = await _selectedRegionId();
+    if (regionId.isEmpty || scanLimit <= 0) {
+      return const <ApprovedCreatorTemplate>[];
+    }
+    try {
+      final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+      final seenIds = <String>{};
+      final lookupRegionIds = _posterLookupRegionIds(
+        selectedRegionId: regionId,
+        categoryId: '',
+      );
+      final snapshot =
+          await _applyRegionScope(
+                firestore
+                    .collection('creatorPosters')
+                    .where('status', isEqualTo: 'approved'),
+                lookupRegionIds,
+              )
+              .orderBy('createdAt', descending: true)
+              .limit(scanLimit)
+              .get(GetOptions(source: source));
+      for (final doc in snapshot.docs) {
+        if (seenIds.add(doc.id)) {
+          docs.add(doc);
+        }
+      }
+      final siblingDocs = await _fetchOtherSharedNonPoliticalDocs(
+        selectedRegionId: regionId,
+        limit: scanLimit,
+        source: source,
+      );
+      for (final doc in siblingDocs) {
+        if (seenIds.add(doc.id)) {
+          docs.add(doc);
+        }
+      }
+      final mapped = _mapSortedTemplates(docs);
+      final filtered = _filterPublished(mapped, docs, scanLimit, regionId);
+      if (filtered.length >= scanLimit || source != Source.server) {
+        return filtered.length <= scanLimit
+            ? filtered
+            : filtered.take(scanLimit).toList(growable: false);
+      }
+      final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: '',
+        limit: scanLimit,
+      );
+      if (backendTemplates.isEmpty) {
+        return filtered;
+      }
+      final merged = <ApprovedCreatorTemplate>[];
+      final seenTemplateIds = <String>{};
+      for (final template in <ApprovedCreatorTemplate>[
+        ...filtered,
+        ...backendTemplates,
+      ]) {
+        if (seenTemplateIds.add(template.id)) {
+          merged.add(template);
+        }
+      }
+      merged.sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
+      return merged.length <= scanLimit
+          ? merged
+          : merged.take(scanLimit).toList(growable: false);
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'ApprovedCreatorTemplateService.fetchApprovedTemplatesWindow failed: $error',
+        stackTrace,
+      );
+      final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: '',
+        limit: scanLimit,
+      );
+      return backendTemplates.length <= scanLimit
+          ? backendTemplates
+          : backendTemplates.take(scanLimit).toList(growable: false);
+    }
+  }
+
   Future<List<ApprovedCreatorTemplate>> fetchAllApprovedTemplatesForCategory({
     required String categoryId,
     Source source = Source.serverAndCache,
@@ -431,22 +516,6 @@ class ApprovedCreatorTemplateService {
         selectedRegionId: regionId,
         categoryId: '',
       );
-      if (lookupRegionIds.length > 1 &&
-          startAfterDocument == null &&
-          source != Source.cache) {
-        final backendTemplates = await _fetchApprovedTemplatesFromBackend(
-          regionId: regionId,
-          categoryId: '',
-          limit: pageSize,
-        );
-        if (backendTemplates.isNotEmpty) {
-          return ApprovedCreatorTemplatePage(
-            templates: backendTemplates,
-            lastDocument: null,
-            hasMore: backendTemplates.length >= pageSize,
-          );
-        }
-      }
       final totalStopwatch = Stopwatch()..start();
       final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
       final maxQueryPages = source == Source.cache
@@ -577,7 +646,7 @@ class ApprovedCreatorTemplateService {
             return ApprovedCreatorTemplatePage(
               templates: backendTemplates,
               lastDocument: null,
-              hasMore: backendTemplates.length >= pageSize,
+              hasMore: false,
             );
           }
         } catch (backendError, backendStackTrace) {
