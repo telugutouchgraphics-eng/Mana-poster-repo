@@ -12055,7 +12055,7 @@ class _PoliticalProtocolPhotoSlots extends StatelessWidget {
     required double canvasHeight,
     required double scale,
   }) {
-    final baseSide = math.min(canvasWidth, canvasHeight) * 0.105;
+    final baseSide = math.min(canvasWidth, canvasHeight) * 0.15;
     return math.max(1.0, baseSide * (scale / 100));
   }
 
@@ -12230,21 +12230,14 @@ class _PoliticalProtocolCircle extends StatelessWidget {
     return Container(
       width: side,
       height: side,
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.92),
-          width: 1.4,
+          width: 0.8,
         ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: ClipOval(child: child),
     );
@@ -12580,14 +12573,7 @@ class _PoliticalProtocolPhotoScreenState
           color: isPlus
               ? const Color(0xFF14B8A6)
               : Colors.white.withValues(alpha: 0.95),
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: Colors.white, width: 0.8),
         ),
         child: ClipOval(child: child),
       ),
@@ -12611,68 +12597,80 @@ class _PoliticalProtocolPhotoScreenState
     );
   }
 
+  Widget _buildAddProtocolPhotoButton() {
+    return Material(
+      color: _busy ? const Color(0xFF94A3B8) : const Color(0xFF14B8A6),
+      shape: const CircleBorder(),
+      elevation: 0,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: _busy ? null : () => unawaited(_addPhoto()),
+        child: SizedBox(
+          width: 58,
+          height: 58,
+          child: Center(
+            child: _busy
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    '++',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAdminPhotoPicker() {
     final adminUrls = widget.politicalProtocolPhotoUrls
         .map((url) => url.trim())
         .where((url) => url.isNotEmpty)
         .skip(defaultPoliticalProtocolSlots.length)
         .toList(growable: false);
-    return SizedBox(
-      height: 78,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Material(
-              color: _busy ? const Color(0xFF94A3B8) : const Color(0xFF14B8A6),
-              shape: const CircleBorder(),
-              elevation: 4,
-              shadowColor: Colors.black26,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _busy ? null : () => unawaited(_addPhoto()),
-                child: SizedBox(
-                  width: 58,
-                  height: 58,
-                  child: Center(
-                    child: _busy
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.4,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            '++',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                  ),
-                ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Center(child: _buildAddProtocolPhotoButton()),
+          if (adminUrls.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  final url = adminUrls[index];
+                  return _buildPhotoSlot(
+                    side: 58,
+                    child: CachedNetworkImage(
+                      imageUrl: url,
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => const _PoliticalProtocolFallback(),
+                      errorWidget: (_, _, _) =>
+                          const _PoliticalProtocolFallback(),
+                    ),
+                    isPlus: false,
+                    onTap: () => _insertProtocolPhotoSource(url),
+                  );
+                },
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemCount: adminUrls.length,
               ),
-            );
-          }
-          final url = adminUrls[index - 1];
-          return _buildPhotoSlot(
-            side: 58,
-            child: CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              placeholder: (_, _) => const _PoliticalProtocolFallback(),
-              errorWidget: (_, _, _) => const _PoliticalProtocolFallback(),
             ),
-            isPlus: false,
-            onTap: () => _insertProtocolPhotoSource(url),
-          );
-        },
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemCount: adminUrls.length + 1,
+          ],
+        ],
       ),
     );
   }
@@ -12933,35 +12931,43 @@ class _PoliticalProtocolPhotoScreenState
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            _buildAdminPhotoPicker(),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: posterStage,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            if (_deleteArmedManualIndex != null) {
+              setState(() => _deleteArmedManualIndex = null);
+            }
+          },
+          child: Column(
+            children: <Widget>[
+              _buildAdminPhotoPicker(),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: posterStage,
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-              child: Text(
-                context.strings.localized(
-                  telugu:
-                      '+ à°®à±€à°¦ tap à°šà±‡à°¸à°¿ à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿. à°«à±‹à°Ÿà±‹ à°®à±€à°¦ tap à°šà±‡à°¸à±à°¤à±‡ delete à°µà°¸à±à°¤à±à°‚à°¦à°¿.',
-                  english:
-                      'Drag circles to adjust position. Tap + to add a photo. Tap an added photo to delete it.',
-                ),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF475569),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                child: Text(
+                  context.strings.localized(
+                    telugu:
+                        '+ à°®à±€à°¦ tap à°šà±‡à°¸à°¿ à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿. à°«à±‹à°Ÿà±‹ à°®à±€à°¦ tap à°šà±‡à°¸à±à°¤à±‡ delete à°µà°¸à±à°¤à±à°‚à°¦à°¿.',
+                    english:
+                        'Drag circles to adjust position. Tap + to add a photo. Tap an added photo to delete it.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
