@@ -16999,6 +16999,8 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final englishPersonalNameFontSize = 26.0 * nameScaleFactor;
     final englishSplitNameFontSize = 24.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
+    final hasDesignationText =
+        resolvedDesignation.isNotEmpty || showPhoneInStrip;
     final stripOverflowAllowance = 0.0;
 
     final showPhotoOverlay = _basePosterReady;
@@ -17052,17 +17054,37 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
             0.0,
             (constraints.maxWidth - visualWidth) / 2,
           );
-          final stripPixelHeight = math
+          final ratioBaseStripHeight = math
               .max(
                 1.0,
                 visualHeight *
                     (widget.personalizationConfig.stripHeight / 100) *
-                    0.64,
+                    0.5,
               )
-              .clamp(66.0, math.max(66.0, visualHeight * 0.22))
+              .clamp(54.0, math.max(54.0, visualHeight * 0.18))
               .toDouble();
-          final stripScale = (stripPixelHeight / 68.0)
-              .clamp(0.84, 1.55)
+          final estimatedNameHeight =
+              (isBusinessProfile ? businessNameFontSize : personalNameFontSize)
+                  .abs() *
+              (usesLegacyTeluguNameFont ? 1.22 : 1.08);
+          final estimatedDesignationHeight = hasDesignationText
+              ? (isBusinessProfile
+                            ? businessDesignationFontSize
+                            : personalDesignationFontSize)
+                        .abs() *
+                    (usesLegacyTeluguDesignationFont ? 1.28 : 1.10)
+              : 0.0;
+          final fontNeededStripHeight =
+              math.max(estimatedNameHeight, estimatedDesignationHeight) + 24.0;
+          final stripPixelHeight = math
+              .max(ratioBaseStripHeight, fontNeededStripHeight)
+              .clamp(
+                ratioBaseStripHeight,
+                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.08),
+              )
+              .toDouble();
+          final stripScale = (stripPixelHeight / ratioBaseStripHeight)
+              .clamp(1.0, 1.42)
               .toDouble();
           final scaledBottomStripPadding = (stripPixelHeight * 0.08)
               .clamp(4.0, 12.0)
