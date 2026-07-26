@@ -76,6 +76,7 @@ import 'package:mana_poster/features/prehome/services/notification_service.dart'
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/services/permanent_category_service.dart';
 import 'package:mana_poster/features/prehome/services/personalized_video_export_service.dart';
+import 'package:mana_poster/features/prehome/services/political_protocol_photo_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
 import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
@@ -124,7 +125,8 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
       AppSnackBar.build(
         content: Text(
           context.strings.localized(
-            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Could not open the link. Please try again.',
           ),
         ),
@@ -297,7 +299,7 @@ class _TemplateItem {
   final List<String> categoryTags;
   final int createdAtMillis;
 
-  /// Firestore `categoryId` only — used for home dynamic chips, not label tokens.
+  /// Firestore `categoryId` only â€” used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
 
   /// Firestore manual / admin category label for home chip + matching.
@@ -1413,24 +1415,24 @@ class _HomeScreenState extends State<HomeScreen>
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
-      titleTe: 'శుభోదయం పోస్టర్',
-      titleHi: 'गुड मॉर्निंग पोस्टर',
+      titleTe: 'à°¶à±à°­à±‹à°¦à°¯à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤—à¥à¤¡ à¤®à¥‰à¤°à¥à¤¨à¤¿à¤‚à¤— à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Good Morning Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200',
       categoryTags: <String>['good_morning'],
     ),
     _TemplateItem(
-      titleTe: 'బర్త్‌డే పోస్టర్',
-      titleHi: 'बर्थडे पोस्टर',
+      titleTe: 'à°¬à°°à±à°¤à±â€Œà°¡à±‡ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤¬à¤°à¥à¤¥à¤¡à¥‡ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Birthday Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=1200',
       categoryTags: <String>['birthdays'],
     ),
     _TemplateItem(
-      titleTe: 'భక్తి పోస్టర్',
-      titleHi: 'भक्ति पोस्टर',
+      titleTe: 'à°­à°•à±à°¤à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±',
+      titleHi: 'à¤­à¤•à¥à¤¤à¤¿ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
       titleEn: 'Devotional Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200',
@@ -2347,6 +2349,14 @@ class _HomeScreenState extends State<HomeScreen>
       return _matchesActiveAllFeedTimeSlot(item);
     }
 
+    if (selectedCategory.slug == _politicalCategorySlug) {
+      return !_isJokesTemplate(item);
+    }
+
+    if (_normalizeTag(selectedCategory.slug).startsWith('party_')) {
+      return !_isJokesTemplate(item);
+    }
+
     final itemSignals = _templateCategorySignalsForMatching(item);
     final categorySignals = selectedCategory.isDynamic
         ? _strictDynamicCategorySignals(selectedCategory)
@@ -2360,6 +2370,29 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return false;
+  }
+
+  bool _isJokesTemplate(_TemplateItem item) {
+    final signals = _templateCategorySignalsForMatching(item);
+    return signals.contains('jokes') ||
+        signals.contains('funny') ||
+        signals.contains('humor') ||
+        signals.contains('comedy');
+  }
+
+  bool _isPoliticalFeedSlug(String slug) {
+    final normalized = _normalizeTag(slug);
+    return normalized == _politicalCategorySlug ||
+        normalized.startsWith('party_');
+  }
+
+  String? _partyIdFromCategorySlug(String slug) {
+    final normalized = _normalizeTag(slug);
+    if (!normalized.startsWith('party_')) {
+      return null;
+    }
+    final partyId = normalized.substring('party_'.length).trim();
+    return partyId.isEmpty ? null : partyId;
   }
 
   bool _matchesActiveAllFeedTimeSlot(_TemplateItem item) {
@@ -2703,7 +2736,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
-    // local calendar JSON — add chips from loaded templates so filters match.
+    // local calendar JSON â€” add chips from loaded templates so filters match.
     final covered = <String>{
       for (final chip in merged.values) ...chip.matchTags.map(_normalizeTag),
       for (final chip in merged.values) _normalizeTag(chip.slug),
@@ -3545,8 +3578,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   String? _teluguDynamicCategoryLabelOverride(String slug) {
     return switch (_normalizeTag(slug)) {
-      'gurram_jashuva_jayanthi' => 'గుర్రం జాషువా జయంతి',
-      'gurram_jashuva_vardhanthi' => 'గుర్రం జాషువా వర్ధంతి',
+      'gurram_jashuva_jayanthi' =>
+        'à°—à±à°°à±à°°à°‚ à°œà°¾à°·à±à°µà°¾ à°œà°¯à°‚à°¤à°¿',
+      'gurram_jashuva_vardhanthi' =>
+        'à°—à±à°°à±à°°à°‚ à°œà°¾à°·à±à°µà°¾ à°µà°°à±à°§à°‚à°¤à°¿',
       _ => null,
     };
   }
@@ -3763,7 +3798,10 @@ class _HomeScreenState extends State<HomeScreen>
   _CategoryChipData _allCategoryChip() {
     return _CategoryChipData(
       slug: _allCategorySlug,
-      label: context.strings.localized(telugu: 'అన్నీ', english: 'All'),
+      label: context.strings.localized(
+        telugu: 'à°…à°¨à±à°¨à±€',
+        english: 'All',
+      ),
       matchTags: const <String>['all'],
     );
   }
@@ -3875,17 +3913,17 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'వెబ్‌లో editor అందుబాటులో లేదు. పోస్టర్ create చేయాలంటే mobile app ఉపయోగించండి.',
+                  'à°µà±†à°¬à±â€Œà°²à±‹ editor à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°ªà±‹à°¸à±à°Ÿà°°à± create à°šà±‡à°¯à°¾à°²à°‚à°Ÿà±‡ mobile app à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.',
               english:
                   'Editor is not available on web. Use the mobile app to create posters.',
               hindi:
-                  'वेब पर editor उपलब्ध नहीं है। पोस्टर बनाने के लिए mobile app उपयोग करें।',
+                  'à¤µà¥‡à¤¬ à¤ªà¤° editor à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ mobile app à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¥‡à¤‚à¥¤',
               tamil:
-                  'வெபில் editor கிடைக்காது. Poster create செய்ய mobile app பயன்படுத்துங்கள்.',
+                  'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
               kannada:
-                  'ವೆಬ್‌ನಲ್ಲಿ editor ಲಭ್ಯವಿಲ್ಲ. Poster create ಮಾಡಲು mobile app ಬಳಸಿ.',
+                  'à²µà³†à²¬à³â€Œà²¨à²²à³à²²à²¿ editor à²²à²­à³à²¯à²µà²¿à²²à³à²². Poster create à²®à²¾à²¡à²²à³ mobile app à²¬à²³à²¸à²¿.',
               malayalam:
-                  'വെബിൽ editor ലഭ്യമല്ല. Poster create ചെയ്യാൻ mobile app ഉപയോഗിക്കുക.',
+                  'à´µàµ†à´¬à´¿àµ½ editor à´²à´­àµà´¯à´®à´²àµà´². Poster create à´šàµ†à´¯àµà´¯à´¾àµ» mobile app à´‰à´ªà´¯àµ‹à´—à´¿à´•àµà´•àµà´•.',
             ),
           ),
         ),
@@ -4118,6 +4156,15 @@ class _HomeScreenState extends State<HomeScreen>
       'photoRenderMode': config.photoRenderMode,
       'edgeStyle': config.edgeStyle,
       'showSafeAreas': config.showSafeAreas,
+      'showPoliticalProtocol': config.showPoliticalProtocol,
+      'politicalProtocolEnabledAtMillis':
+          config.politicalProtocolEnabledAtMillis,
+      'politicalProtocolX': config.politicalProtocolX,
+      'politicalProtocolY': config.politicalProtocolY,
+      'politicalProtocolScale': config.politicalProtocolScale,
+      'politicalProtocolSlots': config.politicalProtocolSlots
+          .map((slot) => slot.toJson())
+          .toList(growable: false),
     };
   }
 
@@ -4176,6 +4223,67 @@ class _HomeScreenState extends State<HomeScreen>
       photoRenderMode: (data['photoRenderMode'] as String?)?.trim() ?? 'cutout',
       edgeStyle: (data['edgeStyle'] as String?)?.trim() ?? 'soft_fade',
       showSafeAreas: data['showSafeAreas'] as bool? ?? true,
+      showPoliticalProtocol: data['showPoliticalProtocol'] as bool? ?? false,
+      politicalProtocolEnabledAtMillis:
+          (data['politicalProtocolEnabledAtMillis'] as num?)?.toInt() ?? 0,
+      politicalProtocolX:
+          (data['politicalProtocolX'] as num?)?.toDouble() ?? 50,
+      politicalProtocolY: (data['politicalProtocolY'] as num?)?.toDouble() ?? 7,
+      politicalProtocolScale:
+          (data['politicalProtocolScale'] as num?)?.toDouble() ?? 100,
+      politicalProtocolSlots: _deserializePoliticalProtocolSlots(
+        data['politicalProtocolSlots'],
+        fallbackX: (data['politicalProtocolX'] as num?)?.toDouble() ?? 50,
+        fallbackY: (data['politicalProtocolY'] as num?)?.toDouble() ?? 7,
+        fallbackScale:
+            (data['politicalProtocolScale'] as num?)?.toDouble() ?? 100,
+      ),
+    );
+  }
+
+  List<PoliticalProtocolSlot> _deserializePoliticalProtocolSlots(
+    Object? raw, {
+    required double fallbackX,
+    required double fallbackY,
+    required double fallbackScale,
+  }) {
+    if (raw is List) {
+      final slots = raw
+          .whereType<Map>()
+          .map(
+            (slot) => PoliticalProtocolSlot(
+              x: ((slot['x'] as num?)?.toDouble() ?? 50)
+                  .clamp(4.0, 96.0)
+                  .toDouble(),
+              y: ((slot['y'] as num?)?.toDouble() ?? 8)
+                  .clamp(4.0, 96.0)
+                  .toDouble(),
+              scale: ((slot['scale'] as num?)?.toDouble() ?? 100)
+                  .clamp(45.0, 135.0)
+                  .toDouble(),
+            ),
+          )
+          .take(defaultPoliticalProtocolSlots.length)
+          .toList(growable: false);
+      if (slots.length == defaultPoliticalProtocolSlots.length) {
+        return slots;
+      }
+    }
+    final spacing = 44.0 * (fallbackScale.clamp(55.0, 135.0) / 100);
+    return List<PoliticalProtocolSlot>.generate(
+      defaultPoliticalProtocolSlots.length,
+      (index) {
+        final x =
+            fallbackX +
+            ((index - ((defaultPoliticalProtocolSlots.length - 1) / 2)) *
+                spacing);
+        return PoliticalProtocolSlot(
+          x: x.clamp(4.0, 96.0).toDouble(),
+          y: fallbackY.clamp(4.0, 96.0).toDouble(),
+          scale: fallbackScale.clamp(45.0, 135.0).toDouble(),
+        );
+      },
+      growable: false,
     );
   }
 
@@ -5770,12 +5878,17 @@ class _HomeScreenState extends State<HomeScreen>
     _categoryFetchLimitBySlug[normalizedSlug] = nextLimit;
     setState(() => _templatesLoadingMore = true);
     try {
-      final targeted = await _approvedCreatorTemplateService
-          .fetchAllApprovedTemplatesForCategory(
-            categoryId: normalizedSlug,
-            source: Source.server,
-            scanLimit: nextLimit,
-          );
+      final targeted = _isPoliticalFeedSlug(normalizedSlug)
+          ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
+              scanLimit: nextLimit,
+              source: Source.server,
+            )
+          : await _approvedCreatorTemplateService
+                .fetchAllApprovedTemplatesForCategory(
+                  categoryId: normalizedSlug,
+                  source: Source.server,
+                  scanLimit: nextLimit,
+                );
       if (!mounted || generation != _categoryLoadGeneration) {
         if (mounted && generation != _categoryLoadGeneration) {
           setState(() => _templatesLoadingMore = false);
@@ -6246,12 +6359,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.subscribe,
           title: strings.localized(
-            telugu: 'మరిన్ని పోస్టర్ల కోసం మెంబర్‌షిప్ తీసుకోండి',
+            telugu:
+                'à°®à°°à°¿à°¨à±à°¨à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±à°² à°•à±‹à°¸à°‚ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±€à°¸à±à°•à±‹à°‚à°¡à°¿',
             english: 'Unlock more posters with membership',
           ),
           subtitle: strings.localized(
             telugu:
-                'డౌన్‌లోడ్, షేరింగ్ మరియు మెంబర్‌షిప్ సౌకర్యాల కోసం సబ్‌స్క్రైబ్ చేయండి.',
+                'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à±, à°·à±‡à°°à°¿à°‚à°—à± à°®à°°à°¿à°¯à± à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¸à±Œà°•à°°à±à°¯à°¾à°² à°•à±‹à°¸à°‚ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'Subscribe for downloads, sharing, and membership benefits.',
           ),
@@ -6264,12 +6378,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.renewalReminder,
           title: strings.localized(
-            telugu: 'మీ మెంబర్‌షిప్ త్వరలో ముగియబోతోంది',
+            telugu:
+                'à°®à±€ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±à°µà°°à°²à±‹ à°®à±à°—à°¿à°¯à°¬à±‹à°¤à±‹à°‚à°¦à°¿',
             english: 'Your membership is expiring soon',
           ),
           subtitle: strings.localized(
             telugu:
-                'ఇంకా 3 రోజులలోపు ప్లాన్ ముగుస్తుంది. అంతరాయం లేకుండా పోస్టర్లు వాడాలంటే ఇప్పుడే renew చేయండి.',
+                'à°‡à°‚à°•à°¾ 3 à°°à±‹à°œà±à°²à°²à±‹à°ªà± à°ªà±à°²à°¾à°¨à± à°®à±à°—à±à°¸à±à°¤à±à°‚à°¦à°¿. à°…à°‚à°¤à°°à°¾à°¯à°‚ à°²à±‡à°•à±à°‚à°¡à°¾ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°¾à°¡à°¾à°²à°‚à°Ÿà±‡ à°‡à°ªà±à°ªà±à°¡à±‡ renew à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'Your plan ends within the next 3 days. Renew now to keep using posters without interruption.',
           ),
@@ -6282,12 +6397,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.update,
           title: strings.localized(
-            telugu: 'కొత్త యాప్ అప్‌డేట్ సిద్ధంగా ఉంది',
+            telugu:
+                'à°•à±Šà°¤à±à°¤ à°¯à°¾à°ªà± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°¸à°¿à°¦à±à°§à°‚à°—à°¾ à°‰à°‚à°¦à°¿',
             english: 'A new app update is ready',
           ),
           subtitle: strings.localized(
             telugu:
-                'Play Store లో కొత్త version అందుబాటులో ఉంది. తాజా మెరుగుదలల కోసం ఇప్పుడు అప్‌డేట్ చేయండి.',
+                'Play Store à°²à±‹ à°•à±Šà°¤à±à°¤ version à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°‰à°‚à°¦à°¿. à°¤à°¾à°œà°¾ à°®à±†à°°à±à°—à±à°¦à°²à°² à°•à±‹à°¸à°‚ à°‡à°ªà±à°ªà±à°¡à± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿.',
             english:
                 'A newer version is available on the Play Store. Update now for the latest improvements.',
           ),
@@ -6300,12 +6416,13 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.rate,
           title: strings.localized(
-            telugu: 'Mana Poster Ai కి రేటింగ్ ఇవ్వండి',
+            telugu:
+                'Mana Poster Ai à°•à°¿ à°°à±‡à°Ÿà°¿à°‚à°—à± à°‡à°µà±à°µà°‚à°¡à°¿',
             english: 'Rate Mana Poster Ai',
           ),
           subtitle: strings.localized(
             telugu:
-                'మీ rating మరియు review వల్ల మరింత మందికి యాప్ గురించి తెలుస్తుంది.',
+                'à°®à±€ rating à°®à°°à°¿à°¯à± review à°µà°²à±à°² à°®à°°à°¿à°‚à°¤ à°®à°‚à°¦à°¿à°•à°¿ à°¯à°¾à°ªà± à°—à±à°°à°¿à°‚à°šà°¿ à°¤à±†à°²à±à°¸à±à°¤à±à°‚à°¦à°¿.',
             english:
                 'Your rating and review help more people discover the app.',
           ),
@@ -6384,7 +6501,8 @@ class _HomeScreenState extends State<HomeScreen>
         AppSnackBar.build(
           content: Text(
             context.strings.localized(
-              telugu: 'Play Store తెరవలేకపోయాం. ఇంకోసారి ప్రయత్నించండి.',
+              telugu:
+                  'Play Store à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
               english: 'Could not open the Play Store. Please try again.',
             ),
           ),
@@ -6612,7 +6730,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_openMoreCategorySheet());
       return;
     }
-    if (slug == _politicalCategorySlug) {
+    if (slug == _politicalCategorySlug && slug == _selectedCategorySlug) {
       unawaited(_openPoliticalPartyPicker());
       return;
     }
@@ -6831,12 +6949,17 @@ class _HomeScreenState extends State<HomeScreen>
       _categoryFetchLimitBySlug[normalizedSlug] ?? (_templatesPageSize * 2),
       _templatesPageSize * 2,
     );
-    final targeted = await _approvedCreatorTemplateService
-        .fetchAllApprovedTemplatesForCategory(
-          categoryId: normalizedSlug,
-          source: Source.server,
-          scanLimit: fetchLimit,
-        );
+    final targeted = _isPoliticalFeedSlug(normalizedSlug)
+        ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
+            scanLimit: fetchLimit,
+            source: Source.server,
+          )
+        : await _approvedCreatorTemplateService
+              .fetchAllApprovedTemplatesForCategory(
+                categoryId: normalizedSlug,
+                source: Source.server,
+                scanLimit: fetchLimit,
+              );
     if (!mounted || generation != _categoryLoadGeneration) {
       return;
     }
@@ -7203,6 +7326,20 @@ class _HomeScreenState extends State<HomeScreen>
                                 deferRichPosterPreview: !isActivePoster,
                                 fillViewport: true,
                                 playbackEnabled: isActivePoster,
+                                enablePoliticalProtocolOverlay:
+                                    selectedCategory.slug ==
+                                        _politicalCategorySlug ||
+                                    _partyIdFromCategorySlug(
+                                          selectedCategory.slug,
+                                        ) !=
+                                        null,
+                                politicalProtocolPhotoScopeKey: _normalizeTag(
+                                  selectedCategory.slug,
+                                ),
+                                forcedPoliticalProtocolPartyId:
+                                    _partyIdFromCategorySlug(
+                                      selectedCategory.slug,
+                                    ),
                                 onOpenSubscriptionPlan:
                                     _pushSubscriptionPlanRoute,
                                 viewerPosterProfile: _viewerPosterProfile,
@@ -7310,7 +7447,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
     if (code.isEmpty) {
       setState(() {
         _errorText = context.strings.localized(
-          telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
+          telugu:
+              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°¨à°®à±‹à°¦à± à°šà±‡à°¯à°‚à°¡à°¿',
           english: 'Enter referral code',
         );
       });
@@ -7336,7 +7474,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
         _applying = false;
         _errorText = result.message.isEmpty
             ? context.strings.localized(
-                telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు',
+                telugu:
+                    'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±',
                 english: 'Referral code could not be applied',
               )
             : result.message;
@@ -7348,7 +7487,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
       setState(() {
         _applying = false;
         _errorText = context.strings.localized(
-          telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి',
+          telugu:
+              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
           english: 'Referral code apply failed. Please try again.',
         );
       });
@@ -7391,7 +7531,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'రిఫరల్ కోడ్',
+                        telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
                         english: 'Referral code',
                       ),
                       textAlign: TextAlign.center,
@@ -7402,7 +7542,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     Text(
                       strings.localized(
                         telugu:
-                            'మీ దగ్గర referral code ఉంటే ఇక్కడ enter చేయండి.',
+                            'à°®à±€ à°¦à°—à±à°—à°° referral code à°‰à°‚à°Ÿà±‡ à°‡à°•à±à°•à°¡ enter à°šà±‡à°¯à°‚à°¡à°¿.',
                         english: 'Enter a referral code if you have one.',
                       ),
                       textAlign: TextAlign.center,
@@ -7417,7 +7557,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
                         labelText: strings.localized(
-                          telugu: 'రిఫరల్ కోడ్',
+                          telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
                           english: 'Referral code',
                         ),
                         errorText: _errorText,
@@ -7436,14 +7576,15 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       ),
                       child: Text(
                         strings.localized(
-                          telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+                          telugu:
+                              'à°¨à°¿à°¬à°‚à°§à°¨à°²à± à°®à°°à°¿à°¯à± à°·à°°à°¤à±à°²à± à°šà±‚à°¡à°‚à°¡à°¿',
                           english: 'View Terms & Conditions',
                         ),
                       ),
                     ),
                     PrimaryButton(
                       label: strings.localized(
-                        telugu: 'అప్లై',
+                        telugu: 'à°…à°ªà±à°²à±ˆ',
                         english: 'Apply',
                       ),
                       loading: _applying,
@@ -7461,7 +7602,10 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                         ),
                       ),
                       child: Text(
-                        strings.localized(telugu: 'స్కిప్', english: 'Skip'),
+                        strings.localized(
+                          telugu: 'à°¸à±à°•à°¿à°ªà±',
+                          english: 'Skip',
+                        ),
                       ),
                     ),
                   ],
@@ -7674,12 +7818,13 @@ class _CommunityStatusGridScreenState
                             Expanded(
                               child: Text(
                                 strings.localized(
-                                  telugu: 'స్టేటస్లు',
+                                  telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±à°²à±',
                                   english: 'Statuses',
-                                  hindi: 'स्टेटस',
-                                  tamil: 'நிலைகள்',
-                                  kannada: 'ಸ್ಟೇಟಸ್‌ಗಳು',
-                                  malayalam: 'സ്റ്റാറ്റസുകൾ',
+                                  hindi: 'à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
+                                  tamil: 'à®¨à®¿à®²à¯ˆà®•à®³à¯',
+                                  kannada: 'à²¸à³à²Ÿà³‡à²Ÿà²¸à³â€Œà²—à²³à³',
+                                  malayalam:
+                                      'à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµà´•àµ¾',
                                 ),
                                 style: const TextStyle(
                                   color: Color(0xFF0F172A),
@@ -7693,7 +7838,8 @@ class _CommunityStatusGridScreenState
                               shape: const CircleBorder(),
                               child: IconButton(
                                 tooltip: strings.localized(
-                                  telugu: 'స్టేటస్ జోడించండి',
+                                  telugu:
+                                      'à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿',
                                   english: 'Add Status',
                                 ),
                                 onPressed: () => unawaited(_openUpload()),
@@ -7729,12 +7875,14 @@ class _CommunityStatusGridScreenState
                                           statuses: myStatuses,
                                         ),
                                   label: strings.localized(
-                                    telugu: 'నా స్టేటస్',
+                                    telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
                                     english: 'My Status',
-                                    hindi: 'मेरा स्टेटस',
-                                    tamil: 'என் நிலை',
-                                    kannada: 'ನನ್ನ ಸ್ಟೇಟಸ್',
-                                    malayalam: 'എന്റെ സ്റ്റാറ്റസ്',
+                                    hindi: 'à¤®à¥‡à¤°à¤¾ à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
+                                    tamil: 'à®Žà®©à¯ à®¨à®¿à®²à¯ˆ',
+                                    kannada:
+                                        'à²¨à²¨à³à²¨ à²¸à³à²Ÿà³‡à²Ÿà²¸à³',
+                                    malayalam:
+                                        'à´Žà´¨àµà´±àµ† à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµ',
                                   ),
                                   isMine: true,
                                   onAdd: () => unawaited(_openUpload()),
@@ -7749,12 +7897,14 @@ class _CommunityStatusGridScreenState
                                 group: group,
                                 label: group.displayName.isEmpty
                                     ? strings.localized(
-                                        telugu: 'వినియోగదారు',
+                                        telugu:
+                                            'à°µà°¿à°¨à°¿à°¯à±‹à°—à°¦à°¾à°°à±',
                                         english: 'User',
-                                        hindi: 'उपयोगकर्ता',
-                                        tamil: 'பயனர்',
-                                        kannada: 'ಬಳಕೆದಾರ',
-                                        malayalam: 'ഉപയോക്താവ്',
+                                        hindi: 'à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾',
+                                        tamil: 'à®ªà®¯à®©à®°à¯',
+                                        kannada: 'à²¬à²³à²•à³†à²¦à²¾à²°',
+                                        malayalam:
+                                            'à´‰à´ªà´¯àµ‹à´•àµà´¤à´¾à´µàµ',
                                       )
                                     : group.displayName,
                                 onOpen: () =>
@@ -8034,7 +8184,8 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                     children: <Widget>[
                       Text(
                         strings.localized(
-                          telugu: 'సోషల్ మీడియా క్యాలెండర్',
+                          telugu:
+                              'à°¸à±‹à°·à°²à± à°®à±€à°¡à°¿à°¯à°¾ à°•à±à°¯à°¾à°²à±†à°‚à°¡à°°à±',
                           english: 'Social Media Calendar',
                           hindi: 'Social Media Calendar',
                           tamil: 'Social Media Calendar',
@@ -8071,12 +8222,16 @@ class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
                   ? Center(
                       child: Text(
                         strings.localized(
-                          telugu: 'ఈ నెలలో events లేవు',
+                          telugu: 'à°ˆ à°¨à±†à°²à°²à±‹ events à°²à±‡à°µà±',
                           english: 'No events for this month',
-                          hindi: 'इस महीने कोई event नहीं है',
-                          tamil: 'இந்த மாதத்தில் events இல்லை',
-                          kannada: 'ಈ ತಿಂಗಳಲ್ಲಿ events ಇಲ್ಲ',
-                          malayalam: 'ഈ മാസത്തിൽ events ഇല്ല',
+                          hindi:
+                              'à¤‡à¤¸ à¤®à¤¹à¥€à¤¨à¥‡ à¤•à¥‹à¤ˆ event à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ',
+                          tamil:
+                              'à®‡à®¨à¯à®¤ à®®à®¾à®¤à®¤à¯à®¤à®¿à®²à¯ events à®‡à®²à¯à®²à¯ˆ',
+                          kannada:
+                              'à²ˆ à²¤à²¿à²‚à²—à²³à²²à³à²²à²¿ events à²‡à²²à³à²²',
+                          malayalam:
+                              'à´ˆ à´®à´¾à´¸à´¤àµà´¤à´¿àµ½ events à´‡à´²àµà´²',
                         ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -8388,7 +8543,13 @@ class _CommunityStatusViewerScreenState
     extends State<_CommunityStatusViewerScreen>
     with SingleTickerProviderStateMixin {
   static const Duration _viewDuration = Duration(seconds: 7);
-  static const List<String> _reactions = <String>['🔥', '👏', '😍', '🙏', '😠'];
+  static const List<String> _reactions = <String>[
+    'ðŸ”¥',
+    'ðŸ‘',
+    'ðŸ˜',
+    'ðŸ™',
+    'ðŸ˜ ',
+  ];
 
   late final AnimationController _progressController;
   bool _isDeleting = false;
@@ -8709,7 +8870,10 @@ class _CommunityStatusViewerScreenState
         final isOwner =
             FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
         final statusTitle = isOwner
-            ? strings.localized(telugu: 'నా స్టేటస్', english: 'My Status')
+            ? strings.localized(
+                telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
+                english: 'My Status',
+              )
             : (status.userName.isNotEmpty ? status.userName : 'User');
         final statusColor = Color(
           status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
@@ -8839,7 +9003,7 @@ class _CommunityStatusViewerScreenState
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
                           tooltip: strings.localized(
-                            telugu: 'మరిన్ని',
+                            telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
                             english: 'More',
                           ),
                           icon: const Icon(
@@ -8865,7 +9029,7 @@ class _CommunityStatusViewerScreenState
                               value: 'report',
                               child: Text(
                                 strings.localized(
-                                  telugu: 'రిపోర్ట్',
+                                  telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
                                   english: 'Report',
                                 ),
                                 style: const TextStyle(
@@ -8935,7 +9099,10 @@ class _StatusRepliesSheet extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                strings.localized(telugu: 'రిప్లైలు', english: 'Replies'),
+                strings.localized(
+                  telugu: 'à°°à°¿à°ªà±à°²à±ˆà°²à±',
+                  english: 'Replies',
+                ),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -8955,7 +9122,8 @@ class _StatusRepliesSheet extends StatelessWidget {
                       return Center(
                         child: Text(
                           strings.localized(
-                            telugu: 'ఇంకా రిప్లైలు లేవు',
+                            telugu:
+                                'à°‡à°‚à°•à°¾ à°°à°¿à°ªà±à°²à±ˆà°²à± à°²à±‡à°µà±',
                             english: 'No replies yet',
                           ),
                           style: const TextStyle(
@@ -8985,7 +9153,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                             ),
                             PopupMenuButton<String>(
                               tooltip: strings.localized(
-                                telugu: 'మరిన్ని',
+                                telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
                                 english: 'More',
                               ),
                               icon: const Icon(
@@ -9014,7 +9182,7 @@ class _StatusRepliesSheet extends StatelessWidget {
                                   value: 'report',
                                   child: Text(
                                     strings.localized(
-                                      telugu: 'రిపోర్ట్',
+                                      telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
                                       english: 'Report',
                                     ),
                                     style: const TextStyle(
@@ -9057,43 +9225,50 @@ String _localizedCommunityReportReason(BuildContext context, String reason) {
   final strings = context.strings;
   return switch (reason) {
     'Harassment or bullying' => strings.localized(
-      telugu: 'వేధింపు లేదా బెదిరింపు',
+      telugu: 'à°µà±‡à°§à°¿à°‚à°ªà± à°²à±‡à°¦à°¾ à°¬à±†à°¦à°¿à°°à°¿à°‚à°ªà±',
       english: 'Harassment or bullying',
     ),
     'Hate speech or discrimination' => strings.localized(
-      telugu: 'ద్వేష ప్రసంగం లేదా వివక్ష',
+      telugu:
+          'à°¦à±à°µà±‡à°· à°ªà±à°°à°¸à°‚à°—à°‚ à°²à±‡à°¦à°¾ à°µà°¿à°µà°•à±à°·',
       english: 'Hate speech or discrimination',
     ),
     'Sexual or adult content' => strings.localized(
-      telugu: 'లైంగిక లేదా పెద్దల కంటెంట్',
+      telugu:
+          'à°²à±ˆà°‚à°—à°¿à°• à°²à±‡à°¦à°¾ à°ªà±†à°¦à±à°¦à°² à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Sexual or adult content',
     ),
     'Violence or dangerous content' => strings.localized(
-      telugu: 'హింస లేదా ప్రమాదకర కంటెంట్',
+      telugu:
+          'à°¹à°¿à°‚à°¸ à°²à±‡à°¦à°¾ à°ªà±à°°à°®à°¾à°¦à°•à°° à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Violence or dangerous content',
     ),
     'Spam, scam, or fake content' => strings.localized(
-      telugu: 'స్పామ్, మోసం లేదా నకిలీ కంటెంట్',
+      telugu:
+          'à°¸à±à°ªà°¾à°®à±, à°®à±‹à°¸à°‚ à°²à±‡à°¦à°¾ à°¨à°•à°¿à°²à±€ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Spam, scam, or fake content',
     ),
     'Misinformation or deceptive political content' => strings.localized(
-      telugu: 'తప్పుడు సమాచారం లేదా మోసపూరిత రాజకీయ కంటెంట్',
+      telugu:
+          'à°¤à°ªà±à°ªà±à°¡à± à°¸à°®à°¾à°šà°¾à°°à°‚ à°²à±‡à°¦à°¾ à°®à±‹à°¸à°ªà±‚à°°à°¿à°¤ à°°à°¾à°œà°•à±€à°¯ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Misinformation or deceptive political content',
     ),
     'Privacy violation or personal information' => strings.localized(
-      telugu: 'ప్రైవసీ ఉల్లంఘన లేదా వ్యక్తిగత సమాచారం',
+      telugu:
+          'à°ªà±à°°à±ˆà°µà°¸à±€ à°‰à°²à±à°²à°‚à°˜à°¨ à°²à±‡à°¦à°¾ à°µà±à°¯à°•à±à°¤à°¿à°—à°¤ à°¸à°®à°¾à°šà°¾à°°à°‚',
       english: 'Privacy violation or personal information',
     ),
     'Copyright or trademark issue' => strings.localized(
-      telugu: 'కాపీరైట్ లేదా ట్రేడ్‌మార్క్ సమస్య',
+      telugu:
+          'à°•à°¾à°ªà±€à°°à±ˆà°Ÿà± à°²à±‡à°¦à°¾ à°Ÿà±à°°à±‡à°¡à±â€Œà°®à°¾à°°à±à°•à± à°¸à°®à°¸à±à°¯',
       english: 'Copyright or trademark issue',
     ),
     'Illegal content' => strings.localized(
-      telugu: 'చట్టవిరుద్ధ కంటెంట్',
+      telugu: 'à°šà°Ÿà±à°Ÿà°µà°¿à°°à±à°¦à±à°§ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
       english: 'Illegal content',
     ),
     _ => strings.localized(
-      telugu: 'ఇతర సేఫ్టీ సమస్య',
+      telugu: 'à°‡à°¤à°° à°¸à±‡à°«à±à°Ÿà±€ à°¸à°®à°¸à±à°¯',
       english: 'Other safety issue',
     ),
   };
@@ -9109,8 +9284,8 @@ Future<void> _showCommunityStatusReportSheet(
   var selectedReason = _communityReportReasons.first;
   var submitting = false;
   final reportedLabel = comment == null
-      ? strings.localized(telugu: 'స్టేటస్', english: 'status')
-      : strings.localized(telugu: 'రిప్లై', english: 'reply');
+      ? strings.localized(telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±', english: 'status')
+      : strings.localized(telugu: 'à°°à°¿à°ªà±à°²à±ˆ', english: 'reply');
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -9148,7 +9323,8 @@ Future<void> _showCommunityStatusReportSheet(
                       const SizedBox(height: 16),
                       Text(
                         strings.localized(
-                          telugu: '$reportedLabel రిపోర్ట్ చేయండి',
+                          telugu:
+                              '$reportedLabel à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿',
                           english: 'Report $reportedLabel',
                         ),
                         style: const TextStyle(
@@ -9161,7 +9337,7 @@ Future<void> _showCommunityStatusReportSheet(
                       Text(
                         strings.localized(
                           telugu:
-                              'దగ్గరగా సరిపోయే కారణం ఎంచుకోండి. రిపోర్ట్స్ community safety కోసం team review చేయవచ్చు.',
+                              'à°¦à°—à±à°—à°°à°—à°¾ à°¸à°°à°¿à°ªà±‹à°¯à±‡ à°•à°¾à°°à°£à°‚ à°Žà°‚à°šà±à°•à±‹à°‚à°¡à°¿. à°°à°¿à°ªà±‹à°°à±à°Ÿà±à°¸à± community safety à°•à±‹à°¸à°‚ team review à°šà±‡à°¯à°µà°šà±à°šà±.',
                           english:
                               'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
                         ),
@@ -9226,7 +9402,7 @@ Future<void> _showCommunityStatusReportSheet(
                             color: Colors.white.withValues(alpha: 0.55),
                           ),
                           hintText: strings.localized(
-                            telugu: 'వివరాలు optional',
+                            telugu: 'à°µà°¿à°µà°°à°¾à°²à± optional',
                             english: 'Add details optional',
                           ),
                           hintStyle: TextStyle(
@@ -9260,7 +9436,7 @@ Future<void> _showCommunityStatusReportSheet(
                               ),
                               child: Text(
                                 strings.localized(
-                                  telugu: 'రద్దు',
+                                  telugu: 'à°°à°¦à±à°¦à±',
                                   english: 'Cancel',
                                 ),
                               ),
@@ -9293,13 +9469,13 @@ Future<void> _showCommunityStatusReportSheet(
                                               ok
                                                   ? strings.localized(
                                                       telugu:
-                                                          'రిపోర్ట్ submit అయింది. ధన్యవాదాలు.',
+                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± submit à°…à°¯à°¿à°‚à°¦à°¿. à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±.',
                                                       english:
                                                           'Report submitted. Thank you.',
                                                     )
                                                   : strings.localized(
                                                       telugu:
-                                                          'రిపోర్ట్ విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                                                       english:
                                                           'Report failed. Please try again.',
                                                     ),
@@ -9327,11 +9503,12 @@ Future<void> _showCommunityStatusReportSheet(
                               label: Text(
                                 submitting
                                     ? strings.localized(
-                                        telugu: 'పంపుతోంది',
+                                        telugu: 'à°ªà°‚à°ªà±à°¤à±‹à°‚à°¦à°¿',
                                         english: 'Sending',
                                       )
                                     : strings.localized(
-                                        telugu: 'సమర్పించండి',
+                                        telugu:
+                                            'à°¸à°®à°°à±à°ªà°¿à°‚à°šà°‚à°¡à°¿',
                                         english: 'Submit',
                                       ),
                               ),
@@ -9403,7 +9580,10 @@ class _StatusInlineCommentState extends State<_StatusInlineComment> {
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text(
-                strings.localized(telugu: 'మరింత చదవండి', english: 'Read more'),
+                strings.localized(
+                  telugu: 'à°®à°°à°¿à°‚à°¤ à°šà°¦à°µà°‚à°¡à°¿',
+                  english: 'Read more',
+                ),
                 style: const TextStyle(
                   color: Colors.white70,
                   fontWeight: FontWeight.w700,
@@ -9599,7 +9779,8 @@ class _StatusEngagementPanel extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         strings.localized(
-                          telugu: 'రిప్లైలు చూడడానికి పైకి swipe చేయండి',
+                          telugu:
+                              'à°°à°¿à°ªà±à°²à±ˆà°²à± à°šà±‚à°¡à°¡à°¾à°¨à°¿à°•à°¿ à°ªà±ˆà°•à°¿ swipe à°šà±‡à°¯à°‚à°¡à°¿',
                           english: 'Swipe up for replies',
                         ),
                         style: const TextStyle(
@@ -9701,7 +9882,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
         AppSnackBar.build(
           content: Text(
             strings.localized(
-              telugu: 'రిప్లై పంపబడింది',
+              telugu: 'à°°à°¿à°ªà±à°²à±ˆ à°ªà°‚à°ªà°¬à°¡à°¿à°‚à°¦à°¿',
               english: 'Reply sent',
             ),
           ),
@@ -9713,7 +9894,8 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
       AppSnackBar.build(
         content: Text(
           strings.localized(
-            telugu: 'రిప్లై విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°°à°¿à°ªà±à°²à±ˆ à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Reply failed. Try again.',
           ),
         ),
@@ -9744,7 +9926,7 @@ class _StatusReplyInputState extends State<_StatusReplyInput> {
             decoration: InputDecoration(
               counterText: '',
               hintText: strings.localized(
-                telugu: 'రిప్లై...',
+                telugu: 'à°°à°¿à°ªà±à°²à±ˆ...',
                 english: 'Reply...',
               ),
               hintStyle: TextStyle(
@@ -9981,7 +10163,10 @@ class _HomeHeader extends StatelessWidget {
               onPressed: onCreateTap,
               icon: const Icon(Icons.add_rounded, size: 20),
               label: Text(
-                strings.localized(telugu: 'క్రియేట్', english: 'Create'),
+                strings.localized(
+                  telugu: 'à°•à±à°°à°¿à°¯à±‡à°Ÿà±',
+                  english: 'Create',
+                ),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -10001,7 +10186,7 @@ class _HomeHeader extends StatelessWidget {
             const SizedBox(width: 6),
             Tooltip(
               message: strings.localized(
-                telugu: 'స్టేటస్‌లు',
+                telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±â€Œà°²à±',
                 english: 'Statuses',
               ),
               child: InkWell(
@@ -11120,11 +11305,13 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                 errorWidget: (_, _, _) => _ImageErrorState(
                   compact: true,
                   title: context.strings.localized(
-                    telugu: 'బ్యానర్ అందుబాటులో లేదు',
+                    telugu:
+                        'à°¬à±à°¯à°¾à°¨à°°à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
-                    telugu: 'దయచేసి కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
+                    telugu:
+                        'à°¦à°¯à°šà±‡à°¸à°¿ à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -11518,7 +11705,7 @@ class _CategoryChipFallbackIcon extends StatelessWidget {
 String _subscriptionPromptCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయాలి.',
+        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°¾à°²à°¿.',
     english: 'Activate subscription to share or download posters.',
   );
 }
@@ -11526,7 +11713,7 @@ String _subscriptionPromptCopyLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionDialogTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
     english: 'Subscription Required',
   );
 }
@@ -11534,7 +11721,7 @@ String _subscriptionDialogTitleLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTrialTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
     english: '3-day trial plan',
   );
 }
@@ -11543,7 +11730,7 @@ String _subscriptionTrialTitleLocalized(BuildContext context) {
 String _subscriptionTrialValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -11552,7 +11739,7 @@ String _subscriptionTrialValueLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'నెలవారీ ప్లాన్',
+    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
     english: 'Monthly plan',
   );
 }
@@ -11560,7 +11747,8 @@ String _subscriptionMonthlyTitleLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyValueLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+    telugu:
+        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -11569,7 +11757,7 @@ String _subscriptionMonthlyValueLocalized(BuildContext context) {
 String _subscriptionRenewalCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజుల ట్రయల్ పూర్తయ్యాక మీరు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రీన్యువల్ అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల లోపు క్యాన్సిల్ చేస్తే నెలవారీ ఛార్జ్ పడదు. క్యాన్సిల్ చేసినా ప్రస్తుత ప్లాన్ గడువు ముగిసే వరకు బెనిఫిట్స్ ఉపయోగించవచ్చు.',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±‚à°°à±à°¤à°¯à±à°¯à°¾à°• à°®à±€à°°à± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±€à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°²à±‹à°ªà± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°µà°šà±à°šà±.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
@@ -11577,18 +11765,24 @@ String _subscriptionRenewalCopyLocalized(BuildContext context) {
 
 // ignore: unused_element
 String _subscriptionTermsLabelLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'నిబంధనలు', english: 'Terms');
+  return context.strings.localized(
+    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
+    english: 'Terms',
+  );
 }
 
 // ignore: unused_element
 String _subscriptionSkipLabelLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'స్కిప్', english: 'Skip');
+  return context.strings.localized(
+    telugu: 'à°¸à±à°•à°¿à°ªà±',
+    english: 'Skip',
+  );
 }
 
 // ignore: unused_element
 String _subscriptionButtonLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
     english: 'Subscribe',
   );
 }
@@ -11596,21 +11790,21 @@ String _subscriptionButtonLabelLocalized(BuildContext context) {
 String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయండి.',
+        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°‚à°¡à°¿.',
     english: 'Activate subscription to share or download posters.',
   );
 }
 
 String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
     english: 'Subscription Required',
   );
 }
 
 String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
     english: '3-day trial plan',
   );
 }
@@ -11618,7 +11812,7 @@ String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
 String _subscriptionTrialValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -11626,14 +11820,15 @@ String _subscriptionTrialValueCleanLocalized(BuildContext context) {
 
 String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'నెలవారీ ప్లాన్',
+    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
     english: 'Monthly plan',
   );
 }
 
 String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'తర్వాత నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+    telugu:
+        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -11641,29 +11836,35 @@ String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
 String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} రోజుల ట్రయల్ తర్వాత, రద్దు చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రెన్యువల్ అవుతుంది. ${SubscriptionPlanConfig.trialDays} రోజుల్లో రద్దు చేస్తే నెలవారీ ఛార్జ్ పడదు. రద్దు చేసినా ప్రస్తుత ప్లాన్ గడువు ముగిసే వరకు బెనిఫిట్స్ కొనసాగుతాయి.',
+        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°¤à°°à±à°µà°¾à°¤, à°°à°¦à±à°¦à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±†à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à±à°²à±‹ à°°à°¦à±à°¦à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°°à°¦à±à°¦à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°•à±Šà°¨à°¸à°¾à°—à±à°¤à°¾à°¯à°¿.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
 }
 
 String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'నిబంధనలు', english: 'Terms');
+  return context.strings.localized(
+    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
+    english: 'Terms',
+  );
 }
 
 String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
-  return context.strings.localized(telugu: 'స్కిప్', english: 'Skip');
+  return context.strings.localized(
+    telugu: 'à°¸à±à°•à°¿à°ªà±',
+    english: 'Skip',
+  );
 }
 
 String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
     english: 'Subscribe',
   );
 }
 
 String _posterShareLabel(BuildContext context) {
-  return context.strings.localized(telugu: 'షేర్', english: 'Share');
+  return context.strings.localized(telugu: 'à°·à±‡à°°à±', english: 'Share');
 }
 
 class _VideoSideActions extends StatelessWidget {
@@ -11813,6 +12014,937 @@ class _VideoSideActionButton extends StatelessWidget {
   }
 }
 
+class _PoliticalProtocolPhotoSlots extends StatelessWidget {
+  const _PoliticalProtocolPhotoSlots({
+    required this.assetPaths,
+    required this.imageUrls,
+    required this.slots,
+    this.assetSlots = const <PoliticalProtocolSlot>[],
+  });
+
+  final List<String> assetPaths;
+  final List<String> imageUrls;
+  final List<PoliticalProtocolSlot> slots;
+  final List<PoliticalProtocolSlot> assetSlots;
+
+  static double _slotSide({
+    required double canvasWidth,
+    required double canvasHeight,
+    required double scale,
+  }) {
+    final baseSide = math.min(canvasWidth, canvasHeight) * 0.105;
+    return math.max(1.0, baseSide * (scale / 100));
+  }
+
+  static double _slotCenter({
+    required double value,
+    required double canvasExtent,
+    required double side,
+  }) {
+    final halfPercent = (side / math.max(1.0, canvasExtent)) * 50;
+    return value.clamp(halfPercent, 100 - halfPercent).toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleUrls = imageUrls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .take(slots.length)
+        .toList(growable: false);
+    final visiblePaths = assetPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    final totalCount = visibleUrls.length + visiblePaths.length;
+    if (totalCount == 0) {
+      return const SizedBox.shrink();
+    }
+    final resolvedSlots = slots.length >= defaultPoliticalProtocolSlots.length
+        ? slots
+              .take(defaultPoliticalProtocolSlots.length)
+              .toList(growable: false)
+        : defaultPoliticalProtocolSlots;
+    final resolvedAssetSlots = assetSlots.length >= visiblePaths.length
+        ? assetSlots.take(visiblePaths.length).toList(growable: false)
+        : _fallbackManualSlots(visiblePaths.length);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canvasWidth = math.max(1.0, constraints.maxWidth);
+        final canvasHeight = math.max(1.0, constraints.maxHeight);
+        return Stack(
+          clipBehavior: Clip.none,
+          children: <Widget>[
+            for (var index = 0; index < visibleUrls.length; index += 1)
+              Builder(
+                builder: (context) {
+                  final slot = resolvedSlots[index];
+                  final side = _slotSide(
+                    canvasWidth: canvasWidth,
+                    canvasHeight: canvasHeight,
+                    scale: slot.scale,
+                  );
+                  final centerX = _slotCenter(
+                    value: slot.x,
+                    canvasExtent: canvasWidth,
+                    side: side,
+                  );
+                  final centerY = _slotCenter(
+                    value: slot.y,
+                    canvasExtent: canvasHeight,
+                    side: side,
+                  );
+                  final child = CachedNetworkImage(
+                    imageUrl: visibleUrls[index],
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) => const _PoliticalProtocolFallback(),
+                    errorWidget: (_, _, _) =>
+                        const _PoliticalProtocolFallback(),
+                  );
+                  return Positioned(
+                    left: (canvasWidth * (centerX / 100)) - (side / 2),
+                    top: (canvasHeight * (centerY / 100)) - (side / 2),
+                    width: side,
+                    height: side,
+                    child: _PoliticalProtocolCircle(side: side, child: child),
+                  );
+                },
+              ),
+            for (var index = 0; index < visiblePaths.length; index += 1)
+              Builder(
+                builder: (context) {
+                  final slot = resolvedAssetSlots[index];
+                  final side = _slotSide(
+                    canvasWidth: canvasWidth,
+                    canvasHeight: canvasHeight,
+                    scale: slot.scale,
+                  );
+                  final centerX = _slotCenter(
+                    value: slot.x,
+                    canvasExtent: canvasWidth,
+                    side: side,
+                  );
+                  final centerY = _slotCenter(
+                    value: slot.y,
+                    canvasExtent: canvasHeight,
+                    side: side,
+                  );
+                  final child = _buildPoliticalProtocolAsset(
+                    visiblePaths[index],
+                  );
+                  return Positioned(
+                    left: (canvasWidth * (centerX / 100)) - (side / 2),
+                    top: (canvasHeight * (centerY / 100)) - (side / 2),
+                    width: side,
+                    height: side,
+                    child: _PoliticalProtocolCircle(side: side, child: child),
+                  );
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<PoliticalProtocolSlot> _fallbackManualSlots(int count) {
+    return List<PoliticalProtocolSlot>.generate(count, (index) {
+      final row = index ~/ 4;
+      final col = index % 4;
+      return PoliticalProtocolSlot(
+        x: (22 + (col * 18)).clamp(8, 92).toDouble(),
+        y: (22 + (row * 14)).clamp(8, 92).toDouble(),
+        scale: 100,
+      );
+    }, growable: false);
+  }
+
+  Widget _buildPoliticalProtocolAsset(String path) {
+    final source = path.trim();
+    if (source.startsWith('http://') || source.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: source,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => const _PoliticalProtocolFallback(),
+        errorWidget: (_, _, _) => const _PoliticalProtocolFallback(),
+      );
+    }
+    if (source.contains(Platform.pathSeparator)) {
+      return Image.file(
+        File(source),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _PoliticalProtocolFallback(),
+      );
+    }
+    return Image.asset(
+      source,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const _PoliticalProtocolFallback(),
+    );
+  }
+}
+
+class _PoliticalProtocolFallback extends StatelessWidget {
+  const _PoliticalProtocolFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFFE2E8F0),
+      child: Icon(Icons.person_rounded, color: Color(0xFF64748B), size: 18),
+    );
+  }
+}
+
+class _PoliticalProtocolCircle extends StatelessWidget {
+  const _PoliticalProtocolCircle({required this.side, required this.child});
+
+  final double side;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: side,
+      height: side,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.92),
+          width: 1.4,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipOval(child: child),
+    );
+  }
+}
+
+class _PoliticalProtocolPhotoScreenResult {
+  const _PoliticalProtocolPhotoScreenResult({
+    required this.manualPhotoPaths,
+    required this.defaultSlots,
+    required this.manualSlots,
+  });
+
+  final List<String> manualPhotoPaths;
+  final List<PoliticalProtocolSlot> defaultSlots;
+  final List<PoliticalProtocolSlot> manualSlots;
+}
+
+class _PoliticalProtocolPhotoScreen extends StatefulWidget {
+  const _PoliticalProtocolPhotoScreen({
+    required this.item,
+    required this.language,
+    required this.viewerPosterProfile,
+    required this.politicalProtocolPhotoUrls,
+    required this.showDefaultProtocolPhotos,
+    required this.initialManualPhotoPaths,
+    required this.defaultSlots,
+    required this.initialManualSlots,
+  });
+
+  final _TemplateItem item;
+  final AppLanguage language;
+  final PosterProfileData viewerPosterProfile;
+  final List<String> politicalProtocolPhotoUrls;
+  final bool showDefaultProtocolPhotos;
+  final List<String> initialManualPhotoPaths;
+  final List<PoliticalProtocolSlot> defaultSlots;
+  final List<PoliticalProtocolSlot> initialManualSlots;
+
+  @override
+  State<_PoliticalProtocolPhotoScreen> createState() =>
+      _PoliticalProtocolPhotoScreenState();
+}
+
+class _PoliticalProtocolPhotoScreenState
+    extends State<_PoliticalProtocolPhotoScreen> {
+  final ImagePicker _picker = ImagePicker();
+  late List<String> _manualPhotoPaths;
+  late List<PoliticalProtocolSlot> _defaultSlots;
+  late List<PoliticalProtocolSlot> _manualSlots;
+  double? _posterImageAspectRatio;
+  String? _posterImageAspectKey;
+  ImageStream? _posterImageStream;
+  ImageStreamListener? _posterImageStreamListener;
+  bool _busy = false;
+  int? _deleteArmedManualIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _manualPhotoPaths = widget.initialManualPhotoPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: true);
+    _defaultSlots = _normalizeDefaultProtocolSlots(widget.defaultSlots);
+    _manualSlots = _normalizeManualProtocolSlots(
+      widget.initialManualSlots,
+      _manualPhotoPaths.length,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolvePosterImageAspectRatio();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PoliticalProtocolPhotoScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.imageUrl != widget.item.imageUrl ||
+        oldWidget.item.imageAssetPath != widget.item.imageAssetPath) {
+      _resolvePosterImageAspectRatio(force: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _clearPosterImageListener();
+    super.dispose();
+  }
+
+  void _clearPosterImageListener() {
+    final stream = _posterImageStream;
+    final listener = _posterImageStreamListener;
+    if (stream != null && listener != null) {
+      stream.removeListener(listener);
+    }
+    _posterImageStream = null;
+    _posterImageStreamListener = null;
+  }
+
+  void _resolvePosterImageAspectRatio({bool force = false}) {
+    final imageUrl = widget.item.imageUrl?.trim() ?? '';
+    final assetPath = widget.item.imageAssetPath?.trim() ?? '';
+    final nextKey = imageUrl.isNotEmpty
+        ? 'network:$imageUrl'
+        : assetPath.isNotEmpty
+        ? 'asset:$assetPath'
+        : '';
+    if (!force && nextKey == _posterImageAspectKey) {
+      return;
+    }
+    _posterImageAspectKey = nextKey;
+    _posterImageAspectRatio = widget.item.pageConfig?.aspectRatio;
+    _clearPosterImageListener();
+    if (nextKey.isEmpty) {
+      return;
+    }
+    final ImageProvider provider = imageUrl.isNotEmpty
+        ? CachedNetworkImageProvider(imageUrl)
+        : AssetImage(assetPath);
+    final stream = provider.resolve(createLocalImageConfiguration(context));
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
+      final width = info.image.width;
+      final height = info.image.height;
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      final ratio = width / height;
+      if (!mounted) {
+        return;
+      }
+      final currentRatio = _posterImageAspectRatio;
+      if (currentRatio != null && (currentRatio - ratio).abs() < 0.001) {
+        return;
+      }
+      setState(() => _posterImageAspectRatio = ratio);
+    }, onError: (_, _) {});
+    _posterImageStream = stream;
+    _posterImageStreamListener = listener;
+    stream.addListener(listener);
+  }
+
+  List<PoliticalProtocolSlot> _normalizeDefaultProtocolSlots(
+    List<PoliticalProtocolSlot> raw,
+  ) {
+    final source = raw.length >= defaultPoliticalProtocolSlots.length
+        ? raw
+        : defaultPoliticalProtocolSlots;
+    return source
+        .take(defaultPoliticalProtocolSlots.length)
+        .map(
+          (slot) => PoliticalProtocolSlot(
+            x: slot.x.clamp(4.0, 96.0).toDouble(),
+            y: slot.y.clamp(4.0, 96.0).toDouble(),
+            scale: slot.scale.clamp(45.0, 135.0).toDouble(),
+          ),
+        )
+        .toList(growable: true);
+  }
+
+  List<PoliticalProtocolSlot> _normalizeManualProtocolSlots(
+    List<PoliticalProtocolSlot> raw,
+    int count,
+  ) {
+    return List<PoliticalProtocolSlot>.generate(count, (index) {
+      final fallback = _defaultManualSlot(index);
+      final slot = index < raw.length ? raw[index] : fallback;
+      return PoliticalProtocolSlot(
+        x: slot.x.clamp(4.0, 96.0).toDouble(),
+        y: slot.y.clamp(4.0, 96.0).toDouble(),
+        scale: slot.scale.clamp(45.0, 135.0).toDouble(),
+      );
+    }, growable: true);
+  }
+
+  PoliticalProtocolSlot _defaultManualSlot(int index) {
+    final row = index ~/ 4;
+    final col = index % 4;
+    return PoliticalProtocolSlot(
+      x: (22 + (col * 18)).clamp(8, 92).toDouble(),
+      y: (24 + (row * 14)).clamp(8, 92).toDouble(),
+      scale: 100,
+    );
+  }
+
+  void _insertProtocolPhotoSource(String source, {int? insertIndex}) {
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    setState(() {
+      final boundedIndex = insertIndex == null
+          ? _manualPhotoPaths.length
+          : insertIndex.clamp(0, _manualPhotoPaths.length).toInt();
+      _manualPhotoPaths.insert(boundedIndex, trimmed);
+      _manualSlots.insert(boundedIndex, _defaultManualSlot(boundedIndex));
+      _manualSlots = _normalizeManualProtocolSlots(
+        _manualSlots,
+        _manualPhotoPaths.length,
+      );
+      _deleteArmedManualIndex = null;
+    });
+  }
+
+  Future<void> _addPhoto({int? insertIndex}) async {
+    if (_busy) {
+      return;
+    }
+    final existingCount =
+        widget.politicalProtocolPhotoUrls
+            .where((url) => url.trim().isNotEmpty)
+            .length +
+        _manualPhotoPaths.length;
+    if (existingCount > 1000000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu:
+                  'à°®à±Šà°¤à±à°¤à°‚ 6 à°«à±‹à°Ÿà±‹à°²à± à°®à°¾à°¤à±à°°à°®à±‡ à°ªà±†à°Ÿà±à°Ÿà°µà°šà±à°šà±.',
+              english: 'You can add up to 6 photos only.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    final cropTitle = context.strings.localized(
+      telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+      english: 'Crop Photo',
+    );
+    setState(() => _busy = true);
+    File? stagedFile;
+    try {
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) {
+        return;
+      }
+      stagedFile = File(picked.path);
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: stagedFile.path,
+        compressFormat: ImageCompressFormat.png,
+        compressQuality: 96,
+        uiSettings: <PlatformUiSettings>[
+          AndroidUiSettings(
+            toolbarTitle: cropTitle,
+            toolbarColor: const Color(0xFF0F172A),
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: const Color(0xFF0F172A),
+            activeControlsWidgetColor: const Color(0xFF14B8A6),
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+          ),
+          IOSUiSettings(title: cropTitle, aspectRatioLockEnabled: true),
+        ],
+      );
+      if (cropped == null) {
+        return;
+      }
+      final bytes = await File(cropped.path).readAsBytes();
+      final dir = await getApplicationDocumentsDirectory();
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final path =
+          '${dir.path}${Platform.pathSeparator}political_protocol_$stamp.png';
+      await File(path).writeAsBytes(bytes, flush: true);
+      if (!mounted) {
+        return;
+      }
+      _insertProtocolPhotoSource(path, insertIndex: insertIndex);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.strings.localized(
+              telugu:
+                  'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+              english: 'Could not add the photo. Please try again.',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  void _removeManualPhoto(int manualIndex) {
+    if (manualIndex < 0 || manualIndex >= _manualPhotoPaths.length) {
+      return;
+    }
+    final removedPath = _manualPhotoPaths.removeAt(manualIndex);
+    if (manualIndex < _manualSlots.length) {
+      _manualSlots.removeAt(manualIndex);
+    }
+    if (!removedPath.startsWith('http://') &&
+        !removedPath.startsWith('https://')) {
+      unawaited(_deleteProtocolPhotoFile(File(removedPath)));
+    }
+    setState(() => _deleteArmedManualIndex = null);
+  }
+
+  Future<void> _deleteProtocolPhotoFile(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Local protocol photos are disposable UI assets.
+    }
+  }
+
+  Widget _buildPhotoSlot({
+    required double side,
+    required Widget child,
+    required bool isPlus,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: side,
+        height: side,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isPlus
+              ? const Color(0xFF14B8A6)
+              : Colors.white.withValues(alpha: 0.95),
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipOval(child: child),
+      ),
+    );
+  }
+
+  Widget _buildProtocolPhotoSource(String source) {
+    final trimmed = source.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: trimmed,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => const _PoliticalProtocolFallback(),
+        errorWidget: (_, _, _) => const _PoliticalProtocolFallback(),
+      );
+    }
+    return Image.file(
+      File(trimmed),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const _PoliticalProtocolFallback(),
+    );
+  }
+
+  Widget _buildAdminPhotoPicker() {
+    final adminUrls = widget.politicalProtocolPhotoUrls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .skip(defaultPoliticalProtocolSlots.length)
+        .toList(growable: false);
+    return SizedBox(
+      height: 78,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Material(
+              color: _busy ? const Color(0xFF94A3B8) : const Color(0xFF14B8A6),
+              shape: const CircleBorder(),
+              elevation: 4,
+              shadowColor: Colors.black26,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _busy ? null : () => unawaited(_addPhoto()),
+                child: SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: Center(
+                    child: _busy
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            '++',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            );
+          }
+          final url = adminUrls[index - 1];
+          return _buildPhotoSlot(
+            side: 58,
+            child: CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => const _PoliticalProtocolFallback(),
+              errorWidget: (_, _, _) => const _PoliticalProtocolFallback(),
+            ),
+            isPlus: false,
+            onTap: () => _insertProtocolPhotoSource(url),
+          );
+        },
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemCount: adminUrls.length + 1,
+      ),
+    );
+  }
+
+  Widget _buildPosterPhotoSlots({
+    required double canvasWidth,
+    required double canvasHeight,
+  }) {
+    final adminUrls = widget.showDefaultProtocolPhotos
+        ? widget.politicalProtocolPhotoUrls
+              .map((url) => url.trim())
+              .where((url) => url.isNotEmpty)
+              .take(_defaultSlots.length)
+              .toList(growable: false)
+        : const <String>[];
+    final safeCanvasWidth = math.max(1.0, canvasWidth);
+    final safeCanvasHeight = math.max(1.0, canvasHeight);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        for (var index = 0; index < adminUrls.length; index += 1)
+          Builder(
+            builder: (context) {
+              final slot = _defaultSlots[index];
+              final side = _PoliticalProtocolPhotoSlots._slotSide(
+                canvasWidth: safeCanvasWidth,
+                canvasHeight: safeCanvasHeight,
+                scale: slot.scale,
+              );
+              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.x,
+                canvasExtent: safeCanvasWidth,
+                side: side,
+              );
+              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.y,
+                canvasExtent: safeCanvasHeight,
+                side: side,
+              );
+              return Positioned(
+                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
+                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
+                width: side,
+                height: side,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      final nextX =
+                          (slot.x + (details.delta.dx / safeCanvasWidth) * 100)
+                              .clamp(
+                                (side / safeCanvasWidth) * 50,
+                                100 - ((side / safeCanvasWidth) * 50),
+                              )
+                              .toDouble();
+                      final nextY =
+                          (slot.y + (details.delta.dy / safeCanvasHeight) * 100)
+                              .clamp(
+                                (side / safeCanvasHeight) * 50,
+                                100 - ((side / safeCanvasHeight) * 50),
+                              )
+                              .toDouble();
+                      if (index < _defaultSlots.length) {
+                        _defaultSlots[index] = PoliticalProtocolSlot(
+                          x: nextX,
+                          y: nextY,
+                          scale: slot.scale,
+                        );
+                      }
+                    });
+                  },
+                  child: _buildPhotoSlot(
+                    side: side,
+                    child: CachedNetworkImage(
+                      imageUrl: adminUrls[index],
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) =>
+                          const Icon(Icons.person_rounded),
+                    ),
+                    isPlus: false,
+                    onTap: null,
+                  ),
+                ),
+              );
+            },
+          ),
+        for (
+          var manualIndex = 0;
+          manualIndex < _manualPhotoPaths.length;
+          manualIndex += 1
+        )
+          Builder(
+            builder: (context) {
+              final slot = manualIndex < _manualSlots.length
+                  ? _manualSlots[manualIndex]
+                  : _defaultManualSlot(manualIndex);
+              final side = _PoliticalProtocolPhotoSlots._slotSide(
+                canvasWidth: safeCanvasWidth,
+                canvasHeight: safeCanvasHeight,
+                scale: slot.scale,
+              );
+              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.x,
+                canvasExtent: safeCanvasWidth,
+                side: side,
+              );
+              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.y,
+                canvasExtent: safeCanvasHeight,
+                side: side,
+              );
+              final deleteArmed = _deleteArmedManualIndex == manualIndex;
+              final child = Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  _buildProtocolPhotoSource(_manualPhotoPaths[manualIndex]),
+                  if (deleteArmed)
+                    ColoredBox(
+                      color: Colors.red.withValues(alpha: 0.78),
+                      child: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                ],
+              );
+              final onTap = deleteArmed
+                  ? () => _removeManualPhoto(manualIndex)
+                  : () => setState(() => _deleteArmedManualIndex = manualIndex);
+              return Positioned(
+                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
+                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
+                width: side,
+                height: side,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() {
+                      final nextX =
+                          (slot.x + (details.delta.dx / safeCanvasWidth) * 100)
+                              .clamp(
+                                (side / safeCanvasWidth) * 50,
+                                100 - ((side / safeCanvasWidth) * 50),
+                              )
+                              .toDouble();
+                      final nextY =
+                          (slot.y + (details.delta.dy / safeCanvasHeight) * 100)
+                              .clamp(
+                                (side / safeCanvasHeight) * 50,
+                                100 - ((side / safeCanvasHeight) * 50),
+                              )
+                              .toDouble();
+                      if (manualIndex < _manualSlots.length) {
+                        _manualSlots[manualIndex] = PoliticalProtocolSlot(
+                          x: nextX,
+                          y: nextY,
+                          scale: slot.scale,
+                        );
+                      }
+                    });
+                  },
+                  child: _buildPhotoSlot(
+                    side: side,
+                    child: child,
+                    isPlus: false,
+                    onTap: onTap,
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPosterImage() {
+    final imageUrl = widget.item.imageUrl?.trim() ?? '';
+    final assetPath = widget.item.imageAssetPath?.trim() ?? '';
+    if (imageUrl.isNotEmpty) {
+      return CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.contain);
+    }
+    if (assetPath.isNotEmpty) {
+      return Image.asset(assetPath, fit: BoxFit.contain);
+    }
+    return const ColoredBox(
+      color: Color(0xFF111827),
+      child: Center(
+        child: Icon(Icons.image_not_supported_rounded, color: Colors.white54),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageAspectRatio =
+        _posterImageAspectRatio ?? widget.item.pageConfig?.aspectRatio;
+    final posterStage = LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = math.max(1.0, constraints.maxWidth);
+        final maxHeight = math.max(1.0, constraints.maxHeight);
+        final aspectRatio = pageAspectRatio != null && pageAspectRatio > 0
+            ? pageAspectRatio
+            : maxWidth / maxHeight;
+        final posterWidth = math.min(maxWidth, maxHeight * aspectRatio);
+        final posterHeight = posterWidth / aspectRatio;
+        final posterLeft = (maxWidth - posterWidth) / 2;
+        final posterTop = (maxHeight - posterHeight) / 2;
+        return Stack(
+          children: <Widget>[
+            Positioned(
+              left: posterLeft,
+              top: posterTop,
+              width: posterWidth,
+              height: posterHeight,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  _buildPosterImage(),
+                  _buildPosterPhotoSlots(
+                    canvasWidth: posterWidth,
+                    canvasHeight: posterHeight,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        elevation: 0.6,
+        title: Text(
+          context.strings.localized(
+            telugu: 'పొలిటికల్ ఫోటోలు',
+            english: 'Add Political Photos',
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(
+              _PoliticalProtocolPhotoScreenResult(
+                manualPhotoPaths: _manualPhotoPaths,
+                defaultSlots: _defaultSlots,
+                manualSlots: _manualSlots,
+              ),
+            ),
+            child: Text(
+              context.strings.localized(telugu: 'Done', english: 'Done'),
+              style: const TextStyle(
+                color: Color(0xFF0F766E),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            _buildAdminPhotoPicker(),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: posterStage,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+              child: Text(
+                context.strings.localized(
+                  telugu:
+                      '+ à°®à±€à°¦ tap à°šà±‡à°¸à°¿ à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿. à°«à±‹à°Ÿà±‹ à°®à±€à°¦ tap à°šà±‡à°¸à±à°¤à±‡ delete à°µà°¸à±à°¤à±à°‚à°¦à°¿.',
+                  english:
+                      'Drag circles to adjust position. Tap + to add a photo. Tap an added photo to delete it.',
+                ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TemplateFeedItem extends StatefulWidget {
   const _TemplateFeedItem({
     super.key,
@@ -11825,6 +12957,9 @@ class _TemplateFeedItem extends StatefulWidget {
     required this.posterRenderCycle,
     required this.onPosterPhotoDragStateChanged,
     this.playbackEnabled = true,
+    this.enablePoliticalProtocolOverlay = false,
+    this.politicalProtocolPhotoScopeKey = '',
+    this.forcedPoliticalProtocolPartyId,
     this.preferUltraLightImage = false,
     this.fillViewport = false,
     this.onInteraction,
@@ -11840,11 +12975,16 @@ class _TemplateFeedItem extends StatefulWidget {
   final int posterRenderCycle;
   final ValueChanged<bool> onPosterPhotoDragStateChanged;
   final bool playbackEnabled;
+  final bool enablePoliticalProtocolOverlay;
+  final String politicalProtocolPhotoScopeKey;
+  final String? forcedPoliticalProtocolPartyId;
   final bool preferUltraLightImage;
   final bool fillViewport;
   final void Function(_TemplateItem item, String action)? onInteraction;
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
+  static const PoliticalProtocolPhotoService _politicalProtocolPhotoService =
+      PoliticalProtocolPhotoService();
 
   static SubscriptionBackendService get subscriptionBackendService =>
       _subscriptionBackendService;
@@ -11873,6 +13013,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     'Raleway',
     'Rubik',
   ];
+  static final Map<String, ValueNotifier<List<String>>>
+  _manualProtocolPhotosByScope = <String, ValueNotifier<List<String>>>{};
+  static final Map<String, ValueNotifier<List<PoliticalProtocolSlot>>>
+  _manualProtocolPhotoSlotsByScope =
+      <String, ValueNotifier<List<PoliticalProtocolSlot>>>{};
   final GlobalKey _posterCaptureKey = GlobalKey();
   final ScreenshotController _posterScreenshotController =
       ScreenshotController();
@@ -11912,6 +13057,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   bool _photoDragInProgress = false;
   bool _additionalPhotoBusy = false;
   double? _resolvedPreviewAspectRatio;
+  String? _politicalProtocolPartyId;
+  List<String> _politicalProtocolPhotoUrls = const <String>[];
+  List<String> _manualPoliticalProtocolPhotoPaths = const <String>[];
+  List<PoliticalProtocolSlot>? _politicalProtocolDefaultSlotsOverride;
+  List<PoliticalProtocolSlot> _manualPoliticalProtocolSlots =
+      const <PoliticalProtocolSlot>[];
+  Future<void>? _politicalProtocolPhotoLoadFuture;
+  ValueNotifier<List<String>>? _manualProtocolPhotoNotifier;
+  ValueNotifier<List<PoliticalProtocolSlot>>? _manualProtocolPhotoSlotNotifier;
 
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
@@ -11927,7 +13081,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   SubscriptionBackendService get _subscriptionBackendService =>
       _TemplateFeedItem.subscriptionBackendService;
 
-  String? _resolvePoliticalPartyLogoAssetPath() {
+  bool get _canAddPoliticalProtocolPhotos {
+    final partyId = _resolvePoliticalPartyId();
+    return widget.enablePoliticalProtocolOverlay &&
+        partyId != null &&
+        partyId.trim().isNotEmpty &&
+        !item.isVideo &&
+        item.personalizationConfig != null;
+  }
+
+  PoliticalParty? _resolvePoliticalParty() {
     final tags = <String>{
       for (final tag in item.categoryTags) _normalizeTagWorker(tag),
       _normalizeTagWorker(item.primaryFirestoreCategoryId ?? ''),
@@ -11944,16 +13107,149 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           (shortName.isNotEmpty && tags.contains(shortName)) ||
           (shortName.isNotEmpty && tags.contains('party_$shortName'));
       if (matches) {
-        return party.logoAssetPath;
+        return party;
       }
     }
     return null;
+  }
+
+  String? _resolvePoliticalPartyLogoAssetPath() {
+    return _resolvePoliticalParty()?.logoAssetPath;
+  }
+
+  String? _resolvePoliticalPartyId() {
+    final forced = widget.forcedPoliticalProtocolPartyId?.trim() ?? '';
+    if (forced.isNotEmpty) {
+      return forced;
+    }
+    return _resolvePoliticalParty()?.id;
+  }
+
+  void _syncPoliticalProtocolPhotos() {
+    if (!widget.enablePoliticalProtocolOverlay) {
+      _politicalProtocolPartyId = null;
+      _politicalProtocolPhotoUrls = const <String>[];
+      _politicalProtocolPhotoLoadFuture = null;
+      return;
+    }
+    final partyId = _resolvePoliticalPartyId();
+    if (partyId == null || partyId.isEmpty) {
+      _politicalProtocolPartyId = null;
+      _politicalProtocolPhotoUrls = const <String>[];
+      _politicalProtocolPhotoLoadFuture = null;
+      return;
+    }
+    if (_politicalProtocolPartyId == partyId &&
+        _politicalProtocolPhotoLoadFuture != null) {
+      return;
+    }
+    _politicalProtocolPartyId = partyId;
+    _politicalProtocolPhotoUrls = const <String>[];
+    final future = _TemplateFeedItem._politicalProtocolPhotoService
+        .fetchPhotoUrlsForParty(partyId);
+    _politicalProtocolPhotoLoadFuture = future;
+    unawaited(
+      future.then((urls) {
+        if (!mounted ||
+            _politicalProtocolPartyId != partyId ||
+            _politicalProtocolPhotoLoadFuture != future) {
+          return;
+        }
+        setState(() {
+          _politicalProtocolPhotoUrls = urls;
+        });
+      }),
+    );
+  }
+
+  String _manualProtocolPhotoScopeKey() {
+    if (!widget.enablePoliticalProtocolOverlay) {
+      return '';
+    }
+    final rawScope = widget.politicalProtocolPhotoScopeKey.trim();
+    if (rawScope.isNotEmpty) {
+      return rawScope;
+    }
+    final forced = widget.forcedPoliticalProtocolPartyId?.trim() ?? '';
+    if (forced.isNotEmpty) {
+      return 'party_${_normalizeTagWorker(forced)}';
+    }
+    return _normalizeTagWorker(item.primaryFirestoreCategoryId ?? 'political');
+  }
+
+  ValueNotifier<List<String>> _manualProtocolPhotoNotifierFor(String scope) {
+    return _manualProtocolPhotosByScope.putIfAbsent(
+      scope,
+      () => ValueNotifier<List<String>>(const <String>[]),
+    );
+  }
+
+  ValueNotifier<List<PoliticalProtocolSlot>>
+  _manualProtocolPhotoSlotNotifierFor(String scope) {
+    return _manualProtocolPhotoSlotsByScope.putIfAbsent(
+      scope,
+      () => ValueNotifier<List<PoliticalProtocolSlot>>(
+        const <PoliticalProtocolSlot>[],
+      ),
+    );
+  }
+
+  void _handleManualProtocolPhotosChanged() {
+    final notifier = _manualProtocolPhotoNotifier;
+    final slotNotifier = _manualProtocolPhotoSlotNotifier;
+    if (!mounted || notifier == null) {
+      return;
+    }
+    setState(() {
+      _manualPoliticalProtocolPhotoPaths = notifier.value
+          .map((path) => path.trim())
+          .where((path) => path.isNotEmpty)
+          .toList(growable: false);
+      final slots = slotNotifier?.value ?? const <PoliticalProtocolSlot>[];
+      _manualPoliticalProtocolSlots = slots
+          .take(_manualPoliticalProtocolPhotoPaths.length)
+          .toList(growable: false);
+    });
+    _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
+    _schedulePosterWarmup(force: true);
+  }
+
+  void _syncManualProtocolPhotoScope() {
+    _manualProtocolPhotoNotifier?.removeListener(
+      _handleManualProtocolPhotosChanged,
+    );
+    _manualProtocolPhotoSlotNotifier?.removeListener(
+      _handleManualProtocolPhotosChanged,
+    );
+    final nextScope = _manualProtocolPhotoScopeKey();
+    if (nextScope.isEmpty) {
+      _manualProtocolPhotoNotifier = null;
+      _manualProtocolPhotoSlotNotifier = null;
+      _manualPoliticalProtocolPhotoPaths = const <String>[];
+      _manualPoliticalProtocolSlots = const <PoliticalProtocolSlot>[];
+      return;
+    }
+    final next = _manualProtocolPhotoNotifierFor(nextScope);
+    final nextSlots = _manualProtocolPhotoSlotNotifierFor(nextScope);
+    _manualProtocolPhotoNotifier = next;
+    _manualProtocolPhotoSlotNotifier = nextSlots;
+    _manualPoliticalProtocolPhotoPaths = next.value
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    _manualPoliticalProtocolSlots = nextSlots.value
+        .take(_manualPoliticalProtocolPhotoPaths.length)
+        .toList(growable: false);
+    next.addListener(_handleManualProtocolPhotosChanged);
+    nextSlots.addListener(_handleManualProtocolPhotosChanged);
   }
 
   @override
   void initState() {
     super.initState();
     _resolvedPreviewAspectRatio = _initialPreviewAspectRatioFor(item);
+    _syncManualProtocolPhotoScope();
+    _syncPoliticalProtocolPhotos();
     if (item.isVideo && playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
@@ -11970,6 +13266,18 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.playbackEnabled != widget.playbackEnabled) {
       updateKeepAlive();
+    }
+    if (oldWidget.enablePoliticalProtocolOverlay !=
+            widget.enablePoliticalProtocolOverlay ||
+        oldWidget.politicalProtocolPhotoScopeKey !=
+            widget.politicalProtocolPhotoScopeKey ||
+        oldWidget.forcedPoliticalProtocolPartyId !=
+            widget.forcedPoliticalProtocolPartyId ||
+        oldWidget.item.categoryTags != widget.item.categoryTags ||
+        oldWidget.item.primaryFirestoreCategoryId !=
+            widget.item.primaryFirestoreCategoryId) {
+      _syncManualProtocolPhotoScope();
+      _syncPoliticalProtocolPhotos();
     }
     if (oldWidget.item.videoUrl != widget.item.videoUrl ||
         oldWidget.item.imageUrl != widget.item.imageUrl ||
@@ -12032,6 +13340,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     if (_photoDragInProgress) {
       widget.onPosterPhotoDragStateChanged(false);
     }
+    _manualProtocolPhotoNotifier?.removeListener(
+      _handleManualProtocolPhotosChanged,
+    );
     _invalidatePreparedPosterCache();
     _showPosterPhotoNotifier.dispose();
     _posterReadyNotifier.dispose();
@@ -12096,7 +13407,25 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _posterSignature({required bool isPhotoVisible}) {
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
+    final defaultProtocolSlots =
+        _politicalProtocolDefaultSlotsOverride ??
+        item.personalizationConfig?.politicalProtocolSlots ??
+        const <PoliticalProtocolSlot>[];
+    final protocolSlotSignature =
+        <PoliticalProtocolSlot>[
+              ...defaultProtocolSlots,
+              ..._manualPoliticalProtocolSlots,
+            ]
+            .map(
+              (slot) =>
+                  '${slot.x.toStringAsFixed(2)},${slot.y.toStringAsFixed(2)},${slot.scale.toStringAsFixed(2)}',
+            )
+            .join('|');
+    final protocolPhotoSignature = <String>[
+      ..._politicalProtocolPhotoUrls.take(defaultPoliticalProtocolSlots.length),
+      ..._manualPoliticalProtocolPhotoPaths,
+    ].join('|');
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-protocol$protocolPhotoSignature-$protocolSlotSignature-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
   }
 
   void _cyclePosterDesign() {
@@ -12258,7 +13587,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'బ్యాక్‌గ్రౌండ్ తొలగిస్తోంది...',
+                        telugu:
+                            'à°¬à±à°¯à°¾à°•à±â€Œà°—à±à°°à±Œà°‚à°¡à± à°¤à±Šà°²à°—à°¿à°¸à±à°¤à±‹à°‚à°¦à°¿...',
                         english: 'Removing background...',
                       ),
                       style: const TextStyle(
@@ -12308,7 +13638,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
-              telugu: 'ఫోటో క్రాప్ చేయండి',
+              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
               english: 'Crop Photo',
             ),
             toolbarColor: const Color(0xFF0F172A),
@@ -12320,7 +13650,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           ),
           IOSUiSettings(
             title: strings.localized(
-              telugu: 'ఫోటో క్రాప్ చేయండి',
+              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
               english: 'Crop Photo',
             ),
             aspectRatioLockEnabled: false,
@@ -12382,7 +13712,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'ఫోటో జోడించాం, కానీ background remove పూర్తిగా కాలేదు. ఇప్పటికి original photo వాడుతున్నాం.',
+                'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°¾à°‚, à°•à°¾à°¨à±€ background remove à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°•à°¾à°²à±‡à°¦à±. à°‡à°ªà±à°ªà°Ÿà°¿à°•à°¿ original photo à°µà°¾à°¡à±à°¤à±à°¨à±à°¨à°¾à°‚.',
             english:
                 'Photo was added, but background removal did not complete. Using the original photo for now.',
           ),
@@ -12396,7 +13726,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'అదనపు ఫోటో జోడించలేకపోయాం.',
+            telugu:
+                'à°…à°¦à°¨à°ªà± à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚.',
             english: 'Could not add the extra photo.',
           ),
         );
@@ -12409,6 +13740,70 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         setState(() => _additionalPhotoBusy = false);
       }
     }
+  }
+
+  Future<void> _openPoliticalProtocolPhotoScreen(BuildContext context) async {
+    final partyId = _resolvePoliticalPartyId();
+    if (!widget.enablePoliticalProtocolOverlay ||
+        partyId == null ||
+        partyId.trim().isEmpty ||
+        item.isVideo) {
+      return;
+    }
+    final result = await Navigator.of(context)
+        .push<_PoliticalProtocolPhotoScreenResult>(
+          MaterialPageRoute<_PoliticalProtocolPhotoScreenResult>(
+            fullscreenDialog: true,
+            builder: (_) => _PoliticalProtocolPhotoScreen(
+              item: item,
+              language: language,
+              viewerPosterProfile: viewerPosterProfile,
+              politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+              showDefaultProtocolPhotos:
+                  item.personalizationConfig?.hasPoliticalProtocolLayout ??
+                  false,
+              initialManualPhotoPaths: _manualPoliticalProtocolPhotoPaths,
+              defaultSlots:
+                  _politicalProtocolDefaultSlotsOverride ??
+                  item.personalizationConfig?.politicalProtocolSlots ??
+                  defaultPoliticalProtocolSlots,
+              initialManualSlots: _manualPoliticalProtocolSlots,
+            ),
+          ),
+        );
+    if (!mounted || result == null) {
+      return;
+    }
+    final normalizedPaths = result.manualPhotoPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    final normalizedSlots = result.manualSlots
+        .take(normalizedPaths.length)
+        .toList(growable: false);
+    final normalizedDefaultSlots =
+        result.defaultSlots.length >= defaultPoliticalProtocolSlots.length
+        ? result.defaultSlots
+              .take(defaultPoliticalProtocolSlots.length)
+              .toList(growable: false)
+        : item.personalizationConfig?.politicalProtocolSlots ??
+              defaultPoliticalProtocolSlots;
+    final notifier = _manualProtocolPhotoNotifier;
+    final slotNotifier = _manualProtocolPhotoSlotNotifier;
+    if (notifier != null) {
+      notifier.value = normalizedPaths;
+    } else {
+      setState(() => _manualPoliticalProtocolPhotoPaths = normalizedPaths);
+    }
+    if (slotNotifier != null) {
+      slotNotifier.value = normalizedSlots;
+    }
+    setState(() {
+      _politicalProtocolDefaultSlotsOverride = normalizedDefaultSlots;
+      _manualPoliticalProtocolSlots = normalizedSlots;
+    });
+    _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
+    _schedulePosterWarmup(force: true);
   }
 
   bool get _canInteractWithPosterPhoto {
@@ -13257,6 +14652,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   viewerPosterProfile: viewerPosterProfile,
                   language: language,
                   partyLogoAssetPath: _resolvePoliticalPartyLogoAssetPath(),
+                  politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+                  politicalProtocolLocalPhotoPaths:
+                      _manualPoliticalProtocolPhotoPaths,
+                  politicalProtocolSlotsOverride:
+                      _politicalProtocolDefaultSlotsOverride,
+                  politicalProtocolManualSlots: _manualPoliticalProtocolSlots,
+                  showPoliticalProtocolOverlay:
+                      widget.enablePoliticalProtocolOverlay,
                   showProfilePhoto: isPhotoVisible,
                   deferLegacyTextPrime: deferRichPosterPreview,
                   posterRenderCycle: posterRenderCycle,
@@ -13303,6 +14706,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             viewerPosterProfile: viewerPosterProfile,
             language: language,
             partyLogoAssetPath: _resolvePoliticalPartyLogoAssetPath(),
+            politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+            politicalProtocolLocalPhotoPaths:
+                _manualPoliticalProtocolPhotoPaths,
+            politicalProtocolSlotsOverride:
+                _politicalProtocolDefaultSlotsOverride,
+            politicalProtocolManualSlots: _manualPoliticalProtocolSlots,
+            showPoliticalProtocolOverlay: widget.enablePoliticalProtocolOverlay,
             showProfilePhoto: isPhotoVisible,
             deferLegacyTextPrime: deferRichPosterPreview,
             posterRenderCycle: posterRenderCycle,
@@ -13527,12 +14937,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       child: Text(
                         screenContext.strings.localized(
                           telugu:
-                              'సబ్‌స్క్రిప్షన్ స్టేటస్ తనిఖీ చేస్తున్నాం...',
+                              'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°¤à°¨à°¿à°–à±€ à°šà±‡à°¸à±à°¤à±à°¨à±à°¨à°¾à°‚...',
                           english: 'Checking subscription status...',
-                          hindi: 'सब्सक्रिप्शन स्थिति जांच रहे हैं...',
-                          tamil: 'சந்தா நிலை சரிபார்க்கிறோம்...',
-                          kannada: 'ಚಂದಾದಾರಿಕೆ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸುತ್ತಿದ್ದೇವೆ...',
-                          malayalam: 'സബ്സ്ക്രിപ്ഷൻ നില പരിശോധിക്കുന്നു...',
+                          hindi:
+                              'à¤¸à¤¬à¥à¤¸à¤•à¥à¤°à¤¿à¤ªà¥à¤¶à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿ à¤œà¤¾à¤‚à¤š à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚...',
+                          tamil:
+                              'à®šà®¨à¯à®¤à®¾ à®¨à®¿à®²à¯ˆ à®šà®°à®¿à®ªà®¾à®°à¯à®•à¯à®•à®¿à®±à¯‹à®®à¯...',
+                          kannada:
+                              'à²šà²‚à²¦à²¾à²¦à²¾à²°à²¿à²•à³† à²¸à³à²¥à²¿à²¤à²¿ à²ªà²°à²¿à²¶à³€à²²à²¿à²¸à³à²¤à³à²¤à²¿à²¦à³à²¦à³‡à²µà³†...',
+                          malayalam:
+                              'à´¸à´¬àµà´¸àµà´•àµà´°à´¿à´ªàµà´·àµ» à´¨à´¿à´² à´ªà´°à´¿à´¶àµ‹à´§à´¿à´•àµà´•àµà´¨àµà´¨àµ...',
                         ),
                         style: const TextStyle(
                           fontSize: 15,
@@ -13551,12 +14965,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     },
                     child: Text(
                       screenContext.strings.localized(
-                        telugu: 'రద్దు',
+                        telugu: 'à°°à°¦à±à°¦à±',
                         english: 'Cancel',
-                        hindi: 'रद्द करें',
-                        tamil: 'ரத்துசெய்',
-                        kannada: 'ರದ್ದುಮಾಡಿ',
-                        malayalam: 'റദ്ദാക്കുക',
+                        hindi: 'à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚',
+                        tamil: 'à®°à®¤à¯à®¤à¯à®šà¯†à®¯à¯',
+                        kannada: 'à²°à²¦à³à²¦à³à²®à²¾à²¡à²¿',
+                        malayalam: 'à´±à´¦àµà´¦à´¾à´•àµà´•àµà´•',
                       ),
                     ),
                   ),
@@ -14012,7 +15426,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à°¿à°¦à±à°§à°‚ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Poster is not ready yet. Please try again.',
           ),
         );
@@ -14052,7 +15467,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu: 'ఎడిటర్ ఓపెన్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°Žà°¡à°¿à°Ÿà°°à± à°“à°ªà±†à°¨à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Could not open editor. Please try again.',
           ),
         );
@@ -14207,11 +15623,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'సిద్ధం...',
+                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                       english: 'Preparing...',
                                     )
                                   : strings.localized(
-                                      telugu: 'షేర్',
+                                      telugu: 'à°·à±‡à°°à±',
                                       english: 'Share',
                                     ),
                               style: const TextStyle(
@@ -14264,7 +15680,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                               label: Text(
                                 strings.localized(
-                                  telugu: 'ఫోటో',
+                                  telugu: 'à°«à±‹à°Ÿà±‹',
                                   english: 'Photo',
                                 ),
                                 style: TextStyle(
@@ -14328,7 +15744,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'సిద్ధం...',
+                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                       english: 'Preparing...',
                                     )
                                   : strings.downloadLabel,
@@ -14413,6 +15829,55 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                             ),
                           ),
+                          if (_canAddPoliticalProtocolPhotos) ...<Widget>[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: controlsDisabled
+                                    ? null
+                                    : () => unawaited(
+                                        _openPoliticalProtocolPhotoScreen(
+                                          context,
+                                        ),
+                                      ),
+                                icon: const Icon(
+                                  Icons.add_circle_outline_rounded,
+                                  size: 16,
+                                ),
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    strings.localized(
+                                      telugu:
+                                          'à°ªà±Šà°²à°¿à°Ÿà°¿à°•à°²à± à°«à±‹à°Ÿà±‹à°²à±',
+                                      english: 'Add Political Photos',
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0F766E),
+                                  side: const BorderSide(
+                                    color: Color(0xFF99F6E4),
+                                  ),
+                                  backgroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                    horizontal: 7,
+                                  ),
+                                  minimumSize: const Size.fromHeight(32),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(width: 8),
                           Expanded(
                             child: FilledButton.icon(
@@ -14534,7 +15999,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             const SizedBox(width: 4),
                             Text(
                               strings.localized(
-                                telugu: 'ఫోటో',
+                                telugu: 'à°«à±‹à°Ÿà±‹',
                                 english: 'Photo',
                               ),
                               style: TextStyle(
@@ -14611,11 +16076,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'సిద్ధం...',
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                 english: 'Preparing...',
                               )
                             : strings.localized(
-                                telugu: 'షేర్',
+                                telugu: 'à°·à±‡à°°à±',
                                 english: 'Share',
                               ),
                         style: const TextStyle(
@@ -14668,7 +16133,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               : const Color(0xFF64748B),
                         ),
                         label: Text(
-                          strings.localized(telugu: 'ఫోటో', english: 'Photo'),
+                          strings.localized(
+                            telugu: 'à°«à±‹à°Ÿà±‹',
+                            english: 'Photo',
+                          ),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -14730,7 +16198,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'సిద్ధం...',
+                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
                                 english: 'Preparing...',
                               )
                             : strings.downloadLabel,
@@ -14812,6 +16280,49 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         ),
                       ),
                     ),
+                    if (_canAddPoliticalProtocolPhotos) ...<Widget>[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: controlsDisabled
+                              ? null
+                              : () => unawaited(
+                                  _openPoliticalProtocolPhotoScreen(context),
+                                ),
+                          icon: const Icon(
+                            Icons.add_circle_outline_rounded,
+                            size: 16,
+                          ),
+                          label: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              strings.localized(
+                                telugu:
+                                    'à°ªà±Šà°²à°¿à°Ÿà°¿à°•à°²à± à°«à±‹à°Ÿà±‹à°²à±',
+                                english: 'Add Political Photos',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 10.8,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF0F766E),
+                            side: const BorderSide(color: Color(0xFF99F6E4)),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 9,
+                              horizontal: 7,
+                            ),
+                            minimumSize: const Size.fromHeight(36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     Expanded(
                       child: FilledButton.icon(
@@ -15162,87 +16673,85 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                   child: const _ImageLoadingState(),
                 );
               },
-              errorBuilder:
-                  (BuildContext context, Object error, StackTrace? stackTrace) {
-                    final strings = context.strings;
-                    final failed = resolvedUrl.trim();
-                    final thumb = placeholderUrl;
-                    if (thumb.isNotEmpty && thumb != failed) {
-                      return buildNetworkPosterImage(
-                        resolvedUrl: thumb,
-                        decodeWidth: decodeWidth.clamp(360, 960),
-                        notifyWhenLoaded: true,
-                      );
-                    }
-                    if (failed.startsWith('http://') ||
-                        failed.startsWith('https://')) {
-                      unawaited(
-                        PosterNetworkImageCache.instance.removeFile(failed),
-                      );
-                      return Image(
-                        image: widget.preferOriginalPosterQuality
-                            ? NetworkImage(failed)
-                            : ResizeImage.resizeIfNeeded(
-                                decodeWidth,
-                                null,
-                                NetworkImage(failed),
-                              ),
-                        width: double.infinity,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.topCenter,
-                        gaplessPlayback: true,
-                        filterQuality: widget.preferOriginalPosterQuality
-                            ? FilterQuality.high
-                            : FilterQuality.medium,
-                        frameBuilder:
-                            (context, child, frame, wasSynchronouslyLoaded) {
-                              if (wasSynchronouslyLoaded || frame != null) {
-                                if (notifyWhenLoaded &&
-                                    widget.onFirstFrameReady != null) {
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    widget.onFirstFrameReady!.call();
-                                  });
-                                }
-                                return child;
-                              }
-                              return SizedBox(
-                                width: double.infinity,
-                                height: posterPlaceholderHeight,
-                                child: const _ImageLoadingState(),
-                              );
-                            },
-                        errorBuilder: (_, _, _) {
-                          schedulePosterReady();
-                          return _ImageErrorState(
-                            title: strings.localized(
-                              telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                              english: 'Template image unavailable',
-                            ),
-                            subtitle: strings.localized(
-                              telugu:
-                                  'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                              english:
-                                  'Please refresh or try another template.',
-                            ),
+              errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
+                final strings = context.strings;
+                final failed = resolvedUrl.trim();
+                final thumb = placeholderUrl;
+                if (thumb.isNotEmpty && thumb != failed) {
+                  return buildNetworkPosterImage(
+                    resolvedUrl: thumb,
+                    decodeWidth: decodeWidth.clamp(360, 960),
+                    notifyWhenLoaded: true,
+                  );
+                }
+                if (failed.startsWith('http://') ||
+                    failed.startsWith('https://')) {
+                  unawaited(
+                    PosterNetworkImageCache.instance.removeFile(failed),
+                  );
+                  return Image(
+                    image: widget.preferOriginalPosterQuality
+                        ? NetworkImage(failed)
+                        : ResizeImage.resizeIfNeeded(
+                            decodeWidth,
+                            null,
+                            NetworkImage(failed),
+                          ),
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.topCenter,
+                    gaplessPlayback: true,
+                    filterQuality: widget.preferOriginalPosterQuality
+                        ? FilterQuality.high
+                        : FilterQuality.medium,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) {
+                          if (wasSynchronouslyLoaded || frame != null) {
+                            if (notifyWhenLoaded &&
+                                widget.onFirstFrameReady != null) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                widget.onFirstFrameReady!.call();
+                              });
+                            }
+                            return child;
+                          }
+                          return SizedBox(
+                            width: double.infinity,
+                            height: posterPlaceholderHeight,
+                            child: const _ImageLoadingState(),
                           );
                         },
+                    errorBuilder: (_, _, _) {
+                      schedulePosterReady();
+                      return _ImageErrorState(
+                        title: strings.localized(
+                          telugu:
+                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                          english: 'Template image unavailable',
+                        ),
+                        subtitle: strings.localized(
+                          telugu:
+                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                          english: 'Please refresh or try another template.',
+                        ),
                       );
-                    }
-                    schedulePosterReady();
-                    return _ImageErrorState(
-                      title: strings.localized(
-                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
-                        english: 'Template image unavailable',
-                      ),
-                      subtitle: strings.localized(
-                        telugu:
-                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
-                        english: 'Please refresh or try another template.',
-                      ),
-                    );
-                  },
+                    },
+                  );
+                }
+                schedulePosterReady();
+                return _ImageErrorState(
+                  title: strings.localized(
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                    english: 'Template image unavailable',
+                  ),
+                  subtitle: strings.localized(
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                    english: 'Please refresh or try another template.',
+                  ),
+                );
+              },
             );
           }
 
@@ -15255,11 +16764,13 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 constraints: BoxConstraints(minWidth: math.max(width, 1)),
                 child: _ImageErrorState(
                   title: strings.localized(
-                    telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                    telugu:
+                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
-                    telugu: 'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                    telugu:
+                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -15298,12 +16809,13 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     schedulePosterReady();
                     return _ImageErrorState(
                       title: context.strings.localized(
-                        telugu: 'టెంప్లేట్ చిత్రం అందుబాటులో లేదు',
+                        telugu:
+                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
                         telugu:
-                            'రిఫ్రెష్ చేయండి లేదా మరో టెంప్లేట్ ప్రయత్నించండి.',
+                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
                         english: 'Please refresh or try another template.',
                       ),
                     );
@@ -16143,11 +17655,12 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     if (_hasError || controller == null) {
       return _ImageErrorState(
         title: context.strings.localized(
-          telugu: 'వీడియో అందుబాటులో లేదు',
+          telugu:
+              'à°µà±€à°¡à°¿à°¯à±‹ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(
-          telugu: 'మళ్లీ ప్రయత్నించండి.',
+          telugu: 'à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
           english: 'Please try again.',
         ),
       );
@@ -16219,6 +17732,11 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.viewerPosterProfile,
     required this.language,
     this.partyLogoAssetPath,
+    this.politicalProtocolPhotoUrls = const <String>[],
+    this.politicalProtocolLocalPhotoPaths = const <String>[],
+    this.politicalProtocolSlotsOverride,
+    this.politicalProtocolManualSlots = const <PoliticalProtocolSlot>[],
+    this.showPoliticalProtocolOverlay = false,
     required this.showProfilePhoto,
     required this.deferLegacyTextPrime,
     required this.posterRenderCycle,
@@ -16252,6 +17770,11 @@ class _CreatorPosterPreview extends StatefulWidget {
   final PosterProfileData viewerPosterProfile;
   final AppLanguage language;
   final String? partyLogoAssetPath;
+  final List<String> politicalProtocolPhotoUrls;
+  final List<String> politicalProtocolLocalPhotoPaths;
+  final List<PoliticalProtocolSlot>? politicalProtocolSlotsOverride;
+  final List<PoliticalProtocolSlot> politicalProtocolManualSlots;
+  final bool showPoliticalProtocolOverlay;
   final bool showProfilePhoto;
   final bool deferLegacyTextPrime;
   final int posterRenderCycle;
@@ -16319,6 +17842,29 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   final Map<String, String> _legacyTextOverrides = <String, String>{};
   final Set<String> _legacyTextRequestsInFlight = <String>{};
   Timer? _baseImageReadyFallbackTimer;
+
+  List<String> _politicalProtocolAssetPaths() {
+    if (!widget.showPoliticalProtocolOverlay) {
+      return const <String>[];
+    }
+    return widget.politicalProtocolLocalPhotoPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  List<String> _politicalProtocolImageUrls() {
+    if (!widget.showPoliticalProtocolOverlay ||
+        !widget.personalizationConfig.hasPoliticalProtocolLayout) {
+      return const <String>[];
+    }
+    return widget.politicalProtocolPhotoUrls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .take(widget.personalizationConfig.politicalProtocolSlots.length)
+        .toList(growable: false);
+  }
+
   Offset? _activePhotoDragLastGlobalPosition;
   int _videoReplayTick = 0;
   double? _resolvedPosterAspectRatio;
@@ -17130,6 +18676,25 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                       widget.preferOriginalPosterQuality,
                   onAspectRatioResolved: _handlePosterAspectRatioResolved,
                   onFirstFrameReady: _handleBasePosterReady,
+                ),
+              if (widget.showPoliticalProtocolOverlay &&
+                  (_politicalProtocolImageUrls().isNotEmpty ||
+                      _politicalProtocolAssetPaths().isNotEmpty))
+                Positioned(
+                  left: visualLeft,
+                  top: 0,
+                  width: visualWidth,
+                  height: visualHeight,
+                  child: IgnorePointer(
+                    child: _PoliticalProtocolPhotoSlots(
+                      assetPaths: _politicalProtocolAssetPaths(),
+                      imageUrls: _politicalProtocolImageUrls(),
+                      slots:
+                          widget.politicalProtocolSlotsOverride ??
+                          widget.personalizationConfig.politicalProtocolSlots,
+                      assetSlots: widget.politicalProtocolManualSlots,
+                    ),
+                  ),
                 ),
               if (widget.showProfilePhoto && shouldShowIdentityVisual)
                 Positioned(
@@ -18865,12 +20430,16 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
                     label: strings.localized(
-                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
+                      telugu:
+                          'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°šà±à°šà±‡ à°µà°°à°•à± Snake game à°†à°¡à°‚à°¡à°¿',
                       english: 'Play Snake while posters load',
-                      hindi: 'Posters आने तक Snake खेलें',
-                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
-                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
-                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
+                      hindi: 'Posters à¤†à¤¨à¥‡ à¤¤à¤• Snake à¤–à¥‡à¤²à¥‡à¤‚',
+                      tamil:
+                          'Posters à®µà®°à¯à®®à¯ à®µà®°à¯ˆ Snake à®µà®¿à®³à¯ˆà®¯à®¾à®Ÿà¯à®™à¯à®•à®³à¯',
+                      kannada:
+                          'Posters à²¬à²°à³à²µà²µà²°à³†à²—à³† Snake à²†à²¡à²¿',
+                      malayalam:
+                          'Posters à´µà´°àµà´‚ à´µà´°àµ† Snake à´•à´³à´¿à´•àµà´•àµà´•',
                     ),
                     onPlay: () => setState(() => _gameStarted = true),
                   ),
@@ -19237,7 +20806,7 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
                                 ),
                                 child: Text(
                                   strings.localized(
-                                    telugu: 'మళ్ళీ ఆడు',
+                                    telugu: 'à°®à°³à±à°³à±€ à°†à°¡à±',
                                     english: 'Play again',
                                     hindi: 'Play again',
                                     tamil: 'Play again',

@@ -105,6 +105,11 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+    match /portal_assets/political_protocol/{regionId}/{partyId}/{fileName} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
     // Editor assets are published by the portal server. Public reads support
     // in-app downloads; direct client writes remain blocked.
     match /portal_assets/editor_assets/{categoryId}/{fileName} {

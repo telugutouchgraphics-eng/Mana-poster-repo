@@ -168,20 +168,13 @@ class ApprovedCreatorTemplateService {
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
-      final lookupRegionIds = _posterLookupRegionIds(
-        selectedRegionId: regionId,
-        categoryId: '',
-      );
-      final snapshot =
-          await _applyRegionScope(
-                firestore
-                    .collection('creatorPosters')
-                    .where('status', isEqualTo: 'approved'),
-                lookupRegionIds,
-              )
-              .orderBy('createdAt', descending: true)
-              .limit(scanLimit)
-              .get(GetOptions(source: source));
+      final snapshot = await firestore
+          .collection('creatorPosters')
+          .where('status', isEqualTo: 'approved')
+          .where('regionId', isEqualTo: regionId)
+          .orderBy('createdAt', descending: true)
+          .limit(scanLimit)
+          .get(GetOptions(source: source));
       for (final doc in snapshot.docs) {
         if (seenIds.add(doc.id)) {
           docs.add(doc);
@@ -512,10 +505,6 @@ class ApprovedCreatorTemplateService {
           hasMore: false,
         );
       }
-      final lookupRegionIds = _posterLookupRegionIds(
-        selectedRegionId: regionId,
-        categoryId: '',
-      );
       final totalStopwatch = Stopwatch()..start();
       final queryLimit = (pageSize * 2).clamp(pageSize, pageSize * 3);
       final maxQueryPages = source == Source.cache
@@ -537,12 +526,12 @@ class ApprovedCreatorTemplateService {
 
       while (queriedPages < maxQueryPages && mergedVisible.length < pageSize) {
         final queryStopwatch = Stopwatch()..start();
-        Query<Map<String, dynamic>> query = _applyRegionScope(
-          firestore
-              .collection('creatorPosters')
-              .where('status', isEqualTo: 'approved'),
-          lookupRegionIds,
-        ).orderBy('createdAt', descending: true).limit(queryLimit);
+        Query<Map<String, dynamic>> query = firestore
+            .collection('creatorPosters')
+            .where('status', isEqualTo: 'approved')
+            .where('regionId', isEqualTo: regionId)
+            .orderBy('createdAt', descending: true)
+            .limit(queryLimit);
         if (cursor != null) {
           query = query.startAfterDocument(cursor);
         }
@@ -1436,6 +1425,66 @@ class ApprovedCreatorTemplateService {
       showSafeAreas: source['showSafeAreas'] is bool
           ? source['showSafeAreas'] as bool
           : true,
+      showPoliticalProtocol: source['showPoliticalProtocol'] is bool
+          ? source['showPoliticalProtocol'] as bool
+          : false,
+      politicalProtocolEnabledAtMillis:
+          (source['politicalProtocolEnabledAtMillis'] as num?)?.toInt() ?? 0,
+      politicalProtocolX: _parseDouble(source['politicalProtocolX'], 50),
+      politicalProtocolY: _parseDouble(source['politicalProtocolY'], 7),
+      politicalProtocolScale: _parseDouble(
+        source['politicalProtocolScale'],
+        100,
+      ),
+      politicalProtocolSlots: _parsePoliticalProtocolSlots(
+        source['politicalProtocolSlots'],
+        fallbackX: _parseDouble(source['politicalProtocolX'], 50),
+        fallbackY: _parseDouble(source['politicalProtocolY'], 7),
+        fallbackScale: _parseDouble(source['politicalProtocolScale'], 100),
+      ),
+    );
+  }
+
+  List<PoliticalProtocolSlot> _parsePoliticalProtocolSlots(
+    Object? raw, {
+    required double fallbackX,
+    required double fallbackY,
+    required double fallbackScale,
+  }) {
+    if (raw is List) {
+      final slots = raw
+          .whereType<Map>()
+          .map(
+            (slot) => PoliticalProtocolSlot(
+              x: _parseDouble(slot['x'], 50).clamp(4.0, 96.0).toDouble(),
+              y: _parseDouble(slot['y'], 8).clamp(4.0, 96.0).toDouble(),
+              scale: _parseDouble(
+                slot['scale'],
+                100,
+              ).clamp(45.0, 135.0).toDouble(),
+            ),
+          )
+          .take(defaultPoliticalProtocolSlots.length)
+          .toList(growable: false);
+      if (slots.length == defaultPoliticalProtocolSlots.length) {
+        return slots;
+      }
+    }
+    final spacing = 44.0 * (fallbackScale.clamp(55.0, 135.0) / 100);
+    return List<PoliticalProtocolSlot>.generate(
+      defaultPoliticalProtocolSlots.length,
+      (index) {
+        final x =
+            fallbackX +
+            ((index - ((defaultPoliticalProtocolSlots.length - 1) / 2)) *
+                spacing);
+        return PoliticalProtocolSlot(
+          x: x.clamp(4.0, 96.0).toDouble(),
+          y: fallbackY.clamp(4.0, 96.0).toDouble(),
+          scale: fallbackScale.clamp(45.0, 135.0).toDouble(),
+        );
+      },
+      growable: false,
     );
   }
 

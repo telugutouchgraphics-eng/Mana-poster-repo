@@ -1,5 +1,41 @@
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 
+class PoliticalProtocolSlot {
+  const PoliticalProtocolSlot({
+    required this.x,
+    required this.y,
+    required this.scale,
+  });
+
+  final double x;
+  final double y;
+  final double scale;
+
+  Map<String, double> toJson() => <String, double>{
+    'x': x,
+    'y': y,
+    'scale': scale,
+  };
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is PoliticalProtocolSlot &&
+            other.x == x &&
+            other.y == y &&
+            other.scale == scale;
+  }
+
+  @override
+  int get hashCode => Object.hash(x, y, scale);
+}
+
+const List<PoliticalProtocolSlot> defaultPoliticalProtocolSlots =
+    <PoliticalProtocolSlot>[
+      PoliticalProtocolSlot(x: 28, y: 8, scale: 100),
+      PoliticalProtocolSlot(x: 72, y: 8, scale: 100),
+    ];
+
 class CreatorPosterPersonalization {
   const CreatorPosterPersonalization({
     required this.photoShape,
@@ -36,6 +72,12 @@ class CreatorPosterPersonalization {
     this.photoRenderMode = 'cutout',
     this.edgeStyle = 'soft_fade',
     this.showSafeAreas = true,
+    this.showPoliticalProtocol = false,
+    this.politicalProtocolX = 50,
+    this.politicalProtocolY = 7,
+    this.politicalProtocolScale = 100,
+    this.politicalProtocolSlots = defaultPoliticalProtocolSlots,
+    this.politicalProtocolEnabledAtMillis = 0,
   });
 
   static const CreatorPosterPersonalization defaults =
@@ -74,6 +116,12 @@ class CreatorPosterPersonalization {
         photoRenderMode: 'cutout',
         edgeStyle: 'soft_fade',
         showSafeAreas: true,
+        showPoliticalProtocol: false,
+        politicalProtocolX: 50,
+        politicalProtocolY: 7,
+        politicalProtocolScale: 100,
+        politicalProtocolSlots: defaultPoliticalProtocolSlots,
+        politicalProtocolEnabledAtMillis: 0,
       );
 
   final String photoShape;
@@ -110,6 +158,18 @@ class CreatorPosterPersonalization {
   final String photoRenderMode;
   final String edgeStyle;
   final bool showSafeAreas;
+  final bool showPoliticalProtocol;
+  final double politicalProtocolX;
+  final double politicalProtocolY;
+  final double politicalProtocolScale;
+  final List<PoliticalProtocolSlot> politicalProtocolSlots;
+  final int politicalProtocolEnabledAtMillis;
+
+  bool get hasPoliticalProtocolLayout =>
+      showPoliticalProtocol && politicalProtocolSlots.isNotEmpty;
+
+  bool get canShowPoliticalProtocol =>
+      showPoliticalProtocol && politicalProtocolEnabledAtMillis > 0;
 
   @override
   bool operator ==(Object other) {
@@ -148,7 +208,17 @@ class CreatorPosterPersonalization {
             other.boardVariant == boardVariant &&
             other.photoRenderMode == photoRenderMode &&
             other.edgeStyle == edgeStyle &&
-            other.showSafeAreas == showSafeAreas;
+            other.showSafeAreas == showSafeAreas &&
+            other.showPoliticalProtocol == showPoliticalProtocol &&
+            other.politicalProtocolX == politicalProtocolX &&
+            other.politicalProtocolY == politicalProtocolY &&
+            other.politicalProtocolScale == politicalProtocolScale &&
+            other.politicalProtocolEnabledAtMillis ==
+                politicalProtocolEnabledAtMillis &&
+            _slotListsEqual(
+              other.politicalProtocolSlots,
+              politicalProtocolSlots,
+            );
   }
 
   @override
@@ -187,7 +257,31 @@ class CreatorPosterPersonalization {
     photoRenderMode,
     edgeStyle,
     showSafeAreas,
+    showPoliticalProtocol,
+    politicalProtocolX,
+    politicalProtocolY,
+    politicalProtocolScale,
+    politicalProtocolEnabledAtMillis,
+    ...politicalProtocolSlots,
   ]);
+}
+
+bool _slotListsEqual(
+  List<PoliticalProtocolSlot> left,
+  List<PoliticalProtocolSlot> right,
+) {
+  if (identical(left, right)) {
+    return true;
+  }
+  if (left.length != right.length) {
+    return false;
+  }
+  for (var index = 0; index < left.length; index += 1) {
+    if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 class ApprovedCreatorTemplate {

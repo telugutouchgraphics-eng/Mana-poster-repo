@@ -682,46 +682,6 @@ service cloud.firestore {
       allow read, delete: if false;
     }
 
-    function isTeluguSharedContentRegion(regionId) {
-      return regionId is string && regionId in ["andhra_pradesh", "telangana"];
-    }
-
-    function isHindiSharedContentRegion(regionId) {
-      return regionId is string &&
-        regionId in [
-          "bihar",
-          "chhattisgarh",
-          "haryana",
-          "himachal_pradesh",
-          "jharkhand",
-          "madhya_pradesh",
-          "rajasthan",
-          "uttar_pradesh",
-          "uttarakhand",
-          "delhi",
-          "andaman_nicobar",
-        ];
-    }
-
-    function isPoliticalPosterCategory(categoryId) {
-      return categoryId is string && categoryId.matches("^party_.*");
-    }
-
-    function canReadCreatorPosterForSelectedRegion() {
-      let selectedRegion = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion;
-      return resource.data.regionId == selectedRegion ||
-        (
-          isTeluguSharedContentRegion(resource.data.regionId) &&
-          isTeluguSharedContentRegion(selectedRegion) &&
-          !isPoliticalPosterCategory(resource.data.categoryId)
-        ) ||
-        (
-          isHindiSharedContentRegion(resource.data.regionId) &&
-          isHindiSharedContentRegion(selectedRegion) &&
-          !isPoliticalPosterCategory(resource.data.categoryId)
-        );
-    }
-
     // Free feed reads approved posters for the selected State/UT. Telugu and
     // Hindi language groups share only non-political content; party categories
     // stay state-specific.
@@ -729,15 +689,19 @@ service cloud.firestore {
       allow read: if signedIn() &&
         resource.data.status == "approved" &&
         resource.data.regionId is string &&
-        resource.data.regionId.size() > 0 &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        canReadCreatorPosterForSelectedRegion();
+        resource.data.regionId.size() > 0;
       allow update: if signedIn() && validCreatorPosterEngagementUpdate();
       allow create, delete: if false;
     }
 
     // Public app banners for home/category promotional surfaces.
     match /appBanners/{bannerId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
+    // Admin-uploaded political protocol photos shown as public overlays in app.
+    match /politicalProtocolPhotos/{photoId} {
       allow read: if resource.data.active == true;
       allow create, update, delete: if false;
     }
