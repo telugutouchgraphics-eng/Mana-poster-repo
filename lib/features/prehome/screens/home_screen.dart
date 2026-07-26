@@ -3695,15 +3695,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<_CategoryChipData> _buildSelectedPartyCategories(AppLanguage language) {
-    if (_selectedPoliticalPartyIds.isEmpty) {
+    final selectedPartyId = _selectedPoliticalPartyId();
+    if (selectedPartyId == null) {
       return const <_CategoryChipData>[];
     }
     final knownParties = politicalParties
-        .where((party) => _selectedPoliticalPartyIds.contains(party.id))
+        .where((party) => party.id == selectedPartyId)
         .toList(growable: false);
     final knownPartyIds = knownParties.map((party) => party.id).toSet();
-    final unknownPartyIds =
-        _selectedPoliticalPartyIds.difference(knownPartyIds).toList()..sort();
+    final unknownPartyIds = knownPartyIds.isEmpty
+        ? <String>[selectedPartyId]
+        : <String>[];
 
     return <_CategoryChipData>[
       for (final party in knownParties)
@@ -3728,6 +3730,19 @@ class _HomeScreenState extends State<HomeScreen>
           presenceTags: <String>[partyId],
         ),
     ];
+  }
+
+  String? _selectedPoliticalPartyId() {
+    if (_selectedPoliticalPartyIds.isEmpty) {
+      return null;
+    }
+    for (final party in politicalParties) {
+      if (_selectedPoliticalPartyIds.contains(party.id)) {
+        return party.id;
+      }
+    }
+    final sortedIds = _selectedPoliticalPartyIds.toList()..sort();
+    return sortedIds.first;
   }
 
   List<_CategoryChipData> _mergeCategories(
@@ -6730,7 +6745,7 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_openMoreCategorySheet());
       return;
     }
-    if (slug == _politicalCategorySlug && slug == _selectedCategorySlug) {
+    if (slug == _politicalCategorySlug) {
       unawaited(_openPoliticalPartyPicker());
       return;
     }
@@ -6766,6 +6781,14 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     await _loadPartyPreference();
+    if (!mounted) {
+      return;
+    }
+    final selectedPartyId = _selectedPoliticalPartyId();
+    if (selectedPartyId == null || selectedPartyId.trim().isEmpty) {
+      return;
+    }
+    _selectCategory('party_$selectedPartyId');
   }
 
   Future<void> _openMoreCategorySheet() async {

@@ -28,8 +28,10 @@ class PoliticalPartiesScreen extends StatefulWidget {
 }
 
 class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
+  final TextEditingController _searchController = TextEditingController();
   AppRegion? _region;
   Set<String> _selectedPartyIds = <String>{};
+  String _searchQuery = '';
   bool _loading = true;
   bool _continuing = false;
   bool _skipping = false;
@@ -38,6 +40,12 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
   void initState() {
     super.initState();
     unawaited(_loadRegion());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadRegion() async {
@@ -55,7 +63,9 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     }
     setState(() {
       _region = region;
-      _selectedPartyIds = selectedPartyIds;
+      _selectedPartyIds = widget.returnToPreviousOnSave
+          ? _singleSelectedPartyIds(selectedPartyIds)
+          : selectedPartyIds;
       _loading = false;
     });
   }
@@ -142,7 +152,13 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 72, 16, 12),
                           sliver: SliverToBoxAdapter(
-                            child: _PartiesHeader(region: region!),
+                            child: _PartySearchHeader(
+                              controller: _searchController,
+                              region: region!,
+                              onChanged: (value) {
+                                setState(() => _searchQuery = value);
+                              },
+                            ),
                           ),
                         ),
                         SliverPadding(
@@ -158,10 +174,16 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
                                 selected: _selectedPartyIds.contains(party.id),
                                 onTap: () {
                                   setState(() {
-                                    if (_selectedPartyIds.contains(party.id)) {
-                                      _selectedPartyIds.remove(party.id);
+                                    if (widget.returnToPreviousOnSave) {
+                                      _selectedPartyIds = <String>{party.id};
                                     } else {
-                                      _selectedPartyIds.add(party.id);
+                                      if (_selectedPartyIds.contains(
+                                        party.id,
+                                      )) {
+                                        _selectedPartyIds.remove(party.id);
+                                      } else {
+                                        _selectedPartyIds.add(party.id);
+                                      }
                                     }
                                   });
                                 },
@@ -243,8 +265,12 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
       return <String>{};
     }
     if (widget.returnToPreviousOnSave) {
-      final partyIds = politicalParties.map((party) => party.id).toSet();
-      return _selectedPartyIds.where(partyIds.contains).toSet();
+      for (final party in _allRankedPartiesForSelection(region)) {
+        if (_selectedPartyIds.contains(party.id)) {
+          return <String>{party.id};
+        }
+      }
+      return <String>{};
     }
     final partyIds = partiesForRegion(
       region.id,
@@ -252,14 +278,20 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     return _selectedPartyIds.where(partyIds.contains).toSet();
   }
 
-  List<PoliticalParty> _visibleParties() {
+  Set<String> _singleSelectedPartyIds(Set<String> source) {
     final region = _region;
-    if (region == null) {
-      return const <PoliticalParty>[];
+    if (region == null || source.isEmpty) {
+      return <String>{};
     }
-    if (!widget.returnToPreviousOnSave) {
-      return partiesForRegion(region.id);
+    for (final party in _allRankedPartiesForSelection(region)) {
+      if (source.contains(party.id)) {
+        return <String>{party.id};
+      }
     }
+    return <String>{};
+  }
+
+  List<PoliticalParty> _allRankedPartiesForSelection(AppRegion region) {
     final sorted = List<PoliticalParty>.of(politicalParties);
     int rank(PoliticalParty party) {
       if (party.regionIds.contains(region.id)) {
@@ -280,10 +312,117 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
     });
     return sorted;
   }
+
+  List<PoliticalParty> _visibleParties() {
+    final region = _region;
+    if (region == null) {
+      return const <PoliticalParty>[];
+    }
+    final sorted = !widget.returnToPreviousOnSave
+        ? partiesForRegion(region.id)
+        : _allRankedPartiesForSelection(region);
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      return sorted;
+    }
+    return sorted
+        .where((party) {
+          return party.id.toLowerCase().contains(query) ||
+              party.shortName.toLowerCase().contains(query) ||
+              party.name.toLowerCase().contains(query) ||
+              party.nameFor(AppLanguage.telugu).toLowerCase().contains(query) ||
+              party
+                  .nameFor(context.currentLanguage)
+                  .toLowerCase()
+                  .contains(query);
+        })
+        .toList(growable: false);
+  }
 }
 
-class _PartiesHeader extends StatelessWidget {
-  const _PartiesHeader({required this.region});
+class _PartySearchHeader extends StatelessWidget {
+  const _PartySearchHeader({
+    required this.controller,
+    required this.region,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final AppRegion region;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = context.strings;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: TextField(
+          controller: controller,
+          onChanged: onChanged,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: strings.localized(
+                      telugu: 'Clear',
+                      english: 'Clear',
+                    ),
+                    onPressed: () {
+                      controller.clear();
+                      onChanged('');
+                    },
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+            hintText: strings.localized(
+              telugu: 'Search party',
+              hindi: 'Search party',
+              english: 'Search party',
+              tamil: 'Search party',
+              kannada: 'Search party',
+              malayalam: 'Search party',
+            ),
+            helperText: region.name,
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: const BorderSide(
+                color: Color(0xFF0F766E),
+                width: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class UnusedPartiesHeader extends StatelessWidget {
+  const UnusedPartiesHeader({super.key, required this.region});
 
   final AppRegion region;
 
