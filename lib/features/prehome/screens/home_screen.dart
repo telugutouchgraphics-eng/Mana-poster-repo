@@ -12266,6 +12266,8 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
     required this.initialManualPhotoPaths,
     required this.defaultSlots,
     required this.initialManualSlots,
+    required this.ensureSubscriptionAccess,
+    required this.ensureGallerySavePermission,
   });
 
   final _TemplateItem item;
@@ -12276,6 +12278,8 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
   final List<String> initialManualPhotoPaths;
   final List<PoliticalProtocolSlot> defaultSlots;
   final List<PoliticalProtocolSlot> initialManualSlots;
+  final Future<bool> Function(BuildContext context) ensureSubscriptionAccess;
+  final Future<bool> Function() ensureGallerySavePermission;
 
   @override
   State<_PoliticalProtocolPhotoScreen> createState() =>
@@ -12285,11 +12289,15 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
 class _PoliticalProtocolPhotoScreenState
     extends State<_PoliticalProtocolPhotoScreen> {
   final ImagePicker _picker = ImagePicker();
+  final ScreenshotController _customPosterScreenshotController =
+      ScreenshotController();
   late List<String> _manualPhotoPaths;
   late List<PoliticalProtocolSlot> _defaultSlots;
   late List<PoliticalProtocolSlot> _manualSlots;
   double? _posterImageAspectRatio;
   String? _posterImageAspectKey;
+  String? _customPosterPath;
+  String? _exportAction;
   ImageStream? _posterImageStream;
   ImageStreamListener? _posterImageStreamListener;
   bool _busy = false;
@@ -12341,9 +12349,12 @@ class _PoliticalProtocolPhotoScreenState
   }
 
   void _resolvePosterImageAspectRatio({bool force = false}) {
+    final customPosterPath = _customPosterPath?.trim() ?? '';
     final imageUrl = widget.item.imageUrl?.trim() ?? '';
     final assetPath = widget.item.imageAssetPath?.trim() ?? '';
-    final nextKey = imageUrl.isNotEmpty
+    final nextKey = customPosterPath.isNotEmpty
+        ? 'file:$customPosterPath'
+        : imageUrl.isNotEmpty
         ? 'network:$imageUrl'
         : assetPath.isNotEmpty
         ? 'asset:$assetPath'
@@ -12357,7 +12368,9 @@ class _PoliticalProtocolPhotoScreenState
     if (nextKey.isEmpty) {
       return;
     }
-    final ImageProvider provider = imageUrl.isNotEmpty
+    final ImageProvider provider = customPosterPath.isNotEmpty
+        ? FileImage(File(customPosterPath))
+        : imageUrl.isNotEmpty
         ? CachedNetworkImageProvider(imageUrl)
         : AssetImage(assetPath);
     final stream = provider.resolve(createLocalImageConfiguration(context));
@@ -12555,6 +12568,185 @@ class _PoliticalProtocolPhotoScreenState
     } catch (_) {
       // Local protocol photos are disposable UI assets.
     }
+  }
+
+  Future<void> _pickCustomPoster() async {
+    if (_busy || _exportAction != null) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final picked = await _picker.pickImage(source: ImageSource.gallery);
+      if (picked == null) {
+        return;
+      }
+      final pickedFile = File(picked.path);
+      final pickedName = picked.path.split(RegExp(r'[\\/]')).last;
+      final dotIndex = pickedName.lastIndexOf('.');
+      final extension = dotIndex >= 0 ? pickedName.substring(dotIndex) : '.jpg';
+      final dir = await getApplicationDocumentsDirectory();
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final path =
+          '${dir.path}${Platform.pathSeparator}political_custom_poster_$stamp$extension';
+      await pickedFile.copy(path);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _customPosterPath = path;
+        _deleteArmedManualIndex = null;
+      });
+      _resolvePosterImageAspectRatio(force: true);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showScreenSnack(
+        context.strings.localized(
+          telugu: 'Could not add your poster. Please try again.',
+          english: 'Could not add your poster. Please try again.',
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<String?> _captureCustomPosterFile() async {
+    await WidgetsBinding.instance.endOfFrame;
+    final bytes = await _customPosterScreenshotController.capture(
+      pixelRatio: 3,
+    );
+    if (bytes == null || bytes.isEmpty) {
+      return null;
+    }
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}${Platform.pathSeparator}mana_political_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+    final file = File(path);
+    await file.writeAsBytes(bytes, flush: true);
+    return file.path;
+  }
+
+  String get _customPosterShareText {
+    final activeName = widget.viewerPosterProfile.activeName.trim();
+    final resolvedName = widget.viewerPosterProfile
+        .resolvedName(language: widget.language)
+        .trim();
+    final userName = activeName.isNotEmpty
+        ? activeName
+        : resolvedName.isNotEmpty
+        ? resolvedName
+        : 'User';
+    return 'Shared by $userName using ${AppPublicInfo.appName}\n'
+        'Download the app: ${AppPublicInfo.playStoreUrl}';
+  }
+
+  Future<void> _downloadCustomPoster() async {
+    if (_exportAction != null) {
+      return;
+    }
+    setState(() => _exportAction = 'download');
+    final galleryPermissionMessage = context.strings.localized(
+      telugu: 'Gallery permission was denied.',
+      english: 'Gallery permission was denied.',
+    );
+    final captureFailedMessage = context.strings.localized(
+      telugu: 'Capture failed. Please try again.',
+      english: 'Capture failed. Please try again.',
+    );
+    final savedMessage = context.strings.localized(
+      telugu: 'Poster saved to gallery.',
+      english: 'Poster saved to gallery.',
+    );
+    final downloadFailedMessage = context.strings.localized(
+      telugu: 'Download failed. Please try again.',
+      english: 'Download failed. Please try again.',
+    );
+    try {
+      final hasAccess = await widget.ensureSubscriptionAccess(context);
+      if (!hasAccess) {
+        return;
+      }
+      final hasPermission = await widget.ensureGallerySavePermission();
+      if (!hasPermission) {
+        _showScreenSnack(galleryPermissionMessage);
+        return;
+      }
+      final path = await _captureCustomPosterFile();
+      if (path == null) {
+        _showScreenSnack(captureFailedMessage);
+        return;
+      }
+      final saveResult = await MediaExportService.saveImageFileToGalleryDetailed(
+        path,
+        fileName:
+            'mana_political_poster_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      _showScreenSnack(
+        saveResult.success ? savedMessage : downloadFailedMessage,
+      );
+    } catch (_) {
+      _showScreenSnack(downloadFailedMessage);
+    } finally {
+      if (mounted) {
+        setState(() => _exportAction = null);
+      }
+    }
+  }
+
+  Future<void> _shareCustomPoster() async {
+    if (_exportAction != null) {
+      return;
+    }
+    setState(() => _exportAction = 'share');
+    final captureFailedMessage = context.strings.localized(
+      telugu: 'Capture failed. Please try again.',
+      english: 'Capture failed. Please try again.',
+    );
+    final shareFailedMessage = context.strings.localized(
+      telugu: 'Share failed. Please try again.',
+      english: 'Share failed. Please try again.',
+    );
+    try {
+      final hasAccess = await widget.ensureSubscriptionAccess(context);
+      if (!hasAccess) {
+        return;
+      }
+      final path = await _captureCustomPosterFile();
+      if (path == null) {
+        _showScreenSnack(captureFailedMessage);
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
+      final box = context.findRenderObject() as RenderBox?;
+      await MediaExportService.shareImageFile(
+        path,
+        text: _customPosterShareText,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (_) {
+      _showScreenSnack(shareFailedMessage);
+    } finally {
+      if (mounted) {
+        setState(() => _exportAction = null);
+      }
+    }
+  }
+
+  void _showScreenSnack(String message) {
+    if (!mounted || message.trim().isEmpty) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildPhotoSlot({
@@ -12846,6 +13038,19 @@ class _PoliticalProtocolPhotoScreenState
   }
 
   Widget _buildPosterImage() {
+    final customPosterPath = _customPosterPath?.trim() ?? '';
+    if (customPosterPath.isNotEmpty) {
+      return Image.file(
+        File(customPosterPath),
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const ColoredBox(
+          color: Color(0xFF111827),
+          child: Center(
+            child: Icon(Icons.broken_image_rounded, color: Colors.white54),
+          ),
+        ),
+      );
+    }
     final imageUrl = widget.item.imageUrl?.trim() ?? '';
     final assetPath = widget.item.imageAssetPath?.trim() ?? '';
     if (imageUrl.isNotEmpty) {
@@ -12858,6 +13063,116 @@ class _PoliticalProtocolPhotoScreenState
       color: Color(0xFF111827),
       child: Center(
         child: Icon(Icons.image_not_supported_rounded, color: Colors.white54),
+      ),
+    );
+  }
+
+  Widget _buildPosterActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+    bool filled = false,
+    bool loading = false,
+  }) {
+    final child = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (loading)
+          const SizedBox(
+            width: 17,
+            height: 17,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Icon(icon, size: 18),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    );
+    if (filled) {
+      return FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF0F766E),
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 46),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: child,
+      );
+    }
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF0F172A),
+        minimumSize: const Size(0, 46),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildCustomPosterActions() {
+    final busy = _busy || _exportAction != null;
+    final hasCustomPoster = (_customPosterPath?.trim().isNotEmpty ?? false);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          SizedBox(
+            width: double.infinity,
+            child: _buildPosterActionButton(
+              icon: Icons.add_photo_alternate_rounded,
+              label: hasCustomPoster ? 'Change your poster' : 'Add your poster',
+              onPressed: busy ? null : () => unawaited(_pickCustomPoster()),
+              filled: true,
+              loading: _busy,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _buildPosterActionButton(
+                  icon: Icons.ios_share_rounded,
+                  label: context.strings.localized(
+                    telugu: 'Share',
+                    english: 'Share',
+                  ),
+                  onPressed: busy
+                      ? null
+                      : () => unawaited(_shareCustomPoster()),
+                  loading: _exportAction == 'share',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildPosterActionButton(
+                  icon: Icons.download_rounded,
+                  label: context.strings.localized(
+                    telugu: 'Download',
+                    english: 'Download',
+                  ),
+                  onPressed: busy
+                      ? null
+                      : () => unawaited(_downloadCustomPoster()),
+                  loading: _exportAction == 'download',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -12884,15 +13199,18 @@ class _PoliticalProtocolPhotoScreenState
               top: posterTop,
               width: posterWidth,
               height: posterHeight,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _buildPosterImage(),
-                  _buildPosterPhotoSlots(
-                    canvasWidth: posterWidth,
-                    canvasHeight: posterHeight,
-                  ),
-                ],
+              child: Screenshot(
+                controller: _customPosterScreenshotController,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    _buildPosterImage(),
+                    _buildPosterPhotoSlots(
+                      canvasWidth: posterWidth,
+                      canvasHeight: posterHeight,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -12949,8 +13267,9 @@ class _PoliticalProtocolPhotoScreenState
                   ),
                 ),
               ),
+              _buildCustomPosterActions(),
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
                 child: Text(
                   context.strings.localized(
                     telugu:
@@ -13797,6 +14116,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   item.personalizationConfig?.politicalProtocolSlots ??
                   defaultPoliticalProtocolSlots,
               initialManualSlots: _manualPoliticalProtocolSlots,
+              ensureSubscriptionAccess: _ensureSubscriptionAccess,
+              ensureGallerySavePermission: _ensureGallerySavePermission,
             ),
           ),
         );
