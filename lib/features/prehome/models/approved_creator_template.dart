@@ -19,6 +19,9 @@ class CreatorPosterPersonalization {
     required this.nameY,
     required this.showBottomStrip,
     required this.stripHeight,
+    this.stripWidth = 100,
+    this.stripX = 50,
+    this.stripBottom = 0,
     required this.showWhatsapp,
     required this.sampleName,
     this.nameScale = 100,
@@ -54,6 +57,9 @@ class CreatorPosterPersonalization {
         nameY: 82,
         showBottomStrip: true,
         stripHeight: 16,
+        stripWidth: 100,
+        stripX: 50,
+        stripBottom: 0,
         showWhatsapp: true,
         sampleName: 'User Name',
         nameScale: 100,
@@ -87,6 +93,9 @@ class CreatorPosterPersonalization {
   final double nameY;
   final bool showBottomStrip;
   final double stripHeight;
+  final double stripWidth;
+  final double stripX;
+  final double stripBottom;
   final bool showWhatsapp;
   final String sampleName;
   final double nameScale;
@@ -123,6 +132,9 @@ class CreatorPosterPersonalization {
             other.nameY == nameY &&
             other.showBottomStrip == showBottomStrip &&
             other.stripHeight == stripHeight &&
+            other.stripWidth == stripWidth &&
+            other.stripX == stripX &&
+            other.stripBottom == stripBottom &&
             other.showWhatsapp == showWhatsapp &&
             other.sampleName == sampleName &&
             other.nameScale == nameScale &&
@@ -158,6 +170,9 @@ class CreatorPosterPersonalization {
     nameY,
     showBottomStrip,
     stripHeight,
+    stripWidth,
+    stripX,
+    stripBottom,
     showWhatsapp,
     sampleName,
     nameScale,

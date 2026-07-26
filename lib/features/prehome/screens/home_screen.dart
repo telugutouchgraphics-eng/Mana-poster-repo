@@ -4101,6 +4101,9 @@ class _HomeScreenState extends State<HomeScreen>
       'nameY': config.nameY,
       'showBottomStrip': config.showBottomStrip,
       'stripHeight': config.stripHeight,
+      'stripWidth': config.stripWidth,
+      'stripX': config.stripX,
+      'stripBottom': config.stripBottom,
       'showWhatsapp': config.showWhatsapp,
       'sampleName': config.sampleName,
       'nameScale': config.nameScale,
@@ -4154,6 +4157,9 @@ class _HomeScreenState extends State<HomeScreen>
       nameY: (data['nameY'] as num?)?.toDouble() ?? 82,
       showBottomStrip: data['showBottomStrip'] as bool? ?? true,
       stripHeight: (data['stripHeight'] as num?)?.toDouble() ?? 16,
+      stripWidth: (data['stripWidth'] as num?)?.toDouble() ?? 100,
+      stripX: (data['stripX'] as num?)?.toDouble() ?? 50,
+      stripBottom: (data['stripBottom'] as num?)?.toDouble() ?? 0,
       showWhatsapp: data['showWhatsapp'] as bool? ?? true,
       sampleName: (data['sampleName'] as String?)?.trim() ?? 'User Name',
       nameScale: (data['nameScale'] as num?)?.toDouble() ?? 100,
@@ -12036,12 +12042,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _resolvePosterNameFontFamily(String resolvedName) {
-    final personalizationConfig = item.personalizationConfig;
     final seedSource =
         '${item.imageUrl ?? item.imageAssetPath ?? 'poster'}'
-        '|${personalizationConfig?.nameX ?? 0}'
-        '|${personalizationConfig?.nameY ?? 0}'
-        '|${personalizationConfig?.stripHeight ?? 0}'
         '|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
@@ -12053,12 +12055,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   String _resolveEnglishPosterNameFontFamily(String resolvedName) {
-    final personalizationConfig = item.personalizationConfig;
     final seedSource =
         '${item.imageUrl ?? item.imageAssetPath ?? 'poster'}'
-        '|${personalizationConfig?.nameX ?? 0}'
-        '|${personalizationConfig?.nameY ?? 0}'
-        '|${personalizationConfig?.stripHeight ?? 0}'
         '|english|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
@@ -16521,9 +16519,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   String _resolvePosterNameFontFamily(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
-        '|${widget.personalizationConfig.nameX}'
-        '|${widget.personalizationConfig.nameY}'
-        '|${widget.personalizationConfig.stripHeight}'
         '|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
@@ -16538,7 +16533,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   List<Color> _resolvePosterStripGradient(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
-        '|${widget.personalizationConfig.stripHeight}'
         '|$resolvedName';
     var hash = 23;
     for (final codeUnit in seedSource.codeUnits) {
@@ -16554,9 +16548,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   int _resolvePosterStripModel(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
-        '|${widget.personalizationConfig.nameX}'
-        '|${widget.personalizationConfig.nameY}'
-        '|${widget.personalizationConfig.stripHeight}'
         '|model|$resolvedName';
     var hash = 29;
     for (final codeUnit in seedSource.codeUnits) {
@@ -16572,9 +16563,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   String _resolveEnglishPosterNameFontFamily(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
-        '|${widget.personalizationConfig.nameX}'
-        '|${widget.personalizationConfig.nameY}'
-        '|${widget.personalizationConfig.stripHeight}'
         '|english|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
@@ -17011,6 +16999,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     Widget buildBottomStrip({
       required double stripScale,
       required double bottomStripPadding,
+      required double stripPixelHeight,
     }) {
       return _buildPosterBottomStrip(
         resolvedName: resolvedName,
@@ -17030,6 +17019,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         showPhoneInStrip: showPhoneInStrip,
         resolvedPhone: resolvedPhone,
         bottomStripPadding: bottomStripPadding,
+        stripPixelHeight: stripPixelHeight,
       );
     }
 
@@ -17061,7 +17051,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                     (widget.personalizationConfig.stripHeight / 100) *
                     0.5,
               )
-              .clamp(54.0, math.max(54.0, visualHeight * 0.18))
+              .clamp(1.0, math.max(1.0, visualHeight * 0.18))
               .toDouble();
           final estimatedNameHeight =
               (isBusinessProfile ? businessNameFontSize : personalNameFontSize)
@@ -17083,12 +17073,29 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.08),
               )
               .toDouble();
-          final stripScale = (stripPixelHeight / ratioBaseStripHeight)
-              .clamp(1.0, 1.42)
+          final defaultStripReferenceHeight = math
+              .max(1.0, visualHeight * (16 / 100) * 0.5)
+              .toDouble();
+          final stripScale = (stripPixelHeight / defaultStripReferenceHeight)
+              .clamp(0.04, 1.42)
               .toDouble();
           final scaledBottomStripPadding = (stripPixelHeight * 0.08)
-              .clamp(4.0, 12.0)
+              .clamp(0.0, 12.0)
               .toDouble();
+          final stripWidthPercent = widget.personalizationConfig.stripWidth
+              .clamp(35.0, 100.0)
+              .toDouble();
+          final stripWidthPx = visualWidth * (stripWidthPercent / 100);
+          final stripCenterX = widget.personalizationConfig.stripX
+              .clamp(stripWidthPercent / 2, 100 - (stripWidthPercent / 2))
+              .toDouble();
+          final stripLeft =
+              visualLeft +
+              (visualWidth * (stripCenterX / 100)) -
+              (stripWidthPx / 2);
+          final stripBottomPx =
+              visualHeight *
+              (widget.personalizationConfig.stripBottom.clamp(0.0, 20.0) / 100);
           return Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
@@ -17518,14 +17525,15 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 ),
               if (shouldShowBottomStrip)
                 Positioned(
-                  left: visualLeft,
-                  width: visualWidth,
-                  bottom: 0,
+                  left: stripLeft,
+                  width: stripWidthPx,
+                  bottom: stripBottomPx,
                   child: SizedBox(
                     height: stripPixelHeight,
                     child: buildBottomStrip(
                       stripScale: stripScale,
                       bottomStripPadding: scaledBottomStripPadding,
+                      stripPixelHeight: stripPixelHeight,
                     ),
                   ),
                 ),
@@ -17571,6 +17579,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     required bool showPhoneInStrip,
     required String resolvedPhone,
     required double bottomStripPadding,
+    required double stripPixelHeight,
   }) {
     final stripGradient = _resolvePosterStripGradient(resolvedName);
     final stripModel = _resolvePosterStripModel(resolvedName);
@@ -17730,6 +17739,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     );
 
     Widget accentLayer() {
+      final hairlineWidth = (stripPixelHeight * 0.035).clamp(0.4, 2.8);
+      final capsuleHorizontalInset = (stripPixelHeight * 0.95).clamp(1.0, 14.0);
+      final capsuleVerticalInset = (stripPixelHeight * 0.12).clamp(0.0, 7.0);
+      final outlineInset = (stripPixelHeight * 0.10).clamp(0.0, 7.0);
       switch (stripModel) {
         case 0:
           return Positioned.fill(
@@ -17738,11 +17751,11 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 border: Border(
                   top: BorderSide(
                     color: Colors.white.withValues(alpha: 0.35),
-                    width: 1.4,
+                    width: hairlineWidth,
                   ),
                   bottom: BorderSide(
                     color: Colors.black.withValues(alpha: 0.22),
-                    width: 1.4,
+                    width: hairlineWidth,
                   ),
                 ),
               ),
@@ -17763,7 +17776,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 border: Border(
                   top: BorderSide(
                     color: stripGradient.last.withValues(alpha: 0.86),
-                    width: 2.8,
+                    width: hairlineWidth,
                   ),
                 ),
                 boxShadow: <BoxShadow>[
@@ -17779,10 +17792,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
           );
         case 3:
           return Positioned(
-            left: 14,
-            right: 14,
-            top: 7,
-            bottom: 7,
+            left: capsuleHorizontalInset,
+            right: capsuleHorizontalInset,
+            top: capsuleVerticalInset,
+            bottom: capsuleVerticalInset,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.12),
@@ -17824,7 +17837,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 border: Border(
                   bottom: BorderSide(
                     color: Colors.white.withValues(alpha: 0.50),
-                    width: 2,
+                    width: hairlineWidth,
                   ),
                 ),
               ),
@@ -17868,13 +17881,16 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         default:
           return Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: EdgeInsets.symmetric(
+                horizontal: outlineInset,
+                vertical: outlineInset,
+              ),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.22),
-                    width: 1.2,
+                    width: hairlineWidth,
                   ),
                 ),
               ),
@@ -17900,7 +17916,20 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               horizontal: stripModel == 3 ? 24 : 14,
               vertical: bottomStripPadding,
             ),
-            child: Align(alignment: Alignment.center, child: content),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: content,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

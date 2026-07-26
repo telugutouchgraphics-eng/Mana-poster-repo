@@ -1395,6 +1395,9 @@ class ApprovedCreatorTemplateService {
           ? source['showBottomStrip'] as bool
           : !hasAdminBoardConfig,
       stripHeight: _parseDouble(source['stripHeight'], 16),
+      stripWidth: _parseDouble(source['stripWidth'], 100),
+      stripX: _parseDouble(source['stripX'], 50),
+      stripBottom: _parseDouble(source['stripBottom'], 0),
       showWhatsapp: source['showWhatsapp'] is bool
           ? source['showWhatsapp'] as bool
           : true,

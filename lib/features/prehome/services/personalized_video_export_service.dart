@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:developer' as developer;
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
@@ -45,6 +46,20 @@ class _PreparedOverlayPhoto {
   final double y;
   final double scale;
   final String animation;
+}
+
+class _PreparedNameStrip {
+  const _PreparedNameStrip({
+    required this.file,
+    required this.x,
+    required this.width,
+    required this.bottom,
+  });
+
+  final File file;
+  final double x;
+  final double width;
+  final double bottom;
 }
 
 class _PhotoMaskConfig {
@@ -216,7 +231,14 @@ class PersonalizedVideoExportService {
               scale: personalization.videoExtraPhotoScale,
               animation: personalization.videoExtraPhotoAnimation,
             ),
-      stripPath: stripFile?.path,
+      strip: stripFile == null
+          ? null
+          : _PreparedNameStrip(
+              file: stripFile,
+              x: personalization.stripX,
+              width: personalization.stripWidth,
+              bottom: personalization.stripBottom,
+            ),
       outputPath: outputFile.path,
     )) {
       if (await outputFile.exists()) {
@@ -359,6 +381,9 @@ class PersonalizedVideoExportService {
       personalization.nameY,
       personalization.showBottomStrip,
       personalization.stripHeight,
+      personalization.stripWidth,
+      personalization.stripX,
+      personalization.stripBottom,
       personalization.showWhatsapp,
       personalization.sampleName,
       personalization.nameScale,
@@ -725,11 +750,17 @@ class PersonalizedVideoExportService {
     final stripHeight =
         (outputHeight * (personalization.stripHeight / 100) * 0.5)
             .round()
-            .clamp(72, 168);
+            .clamp(1, math.max(1, (outputHeight * 0.18).round()))
+            .toInt();
+    final stripWidth =
+        (outputWidth * (personalization.stripWidth.clamp(35.0, 100.0) / 100))
+            .round()
+            .clamp(1, outputWidth)
+            .toInt();
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(
       recorder,
-      ui.Rect.fromLTWH(0, 0, outputWidth.toDouble(), stripHeight.toDouble()),
+      ui.Rect.fromLTWH(0, 0, stripWidth.toDouble(), stripHeight.toDouble()),
     );
     final stripGradient = _resolvePosterStripGradient(
       previewSeed: previewSeed,
@@ -743,20 +774,20 @@ class PersonalizedVideoExportService {
       resolvedName: profile.resolvedName(language: language),
     );
     canvas.drawRect(
-      ui.Rect.fromLTWH(0, 0, outputWidth.toDouble(), stripHeight.toDouble()),
+      ui.Rect.fromLTWH(0, 0, stripWidth.toDouble(), stripHeight.toDouble()),
       ui.Paint()
         ..shader = ui.Gradient.linear(
           ui.Offset.zero,
           stripModel == 1
-              ? ui.Offset(outputWidth.toDouble(), stripHeight.toDouble())
-              : ui.Offset(outputWidth.toDouble(), 0),
+              ? ui.Offset(stripWidth.toDouble(), stripHeight.toDouble())
+              : ui.Offset(stripWidth.toDouble(), 0),
           stripGradient,
           _gradientStops(stripGradient.length),
         ),
     );
     _drawStripAccent(
       canvas: canvas,
-      width: outputWidth.toDouble(),
+      width: stripWidth.toDouble(),
       height: stripHeight.toDouble(),
       model: stripModel,
       gradient: stripGradient,
@@ -806,20 +837,23 @@ class PersonalizedVideoExportService {
         ? (trailingUsesTeluguLayout ? 54.0 : 40.5)
         : (trailingUsesTeluguLayout ? 60.0 : 40.5);
     final horizontalInset = stripModel == 3 ? 0.058 : 0.039;
-    final leftPadding = outputWidth * horizontalInset;
-    final rightPadding = outputWidth * horizontalInset;
-    final gap = outputWidth * 0.028;
+    final leftPadding = stripWidth * horizontalInset;
+    final rightPadding = stripWidth * horizontalInset;
+    final gap = stripWidth * 0.028;
     final dividerWidth = 4.5;
-    final dividerX = outputWidth * 0.5;
+    final dividerX = stripWidth * 0.5;
     final nameMaxWidth = displayTrailing.isEmpty
-        ? outputWidth - leftPadding - rightPadding
+        ? stripWidth - leftPadding - rightPadding
         : dividerX - leftPadding - gap;
-    final trailingMaxWidth = outputWidth - dividerX - gap - rightPadding;
+    final trailingMaxWidth = stripWidth - dividerX - gap - rightPadding;
     final availableTextHeight = stripHeight * 0.82;
+    final stripHeightScale = (stripHeight / 96).clamp(0.02, 1.0).toDouble();
     final nameStyle = _fitTextStyle(
       displayName,
       baseFontSize: nameFontSize,
-      minFontSize: nameUsesTeluguLayout ? 48 : 42,
+      minFontSize: math
+          .max(1, (nameUsesTeluguLayout ? 48 : 42) * stripHeightScale)
+          .toDouble(),
       styleForFontSize: (fontSize) => ui.TextStyle(
         color: const ui.Color(0xFFFFFFFF),
         fontSize: fontSize,
@@ -865,7 +899,9 @@ class PersonalizedVideoExportService {
         style: _fitTextStyle(
           displayTrailing,
           baseFontSize: trailingFontSize,
-          minFontSize: trailingUsesTeluguLayout ? 28 : 24,
+          minFontSize: math
+              .max(1, (trailingUsesTeluguLayout ? 28 : 24) * stripHeightScale)
+              .toDouble(),
           styleForFontSize: (fontSize) => ui.TextStyle(
             color: const ui.Color(0xFFEDE7E0),
             fontSize: fontSize,
@@ -890,7 +926,7 @@ class PersonalizedVideoExportService {
     }
 
     final image = await recorder.endRecording().toImage(
-      outputWidth,
+      stripWidth,
       stripHeight,
     );
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -955,9 +991,7 @@ class PersonalizedVideoExportService {
     required CreatorPosterPersonalization personalization,
     required int stripGradientTapOffset,
   }) {
-    final seedSource =
-        '$previewSeed|${personalization.nameX}|${personalization.nameY}|'
-        '${personalization.stripHeight}|$resolvedName';
+    final seedSource = '$previewSeed|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
@@ -972,9 +1006,7 @@ class PersonalizedVideoExportService {
     required CreatorPosterPersonalization personalization,
     required int stripGradientTapOffset,
   }) {
-    final seedSource =
-        '$previewSeed|${personalization.nameX}|${personalization.nameY}|'
-        '${personalization.stripHeight}|english|$resolvedName';
+    final seedSource = '$previewSeed|english|$resolvedName';
     var hash = 17;
     for (final codeUnit in seedSource.codeUnits) {
       hash = 37 * hash + codeUnit;
@@ -1066,7 +1098,7 @@ class PersonalizedVideoExportService {
         ui.Color(0xFF7E22CE),
       ],
     ];
-    final seedSource = '$previewSeed|$stripHeight|$resolvedName';
+    final seedSource = '$previewSeed|$resolvedName';
     var hash = 23;
     for (final codeUnit in seedSource.codeUnits) {
       hash = 41 * hash + codeUnit;
@@ -1094,7 +1126,7 @@ class PersonalizedVideoExportService {
     required double stripHeight,
     required String resolvedName,
   }) {
-    final seedSource = '$previewSeed|$stripHeight|model|$resolvedName';
+    final seedSource = '$previewSeed|model|$resolvedName';
     var hash = 29;
     for (final codeUnit in seedSource.codeUnits) {
       hash = 43 * hash + codeUnit;
@@ -1271,19 +1303,20 @@ class PersonalizedVideoExportService {
     required String inputVideoPath,
     required _PreparedOverlayPhoto? mainPhoto,
     required _PreparedOverlayPhoto? extraPhoto,
-    required String? stripPath,
+    required _PreparedNameStrip? strip,
     required String outputPath,
   }) {
     var nextInputIndex = 1;
     final mainPhotoInputIndex = mainPhoto == null ? null : nextInputIndex++;
     final extraPhotoInputIndex = extraPhoto == null ? null : nextInputIndex++;
-    final stripInputIndex = stripPath == null ? null : nextInputIndex++;
+    final stripInputIndex = strip == null ? null : nextInputIndex++;
     final filter = _filterWithOverlays(
       mainPhoto: mainPhoto,
       mainPhotoInputIndex: mainPhotoInputIndex,
       extraPhoto: extraPhoto,
       extraPhotoInputIndex: extraPhotoInputIndex,
       stripInputIndex: stripInputIndex,
+      strip: strip,
     );
     List<String> baseInputs() => <String>[
       '-y',
@@ -1301,7 +1334,7 @@ class PersonalizedVideoExportService {
         '-i',
         extraPhoto.file.path,
       ],
-      if (stripPath != null) ...<String>['-loop', '1', '-i', stripPath],
+      if (strip != null) ...<String>['-loop', '1', '-i', strip.file.path],
       '-filter_complex',
       filter,
       '-map',
@@ -1389,12 +1422,33 @@ class PersonalizedVideoExportService {
         'pad=$outputWidth:$outputHeight:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[base];';
   }
 
-  String _filterWithoutPhoto({required int? stripInputIndex}) {
+  String _stripOverlayFilter({
+    required String inputLabel,
+    required int stripInputIndex,
+    required _PreparedNameStrip strip,
+  }) {
+    final stripWidthPercent = strip.width.clamp(35.0, 100.0);
+    final stripCenterX = strip.x
+        .clamp(stripWidthPercent / 2, 100 - (stripWidthPercent / 2))
+        .toDouble();
+    final x =
+        ((outputWidth * (stripCenterX / 100)) -
+                ((outputWidth * (stripWidthPercent / 100)) / 2))
+            .round();
+    final bottom = (outputHeight * (strip.bottom.clamp(0.0, 20.0) / 100))
+        .round();
+    return '[$inputLabel][$stripInputIndex:v]overlay=$x:H-h-$bottom:format=auto[v]';
+  }
+
+  String _filterWithoutPhoto({
+    required int? stripInputIndex,
+    required _PreparedNameStrip? strip,
+  }) {
     final base = _baseVideoFilter();
-    if (stripInputIndex == null) {
+    if (stripInputIndex == null || strip == null) {
       return '$base[base]null[v]';
     }
-    return '$base[base][$stripInputIndex:v]overlay=0:H-h:format=auto[v]';
+    return '$base${_stripOverlayFilter(inputLabel: 'base', stripInputIndex: stripInputIndex, strip: strip)}';
   }
 
   String _filterWithOverlays({
@@ -1403,9 +1457,13 @@ class PersonalizedVideoExportService {
     required _PreparedOverlayPhoto? extraPhoto,
     required int? extraPhotoInputIndex,
     required int? stripInputIndex,
+    required _PreparedNameStrip? strip,
   }) {
     if (mainPhoto == null && extraPhoto == null) {
-      return _filterWithoutPhoto(stripInputIndex: stripInputIndex);
+      return _filterWithoutPhoto(
+        stripInputIndex: stripInputIndex,
+        strip: strip,
+      );
     }
     final buffer = StringBuffer(_baseVideoFilter());
     var currentLabel = 'base';
@@ -1433,11 +1491,15 @@ class PersonalizedVideoExportService {
       );
       currentLabel = 'extra_photo_out';
     }
-    if (stripInputIndex == null) {
+    if (stripInputIndex == null || strip == null) {
       buffer.write('[$currentLabel]null[v]');
     } else {
       buffer.write(
-        '[$currentLabel][$stripInputIndex:v]overlay=0:H-h:format=auto[v]',
+        _stripOverlayFilter(
+          inputLabel: currentLabel,
+          stripInputIndex: stripInputIndex,
+          strip: strip,
+        ),
       );
     }
     return buffer.toString();

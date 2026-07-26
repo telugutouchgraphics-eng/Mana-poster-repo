@@ -205,6 +205,9 @@ class PremiumTemplateRemoteService {
           source['showBottomStrip'] as bool? ??
           (hasPremiumBoardConfig ? false : true),
       stripHeight: _readDouble(source, 'stripHeight', 16),
+      stripWidth: _readDouble(source, 'stripWidth', 100),
+      stripX: _readDouble(source, 'stripX', 50),
+      stripBottom: _readDouble(source, 'stripBottom', 0),
       showWhatsapp:
           source['showWhatsapp'] as bool? ??
           (hasPremiumBoardConfig ? true : true),
