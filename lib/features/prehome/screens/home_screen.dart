@@ -4245,13 +4245,13 @@ class _HomeScreenState extends State<HomeScreen>
           (data['politicalProtocolX'] as num?)?.toDouble() ?? 50,
       politicalProtocolY: (data['politicalProtocolY'] as num?)?.toDouble() ?? 7,
       politicalProtocolScale:
-          (data['politicalProtocolScale'] as num?)?.toDouble() ?? 100,
+          (data['politicalProtocolScale'] as num?)?.toDouble() ?? 85,
       politicalProtocolSlots: _deserializePoliticalProtocolSlots(
         data['politicalProtocolSlots'],
         fallbackX: (data['politicalProtocolX'] as num?)?.toDouble() ?? 50,
         fallbackY: (data['politicalProtocolY'] as num?)?.toDouble() ?? 7,
         fallbackScale:
-            (data['politicalProtocolScale'] as num?)?.toDouble() ?? 100,
+            (data['politicalProtocolScale'] as num?)?.toDouble() ?? 85,
       ),
     );
   }
@@ -12268,6 +12268,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
     required this.initialManualSlots,
     required this.ensureSubscriptionAccess,
     required this.ensureGallerySavePermission,
+    required this.leaderPhotoLibraryScopeKey,
   });
 
   final _TemplateItem item;
@@ -12280,6 +12281,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
   final List<PoliticalProtocolSlot> initialManualSlots;
   final Future<bool> Function(BuildContext context) ensureSubscriptionAccess;
   final Future<bool> Function() ensureGallerySavePermission;
+  final String leaderPhotoLibraryScopeKey;
 
   @override
   State<_PoliticalProtocolPhotoScreen> createState() =>
@@ -12298,6 +12300,7 @@ class _PoliticalProtocolPhotoScreenState
   String? _posterImageAspectKey;
   String? _customPosterPath;
   String? _exportAction;
+  List<String> _savedLeaderPhotoPaths = const <String>[];
   ImageStream? _posterImageStream;
   ImageStreamListener? _posterImageStreamListener;
   bool _busy = false;
@@ -12315,6 +12318,7 @@ class _PoliticalProtocolPhotoScreenState
       widget.initialManualSlots,
       _manualPhotoPaths.length,
     );
+    unawaited(_loadSavedLeaderPhotoPaths());
   }
 
   @override
@@ -12439,6 +12443,86 @@ class _PoliticalProtocolPhotoScreenState
     );
   }
 
+  String get _leaderPhotoLibraryPrefsKey {
+    final scope = widget.leaderPhotoLibraryScopeKey.trim().isNotEmpty
+        ? widget.leaderPhotoLibraryScopeKey.trim()
+        : 'political';
+    return 'political_leader_photo_library_v1_$scope';
+  }
+
+  Future<void> _loadSavedLeaderPhotoPaths() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final paths =
+          prefs
+              .getStringList(_leaderPhotoLibraryPrefsKey)
+              ?.map((path) => path.trim())
+              .where((path) => path.isNotEmpty)
+              .toList(growable: false) ??
+          const <String>[];
+      if (!mounted) {
+        return;
+      }
+      setState(() => _savedLeaderPhotoPaths = paths);
+    } catch (_) {
+      // Local leader photo library is optional.
+    }
+  }
+
+  Future<void> _persistSavedLeaderPhotoPaths() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _leaderPhotoLibraryPrefsKey,
+      _savedLeaderPhotoPaths
+          .map((path) => path.trim())
+          .where((path) => path.isNotEmpty)
+          .toList(growable: false),
+    );
+  }
+
+  Future<void> _saveLeaderPhotoPath(String path) async {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    setState(() {
+      final next = _savedLeaderPhotoPaths.toList(growable: true);
+      next.remove(trimmed);
+      next.add(trimmed);
+      _savedLeaderPhotoPaths = next;
+    });
+    await _persistSavedLeaderPhotoPaths();
+  }
+
+  Future<void> _deleteSavedLeaderPhoto(String path) async {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    setState(() {
+      _savedLeaderPhotoPaths = _savedLeaderPhotoPaths
+          .where((existing) => existing.trim() != trimmed)
+          .toList(growable: false);
+      for (var index = _manualPhotoPaths.length - 1; index >= 0; index -= 1) {
+        if (_manualPhotoPaths[index].trim() == trimmed) {
+          _manualPhotoPaths.removeAt(index);
+          if (index < _manualSlots.length) {
+            _manualSlots.removeAt(index);
+          }
+        }
+      }
+      _manualSlots = _normalizeManualProtocolSlots(
+        _manualSlots,
+        _manualPhotoPaths.length,
+      );
+      _deleteArmedManualIndex = null;
+    });
+    await _persistSavedLeaderPhotoPaths();
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      await _deleteProtocolPhotoFile(File(trimmed));
+    }
+  }
+
   void _insertProtocolPhotoSource(String source, {int? insertIndex}) {
     final trimmed = source.trim();
     if (trimmed.isEmpty) {
@@ -12458,7 +12542,10 @@ class _PoliticalProtocolPhotoScreenState
     });
   }
 
-  Future<void> _addPhoto({int? insertIndex}) async {
+  Future<void> _addPhoto({
+    int? insertIndex,
+    bool saveToLeaderLibrary = false,
+  }) async {
     if (_busy) {
       return;
     }
@@ -12504,10 +12591,27 @@ class _PoliticalProtocolPhotoScreenState
             toolbarWidgetColor: Colors.white,
             backgroundColor: const Color(0xFF0F172A),
             activeControlsWidgetColor: const Color(0xFF14B8A6),
-            initAspectRatio: CropAspectRatioPreset.square,
-            lockAspectRatio: true,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+            hideBottomControls: false,
+            cropFrameColor: Colors.white,
+            cropGridColor: Colors.white54,
+            cropGridStrokeWidth: 1,
+            showCropGrid: true,
+            aspectRatioPresets: <CropAspectRatioPreset>[
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
           ),
-          IOSUiSettings(title: cropTitle, aspectRatioLockEnabled: true),
+          IOSUiSettings(
+            title: cropTitle,
+            aspectRatioLockEnabled: false,
+            rotateButtonsHidden: false,
+            resetAspectRatioEnabled: true,
+          ),
         ],
       );
       if (cropped == null) {
@@ -12521,6 +12625,12 @@ class _PoliticalProtocolPhotoScreenState
       await File(path).writeAsBytes(bytes, flush: true);
       if (!mounted) {
         return;
+      }
+      if (saveToLeaderLibrary) {
+        await _saveLeaderPhotoPath(path);
+        if (!mounted) {
+          return;
+        }
       }
       _insertProtocolPhotoSource(path, insertIndex: insertIndex);
     } catch (_) {
@@ -12789,80 +12899,198 @@ class _PoliticalProtocolPhotoScreenState
     );
   }
 
-  Widget _buildAddProtocolPhotoButton() {
-    return Material(
-      color: _busy ? const Color(0xFF94A3B8) : const Color(0xFF14B8A6),
-      shape: const CircleBorder(),
-      elevation: 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: _busy ? null : () => unawaited(_addPhoto()),
-        child: SizedBox(
-          width: 58,
-          height: 58,
-          child: Center(
-            child: _busy
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text(
-                    '++',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdminPhotoPicker() {
-    final adminUrls = widget.politicalProtocolPhotoUrls
+  List<String> get _extraAdminProtocolPhotoUrls {
+    return widget.politicalProtocolPhotoUrls
         .map((url) => url.trim())
         .where((url) => url.isNotEmpty)
         .skip(defaultPoliticalProtocolSlots.length)
         .toList(growable: false);
+  }
+
+  Future<void> _openPartyLeaderPhotoSheet() async {
+    if (_busy || _exportAction != null) {
+      return;
+    }
+    final adminUrls = _extraAdminProtocolPhotoUrls;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final savedPaths = _savedLeaderPhotoPaths
+                .map((path) => path.trim())
+                .where((path) => path.isNotEmpty)
+                .toList(growable: false);
+            final totalCount = adminUrls.length + savedPaths.length + 1;
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Add party leader photos',
+                      style: Theme.of(sheetContext).textTheme.titleMedium
+                          ?.copyWith(
+                            color: const Color(0xFF0F172A),
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Tap a photo to place it on the poster.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 82,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemBuilder: (context, index) {
+                          if (index < adminUrls.length) {
+                            final url = adminUrls[index];
+                            return _buildPhotoSlot(
+                              side: 62,
+                              child: CachedNetworkImage(
+                                imageUrl: url,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) =>
+                                    const _PoliticalProtocolFallback(),
+                                errorWidget: (_, _, _) =>
+                                    const _PoliticalProtocolFallback(),
+                              ),
+                              isPlus: false,
+                              onTap: () => Navigator.of(sheetContext).pop(url),
+                            );
+                          }
+                          final savedIndex = index - adminUrls.length;
+                          if (savedIndex < savedPaths.length) {
+                            final path = savedPaths[savedIndex];
+                            return SizedBox(
+                              width: 68,
+                              height: 68,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: <Widget>[
+                                  Positioned.fill(
+                                    child: Center(
+                                      child: _buildPhotoSlot(
+                                        side: 62,
+                                        child: _buildProtocolPhotoSource(path),
+                                        isPlus: false,
+                                        onTap: () => Navigator.of(
+                                          sheetContext,
+                                        ).pop(path),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: -1,
+                                    top: -1,
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        await _deleteSavedLeaderPhoto(path);
+                                        if (mounted) {
+                                          setSheetState(() {});
+                                        }
+                                      },
+                                      child: Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFDC2626),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close_rounded,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return _buildPhotoSlot(
+                            side: 62,
+                            isPlus: true,
+                            onTap: () =>
+                                Navigator.of(sheetContext).pop('__add'),
+                            child: const Icon(
+                              Icons.add_rounded,
+                              color: Colors.white,
+                              size: 34,
+                            ),
+                          );
+                        },
+                        separatorBuilder: (_, _) => const SizedBox(width: 12),
+                        itemCount: totalCount,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (!mounted || selected == null) {
+      return;
+    }
+    if (selected == '__add') {
+      await _addPhoto(saveToLeaderLibrary: true);
+      return;
+    }
+    _insertProtocolPhotoSource(selected);
+  }
+
+  Widget _buildAdminPhotoPicker() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Center(child: _buildAddProtocolPhotoButton()),
-          if (adminUrls.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 64,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) {
-                  final url = adminUrls[index];
-                  return _buildPhotoSlot(
-                    side: 58,
-                    child: CachedNetworkImage(
-                      imageUrl: url,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => const _PoliticalProtocolFallback(),
-                      errorWidget: (_, _, _) =>
-                          const _PoliticalProtocolFallback(),
-                    ),
-                    isPlus: false,
-                    onTap: () => _insertProtocolPhotoSource(url),
-                  );
-                },
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemCount: adminUrls.length,
-              ),
+      child: Center(
+        child: FilledButton.icon(
+          onPressed: _busy || _exportAction != null
+              ? null
+              : () => unawaited(_openPartyLeaderPhotoSheet()),
+          icon: _busy
+              ? const SizedBox(
+                  width: 17,
+                  height: 17,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.group_add_rounded, size: 18),
+          label: const Text(
+            'Add party leader photos',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF0F766E),
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
             ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -12878,162 +13106,31 @@ class _PoliticalProtocolPhotoScreenState
               .take(_defaultSlots.length)
               .toList(growable: false)
         : const <String>[];
-    final safeCanvasWidth = math.max(1.0, canvasWidth);
-    final safeCanvasHeight = math.max(1.0, canvasHeight);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        for (var index = 0; index < adminUrls.length; index += 1)
-          Builder(
-            builder: (context) {
-              final slot = _defaultSlots[index];
-              final side = _PoliticalProtocolPhotoSlots._slotSide(
-                canvasWidth: safeCanvasWidth,
-                canvasHeight: safeCanvasHeight,
-                scale: slot.scale,
-              );
-              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
-                value: slot.x,
-                canvasExtent: safeCanvasWidth,
-                side: side,
-              );
-              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
-                value: slot.y,
-                canvasExtent: safeCanvasHeight,
-                side: side,
-              );
-              return Positioned(
-                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
-                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
-                width: side,
-                height: side,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      final nextX =
-                          (slot.x + (details.delta.dx / safeCanvasWidth) * 100)
-                              .clamp(
-                                (side / safeCanvasWidth) * 50,
-                                100 - ((side / safeCanvasWidth) * 50),
-                              )
-                              .toDouble();
-                      final nextY =
-                          (slot.y + (details.delta.dy / safeCanvasHeight) * 100)
-                              .clamp(
-                                (side / safeCanvasHeight) * 50,
-                                100 - ((side / safeCanvasHeight) * 50),
-                              )
-                              .toDouble();
-                      if (index < _defaultSlots.length) {
-                        _defaultSlots[index] = PoliticalProtocolSlot(
-                          x: nextX,
-                          y: nextY,
-                          scale: slot.scale,
-                        );
-                      }
-                    });
-                  },
-                  child: _buildPhotoSlot(
-                    side: side,
-                    child: CachedNetworkImage(
-                      imageUrl: adminUrls[index],
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) =>
-                          const Icon(Icons.person_rounded),
-                    ),
-                    isPlus: false,
-                    onTap: null,
-                  ),
-                ),
-              );
-            },
-          ),
-        for (
-          var manualIndex = 0;
-          manualIndex < _manualPhotoPaths.length;
-          manualIndex += 1
-        )
-          Builder(
-            builder: (context) {
-              final slot = manualIndex < _manualSlots.length
-                  ? _manualSlots[manualIndex]
-                  : _defaultManualSlot(manualIndex);
-              final side = _PoliticalProtocolPhotoSlots._slotSide(
-                canvasWidth: safeCanvasWidth,
-                canvasHeight: safeCanvasHeight,
-                scale: slot.scale,
-              );
-              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
-                value: slot.x,
-                canvasExtent: safeCanvasWidth,
-                side: side,
-              );
-              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
-                value: slot.y,
-                canvasExtent: safeCanvasHeight,
-                side: side,
-              );
-              final deleteArmed = _deleteArmedManualIndex == manualIndex;
-              final child = Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _buildProtocolPhotoSource(_manualPhotoPaths[manualIndex]),
-                  if (deleteArmed)
-                    ColoredBox(
-                      color: Colors.red.withValues(alpha: 0.78),
-                      child: const Icon(
-                        Icons.delete_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                ],
-              );
-              final onTap = deleteArmed
-                  ? () => _removeManualPhoto(manualIndex)
-                  : () => setState(() => _deleteArmedManualIndex = manualIndex);
-              return Positioned(
-                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
-                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
-                width: side,
-                height: side,
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      final nextX =
-                          (slot.x + (details.delta.dx / safeCanvasWidth) * 100)
-                              .clamp(
-                                (side / safeCanvasWidth) * 50,
-                                100 - ((side / safeCanvasWidth) * 50),
-                              )
-                              .toDouble();
-                      final nextY =
-                          (slot.y + (details.delta.dy / safeCanvasHeight) * 100)
-                              .clamp(
-                                (side / safeCanvasHeight) * 50,
-                                100 - ((side / safeCanvasHeight) * 50),
-                              )
-                              .toDouble();
-                      if (manualIndex < _manualSlots.length) {
-                        _manualSlots[manualIndex] = PoliticalProtocolSlot(
-                          x: nextX,
-                          y: nextY,
-                          scale: slot.scale,
-                        );
-                      }
-                    });
-                  },
-                  child: _buildPhotoSlot(
-                    side: side,
-                    child: child,
-                    isPlus: false,
-                    onTap: onTap,
-                  ),
-                ),
-              );
-            },
-          ),
-      ],
+    return _EditablePoliticalProtocolOverlay(
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight,
+      adminUrls: adminUrls,
+      defaultSlots: _defaultSlots,
+      manualPhotoPaths: _manualPhotoPaths,
+      manualSlots: _manualSlots,
+      deleteArmedManualIndex: _deleteArmedManualIndex,
+      onDefaultSlotChanged: (index, slot) {
+        if (index >= 0 && index < _defaultSlots.length) {
+          _defaultSlots[index] = slot;
+        }
+      },
+      onManualSlotChanged: (index, slot) {
+        if (index >= 0 && index < _manualSlots.length) {
+          _manualSlots[index] = slot;
+        }
+      },
+      onManualPhotoTap: (index) {
+        if (_deleteArmedManualIndex == index) {
+          _removeManualPhoto(index);
+          return;
+        }
+        setState(() => _deleteArmedManualIndex = index);
+      },
     );
   }
 
@@ -13067,12 +13164,105 @@ class _PoliticalProtocolPhotoScreenState
     );
   }
 
+  EditorPageConfig _currentPosterPageConfig() {
+    final existing = widget.item.pageConfig;
+    final aspectRatio = _posterImageAspectRatio ?? existing?.aspectRatio ?? 1.0;
+    if (aspectRatio <= 0) {
+      return existing ?? EditorPageConfig.defaultConfig;
+    }
+    const baseWidth = 1080;
+    final resolvedHeight = math.max(1, (baseWidth / aspectRatio).round());
+    return EditorPageConfig(
+      name: existing?.name ?? 'Full Screen Poster',
+      widthPx: baseWidth,
+      heightPx: resolvedHeight,
+      dpi: existing?.dpi ?? EditorPageConfig.defaultConfig.dpi,
+    );
+  }
+
+  Widget _buildCustomPosterBase(VoidCallback onReady) {
+    final customPosterPath = _customPosterPath?.trim() ?? '';
+    if (customPosterPath.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => onReady());
+      return _buildPosterImage();
+    }
+    return Image.file(
+      File(customPosterPath),
+      fit: BoxFit.contain,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (frame != null || wasSynchronouslyLoaded) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => onReady());
+        }
+        return child;
+      },
+      errorBuilder: (_, _, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onReady());
+        return const ColoredBox(
+          color: Color(0xFF111827),
+          child: Center(
+            child: Icon(Icons.broken_image_rounded, color: Colors.white54),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPersonalizedPosterBase() {
+    final personalizationConfig = widget.item.personalizationConfig;
+    if (personalizationConfig == null) {
+      return _buildPosterImage();
+    }
+    final hasCustomPoster = (_customPosterPath?.trim().isNotEmpty ?? false);
+    return _CreatorPosterPreview(
+      imageAssetPath: hasCustomPoster ? null : widget.item.imageAssetPath,
+      imageUrl: hasCustomPoster ? null : widget.item.imageUrl,
+      imageStoragePath: hasCustomPoster ? null : widget.item.imageStoragePath,
+      thumbnailStoragePath: hasCustomPoster
+          ? null
+          : widget.item.thumbnailStoragePath,
+      thumbnailUrl: hasCustomPoster ? null : widget.item.thumbnailUrl,
+      pageConfig: _currentPosterPageConfig(),
+      basePosterBuilder: hasCustomPoster ? _buildCustomPosterBase : null,
+      personalizationConfig: personalizationConfig,
+      preferOriginalPosterQuality: true,
+      viewerPosterProfile: widget.viewerPosterProfile,
+      language: widget.language,
+      politicalProtocolPhotoUrls: const <String>[],
+      politicalProtocolLocalPhotoPaths: const <String>[],
+      politicalProtocolSlotsOverride: const <PoliticalProtocolSlot>[],
+      politicalProtocolManualSlots: const <PoliticalProtocolSlot>[],
+      showPoliticalProtocolOverlay: false,
+      showProfilePhoto: true,
+      deferLegacyTextPrime: false,
+      posterRenderCycle: 0,
+      interactivePhotoEnabled: false,
+      photoShapeOverride: '',
+      photoRenderModeOverride: '',
+      photoFlipHorizontally: false,
+      photoXOffsetPercent: 0,
+      photoYOffsetPercent: 0,
+      onPhotoTap: () {},
+      stripGradientTapOffset: 0,
+      additionalPhotoSelection: null,
+      onAdditionalPhotoTap: null,
+      onPhotoDragDeltaPercent:
+          ({required double deltaXPercent, required double deltaYPercent}) {},
+      onPhotoDragStateChanged: (_) {},
+    );
+  }
+
   Widget _buildPosterActionButton({
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
     bool filled = false,
     bool loading = false,
+    Color? backgroundColor,
+    Color? foregroundColor,
+    double minimumHeight = 46,
+    double borderRadius = 12,
+    double fontSize = 14,
+    double iconSize = 18,
   }) {
     final child = Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -13085,13 +13275,13 @@ class _PoliticalProtocolPhotoScreenState
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         else
-          Icon(icon, size: 18),
+          Icon(icon, size: iconSize),
         const SizedBox(width: 8),
         Flexible(
           child: Text(
             label,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w800),
           ),
         ),
       ],
@@ -13100,11 +13290,14 @@ class _PoliticalProtocolPhotoScreenState
       return FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF0F766E),
-          foregroundColor: Colors.white,
-          minimumSize: const Size(0, 46),
+          backgroundColor: backgroundColor ?? const Color(0xFF0F766E),
+          foregroundColor: foregroundColor ?? Colors.white,
+          minimumSize: Size(0, minimumHeight),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
         ),
         child: child,
@@ -13114,9 +13307,13 @@ class _PoliticalProtocolPhotoScreenState
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: const Color(0xFF0F172A),
-        minimumSize: const Size(0, 46),
+        minimumSize: Size(0, minimumHeight),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         side: const BorderSide(color: Color(0xFFE2E8F0)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
       ),
       child: child,
     );
@@ -13153,6 +13350,12 @@ class _PoliticalProtocolPhotoScreenState
                   onPressed: busy
                       ? null
                       : () => unawaited(_shareCustomPoster()),
+                  filled: true,
+                  backgroundColor: const Color(0xFF25D366),
+                  minimumHeight: 32,
+                  borderRadius: 999,
+                  fontSize: 12,
+                  iconSize: 17,
                   loading: _exportAction == 'share',
                 ),
               ),
@@ -13167,6 +13370,12 @@ class _PoliticalProtocolPhotoScreenState
                   onPressed: busy
                       ? null
                       : () => unawaited(_downloadCustomPoster()),
+                  filled: true,
+                  backgroundColor: const Color(0xFF64748B),
+                  minimumHeight: 32,
+                  borderRadius: 999,
+                  fontSize: 12,
+                  iconSize: 17,
                   loading: _exportAction == 'download',
                 ),
               ),
@@ -13204,7 +13413,7 @@ class _PoliticalProtocolPhotoScreenState
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    _buildPosterImage(),
+                    _buildPersonalizedPosterBase(),
                     _buildPosterPhotoSlots(
                       canvasWidth: posterWidth,
                       canvasHeight: posterHeight,
@@ -13293,6 +13502,277 @@ class _PoliticalProtocolPhotoScreenState
   }
 }
 
+class _EditablePoliticalProtocolOverlay extends StatefulWidget {
+  const _EditablePoliticalProtocolOverlay({
+    required this.canvasWidth,
+    required this.canvasHeight,
+    required this.adminUrls,
+    required this.defaultSlots,
+    required this.manualPhotoPaths,
+    required this.manualSlots,
+    required this.deleteArmedManualIndex,
+    required this.onDefaultSlotChanged,
+    required this.onManualSlotChanged,
+    required this.onManualPhotoTap,
+  });
+
+  final double canvasWidth;
+  final double canvasHeight;
+  final List<String> adminUrls;
+  final List<PoliticalProtocolSlot> defaultSlots;
+  final List<String> manualPhotoPaths;
+  final List<PoliticalProtocolSlot> manualSlots;
+  final int? deleteArmedManualIndex;
+  final void Function(int index, PoliticalProtocolSlot slot)
+  onDefaultSlotChanged;
+  final void Function(int index, PoliticalProtocolSlot slot)
+  onManualSlotChanged;
+  final ValueChanged<int> onManualPhotoTap;
+
+  @override
+  State<_EditablePoliticalProtocolOverlay> createState() =>
+      _EditablePoliticalProtocolOverlayState();
+}
+
+class _EditablePoliticalProtocolOverlayState
+    extends State<_EditablePoliticalProtocolOverlay> {
+  late List<PoliticalProtocolSlot> _defaultSlots;
+  late List<PoliticalProtocolSlot> _manualSlots;
+
+  @override
+  void initState() {
+    super.initState();
+    _defaultSlots = _copySlots(widget.defaultSlots);
+    _manualSlots = _copySlots(widget.manualSlots);
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditablePoliticalProtocolOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.defaultSlots.length != widget.defaultSlots.length ||
+        oldWidget.adminUrls.length != widget.adminUrls.length) {
+      _defaultSlots = _copySlots(widget.defaultSlots);
+    }
+    if (oldWidget.manualSlots.length != widget.manualSlots.length ||
+        oldWidget.manualPhotoPaths.length != widget.manualPhotoPaths.length) {
+      _manualSlots = _copySlots(widget.manualSlots);
+    }
+  }
+
+  List<PoliticalProtocolSlot> _copySlots(List<PoliticalProtocolSlot> slots) {
+    return slots
+        .map(
+          (slot) =>
+              PoliticalProtocolSlot(x: slot.x, y: slot.y, scale: slot.scale),
+        )
+        .toList(growable: true);
+  }
+
+  Widget _buildPhotoSlot({
+    required double side,
+    required Widget child,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: side,
+        height: side,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.95),
+          border: Border.all(color: Colors.white, width: 0.8),
+        ),
+        child: ClipOval(child: child),
+      ),
+    );
+  }
+
+  Widget _buildProtocolPhotoSource(String source) {
+    final trimmed = source.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return CachedNetworkImage(
+        imageUrl: trimmed,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => const _PoliticalProtocolFallback(),
+        errorWidget: (_, _, _) => const _PoliticalProtocolFallback(),
+      );
+    }
+    return Image.file(
+      File(trimmed),
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => const _PoliticalProtocolFallback(),
+    );
+  }
+
+  PoliticalProtocolSlot _defaultManualSlot(int index) {
+    final row = index ~/ 4;
+    final col = index % 4;
+    return PoliticalProtocolSlot(
+      x: (22 + (col * 18)).clamp(8, 92).toDouble(),
+      y: (24 + (row * 14)).clamp(8, 92).toDouble(),
+      scale: 100,
+    );
+  }
+
+  PoliticalProtocolSlot _draggedSlot({
+    required PoliticalProtocolSlot slot,
+    required DragUpdateDetails details,
+    required double side,
+    required double canvasWidth,
+    required double canvasHeight,
+  }) {
+    final nextX = (slot.x + (details.delta.dx / canvasWidth) * 100)
+        .clamp((side / canvasWidth) * 50, 100 - ((side / canvasWidth) * 50))
+        .toDouble();
+    final nextY = (slot.y + (details.delta.dy / canvasHeight) * 100)
+        .clamp((side / canvasHeight) * 50, 100 - ((side / canvasHeight) * 50))
+        .toDouble();
+    return PoliticalProtocolSlot(x: nextX, y: nextY, scale: slot.scale);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safeCanvasWidth = math.max(1.0, widget.canvasWidth);
+    final safeCanvasHeight = math.max(1.0, widget.canvasHeight);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: <Widget>[
+        for (var index = 0; index < widget.adminUrls.length; index += 1)
+          Builder(
+            builder: (context) {
+              final slot = index < _defaultSlots.length
+                  ? _defaultSlots[index]
+                  : defaultPoliticalProtocolSlots[index %
+                        defaultPoliticalProtocolSlots.length];
+              final side = _PoliticalProtocolPhotoSlots._slotSide(
+                canvasWidth: safeCanvasWidth,
+                canvasHeight: safeCanvasHeight,
+                scale: slot.scale,
+              );
+              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.x,
+                canvasExtent: safeCanvasWidth,
+                side: side,
+              );
+              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.y,
+                canvasExtent: safeCanvasHeight,
+                side: side,
+              );
+              return Positioned(
+                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
+                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
+                width: side,
+                height: side,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    final nextSlot = _draggedSlot(
+                      slot: slot,
+                      details: details,
+                      side: side,
+                      canvasWidth: safeCanvasWidth,
+                      canvasHeight: safeCanvasHeight,
+                    );
+                    setState(() {
+                      if (index < _defaultSlots.length) {
+                        _defaultSlots[index] = nextSlot;
+                      }
+                    });
+                    widget.onDefaultSlotChanged(index, nextSlot);
+                  },
+                  child: _buildPhotoSlot(
+                    side: side,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.adminUrls[index],
+                      fit: BoxFit.cover,
+                      errorWidget: (_, _, _) =>
+                          const Icon(Icons.person_rounded),
+                    ),
+                    onTap: null,
+                  ),
+                ),
+              );
+            },
+          ),
+        for (
+          var manualIndex = 0;
+          manualIndex < widget.manualPhotoPaths.length;
+          manualIndex += 1
+        )
+          Builder(
+            builder: (context) {
+              final slot = manualIndex < _manualSlots.length
+                  ? _manualSlots[manualIndex]
+                  : _defaultManualSlot(manualIndex);
+              final side = _PoliticalProtocolPhotoSlots._slotSide(
+                canvasWidth: safeCanvasWidth,
+                canvasHeight: safeCanvasHeight,
+                scale: slot.scale,
+              );
+              final centerX = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.x,
+                canvasExtent: safeCanvasWidth,
+                side: side,
+              );
+              final centerY = _PoliticalProtocolPhotoSlots._slotCenter(
+                value: slot.y,
+                canvasExtent: safeCanvasHeight,
+                side: side,
+              );
+              final deleteArmed = widget.deleteArmedManualIndex == manualIndex;
+              final child = Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  _buildProtocolPhotoSource(
+                    widget.manualPhotoPaths[manualIndex],
+                  ),
+                  if (deleteArmed)
+                    ColoredBox(
+                      color: Colors.red.withValues(alpha: 0.78),
+                      child: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                ],
+              );
+              return Positioned(
+                left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
+                top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
+                width: side,
+                height: side,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    final nextSlot = _draggedSlot(
+                      slot: slot,
+                      details: details,
+                      side: side,
+                      canvasWidth: safeCanvasWidth,
+                      canvasHeight: safeCanvasHeight,
+                    );
+                    setState(() {
+                      if (manualIndex < _manualSlots.length) {
+                        _manualSlots[manualIndex] = nextSlot;
+                      }
+                    });
+                    widget.onManualSlotChanged(manualIndex, nextSlot);
+                  },
+                  child: _buildPhotoSlot(
+                    side: side,
+                    child: child,
+                    onTap: () => widget.onManualPhotoTap(manualIndex),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
 class _TemplateFeedItem extends StatefulWidget {
   const _TemplateFeedItem({
     super.key,
@@ -13361,11 +13841,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     'Raleway',
     'Rubik',
   ];
-  static final Map<String, ValueNotifier<List<String>>>
-  _manualProtocolPhotosByScope = <String, ValueNotifier<List<String>>>{};
-  static final Map<String, ValueNotifier<List<PoliticalProtocolSlot>>>
-  _manualProtocolPhotoSlotsByScope =
-      <String, ValueNotifier<List<PoliticalProtocolSlot>>>{};
   final GlobalKey _posterCaptureKey = GlobalKey();
   final ScreenshotController _posterScreenshotController =
       ScreenshotController();
@@ -13525,23 +14000,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return _normalizeTagWorker(item.primaryFirestoreCategoryId ?? 'political');
   }
 
-  ValueNotifier<List<String>> _manualProtocolPhotoNotifierFor(String scope) {
-    return _manualProtocolPhotosByScope.putIfAbsent(
-      scope,
-      () => ValueNotifier<List<String>>(const <String>[]),
-    );
-  }
-
-  ValueNotifier<List<PoliticalProtocolSlot>>
-  _manualProtocolPhotoSlotNotifierFor(String scope) {
-    return _manualProtocolPhotoSlotsByScope.putIfAbsent(
-      scope,
-      () => ValueNotifier<List<PoliticalProtocolSlot>>(
-        const <PoliticalProtocolSlot>[],
-      ),
-    );
-  }
-
   void _handleManualProtocolPhotosChanged() {
     final notifier = _manualProtocolPhotoNotifier;
     final slotNotifier = _manualProtocolPhotoSlotNotifier;
@@ -13569,27 +14027,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _manualProtocolPhotoSlotNotifier?.removeListener(
       _handleManualProtocolPhotosChanged,
     );
-    final nextScope = _manualProtocolPhotoScopeKey();
-    if (nextScope.isEmpty) {
-      _manualProtocolPhotoNotifier = null;
-      _manualProtocolPhotoSlotNotifier = null;
-      _manualPoliticalProtocolPhotoPaths = const <String>[];
-      _manualPoliticalProtocolSlots = const <PoliticalProtocolSlot>[];
-      return;
-    }
-    final next = _manualProtocolPhotoNotifierFor(nextScope);
-    final nextSlots = _manualProtocolPhotoSlotNotifierFor(nextScope);
-    _manualProtocolPhotoNotifier = next;
-    _manualProtocolPhotoSlotNotifier = nextSlots;
-    _manualPoliticalProtocolPhotoPaths = next.value
-        .map((path) => path.trim())
-        .where((path) => path.isNotEmpty)
-        .toList(growable: false);
-    _manualPoliticalProtocolSlots = nextSlots.value
-        .take(_manualPoliticalProtocolPhotoPaths.length)
-        .toList(growable: false);
-    next.addListener(_handleManualProtocolPhotosChanged);
-    nextSlots.addListener(_handleManualProtocolPhotosChanged);
+    _manualProtocolPhotoNotifier = null;
+    _manualProtocolPhotoSlotNotifier = null;
+    _manualPoliticalProtocolPhotoPaths = const <String>[];
+    _manualPoliticalProtocolSlots = const <PoliticalProtocolSlot>[];
   }
 
   @override
@@ -14118,6 +14559,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               initialManualSlots: _manualPoliticalProtocolSlots,
               ensureSubscriptionAccess: _ensureSubscriptionAccess,
               ensureGallerySavePermission: _ensureGallerySavePermission,
+              leaderPhotoLibraryScopeKey: _manualProtocolPhotoScopeKey(),
             ),
           ),
         );
@@ -14138,17 +14580,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               .toList(growable: false)
         : item.personalizationConfig?.politicalProtocolSlots ??
               defaultPoliticalProtocolSlots;
-    final notifier = _manualProtocolPhotoNotifier;
-    final slotNotifier = _manualProtocolPhotoSlotNotifier;
-    if (notifier != null) {
-      notifier.value = normalizedPaths;
-    } else {
-      setState(() => _manualPoliticalProtocolPhotoPaths = normalizedPaths);
-    }
-    if (slotNotifier != null) {
-      slotNotifier.value = normalizedSlots;
-    }
     setState(() {
+      _manualPoliticalProtocolPhotoPaths = normalizedPaths;
       _politicalProtocolDefaultSlotsOverride = normalizedDefaultSlots;
       _manualPoliticalProtocolSlots = normalizedSlots;
     });

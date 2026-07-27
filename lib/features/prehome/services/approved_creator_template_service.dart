@@ -1440,7 +1440,7 @@ class ApprovedCreatorTemplateService {
         source['politicalProtocolSlots'],
         fallbackX: _parseDouble(source['politicalProtocolX'], 50),
         fallbackY: _parseDouble(source['politicalProtocolY'], 7),
-        fallbackScale: _parseDouble(source['politicalProtocolScale'], 100),
+        fallbackScale: _parseDouble(source['politicalProtocolScale'], 85),
       ),
     );
   }

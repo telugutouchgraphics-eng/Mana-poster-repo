@@ -32,8 +32,8 @@ class PoliticalProtocolSlot {
 
 const List<PoliticalProtocolSlot> defaultPoliticalProtocolSlots =
     <PoliticalProtocolSlot>[
-      PoliticalProtocolSlot(x: 28, y: 8, scale: 100),
-      PoliticalProtocolSlot(x: 72, y: 8, scale: 100),
+      PoliticalProtocolSlot(x: 28, y: 8, scale: 85),
+      PoliticalProtocolSlot(x: 72, y: 8, scale: 85),
     ];
 
 class CreatorPosterPersonalization {
@@ -75,7 +75,7 @@ class CreatorPosterPersonalization {
     this.showPoliticalProtocol = false,
     this.politicalProtocolX = 50,
     this.politicalProtocolY = 7,
-    this.politicalProtocolScale = 100,
+    this.politicalProtocolScale = 85,
     this.politicalProtocolSlots = defaultPoliticalProtocolSlots,
     this.politicalProtocolEnabledAtMillis = 0,
   });
@@ -119,7 +119,7 @@ class CreatorPosterPersonalization {
         showPoliticalProtocol: false,
         politicalProtocolX: 50,
         politicalProtocolY: 7,
-        politicalProtocolScale: 100,
+        politicalProtocolScale: 85,
         politicalProtocolSlots: defaultPoliticalProtocolSlots,
         politicalProtocolEnabledAtMillis: 0,
       );
