@@ -12711,12 +12711,7 @@ class _PoliticalProtocolPhotoScreenState
       if (!mounted) {
         return;
       }
-      _showScreenSnack(
-        context.strings.localized(
-          telugu: 'Could not add your poster. Please try again.',
-          english: 'Could not add your poster. Please try again.',
-        ),
-      );
+      _showScreenSnack(context.strings.couldNotAddPoster);
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -12935,7 +12930,7 @@ class _PoliticalProtocolPhotoScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      'Add party leader photos',
+                      context.strings.addPartyLeaderPhotos,
                       style: Theme.of(sheetContext).textTheme.titleMedium
                           ?.copyWith(
                             color: const Color(0xFF0F172A),
@@ -12943,9 +12938,9 @@ class _PoliticalProtocolPhotoScreenState
                           ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Tap a photo to place it on the poster.',
-                      style: TextStyle(
+                    Text(
+                      context.strings.tapPhotoToPlaceOnPoster,
+                      style: const TextStyle(
                         color: Color(0xFF64748B),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -13075,9 +13070,9 @@ class _PoliticalProtocolPhotoScreenState
                   ),
                 )
               : const Icon(Icons.group_add_rounded, size: 18),
-          label: const Text(
-            'Add party leader photos',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
+          label: Text(
+            context.strings.addPartyLeaderPhotos,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
           ),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF0F766E),
@@ -13331,7 +13326,9 @@ class _PoliticalProtocolPhotoScreenState
             width: double.infinity,
             child: _buildPosterActionButton(
               icon: Icons.add_photo_alternate_rounded,
-              label: hasCustomPoster ? 'Change your poster' : 'Add your poster',
+              label: hasCustomPoster
+                  ? context.strings.changeYourPoster
+                  : context.strings.addYourPoster,
               onPressed: busy ? null : () => unawaited(_pickCustomPoster()),
               filled: true,
               loading: _busy,
@@ -13432,12 +13429,7 @@ class _PoliticalProtocolPhotoScreenState
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0.6,
-        title: Text(
-          context.strings.localized(
-            telugu: 'పొలిటికల్ ఫోటోలు',
-            english: 'Add Political Photos',
-          ),
-        ),
+        title: Text(context.strings.addPoliticalPhotos),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(
@@ -13448,7 +13440,7 @@ class _PoliticalProtocolPhotoScreenState
               ),
             ),
             child: Text(
-              context.strings.localized(telugu: 'Done', english: 'Done'),
+              context.strings.doneLabel,
               style: const TextStyle(
                 color: Color(0xFF0F766E),
                 fontWeight: FontWeight.w800,
@@ -16627,18 +16619,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                   Icons.add_circle_outline_rounded,
                                   size: 16,
                                 ),
-                                label: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    strings.localized(
-                                      telugu:
-                                          'à°ªà±Šà°²à°¿à°Ÿà°¿à°•à°²à± à°«à±‹à°Ÿà±‹à°²à±',
-                                      english: 'Add Political Photos',
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                label: Text(
+                                  strings.addPoliticalPhotos,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
@@ -17076,18 +17063,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             Icons.add_circle_outline_rounded,
                             size: 16,
                           ),
-                          label: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              strings.localized(
-                                telugu:
-                                    'à°ªà±Šà°²à°¿à°Ÿà°¿à°•à°²à± à°«à±‹à°Ÿà±‹à°²à±',
-                                english: 'Add Political Photos',
-                              ),
-                              style: const TextStyle(
-                                fontSize: 10.8,
-                                fontWeight: FontWeight.w800,
-                              ),
+                          label: Text(
+                            strings.addPoliticalPhotos,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.3,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           style: OutlinedButton.styleFrom(
