@@ -2354,7 +2354,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (_normalizeTag(selectedCategory.slug).startsWith('party_')) {
-      return !_isJokesTemplate(item);
+      return _matchesPoliticalPartyFeedAllowedCategory(item, language);
     }
 
     final itemSignals = _templateCategorySignalsForMatching(item);
@@ -2380,6 +2380,75 @@ class _HomeScreenState extends State<HomeScreen>
         signals.contains('comedy');
   }
 
+  bool _matchesPoliticalPartyFeedAllowedCategory(
+    _TemplateItem item,
+    AppLanguage language,
+  ) {
+    if (_isJokesTemplate(item)) {
+      return false;
+    }
+
+    final normalizedPrimary = _normalizeTag(
+      item.primaryFirestoreCategoryId?.trim() ?? '',
+    );
+    if (normalizedPrimary.startsWith('party_')) {
+      return true;
+    }
+
+    final now = IstTimeService.now();
+    final allowedEventSignals = <String>{};
+
+    void addDynamicCategorySignals(DynamicCategory category) {
+      final chip = _CategoryChipData(
+        slug: category.slug,
+        label: category.label,
+        matchTags: category.tags,
+        presenceTags: _dynamicPresenceTags(category).toList(growable: false),
+        isDynamic: true,
+      );
+      allowedEventSignals.addAll(_strictDynamicCategorySignals(chip));
+    }
+
+    for (final category in _dynamicPreviewCategoryService.categoriesForDate(
+      now,
+      language: language,
+      selectedRegionId: _selectedRegionId,
+    )) {
+      if (category.type == DynamicCategoryType.weekdaySpecial) {
+        continue;
+      }
+      addDynamicCategorySignals(category);
+    }
+    if (_isBonaluSharedVisibleForPoliticalFeed(now)) {
+      const bonaluCategory = DynamicCategory(
+        id: 'bonalu',
+        slug: 'bonalu',
+        label: 'Bonalu',
+        type: DynamicCategoryType.festival,
+        scope: DynamicEventScope.bothTeluguStates,
+        tags: <String>[
+          'bonalu',
+          'festival',
+          'devotional',
+          'andhra_pradesh',
+          'telangana',
+          'regional_special',
+        ],
+      );
+      addDynamicCategorySignals(bonaluCategory);
+    }
+    for (final category in _manualEventCategories) {
+      addDynamicCategorySignals(category);
+    }
+
+    if (allowedEventSignals.isEmpty) {
+      return false;
+    }
+    return _templateCategorySignalsForMatching(
+      item,
+    ).intersection(allowedEventSignals).isNotEmpty;
+  }
+
   bool _isPoliticalFeedSlug(String slug) {
     final normalized = _normalizeTag(slug);
     return normalized == _politicalCategorySlug ||
@@ -2393,6 +2462,101 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final partyId = normalized.substring('party_'.length).trim();
     return partyId.isEmpty ? null : partyId;
+  }
+
+  List<String> _activePoliticalPartyFeedCategoryIds(AppLanguage language) {
+    final now = IstTimeService.now();
+    final categoryIds = <String>{};
+
+    void addCategoryId(String raw) {
+      final normalized = _normalizeTag(raw);
+      if (normalized.isNotEmpty) {
+        categoryIds.add(normalized);
+      }
+    }
+
+    for (final category in _dynamicPreviewCategoryService.categoriesForDate(
+      now,
+      language: language,
+      selectedRegionId: _selectedRegionId,
+    )) {
+      if (category.type == DynamicCategoryType.weekdaySpecial) {
+        continue;
+      }
+      addCategoryId(category.slug);
+    }
+
+    if (_isBonaluSharedVisibleForPoliticalFeed(now)) {
+      addCategoryId('bonalu');
+    }
+
+    for (final category in _manualEventCategories) {
+      addCategoryId(category.slug);
+    }
+
+    return categoryIds.toList(growable: false)..sort();
+  }
+
+  bool _isBonaluSharedVisibleForPoliticalFeed(DateTime now) {
+    if (!_isTeluguSharedRegion(_selectedRegionId)) {
+      return false;
+    }
+    final resolved = resolvedLunarEventDatesForYear(now.year)['bonalu'];
+    if (resolved == null) {
+      return false;
+    }
+    final today = DateTime(now.year, now.month, now.day);
+    final eventStart = DateTime(now.year, resolved.month, resolved.day);
+    final visibleStart = eventStart.subtract(
+      const Duration(days: _dynamicMorePreviewDays),
+    );
+    final eventEnd = switch ((resolved.endMonth, resolved.endDay)) {
+      (final int endMonth, final int endDay) => DateTime(
+        now.year,
+        endMonth,
+        endDay,
+      ),
+      _ => eventStart.add(Duration(days: resolved.durationDays - 1)),
+    };
+    return !today.isBefore(visibleStart) && !today.isAfter(eventEnd);
+  }
+
+  Future<List<ApprovedCreatorTemplate>> _fetchPoliticalPartyFeedTemplates({
+    required String categorySlug,
+    required int scanLimit,
+    required Source source,
+  }) async {
+    final normalizedSlug = _normalizeTag(categorySlug);
+    if (!normalizedSlug.startsWith('party_')) {
+      return const <ApprovedCreatorTemplate>[];
+    }
+    final categoryIds = <String>{
+      normalizedSlug,
+      ..._activePoliticalPartyFeedCategoryIds(context.currentLanguage),
+    }.where((item) => item.trim().isNotEmpty).toList(growable: false);
+
+    final fetchedLists = await Future.wait(
+      categoryIds.map(
+        (categoryId) => _approvedCreatorTemplateService
+            .fetchAllApprovedTemplatesForCategory(
+              categoryId: categoryId,
+              source: source,
+              scanLimit: scanLimit,
+            ),
+      ),
+    );
+
+    final byId = <String, ApprovedCreatorTemplate>{};
+    for (final templates in fetchedLists) {
+      for (final template in templates) {
+        byId[template.id] = template;
+      }
+    }
+    final merged = byId.values.toList(growable: false)
+      ..sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
+    return merged.length <= scanLimit
+        ? merged
+        : merged.take(scanLimit).toList(growable: false);
   }
 
   bool _matchesActiveAllFeedTimeSlot(_TemplateItem item) {
@@ -5893,7 +6057,13 @@ class _HomeScreenState extends State<HomeScreen>
     _categoryFetchLimitBySlug[normalizedSlug] = nextLimit;
     setState(() => _templatesLoadingMore = true);
     try {
-      final targeted = _isPoliticalFeedSlug(normalizedSlug)
+      final targeted = normalizedSlug.startsWith('party_')
+          ? await _fetchPoliticalPartyFeedTemplates(
+              categorySlug: normalizedSlug,
+              scanLimit: nextLimit,
+              source: Source.server,
+            )
+          : _isPoliticalFeedSlug(normalizedSlug)
           ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
               scanLimit: nextLimit,
               source: Source.server,
@@ -6972,7 +7142,13 @@ class _HomeScreenState extends State<HomeScreen>
       _categoryFetchLimitBySlug[normalizedSlug] ?? (_templatesPageSize * 2),
       _templatesPageSize * 2,
     );
-    final targeted = _isPoliticalFeedSlug(normalizedSlug)
+    final targeted = normalizedSlug.startsWith('party_')
+        ? await _fetchPoliticalPartyFeedTemplates(
+            categorySlug: normalizedSlug,
+            scanLimit: fetchLimit,
+            source: Source.server,
+          )
+        : _isPoliticalFeedSlug(normalizedSlug)
         ? await _approvedCreatorTemplateService.fetchApprovedTemplatesWindow(
             scanLimit: fetchLimit,
             source: Source.server,
