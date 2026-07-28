@@ -12687,12 +12687,14 @@ class _PoliticalProtocolPhotoSlots extends StatelessWidget {
     required this.assetPaths,
     required this.imageUrls,
     required this.slots,
+    this.hiddenImageUrls = const <String>{},
     this.assetSlots = const <PoliticalProtocolSlot>[],
   });
 
   final List<String> assetPaths;
   final List<String> imageUrls;
   final List<PoliticalProtocolSlot> slots;
+  final Set<String> hiddenImageUrls;
   final List<PoliticalProtocolSlot> assetSlots;
 
   static double _slotSide({
@@ -12715,24 +12717,35 @@ class _PoliticalProtocolPhotoSlots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleUrls = imageUrls
+    final hiddenUrls = hiddenImageUrls
         .map((url) => url.trim())
         .where((url) => url.isNotEmpty)
-        .take(slots.length)
-        .toList(growable: false);
-    final visiblePaths = assetPaths
-        .map((path) => path.trim())
-        .where((path) => path.isNotEmpty)
-        .toList(growable: false);
-    final totalCount = visibleUrls.length + visiblePaths.length;
-    if (totalCount == 0) {
-      return const SizedBox.shrink();
-    }
+        .toSet();
+    final visibleUrlSlots = <({String url, PoliticalProtocolSlot slot})>[];
     final resolvedSlots = slots.length >= defaultPoliticalProtocolSlots.length
         ? slots
               .take(defaultPoliticalProtocolSlots.length)
               .toList(growable: false)
         : defaultPoliticalProtocolSlots;
+    for (
+      var index = 0;
+      index < imageUrls.length && index < resolvedSlots.length;
+      index += 1
+    ) {
+      final url = imageUrls[index].trim();
+      if (url.isEmpty || hiddenUrls.contains(url)) {
+        continue;
+      }
+      visibleUrlSlots.add((url: url, slot: resolvedSlots[index]));
+    }
+    final visiblePaths = assetPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    final totalCount = visibleUrlSlots.length + visiblePaths.length;
+    if (totalCount == 0) {
+      return const SizedBox.shrink();
+    }
     final resolvedAssetSlots = assetSlots.length >= visiblePaths.length
         ? assetSlots.take(visiblePaths.length).toList(growable: false)
         : _fallbackManualSlots(visiblePaths.length);
@@ -12743,10 +12756,10 @@ class _PoliticalProtocolPhotoSlots extends StatelessWidget {
         return Stack(
           clipBehavior: Clip.none,
           children: <Widget>[
-            for (var index = 0; index < visibleUrls.length; index += 1)
+            for (var index = 0; index < visibleUrlSlots.length; index += 1)
               Builder(
                 builder: (context) {
-                  final slot = resolvedSlots[index];
+                  final slot = visibleUrlSlots[index].slot;
                   final side = _slotSide(
                     canvasWidth: canvasWidth,
                     canvasHeight: canvasHeight,
@@ -12763,7 +12776,7 @@ class _PoliticalProtocolPhotoSlots extends StatelessWidget {
                     side: side,
                   );
                   final child = CachedNetworkImage(
-                    imageUrl: visibleUrls[index],
+                    imageUrl: visibleUrlSlots[index].url,
                     fit: BoxFit.cover,
                     placeholder: (_, _) => const _PoliticalProtocolFallback(),
                     errorWidget: (_, _, _) =>
@@ -12894,11 +12907,13 @@ class _PoliticalProtocolPhotoScreenResult {
     required this.manualPhotoPaths,
     required this.defaultSlots,
     required this.manualSlots,
+    required this.hiddenDefaultPhotoUrls,
   });
 
   final List<String> manualPhotoPaths;
   final List<PoliticalProtocolSlot> defaultSlots;
   final List<PoliticalProtocolSlot> manualSlots;
+  final Set<String> hiddenDefaultPhotoUrls;
 }
 
 class _PoliticalProtocolPhotoScreen extends StatefulWidget {
@@ -12910,6 +12925,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
     required this.partyLogoAssetPath,
     required this.showDefaultProtocolPhotos,
     required this.initialManualPhotoPaths,
+    required this.initialHiddenDefaultPhotoUrls,
     required this.defaultSlots,
     required this.initialManualSlots,
     required this.ensureSubscriptionAccess,
@@ -12924,6 +12940,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
   final String? partyLogoAssetPath;
   final bool showDefaultProtocolPhotos;
   final List<String> initialManualPhotoPaths;
+  final Set<String> initialHiddenDefaultPhotoUrls;
   final List<PoliticalProtocolSlot> defaultSlots;
   final List<PoliticalProtocolSlot> initialManualSlots;
   final Future<bool> Function(BuildContext context) ensureSubscriptionAccess;
@@ -12948,9 +12965,11 @@ class _PoliticalProtocolPhotoScreenState
   String? _customPosterPath;
   String? _exportAction;
   List<String> _savedLeaderPhotoPaths = const <String>[];
+  Set<String> _hiddenDefaultPhotoUrls = const <String>{};
   ImageStream? _posterImageStream;
   ImageStreamListener? _posterImageStreamListener;
   bool _busy = false;
+  int? _deleteArmedDefaultIndex;
   int? _deleteArmedManualIndex;
 
   @override
@@ -12965,7 +12984,12 @@ class _PoliticalProtocolPhotoScreenState
       widget.initialManualSlots,
       _manualPhotoPaths.length,
     );
+    _hiddenDefaultPhotoUrls = widget.initialHiddenDefaultPhotoUrls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .toSet();
     unawaited(_loadSavedLeaderPhotoPaths());
+    unawaited(_loadHiddenDefaultPhotoUrls());
   }
 
   @override
@@ -13097,6 +13121,13 @@ class _PoliticalProtocolPhotoScreenState
     return 'political_leader_photo_library_v1_$scope';
   }
 
+  String get _hiddenDefaultPhotoPrefsKey {
+    final scope = widget.leaderPhotoLibraryScopeKey.trim().isNotEmpty
+        ? widget.leaderPhotoLibraryScopeKey.trim()
+        : 'political';
+    return 'political_hidden_default_protocol_photos_v1_$scope';
+  }
+
   Future<void> _loadSavedLeaderPhotoPaths() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -13125,6 +13156,59 @@ class _PoliticalProtocolPhotoScreenState
           .where((path) => path.isNotEmpty)
           .toList(growable: false),
     );
+  }
+
+  Future<void> _loadHiddenDefaultPhotoUrls() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final urls =
+          prefs
+              .getStringList(_hiddenDefaultPhotoPrefsKey)
+              ?.map((url) => url.trim())
+              .where((url) => url.isNotEmpty)
+              .toSet() ??
+          const <String>{};
+      if (!mounted) {
+        return;
+      }
+      setState(() => _hiddenDefaultPhotoUrls = urls);
+    } catch (_) {
+      // Hidden default protocol photos are optional local preferences.
+    }
+  }
+
+  Future<void> _persistHiddenDefaultPhotoUrls() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _hiddenDefaultPhotoPrefsKey,
+      _hiddenDefaultPhotoUrls.toList(growable: false),
+    );
+  }
+
+  Future<void> _hideDefaultPhotoUrl(String url) async {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+    setState(() {
+      _hiddenDefaultPhotoUrls = <String>{..._hiddenDefaultPhotoUrls, trimmed};
+      _deleteArmedDefaultIndex = null;
+    });
+    await _persistHiddenDefaultPhotoUrls();
+  }
+
+  Future<void> _restoreDefaultPhotoUrl(String url) async {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty || !_hiddenDefaultPhotoUrls.contains(trimmed)) {
+      return;
+    }
+    setState(() {
+      _hiddenDefaultPhotoUrls = _hiddenDefaultPhotoUrls
+          .where((existing) => existing.trim() != trimmed)
+          .toSet();
+      _deleteArmedDefaultIndex = null;
+    });
+    await _persistHiddenDefaultPhotoUrls();
   }
 
   Future<void> _saveLeaderPhotoPath(String path) async {
@@ -13186,6 +13270,7 @@ class _PoliticalProtocolPhotoScreenState
         _manualPhotoPaths.length,
       );
       _deleteArmedManualIndex = null;
+      _deleteArmedDefaultIndex = null;
     });
   }
 
@@ -13548,11 +13633,20 @@ class _PoliticalProtocolPhotoScreenState
         .toList(growable: false);
   }
 
+  List<String> get _hiddenDefaultProtocolPhotoUrls {
+    return widget.politicalProtocolPhotoUrls
+        .map((url) => url.trim())
+        .take(defaultPoliticalProtocolSlots.length)
+        .where((url) => url.isNotEmpty && _hiddenDefaultPhotoUrls.contains(url))
+        .toList(growable: false);
+  }
+
   Future<void> _openPartyLeaderPhotoSheet() async {
     if (_busy || _exportAction != null) {
       return;
     }
     final adminUrls = _extraAdminProtocolPhotoUrls;
+    final hiddenDefaultUrls = _hiddenDefaultProtocolPhotoUrls;
     final selected = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.white,
@@ -13567,7 +13661,11 @@ class _PoliticalProtocolPhotoScreenState
                 .map((path) => path.trim())
                 .where((path) => path.isNotEmpty)
                 .toList(growable: false);
-            final totalCount = adminUrls.length + savedPaths.length + 1;
+            final totalCount =
+                hiddenDefaultUrls.length +
+                adminUrls.length +
+                savedPaths.length +
+                1;
             return SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 4, 18, 22),
@@ -13598,8 +13696,27 @@ class _PoliticalProtocolPhotoScreenState
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (context, index) {
-                          if (index < adminUrls.length) {
-                            final url = adminUrls[index];
+                          if (index < hiddenDefaultUrls.length) {
+                            final url = hiddenDefaultUrls[index];
+                            return _buildPhotoSlot(
+                              side: 62,
+                              child: CachedNetworkImage(
+                                imageUrl: url,
+                                fit: BoxFit.cover,
+                                placeholder: (_, _) =>
+                                    const _PoliticalProtocolFallback(),
+                                errorWidget: (_, _, _) =>
+                                    const _PoliticalProtocolFallback(),
+                              ),
+                              isPlus: false,
+                              onTap: () => Navigator.of(
+                                sheetContext,
+                              ).pop('__restore_default::$url'),
+                            );
+                          }
+                          final adminIndex = index - hiddenDefaultUrls.length;
+                          if (adminIndex < adminUrls.length) {
+                            final url = adminUrls[adminIndex];
                             return _buildPhotoSlot(
                               side: 62,
                               child: CachedNetworkImage(
@@ -13614,7 +13731,10 @@ class _PoliticalProtocolPhotoScreenState
                               onTap: () => Navigator.of(sheetContext).pop(url),
                             );
                           }
-                          final savedIndex = index - adminUrls.length;
+                          final savedIndex =
+                              index -
+                              hiddenDefaultUrls.length -
+                              adminUrls.length;
                           if (savedIndex < savedPaths.length) {
                             final path = savedPaths[savedIndex];
                             return SizedBox(
@@ -13695,6 +13815,12 @@ class _PoliticalProtocolPhotoScreenState
       await _addPhoto(saveToLeaderLibrary: true);
       return;
     }
+    if (selected.startsWith('__restore_default::')) {
+      await _restoreDefaultPhotoUrl(
+        selected.substring('__restore_default::'.length),
+      );
+      return;
+    }
     _insertProtocolPhotoSource(selected);
   }
 
@@ -13754,11 +13880,23 @@ class _PoliticalProtocolPhotoScreenState
       defaultSlots: _defaultSlots,
       manualPhotoPaths: _manualPhotoPaths,
       manualSlots: _manualSlots,
+      hiddenDefaultPhotoUrls: _hiddenDefaultPhotoUrls,
+      deleteArmedDefaultIndex: _deleteArmedDefaultIndex,
       deleteArmedManualIndex: _deleteArmedManualIndex,
       onDefaultSlotChanged: (index, slot) {
         if (index >= 0 && index < _defaultSlots.length) {
           _defaultSlots[index] = slot;
         }
+      },
+      onDefaultPhotoTap: (index, url) {
+        if (_deleteArmedDefaultIndex == index) {
+          unawaited(_hideDefaultPhotoUrl(url));
+          return;
+        }
+        setState(() {
+          _deleteArmedDefaultIndex = index;
+          _deleteArmedManualIndex = null;
+        });
       },
       onManualSlotChanged: (index, slot) {
         if (index >= 0 && index < _manualSlots.length) {
@@ -13770,7 +13908,10 @@ class _PoliticalProtocolPhotoScreenState
           _removeManualPhoto(index);
           return;
         }
-        setState(() => _deleteArmedManualIndex = index);
+        setState(() {
+          _deleteArmedDefaultIndex = null;
+          _deleteArmedManualIndex = index;
+        });
       },
     );
   }
@@ -14084,6 +14225,7 @@ class _PoliticalProtocolPhotoScreenState
                 manualPhotoPaths: _manualPhotoPaths,
                 defaultSlots: _defaultSlots,
                 manualSlots: _manualSlots,
+                hiddenDefaultPhotoUrls: _hiddenDefaultPhotoUrls,
               ),
             ),
             child: Text(
@@ -14100,8 +14242,12 @@ class _PoliticalProtocolPhotoScreenState
         child: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () {
-            if (_deleteArmedManualIndex != null) {
-              setState(() => _deleteArmedManualIndex = null);
+            if (_deleteArmedDefaultIndex != null ||
+                _deleteArmedManualIndex != null) {
+              setState(() {
+                _deleteArmedDefaultIndex = null;
+                _deleteArmedManualIndex = null;
+              });
             }
           },
           child: Column(
@@ -14149,8 +14295,11 @@ class _EditablePoliticalProtocolOverlay extends StatefulWidget {
     required this.defaultSlots,
     required this.manualPhotoPaths,
     required this.manualSlots,
+    required this.hiddenDefaultPhotoUrls,
+    required this.deleteArmedDefaultIndex,
     required this.deleteArmedManualIndex,
     required this.onDefaultSlotChanged,
+    required this.onDefaultPhotoTap,
     required this.onManualSlotChanged,
     required this.onManualPhotoTap,
   });
@@ -14161,9 +14310,12 @@ class _EditablePoliticalProtocolOverlay extends StatefulWidget {
   final List<PoliticalProtocolSlot> defaultSlots;
   final List<String> manualPhotoPaths;
   final List<PoliticalProtocolSlot> manualSlots;
+  final Set<String> hiddenDefaultPhotoUrls;
+  final int? deleteArmedDefaultIndex;
   final int? deleteArmedManualIndex;
   final void Function(int index, PoliticalProtocolSlot slot)
   onDefaultSlotChanged;
+  final void Function(int index, String url) onDefaultPhotoTap;
   final void Function(int index, PoliticalProtocolSlot slot)
   onManualSlotChanged;
   final ValueChanged<int> onManualPhotoTap;
@@ -14271,12 +14423,20 @@ class _EditablePoliticalProtocolOverlayState
   Widget build(BuildContext context) {
     final safeCanvasWidth = math.max(1.0, widget.canvasWidth);
     final safeCanvasHeight = math.max(1.0, widget.canvasHeight);
+    final hiddenDefaultUrls = widget.hiddenDefaultPhotoUrls
+        .map((url) => url.trim())
+        .where((url) => url.isNotEmpty)
+        .toSet();
     return Stack(
       clipBehavior: Clip.none,
       children: <Widget>[
         for (var index = 0; index < widget.adminUrls.length; index += 1)
           Builder(
             builder: (context) {
+              final adminUrl = widget.adminUrls[index].trim();
+              if (adminUrl.isEmpty || hiddenDefaultUrls.contains(adminUrl)) {
+                return const SizedBox.shrink();
+              }
               final slot = index < _defaultSlots.length
                   ? widget.defaultSlots[index]
                   : defaultPoliticalProtocolSlots[index %
@@ -14296,12 +14456,34 @@ class _EditablePoliticalProtocolOverlayState
                 canvasExtent: safeCanvasHeight,
                 side: side,
               );
+              final deleteArmed = widget.deleteArmedDefaultIndex == index;
+              final child = Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  CachedNetworkImage(
+                    imageUrl: adminUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const Icon(Icons.person_rounded),
+                  ),
+                  if (deleteArmed)
+                    ColoredBox(
+                      color: Colors.red.withValues(alpha: 0.78),
+                      child: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                ],
+              );
               return Positioned(
                 left: (safeCanvasWidth * (centerX / 100)) - (side / 2),
                 top: (safeCanvasHeight * (centerY / 100)) - (side / 2),
                 width: side,
                 height: side,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => widget.onDefaultPhotoTap(index, adminUrl),
                   onPanUpdate: (details) {
                     final nextSlot = _draggedSlot(
                       slot: index < widget.defaultSlots.length
@@ -14321,15 +14503,7 @@ class _EditablePoliticalProtocolOverlayState
                       widget.onDefaultSlotChanged(index, nextSlot);
                     }
                   },
-                  child: _buildPhotoSlot(
-                    side: side,
-                    child: CachedNetworkImage(
-                      imageUrl: widget.adminUrls[index],
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) =>
-                          const Icon(Icons.person_rounded),
-                    ),
-                  ),
+                  child: _buildPhotoSlot(side: side, child: child),
                 ),
               );
             },
@@ -14529,6 +14703,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   double? _resolvedPreviewAspectRatio;
   String? _politicalProtocolPartyId;
   List<String> _politicalProtocolPhotoUrls = const <String>[];
+  Set<String> _hiddenDefaultPoliticalProtocolPhotoUrls = const <String>{};
   List<String> _manualPoliticalProtocolPhotoPaths = const <String>[];
   List<PoliticalProtocolSlot>? _politicalProtocolDefaultSlotsOverride;
   List<PoliticalProtocolSlot> _manualPoliticalProtocolSlots =
@@ -14686,6 +14861,37 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return _normalizeTagWorker(item.primaryFirestoreCategoryId ?? 'political');
   }
 
+  String _hiddenDefaultProtocolPhotoPrefsKey() {
+    final scope = _manualProtocolPhotoScopeKey().trim().isNotEmpty
+        ? _manualProtocolPhotoScopeKey().trim()
+        : 'political';
+    return 'political_hidden_default_protocol_photos_v1_$scope';
+  }
+
+  Future<void> _loadHiddenDefaultProtocolPhotoUrls() async {
+    if (!widget.enablePoliticalProtocolOverlay) {
+      _hiddenDefaultPoliticalProtocolPhotoUrls = const <String>{};
+      return;
+    }
+    final prefsKey = _hiddenDefaultProtocolPhotoPrefsKey();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final urls =
+          prefs
+              .getStringList(prefsKey)
+              ?.map((url) => url.trim())
+              .where((url) => url.isNotEmpty)
+              .toSet() ??
+          const <String>{};
+      if (!mounted || prefsKey != _hiddenDefaultProtocolPhotoPrefsKey()) {
+        return;
+      }
+      setState(() => _hiddenDefaultPoliticalProtocolPhotoUrls = urls);
+    } catch (_) {
+      // Hidden default protocol photos are optional local preferences.
+    }
+  }
+
   void _handleManualProtocolPhotosChanged() {
     final notifier = _manualProtocolPhotoNotifier;
     final slotNotifier = _manualProtocolPhotoSlotNotifier;
@@ -14725,6 +14931,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _resolvedPreviewAspectRatio = _initialPreviewAspectRatioFor(item);
     _syncManualProtocolPhotoScope();
     _syncPoliticalProtocolPhotos();
+    unawaited(_loadHiddenDefaultProtocolPhotoUrls());
     if (item.isVideo && playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
@@ -14753,6 +14960,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             widget.item.primaryFirestoreCategoryId) {
       _syncManualProtocolPhotoScope();
       _syncPoliticalProtocolPhotos();
+      unawaited(_loadHiddenDefaultProtocolPhotoUrls());
     }
     if (oldWidget.item.videoUrl != widget.item.videoUrl ||
         oldWidget.item.imageUrl != widget.item.imageUrl ||
@@ -15239,6 +15447,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   item.personalizationConfig?.hasPoliticalProtocolLayout ??
                   false,
               initialManualPhotoPaths: _manualPoliticalProtocolPhotoPaths,
+              initialHiddenDefaultPhotoUrls:
+                  _hiddenDefaultPoliticalProtocolPhotoUrls,
               defaultSlots:
                   _politicalProtocolDefaultSlotsOverride ??
                   item.personalizationConfig?.politicalProtocolSlots ??
@@ -15269,6 +15479,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               defaultPoliticalProtocolSlots;
     setState(() {
       _manualPoliticalProtocolPhotoPaths = normalizedPaths;
+      _hiddenDefaultPoliticalProtocolPhotoUrls = result.hiddenDefaultPhotoUrls;
       _politicalProtocolDefaultSlotsOverride = normalizedDefaultSlots;
       _manualPoliticalProtocolSlots = normalizedSlots;
     });
@@ -16125,6 +16336,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       ? _resolvePoliticalPartyLogoAssetPath()
                       : null,
                   politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+                  hiddenPoliticalProtocolPhotoUrls:
+                      _hiddenDefaultPoliticalProtocolPhotoUrls,
                   politicalProtocolLocalPhotoPaths:
                       _manualPoliticalProtocolPhotoPaths,
                   politicalProtocolSlotsOverride:
@@ -16181,6 +16394,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 ? _resolvePoliticalPartyLogoAssetPath()
                 : null,
             politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+            hiddenPoliticalProtocolPhotoUrls:
+                _hiddenDefaultPoliticalProtocolPhotoUrls,
             politicalProtocolLocalPhotoPaths:
                 _manualPoliticalProtocolPhotoPaths,
             politicalProtocolSlotsOverride:
@@ -19193,6 +19408,7 @@ class _CreatorPosterPreview extends StatefulWidget {
     required this.language,
     this.partyLogoAssetPath,
     this.politicalProtocolPhotoUrls = const <String>[],
+    this.hiddenPoliticalProtocolPhotoUrls = const <String>{},
     this.politicalProtocolLocalPhotoPaths = const <String>[],
     this.politicalProtocolSlotsOverride,
     this.politicalProtocolManualSlots = const <PoliticalProtocolSlot>[],
@@ -19231,6 +19447,7 @@ class _CreatorPosterPreview extends StatefulWidget {
   final AppLanguage language;
   final String? partyLogoAssetPath;
   final List<String> politicalProtocolPhotoUrls;
+  final Set<String> hiddenPoliticalProtocolPhotoUrls;
   final List<String> politicalProtocolLocalPhotoPaths;
   final List<PoliticalProtocolSlot>? politicalProtocolSlotsOverride;
   final List<PoliticalProtocolSlot> politicalProtocolManualSlots;
@@ -20239,6 +20456,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                     child: _PoliticalProtocolPhotoSlots(
                       assetPaths: _politicalProtocolAssetPaths(),
                       imageUrls: _politicalProtocolImageUrls(),
+                      hiddenImageUrls: widget.hiddenPoliticalProtocolPhotoUrls,
                       slots:
                           widget.politicalProtocolSlotsOverride ??
                           widget.personalizationConfig.politicalProtocolSlots,
