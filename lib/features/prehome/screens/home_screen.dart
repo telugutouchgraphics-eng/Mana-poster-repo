@@ -810,6 +810,47 @@ String _allCategoryGroupingKeyWorker(_TemplateItem item) {
       : item.titleEn.trim();
 }
 
+List<_TemplateItem> _breakUpAdjacentCategoryRunsWorker(
+  List<_TemplateItem> templates, {
+  required int seed,
+  int maxAdjacentFromSameCategory = 1,
+}) {
+  if (templates.length < 3 || maxAdjacentFromSameCategory < 1) {
+    return templates;
+  }
+  final pending = List<_TemplateItem>.of(templates);
+  final arranged = <_TemplateItem>[];
+  String? lastKey;
+  var adjacentCount = 0;
+
+  while (pending.isNotEmpty) {
+    var pickIndex = 0;
+    if (lastKey != null && adjacentCount >= maxAdjacentFromSameCategory) {
+      final alternateIndex = pending.indexWhere(
+        (item) => _allCategoryGroupingKeyWorker(item) != lastKey,
+      );
+      if (alternateIndex > 0) {
+        pickIndex = alternateIndex;
+      }
+    }
+
+    final picked = pending.removeAt(pickIndex);
+    final pickedKey = _allCategoryGroupingKeyWorker(picked);
+    if (pickedKey == lastKey) {
+      adjacentCount++;
+    } else {
+      lastKey = pickedKey;
+      adjacentCount = 1;
+    }
+    arranged.add(picked);
+  }
+
+  if (arranged.length != templates.length) {
+    return templates;
+  }
+  return arranged;
+}
+
 List<_TemplateItem> _spreadAllCategoryTemplateGroupsWorker(
   List<_TemplateItem> templates, {
   required int seed,
@@ -1761,7 +1802,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<_TemplateItem> _applyAllFeedPersonalization(List<_TemplateItem> source) {
     if (_allFeedInterestScores.isEmpty || source.length < 3) {
-      return source;
+      return _balancedHomeFeedOrder(source, reason: 'base');
     }
     final ranked = <({int index, _TemplateItem item, double score})>[];
     var hasPositiveScore = false;
@@ -1787,7 +1828,7 @@ class _HomeScreenState extends State<HomeScreen>
         .map((entry) => entry.item)
         .toList(growable: false);
     final now = IstTimeService.now();
-    return _spreadAllCategoryTemplateGroupsWorker(
+    final spread = _spreadAllCategoryTemplateGroupsWorker(
       personalized,
       seed: Object.hash(
         now.year,
@@ -1797,6 +1838,7 @@ class _HomeScreenState extends State<HomeScreen>
         'personalized',
       ),
     );
+    return _balancedHomeFeedOrder(spread, reason: 'personalized');
   }
 
   void _recordAllFeedTemplateInteraction(_TemplateItem item, String action) {
@@ -2901,6 +2943,26 @@ class _HomeScreenState extends State<HomeScreen>
       return _applyAllFeedPersonalization(_rankedAllFeedTemplates!);
     }
     return _applyAllFeedPersonalization(_remoteApprovedTemplates);
+  }
+
+  List<_TemplateItem> _balancedHomeFeedOrder(
+    List<_TemplateItem> source, {
+    required String reason,
+  }) {
+    if (source.length < 3) {
+      return source;
+    }
+    final now = IstTimeService.now();
+    return _breakUpAdjacentCategoryRunsWorker(
+      source,
+      seed: Object.hash(
+        now.year,
+        now.month,
+        now.day,
+        _activeHomeFeedTimeSlot.name,
+        reason,
+      ),
+    );
   }
 
   Future<List<_TemplateItem>?> _extendLockedAllFeedTemplates(
@@ -6408,7 +6470,20 @@ class _HomeScreenState extends State<HomeScreen>
     final filteredTemplates = baseTemplates
         .where((item) => _matchesTemplate(item, language, selectedCategory))
         .toList(growable: false);
-    final templates = filteredTemplates;
+    final normalizedSelectedSlug = _normalizeTag(
+      selectedCategory.effectiveSelectionSlug,
+    );
+    final templates = normalizedSelectedSlug.startsWith('party_')
+        ? _breakUpAdjacentCategoryRunsWorker(
+            filteredTemplates,
+            seed: Object.hash(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day,
+              normalizedSelectedSlug,
+            ),
+          )
+        : filteredTemplates;
     final projection = _HomeTemplateProjection(
       filteredTemplates: filteredTemplates,
       templates: templates,
@@ -12115,6 +12190,7 @@ String _subscriptionButtonLabelLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -12123,6 +12199,7 @@ String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
@@ -12130,6 +12207,7 @@ String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
@@ -12137,6 +12215,7 @@ String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTrialValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -12146,6 +12225,7 @@ String _subscriptionTrialValueCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
@@ -12153,6 +12233,7 @@ String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -12161,6 +12242,7 @@ String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -12170,6 +12252,7 @@ String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
@@ -12177,6 +12260,7 @@ String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à±à°•à°¿à°ªà±',
@@ -12184,10 +12268,266 @@ String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
     english: 'Subscribe',
+  );
+}
+
+String _subscriptionPromptCopyAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu:
+        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయండి.',
+    english: 'Activate subscription to share or download posters.',
+    hindi: 'पोस्टर शेयर या डाउनलोड करने के लिए सदस्यता सक्रिय करें।',
+    tamil: 'போஸ்டர்களை பகிர அல்லது பதிவிறக்க சந்தாவை இயக்கவும்.',
+    kannada:
+        'ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಹಂಚಲು ಅಥವಾ ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ಚಂದಾದಾರಿಕೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ.',
+    malayalam:
+        'പോസ്റ്ററുകൾ പങ്കിടാനോ ഡൗൺലോഡ് ചെയ്യാനോ സബ്സ്ക്രിപ്ഷൻ സജീവമാക്കുക.',
+    assamese: 'পোষ্টাৰ শ্বেয়াৰ বা ডাউনলোড কৰিবলৈ সদস্যতা সক্ৰিয় কৰক।',
+    konkani: 'पोस्टर शेअर वा डाउनलोड करपाक सदस्यता सुरू करात.',
+    gujarati: 'પોસ્ટર શેર અથવા ડાઉનલોડ કરવા માટે સબ્સ્ક્રિપ્શન સક્રિય કરો.',
+    marathi: 'पोस्टर शेअर किंवा डाउनलोड करण्यासाठी सदस्यता सक्रिय करा.',
+    meitei:
+        'Poster share touba nattraga download tounaba subscription active tou.',
+    mizo: 'Poster share emaw download turin subscription activate rawh.',
+    odia: 'ପୋଷ୍ଟର ସେୟାର କିମ୍ବା ଡାଉନଲୋଡ୍ ପାଇଁ ସବସ୍କ୍ରିପସନ୍ ସକ୍ରିୟ କରନ୍ତୁ।',
+    punjabi: 'ਪੋਸਟਰ ਸਾਂਝੇ ਜਾਂ ਡਾਊਨਲੋਡ ਕਰਨ ਲਈ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਚਾਲੂ ਕਰੋ।',
+    nepali: 'पोस्टर सेयर वा डाउनलोड गर्न सदस्यता सक्रिय गर्नुहोस्।',
+    bengali: 'পোস্টার শেয়ার বা ডাউনলোড করতে সাবস্ক্রিপশন চালু করুন।',
+    kashmiri: 'پوسٹر شیئر یا ڈاؤنلوڈ کرنہٕ خٲطرٕ سبسکرپشن چالو کٔریو۔',
+    ladakhi: 'Poster share ཡང་ན download བྱེད་པར subscription འགོ་འཛུགས་བྱེད།',
+  );
+}
+
+String _subscriptionDialogTitleAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    english: 'Subscription Required',
+    hindi: 'सदस्यता आवश्यक',
+    tamil: 'சந்தா தேவை',
+    kannada: 'ಚಂದಾದಾರಿಕೆ ಅಗತ್ಯ',
+    malayalam: 'സബ്സ്ക്രിപ്ഷൻ ആവശ്യമാണ്',
+    assamese: 'সদস্যতা প্ৰয়োজন',
+    konkani: 'सदस्यता गरजेची',
+    gujarati: 'સબ્સ્ક્રિપ્શન જરૂરી',
+    marathi: 'सदस्यता आवश्यक',
+    meitei: 'Subscription mathou tai',
+    mizo: 'Subscription a ngai',
+    odia: 'ସବସ୍କ୍ରିପସନ୍ ଆବଶ୍ୟକ',
+    punjabi: 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਲੋੜੀਂਦੀ ਹੈ',
+    nepali: 'सदस्यता आवश्यक',
+    bengali: 'সাবস্ক্রিপশন প্রয়োজন',
+    kashmiri: 'سبسکرپشن ضرٲرت',
+    ladakhi: 'Subscription དགོས།',
+  );
+}
+
+String _subscriptionTrialTitleAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    english: '3-day trial plan',
+    hindi: '3 दिन का ट्रायल प्लान',
+    tamil: '3 நாள் சோதனை திட்டம்',
+    kannada: '3 ದಿನಗಳ ಟ್ರಯಲ್ ಪ್ಲಾನ್',
+    malayalam: '3 ദിവസത്തെ ട്രയൽ പ്ലാൻ',
+    assamese: '3 দিনৰ ট্রায়েল প্লেন',
+    konkani: '3 दिसांची ट्रायल प्लॅन',
+    gujarati: '3 દિવસનો ટ્રાયલ પ્લાન',
+    marathi: '3 दिवसांचा ट्रायल प्लॅन',
+    meitei: '3-day trial plan',
+    mizo: '3-day trial plan',
+    odia: '3 ଦିନର ଟ୍ରାୟାଲ୍ ପ୍ଲାନ୍',
+    punjabi: '3 ਦਿਨਾਂ ਦਾ ਟ੍ਰਾਇਲ ਪਲਾਨ',
+    nepali: '3 दिनको ट्रायल प्लान',
+    bengali: '3 দিনের ট্রায়াল প্ল্যান',
+    kashmiri: '3 دۄہ ٹرایل پلان',
+    ladakhi: '3 ཉིན trial plan',
+  );
+}
+
+String _subscriptionTrialValueAppLocalized(BuildContext context) {
+  final days = SubscriptionPlanConfig.trialDays;
+  final price = SubscriptionPlanConfig.trialPriceDisplay;
+  return context.strings.localized(
+    telugu: '$days రోజులకు $price',
+    english: '$price for $days days',
+    hindi: '$days दिनों के लिए $price',
+    tamil: '$days நாட்களுக்கு $price',
+    kannada: '$days ದಿನಗಳಿಗೆ $price',
+    malayalam: '$days ദിവസങ്ങൾക്ക് $price',
+    assamese: '$days দিনৰ বাবে $price',
+    konkani: '$days दिसां खातीर $price',
+    gujarati: '$days દિવસ માટે $price',
+    marathi: '$days दिवसांसाठी $price',
+    meitei: '$days numitki $price',
+    mizo: '$days ni atan $price',
+    odia: '$days ଦିନ ପାଇଁ $price',
+    punjabi: '$days ਦਿਨਾਂ ਲਈ $price',
+    nepali: '$days दिनका लागि $price',
+    bengali: '$days দিনের জন্য $price',
+    kashmiri: '$days دۄہن خٲطرٕ $price',
+    ladakhi: '$days ཉིན་ལ $price',
+  );
+}
+
+String _subscriptionMonthlyTitleAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'నెలవారీ ప్లాన్',
+    english: 'Monthly plan',
+    hindi: 'मासिक प्लान',
+    tamil: 'மாதாந்திர திட்டம்',
+    kannada: 'ಮಾಸಿಕ ಪ್ಲಾನ್',
+    malayalam: 'മാസിക പ്ലാൻ',
+    assamese: 'মাহেকীয়া প্লেন',
+    konkani: 'म्हयन्याचो प्लॅन',
+    gujarati: 'માસિક પ્લાન',
+    marathi: 'मासिक प्लॅन',
+    meitei: 'Monthly plan',
+    mizo: 'Monthly plan',
+    odia: 'ମାସିକ ପ୍ଲାନ୍',
+    punjabi: 'ਮਹੀਨਾਵਾਰ ਪਲਾਨ',
+    nepali: 'मासिक प्लान',
+    bengali: 'মাসিক প্ল্যান',
+    kashmiri: 'ماہانہ پلان',
+    ladakhi: 'Monthly plan',
+  );
+}
+
+String _subscriptionMonthlyValueAppLocalized(BuildContext context) {
+  final price = SubscriptionPlanConfig.monthlyPriceDisplay;
+  return context.strings.localized(
+    telugu: 'నెలకు $price',
+    english: '$price per month',
+    hindi: '$price प्रति माह',
+    tamil: 'மாதத்திற்கு $price',
+    kannada: 'ತಿಂಗಳಿಗೆ $price',
+    malayalam: 'മാസം $price',
+    assamese: 'প্ৰতি মাহে $price',
+    konkani: 'म्हयन्याक $price',
+    gujarati: 'દર મહિને $price',
+    marathi: 'दर महिन्याला $price',
+    meitei: 'tha khuding $price',
+    mizo: 'thla tin $price',
+    odia: 'ମାସକୁ $price',
+    punjabi: 'ਪ੍ਰਤੀ ਮਹੀਨਾ $price',
+    nepali: 'प्रति महिना $price',
+    bengali: 'প্রতি মাসে $price',
+    kashmiri: 'مہینس $price',
+    ladakhi: 'ཟླ་རེར $price',
+  );
+}
+
+String _subscriptionRenewalCopyAppLocalized(BuildContext context) {
+  final days = SubscriptionPlanConfig.trialDays;
+  final price = SubscriptionPlanConfig.monthlyPriceDisplay;
+  return context.strings.localized(
+    telugu:
+        '$days రోజుల ట్రయల్ తర్వాత, రద్దు చేయకపోతే నెలకు $price ఆటో రీన్యూ అవుతుంది.',
+    english:
+        'After the $days-day trial, it auto-renews at $price/month unless cancelled.',
+    hindi:
+        '$days दिन के ट्रायल के बाद, रद्द नहीं करने पर $price/माह पर ऑटो रिन्यू होगा।',
+    tamil:
+        '$days நாள் சோதனைக்குப் பிறகு, ரத்து செய்யாவிட்டால் $price/மாதம் தானாக புதுப்பிக்கும்.',
+    kannada:
+        '$days ದಿನಗಳ ಟ್ರಯಲ್ ನಂತರ, ರದ್ದು ಮಾಡದಿದ್ದರೆ ತಿಂಗಳಿಗೆ $price ಸ್ವಯಂ ನವೀಕರಣವಾಗುತ್ತದೆ.',
+    malayalam:
+        '$days ദിവസത്തെ ട്രയലിന് ശേഷം, റദ്ദാക്കാത്ത പക്ഷം $price/മാസം ഓട്ടോ പുതുക്കും.',
+    assamese:
+        '$days দিনৰ ট্রায়েলৰ পিছত বাতিল নকৰিলে মাহে $price অটো ৰিনিউ হ’ব।',
+    konkani:
+        '$days दिसांच्या ट्रायल उपरांत, रद्द करूंक ना जाल्यार म्हयन्याक $price ऑटो रिन्यू जातलो.',
+    gujarati:
+        '$days દિવસના ટ્રાયલ પછી, રદ ન કરો તો દર મહિને $price ઓટો રિન્યુ થશે.',
+    marathi:
+        '$days दिवसांच्या ट्रायलनंतर, रद्द न केल्यास दर महिन्याला $price ऑटो रिन्यू होईल.',
+    meitei:
+        '$days numit trial tungda cancel touroidrabadi tha khuding $price auto renew tougani.',
+    mizo:
+        '$days ni trial zawhah cancel loh chuan thla tin $price auto renew a ni ang.',
+    odia: '$days ଦିନ ଟ୍ରାୟାଲ୍ ପରେ, ବାତିଲ୍ ନକଲେ ମାସକୁ $price ଅଟୋ ରିନ୍ୟୁ ହେବ।',
+    punjabi:
+        '$days ਦਿਨਾਂ ਦੇ ਟ੍ਰਾਇਲ ਤੋਂ ਬਾਅਦ, ਰੱਦ ਨਾ ਕੀਤਾ ਤਾਂ $price/ਮਹੀਨਾ ਆਟੋ ਰੀਨਿਊ ਹੋਵੇਗਾ।',
+    nepali: '$days दिनको ट्रायलपछि, रद्द नगरेमा $price/महिना अटो रिन्यु हुन्छ।',
+    bengali:
+        '$days দিনের ট্রায়ালের পরে, বাতিল না করলে $price/মাসে অটো রিনিউ হবে।',
+    kashmiri:
+        '$days دۄہ ٹرایل پتہٕ، کینسل نہٕ کرنہٕ صورتس منز $price/مہینہٕ آٹو رینیو گژھن۔',
+    ladakhi:
+        '$days ཉིན trial རྗེས cancel མ་བྱས་ན $price/month auto renew འགྱུར།',
+  );
+}
+
+String _subscriptionTermsLabelAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'నిబంధనలు',
+    english: 'Terms',
+    hindi: 'नियम',
+    tamil: 'விதிமுறைகள்',
+    kannada: 'ನಿಯಮಗಳು',
+    malayalam: 'നിബന്ധനകൾ',
+    assamese: 'চৰ্তসমূহ',
+    konkani: 'नियम',
+    gujarati: 'નિયમો',
+    marathi: 'नियम',
+    meitei: 'Terms',
+    mizo: 'Terms',
+    odia: 'ନିୟମ',
+    punjabi: 'ਨਿਯਮ',
+    nepali: 'नियम',
+    bengali: 'শর্তাবলী',
+    kashmiri: 'شرط',
+    ladakhi: 'Terms',
+  );
+}
+
+String _subscriptionSkipLabelAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'స్కిప్',
+    english: 'Skip',
+    hindi: 'छोड़ें',
+    tamil: 'தவிர்',
+    kannada: 'ಸ್ಕಿಪ್',
+    malayalam: 'സ്കിപ്പ്',
+    assamese: 'এৰি যাওক',
+    konkani: 'सोडून दिवचें',
+    gujarati: 'સ્કિપ',
+    marathi: 'वगळा',
+    meitei: 'Skip',
+    mizo: 'Skip',
+    odia: 'ସ୍କିପ୍',
+    punjabi: 'ਛੱਡੋ',
+    nepali: 'छोड्नुहोस्',
+    bengali: 'স্কিপ',
+    kashmiri: 'سکپ',
+    ladakhi: 'Skip',
+  );
+}
+
+String _subscriptionButtonLabelAppLocalized(BuildContext context) {
+  return context.strings.localized(
+    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    english: 'Subscribe',
+    hindi: 'सदस्यता लें',
+    tamil: 'சந்தா செலுத்து',
+    kannada: 'ಚಂದಾದಾರರಾಗಿ',
+    malayalam: 'സബ്സ്ക്രൈബ് ചെയ്യുക',
+    assamese: 'সদস্যতা লওক',
+    konkani: 'सदस्यता घेयात',
+    gujarati: 'સબ્સ્ક્રાઇબ કરો',
+    marathi: 'सदस्यता घ्या',
+    meitei: 'Subscribe tou',
+    mizo: 'Subscribe rawh',
+    odia: 'ସବସ୍କ୍ରାଇବ୍ କରନ୍ତୁ',
+    punjabi: 'ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ',
+    nepali: 'सदस्यता लिनुहोस्',
+    bengali: 'সাবস্ক্রাইব করুন',
+    kashmiri: 'سبسکرایب کٔریو',
+    ladakhi: 'Subscribe བྱེད།',
   );
 }
 
@@ -12567,6 +12907,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
     required this.language,
     required this.viewerPosterProfile,
     required this.politicalProtocolPhotoUrls,
+    required this.partyLogoAssetPath,
     required this.showDefaultProtocolPhotos,
     required this.initialManualPhotoPaths,
     required this.defaultSlots,
@@ -12580,6 +12921,7 @@ class _PoliticalProtocolPhotoScreen extends StatefulWidget {
   final AppLanguage language;
   final PosterProfileData viewerPosterProfile;
   final List<String> politicalProtocolPhotoUrls;
+  final String? partyLogoAssetPath;
   final bool showDefaultProtocolPhotos;
   final List<String> initialManualPhotoPaths;
   final List<PoliticalProtocolSlot> defaultSlots;
@@ -13527,6 +13869,7 @@ class _PoliticalProtocolPhotoScreenState
       preferOriginalPosterQuality: true,
       viewerPosterProfile: widget.viewerPosterProfile,
       language: widget.language,
+      partyLogoAssetPath: widget.partyLogoAssetPath,
       politicalProtocolPhotoUrls: const <String>[],
       politicalProtocolLocalPhotoPaths: const <String>[],
       politicalProtocolSlotsOverride: const <PoliticalProtocolSlot>[],
@@ -14890,6 +15233,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               language: language,
               viewerPosterProfile: viewerPosterProfile,
               politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
+              partyLogoAssetPath: _resolvePoliticalPartyLogoAssetPath(),
               showDefaultProtocolPhotos:
                   item.personalizationConfig?.hasPoliticalProtocolLayout ??
                   false,
@@ -16152,20 +16496,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             vertical: 24,
           ),
           child: _SubscriptionAccessDialog(
-            title: _subscriptionDialogTitleCleanLocalized(screenContext),
-            message: _subscriptionPromptCopyCleanLocalized(screenContext),
-            trialTitle: _subscriptionTrialTitleCleanLocalized(screenContext),
-            trialValue: _subscriptionTrialValueCleanLocalized(screenContext),
-            monthlyTitle: _subscriptionMonthlyTitleCleanLocalized(
-              screenContext,
-            ),
-            monthlyValue: _subscriptionMonthlyValueCleanLocalized(
-              screenContext,
-            ),
-            renewalCopy: _subscriptionRenewalCopyCleanLocalized(screenContext),
-            termsLabel: _subscriptionTermsLabelCleanLocalized(screenContext),
-            skipLabel: _subscriptionSkipLabelCleanLocalized(screenContext),
-            actionLabel: _subscriptionButtonLabelCleanLocalized(screenContext),
+            title: _subscriptionDialogTitleAppLocalized(screenContext),
+            message: _subscriptionPromptCopyAppLocalized(screenContext),
+            trialTitle: _subscriptionTrialTitleAppLocalized(screenContext),
+            trialValue: _subscriptionTrialValueAppLocalized(screenContext),
+            monthlyTitle: _subscriptionMonthlyTitleAppLocalized(screenContext),
+            monthlyValue: _subscriptionMonthlyValueAppLocalized(screenContext),
+            renewalCopy: _subscriptionRenewalCopyAppLocalized(screenContext),
+            termsLabel: _subscriptionTermsLabelAppLocalized(screenContext),
+            skipLabel: _subscriptionSkipLabelAppLocalized(screenContext),
+            actionLabel: _subscriptionButtonLabelAppLocalized(screenContext),
             onTermsTap: () =>
                 _openExternalPublicUrl(dialogContext, AppPublicInfo.termsUrl),
             onSkipTap: () => Navigator.of(dialogContext).pop(false),
