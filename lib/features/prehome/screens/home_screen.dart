@@ -13757,12 +13757,12 @@ class _PoliticalProtocolPhotoScreenState
       deleteArmedManualIndex: _deleteArmedManualIndex,
       onDefaultSlotChanged: (index, slot) {
         if (index >= 0 && index < _defaultSlots.length) {
-          setState(() => _defaultSlots[index] = slot);
+          _defaultSlots[index] = slot;
         }
       },
       onManualSlotChanged: (index, slot) {
         if (index >= 0 && index < _manualSlots.length) {
-          setState(() => _manualSlots[index] = slot);
+          _manualSlots[index] = slot;
         }
       },
       onManualPhotoTap: (index) {
@@ -14058,24 +14058,12 @@ class _PoliticalProtocolPhotoScreenState
                   fit: StackFit.expand,
                   children: <Widget>[
                     _buildPersonalizedPosterBase(),
-                    IgnorePointer(
-                      child: _buildPosterPhotoSlots(
-                        canvasWidth: posterWidth,
-                        canvasHeight: posterHeight,
-                      ),
+                    _buildPosterPhotoSlots(
+                      canvasWidth: posterWidth,
+                      canvasHeight: posterHeight,
                     ),
                   ],
                 ),
-              ),
-            ),
-            Positioned(
-              left: posterLeft,
-              top: posterTop,
-              width: posterWidth,
-              height: posterHeight,
-              child: _buildPosterPhotoSlots(
-                canvasWidth: posterWidth,
-                canvasHeight: posterHeight,
               ),
             ),
           ],
