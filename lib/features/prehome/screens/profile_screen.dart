@@ -20,6 +20,7 @@ import 'package:mana_poster/features/prehome/screens/language_settings_screen.da
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
+import 'package:mana_poster/features/prehome/screens/purchase_invoices_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -317,9 +318,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showTopSnackBar(
-      AppSnackBar.build(content: Text(copy.stateSavedMessage)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showTopSnackBar(AppSnackBar.build(content: Text(copy.stateSavedMessage)));
   }
 
   @override
@@ -758,6 +759,18 @@ class _ProfileMoreScreen extends StatelessWidget {
                   subtitle: copy.subscriptionSubtitle,
                   badge: _ProfileItemBadge.premium,
                   onTap: () => unawaited(_openSubscriptionPlan(context)),
+                ),
+                _ProfileItemData(
+                  icon: Icons.receipt_long_rounded,
+                  title: copy.purchaseInvoicesTitle,
+                  subtitle: copy.purchaseInvoicesSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PurchaseInvoicesScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _ProfileItemData(
                   icon: Icons.group_add_rounded,
@@ -1352,6 +1365,22 @@ class _ProfileCopy {
     tamil: 'பிளான் விவரங்களை பார்க்கவும்',
     kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
     malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
+  );
+  String get purchaseInvoicesTitle => _localized(
+    telugu: 'కొనుగోలు ఇన్వాయిసులు',
+    english: 'Purchase invoices',
+    hindi: 'खरीद इनवॉइस',
+    tamil: 'வாங்கிய ரசீதுகள்',
+    kannada: 'ಖರೀದಿ ಇನ್ವಾಯ್ಸ್',
+    malayalam: 'വാങ്ങൽ ഇൻവോയിസുകൾ',
+  );
+  String get purchaseInvoicesSubtitle => _localized(
+    telugu: 'కొనుగోలు వివరాలు చూడండి',
+    english: 'View purchase details',
+    hindi: 'खरीद विवरण देखें',
+    tamil: 'வாங்கிய விவரங்களை பார்க்கவும்',
+    kannada: 'ಖರೀದಿ ವಿವರಗಳನ್ನು ನೋಡಿ',
+    malayalam: 'വാങ്ങൽ വിവരങ്ങൾ കാണുക',
   );
   String get referralRewardsTitle =>
       _localized(telugu: 'రిఫరల్ బహుమతులు', english: 'Referral rewards');
