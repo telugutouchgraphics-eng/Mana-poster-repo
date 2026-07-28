@@ -3943,16 +3943,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (slug.isEmpty || slug == _moreCategorySlug) {
         return;
       }
-      final existing = bySlug[slug];
-      if (existing == null) {
-        bySlug[slug] = category;
-        return;
-      }
-      final existingHasDate = existing.dateLabel?.trim().isNotEmpty ?? false;
-      final incomingHasDate = category.dateLabel?.trim().isNotEmpty ?? false;
-      if (!existingHasDate && category.isDynamic && incomingHasDate) {
-        bySlug[slug] = category;
-      }
+      bySlug.putIfAbsent(category.slug, () => category);
     }
 
     final staticCategories = _allStaticCategories();
@@ -6533,23 +6524,13 @@ class _HomeScreenState extends State<HomeScreen>
     );
     final manualCategoryIdentity = Object.hashAll(
       _manualEventCategories
-          .map(
-            (item) =>
-                '${item.slug}:${item.label}:'
-                '${item.eventStartDate?.millisecondsSinceEpoch ?? 0}:'
-                '${item.eventEndDate?.millisecondsSinceEpoch ?? 0}:'
-                '${item.tags.join(",")}:${item.iconAssetPath ?? ""}',
-          )
+          .map((item) => '${item.slug}:${item.label}')
           .toList(growable: false)
         ..sort(),
     );
     final permanentCategoryIdentity = Object.hashAll(
       _permanentCategories
-          .map(
-            (item) =>
-                '${item.slug}:${item.label}:'
-                '${item.tags.join(",")}:${item.iconAssetPath ?? ""}',
-          )
+          .map((item) => '${item.slug}:${item.label}')
           .toList(growable: false)
         ..sort(),
     );
