@@ -20,7 +20,14 @@ import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/foundation.dart'
-    show compute, kDebugMode, kIsWeb, kProfileMode, setEquals, ValueListenable;
+    show
+        compute,
+        kDebugMode,
+        kIsWeb,
+        kProfileMode,
+        mapEquals,
+        setEquals,
+        ValueListenable;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -76,6 +83,8 @@ import 'package:mana_poster/features/prehome/services/notification_service.dart'
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:mana_poster/features/prehome/services/permanent_category_service.dart';
 import 'package:mana_poster/features/prehome/services/personalized_video_export_service.dart';
+import 'package:mana_poster/features/prehome/services/political_party_logo_service.dart';
+import 'package:mana_poster/features/prehome/services/political_party_service.dart';
 import 'package:mana_poster/features/prehome/services/political_protocol_photo_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/referral_reward_service.dart';
@@ -1313,6 +1322,10 @@ class _HomeScreenState extends State<HomeScreen>
       const ManualEventCategoryService();
   final PermanentCategoryService _permanentCategoryService =
       const PermanentCategoryService();
+  final PoliticalPartyLogoService _politicalPartyLogoService =
+      const PoliticalPartyLogoService();
+  final PoliticalPartyService _politicalPartyService =
+      const PoliticalPartyService();
   final ScrollController _posterScrollController = ScrollController();
   final ScrollController _categoryScrollController = ScrollController();
   final PageController _posterPageController = PageController();
@@ -1355,6 +1368,10 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void>? _approvedTemplatesLoadFuture;
   Future<void>? _manualEventCategoriesLoadFuture;
   Future<void>? _permanentCategoriesLoadFuture;
+  Future<void>? _politicalPartyLogosLoadFuture;
+  Future<void>? _politicalPartiesLoadFuture;
+  StreamSubscription<Map<String, String>>? _politicalPartyLogoSubscription;
+  StreamSubscription<List<PoliticalParty>>? _politicalPartySubscription;
   Future<void>? _partyPreferenceLoadFuture;
   Future<void>? _regionSelectionLoadFuture;
   Future<void>? _regionDependentReloadFuture;
@@ -1365,6 +1382,8 @@ class _HomeScreenState extends State<HomeScreen>
   final Set<String> _categoryExhaustedSlugs = <String>{};
   List<DynamicCategory> _manualEventCategories = const <DynamicCategory>[];
   List<DynamicCategory> _permanentCategories = const <DynamicCategory>[];
+  Map<String, String> _partyLogoOverridesByPartyId = const <String, String>{};
+  List<PoliticalParty> _politicalParties = politicalParties;
   final Map<String, bool> _dynamicCategoryAvailabilityBySlug = <String, bool>{};
   final Map<String, Future<void>> _dynamicCategoryAvailabilityFutureBySlug =
       <String, Future<void>>{};
@@ -1481,6 +1500,20 @@ class _HomeScreenState extends State<HomeScreen>
         _loadPartyPreference,
       );
       _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1650),
+        _loadPoliticalParties,
+      );
+      _politicalPartySubscription ??= _politicalPartyService
+          .watchParties()
+          .listen(_applyPoliticalParties, onError: (_) {});
+      _scheduleDeferredHomeStartupTask(
+        const Duration(milliseconds: 1800),
+        _loadPoliticalPartyLogos,
+      );
+      _politicalPartyLogoSubscription ??= _politicalPartyLogoService
+          .watchLogoUrlsByPartyId()
+          .listen(_applyPoliticalPartyLogos, onError: (_) {});
+      _scheduleDeferredHomeStartupTask(
         const Duration(milliseconds: 2100),
         _loadStartupTemplateSnapshot,
       );
@@ -1515,6 +1548,92 @@ class _HomeScreenState extends State<HomeScreen>
       }
       await task();
     }());
+  }
+
+  Future<void> _loadPoliticalParties() async {
+    final existing = _politicalPartiesLoadFuture;
+    if (existing != null) {
+      return existing;
+    }
+    final future = _loadPoliticalPartiesInternal();
+    _politicalPartiesLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_politicalPartiesLoadFuture, future)) {
+        _politicalPartiesLoadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _loadPoliticalPartiesInternal() async {
+    final parties = await _politicalPartyService.fetchParties();
+    _applyPoliticalParties(parties);
+  }
+
+  void _applyPoliticalParties(List<PoliticalParty> parties) {
+    if (!mounted) {
+      return;
+    }
+    final currentSignature = _politicalPartySignature(_politicalParties);
+    final nextSignature = _politicalPartySignature(parties);
+    if (currentSignature == nextSignature) {
+      return;
+    }
+    setState(() {
+      _politicalParties = parties;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+    });
+  }
+
+  String _politicalPartySignature(List<PoliticalParty> parties) {
+    return parties
+        .map(
+          (party) =>
+              '${party.id}:${party.name}:${party.shortName}:${party.regionIds.join(",")}:${party.logoAssetPath ?? ""}:${party.localizedNamesSignature}',
+        )
+        .join('|');
+  }
+
+  Future<void> _loadPoliticalPartyLogos() async {
+    final existing = _politicalPartyLogosLoadFuture;
+    if (existing != null) {
+      return existing;
+    }
+    final future = _loadPoliticalPartyLogosInternal();
+    _politicalPartyLogosLoadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_politicalPartyLogosLoadFuture, future)) {
+        _politicalPartyLogosLoadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _loadPoliticalPartyLogosInternal() async {
+    final logos = await _politicalPartyLogoService.fetchLogoUrlsByPartyId();
+    _applyPoliticalPartyLogos(logos);
+  }
+
+  void _applyPoliticalPartyLogos(Map<String, String> logos) {
+    if (!mounted || mapEquals(_partyLogoOverridesByPartyId, logos)) {
+      return;
+    }
+    setState(() {
+      _partyLogoOverridesByPartyId = logos;
+      _categoryListCache = null;
+      _categoryListIdentity = null;
+    });
+  }
+
+  String? _partyLogoPathFor(PoliticalParty party) {
+    final overrideUrl = _partyLogoOverridesByPartyId[party.id]?.trim() ?? '';
+    if (overrideUrl.isNotEmpty) {
+      return overrideUrl;
+    }
+    return party.logoAssetPath;
   }
 
   Future<void> _loadAllFeedInterestScores() async {
@@ -2109,6 +2228,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
     AppNavigator.routeObserver.unsubscribe(this);
     _authStateSubscription?.cancel();
+    _politicalPartySubscription?.cancel();
+    _politicalPartyLogoSubscription?.cancel();
     _homeAuthReadyRetryTimer?.cancel();
     _startupSnapshotPersistTimer?.cancel();
     _allFeedInterestSaveTimer?.cancel();
@@ -3863,7 +3984,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (selectedPartyId == null) {
       return const <_CategoryChipData>[];
     }
-    final knownParties = politicalParties
+    final knownParties = _politicalParties
         .where((party) => party.id == selectedPartyId)
         .toList(growable: false);
     final knownPartyIds = knownParties.map((party) => party.id).toSet();
@@ -3876,7 +3997,7 @@ class _HomeScreenState extends State<HomeScreen>
         _CategoryChipData(
           slug: 'party_${party.id}',
           label: party.nameFor(language),
-          iconAssetPath: party.logoAssetPath,
+          iconAssetPath: _partyLogoPathFor(party),
           matchTags: <String>[
             party.id,
             party.shortName,
@@ -3900,7 +4021,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (_selectedPoliticalPartyIds.isEmpty) {
       return null;
     }
-    for (final party in politicalParties) {
+    for (final party in _politicalParties) {
       if (_selectedPoliticalPartyIds.contains(party.id)) {
         return party.id;
       }
@@ -7532,9 +7653,17 @@ class _HomeScreenState extends State<HomeScreen>
                                           selectedCategory.slug,
                                         ) !=
                                         null,
+                                showPartyLogoInNameChip:
+                                    _partyIdFromCategorySlug(
+                                      selectedCategory.slug,
+                                    ) !=
+                                    null,
                                 politicalProtocolPhotoScopeKey: _normalizeTag(
                                   selectedCategory.slug,
                                 ),
+                                partyLogoOverridesByPartyId:
+                                    _partyLogoOverridesByPartyId,
+                                politicalParties: _politicalParties,
                                 forcedPoliticalProtocolPartyId:
                                     _partyIdFromCategorySlug(
                                       selectedCategory.slug,
@@ -13954,7 +14083,10 @@ class _TemplateFeedItem extends StatefulWidget {
     required this.onPosterPhotoDragStateChanged,
     this.playbackEnabled = true,
     this.enablePoliticalProtocolOverlay = false,
+    this.showPartyLogoInNameChip = false,
     this.politicalProtocolPhotoScopeKey = '',
+    this.partyLogoOverridesByPartyId = const <String, String>{},
+    this.politicalParties = const <PoliticalParty>[],
     this.forcedPoliticalProtocolPartyId,
     this.preferUltraLightImage = false,
     this.fillViewport = false,
@@ -13972,7 +14104,10 @@ class _TemplateFeedItem extends StatefulWidget {
   final ValueChanged<bool> onPosterPhotoDragStateChanged;
   final bool playbackEnabled;
   final bool enablePoliticalProtocolOverlay;
+  final bool showPartyLogoInNameChip;
   final String politicalProtocolPhotoScopeKey;
+  final Map<String, String> partyLogoOverridesByPartyId;
+  final List<PoliticalParty> politicalParties;
   final String? forcedPoliticalProtocolPartyId;
   final bool preferUltraLightImage;
   final bool fillViewport;
@@ -14081,7 +14216,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         item.personalizationConfig != null;
   }
 
+  List<PoliticalParty> get _availablePoliticalParties =>
+      widget.politicalParties.isEmpty
+      ? politicalParties
+      : widget.politicalParties;
+
   PoliticalParty? _resolvePoliticalParty() {
+    final forcedParty = _resolvePoliticalPartyFromId(
+      widget.forcedPoliticalProtocolPartyId ?? '',
+    );
+    if (forcedParty != null) {
+      return forcedParty;
+    }
+
     final tags = <String>{
       for (final tag in item.categoryTags) _normalizeTagWorker(tag),
       _normalizeTagWorker(item.primaryFirestoreCategoryId ?? ''),
@@ -14089,7 +14236,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     if (tags.isEmpty) {
       return null;
     }
-    for (final party in politicalParties) {
+    for (final party in _availablePoliticalParties) {
       final partyId = _normalizeTagWorker(party.id);
       final shortName = _normalizeTagWorker(party.shortName);
       final matches =
@@ -14104,8 +14251,35 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return null;
   }
 
+  PoliticalParty? _resolvePoliticalPartyFromId(String rawId) {
+    final normalized = _normalizeTagWorker(rawId);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    for (final party in _availablePoliticalParties) {
+      final partyId = _normalizeTagWorker(party.id);
+      final shortName = _normalizeTagWorker(party.shortName);
+      if (normalized == partyId ||
+          normalized == 'party_$partyId' ||
+          (shortName.isNotEmpty && normalized == shortName) ||
+          (shortName.isNotEmpty && normalized == 'party_$shortName')) {
+        return party;
+      }
+    }
+    return null;
+  }
+
   String? _resolvePoliticalPartyLogoAssetPath() {
-    return _resolvePoliticalParty()?.logoAssetPath;
+    final party = _resolvePoliticalParty();
+    if (party == null) {
+      return null;
+    }
+    final overrideUrl =
+        widget.partyLogoOverridesByPartyId[party.id]?.trim() ?? '';
+    if (overrideUrl.isNotEmpty) {
+      return overrideUrl;
+    }
+    return party.logoAssetPath;
   }
 
   String? _resolvePoliticalPartyId() {
@@ -15602,7 +15776,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   preferOriginalPosterQuality: renderOriginalPosterQuality,
                   viewerPosterProfile: viewerPosterProfile,
                   language: language,
-                  partyLogoAssetPath: _resolvePoliticalPartyLogoAssetPath(),
+                  partyLogoAssetPath: widget.showPartyLogoInNameChip
+                      ? _resolvePoliticalPartyLogoAssetPath()
+                      : null,
                   politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
                   politicalProtocolLocalPhotoPaths:
                       _manualPoliticalProtocolPhotoPaths,
@@ -15656,7 +15832,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             preferOriginalPosterQuality: renderOriginalPosterQuality,
             viewerPosterProfile: viewerPosterProfile,
             language: language,
-            partyLogoAssetPath: _resolvePoliticalPartyLogoAssetPath(),
+            partyLogoAssetPath: widget.showPartyLogoInNameChip
+                ? _resolvePoliticalPartyLogoAssetPath()
+                : null,
             politicalProtocolPhotoUrls: _politicalProtocolPhotoUrls,
             politicalProtocolLocalPhotoPaths:
                 _manualPoliticalProtocolPhotoPaths,
@@ -19092,7 +19270,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     double fallbackHeight = 18,
   }) {
     final logoPath = widget.partyLogoAssetPath?.trim();
-    if (logoPath == null || logoPath.isEmpty) {
+    if (_showPartyLogoInNameChip || logoPath == null || logoPath.isEmpty) {
       return Container(
         width: fallbackWidth,
         height: fallbackHeight,
@@ -19135,6 +19313,88 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     );
   }
 
+  bool get _showPartyLogoInNameChip {
+    final logoPath = widget.partyLogoAssetPath?.trim();
+    return logoPath != null && logoPath.isNotEmpty;
+  }
+
+  Widget _buildPartyLogoForNameChip({double size = 24}) {
+    final logoPath = widget.partyLogoAssetPath!.trim();
+    final lower = logoPath.toLowerCase();
+    final isNetwork =
+        lower.startsWith('https://') || lower.startsWith('http://');
+    final isSvg = lower.endsWith('.svg') || lower.contains('.svg?');
+    final fallback = Icon(
+      Icons.flag_rounded,
+      color: const Color(0xFF64748B),
+      size: (size * 0.56).clamp(12.0, 20.0),
+    );
+    final logo = isNetwork
+        ? (isSvg
+              ? SvgPicture.network(
+                  logoPath,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (_) => fallback,
+                )
+              : CachedNetworkImage(
+                  imageUrl: logoPath,
+                  fit: BoxFit.contain,
+                  placeholder: (_, _) => fallback,
+                  errorWidget: (_, _, _) => fallback,
+                ))
+        : (isSvg
+              ? SvgPicture.asset(
+                  logoPath,
+                  fit: BoxFit.contain,
+                  placeholderBuilder: (_) => fallback,
+                )
+              : Image.asset(
+                  logoPath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => fallback,
+                ));
+
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all((size * 0.035).clamp(0.5, 1.2)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.96),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.55),
+          width: (size * 0.018).clamp(0.4, 0.7),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ClipOval(child: logo),
+    );
+  }
+
+  Widget _buildNameWithOptionalPartyLogo({
+    required Widget name,
+    MainAxisAlignment alignment = MainAxisAlignment.center,
+    double logoSize = 24,
+    double gap = 6,
+  }) {
+    if (!_showPartyLogoInNameChip) {
+      return name;
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: alignment,
+      children: <Widget>[
+        _buildPartyLogoForNameChip(size: logoSize),
+        SizedBox(width: gap),
+        Flexible(child: name),
+      ],
+    );
+  }
+
+  double _nameChipPartyLogoSize(double stripPixelHeight) {
+    return (stripPixelHeight * 0.92).clamp(24.0, 64.0).toDouble();
+  }
+
   Widget _buildEnglishBusinessStrip({
     required String resolvedName,
     required String resolvedDesignation,
@@ -19144,21 +19404,25 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     required Color mutedStripTextColor,
     required bool showPhoneInStrip,
     required String resolvedPhone,
+    double partyLogoSize = 28,
   }) {
     final hasDesignation = resolvedDesignation.isNotEmpty;
     if (!hasDesignation && !showPhoneInStrip) {
       return Center(
-        child: _legacyAwareText(
-          text: resolvedName,
-          fontFamily: displayNameFontFamily,
-          maxLines: 1,
-          textAlign: TextAlign.center,
-          fitToWidth: true,
-          style: TextStyle(
-            color: stripTextColor,
-            fontWeight: FontWeight.w700,
-            fontSize: 26,
-            height: 1.0,
+        child: _buildNameWithOptionalPartyLogo(
+          logoSize: partyLogoSize,
+          name: _legacyAwareText(
+            text: resolvedName,
+            fontFamily: displayNameFontFamily,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            fitToWidth: true,
+            style: TextStyle(
+              color: stripTextColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 26,
+              height: 1.0,
+            ),
           ),
         ),
       );
@@ -19169,6 +19433,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         Expanded(
           child: Row(
             children: <Widget>[
+              if (_showPartyLogoInNameChip) ...<Widget>[
+                _buildPartyLogoForNameChip(size: partyLogoSize),
+                const SizedBox(width: 8),
+              ],
               Flexible(
                 child: _legacyAwareText(
                   text: resolvedName,
@@ -20092,6 +20360,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     final stripTextColor = _onStripColor(stripGradient);
     final mutedStripTextColor = stripTextColor.withValues(alpha: 0.82);
     final dividerColor = Colors.white.withValues(alpha: 0.9);
+    final partyLogoSize = _nameChipPartyLogoSize(stripPixelHeight);
 
     Widget buildSplitStripRow({
       required double nameFontSize,
@@ -20103,6 +20372,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     }) {
       return Row(
         children: <Widget>[
+          if (_showPartyLogoInNameChip) ...<Widget>[
+            _buildPartyLogoForNameChip(size: partyLogoSize),
+            const SizedBox(width: 6),
+          ],
           Expanded(
             flex: 58,
             child: _legacyAwareText(
@@ -20174,18 +20447,24 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                               mutedStripTextColor: mutedStripTextColor,
                               showPhoneInStrip: showPhoneInStrip,
                               resolvedPhone: resolvedPhone,
+                              partyLogoSize: partyLogoSize,
                             )
-                          : _legacyAwareText(
-                              text: resolvedName,
-                              fontFamily: displayNameFontFamily,
-                              maxLines: 1,
-                              textAlign: TextAlign.left,
-                              fitToWidth: true,
-                              style: TextStyle(
-                                color: stripTextColor,
-                                fontWeight: FontWeight.w500,
-                                fontSize: businessNameFontSize,
-                                height: isTeluguName ? 0.98 : 1.0,
+                          : _buildNameWithOptionalPartyLogo(
+                              alignment: MainAxisAlignment.start,
+                              logoSize: partyLogoSize,
+                              gap: 8,
+                              name: _legacyAwareText(
+                                text: resolvedName,
+                                fontFamily: displayNameFontFamily,
+                                maxLines: 1,
+                                textAlign: TextAlign.left,
+                                fitToWidth: true,
+                                style: TextStyle(
+                                  color: stripTextColor,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: businessNameFontSize,
+                                  height: isTeluguName ? 0.98 : 1.0,
+                                ),
                               ),
                             ),
                     ),
@@ -20193,17 +20472,20 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                 )
         else if (_isEnglishOnlyText(resolvedName) &&
             resolvedDesignation.isEmpty) ...<Widget>[
-          _legacyAwareText(
-            text: resolvedName,
-            fontFamily: displayNameFontFamily,
-            maxLines: 1,
-            textAlign: TextAlign.center,
-            fitToWidth: true,
-            style: TextStyle(
-              color: stripTextColor,
-              fontWeight: FontWeight.w700,
-              fontSize: englishPersonalNameFontSize,
-              height: 1.0,
+          _buildNameWithOptionalPartyLogo(
+            logoSize: partyLogoSize,
+            name: _legacyAwareText(
+              text: resolvedName,
+              fontFamily: displayNameFontFamily,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              fitToWidth: true,
+              style: TextStyle(
+                color: stripTextColor,
+                fontWeight: FontWeight.w700,
+                fontSize: englishPersonalNameFontSize,
+                height: 1.0,
+              ),
             ),
           ),
         ] else if (_isEnglishOnlyText(resolvedName) &&
@@ -20227,17 +20509,20 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               designationHeight: 0.82,
             )
           else
-            _legacyAwareText(
-              text: resolvedName,
-              fontFamily: displayNameFontFamily,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              fitToWidth: true,
-              style: TextStyle(
-                color: stripTextColor,
-                fontWeight: FontWeight.w500,
-                fontSize: personalNameFontSize,
-                height: personalNameLineHeight,
+            _buildNameWithOptionalPartyLogo(
+              logoSize: partyLogoSize,
+              name: _legacyAwareText(
+                text: resolvedName,
+                fontFamily: displayNameFontFamily,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                fitToWidth: true,
+                style: TextStyle(
+                  color: stripTextColor,
+                  fontWeight: FontWeight.w500,
+                  fontSize: personalNameFontSize,
+                  height: personalNameLineHeight,
+                ),
               ),
             ),
         ],

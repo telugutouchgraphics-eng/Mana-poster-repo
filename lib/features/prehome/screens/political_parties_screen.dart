@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,6 +13,8 @@ import 'package:mana_poster/features/prehome/models/political_party.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
+import 'package:mana_poster/features/prehome/services/political_party_logo_service.dart';
+import 'package:mana_poster/features/prehome/services/political_party_service.dart';
 import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
@@ -31,6 +35,10 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
   final TextEditingController _searchController = TextEditingController();
   AppRegion? _region;
   Set<String> _selectedPartyIds = <String>{};
+  List<PoliticalParty> _politicalParties = politicalParties;
+  StreamSubscription<List<PoliticalParty>>? _partySubscription;
+  StreamSubscription<Map<String, String>>? _partyLogoSubscription;
+  Map<String, String> _partyLogoOverridesByPartyId = const <String, String>{};
   String _searchQuery = '';
   bool _loading = true;
   bool _continuing = false;
@@ -40,10 +48,63 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
   void initState() {
     super.initState();
     unawaited(_loadRegion());
+    unawaited(_loadParties());
+    _partySubscription = const PoliticalPartyService().watchParties().listen(
+      _applyParties,
+      onError: (_) {},
+    );
+    unawaited(_loadPartyLogos());
+    _partyLogoSubscription = const PoliticalPartyLogoService()
+        .watchLogoUrlsByPartyId()
+        .listen(_applyPartyLogos, onError: (_) {});
+  }
+
+  Future<void> _loadPartyLogos() async {
+    final logos = await const PoliticalPartyLogoService()
+        .fetchLogoUrlsByPartyId();
+    _applyPartyLogos(logos);
+  }
+
+  Future<void> _loadParties() async {
+    final parties = await const PoliticalPartyService().fetchParties();
+    _applyParties(parties);
+  }
+
+  void _applyParties(List<PoliticalParty> parties) {
+    if (!mounted) {
+      return;
+    }
+    final currentSignature = _partySignature(_politicalParties);
+    final nextSignature = _partySignature(parties);
+    if (currentSignature == nextSignature) {
+      return;
+    }
+    setState(() => _politicalParties = parties);
+  }
+
+  String _partySignature(List<PoliticalParty> parties) {
+    return parties
+        .map(
+          (party) =>
+              '${party.id}:${party.name}:${party.shortName}:${party.regionIds.join(",")}:${party.logoAssetPath ?? ""}:${party.localizedNamesSignature}',
+        )
+        .join('|');
+  }
+
+  void _applyPartyLogos(Map<String, String> logos) {
+    if (!mounted) {
+      return;
+    }
+    if (mapEquals(_partyLogoOverridesByPartyId, logos)) {
+      return;
+    }
+    setState(() => _partyLogoOverridesByPartyId = logos);
   }
 
   @override
   void dispose() {
+    _partySubscription?.cancel();
+    _partyLogoSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -171,6 +232,8 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
                               final party = parties[index];
                               return _PartyTile(
                                 party: party,
+                                logoOverrideUrl:
+                                    _partyLogoOverridesByPartyId[party.id],
                                 selected: _selectedPartyIds.contains(party.id),
                                 onTap: () {
                                   setState(() {
@@ -272,7 +335,7 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
       }
       return <String>{};
     }
-    final partyIds = partiesForRegion(
+    final partyIds = _partiesForRegion(
       region.id,
     ).map((party) => party.id).toSet();
     return _selectedPartyIds.where(partyIds.contains).toSet();
@@ -292,7 +355,7 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
   }
 
   List<PoliticalParty> _allRankedPartiesForSelection(AppRegion region) {
-    final sorted = List<PoliticalParty>.of(politicalParties);
+    final sorted = List<PoliticalParty>.of(_politicalParties);
     int rank(PoliticalParty party) {
       if (party.regionIds.contains(region.id)) {
         return 0;
@@ -319,7 +382,7 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
       return const <PoliticalParty>[];
     }
     final sorted = !widget.returnToPreviousOnSave
-        ? partiesForRegion(region.id)
+        ? _partiesForRegion(region.id)
         : _allRankedPartiesForSelection(region);
     final query = _searchQuery.trim().toLowerCase();
     if (query.isEmpty) {
@@ -336,6 +399,12 @@ class _PoliticalPartiesScreenState extends State<PoliticalPartiesScreen> {
                   .toLowerCase()
                   .contains(query);
         })
+        .toList(growable: false);
+  }
+
+  List<PoliticalParty> _partiesForRegion(String regionId) {
+    return _politicalParties
+        .where((party) => party.isRelevantTo(regionId))
         .toList(growable: false);
   }
 }
@@ -505,11 +574,13 @@ class UnusedPartiesHeader extends StatelessWidget {
 class _PartyTile extends StatelessWidget {
   const _PartyTile({
     required this.party,
+    required this.logoOverrideUrl,
     required this.selected,
     required this.onTap,
   });
 
   final PoliticalParty party;
+  final String? logoOverrideUrl;
   final bool selected;
   final VoidCallback onTap;
 
@@ -539,7 +610,11 @@ class _PartyTile extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              _PartyLogo(party: party, color: color),
+              _PartyLogo(
+                party: party,
+                color: color,
+                logoOverrideUrl: logoOverrideUrl,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -616,21 +691,32 @@ class _PartyTile extends StatelessWidget {
 }
 
 class _PartyLogo extends StatelessWidget {
-  const _PartyLogo({required this.party, required this.color});
+  const _PartyLogo({
+    required this.party,
+    required this.color,
+    this.logoOverrideUrl,
+  });
 
   final PoliticalParty party;
   final Color color;
+  final String? logoOverrideUrl;
 
   @override
   Widget build(BuildContext context) {
-    final logoAssetPath = party.logoAssetPath;
+    final logoPath = (logoOverrideUrl?.trim().isNotEmpty ?? false)
+        ? logoOverrideUrl!.trim()
+        : party.logoAssetPath;
+    final lowerLogoPath = logoPath?.toLowerCase() ?? '';
+    final isNetwork =
+        lowerLogoPath.startsWith('https://') ||
+        lowerLogoPath.startsWith('http://');
     return Container(
       width: 58,
       height: 58,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: color.withValues(alpha: 0.28), width: 2),
+        border: Border.all(color: color.withValues(alpha: 0.16), width: 0.8),
         boxShadow: const <BoxShadow>[
           BoxShadow(
             color: Color(0x120F172A),
@@ -640,7 +726,7 @@ class _PartyLogo extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
-      child: logoAssetPath == null
+      child: logoPath == null
           ? Text(
               party.shortName.characters.first,
               style: TextStyle(
@@ -651,34 +737,65 @@ class _PartyLogo extends StatelessWidget {
             )
           : ClipOval(
               child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: logoAssetPath.endsWith('.svg')
-                    ? SvgPicture.asset(
-                        logoAssetPath,
-                        fit: BoxFit.contain,
-                        placeholderBuilder: (_) => Text(
-                          party.shortName.characters.first,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 22,
-                          ),
-                        ),
-                      )
-                    : Image.asset(
-                        logoAssetPath,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => Text(
-                          party.shortName.characters.first,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 22,
-                          ),
-                        ),
-                      ),
+                padding: const EdgeInsets.all(2),
+                child:
+                    lowerLogoPath.endsWith('.svg') ||
+                        lowerLogoPath.contains('.svg?')
+                    ? (isNetwork
+                          ? SvgPicture.network(
+                              logoPath,
+                              fit: BoxFit.contain,
+                              placeholderBuilder: (_) => _PartyLogoFallback(
+                                party: party,
+                                color: color,
+                              ),
+                            )
+                          : SvgPicture.asset(
+                              logoPath,
+                              fit: BoxFit.contain,
+                              placeholderBuilder: (_) => _PartyLogoFallback(
+                                party: party,
+                                color: color,
+                              ),
+                            ))
+                    : (isNetwork
+                          ? CachedNetworkImage(
+                              imageUrl: logoPath,
+                              fit: BoxFit.contain,
+                              placeholder: (_, _) => _PartyLogoFallback(
+                                party: party,
+                                color: color,
+                              ),
+                              errorWidget: (_, _, _) => _PartyLogoFallback(
+                                party: party,
+                                color: color,
+                              ),
+                            )
+                          : Image.asset(
+                              logoPath,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => _PartyLogoFallback(
+                                party: party,
+                                color: color,
+                              ),
+                            )),
               ),
             ),
+    );
+  }
+}
+
+class _PartyLogoFallback extends StatelessWidget {
+  const _PartyLogoFallback({required this.party, required this.color});
+
+  final PoliticalParty party;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      party.shortName.characters.first,
+      style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 22),
     );
   }
 }

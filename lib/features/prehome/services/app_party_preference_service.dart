@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/features/prehome/models/political_party.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
+import 'package:mana_poster/features/prehome/services/political_party_service.dart';
 
 class AppPartyPreferenceService {
   AppPartyPreferenceService._();
@@ -85,8 +86,9 @@ class AppPartyPreferenceService {
     if (region == null) {
       return;
     }
+    final availableParties = await const PoliticalPartyService().fetchParties();
     final partiesById = <String, PoliticalParty>{
-      for (final party in politicalParties) party.id: party,
+      for (final party in availableParties) party.id: party,
     };
     final selectedParties = partyIds
         .map((id) => partiesById[id])

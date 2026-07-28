@@ -706,6 +706,19 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // Admin-replaced political party logos shown in public app UI.
+    match /politicalPartyLogos/{partyId} {
+      allow read: if resource.data.active == true;
+      allow create, update, delete: if false;
+    }
+
+    // Public political party catalog managed by the portal backend.
+    // Active=false documents are readable so the app can hide built-in fallback parties.
+    match /politicalParties/{partyId} {
+      allow read: if true;
+      allow create, update, delete: if false;
+    }
+
     // Published editor asset catalog. Administration uses the trusted portal
     // server SDK; mobile clients can never write catalog records directly.
     match /editorAssetCategories/{categoryId} {

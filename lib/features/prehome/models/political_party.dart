@@ -7,6 +7,8 @@ class PoliticalParty {
     required this.shortName,
     required this.scope,
     required this.regionIds,
+    this.localizedNames = const <AppLanguage, String>{},
+    this.logoUrl,
   });
 
   final String id;
@@ -14,16 +16,33 @@ class PoliticalParty {
   final String shortName;
   final String scope;
   final Set<String> regionIds;
+  final Map<AppLanguage, String> localizedNames;
+  final String? logoUrl;
 
   bool isRelevantTo(String regionId) {
     return regionIds.isEmpty || regionIds.contains(regionId);
   }
 
   String nameFor(AppLanguage language) {
+    final remoteLabel = localizedNames[language]?.trim();
+    if (remoteLabel != null && remoteLabel.isNotEmpty) {
+      return remoteLabel;
+    }
     return _localizedPartyNames[id]?[language] ?? name;
   }
 
-  String? get logoAssetPath => _partyLogoAssetPaths[id];
+  String get localizedNamesSignature {
+    if (localizedNames.isEmpty) {
+      return '';
+    }
+    final keys = localizedNames.keys.toList(growable: false)
+      ..sort((left, right) => left.name.compareTo(right.name));
+    return keys
+        .map((language) => '${language.name}:${localizedNames[language]}')
+        .join('|');
+  }
+
+  String? get logoAssetPath => logoUrl ?? _partyLogoAssetPaths[id];
 }
 
 const Map<String, String> _partyLogoAssetPaths = <String, String>{
