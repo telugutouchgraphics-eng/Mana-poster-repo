@@ -13367,7 +13367,6 @@ class _PoliticalProtocolPhotoScreenState
   }
 
   Future<String?> _captureCustomPosterFile() async {
-    await WidgetsBinding.instance.endOfFrame;
     final bytes = await _customPosterScreenshotController.capture(
       pixelRatio: 3,
     );
@@ -13758,12 +13757,12 @@ class _PoliticalProtocolPhotoScreenState
       deleteArmedManualIndex: _deleteArmedManualIndex,
       onDefaultSlotChanged: (index, slot) {
         if (index >= 0 && index < _defaultSlots.length) {
-          _defaultSlots[index] = slot;
+          setState(() => _defaultSlots[index] = slot);
         }
       },
       onManualSlotChanged: (index, slot) {
         if (index >= 0 && index < _manualSlots.length) {
-          _manualSlots[index] = slot;
+          setState(() => _manualSlots[index] = slot);
         }
       },
       onManualPhotoTap: (index) {
@@ -14059,12 +14058,24 @@ class _PoliticalProtocolPhotoScreenState
                   fit: StackFit.expand,
                   children: <Widget>[
                     _buildPersonalizedPosterBase(),
-                    _buildPosterPhotoSlots(
-                      canvasWidth: posterWidth,
-                      canvasHeight: posterHeight,
+                    IgnorePointer(
+                      child: _buildPosterPhotoSlots(
+                        canvasWidth: posterWidth,
+                        canvasHeight: posterHeight,
+                      ),
                     ),
                   ],
                 ),
+              ),
+            ),
+            Positioned(
+              left: posterLeft,
+              top: posterTop,
+              width: posterWidth,
+              height: posterHeight,
+              child: _buildPosterPhotoSlots(
+                canvasWidth: posterWidth,
+                canvasHeight: posterHeight,
               ),
             ),
           ],
@@ -14192,9 +14203,13 @@ class _EditablePoliticalProtocolOverlayState
     if (oldWidget.defaultSlots.length != widget.defaultSlots.length ||
         oldWidget.adminUrls.length != widget.adminUrls.length) {
       _defaultSlots = _copySlots(widget.defaultSlots);
+    } else {
+      _defaultSlots = _copySlots(widget.defaultSlots);
     }
     if (oldWidget.manualSlots.length != widget.manualSlots.length ||
         oldWidget.manualPhotoPaths.length != widget.manualPhotoPaths.length) {
+      _manualSlots = _copySlots(widget.manualSlots);
+    } else {
       _manualSlots = _copySlots(widget.manualSlots);
     }
   }
@@ -14208,23 +14223,16 @@ class _EditablePoliticalProtocolOverlayState
         .toList(growable: true);
   }
 
-  Widget _buildPhotoSlot({
-    required double side,
-    required Widget child,
-    required VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: side,
-        height: side,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.95),
-          border: Border.all(color: Colors.white, width: 0.8),
-        ),
-        child: ClipOval(child: child),
+  Widget _buildPhotoSlot({required double side, required Widget child}) {
+    return Container(
+      width: side,
+      height: side,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.95),
+        border: Border.all(color: Colors.white, width: 0.8),
       ),
+      child: ClipOval(child: child),
     );
   }
 
@@ -14282,7 +14290,7 @@ class _EditablePoliticalProtocolOverlayState
           Builder(
             builder: (context) {
               final slot = index < _defaultSlots.length
-                  ? _defaultSlots[index]
+                  ? widget.defaultSlots[index]
                   : defaultPoliticalProtocolSlots[index %
                         defaultPoliticalProtocolSlots.length];
               final side = _PoliticalProtocolPhotoSlots._slotSide(
@@ -14308,7 +14316,9 @@ class _EditablePoliticalProtocolOverlayState
                 child: GestureDetector(
                   onPanUpdate: (details) {
                     final nextSlot = _draggedSlot(
-                      slot: slot,
+                      slot: index < widget.defaultSlots.length
+                          ? widget.defaultSlots[index]
+                          : slot,
                       details: details,
                       side: side,
                       canvasWidth: safeCanvasWidth,
@@ -14319,7 +14329,9 @@ class _EditablePoliticalProtocolOverlayState
                         _defaultSlots[index] = nextSlot;
                       }
                     });
-                    widget.onDefaultSlotChanged(index, nextSlot);
+                    if (index < widget.defaultSlots.length) {
+                      widget.onDefaultSlotChanged(index, nextSlot);
+                    }
                   },
                   child: _buildPhotoSlot(
                     side: side,
@@ -14329,7 +14341,6 @@ class _EditablePoliticalProtocolOverlayState
                       errorWidget: (_, _, _) =>
                           const Icon(Icons.person_rounded),
                     ),
-                    onTap: null,
                   ),
                 ),
               );
@@ -14343,7 +14354,7 @@ class _EditablePoliticalProtocolOverlayState
           Builder(
             builder: (context) {
               final slot = manualIndex < _manualSlots.length
-                  ? _manualSlots[manualIndex]
+                  ? widget.manualSlots[manualIndex]
                   : _defaultManualSlot(manualIndex);
               final side = _PoliticalProtocolPhotoSlots._slotSide(
                 canvasWidth: safeCanvasWidth,
@@ -14384,9 +14395,13 @@ class _EditablePoliticalProtocolOverlayState
                 width: side,
                 height: side,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => widget.onManualPhotoTap(manualIndex),
                   onPanUpdate: (details) {
                     final nextSlot = _draggedSlot(
-                      slot: slot,
+                      slot: manualIndex < widget.manualSlots.length
+                          ? widget.manualSlots[manualIndex]
+                          : slot,
                       details: details,
                       side: side,
                       canvasWidth: safeCanvasWidth,
@@ -14397,13 +14412,11 @@ class _EditablePoliticalProtocolOverlayState
                         _manualSlots[manualIndex] = nextSlot;
                       }
                     });
-                    widget.onManualSlotChanged(manualIndex, nextSlot);
+                    if (manualIndex < widget.manualSlots.length) {
+                      widget.onManualSlotChanged(manualIndex, nextSlot);
+                    }
                   },
-                  child: _buildPhotoSlot(
-                    side: side,
-                    child: child,
-                    onTap: () => widget.onManualPhotoTap(manualIndex),
-                  ),
+                  child: _buildPhotoSlot(side: side, child: child),
                 ),
               );
             },
