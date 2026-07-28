@@ -12975,6 +12975,7 @@ class _PoliticalProtocolPhotoScreenState
   @override
   void initState() {
     super.initState();
+    unawaited(ScreenSecurityService.protectScreen());
     _manualPhotoPaths = widget.initialManualPhotoPaths
         .map((path) => path.trim())
         .where((path) => path.isNotEmpty)
@@ -13010,6 +13011,7 @@ class _PoliticalProtocolPhotoScreenState
   @override
   void dispose() {
     _clearPosterImageListener();
+    unawaited(ScreenSecurityService.unprotectScreen());
     super.dispose();
   }
 
@@ -13452,6 +13454,9 @@ class _PoliticalProtocolPhotoScreenState
   }
 
   Future<String?> _captureCustomPosterFile() async {
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await WidgetsBinding.instance.endOfFrame;
     final bytes = await _customPosterScreenshotController.capture(
       pixelRatio: 3,
     );
@@ -14265,12 +14270,7 @@ class _PoliticalProtocolPhotoScreenState
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
                 child: Text(
-                  context.strings.localized(
-                    telugu:
-                        '+ à°®à±€à°¦ tap à°šà±‡à°¸à°¿ à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿. à°«à±‹à°Ÿà±‹ à°®à±€à°¦ tap à°šà±‡à°¸à±à°¤à±‡ delete à°µà°¸à±à°¤à±à°‚à°¦à°¿.',
-                    english:
-                        'Drag circles to adjust position. Tap + to add a photo. Tap an added photo to delete it.',
-                  ),
+                  context.strings.politicalProtocolPhotoHelp,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Color(0xFF475569),

@@ -3649,6 +3649,45 @@ class AppStrings {
     ladakhi: 'Poster ནང་འཇོག་པར photo ལ tap བྱེད།',
   );
 
+  String get politicalProtocolPhotoHelp => localized(
+    telugu:
+        'ఫోటోలను డ్రాగ్ చేసి స్థానాన్ని మార్చండి. ఫోటోను తీసేయాలంటే దానిపై ట్యాప్ చేయండి. ఫోటోలు జోడించడానికి లేదా తిరిగి పెట్టడానికి Add party leader photos ఉపయోగించండి.',
+    english:
+        'Move photos by dragging. Tap a photo to remove it. Use Add party leader photos to add or restore photos.',
+    hindi:
+        'फोटो को खींचकर जगह बदलें। फोटो हटाने के लिए उस पर टैप करें। फोटो जोड़ने या वापस लाने के लिए Add party leader photos इस्तेमाल करें।',
+    tamil:
+        'புகைப்படங்களை இழுத்து இடத்தை மாற்றுங்கள். புகைப்படத்தை நீக்க அதைப் தட்டுங்கள். சேர்க்க அல்லது மீட்டெடுக்க Add party leader photos பயன்படுத்துங்கள்.',
+    kannada:
+        'ಫೋಟೋಗಳನ್ನು ಡ್ರ್ಯಾಗ್ ಮಾಡಿ ಸ್ಥಾನ ಬದಲಿಸಿ. ಫೋಟೋ ತೆಗೆದುಹಾಕಲು ಅದನ್ನು ಟ್ಯಾಪ್ ಮಾಡಿ. ಫೋಟೋ ಸೇರಿಸಲು ಅಥವಾ ಮರಳಿ ತರಲು Add party leader photos ಬಳಸಿ.',
+    malayalam:
+        'ഫോട്ടോകൾ ഡ്രാഗ് ചെയ്ത് സ്ഥാനം മാറ്റുക. ഫോട്ടോ നീക്കാൻ അതിൽ ടാപ്പ് ചെയ്യുക. ഫോട്ടോകൾ ചേർക്കാനോ തിരികെ കൊണ്ടുവരാനോ Add party leader photos ഉപയോഗിക്കുക.',
+    assamese:
+        'ফটোবোৰ ড্ৰেগ কৰি স্থান সলনি কৰক। ফটো আঁতৰাবলৈ তাত টেপ কৰক। ফটো যোগ বা পুনৰ আনিবলৈ Add party leader photos ব্যৱহাৰ কৰক।',
+    konkani:
+        'फोटो ड्रॅग करून जागो बदलात. फोटो काडपाक ताचेर टॅप करात. फोटो जोडपाक वा परत हाडपाक Add party leader photos वापरात.',
+    gujarati:
+        'ફોટોને ડ્રેગ કરીને સ્થાન બદલો. ફોટો દૂર કરવા તેના પર ટેપ કરો. ફોટો ઉમેરવા અથવા પાછો લાવવા Add party leader photos વાપરો.',
+    marathi:
+        'फोटो ड्रॅग करून जागा बदला. फोटो काढण्यासाठी त्यावर टॅप करा. फोटो जोडण्यासाठी किंवा परत आणण्यासाठी Add party leader photos वापरा.',
+    meitei:
+        'Photo-sing drag touduna mapham hong-u. Photo louthoknaba maduda tap tou. Photo hapchinba nattraga restore tounaba Add party leader photos sijinnou.',
+    mizo:
+        'Photo chu drag la a hmun thlak rawh. Paih duh chuan photo chu tap rawh. Photo dah emaw restore emaw nan Add party leader photos hmang rawh.',
+    odia:
+        'ଫଟୋଗୁଡ଼ିକୁ ଡ୍ରାଗ୍ କରି ସ୍ଥାନ ବଦଳାନ୍ତୁ। ଫଟୋ ହଟାଇବାକୁ ତାହାରେ ଟ୍ୟାପ୍ କରନ୍ତୁ। ଫଟୋ ଯୋଡ଼ିବା କିମ୍ବା ଫେରାଇବା ପାଇଁ Add party leader photos ବ୍ୟବହାର କରନ୍ତୁ।',
+    punjabi:
+        'ਫੋਟੋਆਂ ਨੂੰ ਡ੍ਰੈਗ ਕਰਕੇ ਥਾਂ ਬਦਲੋ। ਫੋਟੋ ਹਟਾਉਣ ਲਈ ਉਸ ਤੇ ਟੈਪ ਕਰੋ। ਫੋਟੋ ਜੋੜਨ ਜਾਂ ਵਾਪਸ ਲਿਆਉਣ ਲਈ Add party leader photos ਵਰਤੋ।',
+    nepali:
+        'फोटोहरू ड्र्याग गरेर स्थान बदल्नुहोस्। फोटो हटाउन त्यसमा ट्याप गर्नुहोस्। फोटो थप्न वा फर्काउन Add party leader photos प्रयोग गर्नुहोस्।',
+    bengali:
+        'ছবিগুলো ড্র্যাগ করে স্থান বদলান। ছবি সরাতে ছবিতে ট্যাপ করুন। ছবি যোগ করতে বা ফিরিয়ে আনতে Add party leader photos ব্যবহার করুন।',
+    kashmiri:
+        'فوٹو ڈریگ کرتھ جای بدلاو۔ فوٹو ہٹاونہ خاطر تس پیٹھ ٹیپ کرو۔ فوٹو شامل یا واپس کرنہ خاطر Add party leader photos استعمال کرو۔',
+    ladakhi:
+        'Photo དྲག་བྱས་ནས་ས་ཆ་སྒྱུར། Photo འདོར་དགོས་ན་དེ་ལ tap བྱེད། Photo ཁ་སྣོན་དང restore ལ Add party leader photos སྤྱོད།',
+  );
+
   String get couldNotAddPoster => localized(
     telugu: 'మీ పోస్టర్ జోడించలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
     english: 'Could not add your poster. Please try again.',
