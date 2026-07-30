@@ -7,6 +7,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
@@ -79,6 +80,8 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
         );
         return;
       }
+
+      unawaited(NotificationService.instance.syncCurrentPreferences());
 
       if (widget.returnToPreviousOnSave) {
         Navigator.of(context).pop(true);

@@ -1155,6 +1155,20 @@ function reminderCategoryKey(input) {
   if (normalized.includes("joke") || normalized.includes("funny") || normalized.includes("humor")) {
     return "jokes";
   }
+  if (normalized.includes("islam") || normalized.includes("muslim")) {
+    return "islam";
+  }
+  if (normalized.includes("bible") || normalized.includes("christian")) {
+    return "bible";
+  }
+  if (normalized.includes("weekday") || normalized.includes("monday") ||
+      normalized.includes("tuesday") || normalized.includes("wednesday") ||
+      normalized.includes("thursday") || normalized.includes("friday") ||
+      normalized.includes("saturday") || normalized.includes("sunday")) {
+    return normalized
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]+/g, "");
+  }
   if (normalized.includes("morning")) {
     return "morning";
   }
@@ -1331,7 +1345,13 @@ function reminderGreetingPrefix(displayName, bodySentence) {
 
 async function loadNotificationProfileForUid(uid) {
   if (!uid) {
-    return {name: "", photoUrl: "", preferredLanguage: "english", selectedRegion: ""};
+    return {
+      name: "",
+      photoUrl: "",
+      preferredLanguage: "english",
+      selectedRegion: "",
+      religionPreference: "",
+    };
   }
   try {
     let authUser = null;
@@ -1353,6 +1373,9 @@ async function loadNotificationProfileForUid(uid) {
         preferredLanguage,
         selectedRegion: notificationRegionFromData(
             userSnap.exists ? (userSnap.data() || {}) : {},
+        ),
+        religionPreference: normalizeReligionPreference(
+            userSnap.exists ? (userSnap.data() || {}).religionPreference : "",
         ),
       };
     }
@@ -1378,10 +1401,19 @@ async function loadNotificationProfileForUid(uid) {
       selectedRegion: notificationRegionFromData(
           userSnap.exists ? (userSnap.data() || {}) : {},
       ),
+      religionPreference: normalizeReligionPreference(
+          userSnap.exists ? (userSnap.data() || {}).religionPreference : "",
+      ),
     };
   } catch (error) {
     logger.warn("loadNotificationProfileForUid failed", {uid, error});
-    return {name: "", photoUrl: "", preferredLanguage: "english", selectedRegion: ""};
+    return {
+      name: "",
+      photoUrl: "",
+      preferredLanguage: "english",
+      selectedRegion: "",
+      religionPreference: "",
+    };
   }
 }
 
@@ -3165,6 +3197,18 @@ function reminderCategoryAliases(input) {
   if (category === "jokes") {
     return ["jokes", "joke", "funny", "humor", "comedy"];
   }
+  if (category === "islam") {
+    return ["islam", "muslim"];
+  }
+  if (category === "bible") {
+    return ["bible", "christian"];
+  }
+  if (category.startsWith("weekday_") && category.endsWith("_special")) {
+    const weekday = category
+        .replace(/^weekday_/, "")
+        .replace(/_special$/, "");
+    return [category, `${weekday} special`, "weekday special"];
+  }
   return [];
 }
 
@@ -3470,10 +3514,72 @@ function tokenAllowsCategory(data, categoryKey) {
   return data.newPosters !== false;
 }
 
+function normalizeReligionPreference(value) {
+  const normalized = normalizeText(value);
+  if (normalized === "hindu" || normalized === "muslim" || normalized === "christian") {
+    return normalized;
+  }
+  if (normalized === "all") {
+    return "all";
+  }
+  return "";
+}
+
+function tokenReligionFromData(data) {
+  return normalizeReligionPreference(data && data.religionPreference);
+}
+
+function tokenAllowsReligion(data, targetReligion = "") {
+  const target = normalizeReligionPreference(targetReligion);
+  if (!target || target === "all") {
+    return true;
+  }
+  return tokenReligionFromData(data) === target;
+}
+
+function weekdaySpecialCategoryKey(now = new Date()) {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+  }).format(now).toLowerCase();
+  const allowed = new Set([
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ]);
+  const safeWeekday = allowed.has(weekday) ? weekday : "monday";
+  return `weekday_${safeWeekday}_special`;
+}
+
+function religionDailyTarget(religion, now = new Date()) {
+  const target = normalizeReligionPreference(religion);
+  if (target === "muslim") {
+    return {religion: target, categoryKey: "islam", label: "Islam"};
+  }
+  if (target === "christian") {
+    return {religion: target, categoryKey: "bible", label: "Bible"};
+  }
+  if (target === "hindu") {
+    const categoryKey = weekdaySpecialCategoryKey(now);
+    const weekdayLabel = categoryKey
+        .replace(/^weekday_/, "")
+        .replace(/_special$/, "")
+        .replace(/^\w/, (char) => char.toUpperCase());
+    return {religion: target, categoryKey, label: `${weekdayLabel} Special`};
+  }
+  return null;
+}
+
 async function sendDailyPersonalizedReminder({
   keywords,
   categoryKey,
   reminderSeed = "",
+  targetReligion = "",
+  displayLabel = "",
 }) {
   const now = new Date();
   const dayKey = getIstDayKey(now);
@@ -3505,7 +3611,8 @@ async function sendDailyPersonalizedReminder({
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+    if (!token || seenTokens.has(token) ||
+        !tokenAllowsCategory(data, categoryKey)) {
       continue;
     }
     const userRef = doc.ref.parent && doc.ref.parent.parent;
@@ -3518,16 +3625,32 @@ async function sendDailyPersonalizedReminder({
       platform: String(data.platform || "").trim(),
       language: notificationLanguageFromTokenData(data),
       regionId: notificationRegionFromData(data),
+      religionPreference: tokenReligionFromData(data),
     });
   }
 
-  await runWithConcurrency(userJobs, 12, async ({token, uid, ref, platform, language, regionId}) => {
+  await runWithConcurrency(userJobs, 12, async ({
+    token,
+    uid,
+    ref,
+    platform,
+    language,
+    regionId,
+    religionPreference,
+  }) => {
     let profile = profileCache.get(uid);
     if (!profile) {
       profile = await loadNotificationProfileForUid(uid);
       profileCache.set(uid, profile);
     }
     try {
+      if (targetReligion) {
+        const tokenReligion = normalizeReligionPreference(religionPreference);
+        const profileReligion = normalizeReligionPreference(profile.religionPreference);
+        if (tokenReligion !== targetReligion && profileReligion !== targetReligion) {
+          return;
+        }
+      }
       const resolvedRegionId = normalizeRegionId(regionId || profile.selectedRegion);
       const imageUrl = await imageForRegion(resolvedRegionId);
       if (!imageUrl) {
@@ -3552,12 +3675,19 @@ async function sendDailyPersonalizedReminder({
         });
         return;
       }
-      const copy = reminderCopyLocalized(
-          categoryKey,
-          language || profile.preferredLanguage,
-          profile.name,
-          now,
-      );
+      const copy = targetReligion ?
+        buildNotificationCopy(
+            "dynamic_event",
+            language || profile.preferredLanguage,
+            profile.name,
+            {eventTitle: displayLabel || categoryKey, timing: "today"},
+        ) :
+        reminderCopyLocalized(
+            categoryKey,
+            language || profile.preferredLanguage,
+            profile.name,
+            now,
+        );
       await sendReminderToToken({
         token,
         platform,
@@ -3592,7 +3722,9 @@ async function sendDailyPersonalizedReminder({
   for (const doc of publicSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
-    if (!token || seenTokens.has(token) || !tokenAllowsCategory(data, categoryKey)) {
+    if (!token || seenTokens.has(token) ||
+        !tokenAllowsCategory(data, categoryKey) ||
+        !tokenAllowsReligion(data, targetReligion)) {
       continue;
     }
     seenTokens.add(token);
@@ -3631,12 +3763,19 @@ async function sendDailyPersonalizedReminder({
         });
         return;
       }
-      const copy = reminderCopyLocalized(
-          categoryKey,
-          language,
-          "Mana Poster User",
-          now,
-      );
+      const copy = targetReligion ?
+        buildNotificationCopy(
+            "dynamic_event",
+            language,
+            "Mana Poster User",
+            {eventTitle: displayLabel || categoryKey, timing: "today"},
+        ) :
+        reminderCopyLocalized(
+            categoryKey,
+            language,
+            "Mana Poster User",
+            now,
+        );
       await sendReminderToToken({
         token,
         platform,
@@ -5435,6 +5574,31 @@ exports.dailyJokesReminder1630 = onSchedule(
         categoryKey: "jokes",
         reminderSeed: "1800",
       });
+    },
+);
+
+exports.dailyReligionReminder0815 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "15 8 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      const now = new Date();
+      const targets = ["hindu", "muslim", "christian"]
+          .map((religion) => religionDailyTarget(religion, now))
+          .filter(Boolean);
+      for (const target of targets) {
+        await sendDailyPersonalizedReminder({
+          keywords: [target.categoryKey, target.label],
+          categoryKey: target.categoryKey,
+          reminderSeed: `religion-${target.religion}`,
+          targetReligion: target.religion,
+          displayLabel: target.label,
+        });
+      }
     },
 );
 

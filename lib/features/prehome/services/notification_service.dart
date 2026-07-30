@@ -20,6 +20,7 @@ import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
+import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -483,6 +484,7 @@ class NotificationService {
         await _buildPreferenceSyncPayload();
     final AppFlowSnapshot snapshot = await AppFlowService.loadSnapshot();
     final region = await AppRegionService.loadSelection();
+    final religion = await AppReligionService.loadSelection();
     return <String, dynamic>{
       'token': token,
       'platform': Platform.isAndroid
@@ -498,6 +500,7 @@ class NotificationService {
         'selectedRegionLanguage': region.primaryLanguage,
         'selectedRegionLanguageCode': region.primaryLanguageCode,
       },
+      if (religion != null) 'religionPreference': religion.name,
       'updatedAt': FieldValue.serverTimestamp(),
       ...preferencePayload,
       if (includeCreatedAt) 'createdAt': FieldValue.serverTimestamp(),
