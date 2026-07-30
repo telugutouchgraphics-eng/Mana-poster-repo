@@ -2561,6 +2561,8 @@ class _HomeScreenState extends State<HomeScreen>
     final now = IstTimeService.now();
     final allowedEventSignals = <String>{};
 
+    allowedEventSignals.add('today_special');
+
     void addDynamicCategorySignals(DynamicCategory category) {
       final chip = _CategoryChipData(
         slug: category.slug,
@@ -2600,7 +2602,14 @@ class _HomeScreenState extends State<HomeScreen>
       );
       addDynamicCategorySignals(bonaluCategory);
     }
-    for (final category in _manualEventCategories) {
+    for (final category in _manualEventCategories.where(
+      (item) => item.allowPoliticalProtocol,
+    )) {
+      addDynamicCategorySignals(category);
+    }
+    for (final category in _permanentCategories.where(
+      (item) => item.allowPoliticalProtocol,
+    )) {
       addDynamicCategorySignals(category);
     }
 
@@ -2638,6 +2647,8 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
+    addCategoryId('today_special');
+
     for (final category in _dynamicPreviewCategoryService.categoriesForDate(
       now,
       language: language,
@@ -2653,7 +2664,15 @@ class _HomeScreenState extends State<HomeScreen>
       addCategoryId('bonalu');
     }
 
-    for (final category in _manualEventCategories) {
+    for (final category in _manualEventCategories.where(
+      (item) => item.allowPoliticalProtocol,
+    )) {
+      addCategoryId(category.slug);
+    }
+
+    for (final category in _permanentCategories.where(
+      (item) => item.allowPoliticalProtocol,
+    )) {
       addCategoryId(category.slug);
     }
 

@@ -137,6 +137,7 @@ class ManualEventCategoryService {
       regionIds: effectiveRegionIds,
       eventStartDate: DateTime.fromMillisecondsSinceEpoch(startAt),
       eventEndDate: DateTime.fromMillisecondsSinceEpoch(endAt),
+      allowPoliticalProtocol: data['allowPoliticalProtocol'] == true,
     );
   }
 

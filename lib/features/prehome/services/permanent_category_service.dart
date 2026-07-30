@@ -103,6 +103,7 @@ class PermanentCategoryService {
           ? null
           : iconAssetPath,
       regionIds: regionIds,
+      allowPoliticalProtocol: data['allowPoliticalProtocol'] == true,
     );
   }
 

@@ -51,6 +51,7 @@ class DynamicCategory {
     this.regionIds = const <String>{},
     this.eventStartDate,
     this.eventEndDate,
+    this.allowPoliticalProtocol = false,
   });
 
   final String id;
@@ -66,6 +67,7 @@ class DynamicCategory {
   final Set<String> regionIds;
   final DateTime? eventStartDate;
   final DateTime? eventEndDate;
+  final bool allowPoliticalProtocol;
 }
 
 class DynamicCalendarEvent {
