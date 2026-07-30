@@ -1212,8 +1212,13 @@ class ApprovedCreatorTemplateService {
   ApprovedCreatorTemplate? _mapDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final data = doc.data();
+    return _mapDocData(doc.id, doc.data());
+  }
 
+  ApprovedCreatorTemplate? _mapDocData(
+    String docId,
+    Map<String, dynamic> data,
+  ) {
     final bool mutedByActiveFlag =
         data['active'] is bool && !(data['active'] as bool);
     if (mutedByActiveFlag) {
@@ -1298,7 +1303,7 @@ class ApprovedCreatorTemplateService {
         : null;
 
     return ApprovedCreatorTemplate(
-      id: doc.id,
+      id: docId,
       title: title,
       imageUrl: imageUrl,
       imageStoragePath: imageStoragePath,
@@ -1316,6 +1321,37 @@ class ApprovedCreatorTemplateService {
       creatorPublicId: (data['creatorPublicId'] as String? ?? '').trim(),
       pageConfig: pageConfig,
     );
+  }
+
+  Future<ApprovedCreatorTemplate?> fetchTemplateById(
+    String posterId, {
+    bool forceServer = false,
+  }) async {
+    final safePosterId = posterId.trim();
+    if (safePosterId.isEmpty) {
+      return null;
+    }
+    if (_firestore == null && Firebase.apps.isEmpty) {
+      return null;
+    }
+    try {
+      final firestore = _firestore ?? FirebaseFirestore.instance;
+      final snapshot = await firestore
+          .collection('creatorPosters')
+          .doc(safePosterId)
+          .get(GetOptions(source: Source.serverAndCache));
+      final data = snapshot.data();
+      if (!snapshot.exists || data == null) {
+        return null;
+      }
+      return _mapDocData(snapshot.id, data);
+    } catch (error, stackTrace) {
+      _debugLogStack(
+        'approved template fetch by id failed: $error',
+        stackTrace,
+      );
+      return null;
+    }
   }
 
   Future<void> incrementPosterEngagementCount({

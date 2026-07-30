@@ -41,7 +41,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.openMyUploads});
+
+  final Future<void> Function(BuildContext context)? openMyUploads;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -342,6 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           : '',
       accountSubtitle: _selectedRegionName,
       embeddedInProfileScreen: true,
+      openMyUploads: widget.openMyUploads,
       onSaved: (profile) {
         setState(() => _posterProfile = profile);
         _warmPosterProfileImage(profile);

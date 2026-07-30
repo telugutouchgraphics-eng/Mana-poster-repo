@@ -4,19 +4,31 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mana_poster/app/config/app_public_info.dart';
+import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 import 'package:mana_poster/app/config/category_display_helper.dart';
 import 'package:mana_poster/app/config/home_category_catalog.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
+import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
+import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
+import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
+import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
+import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/user_poster_uploads_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
@@ -33,15 +45,554 @@ class _UploadCategoryOption {
   final String? eventDateLabel;
 }
 
+class _ApprovedTemplatePayload {
+  const _ApprovedTemplatePayload({
+    required this.template,
+    required this.profile,
+  });
+
+  final ApprovedCreatorTemplate? template;
+  final PosterProfileData profile;
+}
+
+class ApprovedUploadPosterRenderData {
+  const ApprovedUploadPosterRenderData({
+    required this.upload,
+    required this.template,
+    required this.profile,
+    required this.language,
+  });
+
+  final UserPosterUpload upload;
+  final ApprovedCreatorTemplate template;
+  final PosterProfileData profile;
+  final AppLanguage language;
+}
+
+typedef ApprovedUploadPosterBuilder =
+    Widget Function(BuildContext context, ApprovedUploadPosterRenderData data);
+
+class _ApprovedUploadPosterCard extends StatefulWidget {
+  const _ApprovedUploadPosterCard({
+    required this.upload,
+    required this.language,
+    required this.approvedPosterBuilder,
+  });
+
+  final UserPosterUpload upload;
+  final AppLanguage language;
+  final ApprovedUploadPosterBuilder? approvedPosterBuilder;
+
+  @override
+  State<_ApprovedUploadPosterCard> createState() =>
+      _ApprovedUploadPosterCardState();
+}
+
+class _ApprovedUploadPosterCardState extends State<_ApprovedUploadPosterCard> {
+  final ScreenshotController _screenshotController = ScreenshotController();
+  final ImagePicker _picker = ImagePicker();
+  final SubscriptionBackendService _subscriptionService =
+      SubscriptionBackendService.app();
+  final OfflineBackgroundRemovalService _backgroundRemovalService =
+      const OfflineBackgroundRemovalService();
+  Future<_ApprovedTemplatePayload>? _payloadFuture;
+  ImageStream? _imageStream;
+  ImageStreamListener? _imageStreamListener;
+  double? _imageAspectRatio;
+  String? _busyAction;
+  String? _extraPhotoPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _payloadFuture = _loadPayload();
+    _resolveAspectRatio();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ApprovedUploadPosterCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.upload.approvedPosterTemplateId !=
+            widget.upload.approvedPosterTemplateId ||
+        oldWidget.upload.imageUrl != widget.upload.imageUrl ||
+        oldWidget.upload.updatedAtMillis != widget.upload.updatedAtMillis) {
+      _payloadFuture = _loadPayload();
+      _resolveAspectRatio();
+    }
+  }
+
+  @override
+  void dispose() {
+    _detachImageStream();
+    super.dispose();
+  }
+
+  Future<_ApprovedTemplatePayload> _loadPayload() async {
+    final profile = await PosterProfileService.load();
+    final posterId = widget.upload.approvedPosterTemplateId.trim();
+    if (posterId.isEmpty) {
+      return _ApprovedTemplatePayload(template: null, profile: profile);
+    }
+    try {
+      final template = await ApprovedCreatorTemplateService()
+          .fetchTemplateById(posterId, forceServer: true)
+          .timeout(const Duration(seconds: 8));
+      return _ApprovedTemplatePayload(template: template, profile: profile);
+    } catch (error, stackTrace) {
+      developer.log(
+        'approved upload template load failed: $error',
+        name: 'UserPosterUploadsScreen',
+        stackTrace: stackTrace,
+      );
+      return _ApprovedTemplatePayload(template: null, profile: profile);
+    }
+  }
+
+  String _imageUrl(ApprovedCreatorTemplate? template) {
+    return (template?.imageUrl.trim().isNotEmpty == true
+            ? template!.imageUrl
+            : template?.thumbnailUrl.trim().isNotEmpty == true
+            ? template!.thumbnailUrl
+            : widget.upload.imageUrl)
+        .trim();
+  }
+
+  CreatorPosterPersonalization _personalization(
+    ApprovedCreatorTemplate? template,
+  ) {
+    return template?.personalizationConfig ??
+        CreatorPosterPersonalization.defaults;
+  }
+
+  void _detachImageStream() {
+    final stream = _imageStream;
+    final listener = _imageStreamListener;
+    if (stream != null && listener != null) {
+      stream.removeListener(listener);
+    }
+    _imageStream = null;
+    _imageStreamListener = null;
+  }
+
+  void _resolveAspectRatio([ApprovedCreatorTemplate? template]) {
+    _detachImageStream();
+    final configured = template?.pageConfig?.aspectRatio;
+    if (configured != null && configured.isFinite && configured > 0) {
+      _imageAspectRatio = configured;
+      return;
+    }
+    final url = _imageUrl(template);
+    if (url.isEmpty) {
+      _imageAspectRatio = 1.0;
+      return;
+    }
+    final provider = NetworkImage(url);
+    final stream = provider.resolve(const ImageConfiguration());
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener((info, _) {
+      final width = info.image.width;
+      final height = info.image.height;
+      if (!mounted || width <= 0 || height <= 0) {
+        return;
+      }
+      setState(() => _imageAspectRatio = width / height);
+      _detachImageStream();
+    }, onError: (_, _) => _detachImageStream());
+    _imageStream = stream;
+    _imageStreamListener = listener;
+    stream.addListener(listener);
+  }
+
+  Future<bool> _ensureSubscriptionAccess() async {
+    final cached = _subscriptionService.cachedEntitlement;
+    if (cached?.hasAccess == true || cached?.isPro == true) {
+      return true;
+    }
+    final result = await _subscriptionService.fetchEntitlement(
+      forceRefresh: true,
+    );
+    if (result.hasAccess || result.isPro) {
+      return true;
+    }
+    if (!mounted) {
+      return false;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SubscriptionPlanScreen(startPurchaseOnOpen: true),
+      ),
+    );
+    final refreshed = await _subscriptionService.fetchEntitlement(
+      forceRefresh: true,
+    );
+    return refreshed.hasAccess || refreshed.isPro;
+  }
+
+  Future<String?> _capturePosterFile() async {
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      final bytes = await _screenshotController.capture(pixelRatio: 3);
+      if (bytes == null || bytes.isEmpty) {
+        return null;
+      }
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}${Platform.pathSeparator}'
+        'mana_approved_upload_${DateTime.now().microsecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (error, stackTrace) {
+      developer.log(
+        'approved upload capture failed: $error',
+        name: 'UserPosterUploadsScreen',
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<void> _download() async {
+    if (_busyAction != null || !await _ensureSubscriptionAccess()) {
+      return;
+    }
+    setState(() => _busyAction = 'download');
+    try {
+      final path = await _capturePosterFile();
+      if (path == null) {
+        return;
+      }
+      final result = await MediaExportService.saveImageFileToGalleryDetailed(
+        path,
+        fileName: 'mana_poster_${widget.upload.id}.png',
+      );
+      if (result.success) {
+        unawaited(
+          PosterDownloadsService.recordCopyFromFile(
+            path,
+            suggestedFileName: 'mana_poster_${widget.upload.id}.png',
+          ),
+        );
+        unawaited(
+          UserPosterUploadsService.instance
+              .incrementApprovedContributionCountForPoster(
+                approvedPosterTemplateId:
+                    widget.upload.approvedPosterTemplateId,
+                isShare: false,
+              ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyAction = null);
+      }
+    }
+  }
+
+  Future<void> _share() async {
+    if (_busyAction != null || !await _ensureSubscriptionAccess()) {
+      return;
+    }
+    setState(() => _busyAction = 'share');
+    try {
+      final path = await _capturePosterFile();
+      if (path == null || !mounted) {
+        return;
+      }
+      final box = context.findRenderObject() as RenderBox?;
+      await MediaExportService.shareImageFile(
+        path,
+        text:
+            'Shared using ${AppPublicInfo.appName}\n${AppPublicInfo.playStoreUrl}',
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+      unawaited(
+        UserPosterUploadsService.instance
+            .incrementApprovedContributionCountForPoster(
+              approvedPosterTemplateId: widget.upload.approvedPosterTemplateId,
+              isShare: true,
+            ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busyAction = null);
+      }
+    }
+  }
+
+  Future<String?> _pickAndPreparePhoto(String prefix) async {
+    final cropTitle = context.strings.localized(
+      telugu: 'Crop Photo',
+      english: 'Crop Photo',
+    );
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) {
+      return null;
+    }
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      compressFormat: ImageCompressFormat.png,
+      compressQuality: 100,
+      uiSettings: <PlatformUiSettings>[
+        AndroidUiSettings(
+          toolbarTitle: cropTitle,
+          toolbarColor: const Color(0xFF0F172A),
+          toolbarWidgetColor: Colors.white,
+          backgroundColor: const Color(0xFF0F172A),
+          activeControlsWidgetColor: const Color(0xFF2563EB),
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: false,
+        ),
+        IOSUiSettings(title: cropTitle, aspectRatioLockEnabled: false),
+      ],
+    );
+    if (cropped == null) {
+      return null;
+    }
+    final sourceBytes = await File(cropped.path).readAsBytes();
+    Uint8List outputBytes = sourceBytes;
+    try {
+      await _backgroundRemovalService.ensureReady();
+      final removed = await _backgroundRemovalService
+          .removeBackground(sourceBytes)
+          .timeout(const Duration(seconds: 25));
+      outputBytes = removed.pngBytes;
+    } catch (_) {
+      outputBytes = sourceBytes;
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(
+      '${dir.path}${Platform.pathSeparator}'
+      '${prefix}_${DateTime.now().microsecondsSinceEpoch}.png',
+    );
+    await file.writeAsBytes(outputBytes, flush: true);
+    return file.path;
+  }
+
+  Future<void> _pickExtraPhoto() async {
+    if (_busyAction != null) {
+      return;
+    }
+    setState(() => _busyAction = 'photo');
+    try {
+      final path = await _pickAndPreparePhoto('approved_upload_extra_photo');
+      if (path != null && mounted) {
+        setState(() => _extraPhotoPath = path);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyAction = null);
+      }
+    }
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required String action,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    final busy = _busyAction == action;
+    return FilledButton.icon(
+      onPressed: _busyAction == null ? onPressed : null,
+      icon: busy
+          ? const SizedBox(
+              width: 15,
+              height: 15,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon, size: 18),
+      label: Text(
+        label,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      ),
+    );
+  }
+
+  Widget _posterStage({
+    required String imageUrl,
+    required CreatorPosterPersonalization personalization,
+    required double aspectRatio,
+  }) {
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final height = constraints.maxHeight;
+          final extraSize =
+              width *
+              (personalization.videoExtraPhotoScale / 100).clamp(0.08, 0.7);
+          final extraLeft =
+              width * (personalization.videoExtraPhotoX / 100).clamp(0.0, 1.0) -
+              extraSize / 2;
+          final extraTop =
+              height *
+                  (personalization.videoExtraPhotoY / 100).clamp(0.0, 1.0) -
+              extraSize / 2;
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              DecoratedBox(
+                decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.center,
+                  errorBuilder: (_, _, _) =>
+                      const Center(child: Icon(Icons.broken_image_outlined)),
+                ),
+              ),
+              if (personalization.showVideoExtraPhoto)
+                Positioned(
+                  left: extraLeft,
+                  top: extraTop,
+                  width: extraSize,
+                  height: extraSize,
+                  child: GestureDetector(
+                    onTap: _pickExtraPhoto,
+                    child: ClipOval(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.90),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: _extraPhotoPath == null
+                            ? const Icon(Icons.add_a_photo_rounded)
+                            : Image.file(
+                                File(_extraPhotoPath!),
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_ApprovedTemplatePayload>(
+      future: _payloadFuture,
+      builder: (context, snapshot) {
+        final template = snapshot.data?.template;
+        final profile = snapshot.data?.profile;
+        final imageUrl = _imageUrl(template);
+        if (imageUrl.isEmpty &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (imageUrl.isEmpty) {
+          return Text(
+            context.strings.localized(
+              telugu: 'Approved poster is being prepared.',
+              english: 'Approved poster is being prepared.',
+            ),
+          );
+        }
+        if (template != null && _imageAspectRatio == null) {
+          _resolveAspectRatio(template);
+        }
+        final ratio =
+            (_imageAspectRatio != null &&
+                _imageAspectRatio!.isFinite &&
+                _imageAspectRatio! > 0)
+            ? _imageAspectRatio!
+            : (template?.pageConfig?.aspectRatio ?? 1.0);
+        final safeRatio = ratio.isFinite && ratio > 0 ? ratio : 1.0;
+        final personalization = _personalization(template);
+        final approvedPosterBuilder = widget.approvedPosterBuilder;
+        if (approvedPosterBuilder != null &&
+            template != null &&
+            profile != null) {
+          return approvedPosterBuilder(
+            context,
+            ApprovedUploadPosterRenderData(
+              upload: widget.upload,
+              template: template,
+              profile: profile,
+              language: widget.language,
+            ),
+          );
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Screenshot(
+              controller: _screenshotController,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _posterStage(
+                  imageUrl: imageUrl,
+                  personalization: personalization,
+                  aspectRatio: safeRatio,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _actionButton(
+                    icon: Icons.ios_share_rounded,
+                    label: context.strings.localized(
+                      telugu: 'Share',
+                      english: 'Share',
+                    ),
+                    action: 'share',
+                    color: const Color(0xFF25D366),
+                    onPressed: () => unawaited(_share()),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _actionButton(
+                    icon: Icons.download_rounded,
+                    label: context.strings.localized(
+                      telugu: 'Download',
+                      english: 'Download',
+                    ),
+                    action: 'download',
+                    color: const Color(0xFF64748B),
+                    onPressed: () => unawaited(_download()),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class UserPosterUploadsScreen extends StatefulWidget {
   const UserPosterUploadsScreen({
     super.key,
     this.initialTabIndex = 0,
     this.profileOnly = false,
+    this.approvedPosterBuilder,
   });
 
   final int initialTabIndex;
   final bool profileOnly;
+  final ApprovedUploadPosterBuilder? approvedPosterBuilder;
 
   @override
   State<UserPosterUploadsScreen> createState() =>
@@ -989,6 +1540,17 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
             padding: const EdgeInsets.all(20),
             itemBuilder: (context, index) {
               final upload = uploads[index];
+              if (upload.isApproved) {
+                return OnboardingSurfaceCard(
+                  maxWidth: 520,
+                  padding: const EdgeInsets.all(12),
+                  child: _ApprovedUploadPosterCard(
+                    upload: upload,
+                    language: context.currentLanguage,
+                    approvedPosterBuilder: widget.approvedPosterBuilder,
+                  ),
+                );
+              }
               return OnboardingSurfaceCard(
                 maxWidth: 520,
                 padding: const EdgeInsets.all(16),

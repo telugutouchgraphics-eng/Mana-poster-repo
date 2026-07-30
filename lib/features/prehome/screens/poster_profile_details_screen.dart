@@ -29,6 +29,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
     this.openPersonalPhotoPickerOnStart = false,
     this.embeddedInProfileScreen = false,
     this.appBarActions = const <Widget>[],
+    this.openMyUploads,
     this.onSaved,
   });
 
@@ -39,6 +40,7 @@ class PosterProfileDetailsScreen extends StatefulWidget {
   final bool openPersonalPhotoPickerOnStart;
   final bool embeddedInProfileScreen;
   final List<Widget> appBarActions;
+  final Future<void> Function(BuildContext context)? openMyUploads;
   final ValueChanged<PosterProfileData>? onSaved;
 
   @override
@@ -845,6 +847,11 @@ class _PosterProfileDetailsScreenState
                   onPressed: _saving
                       ? null
                       : () {
+                          final openMyUploads = widget.openMyUploads;
+                          if (openMyUploads != null) {
+                            unawaited(openMyUploads(context));
+                            return;
+                          }
                           Navigator.of(context).push<void>(
                             MaterialPageRoute<void>(
                               builder: (_) => const UserPosterUploadsScreen(

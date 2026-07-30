@@ -61,6 +61,7 @@ import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
+import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
 import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
@@ -4320,9 +4321,29 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openProfile() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(
+          openMyUploads: (routeContext) =>
+              _openMyUploadsRoute(routeContext, profileOnly: true),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMyUploadsRoute(
+    BuildContext routeContext, {
+    bool profileOnly = false,
+  }) async {
+    await Navigator.of(routeContext).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserPosterUploadsScreen(
+          initialTabIndex: 0,
+          profileOnly: profileOnly,
+          approvedPosterBuilder: _buildApprovedUploadPosterPreview,
+        ),
+      ),
+    );
   }
 
   void _setPosterPhotoDragInProgress(bool value) {
@@ -6973,6 +6994,88 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildApprovedUploadPosterPreview(
+    BuildContext context,
+    ApprovedUploadPosterRenderData data,
+  ) {
+    final item = _mapApprovedCreatorTemplateWorker(data.template);
+    final forcedPartyId = _resolveApprovedUploadPartyId(item, data.upload);
+    final normalizedScope = _normalizeTag(
+      forcedPartyId?.trim().isNotEmpty == true
+          ? 'party_$forcedPartyId'
+          : item.primaryFirestoreCategoryId?.trim().isNotEmpty == true
+          ? item.primaryFirestoreCategoryId!.trim()
+          : item.categoryDisplayLabel?.trim().isNotEmpty == true
+          ? item.categoryDisplayLabel!.trim()
+          : item.templateId?.trim() ?? '',
+    );
+    return _TemplateFeedItem(
+      key: ValueKey<String>(
+        'approved-upload-${data.upload.id}-${item.templateId ?? item.imageUrl ?? item.thumbnailUrl ?? 'poster'}',
+      ),
+      item: item,
+      hostContext: context,
+      language: data.language,
+      deferRichPosterPreview: false,
+      onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
+      viewerPosterProfile: data.profile,
+      posterRenderCycle: _posterRenderCycle,
+      onPosterPhotoDragStateChanged: _setPosterPhotoDragInProgress,
+      playbackEnabled: false,
+      enablePoliticalProtocolOverlay:
+          item.personalizationConfig?.hasPoliticalProtocolLayout ?? false,
+      showPartyLogoInNameChip: false,
+      politicalProtocolPhotoScopeKey: normalizedScope,
+      partyLogoOverridesByPartyId: _partyLogoOverridesByPartyId,
+      politicalParties: _politicalParties,
+      forcedPoliticalProtocolPartyId: forcedPartyId,
+      showPosterEditButton: false,
+      allowPoliticalProtocolWithoutParty: true,
+      preferUltraLightImage: false,
+    );
+  }
+
+  String? _resolveApprovedUploadPartyId(
+    _TemplateItem item,
+    UserPosterUpload upload,
+  ) {
+    final tags = <String>{
+      for (final tag in item.categoryTags) _normalizeTag(tag),
+      _normalizeTag(item.primaryFirestoreCategoryId ?? ''),
+      _normalizeTag(item.categoryDisplayLabel ?? ''),
+      _normalizeTag(item.templateId ?? ''),
+      _normalizeTag(upload.categoryId),
+      _normalizeTag(upload.categoryLabel),
+    }..removeWhere((tag) => tag.isEmpty);
+    for (final tag in tags) {
+      final partyId = _partyIdFromCategorySlug(tag);
+      if (partyId != null && partyId.isNotEmpty) {
+        return partyId;
+      }
+    }
+    final knownParties = _politicalParties.isEmpty
+        ? politicalParties
+        : _politicalParties;
+    for (final party in knownParties) {
+      final partyId = _normalizeTag(party.id);
+      final shortName = _normalizeTag(party.shortName);
+      if (partyId.isEmpty) {
+        continue;
+      }
+      if (tags.contains(partyId) ||
+          tags.contains('party_$partyId') ||
+          (shortName.isNotEmpty && tags.contains(shortName)) ||
+          (shortName.isNotEmpty && tags.contains('party_$shortName'))) {
+        return party.id;
+      }
+    }
+    final selected = _selectedPoliticalPartyId();
+    if (selected != null && selected.trim().isNotEmpty) {
+      return selected.trim();
+    }
+    return null;
+  }
+
   Future<void> _openUserUploadsSheet() async {
     if (!mounted) {
       return;
@@ -6991,11 +7094,7 @@ class _HomeScreenState extends State<HomeScreen>
           if (!mounted) {
             return;
           }
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const UserPosterUploadsScreen(initialTabIndex: 0),
-            ),
-          );
+          await _openMyUploadsRoute(context);
         }
 
         Future<void> openUploadStatus() async {
@@ -14625,6 +14724,8 @@ class _TemplateFeedItem extends StatefulWidget {
     this.partyLogoOverridesByPartyId = const <String, String>{},
     this.politicalParties = const <PoliticalParty>[],
     this.forcedPoliticalProtocolPartyId,
+    this.showPosterEditButton = true,
+    this.allowPoliticalProtocolWithoutParty = false,
     this.preferUltraLightImage = false,
     this.fillViewport = false,
     this.onInteraction,
@@ -14646,6 +14747,8 @@ class _TemplateFeedItem extends StatefulWidget {
   final Map<String, String> partyLogoOverridesByPartyId;
   final List<PoliticalParty> politicalParties;
   final String? forcedPoliticalProtocolPartyId;
+  final bool showPosterEditButton;
+  final bool allowPoliticalProtocolWithoutParty;
   final bool preferUltraLightImage;
   final bool fillViewport;
   final void Function(_TemplateItem item, String action)? onInteraction;
@@ -14748,10 +14851,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   bool get _canAddPoliticalProtocolPhotos {
     final partyId = _resolvePoliticalPartyId();
     return widget.enablePoliticalProtocolOverlay &&
-        partyId != null &&
-        partyId.trim().isNotEmpty &&
         !item.isVideo &&
-        item.personalizationConfig != null;
+        (item.personalizationConfig?.hasPoliticalProtocolLayout ?? false) &&
+        (widget.allowPoliticalProtocolWithoutParty ||
+            (partyId != null && partyId.trim().isNotEmpty));
   }
 
   List<PoliticalParty> get _availablePoliticalParties =>
@@ -14843,11 +14946,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     if (_politicalProtocolPartyId == partyId &&
-        _politicalProtocolPhotoLoadFuture != null) {
+        (_politicalProtocolPhotoLoadFuture != null ||
+            _politicalProtocolPhotoUrls.isNotEmpty)) {
       return;
     }
+    final partyChanged = _politicalProtocolPartyId != partyId;
     _politicalProtocolPartyId = partyId;
-    _politicalProtocolPhotoUrls = const <String>[];
+    if (partyChanged) {
+      _politicalProtocolPhotoUrls = const <String>[];
+    }
     final future = _TemplateFeedItem._politicalProtocolPhotoService
         .fetchPhotoUrlsForParty(partyId);
     _politicalProtocolPhotoLoadFuture = future;
@@ -15447,9 +15554,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Future<void> _openPoliticalProtocolPhotoScreen(BuildContext context) async {
     final partyId = _resolvePoliticalPartyId();
     if (!widget.enablePoliticalProtocolOverlay ||
-        partyId == null ||
-        partyId.trim().isEmpty ||
-        item.isVideo) {
+        item.isVideo ||
+        !(item.personalizationConfig?.hasPoliticalProtocolLayout ?? false) ||
+        (!widget.allowPoliticalProtocolWithoutParty &&
+            (partyId == null || partyId.trim().isEmpty))) {
       return;
     }
     final result = await Navigator.of(context)
@@ -16099,6 +16207,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     await _precacheCurrentPosterImage();
     await _precacheCurrentPosterProfileImage();
     await _precacheCurrentPosterAdditionalPhoto();
+    await _precacheCurrentPoliticalProtocolPhotos();
     await WidgetsBinding.instance.endOfFrame;
   }
 
@@ -16107,7 +16216,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     final posterContext = _posterCaptureKey.currentContext;
-    if (posterContext == null) {
+    if (posterContext == null || !posterContext.mounted) {
       return;
     }
     try {
@@ -16150,7 +16259,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     final posterContext = _posterCaptureKey.currentContext;
-    if (posterContext == null) {
+    if (posterContext == null || !posterContext.mounted) {
       return;
     }
     final imageProvider = PosterProfileService.resolveImageProvider(
@@ -16209,6 +16318,77 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       );
       _homeDebugLogStack(
         'poster additional photo precache skipped: $error',
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _precacheCurrentPoliticalProtocolPhotos() async {
+    final personalizationConfig = item.personalizationConfig;
+    if (!widget.enablePoliticalProtocolOverlay ||
+        personalizationConfig == null ||
+        !personalizationConfig.hasPoliticalProtocolLayout) {
+      return;
+    }
+    final pendingDefaultPhotos = _politicalProtocolPhotoLoadFuture;
+    if (pendingDefaultPhotos != null) {
+      try {
+        await pendingDefaultPhotos.timeout(const Duration(seconds: 2));
+      } catch (_) {
+        // Best effort: manual photos and already loaded defaults can still export.
+      }
+    }
+    final defaultUrls = _politicalProtocolPhotoUrls
+        .map((url) => url.trim())
+        .where(
+          (url) =>
+              url.isNotEmpty &&
+              !_hiddenDefaultPoliticalProtocolPhotoUrls.contains(url),
+        )
+        .take(personalizationConfig.politicalProtocolSlots.length)
+        .toList(growable: false);
+    final manualPaths = _manualPoliticalProtocolPhotoPaths
+        .map((path) => path.trim())
+        .where((path) => path.isNotEmpty)
+        .toList(growable: false);
+    await _precachePoliticalProtocolPhotoProviders(
+      defaultUrls: defaultUrls,
+      manualPaths: manualPaths,
+    );
+  }
+
+  Future<void> _precachePoliticalProtocolPhotoProviders({
+    required List<String> defaultUrls,
+    required List<String> manualPaths,
+  }) async {
+    final posterContext = _posterCaptureKey.currentContext;
+    if (posterContext == null || !posterContext.mounted) {
+      return;
+    }
+    final futures = <Future<void>>[
+      for (final url in defaultUrls)
+        precacheImage(
+          CachedNetworkImageProvider(
+            url,
+            cacheManager: PosterNetworkImageCache.instance,
+          ),
+          posterContext,
+        ),
+      for (final path in manualPaths)
+        precacheImage(FileImage(File(path)), posterContext),
+    ];
+    if (futures.isEmpty) {
+      return;
+    }
+    try {
+      await Future.wait(futures).timeout(const Duration(seconds: 4));
+    } catch (error, stackTrace) {
+      _recordPosterCaptureTrace(
+        'poster protocol photos precache skipped',
+        details: <String, Object?>{'error': error.toString()},
+      );
+      _homeDebugLogStack(
+        'poster protocol photos precache skipped: $error',
         stackTrace,
       );
     }
@@ -17484,57 +17664,60 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       final isBusy = activeAction == 'poster_editor';
                       final controlsDisabled =
                           deferRichPosterPreview || activeAction != null;
+                      final showEditButton = widget.showPosterEditButton;
                       return Row(
                         children: <Widget>[
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: controlsDisabled
-                                  ? null
-                                  : () => unawaited(
-                                      _openPosterPhotoEditor(context),
-                                    ),
-                              icon: isBusy
-                                  ? const SizedBox(
-                                      width: 15,
-                                      height: 15,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                          if (showEditButton)
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: controlsDisabled
+                                    ? null
+                                    : () => unawaited(
+                                        _openPosterPhotoEditor(context),
                                       ),
-                                    )
-                                  : const Icon(
-                                      Icons.add_photo_alternate_rounded,
-                                      size: 16,
-                                    ),
-                              label: Text(
-                                strings.localized(
-                                  telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
-                                  english: 'Edit',
+                                icon: isBusy
+                                    ? const SizedBox(
+                                        width: 15,
+                                        height: 15,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.add_photo_alternate_rounded,
+                                        size: 16,
+                                      ),
+                                label: Text(
+                                  strings.localized(
+                                    telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
+                                    english: 'Edit',
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF6D28D9),
-                                side: const BorderSide(
-                                  color: Color(0xFFC4B5FD),
-                                ),
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6,
-                                  horizontal: 8,
-                                ),
-                                minimumSize: const Size.fromHeight(32),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF6D28D9),
+                                  side: const BorderSide(
+                                    color: Color(0xFFC4B5FD),
+                                  ),
+                                  backgroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                    horizontal: 8,
+                                  ),
+                                  minimumSize: const Size.fromHeight(32),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                           if (_canAddPoliticalProtocolPhotos) ...<Widget>[
-                            const SizedBox(width: 8),
+                            if (showEditButton) const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: controlsDisabled
@@ -17935,52 +18118,55 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 final isBusy = activeAction == 'poster_editor';
                 final controlsDisabled =
                     deferRichPosterPreview || activeAction != null;
+                final showEditButton = widget.showPosterEditButton;
                 return Row(
                   children: <Widget>[
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: controlsDisabled
-                            ? null
-                            : () => unawaited(_openPosterPhotoEditor(context)),
-                        icon: isBusy
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                    if (showEditButton)
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: controlsDisabled
+                              ? null
+                              : () =>
+                                    unawaited(_openPosterPhotoEditor(context)),
+                          icon: isBusy
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  size: 16,
                                 ),
-                              )
-                            : const Icon(
-                                Icons.add_photo_alternate_rounded,
-                                size: 16,
-                              ),
-                        label: Text(
-                          strings.localized(
-                            telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
-                            english: 'Edit',
+                          label: Text(
+                            strings.localized(
+                              telugu: '\u0C0E\u0C21\u0C3F\u0C1F\u0C4D',
+                              english: 'Edit',
+                            ),
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF6D28D9),
-                          side: const BorderSide(color: Color(0xFFC4B5FD)),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 9,
-                            horizontal: 8,
-                          ),
-                          minimumSize: const Size.fromHeight(36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF6D28D9),
+                            side: const BorderSide(color: Color(0xFFC4B5FD)),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 9,
+                              horizontal: 8,
+                            ),
+                            minimumSize: const Size.fromHeight(36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     if (_canAddPoliticalProtocolPhotos) ...<Widget>[
-                      const SizedBox(width: 8),
+                      if (showEditButton) const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: controlsDisabled
@@ -20810,22 +20996,66 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
                                           : Container(
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.18,
+                                                color: Colors.black.withValues(
+                                                  alpha: 0.34,
                                                 ),
+                                                border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 2.5,
+                                                ),
+                                                boxShadow: <BoxShadow>[
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                          alpha: 0.22,
+                                                        ),
+                                                    blurRadius: 10,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
                                               ),
                                               child: Center(
-                                                child: Text(
-                                                  context.strings.localized(
-                                                    telugu: 'Add Photo',
-                                                    english: 'Add Photo',
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w800,
-                                                    height: 1.15,
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    child: Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: <Widget>[
+                                                        const Icon(
+                                                          Icons
+                                                              .add_a_photo_rounded,
+                                                          color: Colors.white,
+                                                          size: 22,
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 3,
+                                                        ),
+                                                        Text(
+                                                          context.strings
+                                                              .localized(
+                                                                telugu:
+                                                                    'Add Photo',
+                                                                english:
+                                                                    'Add Photo',
+                                                              ),
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w900,
+                                                                height: 1.05,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               ),
