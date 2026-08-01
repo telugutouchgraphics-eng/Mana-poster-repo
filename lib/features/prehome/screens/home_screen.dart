@@ -472,6 +472,7 @@ class _AllFeedRankingWorkerRequest {
     required this.year,
     required this.month,
     required this.day,
+    required this.sessionSeed,
     required this.dynamicTags,
     required this.recentTemplateKeys,
   });
@@ -481,6 +482,7 @@ class _AllFeedRankingWorkerRequest {
   final int year;
   final int month;
   final int day;
+  final int sessionSeed;
   final Set<String> dynamicTags;
   final Set<String> recentTemplateKeys;
 }
@@ -865,7 +867,23 @@ List<_TemplateItem> _spreadAllCategoryTemplateGroupsWorker(
     grouped.putIfAbsent(key, () => <_TemplateItem>[]).add(item);
   }
   if (grouped.length < 2) {
-    return templates;
+    final shuffledOnly = List<_TemplateItem>.of(templates, growable: false)
+      ..sort(
+        (a, b) => Object.hash(
+          seed,
+          _templateSequenceKeyWorker(a),
+        ).compareTo(Object.hash(seed, _templateSequenceKeyWorker(b))),
+      );
+    return shuffledOnly;
+  }
+  for (final entry in grouped.entries) {
+    entry.value.sort(
+      (a, b) => Object.hash(
+        seed,
+        entry.key,
+        _templateSequenceKeyWorker(a),
+      ).compareTo(Object.hash(seed, entry.key, _templateSequenceKeyWorker(b))),
+    );
   }
   final bucketKeys = grouped.keys.toList(growable: false)
     ..sort((a, b) => Object.hash(seed, a).compareTo(Object.hash(seed, b)));
@@ -1157,6 +1175,7 @@ List<_TemplateItem> _rankAllFeedTemplatesWorker(
     request.day,
     request.slot.name,
     freshTemplateKeys.isNotEmpty,
+    request.sessionSeed,
   );
   final shuffled = List<_TemplateItem>.of(templates, growable: false)
     ..sort((a, b) {
@@ -1472,6 +1491,10 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _allFeedInterestSaveTimer;
   Map<String, double> _allFeedInterestScores = <String, double>{};
   int _allFeedPersonalizationRevision = 0;
+  late final int _allFeedSessionSeed = Object.hash(
+    DateTime.now().microsecondsSinceEpoch,
+    math.Random().nextInt(0x7fffffff),
+  );
 
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
@@ -1816,7 +1839,7 @@ class _HomeScreenState extends State<HomeScreen>
       ranked.add((index: index, item: item, score: score));
     }
     if (!hasPositiveScore) {
-      return source;
+      return _balancedHomeFeedOrder(source, reason: 'no_personalization');
     }
     ranked.sort((a, b) {
       final scoreCompare = b.score.compareTo(a.score);
@@ -1837,6 +1860,7 @@ class _HomeScreenState extends State<HomeScreen>
         now.day,
         _activeHomeFeedTimeSlot.name,
         'personalized',
+        _allFeedSessionSeed,
       ),
     );
     return _balancedHomeFeedOrder(spread, reason: 'personalized');
@@ -2418,10 +2442,6 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  Set<String> _hiddenCategorySlugsForReligion() {
-    return AppReligionService.hiddenCategorySlugsFor(_religionPreference);
-  }
-
   bool _isCategoryHiddenForReligion(String slug) {
     return _isCategoryHiddenForReligionPreference(slug, _religionPreference);
   }
@@ -2432,16 +2452,25 @@ class _HomeScreenState extends State<HomeScreen>
   ) {
     final normalized = _normalizeTag(slug);
     if (normalized.isEmpty || normalized == _allCategorySlug) {
-      return false;
+      return _rawCategoryValueMatchesHiddenReligion(
+        slug,
+        _hiddenCategoryTagsForReligionPreference(preference),
+      );
     }
-    return AppReligionService.hiddenCategorySlugsFor(
-      preference,
-    ).contains(normalized);
+    final hiddenTags = _hiddenCategoryTagsForReligionPreference(preference);
+    return hiddenTags.contains(normalized) ||
+        _rawCategoryValueMatchesHiddenReligion(slug, hiddenTags);
   }
 
   Set<String> _hiddenCategoryTagsForReligion() {
+    return _hiddenCategoryTagsForReligionPreference(_religionPreference);
+  }
+
+  Set<String> _hiddenCategoryTagsForReligionPreference(
+    AppReligionPreference preference,
+  ) {
     final tags = <String>{};
-    for (final slug in _hiddenCategorySlugsForReligion()) {
+    for (final slug in AppReligionService.hiddenCategorySlugsFor(preference)) {
       tags.add(_normalizeTag(slug));
       for (final tag in _defaultCategoryTagsForSlug(slug)) {
         final normalized = _normalizeTag(tag);
@@ -2464,6 +2493,16 @@ class _HomeScreenState extends State<HomeScreen>
         hiddenTags.contains(_normalizeTag(primaryFirestore))) {
       return true;
     }
+    final rawCategoryValues = <String>[
+      primaryFirestore,
+      item.categoryDisplayLabel ?? '',
+      ...item.categoryTags,
+    ];
+    if (rawCategoryValues.any(
+      (value) => _rawCategoryValueMatchesHiddenReligion(value, hiddenTags),
+    )) {
+      return true;
+    }
 
     final itemTags = <String>{};
     for (final tag in item.categoryTags) {
@@ -2473,6 +2512,65 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
     return itemTags.intersection(hiddenTags).isNotEmpty;
+  }
+
+  bool _rawCategoryValueMatchesHiddenReligion(
+    String rawValue,
+    Set<String> hiddenTags,
+  ) {
+    final text = rawValue.trim().toLowerCase();
+    if (text.isEmpty) {
+      return false;
+    }
+    final collapsed = text.replaceAll(RegExp(r'[\s_\-]+'), '');
+
+    bool containsAny(Iterable<String> values) {
+      return values.any((value) => collapsed.contains(value));
+    }
+
+    const mahabharataTags = <String>{
+      'mahabharata',
+      'mahabharatam',
+      'mahabharatham',
+      'maha_bharatam',
+      'maha_bharatham',
+    };
+    if (hiddenTags.intersection(mahabharataTags).isNotEmpty &&
+        containsAny(const <String>[
+          'mahabharata',
+          'mahabharatam',
+          'mahabharatham',
+          'మహాభారత',
+          'महाभारत',
+          'மகாபாரத',
+          'ಮಹಾಭಾರತ',
+          'മഹാഭാരത',
+          'মহাভারত',
+          'મહાભારત',
+          'ਮਹਾਭਾਰਤ',
+          'ମହାଭାରତ',
+        ])) {
+      return true;
+    }
+
+    if (hiddenTags.contains('devotional') &&
+        containsAny(const <String>[
+          'devotional',
+          'bhakti',
+          'భక్తి',
+          'भक्ति',
+          'பக்தி',
+          'ಭಕ್ತಿ',
+          'ഭക്തി',
+          'ভক্তি',
+          'ભક્તિ',
+          'ਭਗਤੀ',
+          'ଭକ୍ତି',
+        ])) {
+      return true;
+    }
+
+    return false;
   }
 
   List<_CategoryChipData> _filterCategoriesByReligion(
@@ -2510,7 +2608,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (selectedCategory.slug == _allCategorySlug) {
-      return _matchesActiveAllFeedTimeSlot(item);
+      return _matchesAllCategoryTimeWindow(item);
     }
 
     if (selectedCategory.slug == _politicalCategorySlug) {
@@ -2742,47 +2840,54 @@ class _HomeScreenState extends State<HomeScreen>
         : merged.take(scanLimit).toList(growable: false);
   }
 
-  bool _matchesActiveAllFeedTimeSlot(_TemplateItem item) {
+  bool _matchesAllCategoryTimeWindow(_TemplateItem item) {
     final itemTemporalTags = _templateTemporalSignals(item);
     if (itemTemporalTags.isEmpty) {
       return true;
     }
-    final activeTags = _timeSlotSignals(_activeHomeFeedTimeSlot);
-    return itemTemporalTags.intersection(activeTags).isNotEmpty;
+    return itemTemporalTags.intersection(
+      _allowedAllFeedTemporalSignals(_activeHomeFeedTimeSlot),
+    ).isNotEmpty;
   }
 
   Set<String> _templateTemporalSignals(_TemplateItem item) {
     final signals = <String>{};
-    for (final tag in item.categoryTags) {
+    final rawTags = <String>[
+      item.primaryFirestoreCategoryId ?? '',
+      item.categoryDisplayLabel ?? '',
+      ...item.categoryTags,
+    ];
+    for (final tag in rawTags) {
       final normalized = _normalizeTag(tag);
       if (normalized.isEmpty) {
         continue;
       }
       signals.addAll(
-        _expandCategoryAliases(normalized).where(
-          (alias) =>
-              alias == 'good_morning' ||
-              alias == 'morning' ||
-              alias == 'good_afternoon' ||
-              alias == 'afternoon' ||
-              alias == 'good_evening' ||
-              alias == 'evening' ||
-              alias == 'good_night' ||
-              alias == 'night',
-        ),
+        _expandCategoryAliases(normalized).where(_isTimeGreetingSignal),
       );
     }
     return signals;
   }
 
-  Set<String> _timeSlotSignals(HomeFeedTimeSlot slot) {
+  bool _isTimeGreetingSignal(String tag) {
+    return tag == 'good_morning' ||
+        tag == 'morning' ||
+        tag == 'good_afternoon' ||
+        tag == 'afternoon' ||
+        tag == 'good_evening' ||
+        tag == 'evening' ||
+        tag == 'good_night' ||
+        tag == 'night';
+  }
+
+  Set<String> _allowedAllFeedTemporalSignals(HomeFeedTimeSlot slot) {
     return switch (slot) {
       HomeFeedTimeSlot.morning => const <String>{'good_morning', 'morning'},
       HomeFeedTimeSlot.afternoon => const <String>{
         'good_afternoon',
         'afternoon',
       },
-      HomeFeedTimeSlot.evening ||
+      HomeFeedTimeSlot.evening => const <String>{'good_evening', 'evening'},
       HomeFeedTimeSlot.funEvening => const <String>{'good_evening', 'evening'},
       HomeFeedTimeSlot.night => const <String>{'good_night', 'night'},
     };
@@ -2973,16 +3078,17 @@ class _HomeScreenState extends State<HomeScreen>
       return source;
     }
     final now = IstTimeService.now();
-    return _breakUpAdjacentCategoryRunsWorker(
-      source,
-      seed: Object.hash(
-        now.year,
-        now.month,
-        now.day,
-        _activeHomeFeedTimeSlot.name,
-        reason,
-      ),
+    final seed = Object.hash(
+      now.year,
+      now.month,
+      now.day,
+      _activeHomeFeedTimeSlot.name,
+      reason,
+      _allFeedSessionSeed,
+      source.length,
     );
+    final spread = _spreadAllCategoryTemplateGroupsWorker(source, seed: seed);
+    return _breakUpAdjacentCategoryRunsWorker(spread, seed: seed);
   }
 
   Future<List<_TemplateItem>?> _extendLockedAllFeedTemplates(
@@ -3960,7 +4066,13 @@ class _HomeScreenState extends State<HomeScreen>
 
     void addCategory(_CategoryChipData category) {
       final slug = _normalizeTag(category.slug);
-      if (slug.isEmpty || slug == _moreCategorySlug) {
+      if (slug.isEmpty ||
+          slug == _moreCategorySlug ||
+          _isCategoryHiddenForReligion(category.effectiveSelectionSlug) ||
+          _rawCategoryValueMatchesHiddenReligion(
+            category.label,
+            _hiddenCategoryTagsForReligion(),
+          )) {
         return;
       }
       bySlug.putIfAbsent(category.slug, () => category);
@@ -3993,7 +4105,7 @@ class _HomeScreenState extends State<HomeScreen>
         addCategory(_categoryChipFromDynamicCategory(category));
       }
     }
-    return bySlug.values.toList(growable: false);
+    return _filterCategoriesByReligion(bySlug.values.toList(growable: false));
   }
 
   _CategoryChipData? _morePopupCategoryForSlug(String slug) {
@@ -4212,7 +4324,13 @@ class _HomeScreenState extends State<HomeScreen>
       'life_advice' => const <String>['life_advice'],
       'gita_wisdom' => const <String>['gita_wisdom'],
       'devotional' => const <String>['devotional'],
-      'mahabharata' => const <String>['mahabharata'],
+      'mahabharata' => const <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
       'anniversary' => const <String>['anniversary'],
       'good_thoughts' => const <String>['good_thoughts'],
       'bible' => const <String>['bible'],
@@ -4261,7 +4379,41 @@ class _HomeScreenState extends State<HomeScreen>
       'life_advice': <String>['life_advice'],
       'gita_wisdom': <String>['gita_wisdom'],
       'devotional': <String>['devotional'],
-      'mahabharata': <String>['mahabharata'],
+      'mahabharata': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'mahabharatam': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'mahabharatham': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'maha_bharatam': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'maha_bharatham': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
       'anniversary': <String>['anniversary'],
       'good_thoughts': <String>['good_thoughts'],
       'bible': <String>['bible'],
@@ -5227,6 +5379,37 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<List<_TemplateItem>> _ensureAllCategoryStartupVisibleTemplates(
+    List<_TemplateItem> items, {
+    required AppLanguage language,
+    required String phase,
+  }) async {
+    if (_selectedCategorySlug != _allCategorySlug ||
+        items.any((item) => _matchesTemplate(item, language, _allCategoryChip()))) {
+      return items;
+    }
+    final windowTemplates = await _approvedCreatorTemplateService
+        .fetchApprovedTemplatesWindow(
+          scanLimit: math.max(_allTemplatesWindowPageSize * 3, 72),
+          source: Source.server,
+        );
+    if (!mounted || windowTemplates.isEmpty) {
+      return items;
+    }
+    final windowItems = await _mapTemplatesOffMain(
+      windowTemplates,
+      phase: '${phase}_all_window',
+    );
+    if (!mounted || windowItems.isEmpty) {
+      return items;
+    }
+    final merged = await _mergeTemplateListsOffMain(<List<_TemplateItem>>[
+      items,
+      windowItems,
+    ], phase: '${phase}_all_window_merge');
+    return merged;
+  }
+
   void _triggerSelectedCategoryPrefetch() {
     if (!_shouldRunRemoteHomeStartupTasks) {
       return;
@@ -5297,6 +5480,7 @@ class _HomeScreenState extends State<HomeScreen>
     bool forceRefresh = false,
   }) async {
     final stopwatch = Stopwatch()..start();
+    final startupLanguage = context.currentLanguage;
     final hadVisibleTemplates = _remoteApprovedTemplates.isNotEmpty;
     if (forceRefresh) {
       try {
@@ -5308,8 +5492,13 @@ class _HomeScreenState extends State<HomeScreen>
         if (!mounted) {
           return;
         }
-        final mapped = await _mapTemplatesOffMain(
+        var mapped = await _mapTemplatesOffMain(
           page.templates,
+          phase: 'refresh',
+        );
+        mapped = await _ensureAllCategoryStartupVisibleTemplates(
+          mapped,
+          language: startupLanguage,
           phase: 'refresh',
         );
         if (!mounted) {
@@ -5593,7 +5782,11 @@ class _HomeScreenState extends State<HomeScreen>
               primaryItems,
               dynamicTags: startupDynamicTags,
             );
-        var firstPaintItems = prioritizedPrimaryItems;
+        var firstPaintItems = await _ensureAllCategoryStartupVisibleTemplates(
+          prioritizedPrimaryItems,
+          language: startupLanguage,
+          phase: 'primary',
+        );
         var firstPaintHasMore = true;
         QueryDocumentSnapshot<Map<String, dynamic>>? firstPaintLastDocument;
         var firstPaintGenericCount = 0;
@@ -5701,6 +5894,11 @@ class _HomeScreenState extends State<HomeScreen>
         remotePage.templates,
         phase: 'page',
       );
+      mapped = await _ensureAllCategoryStartupVisibleTemplates(
+        mapped,
+        language: startupLanguage,
+        phase: 'page',
+      );
       var mappingMs = remoteMappingStopwatch.elapsedMilliseconds;
       if (mapped.isEmpty) {
         final retryPage = await _startupTemplatePageWithTimeout(
@@ -5716,6 +5914,11 @@ class _HomeScreenState extends State<HomeScreen>
         final retryMappingStopwatch = Stopwatch()..start();
         mapped = await _mapTemplatesOffMain(
           retryPage.templates,
+          phase: 'retry',
+        );
+        mapped = await _ensureAllCategoryStartupVisibleTemplates(
+          mapped,
+          language: startupLanguage,
           phase: 'retry',
         );
         mappingMs = retryMappingStopwatch.elapsedMilliseconds;
@@ -5959,6 +6162,7 @@ class _HomeScreenState extends State<HomeScreen>
                 year: now.year,
                 month: now.month,
                 day: now.day,
+                sessionSeed: _allFeedSessionSeed,
                 dynamicTags: activeDynamicTags,
                 recentTemplateKeys: _recentAllFeedTemplateKeys,
               ),
@@ -6489,6 +6693,7 @@ class _HomeScreenState extends State<HomeScreen>
               DateTime.now().day,
               _activeHomeFeedTimeSlot.name,
               _allFeedPersonalizationRevision,
+              _allFeedSessionSeed,
             )
           : 0,
     );
@@ -21923,8 +22128,8 @@ class _PhotoShapeFrame extends StatelessWidget {
       child: _isTransparentRoundShape(shape)
           ? _clipPhotoShape(_resolvedShape(shape), imageWidget)
           : _isTransparentPhotoShape(shape)
-          ? ClipRect(clipBehavior: Clip.antiAlias, child: imageWidget)
-          : _clipPhotoShape(shape, imageWidget),
+              ? ClipRect(clipBehavior: Clip.antiAlias, child: imageWidget)
+              : _clipPhotoShape(shape, imageWidget),
     );
     final framedChild = Stack(
       fit: StackFit.expand,

@@ -1627,6 +1627,131 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
   };
 }
 
+function buildReligionNotificationCopy(language, userName, targetReligion) {
+  const lang = sanitizeLanguage(language) || "english";
+  const name = notificationDisplayName(userName, lang);
+  const religion = normalizeReligionPreference(targetReligion);
+  const copyByLanguage = {
+    telugu: {
+      title: "మీ పోస్టర్ సిద్ధంగా ఉంది",
+      labels: {hindu: "దేవుడు", muslim: "ఇస్లాం", christian: "బైబిల్"},
+      body: (label) => `${name} గారు, ఈరోజు మీ ${label} పోస్టర్ సిద్ధంగా ఉంది.`,
+      footer: "ఇప్పుడే షేర్ చేయండి",
+    },
+    hindi: {
+      title: "आपका पोस्टर तैयार है",
+      labels: {hindu: "भक्ति", muslim: "इस्लाम", christian: "बाइबल"},
+      body: (label) => `${name} जी, आज आपका ${label} पोस्टर तैयार है।`,
+      footer: "अभी शेयर करें",
+    },
+    english: {
+      title: "Your poster is ready",
+      labels: {hindu: "devotional", muslim: "Islam", christian: "Bible"},
+      body: (label) => `${name}, your ${label} poster is ready today.`,
+      footer: "Share now",
+    },
+    tamil: {
+      title: "உங்கள் போஸ்டர் தயாராக உள்ளது",
+      labels: {hindu: "பக்தி", muslim: "இஸ்லாம்", christian: "பைபிள்"},
+      body: (label) => `${name} அவர்களே, இன்று உங்கள் ${label} போஸ்டர் தயாராக உள்ளது.`,
+      footer: "இப்போது பகிருங்கள்",
+    },
+    kannada: {
+      title: "ನಿಮ್ಮ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ",
+      labels: {hindu: "ಭಕ್ತಿ", muslim: "ಇಸ್ಲಾಂ", christian: "ಬೈಬಲ್"},
+      body: (label) => `${name} ಅವರೇ, ಇಂದು ನಿಮ್ಮ ${label} ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ.`,
+      footer: "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ",
+    },
+    malayalam: {
+      title: "നിങ്ങളുടെ പോസ്റ്റർ തയ്യാറാണ്",
+      labels: {hindu: "ഭക്തി", muslim: "ഇസ്ലാം", christian: "ബൈബിൾ"},
+      body: (label) => `${name}, ഇന്ന് നിങ്ങളുടെ ${label} പോസ്റ്റർ തയ്യാറാണ്.`,
+      footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ",
+    },
+    assamese: {
+      title: "আপোনাৰ পোষ্টাৰ সাজু",
+      labels: {hindu: "ভক্তি", muslim: "ইছলাম", christian: "বাইবেল"},
+      body: (label) => `${name}, আজি আপোনাৰ ${label} পোষ্টাৰ সাজু আছে।`,
+      footer: "এতিয়াই শ্বেয়াৰ কৰক",
+    },
+    konkani: {
+      title: "तुमचो पोस्टर तयार आसा",
+      labels: {hindu: "भक्ती", muslim: "इस्लाम", christian: "बायबल"},
+      body: (label) => `${name}, आयज तुमचो ${label} पोस्टर तयार आसा.`,
+      footer: "आतां शेअर करात",
+    },
+    gujarati: {
+      title: "તમારું પોસ્ટર તૈયાર છે",
+      labels: {hindu: "ભક્તિ", muslim: "ઇસ્લામ", christian: "બાઇબલ"},
+      body: (label) => `${name}, આજે તમારું ${label} પોસ્ટર તૈયાર છે.`,
+      footer: "હમણાં શેર કરો",
+    },
+    marathi: {
+      title: "तुमचा पोस्टर तयार आहे",
+      labels: {hindu: "भक्ती", muslim: "इस्लाम", christian: "बायबल"},
+      body: (label) => `${name}, आज तुमचा ${label} पोस्टर तयार आहे.`,
+      footer: "आत्ताच शेअर करा",
+    },
+    meitei: {
+      title: "নহাক্কী poster ready ওইরে",
+      labels: {hindu: "ভক্তি", muslim: "Islam", christian: "Bible"},
+      body: (label) => `${name}, ঙসি নহাক্কী ${label} poster ready ওইরে.`,
+      footer: "হৌজিক share তৌ",
+    },
+    mizo: {
+      title: "I poster a peih tawh",
+      labels: {hindu: "devotional", muslim: "Islam", christian: "Bible"},
+      body: (label) => `${name}, vawiin i ${label} poster a peih tawh.`,
+      footer: "Tunah share rawh",
+    },
+    odia: {
+      title: "ଆପଣଙ୍କ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ",
+      labels: {hindu: "ଭକ୍ତି", muslim: "ଇସ୍ଲାମ", christian: "ବାଇବେଲ"},
+      body: (label) => `${name}, ଆଜି ଆପଣଙ୍କ ${label} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି।`,
+      footer: "ଏବେ ସେୟାର କରନ୍ତୁ",
+    },
+    punjabi: {
+      title: "ਤੁਹਾਡਾ ਪੋਸਟਰ ਤਿਆਰ ਹੈ",
+      labels: {hindu: "ਭਗਤੀ", muslim: "ਇਸਲਾਮ", christian: "ਬਾਈਬਲ"},
+      body: (label) => `${name}, ਅੱਜ ਤੁਹਾਡਾ ${label} ਪੋਸਟਰ ਤਿਆਰ ਹੈ।`,
+      footer: "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ",
+    },
+    nepali: {
+      title: "तपाईंको पोस्टर तयार छ",
+      labels: {hindu: "भक्ति", muslim: "इस्लाम", christian: "बाइबल"},
+      body: (label) => `${name}, आज तपाईंको ${label} पोस्टर तयार छ।`,
+      footer: "अहिले शेयर गर्नुहोस्",
+    },
+    bengali: {
+      title: "আপনার পোস্টার প্রস্তুত",
+      labels: {hindu: "ভক্তি", muslim: "ইসলাম", christian: "বাইবেল"},
+      body: (label) => `${name}, আজ আপনার ${label} পোস্টার প্রস্তুত আছে।`,
+      footer: "এখনই শেয়ার করুন",
+    },
+    kashmiri: {
+      title: "تُہند پوسٹر تیار چھ",
+      labels: {hindu: "بھکتی", muslim: "اسلام", christian: "بائبل"},
+      body: (label) => `${name}, از تُہند ${label} پوسٹر تیار چھ۔`,
+      footer: "وُنہ شیئر کریو",
+    },
+    ladakhi: {
+      title: "Khyod-kyi poster ready in",
+      labels: {hindu: "devotional", muslim: "Islam", christian: "Bible"},
+      body: (label) => `${name}, de-ring khyod-kyi ${label} poster ready in.`,
+      footer: "Da share chos",
+    },
+  };
+  const bucket = copyByLanguage[lang] || copyByLanguage.english;
+  const label = bucket.labels[religion] || bucket.labels.hindu;
+  const body = bucket.body(label);
+  return {
+    title: bucket.title,
+    body,
+    header: body,
+    footer: bucket.footer,
+  };
+}
+
 function reminderCopy(kind, language, userName) {
   const displayName = pickFirstUsablePosterName(userName);
   const lang =
@@ -3676,11 +3801,10 @@ async function sendDailyPersonalizedReminder({
         return;
       }
       const copy = targetReligion ?
-        buildNotificationCopy(
-            "dynamic_event",
+        buildReligionNotificationCopy(
             language || profile.preferredLanguage,
             profile.name,
-            {eventTitle: displayLabel || categoryKey, timing: "today"},
+            targetReligion,
         ) :
         reminderCopyLocalized(
             categoryKey,
@@ -3764,11 +3888,10 @@ async function sendDailyPersonalizedReminder({
         return;
       }
       const copy = targetReligion ?
-        buildNotificationCopy(
-            "dynamic_event",
+        buildReligionNotificationCopy(
             language,
             "Mana Poster User",
-            {eventTitle: displayLabel || categoryKey, timing: "today"},
+            targetReligion,
         ) :
         reminderCopyLocalized(
             categoryKey,

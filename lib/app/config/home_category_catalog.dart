@@ -162,7 +162,12 @@ class HomeCategoryCatalog {
         'Mahabharata quote',
         'Warrior wisdom',
       ],
-      aliases: <String>['mahabharatam', 'maha bharatam'],
+      aliases: <String>[
+        'mahabharatam',
+        'mahabharatham',
+        'maha bharatam',
+        'maha bharatham',
+      ],
     ),
     HomeCategoryCatalogEntry(
       id: 'anniversary',

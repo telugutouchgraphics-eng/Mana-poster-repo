@@ -602,6 +602,22 @@ class ApprovedCreatorTemplateService {
       final filteredTemplates = mergedVisible.length <= pageSize
           ? mergedVisible
           : mergedVisible.take(pageSize).toList(growable: false);
+      if (filteredTemplates.isEmpty &&
+          startAfterDocument == null &&
+          (source == Source.server || source == Source.serverAndCache)) {
+        final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+          regionId: regionId,
+          categoryId: '',
+          limit: pageSize,
+        );
+        if (backendTemplates.isNotEmpty) {
+          return ApprovedCreatorTemplatePage(
+            templates: backendTemplates,
+            lastDocument: null,
+            hasMore: false,
+          );
+        }
+      }
       final fallbackMergeMs =
           totalStopwatch.elapsedMilliseconds - queryMs - mappingMs;
       _debugLog(
@@ -1001,7 +1017,41 @@ class ApprovedCreatorTemplateService {
       'life_advice': <String>['life_advice'],
       'gita_wisdom': <String>['gita_wisdom'],
       'devotional': <String>['devotional'],
-      'mahabharata': <String>['mahabharata'],
+      'mahabharata': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'mahabharatam': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'mahabharatham': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'maha_bharatam': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
+      'maha_bharatham': <String>[
+        'mahabharata',
+        'mahabharatam',
+        'mahabharatham',
+        'maha_bharatam',
+        'maha_bharatham',
+      ],
       'anniversary': <String>['anniversary'],
       'good_thoughts': <String>['good_thoughts'],
       'bible': <String>['bible'],

@@ -20,7 +20,7 @@ class AppPublicInfo {
   );
   static const String latestPlayStoreVersion = String.fromEnvironment(
     'MANA_POSTER_LATEST_PLAY_STORE_VERSION',
-    defaultValue: '1.1.38',
+    defaultValue: '1.1.39',
   );
   static const String adMobHomeBannerAdUnitId = String.fromEnvironment(
     'MANA_POSTER_HOME_BANNER_AD_UNIT_ID',
