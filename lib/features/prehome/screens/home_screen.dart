@@ -20655,7 +20655,9 @@ class _PosterFullScreenPreview extends StatefulWidget {
 class _PosterFullScreenPreviewState extends State<_PosterFullScreenPreview> {
   final TransformationController _transformationController =
       TransformationController();
+  final Set<int> _activePointerIds = <int>{};
   bool _isZoomed = false;
+  bool _isPinching = false;
 
   @override
   void initState() {
@@ -20675,6 +20677,23 @@ class _PosterFullScreenPreviewState extends State<_PosterFullScreenPreview> {
     final nextZoomed = scale > 1.02;
     if (nextZoomed != _isZoomed && mounted) {
       setState(() => _isZoomed = nextZoomed);
+    }
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointerIds.add(event.pointer);
+    _updatePinchState();
+  }
+
+  void _handlePointerUp(PointerEvent event) {
+    _activePointerIds.remove(event.pointer);
+    _updatePinchState();
+  }
+
+  void _updatePinchState() {
+    final nextPinching = _activePointerIds.length >= 2;
+    if (nextPinching != _isPinching && mounted) {
+      setState(() => _isPinching = nextPinching);
     }
   }
 
@@ -20715,20 +20734,27 @@ class _PosterFullScreenPreviewState extends State<_PosterFullScreenPreview> {
                               height: targetHeight,
                               child: widget.child,
                             );
-                      return InteractiveViewer(
-                        transformationController: _transformationController,
-                        minScale: 1,
-                        maxScale: 4,
-                        panEnabled: _isZoomed,
-                        scaleEnabled: true,
-                        clipBehavior: Clip.none,
-                        child: SingleChildScrollView(
-                          physics: _isZoomed
-                              ? const NeverScrollableScrollPhysics()
-                              : const BouncingScrollPhysics(),
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: maxHeight),
-                            child: Center(child: preview),
+                      final blockScroll = _isZoomed || _isPinching;
+                      return Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: _handlePointerDown,
+                        onPointerUp: _handlePointerUp,
+                        onPointerCancel: _handlePointerUp,
+                        child: InteractiveViewer(
+                          transformationController: _transformationController,
+                          minScale: 1,
+                          maxScale: 4,
+                          panEnabled: blockScroll,
+                          scaleEnabled: true,
+                          clipBehavior: Clip.none,
+                          child: SingleChildScrollView(
+                            physics: blockScroll
+                                ? const NeverScrollableScrollPhysics()
+                                : const BouncingScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: maxHeight),
+                              child: Center(child: preview),
+                            ),
                           ),
                         ),
                       );
@@ -20905,7 +20931,9 @@ class _ZoomableFullScreenGalleryItemState
     extends State<_ZoomableFullScreenGalleryItem> {
   final TransformationController _transformationController =
       TransformationController();
+  final Set<int> _activePointerIds = <int>{};
   bool _isZoomed = false;
+  bool _isPinching = false;
 
   @override
   void initState() {
@@ -20926,20 +20954,45 @@ class _ZoomableFullScreenGalleryItemState
     final nextZoomed = scale > 1.02;
     if (nextZoomed != _isZoomed && mounted) {
       setState(() => _isZoomed = nextZoomed);
-      widget.onZoomChanged(nextZoomed);
+      widget.onZoomChanged(nextZoomed || _isPinching);
+    }
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointerIds.add(event.pointer);
+    _updatePinchState();
+  }
+
+  void _handlePointerUp(PointerEvent event) {
+    _activePointerIds.remove(event.pointer);
+    _updatePinchState();
+  }
+
+  void _updatePinchState() {
+    final nextPinching = _activePointerIds.length >= 2;
+    if (nextPinching != _isPinching && mounted) {
+      setState(() => _isPinching = nextPinching);
+      widget.onZoomChanged(nextPinching || _isZoomed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return InteractiveViewer(
-      transformationController: _transformationController,
-      minScale: 1,
-      maxScale: 4,
-      panEnabled: _isZoomed,
-      scaleEnabled: true,
-      clipBehavior: Clip.none,
-      child: Center(child: widget.child),
+    final blockPageScroll = _isZoomed || _isPinching;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _handlePointerDown,
+      onPointerUp: _handlePointerUp,
+      onPointerCancel: _handlePointerUp,
+      child: InteractiveViewer(
+        transformationController: _transformationController,
+        minScale: 1,
+        maxScale: 4,
+        panEnabled: blockPageScroll,
+        scaleEnabled: true,
+        clipBehavior: Clip.none,
+        child: Center(child: widget.child),
+      ),
     );
   }
 }
