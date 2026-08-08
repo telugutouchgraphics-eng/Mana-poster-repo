@@ -15396,8 +15396,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   String? _preparedPosterFilePath;
   Future<void>? _preparePosterFuture;
   Future<Uint8List?>? _posterCaptureFuture;
+  bool _forcePlainPosterCapture = false;
   String? _preparedVideoSignature;
   String? _preparedVideoFilePath;
+  String? _preparedPlainVideoSignature;
+  String? _preparedPlainVideoFilePath;
   Future<String?>? _prepareVideoFuture;
   String? _prepareVideoFutureSignature;
   int _videoExportGeneration = 0;
@@ -15809,7 +15812,58 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             fontFamily == 'Pallavi Medium');
   }
 
-  String _posterSignature({required bool isPhotoVisible}) {
+  CreatorPosterPersonalization _plainPosterPersonalization(
+    CreatorPosterPersonalization config,
+  ) {
+    return CreatorPosterPersonalization(
+      photoShape: config.photoShape,
+      photoX: config.photoX,
+      photoY: config.photoY,
+      photoScale: config.photoScale,
+      photoAnimation: config.photoAnimation,
+      showVideoExtraPhoto: false,
+      videoExtraPhotoShape: config.videoExtraPhotoShape,
+      videoExtraPhotoRenderMode: config.videoExtraPhotoRenderMode,
+      videoExtraPhotoEdgeStyle: config.videoExtraPhotoEdgeStyle,
+      videoExtraPhotoAnimation: config.videoExtraPhotoAnimation,
+      videoExtraPhotoX: config.videoExtraPhotoX,
+      videoExtraPhotoY: config.videoExtraPhotoY,
+      videoExtraPhotoScale: config.videoExtraPhotoScale,
+      nameX: config.nameX,
+      nameY: config.nameY,
+      showBottomStrip: false,
+      stripHeight: config.stripHeight,
+      stripWidth: config.stripWidth,
+      stripX: config.stripX,
+      stripBottom: config.stripBottom,
+      showWhatsapp: false,
+      sampleName: config.sampleName,
+      nameScale: config.nameScale,
+      showStyledNameStrip: false,
+      showStyledDesignationStrip: false,
+      sampleDesignation: config.sampleDesignation,
+      designationScale: config.designationScale,
+      phoneScale: config.phoneScale,
+      nameStripColor: config.nameStripColor,
+      designationStripColor: config.designationStripColor,
+      stripLayoutStyle: config.stripLayoutStyle,
+      boardVariant: config.boardVariant,
+      photoRenderMode: config.photoRenderMode,
+      edgeStyle: config.edgeStyle,
+      showSafeAreas: false,
+      showPoliticalProtocol: false,
+      politicalProtocolX: config.politicalProtocolX,
+      politicalProtocolY: config.politicalProtocolY,
+      politicalProtocolScale: config.politicalProtocolScale,
+      politicalProtocolSlots: config.politicalProtocolSlots,
+      politicalProtocolEnabledAtMillis: 0,
+    );
+  }
+
+  String _posterSignature({
+    required bool isPhotoVisible,
+    bool plainPersonalization = false,
+  }) {
     final defaultProtocolSlots =
         _politicalProtocolDefaultSlotsOverride ??
         item.personalizationConfig?.politicalProtocolSlots ??
@@ -15828,7 +15882,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       ..._politicalProtocolPhotoUrls.take(defaultPoliticalProtocolSlots.length),
       ..._manualPoliticalProtocolPhotoPaths,
     ].join('|');
-    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-protocol$protocolPhotoSignature-$protocolSlotSignature-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible';
+    return '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath}-${item.videoUrl ?? ''}-${item.mediaType}-${language.name}-${viewerPosterProfile.identityMode.name}-${viewerPosterProfile.activeName}-${viewerPosterProfile.activeWhatsappNumber}-${viewerPosterProfile.photoPath}-${viewerPosterProfile.photoUrl}-${viewerPosterProfile.businessLogoPath}-${viewerPosterProfile.businessLogoUrl}-${_photoUserAdjustment.flipHorizontally}-${_photoUserAdjustment.xOffsetPercent.toStringAsFixed(2)}-${_photoUserAdjustment.yOffsetPercent.toStringAsFixed(2)}-${_extraPhotoSelection?.originalPhotoPath ?? ''}-${_extraPhotoSelection?.cutoutPhotoPath ?? ''}-protocol$protocolPhotoSignature-$protocolSlotSignature-strip$_stripGradientTapOffset-$posterRenderCycle-$isPhotoVisible-plain$plainPersonalization';
   }
 
   void _cyclePosterDesign() {
@@ -15862,6 +15916,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _preparedPosterFilePath = null;
     _preparedVideoSignature = null;
     _preparedVideoFilePath = null;
+    _preparedPlainVideoSignature = null;
+    _preparedPlainVideoFilePath = null;
     _prepareVideoFuture = null;
     _prepareVideoFutureSignature = null;
     _videoExportGeneration += 1;
@@ -16475,10 +16531,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Future<void> _preparePosterExport({
     bool force = false,
     bool? photoVisibleOverride,
+    bool plainPersonalization = false,
   }) async {
-    final requestedPhotoVisible =
-        photoVisibleOverride ?? _showPosterPhotoNotifier.value;
-    final signature = _posterSignature(isPhotoVisible: requestedPhotoVisible);
+    final requestedPhotoVisible = plainPersonalization
+        ? false
+        : photoVisibleOverride ?? _showPosterPhotoNotifier.value;
+    final signature = _posterSignature(
+      isPhotoVisible: requestedPhotoVisible,
+      plainPersonalization: plainPersonalization,
+    );
     if (!force &&
         _preparedPosterSignature == signature &&
         _preparedPosterBytes != null &&
@@ -16492,17 +16553,38 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
     final future = () async {
       final originalPhotoVisible = _showPosterPhotoNotifier.value;
+      final originalPlainCapture = _forcePlainPosterCapture;
       final shouldTemporarilySwitch =
           requestedPhotoVisible != originalPhotoVisible;
+      final shouldTemporarilySwitchPlain =
+          plainPersonalization != originalPlainCapture;
       if (shouldTemporarilySwitch) {
         _showPosterPhotoNotifier.value = requestedPhotoVisible;
+      }
+      if (shouldTemporarilySwitchPlain && mounted) {
+        setState(() => _forcePlainPosterCapture = plainPersonalization);
+      } else if (shouldTemporarilySwitchPlain) {
+        _forcePlainPosterCapture = plainPersonalization;
+      }
+      if (shouldTemporarilySwitch || shouldTemporarilySwitchPlain) {
         await _settlePosterCaptureFrame();
       }
       try {
         await _doPreparePosterExport(signature);
       } finally {
+        var shouldRestoreFrame = false;
         if (shouldTemporarilySwitch) {
           _showPosterPhotoNotifier.value = originalPhotoVisible;
+          shouldRestoreFrame = true;
+        }
+        if (shouldTemporarilySwitchPlain && mounted) {
+          setState(() => _forcePlainPosterCapture = originalPlainCapture);
+          shouldRestoreFrame = true;
+        } else if (shouldTemporarilySwitchPlain) {
+          _forcePlainPosterCapture = originalPlainCapture;
+          shouldRestoreFrame = true;
+        }
+        if (shouldRestoreFrame) {
           await _settlePosterCaptureFrame();
           _schedulePosterWarmup(force: true);
         }
@@ -16550,21 +16632,35 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<String?> _ensurePreparedPosterFileForVisibility(
-    bool isPhotoVisible,
-  ) async {
-    final signature = _posterSignature(isPhotoVisible: isPhotoVisible);
+    bool isPhotoVisible, {
+    bool plainPersonalization = false,
+  }) async {
+    final signature = _posterSignature(
+      isPhotoVisible: isPhotoVisible,
+      plainPersonalization: plainPersonalization,
+    );
     final existingPath = _preparedPosterFilePath;
     if (_preparedPosterSignature == signature &&
         existingPath != null &&
         await File(existingPath).exists()) {
       return existingPath;
     }
-    await _preparePosterExport(photoVisibleOverride: isPhotoVisible);
+    await _preparePosterExport(
+      photoVisibleOverride: isPhotoVisible,
+      plainPersonalization: plainPersonalization,
+    );
     final refreshedPath = _preparedPosterFilePath;
     if (refreshedPath != null && await File(refreshedPath).exists()) {
       return refreshedPath;
     }
     return null;
+  }
+
+  Future<String?> _ensurePreparedPlainPosterFile() async {
+    return _ensurePreparedPosterFileForVisibility(
+      false,
+      plainPersonalization: true,
+    );
   }
 
   Future<String?> _ensurePreparedVideoFile({bool isWarmup = false}) async {
@@ -16664,6 +16760,45 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _prepareVideoFuture = null;
         _prepareVideoFutureSignature = null;
       }
+    }
+  }
+
+  Future<String?> _ensurePreparedPlainVideoFile() async {
+    final videoUrl = item.videoUrl?.trim() ?? '';
+    if (!item.isVideo || videoUrl.isEmpty) {
+      return null;
+    }
+    final personalization = item.personalizationConfig;
+    if (personalization == null) {
+      return _ensurePreparedVideoFile();
+    }
+    final plainPersonalization = _plainPosterPersonalization(personalization);
+    final signature = _posterSignature(
+      isPhotoVisible: false,
+      plainPersonalization: true,
+    );
+    final existingPath = _preparedPlainVideoFilePath;
+    if (_preparedPlainVideoSignature == signature &&
+        existingPath != null &&
+        await File(existingPath).exists()) {
+      return existingPath;
+    }
+    try {
+      final outputPath = await const PersonalizedVideoExportService().export(
+        videoUrl: videoUrl,
+        profile: viewerPosterProfile,
+        personalization: plainPersonalization,
+        language: language,
+        title: item.titleFor(language),
+        previewSeed: item.imageUrl ?? item.imageAssetPath ?? 'poster',
+        stripGradientTapOffset: _stripGradientTapOffset,
+      );
+      _preparedPlainVideoSignature = signature;
+      _preparedPlainVideoFilePath = outputPath;
+      return outputPath;
+    } catch (error, stackTrace) {
+      _homeDebugLogStack('plain video export failed: $error', stackTrace);
+      return null;
     }
   }
 
@@ -17079,11 +17214,22 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     ValueChanged<bool>? onPosterReadyChanged,
     bool? playbackEnabledOverride,
     bool enableFullScreenTap = true,
+    bool personalizationEnabled = true,
   }) {
-    final personalizationConfig = item.personalizationConfig;
+    final sourcePersonalizationConfig = item.personalizationConfig;
+    final personalizationConfig =
+        personalizationEnabled || sourcePersonalizationConfig == null
+        ? sourcePersonalizationConfig
+        : _plainPosterPersonalization(sourcePersonalizationConfig);
     final renderOriginalPosterQuality = item.preferOriginalPosterQuality;
     final effectivePlaybackEnabled = playbackEnabledOverride ?? playbackEnabled;
     final fullScreenTap = enableFullScreenTap ? _openFullScreenPreview : null;
+    final effectiveShowProfilePhoto = personalizationEnabled && isPhotoVisible;
+    final effectiveShowPoliticalProtocol =
+        personalizationEnabled && widget.enablePoliticalProtocolOverlay;
+    final effectiveAdditionalPhotoSelection = personalizationEnabled
+        ? _extraPhotoSelection
+        : null;
     if (deferRichPosterPreview) {
       return _ResolvedTemplatePosterImage(
         imageAssetPath: item.imageAssetPath,
@@ -17141,9 +17287,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   politicalProtocolSlotsOverride:
                       _politicalProtocolDefaultSlotsOverride,
                   politicalProtocolManualSlots: _manualPoliticalProtocolSlots,
-                  showPoliticalProtocolOverlay:
-                      widget.enablePoliticalProtocolOverlay,
-                  showProfilePhoto: isPhotoVisible,
+                  showPoliticalProtocolOverlay: effectiveShowPoliticalProtocol,
+                  showProfilePhoto: effectiveShowProfilePhoto,
                   deferLegacyTextPrime: deferRichPosterPreview,
                   posterRenderCycle: posterRenderCycle,
                   interactivePhotoEnabled: false,
@@ -17155,9 +17300,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   onPhotoTap: _togglePosterPhotoFlipTap,
                   stripGradientTapOffset: _stripGradientTapOffset,
                   onNameStripTap: null,
-                  additionalPhotoSelection: _extraPhotoSelection,
+                  additionalPhotoSelection: effectiveAdditionalPhotoSelection,
                   onAdditionalPhotoTap:
-                      personalizationConfig.showVideoExtraPhoto
+                      personalizationEnabled &&
+                          personalizationConfig.showVideoExtraPhoto
                       ? () => unawaited(_pickAdditionalPosterPhoto())
                       : null,
                   onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
@@ -17200,8 +17346,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             politicalProtocolSlotsOverride:
                 _politicalProtocolDefaultSlotsOverride,
             politicalProtocolManualSlots: _manualPoliticalProtocolSlots,
-            showPoliticalProtocolOverlay: widget.enablePoliticalProtocolOverlay,
-            showProfilePhoto: isPhotoVisible,
+            showPoliticalProtocolOverlay: effectiveShowPoliticalProtocol,
+            showProfilePhoto: effectiveShowProfilePhoto,
             deferLegacyTextPrime: deferRichPosterPreview,
             posterRenderCycle: posterRenderCycle,
             interactivePhotoEnabled: _canInteractWithPosterPhoto,
@@ -17213,8 +17359,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             onPhotoTap: _togglePosterPhotoFlipTap,
             stripGradientTapOffset: _stripGradientTapOffset,
             onNameStripTap: null,
-            additionalPhotoSelection: _extraPhotoSelection,
-            onAdditionalPhotoTap: personalizationConfig.showVideoExtraPhoto
+            additionalPhotoSelection: effectiveAdditionalPhotoSelection,
+            onAdditionalPhotoTap:
+                personalizationEnabled &&
+                    personalizationConfig.showVideoExtraPhoto
                 ? () => unawaited(_pickAdditionalPosterPhoto())
                 : null,
             onPhotoDragDeltaPercent: _updatePosterPhotoDrag,
@@ -17239,9 +17387,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     required bool isPhotoVisible,
     ValueChanged<bool>? onPosterReadyChanged,
   }) {
+    final plainCapture = _forcePlainPosterCapture;
     final preview = _buildPosterPreview(
-      isPhotoVisible: isPhotoVisible,
+      isPhotoVisible: plainCapture ? false : isPhotoVisible,
       onPosterReadyChanged: onPosterReadyChanged,
+      personalizationEnabled: !plainCapture,
     );
     final framedPreview = GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -17254,14 +17404,64 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         child: Material(type: MaterialType.transparency, child: preview),
       ),
     );
+    final captureContent = plainCapture
+        ? Stack(
+            fit: StackFit.passthrough,
+            children: <Widget>[
+              framedPreview,
+              Positioned(
+                right: 10,
+                bottom: 10,
+                child: IgnorePointer(child: _buildPlainPosterWatermark()),
+              ),
+            ],
+          )
+        : framedPreview;
     if (deferRichPosterPreview) {
-      return KeyedSubtree(key: _posterCaptureKey, child: framedPreview);
+      return KeyedSubtree(key: _posterCaptureKey, child: captureContent);
     }
     return KeyedSubtree(
       key: _posterCaptureKey,
       child: Screenshot(
         controller: _posterScreenshotController,
-        child: framedPreview,
+        child: captureContent,
+      ),
+    );
+  }
+
+  Widget _buildPlainPosterWatermark() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.96)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(6, 4, 8, 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ClipOval(
+              child: Image.asset(
+                'assets/branding/mana_poster_logo.png',
+                width: 18,
+                height: 18,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 5),
+            const Text(
+              'Mana Poster Ai',
+              style: TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                height: 1,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -17315,6 +17515,131 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     messenger.showTopSnackBar(AppSnackBar.build(content: Text(message)));
   }
 
+  void _showDownloadSuccessSnack(
+    ScaffoldMessengerState messenger,
+    String message,
+  ) {
+    messenger.showTopSnackBar(
+      SnackBar(
+        content: Row(
+          children: <Widget>[
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(4),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/branding/mana_poster_logo.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF0F9F6E),
+        elevation: 10,
+        margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+        dismissDirection: DismissDirection.down,
+        clipBehavior: Clip.hardEdge,
+      ),
+    );
+  }
+
+  void _showFullScreenDownloadSuccessToast(
+    BuildContext context,
+    String message,
+  ) {
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) {
+      _showDownloadSuccessSnack(ScaffoldMessenger.of(context), message);
+      return;
+    }
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (context) {
+        final topPadding = MediaQuery.paddingOf(context).top + 14;
+        return Positioned(
+          top: topPadding,
+          left: 14,
+          right: 14,
+          child: Material(
+            color: Colors.transparent,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F9F6E),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/branding/mana_poster_logo.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(entry);
+    Timer(const Duration(seconds: 3), () {
+      if (entry.mounted) {
+        entry.remove();
+      }
+    });
+  }
+
   Future<bool> _resolveLatestSubscriptionAccess() async {
     if (InAppPurchaseGateway.playStoreProActive) {
       unawaited(
@@ -17354,6 +17679,58 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       'subscription access retry: backendResponse.isPro=$refreshedEffectiveIsPro',
     );
     return refreshedEffectiveIsPro;
+  }
+
+  Future<bool> _hasSubscriptionAccessForExport() async {
+    if (_hasImmediateSubscriptionAccess()) {
+      unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
+      return true;
+    }
+    if (!_shouldRunBlockingSubscriptionStatusCheck()) {
+      return false;
+    }
+    return _resolveLatestSubscriptionAccess().timeout(
+      SubscriptionPlanConfig.paywallTimeout,
+      onTimeout: () async => false,
+    );
+  }
+
+  String _homePosterShareText() {
+    final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
+        ? viewerPosterProfile.activeName.trim()
+        : (viewerPosterProfile
+                  .resolvedName(language: language)
+                  .trim()
+                  .isNotEmpty
+              ? viewerPosterProfile.resolvedName(language: language).trim()
+              : 'User');
+    return 'Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
+        'Download the app: ${AppPublicInfo.playStoreUrl}';
+  }
+
+  void _recordPosterExportEngagement({required bool isShare}) {
+    widget.onInteraction?.call(item, isShare ? 'share' : 'download');
+    final posterId = item.templateId?.trim();
+    if (posterId == null || posterId.isEmpty) {
+      return;
+    }
+    unawaited(
+      ApprovedCreatorTemplateService().incrementPosterEngagementCount(
+        posterId: posterId,
+        isShare: isShare,
+        creatorPublicId: item.creatorPublicId ?? '',
+        posterTitle: item.titleEn,
+        categoryId: item.primaryFirestoreCategoryId ?? '',
+        categoryLabel: item.categoryDisplayLabel ?? '',
+      ),
+    );
+    unawaited(
+      UserPosterUploadsService.instance
+          .incrementApprovedContributionCountForPoster(
+            approvedPosterTemplateId: posterId,
+            isShare: isShare,
+          ),
+    );
   }
 
   String _downloadSaveFailureMessage(
@@ -17565,6 +17942,567 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return false;
   }
 
+  Future<void> _showFreeExportChoiceSheet(
+    BuildContext context, {
+    required bool preferShare,
+  }) async {
+    if (!context.mounted) {
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.38),
+      builder: (sheetContext) {
+        var busy = false;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> runFreeAction({required bool share}) async {
+              if (busy) {
+                return;
+              }
+              setSheetState(() => busy = true);
+              try {
+                await _performPlainFreeExport(sheetContext, share: share);
+              } finally {
+                if (sheetContext.mounted) {
+                  setSheetState(() => busy = false);
+                }
+              }
+            }
+
+            final previewAspectRatio =
+                _resolvedPreviewAspectRatio ??
+                item.pageConfig?.aspectRatio ??
+                (item.isVideo ? 9 / 16 : 4 / 5);
+            return FractionallySizedBox(
+              heightFactor: 1,
+              child: Material(
+                color: const Color(0xFFF8FAFC),
+                child: SafeArea(
+                  child: Column(
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                        child: Row(
+                          children: <Widget>[
+                            IconButton(
+                              onPressed: busy
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                            const Spacer(),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final topCard = _FreeExportPreviewCard(
+                              title: context.strings.localized(
+                                telugu: 'ఫోటో, పేరు తో',
+                                english: 'With photo and name',
+                                hindi: 'फोटो और नाम के साथ',
+                                tamil: 'புகைப்படம் மற்றும் பெயருடன்',
+                                kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ',
+                                malayalam: 'ഫോട്ടോയും പേരും കൂടി',
+                                assamese: 'ফটো আৰু নামসহ',
+                                konkani: 'फोटो आनी नावासयत',
+                                gujarati: 'ફોટો અને નામ સાથે',
+                                marathi: 'फोटो आणि नावासह',
+                                meitei: 'Photo amasung mingga',
+                                mizo: 'Photo leh hming nen',
+                                odia: 'ଫଟୋ ଓ ନାମ ସହିତ',
+                                punjabi: 'ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ',
+                                nepali: 'फोटो र नामसहित',
+                                bengali: 'ছবি ও নামসহ',
+                                kashmiri: 'فوٹو تہٕ ناو سٲتھ',
+                                ladakhi: 'Photo dang ming che',
+                              ),
+                              message: context.strings.localized(
+                                telugu:
+                                    '${SubscriptionPlanConfig.trialDays} రోజులు ఫోటో, పేరు తో షేర్ చేయండి',
+                                english:
+                                    '${SubscriptionPlanConfig.trialDays} days with photo and name',
+                                hindi:
+                                    '${SubscriptionPlanConfig.trialDays} दिनों तक फोटो और नाम के साथ शेयर करें',
+                                tamil:
+                                    '${SubscriptionPlanConfig.trialDays} நாட்கள் புகைப்படம், பெயருடன் பகிருங்கள்',
+                                kannada:
+                                    '${SubscriptionPlanConfig.trialDays} ದಿನಗಳು ಫೋಟೋ, ಹೆಸರಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ',
+                                malayalam:
+                                    '${SubscriptionPlanConfig.trialDays} ദിവസം ഫോട്ടോയും പേരും ചേർത്ത് ഷെയർ ചെയ്യൂ',
+                                assamese:
+                                    '${SubscriptionPlanConfig.trialDays} দিন ফটো আৰু নামসহ শ্বেয়াৰ কৰক',
+                                konkani:
+                                    '${SubscriptionPlanConfig.trialDays} दिस फोटो आनी नावासयत शेअर करात',
+                                gujarati:
+                                    '${SubscriptionPlanConfig.trialDays} દિવસ ફોટો અને નામ સાથે શેર કરો',
+                                marathi:
+                                    '${SubscriptionPlanConfig.trialDays} दिवस फोटो आणि नावासह शेअर करा',
+                                meitei:
+                                    '${SubscriptionPlanConfig.trialDays} numit photo amasung mingga share tou',
+                                mizo:
+                                    '${SubscriptionPlanConfig.trialDays} ni photo leh hming nen share rawh',
+                                odia:
+                                    '${SubscriptionPlanConfig.trialDays} ଦିନ ଫଟୋ ଓ ନାମ ସହିତ ସେୟାର କରନ୍ତୁ',
+                                punjabi:
+                                    '${SubscriptionPlanConfig.trialDays} ਦਿਨ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਸ਼ੇਅਰ ਕਰੋ',
+                                nepali:
+                                    '${SubscriptionPlanConfig.trialDays} दिन फोटो र नामसहित शेयर गर्नुहोस्',
+                                bengali:
+                                    '${SubscriptionPlanConfig.trialDays} দিন ছবি ও নামসহ শেয়ার করুন',
+                                kashmiri:
+                                    '${SubscriptionPlanConfig.trialDays} دوہ فوٹو تہٕ ناو سٲتھ شیئر کریو',
+                                ladakhi:
+                                    '${SubscriptionPlanConfig.trialDays} nyin photo dang ming che share byed',
+                              ),
+                              accentColor: const Color(0xFF16A34A),
+                              previewAspectRatio: previewAspectRatio,
+                              actionLabel: context.strings.localized(
+                                telugu:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days',
+                                english:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days',
+                                hindi:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिन',
+                                tamil:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} சோதனை ${SubscriptionPlanConfig.trialDays} நாட்கள்',
+                                kannada:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ಟ್ರಯಲ್ ${SubscriptionPlanConfig.trialDays} ದಿನಗಳು',
+                                malayalam:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ട്രയൽ ${SubscriptionPlanConfig.trialDays} ദിവസം',
+                                assamese:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ট্ৰায়েল ${SubscriptionPlanConfig.trialDays} দিন',
+                                konkani:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिस',
+                                gujarati:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ટ્રાયલ ${SubscriptionPlanConfig.trialDays} દિવસ',
+                                marathi:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिवस',
+                                meitei:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} numit',
+                                mizo:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} ni',
+                                odia:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ଟ୍ରାୟାଲ ${SubscriptionPlanConfig.trialDays} ଦିନ',
+                                punjabi:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ਟ੍ਰਾਇਲ ${SubscriptionPlanConfig.trialDays} ਦਿਨ',
+                                nepali:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिन',
+                                bengali:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ট্রায়াল ${SubscriptionPlanConfig.trialDays} দিন',
+                                kashmiri:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} ٹرایل ${SubscriptionPlanConfig.trialDays} دوہ',
+                                ladakhi:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} nyin',
+                              ),
+                              onTap: busy
+                                  ? null
+                                  : () async {
+                                      Navigator.of(sheetContext).pop();
+                                      await onOpenSubscriptionPlan(
+                                        startPurchaseOnOpen: true,
+                                      );
+                                    },
+                              preview: _buildPosterPreview(
+                                isPhotoVisible: true,
+                                playbackEnabledOverride: false,
+                                enableFullScreenTap: false,
+                              ),
+                            );
+                            final bottomCard = _FreeExportPreviewCard(
+                              title: context.strings.localized(
+                                telugu: 'ఉచితంగా షేర్ చేయండి',
+                                english: 'Share free',
+                                hindi: 'मुफ्त शेयर करें',
+                                tamil: 'இலவசமாக பகிருங்கள்',
+                                kannada: 'ಉಚಿತವಾಗಿ ಹಂಚಿಕೊಳ್ಳಿ',
+                                malayalam: 'സൗജന്യമായി ഷെയർ ചെയ്യൂ',
+                                assamese: 'বিনামূল্যে শ্বেয়াৰ কৰক',
+                                konkani: 'फुकट शेअर करात',
+                                gujarati: 'મફતમાં શેર કરો',
+                                marathi: 'मोफत शेअर करा',
+                                meitei: 'Free oina share tou',
+                                mizo: 'Free-a share rawh',
+                                odia: 'ମାଗଣାରେ ସେୟାର କରନ୍ତୁ',
+                                punjabi: 'ਮੁਫ਼ਤ ਸ਼ੇਅਰ ਕਰੋ',
+                                nepali: 'निःशुल्क शेयर गर्नुहोस्',
+                                bengali: 'ফ্রি শেয়ার করুন',
+                                kashmiri: 'مفت شیئر کریو',
+                                ladakhi: 'Free share byed',
+                              ),
+                              message: context.strings.localized(
+                                telugu: 'పేరు, ఫోటో లేకుండా పోస్టర్ మాత్రమే',
+                                english: 'Poster only, without name and photo',
+                                hindi: 'केवल पोस्टर, नाम और फोटो के बिना',
+                                tamil:
+                                    'பெயரும் புகைப்படமும் இல்லாமல் போஸ்டர் மட்டும்',
+                                kannada: 'ಹೆಸರು, ಫೋಟೋ ಇಲ್ಲದೆ ಪೋಸ್ಟರ್ ಮಾತ್ರ',
+                                malayalam:
+                                    'പേര്, ഫോട്ടോ ഇല്ലാതെ പോസ്റ്റർ മാത്രം',
+                                assamese: 'নাম আৰু ফটো নোহোৱাকৈ কেৱল পোষ্টাৰ',
+                                konkani: 'नाव आनी फोटो नासतना फकत पोस्टर',
+                                gujarati: 'નામ અને ફોટા વગર માત્ર પોસ્ટર',
+                                marathi: 'नाव आणि फोटोशिवाय फक्त पोस्टर',
+                                meitei:
+                                    'Ming amasung photo yaodana poster khaktang',
+                                mizo: 'Hming leh photo tel lo poster chauh',
+                                odia: 'ନାମ ଓ ଫଟୋ ବିନା କେବଳ ପୋଷ୍ଟର',
+                                punjabi: 'ਨਾਮ ਤੇ ਫੋਟੋ ਬਿਨਾਂ ਸਿਰਫ਼ ਪੋਸਟਰ',
+                                nepali: 'नाम र फोटो बिना पोस्टर मात्र',
+                                bengali: 'নাম ও ছবি ছাড়া শুধু পোস্টার',
+                                kashmiri: 'ناو تہٕ فوٹو بغیر صرف پوسٹر',
+                                ladakhi: 'Ming dang photo medpa poster tsam',
+                              ),
+                              accentColor: const Color(0xFF2563EB),
+                              previewAspectRatio: previewAspectRatio,
+                              preview: _buildPosterPreview(
+                                isPhotoVisible: false,
+                                playbackEnabledOverride: false,
+                                enableFullScreenTap: false,
+                                personalizationEnabled: false,
+                              ),
+                              footer: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  FilledButton.icon(
+                                    onPressed: busy
+                                        ? null
+                                        : () => runFreeAction(share: false),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF0F172A),
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size.fromHeight(40),
+                                      shape: const StadiumBorder(),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                    icon: busy && !preferShare
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.download_rounded),
+                                    label: Text(
+                                      context.strings.localized(
+                                        telugu: 'డౌన్‌లోడ్',
+                                        english: 'Download',
+                                        hindi: 'डाउनलोड',
+                                        tamil: 'பதிவிறக்கம்',
+                                        kannada: 'ಡೌನ್‌ಲೋಡ್',
+                                        malayalam: 'ഡൗൺലോഡ്',
+                                        assamese: 'ডাউনলোড',
+                                        konkani: 'डाउनलोड',
+                                        gujarati: 'ડાઉનલોડ',
+                                        marathi: 'डाउनलोड',
+                                        meitei: 'Download',
+                                        mizo: 'Download',
+                                        odia: 'ଡାଉନଲୋଡ୍',
+                                        punjabi: 'ਡਾਊਨਲੋਡ',
+                                        nepali: 'डाउनलोड',
+                                        bengali: 'ডাউনলোড',
+                                        kashmiri: 'ڈاؤنلوڈ',
+                                        ladakhi: 'Download',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FilledButton.icon(
+                                    onPressed: busy
+                                        ? null
+                                        : () => runFreeAction(share: true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF7C3AED),
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size.fromHeight(40),
+                                      shape: const StadiumBorder(),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                    icon: busy && preferShare
+                                        ? const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.ios_share_rounded),
+                                    label: Text(
+                                      context.strings.localized(
+                                        telugu: 'షేర్',
+                                        english: 'Share',
+                                        hindi: 'शेयर',
+                                        tamil: 'பகிர்',
+                                        kannada: 'ಹಂಚಿಕೆ',
+                                        malayalam: 'ഷെയർ',
+                                        assamese: 'শ্বেয়াৰ',
+                                        konkani: 'शेअर',
+                                        gujarati: 'શેર',
+                                        marathi: 'शेअर',
+                                        meitei: 'Share',
+                                        mizo: 'Share',
+                                        odia: 'ସେୟାର',
+                                        punjabi: 'ਸ਼ੇਅਰ',
+                                        nepali: 'शेयर',
+                                        bengali: 'শেয়ার',
+                                        kashmiri: 'شیئر',
+                                        ladakhi: 'Share',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: <Widget>[
+                                  Expanded(child: Center(child: topCard)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                    ),
+                                    child: Row(
+                                      children: <Widget>[
+                                        const Expanded(
+                                          child: Divider(
+                                            color: Color(0xFFE2E8F0),
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          child: Text(
+                                            context.strings.localized(
+                                              telugu: 'లేదా',
+                                              english: 'or',
+                                              hindi: 'या',
+                                              tamil: 'அல்லது',
+                                              kannada: 'ಅಥವಾ',
+                                              malayalam: 'അല്ലെങ്കിൽ',
+                                              assamese: 'অথবা',
+                                              konkani: 'वा',
+                                              gujarati: 'અથવા',
+                                              marathi: 'किंवा',
+                                              meitei: 'nattraga',
+                                              mizo: 'emaw',
+                                              odia: 'କିମ୍ବା',
+                                              punjabi: 'ਜਾਂ',
+                                              nepali: 'वा',
+                                              bengali: 'অথবা',
+                                              kashmiri: 'یا',
+                                              ladakhi: 'yangna',
+                                            ),
+                                            style: const TextStyle(
+                                              color: Color(0xFF94A3B8),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                        const Expanded(
+                                          child: Divider(
+                                            color: Color(0xFFE2E8F0),
+                                            thickness: 1,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(child: Center(child: bottomCard)),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _performPlainFreeExport(
+    BuildContext context, {
+    required bool share,
+  }) async {
+    final messenger = ScaffoldMessenger.of(
+      hostContext.mounted ? hostContext : context,
+    );
+    final posterNotReadyMessage = context.strings.localized(
+      telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      english: 'Poster is not ready. Please try again.',
+      hindi: 'पोस्टर तैयार नहीं है। फिर कोशिश करें।',
+      tamil: 'போஸ்டர் தயாராக இல்லை. மீண்டும் முயற்சிக்கவும்.',
+      kannada: 'ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+      malayalam: 'പോസ്റ്റർ തയ്യാറായിട്ടില്ല. വീണ്ടും ശ്രമിക്കുക.',
+      assamese: 'পোষ্টাৰ সাজু হোৱা নাই। পুনৰ চেষ্টা কৰক।',
+      konkani: 'पोस्टर तयार ना. परत प्रयत्न करात.',
+      gujarati: 'પોસ્ટર તૈયાર નથી. ફરી પ્રયાસ કરો.',
+      marathi: 'पोस्टर तयार नाही. पुन्हा प्रयत्न करा.',
+      meitei: 'Poster ready oidiramde. Amuk hotnou.',
+      mizo: 'Poster a la ready lo. Han tum leh rawh.',
+      odia: 'ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ନୁହେଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
+      punjabi: 'ਪੋਸਟਰ ਤਿਆਰ ਨਹੀਂ ਹੈ। ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+      nepali: 'पोस्टर तयार छैन। फेरि प्रयास गर्नुहोस्।',
+      bengali: 'পোস্টার প্রস্তুত নয়। আবার চেষ্টা করুন।',
+      kashmiri: 'پوسٹر تیار چھُ نٕہ۔ دوبار کوشش کریو۔',
+      ladakhi: 'Poster ready med. Yang try byed.',
+    );
+    final posterSavedMessage = context.strings.localized(
+      telugu: 'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
+      english: 'Poster saved to gallery.',
+      hindi: 'पोस्टर गैलरी में सेव हो गया।',
+      tamil: 'போஸ்டர் கேலரியில் சேமிக்கப்பட்டது.',
+      kannada: 'ಪೋಸ್ಟರ್ ಗ್ಯಾಲರಿಯಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
+      malayalam: 'പോസ്റ്റർ ഗാലറിയിൽ സേവ് ചെയ്തു.',
+      assamese: 'পোষ্টাৰ গ্যালাৰীত সেভ কৰা হ’ল।',
+      konkani: 'पोस्टर गॅलरींत सेव जाला.',
+      gujarati: 'પોસ્ટર ગેલેરીમાં સેવ થયું.',
+      marathi: 'पोस्टर गॅलरीत सेव झाले.',
+      meitei: 'Poster gallery-da save toure.',
+      mizo: 'Poster gallery-ah save a ni.',
+      odia: 'ପୋଷ୍ଟର ଗ୍ୟାଲେରୀରେ ସେଭ୍ ହେଲା।',
+      punjabi: 'ਪੋਸਟਰ ਗੈਲਰੀ ਵਿੱਚ ਸੇਵ ਹੋ ਗਿਆ।',
+      nepali: 'पोस्टर ग्यालरीमा सेभ भयो।',
+      bengali: 'পোস্টার গ্যালারিতে সেভ হয়েছে।',
+      kashmiri: 'پوسٹر گیلری منز محفوظ گۆو۔',
+      ladakhi: 'Poster gallery nang save song.',
+    );
+    final galleryPermissionMessage = context.strings.localized(
+      telugu: 'గ్యాలరీ permission ఇవ్వలేదు.',
+      english: 'Gallery permission was denied.',
+      hindi: 'गैलरी अनुमति नहीं मिली।',
+      tamil: 'கேலரி அனுமதி மறுக்கப்பட்டது.',
+      kannada: 'ಗ್ಯಾಲರಿ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ.',
+      malayalam: 'ഗാലറി അനുമതി നിഷേധിച്ചു.',
+      assamese: 'গ্যালাৰী অনুমতি দিয়া হোৱা নাই।',
+      konkani: 'गॅलरी परवानगी न्हय मेळ्ळी.',
+      gujarati: 'ગેલેરી પરમિશન નકારી.',
+      marathi: 'गॅलरी परवानगी नाकारली.',
+      meitei: 'Gallery permission piramde.',
+      mizo: 'Gallery permission pek a ni lo.',
+      odia: 'ଗ୍ୟାଲେରୀ ଅନୁମତି ମିଳିଲା ନାହିଁ।',
+      punjabi: 'ਗੈਲਰੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ।',
+      nepali: 'ग्यालरी अनुमति दिइएन।',
+      bengali: 'গ্যালারি অনুমতি দেওয়া হয়নি।',
+      kashmiri: 'گیلری اجازت نٕہ ملی۔',
+      ladakhi: 'Gallery permission ma thob.',
+    );
+    final plainShareText = _homePosterShareText();
+    if (!share) {
+      final hasPermission = await _ensureGallerySavePermission();
+      if (!hasPermission) {
+        if (!context.mounted) {
+          return;
+        }
+        _showSnack(messenger, galleryPermissionMessage);
+        return;
+      }
+    }
+    if (item.isVideo) {
+      final preparedPath = await _ensurePreparedPlainVideoFile();
+      if (!context.mounted) {
+        return;
+      }
+      if (preparedPath == null) {
+        _showSnack(messenger, '$posterNotReadyMessage (video export)');
+        return;
+      }
+      if (share) {
+        final box = context.findRenderObject() as RenderBox?;
+        await MediaExportService.shareVideoFile(
+          preparedPath,
+          text: plainShareText,
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        );
+        _recordPosterExportEngagement(isShare: true);
+        return;
+      }
+      final fileName =
+          'mana_poster_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final saveResult =
+          await MediaExportService.saveVideoFileToGalleryDetailed(
+            preparedPath,
+            fileName: fileName,
+          );
+      if (!context.mounted) {
+        return;
+      }
+      if (saveResult.success) {
+        _recordPosterExportEngagement(isShare: false);
+        _showFullScreenDownloadSuccessToast(context, posterSavedMessage);
+        return;
+      }
+      _showSnack(messenger, _downloadSaveFailureMessage(context, saveResult));
+      return;
+    }
+    final preparedPath = await _ensurePreparedPlainPosterFile();
+    if (!context.mounted) {
+      return;
+    }
+    if (preparedPath == null) {
+      _showSnack(messenger, posterNotReadyMessage);
+      return;
+    }
+    if (share) {
+      final box = context.findRenderObject() as RenderBox?;
+      await MediaExportService.shareImageFile(
+        preparedPath,
+        text: plainShareText,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      );
+      _recordPosterExportEngagement(isShare: true);
+      return;
+    }
+    final fileName = 'mana_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+    final saveResult = await MediaExportService.saveImageFileToGalleryDetailed(
+      preparedPath,
+      fileName: fileName,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    if (saveResult.success) {
+      _recordPosterExportEngagement(isShare: false);
+      if (!kIsWeb) {
+        unawaited(
+          PosterDownloadsService.recordCopyFromFile(
+            preparedPath,
+            suggestedFileName: fileName,
+          ),
+        );
+      }
+      _showFullScreenDownloadSuccessToast(context, posterSavedMessage);
+      return;
+    }
+    _showSnack(messenger, _downloadSaveFailureMessage(context, saveResult));
+  }
+
   Future<void> _onDownloadTap(BuildContext context) async {
     if (!_beginAction('download')) {
       return;
@@ -17592,8 +18530,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       english: 'Download failed. Please try again.',
     );
     try {
-      final hasAccess = await _ensureSubscriptionAccess(context);
+      final hasAccess = await _hasSubscriptionAccessForExport();
+      if (!context.mounted) {
+        result = false;
+        return;
+      }
       if (!hasAccess) {
+        if (item.isVideo) {
+          result = await _ensureSubscriptionAccess(context);
+          return;
+        }
+        await _showFreeExportChoiceSheet(context, preferShare: false);
         result = false;
         return;
       }
@@ -17640,7 +18587,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   ),
             );
           }
-          _showSnack(messenger, posterSavedMessage);
+          _showDownloadSuccessSnack(messenger, posterSavedMessage);
           return;
         }
         if (!context.mounted) {
@@ -17697,7 +18644,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 ),
           );
         }
-        _showSnack(messenger, posterSavedMessage);
+        _showDownloadSuccessSnack(messenger, posterSavedMessage);
         return;
       }
       _homeDebugLog(
@@ -17739,20 +18686,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       telugu: 'File save failed. Please try again.',
       english: 'File save failed. Please try again.',
     );
-    final resolvedUserName = viewerPosterProfile.activeName.trim().isNotEmpty
-        ? viewerPosterProfile.activeName.trim()
-        : (viewerPosterProfile
-                  .resolvedName(language: language)
-                  .trim()
-                  .isNotEmpty
-              ? viewerPosterProfile.resolvedName(language: language).trim()
-              : 'User');
-    final shareText =
-        'Shared by $resolvedUserName using ${AppPublicInfo.appName}\n'
-        'Download the app: ${AppPublicInfo.playStoreUrl}';
+    final shareText = _homePosterShareText();
     try {
-      final hasAccess = await _ensureSubscriptionAccess(context);
+      final hasAccess = await _hasSubscriptionAccessForExport();
+      if (!context.mounted) {
+        result = false;
+        return;
+      }
       if (!hasAccess) {
+        if (item.isVideo) {
+          result = await _ensureSubscriptionAccess(context);
+          return;
+        }
+        await _showFreeExportChoiceSheet(context, preferShare: true);
         result = false;
         return;
       }
@@ -19688,7 +20634,7 @@ class _ResolvedTemplatePosterImageState
   bool get wantKeepAlive => true;
 }
 
-class _PosterFullScreenPreview extends StatelessWidget {
+class _PosterFullScreenPreview extends StatefulWidget {
   const _PosterFullScreenPreview({
     required this.title,
     required this.heroTag,
@@ -19702,8 +20648,39 @@ class _PosterFullScreenPreview extends StatelessWidget {
   final double? aspectRatio;
 
   @override
+  State<_PosterFullScreenPreview> createState() =>
+      _PosterFullScreenPreviewState();
+}
+
+class _PosterFullScreenPreviewState extends State<_PosterFullScreenPreview> {
+  final TransformationController _transformationController =
+      TransformationController();
+  bool _isZoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_handleTransformChanged);
+  }
+
+  @override
+  void dispose() {
+    _transformationController.removeListener(_handleTransformChanged);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _handleTransformChanged() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    final nextZoomed = scale > 1.02;
+    if (nextZoomed != _isZoomed && mounted) {
+      setState(() => _isZoomed = nextZoomed);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final resolvedAspectRatio = aspectRatio;
+    final resolvedAspectRatio = widget.aspectRatio;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -19711,7 +20688,7 @@ class _PosterFullScreenPreview extends StatelessWidget {
           children: <Widget>[
             Positioned.fill(
               child: Hero(
-                tag: heroTag,
+                tag: widget.heroTag,
                 transitionOnUserGestures: true,
                 child: Material(
                   type: MaterialType.transparency,
@@ -19731,18 +20708,28 @@ class _PosterFullScreenPreview extends StatelessWidget {
                               constraints: BoxConstraints(
                                 maxWidth: targetWidth,
                               ),
-                              child: child,
+                              child: widget.child,
                             )
                           : SizedBox(
                               width: targetWidth,
                               height: targetHeight,
-                              child: child,
+                              child: widget.child,
                             );
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(minHeight: maxHeight),
-                          child: Center(child: preview),
+                      return InteractiveViewer(
+                        transformationController: _transformationController,
+                        minScale: 1,
+                        maxScale: 4,
+                        panEnabled: _isZoomed,
+                        scaleEnabled: true,
+                        clipBehavior: Clip.none,
+                        child: SingleChildScrollView(
+                          physics: _isZoomed
+                              ? const NeverScrollableScrollPhysics()
+                              : const BouncingScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: maxHeight),
+                            child: Center(child: preview),
+                          ),
                         ),
                       );
                     },
@@ -19767,7 +20754,7 @@ class _PosterFullScreenPreview extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      title,
+                      widget.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -19810,6 +20797,7 @@ class _PosterFullScreenGalleryState extends State<_PosterFullScreenGallery> {
     initialPage: widget.initialIndex.clamp(0, widget.itemCount - 1),
   );
   late int _pageIndex = widget.initialIndex.clamp(0, widget.itemCount - 1);
+  bool _isPageZoomed = false;
 
   @override
   void initState() {
@@ -19834,18 +20822,23 @@ class _PosterFullScreenGalleryState extends State<_PosterFullScreenGallery> {
             PageView.builder(
               controller: _controller,
               scrollDirection: Axis.vertical,
-              physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+              physics: _isPageZoomed
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(parent: BouncingScrollPhysics()),
               itemCount: widget.itemCount,
               onPageChanged: (index) {
                 widget.onPageChanged?.call(index);
+                _isPageZoomed = false;
                 setState(() => _pageIndex = index);
               },
               itemBuilder: (context, index) {
-                return Center(
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: widget.itemBuilder(context, index),
-                  ),
+                return _ZoomableFullScreenGalleryItem(
+                  onZoomChanged: (zoomed) {
+                    if (zoomed != _isPageZoomed && mounted) {
+                      setState(() => _isPageZoomed = zoomed);
+                    }
+                  },
+                  child: widget.itemBuilder(context, index),
                 );
               },
             ),
@@ -19894,6 +20887,63 @@ class _PosterFullScreenGalleryState extends State<_PosterFullScreenGallery> {
   }
 }
 
+class _ZoomableFullScreenGalleryItem extends StatefulWidget {
+  const _ZoomableFullScreenGalleryItem({
+    required this.child,
+    required this.onZoomChanged,
+  });
+
+  final Widget child;
+  final ValueChanged<bool> onZoomChanged;
+
+  @override
+  State<_ZoomableFullScreenGalleryItem> createState() =>
+      _ZoomableFullScreenGalleryItemState();
+}
+
+class _ZoomableFullScreenGalleryItemState
+    extends State<_ZoomableFullScreenGalleryItem> {
+  final TransformationController _transformationController =
+      TransformationController();
+  bool _isZoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_handleTransformChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.onZoomChanged(false);
+    _transformationController.removeListener(_handleTransformChanged);
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _handleTransformChanged() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    final nextZoomed = scale > 1.02;
+    if (nextZoomed != _isZoomed && mounted) {
+      setState(() => _isZoomed = nextZoomed);
+      widget.onZoomChanged(nextZoomed);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InteractiveViewer(
+      transformationController: _transformationController,
+      minScale: 1,
+      maxScale: 4,
+      panEnabled: _isZoomed,
+      scaleEnabled: true,
+      clipBehavior: Clip.none,
+      child: Center(child: widget.child),
+    );
+  }
+}
+
 class _SubscriptionInfoLine extends StatelessWidget {
   const _SubscriptionInfoLine({required this.title, required this.value});
 
@@ -19937,6 +20987,131 @@ class _SubscriptionInfoLine extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FreeExportPreviewCard extends StatelessWidget {
+  const _FreeExportPreviewCard({
+    required this.title,
+    required this.message,
+    required this.accentColor,
+    required this.preview,
+    required this.previewAspectRatio,
+    this.actionLabel,
+    this.onTap,
+    this.footer,
+  });
+
+  final String title;
+  final String message;
+  final Color accentColor;
+  final Widget preview;
+  final double previewAspectRatio;
+  final String? actionLabel;
+  final VoidCallback? onTap;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = LayoutBuilder(
+      builder: (context, constraints) {
+        final previewWidth = (constraints.maxWidth * 0.44)
+            .clamp(142.0, 178.0)
+            .toDouble();
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                SizedBox(
+                  width: previewWidth,
+                  child: AspectRatio(
+                    aspectRatio: previewAspectRatio <= 0
+                        ? 4 / 5
+                        : previewAspectRatio,
+                    child: ClipRect(child: preview),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        message,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.24,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (footer != null)
+                        footer!
+                      else if (actionLabel != null)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              child: Text(
+                                actionLabel!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (onTap == null) {
+      return content;
+    }
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: content,
       ),
     );
   }
