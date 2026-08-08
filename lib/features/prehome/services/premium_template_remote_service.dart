@@ -239,6 +239,7 @@ class PremiumTemplateRemoteService {
           (source['designationStripColor'] as String? ?? '').trim().isNotEmpty
           ? (source['designationStripColor'] as String).trim()
           : CreatorPosterPersonalization.defaults.designationStripColor,
+      stripLayoutStyle: _parseStripLayoutStyle(source['stripLayoutStyle']),
       boardVariant: source['boardVariant'] is num
           ? (source['boardVariant'] as num).toInt()
           : CreatorPosterPersonalization.defaults.boardVariant,
@@ -248,6 +249,18 @@ class PremiumTemplateRemoteService {
           source['showSafeAreas'] as bool? ??
           CreatorPosterPersonalization.defaults.showSafeAreas,
     );
+  }
+
+  String _parseStripLayoutStyle(Object? raw) {
+    final value = (raw as String? ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'split':
+      case 'badge':
+      case 'full':
+        return value;
+      default:
+        return CreatorPosterPersonalization.defaults.stripLayoutStyle;
+    }
   }
 
   String _parseRenderMode(Object? raw) {

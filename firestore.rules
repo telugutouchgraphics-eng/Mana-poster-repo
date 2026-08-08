@@ -336,6 +336,69 @@ service cloud.firestore {
         request.resource.data.updatedAt is int;
     }
 
+    function validCreatorPosterDailyStatsWrite(statId) {
+      return request.resource.data.keys().hasOnly([
+          "creatorPublicId",
+          "posterId",
+          "templateId",
+          "posterTitle",
+          "categoryId",
+          "categoryLabel",
+          "regionId",
+          "dateKey",
+          "shareCount",
+          "downloadCount",
+          "totalEngagement",
+          "createdAt",
+          "updatedAt",
+        ]) &&
+        request.resource.data.creatorPublicId is string &&
+        request.resource.data.creatorPublicId.size() > 0 &&
+        request.resource.data.posterId is string &&
+        request.resource.data.posterId.size() > 0 &&
+        request.resource.data.templateId == request.resource.data.posterId &&
+        statId == request.resource.data.posterId + "-" + request.resource.data.dateKey &&
+        request.resource.data.posterTitle is string &&
+        request.resource.data.posterTitle.size() <= 160 &&
+        request.resource.data.categoryId is string &&
+        request.resource.data.categoryId.size() <= 120 &&
+        request.resource.data.categoryLabel is string &&
+        request.resource.data.categoryLabel.size() <= 160 &&
+        request.resource.data.regionId is string &&
+        request.resource.data.regionId.size() <= 120 &&
+        request.resource.data.dateKey is string &&
+        request.resource.data.dateKey.size() == 10 &&
+        request.resource.data.shareCount is int &&
+        request.resource.data.downloadCount is int &&
+        request.resource.data.totalEngagement is int &&
+        request.resource.data.createdAt is int &&
+        request.resource.data.updatedAt is int &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        exists(/databases/$(database)/documents/creatorPosters/$(request.resource.data.posterId)) &&
+        get(/databases/$(database)/documents/creatorPosters/$(request.resource.data.posterId)).data.status == "approved" &&
+        get(/databases/$(database)/documents/creatorPosters/$(request.resource.data.posterId)).data.regionId ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.selectedRegion &&
+        (resource == null ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "shareCount",
+              "downloadCount",
+              "totalEngagement",
+              "updatedAt",
+            ]) &&
+            request.resource.data.creatorPublicId == resource.data.creatorPublicId &&
+            request.resource.data.posterId == resource.data.posterId &&
+            request.resource.data.templateId == resource.data.templateId &&
+            request.resource.data.posterTitle == resource.data.posterTitle &&
+            request.resource.data.categoryId == resource.data.categoryId &&
+            request.resource.data.categoryLabel == resource.data.categoryLabel &&
+            request.resource.data.regionId == resource.data.regionId &&
+            request.resource.data.dateKey == resource.data.dateKey &&
+            request.resource.data.createdAt == resource.data.createdAt &&
+            request.resource.data.shareCount >= resource.data.shareCount &&
+            request.resource.data.downloadCount >= resource.data.downloadCount &&
+            request.resource.data.totalEngagement >= resource.data.totalEngagement));
+    }
+
     function validCommunityStatusCreate() {
       return request.resource.data.keys().hasOnly([
           "id",
@@ -694,6 +757,12 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Per-day creator performance counters for approved poster share/download actions.
+    match /creatorPosterDailyStats/{statId} {
+      allow create, update: if signedIn() && validCreatorPosterDailyStatsWrite(statId);
+      allow read, delete: if false;
+    }
+
     // Public app banners for home/category promotional surfaces.
     match /appBanners/{bannerId} {
       allow read: if resource.data.active == true;
@@ -826,6 +895,13 @@ service cloud.firestore {
 
     match /landingVersions/{versionId} {
       allow read, create, update, delete: if false;
+    }
+
+    // Daily quiz lifetime stats are written only by Cloud Functions.
+    // A signed-in user can read only their own profile summary.
+    match /userQuizStats/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update, delete: if false;
     }
 
     // Admin-only activity/audit history for dashboard actions.

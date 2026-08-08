@@ -11,6 +11,7 @@ class AppHomeBanner {
     required this.targetDistrict,
     required this.targetCity,
     this.targetRegionIds = const <String>[],
+    this.targetReligions = const <String>[],
     required this.sortOrder,
     required this.active,
   });
@@ -26,6 +27,7 @@ class AppHomeBanner {
   final String targetDistrict;
   final String targetCity;
   final List<String> targetRegionIds;
+  final List<String> targetReligions;
   final int sortOrder;
   final bool active;
 }

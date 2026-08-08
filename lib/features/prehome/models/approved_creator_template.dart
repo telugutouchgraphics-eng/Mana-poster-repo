@@ -68,6 +68,7 @@ class CreatorPosterPersonalization {
     this.phoneScale = 100,
     this.nameStripColor = '#0F172A',
     this.designationStripColor = '#1E293B',
+    this.stripLayoutStyle = 'full',
     this.boardVariant = 0,
     this.photoRenderMode = 'cutout',
     this.edgeStyle = 'soft_fade',
@@ -112,6 +113,7 @@ class CreatorPosterPersonalization {
         phoneScale: 100,
         nameStripColor: '#0F172A',
         designationStripColor: '#1E293B',
+        stripLayoutStyle: 'full',
         boardVariant: 0,
         photoRenderMode: 'cutout',
         edgeStyle: 'soft_fade',
@@ -154,6 +156,7 @@ class CreatorPosterPersonalization {
   final double phoneScale;
   final String nameStripColor;
   final String designationStripColor;
+  final String stripLayoutStyle;
   final int boardVariant;
   final String photoRenderMode;
   final String edgeStyle;
@@ -205,6 +208,7 @@ class CreatorPosterPersonalization {
             other.phoneScale == phoneScale &&
             other.nameStripColor == nameStripColor &&
             other.designationStripColor == designationStripColor &&
+            other.stripLayoutStyle == stripLayoutStyle &&
             other.boardVariant == boardVariant &&
             other.photoRenderMode == photoRenderMode &&
             other.edgeStyle == edgeStyle &&
@@ -253,6 +257,7 @@ class CreatorPosterPersonalization {
     phoneScale,
     nameStripColor,
     designationStripColor,
+    stripLayoutStyle,
     boardVariant,
     photoRenderMode,
     edgeStyle,
@@ -298,6 +303,7 @@ class ApprovedCreatorTemplate {
     required this.categoryLabel,
     this.regionId = '',
     required this.createdAtMillis,
+    this.publishAtMillis = 0,
     required this.personalizationConfig,
     this.creatorPublicId = '',
     this.pageConfig,
@@ -315,6 +321,7 @@ class ApprovedCreatorTemplate {
   final String categoryLabel;
   final String regionId;
   final int createdAtMillis;
+  final int publishAtMillis;
   final CreatorPosterPersonalization personalizationConfig;
   final String creatorPublicId;
   final EditorPageConfig? pageConfig;

@@ -95,10 +95,19 @@ Future<void> main() async {
     },
     (error, stackTrace) {
       if (Firebase.apps.isNotEmpty && !kIsWeb) {
+        if (_isRecoverableError(error)) {
+          developer.log(
+            'Recoverable zoned error skipped for Crashlytics: $error',
+            name: 'app.recoverable',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          return;
+        }
         FirebaseCrashlytics.instance.recordError(
           error,
           stackTrace,
-          fatal: !_isRecoverableError(error),
+          fatal: true,
         );
         return;
       }
@@ -269,6 +278,9 @@ Future<void> _runStartupTask(
     );
     if (Firebase.apps.isNotEmpty && !kIsWeb) {
       try {
+        if (_isRecoverableError(error)) {
+          return;
+        }
         await FirebaseCrashlytics.instance.recordError(
           error,
           stackTrace,
@@ -337,21 +349,33 @@ Future<void> _configureFirebaseMonitoring() async {
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
       if (_isRecoverableFlutterError(details)) {
-        FirebaseCrashlytics.instance.recordFlutterError(details, fatal: false);
+        developer.log(
+          'Recoverable Flutter error skipped for Crashlytics: '
+          '${details.exceptionAsString()}',
+          name: 'app.recoverable',
+          error: details.exception,
+          stackTrace: details.stack,
+        );
         return;
       }
       FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     };
 
-    PlatformDispatcher.instance.onError =
-        (Object error, StackTrace stackTrace) {
-          FirebaseCrashlytics.instance.recordError(
-            error,
-            stackTrace,
-            fatal: !_isRecoverableError(error),
-          );
-          return true;
-        };
+    PlatformDispatcher
+        .instance
+        .onError = (Object error, StackTrace stackTrace) {
+      if (_isRecoverableError(error)) {
+        developer.log(
+          'Recoverable platform error skipped for Crashlytics: $error',
+          name: 'app.recoverable',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return true;
+      }
+      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+      return true;
+    };
   } catch (error, stackTrace) {
     developer.log(
       'Crashlytics monitoring setup skipped: $error',
@@ -376,6 +400,10 @@ bool _containsRecoverableSignal(String value) {
   final normalized = value.toLowerCase();
   return normalized.contains('httpexception: invalid statuscode') ||
       normalized.contains('imagecodec') ||
+      normalized.contains('could not decompress image') ||
+      normalized.contains('pathnotfoundexception') ||
+      normalized.contains('cannot retrieve length of file') ||
+      normalized.contains('mana_poster_network_images') ||
       normalized.contains('failed host lookup') ||
       normalized.contains('permission-denied') ||
       normalized.contains('already_active') ||

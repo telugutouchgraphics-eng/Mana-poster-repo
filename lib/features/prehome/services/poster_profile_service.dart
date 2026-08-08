@@ -1093,22 +1093,22 @@ class PosterProfileService {
     try {
       if (needsOriginalUpload) {
         final File originalFile = File(profile.originalPhotoPath.trim());
-        if (originalFile.existsSync()) {
+        if (await originalFile.exists()) {
           nextOriginalPhotoUrl = await uploadProfilePhoto(
             file: originalFile,
             extension: 'png',
             isOriginal: true,
-          );
+          ).catchError((_) => nextOriginalPhotoUrl);
         }
       }
 
       if (needsCutoutUpload) {
         final File cutoutFile = File(profile.photoPath.trim());
-        if (cutoutFile.existsSync()) {
+        if (await cutoutFile.exists()) {
           nextPhotoUrl = await uploadProfilePhoto(
             file: cutoutFile,
             extension: 'png',
-          );
+          ).catchError((_) => nextPhotoUrl);
         }
       }
 

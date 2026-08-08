@@ -63,6 +63,7 @@ import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
 import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
 import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
+import 'package:mana_poster/features/prehome/screens/daily_quiz_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -160,6 +161,10 @@ bool _posterStringLooksFirebaseResolvable(String raw) {
 bool _posterStringLooksHttpUrl(String raw) {
   final lower = raw.trim().toLowerCase();
   return lower.startsWith('http://') || lower.startsWith('https://');
+}
+
+bool _shouldRetryUnavailableNetworkImage(String raw) {
+  return false;
 }
 
 /// Looks like a Storage object path for [FirebaseStorage.ref], not http(s).
@@ -287,6 +292,7 @@ class _TemplateItem {
     this.creatorPublicId,
     this.personalizationConfig,
     this.createdAtMillis = 0,
+    this.publishAtMillis = 0,
     this.preferOriginalPosterQuality = false,
   });
 
@@ -308,6 +314,7 @@ class _TemplateItem {
   final EditorPageConfig? pageConfig;
   final List<String> categoryTags;
   final int createdAtMillis;
+  final int publishAtMillis;
 
   /// Firestore `categoryId` only â€” used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
@@ -427,7 +434,7 @@ class _CategoryChipSlot {
   final int index;
 }
 
-enum _HomePromoCardType { subscribe, renewalReminder, update, rate }
+enum _HomePromoCardType { featured, subscribe, renewalReminder, update, rate }
 
 class _HomeFeedPromoCardData {
   const _HomeFeedPromoCardData({
@@ -725,6 +732,7 @@ _TemplateItem _mapApprovedCreatorTemplateWorker(
     creatorPublicId: creatorId.isNotEmpty ? creatorId : null,
     personalizationConfig: template.personalizationConfig,
     createdAtMillis: template.createdAtMillis,
+    publishAtMillis: template.publishAtMillis,
     pageConfig: template.pageConfig,
     // Web portal uploads must stay visually lossless in app preview/export.
     // Thumbnails can still exist as fallback metadata, but approved posters
@@ -1335,6 +1343,7 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _moreCategorySlug = 'new';
   static const String _selectedMoreCategorySlotSlug = 'selected_more_category';
   static const String _politicalCategorySlug = 'political';
+  static const String _dailyQuizCategorySlug = 'daily_quiz';
   static const Set<String> _morePopupCategorySlugs = <String>{
     'life_advice',
     'motivational',
@@ -1424,6 +1433,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _posterPhotoDragInProgress = false;
   List<_TemplateItem> _remoteApprovedTemplates = const <_TemplateItem>[];
   List<AppHomeBanner> _homeBanners = const <AppHomeBanner>[];
+  List<AppHomeBanner> _promoCardBanners = const <AppHomeBanner>[];
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
@@ -1473,6 +1483,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _loggedRankingComplete = false;
   bool _allFeedRankingReady = false;
   bool _allFeedRankingInFlight = false;
+  bool _currentSlotAllFeedHydrationInFlight = false;
   bool _progressiveHydrationQueued = false;
   bool _posterFeedLoadMoreArmed = true;
   String _startupFeedWarmupSignature = '';
@@ -1484,6 +1495,7 @@ class _HomeScreenState extends State<HomeScreen>
   List<_TemplateItem>? _rankedAllFeedTemplates;
   List<_TemplateItem>? _lockedAllFeedTemplates;
   Set<String> _recentAllFeedTemplateKeys = <String>{};
+  final Set<String> _currentSlotAllFeedHydrationAttempts = <String>{};
   StreamSubscription<User?>? _authStateSubscription;
   String _lastHomeAuthUid = '';
   Timer? _homeAuthReadyRetryTimer;
@@ -1539,6 +1551,10 @@ class _HomeScreenState extends State<HomeScreen>
     _attachHomeAuthStateSubscriptionIfReady();
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _selectedCategorySlug == _dailyQuizCategorySlug) {
+        setState(() => _selectedCategorySlug = _allCategorySlug);
+        unawaited(_openDailyQuiz());
+      }
       _searchFocusNode.unfocus();
       FocusManager.instance.primaryFocus?.unfocus();
       unawaited(() async {
@@ -2845,9 +2861,43 @@ class _HomeScreenState extends State<HomeScreen>
     if (itemTemporalTags.isEmpty) {
       return true;
     }
-    return itemTemporalTags.intersection(
+    final allowedForSlot = itemTemporalTags.intersection(
       _allowedAllFeedTemporalSignals(_activeHomeFeedTimeSlot),
-    ).isNotEmpty;
+    );
+    if (allowedForSlot.isEmpty) {
+      return false;
+    }
+    if (itemTemporalTags.contains('good_night') ||
+        itemTemporalTags.contains('night')) {
+      return _isInGoodNightAllFeedWindow(item);
+    }
+    return true;
+  }
+
+  bool _isInGoodNightAllFeedWindow(_TemplateItem item) {
+    final visibleFromMillis = item.publishAtMillis > 0
+        ? item.publishAtMillis
+        : item.createdAtMillis;
+    if (visibleFromMillis <= 0) {
+      return true;
+    }
+    final visibleFromIst = IstTimeService.toIst(
+      DateTime.fromMillisecondsSinceEpoch(visibleFromMillis),
+    );
+    final windowStartMillis = DateTime.utc(
+      visibleFromIst.year,
+      visibleFromIst.month,
+      visibleFromIst.day + 1,
+      20,
+    ).subtract(IstTimeService.offset).millisecondsSinceEpoch;
+    final windowEndMillis = DateTime.utc(
+      visibleFromIst.year,
+      visibleFromIst.month,
+      visibleFromIst.day + 2,
+      4,
+    ).subtract(IstTimeService.offset).millisecondsSinceEpoch;
+    final nowMillis = IstTimeService.nowEpochMillis();
+    return nowMillis >= windowStartMillis && nowMillis < windowEndMillis;
   }
 
   Set<String> _templateTemporalSignals(_TemplateItem item) {
@@ -2997,6 +3047,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _rememberRecentAllFeedTemplates();
     _activeHomeFeedTimeSlot = nextSlot;
+    _currentSlotAllFeedHydrationAttempts.clear();
+    _currentSlotAllFeedHydrationInFlight = false;
     _resetAllFeedScrollOrderLock();
     _rankedAllFeedTemplates = null;
     _allFeedRankingReady = false;
@@ -3061,13 +3113,113 @@ class _HomeScreenState extends State<HomeScreen>
         _templateProjectionCache = null;
         _templateProjectionIdentity = null;
       } else {
-        return _applyAllFeedPersonalization(locked);
+        return locked;
       }
     }
     if (_allFeedRankingReady && _rankedAllFeedTemplates != null) {
       return _applyAllFeedPersonalization(_rankedAllFeedTemplates!);
     }
-    return _applyAllFeedPersonalization(_remoteApprovedTemplates);
+    return _applyAllFeedPersonalization(
+      _balancedHomeFeedOrder(
+        _remoteApprovedTemplates,
+        reason: 'all_feed_unranked_startup',
+      ),
+    );
+  }
+
+  List<_TemplateItem> _rankVisibleAllFeedTemplates(
+    List<_TemplateItem> source, {
+    required AppLanguage language,
+  }) {
+    if (source.length < 2) {
+      return source;
+    }
+    final now = IstTimeService.now();
+    return _rankAllFeedTemplatesWorker(
+      _AllFeedRankingWorkerRequest(
+        templates: source,
+        slot: _activeHomeFeedTimeSlot,
+        year: now.year,
+        month: now.month,
+        day: now.day,
+        sessionSeed: _allFeedSessionSeed,
+        dynamicTags: _activeDynamicAllFeedTags(language),
+        recentTemplateKeys: _recentAllFeedTemplateKeys,
+      ),
+    );
+  }
+
+  void _ensureCurrentSlotAllFeedTemplatesLoaded({
+    required AppLanguage language,
+    required List<_TemplateItem> visibleTemplates,
+  }) {
+    if (_selectedCategorySlug != _allCategorySlug ||
+        _currentSlotAllFeedHydrationInFlight) {
+      return;
+    }
+    final now = IstTimeService.now();
+    final orderedTags = TimeSlotService.prioritizedCategoryTagsForHomeFeed(
+      now,
+    ).map(_normalizeTag).where((tag) => tag.isNotEmpty).toList(growable: false);
+    if (orderedTags.isEmpty) {
+      return;
+    }
+    final primaryTag = orderedTags.first;
+    final currentSlotAlreadyVisible = visibleTemplates.any(
+      (item) =>
+          _matchesPriorityTagWorker(item, <String>{primaryTag}) &&
+          _matchesAllCategoryTimeWindow(item),
+    );
+    if (currentSlotAlreadyVisible) {
+      return;
+    }
+    final attemptKey =
+        '${now.year}-${now.month}-${now.day}:${_activeHomeFeedTimeSlot.name}:$primaryTag';
+    if (!_currentSlotAllFeedHydrationAttempts.add(attemptKey)) {
+      return;
+    }
+    _currentSlotAllFeedHydrationInFlight = true;
+    unawaited(() async {
+      try {
+        final templates = await _approvedCreatorTemplateService
+            .fetchAllApprovedTemplatesForCategory(
+              categoryId: primaryTag,
+              source: Source.server,
+              scanLimit: _initialPriorityPrimaryFetchSize * 4,
+            );
+        if (!mounted || templates.isEmpty) {
+          return;
+        }
+        final mapped = await _mapTemplatesOffMain(
+          templates,
+          phase: 'current_slot_all_feed',
+        );
+        if (!mounted || mapped.isEmpty) {
+          return;
+        }
+        final visible = await _ensureAllCategoryStartupVisibleTemplates(
+          mapped,
+          language: language,
+          phase: 'current_slot_all_feed',
+        );
+        if (!mounted || visible.isEmpty) {
+          return;
+        }
+        await _appendTemplatesIncrementally(
+          visible,
+          hasMore: _templatesHasMore,
+          lastDocument: _templatesLastDocument,
+          phase: 'current_slot_all_feed',
+        );
+      } catch (error, stackTrace) {
+        _homeDebugLogStack(
+          'current slot all feed hydration failed: $error',
+          stackTrace,
+        );
+      } finally {
+        _currentSlotAllFeedHydrationInFlight = false;
+      }
+    }());
   }
 
   List<_TemplateItem> _balancedHomeFeedOrder(
@@ -4235,6 +4387,7 @@ class _HomeScreenState extends State<HomeScreen>
       ...dynamicCategories,
       ...partyCategories,
       _politicalCategoryChip(),
+      _dailyQuizCategoryChip(),
     ]).map((chip) => _normalizeTag(chip.slug)).toSet();
     final seenSlugs = <String>{};
     final seenSelectionSlugs = <String>{};
@@ -4265,6 +4418,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     addChip(_politicalCategoryChip());
+    addChip(_dailyQuizCategoryChip());
     for (final chip in partyCategories) {
       addChip(chip);
     }
@@ -4308,6 +4462,17 @@ class _HomeScreenState extends State<HomeScreen>
         context.currentLanguage,
       ),
       matchTags: const <String>['political', 'politics'],
+    );
+  }
+
+  _CategoryChipData _dailyQuizCategoryChip() {
+    return _CategoryChipData(
+      slug: _dailyQuizCategorySlug,
+      label: context.strings.localized(
+        telugu: 'డైలీ క్విజ్',
+        english: 'Daily Quiz',
+      ),
+      matchTags: const <String>['daily_quiz', 'quiz'],
     );
   }
 
@@ -4551,21 +4716,47 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadHomeBannersInternal() async {
     final remoteFuture = _appHomeBannerService.fetchBanners();
+    final remotePromoFuture = _appHomeBannerService.fetchBanners(
+      maxItems: 6,
+      placement: 'home_promo_card_carousel',
+    );
     final cached = await _appHomeBannerService.fetchBannersFromCache();
+    final cachedPromo = await _appHomeBannerService.fetchBannersFromCache(
+      maxItems: 6,
+      placement: 'home_promo_card_carousel',
+    );
     if (mounted && cached.isNotEmpty) {
       if (!_sameHomeBannerSequence(_homeBanners, cached)) {
         setState(() => _homeBanners = cached);
       }
     }
+    if (mounted && cachedPromo.isNotEmpty) {
+      if (!_sameHomeBannerSequence(_promoCardBanners, cachedPromo)) {
+        setState(() => _promoCardBanners = cachedPromo);
+      }
+    }
 
     final remote = await remoteFuture;
+    final remotePromo = await remotePromoFuture;
     if (!mounted) {
       return;
     }
-    if (_sameHomeBannerSequence(_homeBanners, remote)) {
+    final homeChanged = !_sameHomeBannerSequence(_homeBanners, remote);
+    final promoChanged = !_sameHomeBannerSequence(
+      _promoCardBanners,
+      remotePromo,
+    );
+    if (!homeChanged && !promoChanged) {
       return;
     }
-    setState(() => _homeBanners = remote);
+    setState(() {
+      if (homeChanged) {
+        _homeBanners = remote;
+      }
+      if (promoChanged) {
+        _promoCardBanners = remotePromo;
+      }
+    });
   }
 
   developer.TimelineTask _startStartupTimelineTask(
@@ -4706,6 +4897,7 @@ class _HomeScreenState extends State<HomeScreen>
       'phoneScale': config.phoneScale,
       'nameStripColor': config.nameStripColor,
       'designationStripColor': config.designationStripColor,
+      'stripLayoutStyle': config.stripLayoutStyle,
       'boardVariant': config.boardVariant,
       'photoRenderMode': config.photoRenderMode,
       'edgeStyle': config.edgeStyle,
@@ -4773,6 +4965,9 @@ class _HomeScreenState extends State<HomeScreen>
       nameStripColor: (data['nameStripColor'] as String?)?.trim() ?? '#0F172A',
       designationStripColor:
           (data['designationStripColor'] as String?)?.trim() ?? '#1E293B',
+      stripLayoutStyle: _normalizePosterStripLayoutStyle(
+        data['stripLayoutStyle'] as String?,
+      ),
       boardVariant: (data['boardVariant'] as num?)?.toInt() ?? 0,
       photoRenderMode: (data['photoRenderMode'] as String?)?.trim() ?? 'cutout',
       edgeStyle: (data['edgeStyle'] as String?)?.trim() ?? 'soft_fade',
@@ -4874,6 +5069,7 @@ class _HomeScreenState extends State<HomeScreen>
       'fallbackProductIds': item.fallbackProductIds,
       'categoryTags': item.categoryTags,
       'createdAtMillis': item.createdAtMillis,
+      'publishAtMillis': item.publishAtMillis,
       'primaryFirestoreCategoryId': item.primaryFirestoreCategoryId,
       'categoryDisplayLabel': item.categoryDisplayLabel,
       'creatorPublicId': item.creatorPublicId,
@@ -4934,6 +5130,7 @@ class _HomeScreenState extends State<HomeScreen>
               .map((value) => value.toString())
               .toList(growable: false),
       createdAtMillis: (data['createdAtMillis'] as num?)?.toInt() ?? 0,
+      publishAtMillis: (data['publishAtMillis'] as num?)?.toInt() ?? 0,
       primaryFirestoreCategoryId:
           (data['primaryFirestoreCategoryId'] as String?)?.trim(),
       categoryDisplayLabel: (data['categoryDisplayLabel'] as String?)?.trim(),
@@ -5052,11 +5249,6 @@ class _HomeScreenState extends State<HomeScreen>
     final setStateStopwatch = Stopwatch()..start();
     setState(() {
       _remoteApprovedTemplates = templates;
-      if (_selectedCategorySlug == _allCategorySlug &&
-          _lockedAllFeedTemplates == null &&
-          templates.length >= _startupMinimumScrollableTemplateCount) {
-        _lockedAllFeedTemplates = List<_TemplateItem>.of(templates);
-      }
       _rankedAllFeedTemplates = null;
       _allFeedRankingReady = false;
       _startupSnapshotHydrationDeferred = false;
@@ -5385,7 +5577,9 @@ class _HomeScreenState extends State<HomeScreen>
     required String phase,
   }) async {
     if (_selectedCategorySlug != _allCategorySlug ||
-        items.any((item) => _matchesTemplate(item, language, _allCategoryChip()))) {
+        items.any(
+          (item) => _matchesTemplate(item, language, _allCategoryChip()),
+        )) {
       return items;
     }
     final windowTemplates = await _approvedCreatorTemplateService
@@ -5565,10 +5759,7 @@ class _HomeScreenState extends State<HomeScreen>
     final startupGenericRemoteFuture = _startupTemplatePageWithTimeout(
       shouldUseSlotAwareStartupFetch
           ? _approvedCreatorTemplateService
-                .fetchApprovedTemplatesPage(
-                  pageSize: initialPageSize,
-                  allowFallbackMerge: false,
-                )
+                .fetchApprovedTemplatesPage(pageSize: initialPageSize)
                 .whenComplete(() {
                   _homeDebugLog(
                     '[StartupTiming] generic_fetch_done t=${_startupStopwatch.elapsedMilliseconds}ms '
@@ -5845,9 +6036,20 @@ class _HomeScreenState extends State<HomeScreen>
             ? firstPaintItems.sublist(visiblePrimaryCount)
             : const <_TemplateItem>[];
         if (startupFeedAlreadyVisible) {
+          if (firstPaintItems.isNotEmpty) {
+            await _appendTemplatesIncrementally(
+              firstPaintItems,
+              hasMore: firstPaintHasMore,
+              lastDocument: firstPaintLastDocument,
+              phase: 'primary_immediate_merge',
+            );
+            if (!mounted) {
+              return;
+            }
+          }
           unawaited(
             _completeStartupSecondaryHydration(
-              deferredPrimaryItems: firstPaintItems,
+              deferredPrimaryItems: const <_TemplateItem>[],
               secondaryFuture: startupSecondaryFuture!,
               genericFuture: startupGenericRemoteFuture,
             ),
@@ -6255,6 +6457,9 @@ class _HomeScreenState extends State<HomeScreen>
       final sameTargetRegionIds =
           a.targetRegionIds.length == b.targetRegionIds.length &&
           a.targetRegionIds.every(b.targetRegionIds.contains);
+      final sameTargetReligions =
+          a.targetReligions.length == b.targetReligions.length &&
+          a.targetReligions.every(b.targetReligions.contains);
       if (a.id != b.id ||
           a.imageUrl != b.imageUrl ||
           a.sortOrder != b.sortOrder ||
@@ -6265,6 +6470,7 @@ class _HomeScreenState extends State<HomeScreen>
           a.ctaTarget != b.ctaTarget ||
           a.placement != b.placement ||
           !sameTargetRegionIds ||
+          !sameTargetReligions ||
           a.targetState != b.targetState ||
           a.targetDistrict != b.targetDistrict ||
           a.targetCity != b.targetCity) {
@@ -6712,9 +6918,22 @@ class _HomeScreenState extends State<HomeScreen>
     final baseTemplates = selectedCategory.slug == _allCategorySlug
         ? _currentAllFeedDisplaySource()
         : _remoteApprovedTemplates;
-    final filteredTemplates = baseTemplates
+    final rawFilteredTemplates = baseTemplates
         .where((item) => _matchesTemplate(item, language, selectedCategory))
         .toList(growable: false);
+    final allFeedOrderLocked =
+        selectedCategory.slug == _allCategorySlug &&
+        _lockedAllFeedTemplates != null;
+    final filteredTemplates =
+        selectedCategory.slug == _allCategorySlug && !allFeedOrderLocked
+        ? _rankVisibleAllFeedTemplates(rawFilteredTemplates, language: language)
+        : rawFilteredTemplates;
+    if (selectedCategory.slug == _allCategorySlug) {
+      _ensureCurrentSlotAllFeedTemplatesLoaded(
+        language: language,
+        visibleTemplates: filteredTemplates,
+      );
+    }
     final normalizedSelectedSlug = _normalizeTag(
       selectedCategory.effectiveSelectionSlug,
     );
@@ -6981,6 +7200,19 @@ class _HomeScreenState extends State<HomeScreen>
   }) {
     final isPro = entitlement?.hasAccess ?? false;
     final cards = <_HomeFeedPromoCardData>[
+      if (_promoCardBanners.isNotEmpty)
+        _HomeFeedPromoCardData(
+          type: _HomePromoCardType.featured,
+          title: strings.localized(
+            telugu: 'మన పోస్టర్ స్పెషల్',
+            english: 'Mana Poster special',
+          ),
+          subtitle: strings.localized(
+            telugu: 'మీ కోసం కొత్త పోస్టర్లు, ఆఫర్లు, అప్‌డేట్స్.',
+            english: 'Fresh posters, offers, and updates for you.',
+          ),
+          buttonLabel: strings.localized(telugu: 'ఓపెన్', english: 'Open'),
+        ),
       if (!isPro)
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.subscribe,
@@ -7077,7 +7309,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (promoCards.isEmpty) {
       return templates.map(_HomeFeedEntry.template).toList(growable: false);
     }
-    const insertAfterEvery = 10;
+    const insertAfterEvery = 6;
     final entries = <_HomeFeedEntry>[];
     var promoIndex = 0;
     for (var index = 0; index < templates.length; index++) {
@@ -7408,6 +7640,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _handlePromoTap(_HomePromoCardType type) async {
     switch (type) {
+      case _HomePromoCardType.featured:
+        return;
       case _HomePromoCardType.subscribe:
         if (!mounted) {
           return;
@@ -7438,6 +7672,10 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_openPoliticalPartyPicker());
       return;
     }
+    if (slug == _dailyQuizCategorySlug) {
+      unawaited(_openDailyQuiz());
+      return;
+    }
     if (slug == _selectedCategorySlug) {
       return;
     }
@@ -7457,6 +7695,12 @@ class _HomeScreenState extends State<HomeScreen>
     _resetAllFeedScrollOrderLock();
     _schedulePosterFeedResetToTop();
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
+  }
+
+  Future<void> _openDailyQuiz() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const DailyQuizScreen()),
+    );
   }
 
   Future<void> _openPoliticalPartyPicker() async {
@@ -7836,9 +8080,15 @@ class _HomeScreenState extends State<HomeScreen>
     if (_selectedCategorySlug == _allCategorySlug &&
         _lockedAllFeedTemplates == null &&
         index > 0) {
-      _lockedAllFeedTemplates = List<_TemplateItem>.of(
-        _currentAllFeedDisplaySource(),
-      );
+      final visibleTemplates = feedEntries
+          .map((entry) => entry.template)
+          .whereType<_TemplateItem>()
+          .toList(growable: false);
+      if (visibleTemplates.isNotEmpty) {
+        _lockedAllFeedTemplates = visibleTemplates;
+        _templateProjectionCache = null;
+        _templateProjectionIdentity = null;
+      }
     }
     if (index >= 0 && index < feedEntries.length) {
       final item = feedEntries[index].template;
@@ -7854,6 +8104,117 @@ class _HomeScreenState extends State<HomeScreen>
         unawaited(_loadMoreSelectedCategoryTemplates());
       }
     }
+  }
+
+  void _openFullScreenPosterGallery({
+    required int feedIndex,
+    required List<_HomeFeedEntry> feedEntries,
+    required _CategoryChipData selectedCategory,
+    required AppLanguage language,
+  }) {
+    final templateFeedIndexes = <int>[];
+    final templates = <_TemplateItem>[];
+    for (var index = 0; index < feedEntries.length; index++) {
+      final template = feedEntries[index].template;
+      if (template == null) {
+        continue;
+      }
+      templateFeedIndexes.add(index);
+      templates.add(template);
+    }
+    if (templates.isEmpty || feedIndex < 0 || feedIndex >= feedEntries.length) {
+      return;
+    }
+    final tappedTemplate = feedEntries[feedIndex].template;
+    if (tappedTemplate == null) {
+      return;
+    }
+    final initialIndex = math.max(0, templates.indexOf(tappedTemplate));
+    var currentFeedIndex = feedIndex;
+    final selectedSlug = selectedCategory.slug;
+    final forcedPartyId = _partyIdFromCategorySlug(selectedSlug);
+    Navigator.of(context)
+        .push<void>(
+          PageRouteBuilder<void>(
+            opaque: true,
+            barrierColor: Colors.black,
+            transitionDuration: const Duration(milliseconds: 340),
+            reverseTransitionDuration: const Duration(milliseconds: 260),
+            pageBuilder: (_, _, _) => _PosterFullScreenGallery(
+              initialIndex: initialIndex,
+              itemCount: templates.length,
+              onPageChanged: (galleryIndex) {
+                if (galleryIndex >= 0 &&
+                    galleryIndex < templateFeedIndexes.length) {
+                  currentFeedIndex = templateFeedIndexes[galleryIndex];
+                }
+              },
+              itemBuilder: (galleryContext, index) {
+                final item = templates[index];
+                return _TemplateFeedItem(
+                  key: ValueKey<String>(
+                    'fullscreen-${item.templateId?.trim().isNotEmpty == true ? item.templateId!.trim() : '${item.titleEn}-${item.imageUrl ?? item.imageAssetPath ?? item.videoUrl ?? 'poster'}'}',
+                  ),
+                  item: item,
+                  hostContext: galleryContext,
+                  language: language,
+                  deferRichPosterPreview: false,
+                  onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
+                  viewerPosterProfile: _viewerPosterProfile,
+                  posterRenderCycle: _posterRenderCycle,
+                  onPosterPhotoDragStateChanged: (_) {},
+                  playbackEnabled: true,
+                  enablePoliticalProtocolOverlay:
+                      selectedSlug == _politicalCategorySlug ||
+                      forcedPartyId != null,
+                  showPartyLogoInNameChip: forcedPartyId != null,
+                  politicalProtocolPhotoScopeKey: _normalizeTag(selectedSlug),
+                  partyLogoOverridesByPartyId: _partyLogoOverridesByPartyId,
+                  politicalParties: _politicalParties,
+                  forcedPoliticalProtocolPartyId: forcedPartyId,
+                  showPosterEditButton: false,
+                  allowPoliticalProtocolWithoutParty:
+                      selectedSlug == _politicalCategorySlug,
+                  preferUltraLightImage: false,
+                  fillViewport: false,
+                  previewOnly: true,
+                  onInteraction: _recordAllFeedTemplateInteraction,
+                );
+              },
+            ),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                    reverseCurve: Curves.easeInCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: ScaleTransition(
+                      scale: Tween<double>(
+                        begin: 0.985,
+                        end: 1,
+                      ).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
+          ),
+        )
+        .whenComplete(() {
+          if (!mounted || !_posterPageController.hasClients) {
+            return;
+          }
+          final safeIndex =
+              currentFeedIndex.clamp(0, math.max(0, feedEntries.length - 1))
+                  as int;
+          if (_activePosterPage != safeIndex) {
+            _activePosterPage = safeIndex;
+            _activePosterPageNotifier.value = safeIndex;
+          }
+          _posterPageController.jumpToPage(safeIndex);
+        });
   }
 
   @override
@@ -7884,9 +8245,17 @@ class _HomeScreenState extends State<HomeScreen>
       strings: strings,
       entitlement: effectiveEntitlement,
     );
-    final promoSlides = templates
-        .take(_promoSlidesLimit)
-        .toList(growable: false);
+    final promoSlides = _promoCardBanners.isNotEmpty
+        ? _promoCardBanners
+              .map((banner) => banner.imageUrl.trim())
+              .where((url) => url.isNotEmpty)
+              .take(6)
+              .toList(growable: false)
+        : templates
+              .take(_promoSlidesLimit)
+              .map((item) => (item.thumbnailUrl ?? item.imageUrl ?? '').trim())
+              .where((url) => url.isNotEmpty)
+              .toList(growable: false);
     final feedEntries = _buildFeedEntries(
       templates: templates,
       promoCards: promoCards,
@@ -7908,10 +8277,16 @@ class _HomeScreenState extends State<HomeScreen>
     final mediaSize = MediaQuery.sizeOf(context);
     final useCompactLandscapeHome = mediaSize.width > mediaSize.height;
     final safePadding = MediaQuery.paddingOf(context);
-    final uploadTabTop = (mediaSize.height * 0.32).clamp(
-      safePadding.top + 220,
-      mediaSize.height - safePadding.bottom - 260,
-    );
+    final uploadTabMinTop = safePadding.top + 220;
+    final uploadTabMaxTop = mediaSize.height - safePadding.bottom - 260;
+    final uploadTabPreferredTop = mediaSize.height * 0.32;
+    final uploadTabTop = uploadTabMaxTop >= uploadTabMinTop
+        ? uploadTabPreferredTop
+              .clamp(uploadTabMinTop, uploadTabMaxTop)
+              .toDouble()
+        : uploadTabPreferredTop
+              .clamp(0.0, math.max(0.0, mediaSize.height - safePadding.bottom))
+              .toDouble();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
@@ -8031,6 +8406,8 @@ class _HomeScreenState extends State<HomeScreen>
                               }
                               final item = entry.template!;
                               final isActivePoster = index == activeFeedPage;
+                              final keepRichPosterPreview =
+                                  (index - activeFeedPage).abs() <= 1;
                               return _TemplateFeedItem(
                                 key: ValueKey<String>(
                                   item.templateId?.trim().isNotEmpty == true
@@ -8041,7 +8418,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 hostContext: context,
                                 language: language,
                                 preferUltraLightImage: !isActivePoster,
-                                deferRichPosterPreview: !isActivePoster,
+                                deferRichPosterPreview: !keepRichPosterPreview,
                                 fillViewport: true,
                                 playbackEnabled: isActivePoster,
                                 enablePoliticalProtocolOverlay:
@@ -8072,6 +8449,13 @@ class _HomeScreenState extends State<HomeScreen>
                                 posterRenderCycle: _posterRenderCycle,
                                 onPosterPhotoDragStateChanged:
                                     _setPosterPhotoDragInProgress,
+                                onPreviewTap: () =>
+                                    _openFullScreenPosterGallery(
+                                      feedIndex: index,
+                                      feedEntries: feedEntries,
+                                      selectedCategory: selectedCategory,
+                                      language: language,
+                                    ),
                                 onInteraction:
                                     _recordAllFeedTemplateInteraction,
                               );
@@ -10954,7 +11338,7 @@ class _HomeInlinePromoCard extends StatefulWidget {
 
   final _HomeFeedPromoCardData data;
   final PosterProfileData viewerPosterProfile;
-  final List<_TemplateItem> slides;
+  final List<String> slides;
   final VoidCallback onTap;
 
   @override
@@ -10966,7 +11350,7 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
     viewportFraction: 1,
   );
   late final List<String> _slideUrls = widget.slides
-      .map((item) => (item.thumbnailUrl ?? item.imageUrl ?? '').trim())
+      .map((url) => url.trim())
       .where((url) => url.isNotEmpty)
       .take(6)
       .toList(growable: false);
@@ -11010,6 +11394,7 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
           );
     final contact = widget.viewerPosterProfile.activeWhatsappNumber.trim();
     final actionStripColor = switch (widget.data.type) {
+      _HomePromoCardType.featured => const Color(0xFF7C3AED),
       _HomePromoCardType.subscribe => const Color(0xFF4123C7),
       _HomePromoCardType.renewalReminder => const Color(0xFFB45309),
       _HomePromoCardType.update => const Color(0xFF0F766E),
@@ -11019,43 +11404,39 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
         widget.data.type == _HomePromoCardType.update ||
         widget.data.type == _HomePromoCardType.rate;
     final accentIcon = switch (widget.data.type) {
+      _HomePromoCardType.featured => Icons.auto_awesome_rounded,
       _HomePromoCardType.subscribe => Icons.workspace_premium_rounded,
       _HomePromoCardType.renewalReminder => Icons.notifications_active_rounded,
       _HomePromoCardType.update || _HomePromoCardType.rate => null,
     };
 
     return Container(
+      constraints: const BoxConstraints(maxWidth: 430),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: <Color>[Color(0xFF7C3AED), Color(0xFF4F46E5)],
         ),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x180F172A),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(3),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
+                  top: Radius.circular(13),
                 ),
                 child: SizedBox(
-                  height: 148,
+                  height: 118,
                   child: _slideUrls.isEmpty
                       ? const ColoredBox(color: Color(0xFFF8FAFC))
                       : PageView.builder(
@@ -11092,11 +11473,11 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
                 child: Row(
                   children: <Widget>[
                     CircleAvatar(
-                      radius: 31,
+                      radius: 24,
                       backgroundColor: const Color(0xFFE2E8F0),
                       backgroundImage: imageProvider,
                       child: imageProvider == null
@@ -11104,13 +11485,13 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                               userName.isEmpty ? 'U' : userName[0],
                               style: const TextStyle(
                                 color: Color(0xFF0F172A),
-                                fontSize: 24,
+                                fontSize: 18,
                                 fontWeight: FontWeight.w800,
                               ),
                             )
                           : null,
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 11),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -11121,12 +11502,12 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: Color(0xFF0F172A),
-                              fontSize: 24,
+                              fontSize: 18,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           if (contact.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 5),
                             Row(
                               children: <Widget>[
                                 const Icon(
@@ -11142,7 +11523,7 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Color(0xFF334155),
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -11157,10 +11538,10 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                 ),
               ),
               Container(
-                margin: const EdgeInsets.fromLTRB(0, 2, 0, 0),
+                margin: EdgeInsets.zero,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 14,
+                  vertical: 9,
                 ),
                 decoration: BoxDecoration(color: actionStripColor),
                 child: Row(
@@ -11178,9 +11559,9 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                         widget.data.title,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          height: 1.2,
+                          height: 1.15,
                         ),
                       ),
                     ),
@@ -11188,7 +11569,7 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                 child: switch (widget.data.type) {
                   _HomePromoCardType.update ||
                   _HomePromoCardType.rate => const Align(
@@ -11199,24 +11580,26 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                 },
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(14, 9, 14, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       widget.data.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Color(0xFF475569),
-                        fontSize: 13,
-                        height: 1.4,
+                        fontSize: 12,
+                        height: 1.25,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     FilledButton(
                       onPressed: widget.onTap,
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
+                        minimumSize: const Size.fromHeight(40),
                         backgroundColor: const Color(0xFFFFD60A),
                         foregroundColor: const Color(0xFF0F172A),
                         shape: RoundedRectangleBorder(
@@ -11244,7 +11627,7 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
                           Text(
                             widget.data.buttonLabel,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -14933,6 +15316,8 @@ class _TemplateFeedItem extends StatefulWidget {
     this.allowPoliticalProtocolWithoutParty = false,
     this.preferUltraLightImage = false,
     this.fillViewport = false,
+    this.previewOnly = false,
+    this.onPreviewTap,
     this.onInteraction,
   });
 
@@ -14956,6 +15341,8 @@ class _TemplateFeedItem extends StatefulWidget {
   final bool allowPoliticalProtocolWithoutParty;
   final bool preferUltraLightImage;
   final bool fillViewport;
+  final bool previewOnly;
+  final VoidCallback? onPreviewTap;
   final void Function(_TemplateItem item, String action)? onInteraction;
   static final SubscriptionBackendService _subscriptionBackendService =
       SubscriptionBackendService();
@@ -15046,6 +15433,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   bool get playbackEnabled => widget.playbackEnabled;
   bool get preferUltraLightImage => widget.preferUltraLightImage;
   bool get fillViewport => widget.fillViewport;
+  String get _fullScreenHeroTag =>
+      'home-poster-preview-${item.templateId?.trim().isNotEmpty == true ? item.templateId!.trim() : Object.hash(item.titleEn, item.imageUrl, item.videoUrl, item.imageAssetPath)}';
   Future<void> Function({bool startPurchaseOnOpen})
   get onOpenSubscriptionPlan => widget.onOpenSubscriptionPlan;
   PosterProfileData get viewerPosterProfile => widget.viewerPosterProfile;
@@ -16688,9 +17077,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Widget _buildPosterPreview({
     required bool isPhotoVisible,
     ValueChanged<bool>? onPosterReadyChanged,
+    bool? playbackEnabledOverride,
+    bool enableFullScreenTap = true,
   }) {
     final personalizationConfig = item.personalizationConfig;
     final renderOriginalPosterQuality = item.preferOriginalPosterQuality;
+    final effectivePlaybackEnabled = playbackEnabledOverride ?? playbackEnabled;
+    final fullScreenTap = enableFullScreenTap ? _openFullScreenPreview : null;
     if (deferRichPosterPreview) {
       return _ResolvedTemplatePosterImage(
         imageAssetPath: item.imageAssetPath,
@@ -16717,7 +17110,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   basePosterBuilder: (VoidCallback onReady) =>
                       _FeedTapToPlayVideoPoster(
                         videoUrl: item.videoUrl!,
-                        playbackEnabled: playbackEnabled,
+                        playbackEnabled: effectivePlaybackEnabled,
                         imageAssetPath: item.imageAssetPath,
                         imageUrl: item.imageUrl,
                         imageStoragePath: item.imageStoragePath,
@@ -16726,6 +17119,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         onAspectRatioResolved:
                             _handlePreviewAspectRatioResolved,
                         onReady: onReady,
+                        onOpenPreview: fullScreenTap,
                         onReplay: () {
                           _videoReplayTickNotifier.value =
                               _videoReplayTickNotifier.value + 1;
@@ -16773,7 +17167,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                 )
               : _FeedTapToPlayVideoPoster(
                   videoUrl: item.videoUrl!,
-                  playbackEnabled: playbackEnabled,
+                  playbackEnabled: effectivePlaybackEnabled,
                   imageAssetPath: item.imageAssetPath,
                   imageUrl: item.imageUrl,
                   imageStoragePath: item.imageStoragePath,
@@ -16781,6 +17175,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   thumbnailUrl: item.thumbnailUrl,
                   onAspectRatioResolved: _handlePreviewAspectRatioResolved,
                   onReady: () => onPosterReadyChanged?.call(true),
+                  onOpenPreview: fullScreenTap,
                 )
         : personalizationConfig != null
         ? _CreatorPosterPreview(
@@ -16848,7 +17243,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       isPhotoVisible: isPhotoVisible,
       onPosterReadyChanged: onPosterReadyChanged,
     );
-    final framedPreview = preview;
+    final framedPreview = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: deferRichPosterPreview
+          ? null
+          : (widget.onPreviewTap ?? _openFullScreenPreview),
+      child: Hero(
+        tag: _fullScreenHeroTag,
+        transitionOnUserGestures: true,
+        child: Material(type: MaterialType.transparency, child: preview),
+      ),
+    );
     if (deferRichPosterPreview) {
       return KeyedSubtree(key: _posterCaptureKey, child: framedPreview);
     }
@@ -17221,6 +17626,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               ApprovedCreatorTemplateService().incrementPosterEngagementCount(
                 posterId: posterId,
                 isShare: false,
+                creatorPublicId: item.creatorPublicId ?? '',
+                posterTitle: item.titleEn,
+                categoryId: item.primaryFirestoreCategoryId ?? '',
+                categoryLabel: item.categoryDisplayLabel ?? '',
               ),
             );
             unawaited(
@@ -17274,6 +17683,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             ApprovedCreatorTemplateService().incrementPosterEngagementCount(
               posterId: posterId,
               isShare: false,
+              creatorPublicId: item.creatorPublicId ?? '',
+              posterTitle: item.titleEn,
+              categoryId: item.primaryFirestoreCategoryId ?? '',
+              categoryLabel: item.categoryDisplayLabel ?? '',
             ),
           );
           unawaited(
@@ -17368,6 +17781,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             ApprovedCreatorTemplateService().incrementPosterEngagementCount(
               posterId: posterId,
               isShare: true,
+              creatorPublicId: item.creatorPublicId ?? '',
+              posterTitle: item.titleEn,
+              categoryId: item.primaryFirestoreCategoryId ?? '',
+              categoryLabel: item.categoryDisplayLabel ?? '',
             ),
           );
           unawaited(
@@ -17410,6 +17827,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           ApprovedCreatorTemplateService().incrementPosterEngagementCount(
             posterId: posterId,
             isShare: true,
+            creatorPublicId: item.creatorPublicId ?? '',
+            posterTitle: item.titleEn,
+            categoryId: item.primaryFirestoreCategoryId ?? '',
+            categoryLabel: item.categoryDisplayLabel ?? '',
           ),
         );
         unawaited(
@@ -17501,6 +17922,49 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       filePath,
     ).writeAsString(jsonEncode(templateDocument), flush: true);
     return filePath;
+  }
+
+  void _openFullScreenPreview() {
+    if (!mounted || deferRichPosterPreview) {
+      return;
+    }
+    final aspectRatio =
+        _resolvedPreviewAspectRatio ??
+        item.pageConfig?.aspectRatio ??
+        (item.isVideo ? 9 / 16 : null);
+    Navigator.of(context).push<void>(
+      PageRouteBuilder<void>(
+        opaque: true,
+        barrierColor: Colors.black,
+        transitionDuration: const Duration(milliseconds: 340),
+        reverseTransitionDuration: const Duration(milliseconds: 260),
+        pageBuilder: (_, _, _) => _PosterFullScreenPreview(
+          title: item.titleFor(language),
+          heroTag: _fullScreenHeroTag,
+          aspectRatio: aspectRatio,
+          child: _buildPosterPreview(
+            isPhotoVisible: _showPosterPhotoNotifier.value,
+            playbackEnabledOverride: true,
+            enableFullScreenTap: false,
+          ),
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.985, end: 1).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+    widget.onInteraction?.call(item, 'preview');
   }
 
   Future<void> _openPosterPhotoEditor(BuildContext context) async {
@@ -18024,6 +18488,45 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final strings = context.strings;
     final personalizationConfig = item.personalizationConfig;
     final canTogglePhoto = personalizationConfig != null && !item.isVideo;
+
+    if (widget.previewOnly) {
+      return ValueListenableBuilder<bool>(
+        valueListenable: _showPosterPhotoNotifier,
+        builder: (context, isPhotoVisible, _) {
+          final preview = _buildPosterPreview(
+            isPhotoVisible: isPhotoVisible,
+            playbackEnabledOverride: true,
+            enableFullScreenTap: false,
+          );
+          final aspectRatio =
+              _resolvedPreviewAspectRatio ??
+              item.pageConfig?.aspectRatio ??
+              (item.isVideo ? 9 / 16 : null);
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final maxWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : MediaQuery.sizeOf(context).width;
+              if (aspectRatio != null && aspectRatio > 0) {
+                return Center(
+                  child: SizedBox(
+                    width: maxWidth,
+                    height: maxWidth / aspectRatio,
+                    child: preview,
+                  ),
+                );
+              }
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: preview,
+                ),
+              );
+            },
+          );
+        },
+      );
+    }
 
     if (fillViewport) {
       return _buildViewportItem(context, strings, canTogglePhoto);
@@ -18769,8 +19272,9 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     notifyWhenLoaded: true,
                   );
                 }
-                if (failed.startsWith('http://') ||
-                    failed.startsWith('https://')) {
+                if (_shouldRetryUnavailableNetworkImage(failed) &&
+                    (failed.startsWith('http://') ||
+                        failed.startsWith('https://'))) {
                   unawaited(
                     PosterNetworkImageCache.instance.removeFile(failed),
                   );
@@ -19184,6 +19688,212 @@ class _ResolvedTemplatePosterImageState
   bool get wantKeepAlive => true;
 }
 
+class _PosterFullScreenPreview extends StatelessWidget {
+  const _PosterFullScreenPreview({
+    required this.title,
+    required this.heroTag,
+    required this.child,
+    this.aspectRatio,
+  });
+
+  final String title;
+  final String heroTag;
+  final Widget child;
+  final double? aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedAspectRatio = aspectRatio;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: Hero(
+                tag: heroTag,
+                transitionOnUserGestures: true,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final maxWidth = constraints.maxWidth;
+                      final maxHeight = constraints.maxHeight;
+                      final targetWidth = maxWidth.isFinite
+                          ? maxWidth
+                          : MediaQuery.sizeOf(context).width;
+                      final targetHeight =
+                          resolvedAspectRatio != null && resolvedAspectRatio > 0
+                          ? targetWidth / resolvedAspectRatio
+                          : null;
+                      final preview = targetHeight == null
+                          ? ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: targetWidth,
+                              ),
+                              child: child,
+                            )
+                          : SizedBox(
+                              width: targetWidth,
+                              height: targetHeight,
+                              child: child,
+                            );
+                      return SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minHeight: maxHeight),
+                          child: Center(child: preview),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: Row(
+                children: <Widget>[
+                  IconButton.filled(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.48),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PosterFullScreenGallery extends StatefulWidget {
+  const _PosterFullScreenGallery({
+    required this.initialIndex,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.onPageChanged,
+  });
+
+  final int initialIndex;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final ValueChanged<int>? onPageChanged;
+
+  @override
+  State<_PosterFullScreenGallery> createState() =>
+      _PosterFullScreenGalleryState();
+}
+
+class _PosterFullScreenGalleryState extends State<_PosterFullScreenGallery> {
+  late final PageController _controller = PageController(
+    initialPage: widget.initialIndex.clamp(0, widget.itemCount - 1),
+  );
+  late int _pageIndex = widget.initialIndex.clamp(0, widget.itemCount - 1);
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(ScreenSecurityService.protectScreen());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    unawaited(ScreenSecurityService.unprotectScreen());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: <Widget>[
+            PageView.builder(
+              controller: _controller,
+              scrollDirection: Axis.vertical,
+              physics: const PageScrollPhysics(parent: BouncingScrollPhysics()),
+              itemCount: widget.itemCount,
+              onPageChanged: (index) {
+                widget.onPageChanged?.call(index);
+                setState(() => _pageIndex = index);
+              },
+              itemBuilder: (context, index) {
+                return Center(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: widget.itemBuilder(context, index),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: Row(
+                children: <Widget>[
+                  IconButton.filled(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black.withValues(alpha: 0.48),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const Spacer(),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.48),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      child: Text(
+                        '${_pageIndex + 1}/${widget.itemCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SubscriptionInfoLine extends StatelessWidget {
   const _SubscriptionInfoLine({required this.title, required this.value});
 
@@ -19454,6 +20164,7 @@ class _FeedTapToPlayVideoPoster extends StatefulWidget {
     this.thumbnailUrl,
     this.onAspectRatioResolved,
     this.onReady,
+    this.onOpenPreview,
     this.onReplay,
   });
 
@@ -19466,6 +20177,7 @@ class _FeedTapToPlayVideoPoster extends StatefulWidget {
   final String? thumbnailUrl;
   final ValueChanged<double>? onAspectRatioResolved;
   final VoidCallback? onReady;
+  final VoidCallback? onOpenPreview;
   final VoidCallback? onReplay;
 
   @override
@@ -19501,12 +20213,13 @@ class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
         playbackEnabled: widget.playbackEnabled,
         onAspectRatioResolved: widget.onAspectRatioResolved,
         onReady: widget.onReady,
+        onOpenPreview: widget.onOpenPreview,
         onReplay: widget.onReplay,
       );
     }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _playing = true),
+      onTap: widget.onOpenPreview ?? () => setState(() => _playing = true),
       child: Stack(
         fit: StackFit.expand,
         alignment: Alignment.center,
@@ -19547,6 +20260,7 @@ class _TemplateVideoPlayer extends StatefulWidget {
     this.playbackEnabled = true,
     this.onAspectRatioResolved,
     this.onReady,
+    this.onOpenPreview,
     this.onReplay,
   });
 
@@ -19554,6 +20268,7 @@ class _TemplateVideoPlayer extends StatefulWidget {
   final bool playbackEnabled;
   final ValueChanged<double>? onAspectRatioResolved;
   final VoidCallback? onReady;
+  final VoidCallback? onOpenPreview;
   final VoidCallback? onReplay;
 
   @override
@@ -19761,7 +20476,7 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     final videoHeight = videoSize.height > 0 ? videoSize.height : 16.0;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => unawaited(_togglePlayback()),
+      onTap: widget.onOpenPreview ?? () => unawaited(_togglePlayback()),
       child: AspectRatio(
         aspectRatio: 9 / 16,
         child: Stack(
@@ -19889,6 +20604,17 @@ class _CreatorPosterPreview extends StatefulWidget {
   State<_CreatorPosterPreview> createState() => _CreatorPosterPreviewState();
 }
 
+String _normalizePosterStripLayoutStyle(String? raw) {
+  switch ((raw ?? '').trim().toLowerCase()) {
+    case 'split':
+    case 'badge':
+    case 'full':
+      return raw!.trim().toLowerCase();
+    default:
+      return 'full';
+  }
+}
+
 class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
   static const String _visibleTeluguFallbackFontFamily =
       'Anek Telugu Condensed Regular';
@@ -19910,19 +20636,19 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     'Rubik',
   ];
 
-  static const List<List<Color>> _posterStripGradients = <List<Color>>[
-    <Color>[Color(0xFF7C2D12), Color(0xFFEA580C), Color(0xFFC2410C)],
-    <Color>[Color(0xFF581C87), Color(0xFFBE185D), Color(0xFF9D174D)],
-    <Color>[Color(0xFF064E3B), Color(0xFF059669), Color(0xFF047857)],
-    <Color>[Color(0xFF7F1D1D), Color(0xFFDC2626), Color(0xFF991B1B)],
-    <Color>[Color(0xFF082F49), Color(0xFF0891B2), Color(0xFF0F766E)],
-    <Color>[Color(0xFF831843), Color(0xFFDB2777), Color(0xFFBE185D)],
-    <Color>[Color(0xFF4C1D95), Color(0xFF7C3AED), Color(0xFF5B21B6)],
-    <Color>[Color(0xFF134E4A), Color(0xFF0D9488), Color(0xFF115E59)],
-    <Color>[Color(0xFF3F1D38), Color(0xFFC026D3), Color(0xFFDB2777)],
-    <Color>[Color(0xFF3B0764), Color(0xFF9333EA), Color(0xFF7E22CE)],
+  static const List<Color> _posterStripSolidColors = <Color>[
+    Color(0xFF111827),
+    Color(0xFF0F172A),
+    Color(0xFF064E3B),
+    Color(0xFF1E3A8A),
+    Color(0xFF581C87),
+    Color(0xFF7F1D1D),
+    Color(0xFF134E4A),
+    Color(0xFF3F1D38),
+    Color(0xFFFFFFFF),
+    Color(0xFFF8FAFC),
   ];
-  static int get posterStripGradientCount => _posterStripGradients.length;
+  static int get posterStripGradientCount => _posterStripSolidColors.length;
 
   bool _basePosterReady = false;
   int _legacyPrimeGeneration = 0;
@@ -20163,7 +20889,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     return _randomPosterNameFonts[index];
   }
 
-  List<Color> _resolvePosterStripGradient(String resolvedName) {
+  Color _resolvePosterStripColor(String resolvedName) {
     final seedSource =
         '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
         '|$resolvedName';
@@ -20171,26 +20897,23 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     for (final codeUnit in seedSource.codeUnits) {
       hash = 41 * hash + codeUnit;
     }
-    final baseIndex = hash.abs() % _posterStripGradients.length;
+    final baseIndex = hash.abs() % _posterStripSolidColors.length;
     final resolvedIndex =
         (baseIndex + widget.stripGradientTapOffset) %
-        _posterStripGradients.length;
-    return _posterStripGradients[resolvedIndex];
+        _posterStripSolidColors.length;
+    return _posterStripSolidColors[resolvedIndex];
   }
 
-  int _resolvePosterStripModel(String resolvedName) {
-    final seedSource =
-        '${widget.imageUrl ?? widget.imageAssetPath ?? 'poster'}'
-        '|model|$resolvedName';
-    var hash = 29;
-    for (final codeUnit in seedSource.codeUnits) {
-      hash = 43 * hash + codeUnit;
-    }
-    return hash.abs() % 10;
+  Color _onStripColor(Color color) {
+    return ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF111827);
   }
 
-  Color _onStripColor(List<Color> colors) {
-    return Colors.white;
+  Color _mutedOnStripColor(Color color) {
+    return ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white.withValues(alpha: 0.82)
+        : const Color(0xFF334155);
   }
 
   String _resolveEnglishPosterNameFontFamily(String resolvedName) {
@@ -20631,9 +21354,18 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       if (!fitToWidth) {
         return textWidget;
       }
+      final fitAlignment = switch (textAlign) {
+        TextAlign.left || TextAlign.start => Alignment.centerLeft,
+        TextAlign.right || TextAlign.end => Alignment.centerRight,
+        _ => Alignment.center,
+      };
       return SizedBox(
         width: double.infinity,
-        child: FittedBox(fit: BoxFit.scaleDown, child: textWidget),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: fitAlignment,
+          child: textWidget,
+        ),
       );
     }
 
@@ -20703,10 +21435,10 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
         ? 1.34
         : 1.0;
     final personalDesignationFontSize =
-        26.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+        31.0 * designationScaleFactor * legacyTeluguDesignationBoost;
     final businessDesignationFontSize =
-        23.0 * designationScaleFactor * legacyTeluguDesignationBoost;
-    final englishDesignationFontSize = 18.0 * designationScaleFactor;
+        28.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+    final englishDesignationFontSize = 23.0 * designationScaleFactor;
     final englishPersonalNameFontSize = 26.0 * nameScaleFactor;
     final englishSplitNameFontSize = 24.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
@@ -21368,13 +22100,11 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
     required double bottomStripPadding,
     required double stripPixelHeight,
   }) {
-    final stripGradient = _resolvePosterStripGradient(resolvedName);
-    final stripModel = _resolvePosterStripModel(resolvedName);
-    final stripTextColor = _onStripColor(stripGradient);
-    final mutedStripTextColor = stripTextColor.withValues(alpha: 0.82);
-    final dividerColor = Colors.white.withValues(alpha: 0.9);
+    final stripColor = _resolvePosterStripColor(resolvedName);
+    final stripTextColor = _onStripColor(stripColor);
+    final mutedStripTextColor = _mutedOnStripColor(stripColor);
+    final dividerColor = mutedStripTextColor;
     final partyLogoSize = _nameChipPartyLogoSize(stripPixelHeight);
-
     Widget buildSplitStripRow({
       required double nameFontSize,
       required double designationFontSize,
@@ -21390,7 +22120,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
             const SizedBox(width: 6),
           ],
           Expanded(
-            flex: 58,
+            flex: 54,
             child: _legacyAwareText(
               text: resolvedName,
               fontFamily: displayNameFontFamily,
@@ -21409,7 +22139,7 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
           _buildNameDesignationSeparator(fallbackColor: dividerColor),
           const SizedBox(width: 6),
           Expanded(
-            flex: 42,
+            flex: 46,
             child: _legacyAwareText(
               text: resolvedDesignation,
               fontFamily: designationFontFamily,
@@ -21425,6 +22155,33 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
             ),
           ),
         ],
+      );
+    }
+
+    Widget buildSingleName({
+      required double nameFontSize,
+      required FontWeight nameFontWeight,
+      required double nameHeight,
+      TextAlign textAlign = TextAlign.center,
+      MainAxisAlignment alignment = MainAxisAlignment.center,
+    }) {
+      return _buildNameWithOptionalPartyLogo(
+        alignment: alignment,
+        logoSize: partyLogoSize,
+        gap: 8,
+        name: _legacyAwareText(
+          text: resolvedName,
+          fontFamily: displayNameFontFamily,
+          maxLines: 1,
+          textAlign: textAlign,
+          fitToWidth: true,
+          style: TextStyle(
+            color: stripTextColor,
+            fontWeight: nameFontWeight,
+            fontSize: nameFontSize,
+            height: nameHeight,
+          ),
+        ),
       );
     }
 
@@ -21522,220 +22279,46 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
               designationHeight: 0.82,
             )
           else
-            _buildNameWithOptionalPartyLogo(
-              logoSize: partyLogoSize,
-              name: _legacyAwareText(
-                text: resolvedName,
-                fontFamily: displayNameFontFamily,
-                maxLines: 1,
-                textAlign: TextAlign.center,
-                fitToWidth: true,
-                style: TextStyle(
-                  color: stripTextColor,
-                  fontWeight: FontWeight.w500,
-                  fontSize: personalNameFontSize,
-                  height: personalNameLineHeight,
-                ),
-              ),
+            buildSingleName(
+              nameFontSize: personalNameFontSize,
+              nameFontWeight: FontWeight.w500,
+              nameHeight: personalNameLineHeight,
             ),
         ],
       ],
     );
 
-    Widget accentLayer() {
-      final hairlineWidth = (stripPixelHeight * 0.035).clamp(0.4, 2.8);
-      final capsuleHorizontalInset = (stripPixelHeight * 0.95).clamp(1.0, 14.0);
-      final capsuleVerticalInset = (stripPixelHeight * 0.12).clamp(0.0, 7.0);
-      final outlineInset = (stripPixelHeight * 0.10).clamp(0.0, 7.0);
-      switch (stripModel) {
-        case 0:
-          return Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    width: hairlineWidth,
-                  ),
-                  bottom: BorderSide(
-                    color: Colors.black.withValues(alpha: 0.22),
-                    width: hairlineWidth,
-                  ),
-                ),
-              ),
-            ),
-          );
-        case 1:
-          return Positioned.fill(
-            child: CustomPaint(
-              painter: _DiagonalStripAccentPainter(
-                color: Colors.white.withValues(alpha: 0.18),
-              ),
-            ),
-          );
-        case 2:
-          return Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: stripGradient.last.withValues(alpha: 0.86),
-                    width: hairlineWidth,
-                  ),
-                ),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: stripGradient.last.withValues(alpha: 0.38),
-                    blurRadius: 20,
-                    spreadRadius: -6,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
-            ),
-          );
-        case 3:
-          return Positioned(
-            left: capsuleHorizontalInset,
-            right: capsuleHorizontalInset,
-            top: capsuleVerticalInset,
-            bottom: capsuleVerticalInset,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-              ),
-            ),
-          );
-        case 4:
-          return Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FractionallySizedBox(
-                widthFactor: 0.42,
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(999),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        case 5:
-          return Positioned.fill(
-            child: CustomPaint(
-              painter: _DotStripAccentPainter(
-                color: Colors.white.withValues(alpha: 0.18),
-              ),
-            ),
-          );
-        case 6:
-          return Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.50),
-                    width: hairlineWidth,
-                  ),
-                ),
-              ),
-            ),
-          );
-        case 7:
-          return Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: 0.34,
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    borderRadius: const BorderRadius.horizontal(
-                      right: Radius.circular(999),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        case 8:
-          return Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: <Color>[
-                    Colors.white.withValues(alpha: 0.0),
-                    Colors.white.withValues(alpha: 0.14),
-                    Colors.white.withValues(alpha: 0.0),
-                  ],
-                  stops: const <double>[0, 0.5, 1],
-                ),
-              ),
-            ),
-          );
-        default:
-          return Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: outlineInset,
-                vertical: outlineInset,
-              ),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    width: hairlineWidth,
-                  ),
-                ),
-              ),
-            ),
-          );
-      }
-    }
+    return _wrapPosterBottomStrip(
+      stripColor: stripColor,
+      bottomStripPadding: bottomStripPadding,
+      child: content,
+    );
+  }
 
+  Widget _wrapPosterBottomStrip({
+    required Color stripColor,
+    required double bottomStripPadding,
+    required Widget child,
+  }) {
     final strip = Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: stripModel == 1 ? Alignment.topLeft : Alignment.centerLeft,
-          end: stripModel == 1 ? Alignment.bottomRight : Alignment.centerRight,
-          colors: stripGradient,
+      decoration: BoxDecoration(color: stripColor),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: bottomStripPadding,
         ),
-      ),
-      child: Stack(
-        children: <Widget>[
-          accentLayer(),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: stripModel == 3 ? 24 : 14,
-              vertical: bottomStripPadding,
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox.expand(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      child: content,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: SizedBox(width: constraints.maxWidth, child: child),
+              ),
+            );
+          },
+        ),
       ),
     );
     final onTap = widget.onNameStripTap;
@@ -21747,62 +22330,6 @@ class _CreatorPosterPreviewState extends State<_CreatorPosterPreview> {
       onTap: onTap,
       child: strip,
     );
-  }
-}
-
-class _DiagonalStripAccentPainter extends CustomPainter {
-  const _DiagonalStripAccentPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final stripeWidth = size.width * 0.18;
-    for (
-      var start = -size.width;
-      start < size.width * 1.4;
-      start += stripeWidth * 1.55
-    ) {
-      final path = Path()
-        ..moveTo(start, size.height)
-        ..lineTo(start + stripeWidth, size.height)
-        ..lineTo(start + stripeWidth + size.height * 0.7, 0)
-        ..lineTo(start + size.height * 0.7, 0)
-        ..close();
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DiagonalStripAccentPainter oldDelegate) {
-    return oldDelegate.color != color;
-  }
-}
-
-class _DotStripAccentPainter extends CustomPainter {
-  const _DotStripAccentPainter({required this.color});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final gap = size.height * 0.36;
-    final radius = size.height * 0.035;
-    for (var x = gap * 0.8; x < size.width; x += gap) {
-      canvas.drawCircle(Offset(x, size.height * 0.28), radius, paint);
-      canvas.drawCircle(
-        Offset(x + gap * 0.45, size.height * 0.72),
-        radius,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DotStripAccentPainter oldDelegate) {
-    return oldDelegate.color != color;
   }
 }
 
@@ -22128,8 +22655,8 @@ class _PhotoShapeFrame extends StatelessWidget {
       child: _isTransparentRoundShape(shape)
           ? _clipPhotoShape(_resolvedShape(shape), imageWidget)
           : _isTransparentPhotoShape(shape)
-              ? ClipRect(clipBehavior: Clip.antiAlias, child: imageWidget)
-              : _clipPhotoShape(shape, imageWidget),
+          ? ClipRect(clipBehavior: Clip.antiAlias, child: imageWidget)
+          : _clipPhotoShape(shape, imageWidget),
     );
     final framedChild = Stack(
       fit: StackFit.expand,
@@ -22669,16 +23196,12 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
                     label: strings.localized(
-                      telugu:
-                          'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°šà±à°šà±‡ à°µà°°à°•à± Snake game à°†à°¡à°‚à°¡à°¿',
+                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
                       english: 'Play Snake while posters load',
-                      hindi: 'Posters à¤†à¤¨à¥‡ à¤¤à¤• Snake à¤–à¥‡à¤²à¥‡à¤‚',
-                      tamil:
-                          'Posters à®µà®°à¯à®®à¯ à®µà®°à¯ˆ Snake à®µà®¿à®³à¯ˆà®¯à®¾à®Ÿà¯à®™à¯à®•à®³à¯',
-                      kannada:
-                          'Posters à²¬à²°à³à²µà²µà²°à³†à²—à³† Snake à²†à²¡à²¿',
-                      malayalam:
-                          'Posters à´µà´°àµà´‚ à´µà´°àµ† Snake à´•à´³à´¿à´•àµà´•àµà´•',
+                      hindi: 'Posters आने तक Snake खेलें',
+                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
+                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
+                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
                     ),
                     onPlay: () => setState(() => _gameStarted = true),
                   ),
@@ -22920,9 +23443,10 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
   @override
   Widget build(BuildContext context) {
     final strings = context.strings;
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.fromLTRB(14, 14, 14, 14 + bottomInset),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -23045,7 +23569,7 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
                                 ),
                                 child: Text(
                                   strings.localized(
-                                    telugu: 'à°®à°³à±à°³à±€ à°†à°¡à±',
+                                    telugu: 'మళ్లీ ఆడు',
                                     english: 'Play again',
                                     hindi: 'Play again',
                                     tamil: 'Play again',
@@ -23100,33 +23624,39 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              _SnakeControlButton(
-                icon: Icons.keyboard_arrow_left_rounded,
-                onTap: () => _setDirection(_SnakeDirection.left),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                children: <Widget>[
-                  _SnakeControlButton(
-                    icon: Icons.keyboard_arrow_up_rounded,
-                    onTap: () => _setDirection(_SnakeDirection.up),
-                  ),
-                  const SizedBox(height: 8),
-                  _SnakeControlButton(
-                    icon: Icons.keyboard_arrow_down_rounded,
-                    onTap: () => _setDirection(_SnakeDirection.down),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              _SnakeControlButton(
-                icon: Icons.keyboard_arrow_right_rounded,
-                onTap: () => _setDirection(_SnakeDirection.right),
-              ),
-            ],
+          SafeArea(
+            top: false,
+            left: false,
+            right: false,
+            minimum: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _SnakeControlButton(
+                  icon: Icons.keyboard_arrow_left_rounded,
+                  onTap: () => _setDirection(_SnakeDirection.left),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  children: <Widget>[
+                    _SnakeControlButton(
+                      icon: Icons.keyboard_arrow_up_rounded,
+                      onTap: () => _setDirection(_SnakeDirection.up),
+                    ),
+                    const SizedBox(height: 8),
+                    _SnakeControlButton(
+                      icon: Icons.keyboard_arrow_down_rounded,
+                      onTap: () => _setDirection(_SnakeDirection.down),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                _SnakeControlButton(
+                  icon: Icons.keyboard_arrow_right_rounded,
+                  onTap: () => _setDirection(_SnakeDirection.right),
+                ),
+              ],
+            ),
           ),
         ],
       ),

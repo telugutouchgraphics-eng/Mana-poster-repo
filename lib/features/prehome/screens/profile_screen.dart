@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -433,6 +434,101 @@ class _SettingsGroup extends StatelessWidget {
   }
 }
 
+class _DailyQuizStatsSummary {
+  const _DailyQuizStatsSummary({
+    required this.totalCorrect,
+    required this.totalAnswered,
+  });
+
+  final int totalCorrect;
+  final int totalAnswered;
+}
+
+class _DailyQuizStatsCard extends StatelessWidget {
+  const _DailyQuizStatsCard({required this.copy});
+
+  final _ProfileCopy copy;
+
+  Future<_DailyQuizStatsSummary> _loadStats() async {
+    if (Firebase.apps.isEmpty) {
+      return const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
+    }
+    final snap = await FirebaseFirestore.instance
+        .collection('userQuizStats')
+        .doc(user.uid)
+        .get()
+        .timeout(const Duration(seconds: 6));
+    final data = snap.data() ?? const <String, dynamic>{};
+    return _DailyQuizStatsSummary(
+      totalCorrect: (data['totalCorrect'] as num?)?.toInt() ?? 0,
+      totalAnswered: (data['totalAnswered'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_DailyQuizStatsSummary>(
+      future: _loadStats(),
+      builder: (context, snapshot) {
+        final stats =
+            snapshot.data ??
+            const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
+        return OnboardingSurfaceCard(
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.quiz_rounded, color: Color(0xFF2563EB)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      copy.quizStatsTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      copy.quizStatsSubtitle(
+                        stats.totalCorrect,
+                        stats.totalAnswered,
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _ProfileOptionTile extends StatelessWidget {
   const _ProfileOptionTile({required this.item, required this.showDivider});
 
@@ -721,6 +817,8 @@ class _ProfileMoreScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            _DailyQuizStatsCard(copy: copy),
             const SizedBox(height: 18),
             _SettingsGroup(
               title: copy.quickActionsTitle,
@@ -1249,6 +1347,17 @@ class _ProfileCopy {
     malayalam: 'വേഗത്തിലുള്ള ഓപ്ഷനുകൾ',
   );
   String get supportTitle => strings.supportSection;
+
+  String get quizStatsTitle => _localized(
+    telugu:
+        '\u0c21\u0c48\u0c32\u0c40 \u0c15\u0c4d\u0c35\u0c3f\u0c1c\u0c4d \u0c38\u0c4d\u0c1f\u0c3e\u0c1f\u0c4d\u0c38\u0c4d',
+    english: 'Daily Quiz Stats',
+  );
+  String quizStatsSubtitle(int correct, int total) => _localized(
+    telugu:
+        '$correct/$total \u0c38\u0c30\u0c48\u0c28 \u0c38\u0c2e\u0c3e\u0c27\u0c3e\u0c28\u0c3e\u0c32\u0c41',
+    english: '$correct/$total correct answers',
+  );
 
   String get posterProfileTitle => _localized(
     telugu: 'వ్యక్తిగత & బిజినెస్ వివరాలు',

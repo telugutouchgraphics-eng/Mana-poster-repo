@@ -248,10 +248,7 @@ class ApprovedCreatorTemplateService {
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
-      final directCandidates = <String>{
-        categoryId.trim(),
-        target,
-      }.where((value) => value.isNotEmpty).toList(growable: false);
+      final directCandidates = _categoryQueryCandidates(categoryId);
       var queriedDocs = 0;
       var scannedDocs = 0;
 
@@ -369,10 +366,7 @@ class ApprovedCreatorTemplateService {
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
-      final directCandidates = <String>{
-        categoryId.trim(),
-        normalizedTarget,
-      }.where((value) => value.isNotEmpty).toList(growable: false);
+      final directCandidates = _categoryQueryCandidates(categoryId);
 
       for (final candidate in directCandidates) {
         for (final lookupRegionId in _posterLookupRegionIds(
@@ -599,10 +593,10 @@ class ApprovedCreatorTemplateService {
         }
       }
 
-      final filteredTemplates = mergedVisible.length <= pageSize
+      var filteredTemplates = mergedVisible.length <= pageSize
           ? mergedVisible
           : mergedVisible.take(pageSize).toList(growable: false);
-      if (filteredTemplates.isEmpty &&
+      if (filteredTemplates.length < pageSize &&
           startAfterDocument == null &&
           (source == Source.server || source == Source.serverAndCache)) {
         final backendTemplates = await _fetchApprovedTemplatesFromBackend(
@@ -611,10 +605,23 @@ class ApprovedCreatorTemplateService {
           limit: pageSize,
         );
         if (backendTemplates.isNotEmpty) {
+          final byId = <String, ApprovedCreatorTemplate>{
+            for (final template in filteredTemplates) template.id: template,
+          };
+          for (final template in backendTemplates) {
+            byId.putIfAbsent(template.id, () => template);
+          }
+          filteredTemplates = byId.values.toList(growable: false)
+            ..sort((a, b) => b.createdAtMillis.compareTo(a.createdAtMillis));
+          if (filteredTemplates.length > pageSize) {
+            filteredTemplates = filteredTemplates
+                .take(pageSize)
+                .toList(growable: false);
+          }
           return ApprovedCreatorTemplatePage(
-            templates: backendTemplates,
-            lastDocument: null,
-            hasMore: false,
+            templates: filteredTemplates,
+            lastDocument: lastDocument,
+            hasMore: backendTemplates.length >= pageSize,
           );
         }
       }
@@ -719,10 +726,11 @@ class ApprovedCreatorTemplateService {
     final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
     final seenIds = <String>{};
     const pageSize = 120;
+    final scanCap = (limit * 8).clamp(pageSize * 2, 800);
     for (final regionId in otherRegionIds) {
       QueryDocumentSnapshot<Map<String, dynamic>>? cursor;
       var scanned = 0;
-      while (docs.length < limit && scanned < limit * 4) {
+      while (scanned < scanCap) {
         try {
           Query<Map<String, dynamic>> query = firestore
               .collection('creatorPosters')
@@ -746,9 +754,6 @@ class ApprovedCreatorTemplateService {
             }
             if (seenIds.add(doc.id)) {
               docs.add(doc);
-              if (docs.length >= limit) {
-                break;
-              }
             }
           }
           if (snapshot.docs.length < pageSize) {
@@ -762,18 +767,13 @@ class ApprovedCreatorTemplateService {
           break;
         }
       }
-      if (docs.length >= limit) {
-        break;
-      }
     }
     docs.sort((left, right) {
       final leftCreatedAt = _toMillis(left.data()['createdAt']) ?? 0;
       final rightCreatedAt = _toMillis(right.data()['createdAt']) ?? 0;
       return rightCreatedAt.compareTo(leftCreatedAt);
     });
-    return docs.length <= limit
-        ? docs
-        : docs.take(limit).toList(growable: false);
+    return docs;
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
@@ -915,6 +915,7 @@ class ApprovedCreatorTemplateService {
           .whereType<Map<String, dynamic>>()
           .map(_mapBackendPoster)
           .whereType<ApprovedCreatorTemplate>()
+          .where(_isTemplateVisibleByLocalSchedule)
           .toList(growable: false);
     } catch (error, stackTrace) {
       _debugLogStack(
@@ -970,6 +971,7 @@ class ApprovedCreatorTemplateService {
       categoryLabel: (data['categoryLabel'] as String?)?.trim() ?? '',
       regionId: (data['regionId'] as String?)?.trim() ?? '',
       createdAtMillis: (data['createdAt'] as num?)?.toInt() ?? 0,
+      publishAtMillis: (data['publishAt'] as num?)?.toInt() ?? 0,
       personalizationConfig: _parsePersonalization(
         data['personalizationConfig'],
       ),
@@ -1079,6 +1081,26 @@ class ApprovedCreatorTemplateService {
     return output.where((item) => item.isNotEmpty).toSet();
   }
 
+  List<String> _categoryQueryCandidates(String value) {
+    final normalized = _normalizeTag(value);
+    final candidates = <String>{
+      value.trim(),
+      normalized,
+      ..._categoryAliases(normalized),
+    };
+    for (final alias in List<String>.of(candidates)) {
+      final trimmed = alias.trim();
+      if (trimmed.isEmpty) {
+        continue;
+      }
+      candidates.add(trimmed.replaceAll('_', '-'));
+      candidates.add(trimmed.replaceAll('_', ' '));
+    }
+    return candidates
+        .where((item) => item.trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
   Set<String> _categoryLabelTokenTags(String value) {
     if (value.trim().isEmpty) {
       return const <String>{};
@@ -1095,6 +1117,54 @@ class ApprovedCreatorTemplateService {
       }
     }
     return output;
+  }
+
+  bool _isTemplateVisibleByLocalSchedule(ApprovedCreatorTemplate template) {
+    if (!_isGoodNightTemplate(template)) {
+      return true;
+    }
+    final visibleFrom = _templateVisibleFromMillis(template);
+    if (visibleFrom <= 0) {
+      return true;
+    }
+    return _isAfterGoodNightCategoryRelease(
+      nowMillis: IstTimeService.nowEpochMillis(),
+      visibleFromMillis: visibleFrom,
+    );
+  }
+
+  int _templateVisibleFromMillis(ApprovedCreatorTemplate template) {
+    if (template.publishAtMillis > 0) {
+      return template.publishAtMillis;
+    }
+    return template.createdAtMillis;
+  }
+
+  bool _isGoodNightTemplate(ApprovedCreatorTemplate template) {
+    final signals = <String>{
+      ..._categoryAliases(template.categoryId),
+      ..._categoryAliases(template.categoryLabel),
+      ..._categoryLabelTokenTags(template.categoryLabel),
+    };
+    return signals.contains('good_night') || signals.contains('night');
+  }
+
+  bool _isAfterGoodNightCategoryRelease({
+    required int nowMillis,
+    required int visibleFromMillis,
+  }) {
+    return nowMillis >= _goodNightCategoryReleaseMillis(visibleFromMillis);
+  }
+
+  int _goodNightCategoryReleaseMillis(int visibleFromMillis) {
+    final visibleFromIst = IstTimeService.toIst(
+      DateTime.fromMillisecondsSinceEpoch(visibleFromMillis),
+    );
+    return DateTime.utc(
+      visibleFromIst.year,
+      visibleFromIst.month,
+      visibleFromIst.day + 1,
+    ).subtract(IstTimeService.offset).millisecondsSinceEpoch;
   }
 
   List<ApprovedCreatorTemplate> _filterPublished(
@@ -1142,6 +1212,17 @@ class ApprovedCreatorTemplateService {
         visibleFrom = now;
       }
       if (visibleFrom > now) {
+        if (collectDebugCounts) {
+          publishHiddenByCategory![category] =
+              (publishHiddenByCategory[category] ?? 0) + 1;
+        }
+        continue;
+      }
+      if (_isGoodNightTemplate(template) &&
+          !_isAfterGoodNightCategoryRelease(
+            nowMillis: now,
+            visibleFromMillis: visibleFrom,
+          )) {
         if (collectDebugCounts) {
           publishHiddenByCategory![category] =
               (publishHiddenByCategory[category] ?? 0) + 1;
@@ -1365,6 +1446,7 @@ class ApprovedCreatorTemplateService {
       categoryLabel: categoryLabel,
       regionId: (data['regionId'] as String?)?.trim() ?? '',
       createdAtMillis: createdAtMillis,
+      publishAtMillis: _toMillis(data['publishAt']) ?? 0,
       personalizationConfig: _parsePersonalization(
         data['personalizationConfig'] ?? data['personalization'],
       ),
@@ -1407,6 +1489,11 @@ class ApprovedCreatorTemplateService {
   Future<void> incrementPosterEngagementCount({
     required String posterId,
     required bool isShare,
+    String creatorPublicId = '',
+    String posterTitle = '',
+    String categoryId = '',
+    String categoryLabel = '',
+    String regionId = '',
   }) async {
     final safePosterId = posterId.trim();
     if (safePosterId.isEmpty) {
@@ -1417,15 +1504,54 @@ class ApprovedCreatorTemplateService {
     }
     try {
       final firestore = _firestore ?? FirebaseFirestore.instance;
-      await firestore.collection('creatorPosters').doc(safePosterId).update({
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final batch = firestore.batch();
+      final posterRef = firestore
+          .collection('creatorPosters')
+          .doc(safePosterId);
+      batch.update(posterRef, {
         isShare ? 'shareCount' : 'downloadCount': FieldValue.increment(1),
         'engagementCount': FieldValue.increment(1),
-        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        'updatedAt': now,
       });
+      final safeCreatorPublicId = creatorPublicId.trim();
+      if (safeCreatorPublicId.isNotEmpty) {
+        final dateKey = _istDayKey(now);
+        final statsRef = firestore
+            .collection('creatorPosterDailyStats')
+            .doc('$safePosterId-$dateKey');
+        batch.set(statsRef, {
+          'creatorPublicId': safeCreatorPublicId,
+          'posterId': safePosterId,
+          'templateId': safePosterId,
+          'posterTitle': posterTitle.trim().isNotEmpty
+              ? posterTitle.trim()
+              : 'Poster',
+          'categoryId': categoryId.trim(),
+          'categoryLabel': categoryLabel.trim(),
+          'regionId': regionId.trim(),
+          'dateKey': dateKey,
+          'shareCount': FieldValue.increment(isShare ? 1 : 0),
+          'downloadCount': FieldValue.increment(isShare ? 0 : 1),
+          'totalEngagement': FieldValue.increment(1),
+          'updatedAt': now,
+          'createdAt': now,
+        }, SetOptions(merge: true));
+      }
+      await batch.commit();
     } catch (error, stackTrace) {
       _debugLogStack('poster engagement update failed: $error', stackTrace);
       // Best-effort analytics only; sharing/downloading must never be blocked.
     }
+  }
+
+  String _istDayKey(int epochMillis) {
+    final ist = IstTimeService.toIst(
+      DateTime.fromMillisecondsSinceEpoch(epochMillis),
+    );
+    final month = ist.month.toString().padLeft(2, '0');
+    final day = ist.day.toString().padLeft(2, '0');
+    return '${ist.year}-$month-$day';
   }
 
   CreatorPosterPersonalization _parsePersonalization(Object? raw) {
@@ -1503,6 +1629,7 @@ class ApprovedCreatorTemplateService {
           (source['designationStripColor'] as String? ?? '').trim().isNotEmpty
           ? (source['designationStripColor'] as String).trim()
           : CreatorPosterPersonalization.defaults.designationStripColor,
+      stripLayoutStyle: _parseStripLayoutStyle(source['stripLayoutStyle']),
       boardVariant: source['boardVariant'] is num
           ? (source['boardVariant'] as num).toInt()
           : CreatorPosterPersonalization.defaults.boardVariant,
@@ -1529,6 +1656,18 @@ class ApprovedCreatorTemplateService {
         fallbackScale: _parseDouble(source['politicalProtocolScale'], 85),
       ),
     );
+  }
+
+  String _parseStripLayoutStyle(Object? raw) {
+    final value = (raw as String? ?? '').trim().toLowerCase();
+    switch (value) {
+      case 'split':
+      case 'badge':
+      case 'full':
+        return value;
+      default:
+        return CreatorPosterPersonalization.defaults.stripLayoutStyle;
+    }
   }
 
   List<PoliticalProtocolSlot> _parsePoliticalProtocolSlots(

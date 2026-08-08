@@ -82,6 +82,14 @@ const first150TrialSource = "first150_trial";
 const first150TrialProductId = "first150_trial";
 const first150TrialState = "FIRST150_TRIAL";
 const first150TrialNewUserWindowMillis = 24 * 60 * 60 * 1000;
+const quizCollections = {
+  quizzes: "dailyQuizzes",
+  attempts: "dailyQuizAttempts",
+  scores: "weeklyQuizScores",
+  regions: "weeklyQuizRegions",
+  weeklyLeaderboards: "weeklyQuizLeaderboards",
+};
+const istOffsetMillis = 5.5 * 60 * 60 * 1000;
 
 function parseAllowedOrigins(rawValue) {
   const raw = String(rawValue || "").trim();
@@ -4386,6 +4394,7 @@ function serializeApprovedCreatorPoster(doc) {
     regionId: String(data.regionId || ""),
     creatorPublicId: String(data.creatorPublicId || ""),
     createdAt: toMillis(data.createdAt),
+    publishAt: toMillis(data.publishAt),
     widthPx: Number(data.widthPx) || null,
     heightPx: Number(data.heightPx) || null,
     personalizationConfig: data.personalizationConfig || data.personalization || null,
@@ -4400,24 +4409,30 @@ async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
   const docs = [];
   const baseQuery = db.collection("creatorPosters").where("status", "==", "approved");
   if (normalizedCategoryId) {
+    const categoryCandidates = Array.from(new Set([
+      normalizedCategoryId,
+      ...reminderCategoryAliases(normalizedCategoryId).map((alias) => normalizeRegionId(alias)),
+    ].filter((candidate) => candidate)));
     for (const lookupRegionId of lookupRegionIds) {
-      const snap = await baseQuery
-          .where("regionId", "==", lookupRegionId)
-          .where("categoryId", "==", normalizedCategoryId)
-          .orderBy("createdAt", "desc")
-          .limit(safeLimit)
-          .get();
-      for (const doc of snap.docs) {
-        if (!seen.has(doc.id)) {
-          seen.add(doc.id);
-          docs.push(doc);
+      for (const candidate of categoryCandidates) {
+        const snap = await baseQuery
+            .where("regionId", "==", lookupRegionId)
+            .where("categoryId", "==", candidate)
+            .orderBy("createdAt", "desc")
+            .limit(safeLimit)
+            .get();
+        for (const doc of snap.docs) {
+          if (!seen.has(doc.id)) {
+            seen.add(doc.id);
+            docs.push(doc);
+          }
         }
       }
     }
   } else {
     const snap = await applyRegionScope(baseQuery, lookupRegionIds)
         .orderBy("createdAt", "desc")
-        .limit(safeLimit * 2)
+        .limit(Math.max(safeLimit * 12, 240))
         .get();
     for (const doc of snap.docs) {
       if (!seen.has(doc.id)) {
@@ -6037,6 +6052,677 @@ exports.handlePlayBillingRtdn = onMessagePublished(
           productId,
           error: error instanceof Error ? error.message : String(error),
         });
+      }
+    },
+);
+
+function istDatePartsFromMillis(ms = Date.now()) {
+  const ist = new Date(ms + istOffsetMillis);
+  return {
+    year: ist.getUTCFullYear(),
+    month: ist.getUTCMonth() + 1,
+    day: ist.getUTCDate(),
+    weekday: ist.getUTCDay(),
+  };
+}
+
+function dateKeyFromParts(parts) {
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
+}
+
+function todayQuizDateKey() {
+  return dateKeyFromParts(istDatePartsFromMillis());
+}
+
+function weekKeyForMillis(ms = Date.now()) {
+  const parts = istDatePartsFromMillis(ms);
+  const daysSinceMonday = (parts.weekday + 6) % 7;
+  const startUtcMs = Date.UTC(parts.year, parts.month - 1, parts.day) -
+      daysSinceMonday * 24 * 60 * 60 * 1000;
+  return dateKeyFromParts(istDatePartsFromMillis(startUtcMs - istOffsetMillis));
+}
+
+function normalizeQuizLanguage(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if ([
+    "telugu",
+    "hindi",
+    "english",
+    "tamil",
+    "kannada",
+    "malayalam",
+    "assamese",
+    "konkani",
+    "gujarati",
+    "marathi",
+    "meitei",
+    "mizo",
+    "odia",
+    "punjabi",
+    "nepali",
+    "bengali",
+    "kashmiri",
+    "ladakhi",
+  ].includes(normalized)) {
+    return normalized;
+  }
+  return "english";
+}
+
+function localizedQuizText(source, language) {
+  if (!source || typeof source !== "object") {
+    return "";
+  }
+  const lang = normalizeQuizLanguage(language);
+  return String(source[lang] || source.english || source.telugu || Object.values(source)[0] || "").trim();
+}
+
+function shuffleStable(items, seed) {
+  return items
+      .map((item, index) => ({
+        item,
+        order: stableHashNumber(`${seed}:${index}:${JSON.stringify(item).slice(0, 80)}`),
+      }))
+      .sort((a, b) => a.order - b.order)
+      .map(({item}) => item);
+}
+
+function sanitizeQuizForUser(quiz, uid, language) {
+  const questions = Array.isArray(quiz.questions) ? quiz.questions : [];
+  return shuffleStable(questions, `${quiz.id}:${uid}:q`).slice(0, 10).map((question, questionIndex) => {
+    const questionId = String(question.id || `q${questionIndex + 1}`).trim();
+    const rawOptions = Array.isArray(question.options) ? question.options : [];
+    const options = shuffleStable(
+        rawOptions.map((option, optionIndex) => ({
+          optionId: String(option.id || `o${optionIndex}`).trim(),
+          text: localizedQuizText(option.text, language),
+        })).filter((option) => option.text),
+        `${quiz.id}:${uid}:${questionId}:o`,
+    );
+    return {
+      id: questionId,
+      question: localizedQuizText(question.text, language),
+      correctOptionId: correctOptionIdForQuestion(question),
+      options,
+    };
+  }).filter((question) => question.question && question.options.length === 4);
+}
+
+async function loadActiveQuizForUser({dateKey, regionId}) {
+  const normalizedRegion = normalizeRegionId(regionId);
+  const snap = await db.collection(quizCollections.quizzes)
+      .where("dateKey", "==", dateKey)
+      .where("active", "==", true)
+      .limit(20)
+      .get();
+  for (const doc of snap.docs) {
+    const data = doc.data() || {};
+    if (isQuizVisibleForRegion(data, normalizedRegion)) {
+      return {id: doc.id, ...data};
+    }
+  }
+  return null;
+}
+
+function correctOptionIdForQuestion(question) {
+  const rawOptions = Array.isArray(question.options) ? question.options : [];
+  const configuredId = String(question.correctOptionId || "").trim();
+  if (configuredId) {
+    return configuredId;
+  }
+  const index = Number(question.correctOptionIndex);
+  if (Number.isInteger(index) && index >= 0 && index < rawOptions.length) {
+    return String(rawOptions[index].id || `o${index}`).trim();
+  }
+  return "";
+}
+
+function quizTargetRegions(quiz) {
+  return Array.isArray(quiz.targetStates) ?
+    quiz.targetStates.map(normalizeRegionId).filter(Boolean) : [];
+}
+
+function isQuizVisibleForRegion(quiz, regionId) {
+  const normalizedRegion = normalizeRegionId(regionId);
+  const targets = quizTargetRegions(quiz);
+  return Boolean(normalizedRegion) &&
+    (targets.includes("all") || targets.includes(normalizedRegion));
+}
+
+function quizRankSortValue({correctCount, totalAnswered, durationSeconds, updatedAtMillis, uid}) {
+  const inverseCorrect = Math.max(0, 999999 - Number(correctCount || 0));
+  const inverseAnswered = Math.max(0, 999999 - Number(totalAnswered || 0));
+  const duration = Math.max(0, Math.min(999999, Number(durationSeconds || 999999)));
+  return [
+    String(inverseCorrect).padStart(6, "0"),
+    String(inverseAnswered).padStart(6, "0"),
+    String(duration).padStart(6, "0"),
+    String(Number(updatedAtMillis || Date.now())).padStart(13, "0"),
+    String(uid || ""),
+  ].join("_");
+}
+
+function quizQuestionCount(quiz) {
+  const questions = Array.isArray(quiz && quiz.questions) ? quiz.questions : [];
+  const validQuestions = questions.filter((question) => {
+    const options = Array.isArray(question && question.options) ? question.options : [];
+    return String(question && question.id || "").trim() && options.length >= 4 && correctOptionIdForQuestion(question);
+  });
+  return Math.min(10, validQuestions.length);
+}
+
+async function weeklyQuizExpectedTotal(weekKey, regionId) {
+  const normalizedRegion = normalizeRegionId(regionId);
+  if (!weekKey || !normalizedRegion) return 0;
+  const snap = await db.collection(quizCollections.quizzes)
+      .where("weekKey", "==", weekKey)
+      .where("active", "==", true)
+      .limit(200)
+      .get();
+  return snap.docs.reduce((sum, doc) => {
+    const quiz = doc.data() || {};
+    return isQuizVisibleForRegion(quiz, normalizedRegion) ?
+      sum + quizQuestionCount(quiz) :
+      sum;
+  }, 0);
+}
+
+function cleanQuizDurationSeconds(value, questionCount) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  const maxDuration = Math.max(1, Number(questionCount || 0)) * 30;
+  return Math.max(1, Math.min(maxDuration, Math.round(parsed)));
+}
+
+function effectiveQuizDurationSeconds({totalDurationSeconds, totalAnswered, weeklyExpectedTotal}) {
+  const expected = Math.max(0, Number(weeklyExpectedTotal || 0));
+  const answered = Math.max(0, Number(totalAnswered || 0));
+  const missed = Math.max(0, expected - answered);
+  const rawDuration = Number(totalDurationSeconds || 0);
+  const answeredDuration = answered > 0 && rawDuration <= 0 ? answered * 30 : Math.max(0, rawDuration);
+  return answeredDuration + missed * 30;
+}
+
+function storedQuizDurationSeconds(score) {
+  const answered = Math.max(0, Number(score && score.totalAnswered || 0));
+  const duration = Number(score && score.totalDurationSeconds || 0);
+  return answered > 0 && duration <= 0 ? answered * 30 : Math.max(0, duration);
+}
+
+async function userProfileForQuiz(uid) {
+  try {
+    const snap = await db.collection("users").doc(uid).get();
+    const data = snap.data() || {};
+    return {
+      name: String(data.name || data.displayName || data.posterProfileName || "Mana Poster User").trim(),
+      photoUrl: String(data.photoUrl || data.personalPhotoUrl || "").trim(),
+      selectedRegion: normalizeRegionId(data.selectedRegion || data.regionId || ""),
+      preferredLanguage: normalizeQuizLanguage(data.preferredLanguage || data.selectedLanguage || ""),
+    };
+  } catch (_) {
+    return {
+      name: "Mana Poster User",
+      photoUrl: "",
+      selectedRegion: "",
+      preferredLanguage: "english",
+    };
+  }
+}
+
+function sanitizeQuizUserDetails(raw, uid) {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+  const rawUid = String(raw.uid || "").trim();
+  if (rawUid && rawUid !== uid) {
+    return {};
+  }
+  const cleanText = (value, limit = 120) => String(value || "").trim().slice(0, limit);
+  return {
+    uid,
+    name: cleanText(raw.name),
+    email: cleanText(raw.email, 160),
+    phoneNumber: cleanText(raw.phoneNumber, 32),
+    photoUrl: cleanText(raw.photoUrl, 600),
+    regionId: normalizeRegionId(raw.regionId || ""),
+    regionName: cleanText(raw.regionName),
+    language: normalizeQuizLanguage(raw.language),
+    submittedFrom: cleanText(raw.submittedFrom, 40),
+  };
+}
+
+function quizUserIdentityPayload({uid, profile, clientUserDetails, regionId}) {
+  const displayUserName = clientUserDetails.name || profile.name;
+  const displayPhotoUrl = clientUserDetails.photoUrl || profile.photoUrl;
+  return {
+    userName: displayUserName,
+    userPhotoUrl: displayPhotoUrl,
+    userDetails: {
+      ...clientUserDetails,
+      uid,
+      name: displayUserName,
+      photoUrl: displayPhotoUrl,
+      trustedRegionId: regionId,
+    },
+  };
+}
+
+exports.dailyQuizFeed = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ok: false, error: "Method not allowed."});
+    return;
+  }
+  try {
+    const decoded = await verifyAuth(req);
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const dateKey = String(body.dateKey || todayQuizDateKey()).trim();
+    const language = normalizeQuizLanguage(body.language);
+    const clientUserDetails = sanitizeQuizUserDetails(body.userDetails, decoded.uid);
+    let regionId = normalizeRegionId(body.regionId);
+    const profile = await userProfileForQuiz(decoded.uid);
+    regionId = regionId || profile.selectedRegion;
+    if (!regionId) {
+      res.status(200).json({ok: true, quiz: null, attempt: null});
+      return;
+    }
+    const quiz = await loadActiveQuizForUser({dateKey, regionId});
+    if (!quiz) {
+      res.status(200).json({ok: true, quiz: null, attempt: null});
+      return;
+    }
+    const attemptId = `${dateKey}_${decoded.uid}`;
+    const attemptSnap = await db.collection(quizCollections.attempts).doc(attemptId).get();
+    const attempt = attemptSnap.data() || {};
+    if (attemptSnap.exists) {
+      const identityPayload = quizUserIdentityPayload({
+        uid: decoded.uid,
+        profile,
+        clientUserDetails,
+        regionId,
+      });
+      const weekKey = String(attempt.weekKey || quiz.weekKey || weekKeyForMillis());
+      await Promise.all([
+        attemptSnap.ref.set({
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true}),
+        db.collection(quizCollections.scores).doc(`${weekKey}_${regionId}_${decoded.uid}`).set({
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true}),
+        db.collection("userQuizStats").doc(decoded.uid).set({
+          uid: decoded.uid,
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true}),
+      ]);
+    }
+    res.status(200).json({
+      ok: true,
+      quiz: {
+        id: quiz.id,
+        dateKey,
+        title: localizedQuizText(quiz.title, language) || "Daily Quiz",
+        questions: sanitizeQuizForUser(quiz, decoded.uid, language),
+      },
+      attempt: {
+        answered: attempt.answers || {},
+        correctCount: Number(attempt.correctCount || 0),
+        totalAnswered: Number(attempt.totalAnswered || 0),
+        completed: attempt.completed === true,
+      },
+    });
+  } catch (error) {
+    const status = isAuthVerificationError(error) ? 401 : 500;
+    res.status(status).json({ok: false, error: error.message || "Unable to load quiz."});
+  }
+});
+
+exports.submitDailyQuizAnswer = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ok: false, error: "Method not allowed."});
+    return;
+  }
+  try {
+    const decoded = await verifyAuth(req);
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const quizId = String(body.quizId || "").trim();
+    const questionId = String(body.questionId || "").trim();
+    const selectedOptionId = String(body.optionId || "").trim();
+    const clientDurationSeconds = Number(body.durationSeconds || 0);
+    if (!quizId || !questionId || !selectedOptionId) {
+      res.status(400).json({ok: false, error: "quizId, questionId, and optionId are required."});
+      return;
+    }
+    const clientUserDetails = sanitizeQuizUserDetails(body.userDetails, decoded.uid);
+    const profile = await userProfileForQuiz(decoded.uid);
+    const result = await db.runTransaction(async (tx) => {
+      const quizRef = db.collection(quizCollections.quizzes).doc(quizId);
+      const quizSnap = await tx.get(quizRef);
+      if (!quizSnap.exists) {
+        throw new Error("Quiz not found.");
+      }
+      const quiz = {id: quizSnap.id, ...(quizSnap.data() || {})};
+      if (quiz.active !== true) {
+        throw new Error("Quiz is not active.");
+      }
+      const dateKey = String(quiz.dateKey || todayQuizDateKey()).trim();
+      if (dateKey !== todayQuizDateKey()) {
+        throw new Error("Quiz is not available today.");
+      }
+      const regionId = normalizeRegionId(profile.selectedRegion);
+      if (!isQuizVisibleForRegion(quiz, regionId)) {
+        throw new Error("Quiz is not available for this state.");
+      }
+      const attemptRef = db.collection(quizCollections.attempts).doc(`${dateKey}_${decoded.uid}`);
+      const attemptSnap = await tx.get(attemptRef);
+      const weekKey = String(quiz.weekKey || weekKeyForMillis());
+      const scoreRef = db.collection(quizCollections.scores).doc(`${weekKey}_${regionId}_${decoded.uid}`);
+      const regionRef = db.collection(quizCollections.regions).doc(`${weekKey}_${regionId}`);
+      const scoreSnap = await tx.get(scoreRef);
+      const current = attemptSnap.data() || {};
+      const answers = current.answers && typeof current.answers === "object" ? {...current.answers} : {};
+      const identityPayload = quizUserIdentityPayload({
+        uid: decoded.uid,
+        profile,
+        clientUserDetails,
+        regionId,
+      });
+      if (answers[questionId]) {
+        tx.set(attemptRef, {
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        tx.set(scoreRef, {
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        tx.set(db.collection("userQuizStats").doc(decoded.uid), {
+          uid: decoded.uid,
+          ...identityPayload,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        return {alreadyAnswered: true, ...answers[questionId]};
+      }
+      const question = (Array.isArray(quiz.questions) ? quiz.questions : [])
+          .find((item) => String(item.id || "").trim() === questionId);
+      if (!question) {
+        throw new Error("Question not found.");
+      }
+      const quizTotalQuestions = quizQuestionCount(quiz);
+      const completedBefore = current.completed === true;
+      const durationSeconds = cleanQuizDurationSeconds(clientDurationSeconds, quizTotalQuestions);
+      const correctOptionId = correctOptionIdForQuestion(question);
+      const isCorrect = selectedOptionId === correctOptionId;
+      const answerPayload = {
+        questionId,
+        selectedOptionId,
+        correctOptionId,
+        isCorrect,
+        answeredAt: Date.now(),
+      };
+      answers[questionId] = answerPayload;
+      const correctCount = Number(current.correctCount || 0) + (isCorrect ? 1 : 0);
+      const totalAnswered = Number(current.totalAnswered || 0) + 1;
+      const completedNow = !completedBefore && quizTotalQuestions > 0 && totalAnswered >= quizTotalQuestions;
+      const scoreCurrent = scoreSnap.data() || {};
+      const nextWeeklyCorrect = Number(scoreCurrent.correctCount || 0) + (isCorrect ? 1 : 0);
+      const nextWeeklyAnswered = Number(scoreCurrent.totalAnswered || 0) + 1;
+      const durationIncrement = completedNow ? durationSeconds : 0;
+      const nextWeeklyDuration = storedQuizDurationSeconds(scoreCurrent) + durationIncrement;
+      const expectedTotal = Math.max(
+          nextWeeklyAnswered,
+          await weeklyQuizExpectedTotal(weekKey, regionId),
+      );
+      const nextEffectiveDuration = effectiveQuizDurationSeconds({
+        totalDurationSeconds: nextWeeklyDuration,
+        totalAnswered: nextWeeklyAnswered,
+        weeklyExpectedTotal: expectedTotal,
+      });
+      const updatedAtMillis = Date.now();
+      tx.set(attemptRef, {
+        id: attemptRef.id,
+        uid: decoded.uid,
+        ...identityPayload,
+        regionId,
+        quizId,
+        dateKey,
+        weekKey,
+        answers,
+        correctCount,
+        totalAnswered,
+        durationSeconds: completedNow ? durationSeconds : current.durationSeconds || 0,
+        completed: completedBefore || completedNow,
+        completedAtMillis: completedNow ? updatedAtMillis : current.completedAtMillis || 0,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: current.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      tx.set(scoreRef, {
+        id: scoreRef.id,
+        uid: decoded.uid,
+        ...identityPayload,
+        regionId,
+        weekKey,
+        correctCount: admin.firestore.FieldValue.increment(isCorrect ? 1 : 0),
+        totalAnswered: admin.firestore.FieldValue.increment(1),
+        totalDurationSeconds: admin.firestore.FieldValue.increment(durationIncrement),
+        rankSort: quizRankSortValue({
+          correctCount: nextWeeklyCorrect,
+          totalAnswered: nextWeeklyAnswered,
+          durationSeconds: nextEffectiveDuration,
+          updatedAtMillis,
+          uid: decoded.uid,
+        }),
+        effectiveDurationSeconds: nextEffectiveDuration,
+        updatedAtMillis,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: scoreCurrent.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      tx.set(regionRef, {
+        id: regionRef.id,
+        weekKey,
+        regionId,
+        participantCount: admin.firestore.FieldValue.increment(scoreSnap.exists ? 0 : 1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      tx.set(db.collection("userQuizStats").doc(decoded.uid), {
+        uid: decoded.uid,
+        ...identityPayload,
+        totalCorrect: admin.firestore.FieldValue.increment(isCorrect ? 1 : 0),
+        totalAnswered: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      return answerPayload;
+    });
+    res.status(200).json({ok: true, result});
+  } catch (error) {
+    const status = isAuthVerificationError(error) ? 401 : 400;
+    res.status(status).json({ok: false, error: error.message || "Unable to submit answer."});
+  }
+});
+
+async function sendQuizWinnerNotification(uid, rank, regionId, weekKey, scoreLabel = "") {
+  const tokensSnap = await db.collection("users").doc(uid).collection("deviceTokens").limit(20).get();
+  const jobs = [];
+  const scoreText = String(scoreLabel || "").trim();
+  const body = `You are this week's State Top ${rank} Quiz Winner${scoreText ? ` with score ${scoreText}` : ""}.`;
+  for (const doc of tokensSnap.docs) {
+    const token = String((doc.data() || {}).token || "").trim();
+    if (!token) continue;
+    jobs.push(admin.messaging().send({
+      token,
+      data: {
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        route: "home",
+        category: "daily_quiz",
+        categoryKey: "daily_quiz",
+        title: "Congratulations",
+        body,
+        notificationKind: "daily_quiz",
+        imageUrl: "",
+        posterImage: "",
+        posterBaseImage: "",
+        userPhoto: "",
+        headerText: body,
+        footerText: "Mana Poster Ai Daily Quiz",
+        source: "admin_quiz_winner_push",
+        uid,
+        weekKey,
+        regionId,
+        rank: String(rank || ""),
+        score: scoreText,
+      },
+      android: {priority: "high"},
+    }).then(() => ({ok: true, tokenId: doc.id})).catch((error) => ({
+      ok: false,
+      tokenId: doc.id,
+      error: String(error && error.message ? error.message : error),
+    })));
+  }
+  const results = await Promise.all(jobs);
+  await db.collection("quizWinnerNotifications").doc(`${weekKey}_${regionId}_${uid}`).set({
+    uid,
+    regionId,
+    weekKey,
+    rank,
+    scoreLabel: scoreText,
+    results,
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+}
+
+async function deleteQuizHistoryByQuizId(quizId) {
+  while (true) {
+    const attemptSnap = await db.collection(quizCollections.attempts)
+        .where("quizId", "==", quizId)
+        .limit(150)
+        .get();
+    if (attemptSnap.empty) break;
+    const batch = db.batch();
+    for (const attemptDoc of attemptSnap.docs) {
+      const data = attemptDoc.data() || {};
+      const uid = String(data.uid || "").trim();
+      const weekKey = String(data.weekKey || "").trim();
+      const regionId = normalizeRegionId(data.regionId || "");
+      const correctCount = Number(data.correctCount || 0);
+      const totalAnswered = Number(data.totalAnswered || 0);
+      const durationSeconds = Number(data.durationSeconds || 0);
+      if (uid && weekKey && regionId) {
+        batch.set(db.collection(quizCollections.scores).doc(`${weekKey}_${regionId}_${uid}`), {
+          correctCount: admin.firestore.FieldValue.increment(-correctCount),
+          totalAnswered: admin.firestore.FieldValue.increment(-totalAnswered),
+          totalDurationSeconds: admin.firestore.FieldValue.increment(-durationSeconds),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+      if (uid) {
+        batch.set(db.collection("userQuizStats").doc(uid), {
+          totalCorrect: admin.firestore.FieldValue.increment(-correctCount),
+          totalAnswered: admin.firestore.FieldValue.increment(-totalAnswered),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+      batch.delete(attemptDoc.ref);
+    }
+    await batch.commit();
+  }
+  await db.collection(quizCollections.quizzes).doc(quizId).delete();
+}
+
+exports.cleanupOldDailyQuizHistory = onSchedule(
+    {schedule: "20 3 * * *", timeZone: "Asia/Kolkata", region: "asia-south1"},
+    async () => {
+      const cutoff = dateKeyFromParts(istDatePartsFromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000));
+      const snap = await db.collection(quizCollections.quizzes)
+          .where("dateKey", "<", cutoff)
+          .limit(200)
+          .get();
+      for (const doc of snap.docs) {
+        await deleteQuizHistoryByQuizId(doc.id);
+      }
+    },
+);
+
+exports.finalizeWeeklyQuizLeaderboards = onSchedule(
+    {schedule: "5 18 * * 0", timeZone: "Asia/Kolkata", region: "asia-south1"},
+    async () => {
+      const weekKey = weekKeyForMillis(Date.now() - 24 * 60 * 60 * 1000);
+      const regionSnap = await db.collection(quizCollections.regions)
+          .where("weekKey", "==", weekKey)
+          .limit(1000)
+          .get();
+      for (const regionDoc of regionSnap.docs) {
+        const regionData = regionDoc.data() || {};
+        const regionId = normalizeRegionId(regionData.regionId);
+        if (!regionId) continue;
+        const expectedTotal = await weeklyQuizExpectedTotal(weekKey, regionId);
+        const scoreSnap = await db.collection(quizCollections.scores)
+            .where("weekKey", "==", weekKey)
+            .where("regionId", "==", regionId)
+            .orderBy("rankSort", "asc")
+            .limit(500)
+            .get();
+        const ranked = scoreSnap.docs.map((doc) => {
+          const data = doc.data() || {};
+          const totalAnswered = Number(data.totalAnswered || 0);
+          const totalDurationSeconds = Number(data.totalDurationSeconds || 0);
+          const missedQuestions = Math.max(0, expectedTotal - totalAnswered);
+          const effectiveDurationSeconds = effectiveQuizDurationSeconds({
+            totalDurationSeconds,
+            totalAnswered,
+            weeklyExpectedTotal: expectedTotal,
+          });
+          return {
+            id: doc.id,
+            uid: String(data.uid || ""),
+            userName: String(data.userName || "Mana Poster User"),
+            userPhotoUrl: String(data.userPhotoUrl || ""),
+            correctCount: Number(data.correctCount || 0),
+            totalAnswered,
+            totalDurationSeconds,
+            effectiveDurationSeconds,
+            weeklyExpectedTotal: expectedTotal,
+            missedQuestions,
+            updatedAtMillis: Number(data.updatedAtMillis || toMillis(data.updatedAt) || 0),
+          };
+        }).sort((a, b) =>
+          b.correctCount - a.correctCount ||
+          a.effectiveDurationSeconds - b.effectiveDurationSeconds ||
+          b.totalAnswered - a.totalAnswered ||
+          a.updatedAtMillis - b.updatedAtMillis ||
+          a.uid.localeCompare(b.uid),
+        ).slice(0, 3).map((row, index) => ({...row, rank: index + 1}));
+        const ref = db.collection(quizCollections.weeklyLeaderboards).doc(`${weekKey}_${regionId}`);
+        await ref.set({
+          id: ref.id,
+          weekKey,
+          regionId,
+          top3: ranked,
+          weeklyExpectedTotal: expectedTotal,
+          participantCount: Number(regionData.participantCount || ranked.length),
+          participantSource: quizCollections.scores,
+          frozenAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        await Promise.all(ranked.map((row) =>
+          sendQuizWinnerNotification(
+              row.uid,
+              row.rank,
+              regionId,
+              weekKey,
+              `${row.correctCount}/${Math.max(row.weeklyExpectedTotal || 0, row.totalAnswered || 0)}`,
+          ),
+        ));
       }
     },
 );

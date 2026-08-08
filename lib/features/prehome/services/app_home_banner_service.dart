@@ -6,6 +6,7 @@ import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/app_region.dart';
 import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
+import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 
 class AppHomeBannerService {
   const AppHomeBannerService({FirebaseFirestore? firestore})
@@ -23,7 +24,10 @@ class AppHomeBannerService {
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
-  Future<List<AppHomeBanner>> fetchBanners({int maxItems = 8}) async {
+  Future<List<AppHomeBanner>> fetchBanners({
+    int maxItems = 8,
+    String placement = 'home_category_banner',
+  }) async {
     if (_firestore == null && Firebase.apps.isEmpty) {
       return const <AppHomeBanner>[];
     }
@@ -35,7 +39,10 @@ class AppHomeBannerService {
           .orderBy('sortOrder')
           .limit(queryLimit)
           .get(const GetOptions(source: Source.server));
-      return _filterForSelectedRegion(_mapSnapshot(snapshot), maxItems);
+      return _filterForSelectedUser(
+        _mapSnapshot(snapshot, placement: placement),
+        maxItems,
+      );
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBanners failed: $error',
@@ -49,7 +56,7 @@ class AppHomeBannerService {
             .limit(queryLimit)
             .get();
         return _filterForSelectedRegion(
-          _mapSnapshot(fallbackSnapshot),
+          _mapSnapshot(fallbackSnapshot, placement: placement),
           maxItems,
         );
       } catch (_) {
@@ -58,7 +65,10 @@ class AppHomeBannerService {
     }
   }
 
-  Future<List<AppHomeBanner>> fetchBannersFromCache({int maxItems = 8}) async {
+  Future<List<AppHomeBanner>> fetchBannersFromCache({
+    int maxItems = 8,
+    String placement = 'home_category_banner',
+  }) async {
     if (_firestore == null && Firebase.apps.isEmpty) {
       return const <AppHomeBanner>[];
     }
@@ -70,7 +80,10 @@ class AppHomeBannerService {
           .orderBy('sortOrder')
           .limit(queryLimit)
           .get(const GetOptions(source: Source.cache));
-      return _filterForSelectedRegion(_mapSnapshot(snapshot), maxItems);
+      return _filterForSelectedUser(
+        _mapSnapshot(snapshot, placement: placement),
+        maxItems,
+      );
     } catch (error, stackTrace) {
       _debugLogStack(
         'AppHomeBannerService.fetchBannersFromCache failed: $error',
@@ -83,11 +96,23 @@ class AppHomeBannerService {
   Future<List<AppHomeBanner>> _filterForSelectedRegion(
     List<AppHomeBanner> banners,
     int maxItems,
+  ) {
+    return _filterForSelectedUser(banners, maxItems);
+  }
+
+  Future<List<AppHomeBanner>> _filterForSelectedUser(
+    List<AppHomeBanner> banners,
+    int maxItems,
   ) async {
     final selectedRegion = await AppRegionService.loadSelection();
+    final selectedReligion =
+        await AppReligionService.loadSelection() ?? AppReligionPreference.all;
     final area = await AppLocationService.instance.loadLocationArea();
     final filtered = banners
         .where((banner) {
+          if (!_religionMatches(selectedReligion, banner.targetReligions)) {
+            return false;
+          }
           final hasRegionTargets = banner.targetRegionIds.isNotEmpty;
           final hasTarget =
               hasRegionTargets ||
@@ -160,6 +185,21 @@ class AppHomeBannerService {
         .contains(selected);
   }
 
+  bool _religionMatches(
+    AppReligionPreference selectedReligion,
+    List<String> targetReligions,
+  ) {
+    final normalizedTargets = targetReligions
+        .map(_normalizeAreaToken)
+        .where((item) => item.isNotEmpty)
+        .toSet();
+    if (normalizedTargets.isEmpty || normalizedTargets.contains('all')) {
+      return true;
+    }
+    final selected = _normalizeAreaToken(selectedReligion.name);
+    return normalizedTargets.contains(selected);
+  }
+
   bool _areaMatches({
     required String localState,
     required String localDistrict,
@@ -186,13 +226,14 @@ class AppHomeBannerService {
   }
 
   List<AppHomeBanner> _mapSnapshot(
-    QuerySnapshot<Map<String, dynamic>> snapshot,
-  ) {
+    QuerySnapshot<Map<String, dynamic>> snapshot, {
+    required String placement,
+  }) {
     final banners = snapshot.docs
         .map(_mapDoc)
         .whereType<AppHomeBanner>()
         .where((banner) => banner.active)
-        .where((banner) => banner.placement == 'home_category_banner')
+        .where((banner) => banner.placement == placement)
         .toList(growable: false);
     banners.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     return banners;
@@ -216,6 +257,7 @@ class AppHomeBannerService {
       targetDistrict: (data['targetDistrict'] as String? ?? '').trim(),
       targetCity: (data['targetCity'] as String? ?? '').trim(),
       targetRegionIds: _stringList(data['targetRegionIds']),
+      targetReligions: _stringList(data['targetReligions']),
       sortOrder: _toInt(data['sortOrder']),
       active: data['active'] is bool ? data['active'] as bool : true,
     );

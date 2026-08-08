@@ -129,7 +129,8 @@ class _LoginScreenState extends State<LoginScreen>
     if (_loadingGoogle || _loadingReset) {
       return;
     }
-    if (!_formKey.currentState!.validate()) {
+    final formState = _formKey.currentState;
+    if (formState == null || !formState.validate()) {
       return;
     }
 
@@ -342,7 +343,14 @@ class _LoginScreenState extends State<LoginScreen>
           english: 'Google Sign-In failed. Please try again.',
         );
       default:
-        return error.message;
+        final fallback = error.message.trim();
+        return fallback.isNotEmpty
+            ? fallback
+            : strings.localized(
+                telugu:
+                    'à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                english: 'Please try again.',
+              );
     }
   }
 
