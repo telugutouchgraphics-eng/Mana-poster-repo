@@ -12,6 +12,7 @@ class AppHomeBanner {
     required this.targetCity,
     this.targetRegionIds = const <String>[],
     this.targetReligions = const <String>[],
+    this.promoCardGroup = 1,
     required this.sortOrder,
     required this.active,
   });
@@ -28,6 +29,7 @@ class AppHomeBanner {
   final String targetCity;
   final List<String> targetRegionIds;
   final List<String> targetReligions;
+  final int promoCardGroup;
   final int sortOrder;
   final bool active;
 }

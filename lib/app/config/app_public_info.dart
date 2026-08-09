@@ -39,10 +39,17 @@ class AppPublicInfo {
   );
   static bool get hasEditorRewardedAdUnitId =>
       adMobEditorRewardedAdUnitId.isNotEmpty;
+  static const String adMobHomeExportRewardedAdUnitId = String.fromEnvironment(
+    'MANA_POSTER_HOME_EXPORT_REWARDED_AD_UNIT_ID',
+    defaultValue: 'ca-app-pub-6393573098485696/7632608239',
+  );
+  static bool get hasHomeExportRewardedAdUnitId =>
+      adMobHomeExportRewardedAdUnitId.isNotEmpty;
   static bool get hasAnyAdMobConfig =>
       hasHomeBannerAdUnitId ||
       hasEditorBannerAdUnitId ||
-      hasEditorRewardedAdUnitId;
+      hasEditorRewardedAdUnitId ||
+      hasHomeExportRewardedAdUnitId;
   static const String demoUrl = String.fromEnvironment(
     'MANA_POSTER_DEMO_URL',
     defaultValue: '',

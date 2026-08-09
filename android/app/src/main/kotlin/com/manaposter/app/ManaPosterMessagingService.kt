@@ -354,16 +354,17 @@ object ManaPosterNotificationRenderer {
 
     private fun loadDeviceProfile(context: Context): DeviceProfile {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val identityMode = flutterPrefAny(prefs, "poster_profile_identity_mode")
-        val businessName = flutterPrefAny(prefs, "poster_profile_business_name")
-        val businessLogoUrl = flutterPrefAny(prefs, "poster_profile_business_logo_url")
-        val nameTelugu = flutterPrefAny(prefs, "poster_profile_name_telugu")
-        val nameEnglish = flutterPrefAny(prefs, "poster_profile_name_english")
-        val genericName = flutterPrefAny(prefs, "poster_profile_name")
-        val photoUrl = flutterPrefAny(prefs, "poster_profile_photo_url")
-        val originalPhotoUrl = flutterPrefAny(prefs, "poster_profile_original_photo_url")
-        val languageCode = flutterPrefAny(prefs, "selected_region_language_code_v1")
-            .ifBlank { flutterPrefAny(prefs, "selected_language") }
+        val currentUid = flutterPref(prefs, "last_known_auth_uid_v1")
+        val identityMode = flutterProfilePref(prefs, "poster_profile_identity_mode", currentUid)
+        val businessName = flutterProfilePref(prefs, "poster_profile_business_name", currentUid)
+        val businessLogoUrl = flutterProfilePref(prefs, "poster_profile_business_logo_url", currentUid)
+        val nameTelugu = flutterProfilePref(prefs, "poster_profile_name_telugu", currentUid)
+        val nameEnglish = flutterProfilePref(prefs, "poster_profile_name_english", currentUid)
+        val genericName = flutterProfilePref(prefs, "poster_profile_name", currentUid)
+        val photoUrl = flutterProfilePref(prefs, "poster_profile_photo_url", currentUid)
+        val originalPhotoUrl = flutterProfilePref(prefs, "poster_profile_original_photo_url", currentUid)
+        val languageCode = flutterPref(prefs, "selected_region_language_code_v1")
+            .ifBlank { flutterPref(prefs, "selected_language") }
         val resolvedName =
             if (identityMode == "business" && businessName.isNotBlank()) businessName
             else listOf(nameTelugu, nameEnglish, genericName).firstOrNull { it.isNotBlank() }.orEmpty()
@@ -381,14 +382,11 @@ object ManaPosterNotificationRenderer {
         return prefs.getString("flutter.$key", "").orEmpty().trim()
     }
 
-    private fun flutterPrefAny(prefs: SharedPreferences, key: String): String {
-        val scopedPrefix = "flutter.${key}_"
-        val scopedValue = prefs.all.entries
-            .firstOrNull { (entryKey, entryValue) ->
-                entryKey.startsWith(scopedPrefix) && (entryValue as? String).orEmpty().trim().isNotEmpty()
-            }
-            ?.value as? String
-        return scopedValue?.trim().orEmpty().ifBlank { flutterPref(prefs, key) }
+    private fun flutterProfilePref(prefs: SharedPreferences, key: String, uid: String): String {
+        if (uid.isNotBlank()) {
+            return prefs.getString("flutter.${key}_$uid", "").orEmpty().trim()
+        }
+        return flutterPref(prefs, key)
     }
 
     private fun downloadBitmap(url: String): Bitmap? {

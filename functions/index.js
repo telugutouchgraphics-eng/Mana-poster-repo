@@ -82,6 +82,7 @@ const first150TrialSource = "first150_trial";
 const first150TrialProductId = "first150_trial";
 const first150TrialState = "FIRST150_TRIAL";
 const first150TrialNewUserWindowMillis = 24 * 60 * 60 * 1000;
+const first150TrialEmailClaimsCollection = "first150TrialEmailClaims";
 const quizCollections = {
   quizzes: "dailyQuizzes",
   attempts: "dailyQuizAttempts",
@@ -700,6 +701,19 @@ function isEligibleForFirst150StartWindow(userRecord, startsAtMillis) {
     return false;
   }
   return creationMillis >= startsAtMillis;
+}
+
+function isWithinFirst150CampaignWindow(startsAtMillis, endsAtMillis, nowMillis) {
+  if (!Number.isFinite(startsAtMillis) || startsAtMillis <= 0) {
+    return false;
+  }
+  if (nowMillis < startsAtMillis) {
+    return false;
+  }
+  if (Number.isFinite(endsAtMillis) && endsAtMillis > 0 && nowMillis > endsAtMillis) {
+    return false;
+  }
+  return true;
 }
 
 function serverSubscriptionTokenRef(tokenHash) {
@@ -4654,9 +4668,25 @@ exports.claimFirst150Trial = onRequest({region: "asia-south1"}, async (req, res)
     const configSnap = await configRef.get();
     const config = configSnap.data() || {};
     const startsAtMillis = toMillis(config.startsAt);
+    const endsAtMillis = toMillis(config.endsAt);
     const userRecord = await admin.auth().getUser(uid);
+    const normalizedEmail = String(userRecord.email || decoded.email || "")
+        .trim()
+        .toLowerCase();
+    if (!normalizedEmail) {
+      res.status(200).json({
+        claimed: false,
+        alreadyClaimed: false,
+        message: "Email is required for the first 150 trial offer",
+      });
+      return;
+    }
+    const emailClaimRef = db
+        .collection(first150TrialEmailClaimsCollection)
+        .doc(sha256(normalizedEmail));
     if (!isEligibleFirst150NewUser(userRecord, nowMillis) ||
-        !isEligibleForFirst150StartWindow(userRecord, startsAtMillis)) {
+        !isEligibleForFirst150StartWindow(userRecord, startsAtMillis) ||
+        !isWithinFirst150CampaignWindow(startsAtMillis, endsAtMillis, nowMillis)) {
       res.status(200).json({
         claimed: false,
         alreadyClaimed: false,
@@ -4674,13 +4704,21 @@ exports.claimFirst150Trial = onRequest({region: "asia-south1"}, async (req, res)
     let responseMessage = "Offer not available";
 
     await db.runTransaction(async (tx) => {
-      const [freshConfigSnap, entitlementSnap] = await Promise.all([
+      const [freshConfigSnap, entitlementSnap, emailClaimSnap] = await Promise.all([
         tx.get(configRef),
         tx.get(entitlementRef),
+        tx.get(emailClaimRef),
       ]);
       const config = freshConfigSnap.data() || {};
       const entitlement = entitlementSnap.data() || {};
       const freshStartsAtMillis = toMillis(config.startsAt);
+      const freshEndsAtMillis = toMillis(config.endsAt);
+
+      if (emailClaimSnap.exists &&
+          String(emailClaimSnap.data()?.uid || "").trim() !== uid) {
+        responseMessage = "This email already used the first 150 trial offer";
+        return;
+      }
 
       if (entitlement.first150Claimed === true ||
           String(entitlement.source || "").trim() === first150TrialSource) {
@@ -4713,7 +4751,8 @@ exports.claimFirst150Trial = onRequest({region: "asia-south1"}, async (req, res)
           usedCount >= limit ||
           !Number.isFinite(freshStartsAtMillis) ||
           freshStartsAtMillis <= 0 ||
-          !isEligibleForFirst150StartWindow(userRecord, freshStartsAtMillis)) {
+          !isEligibleForFirst150StartWindow(userRecord, freshStartsAtMillis) ||
+          !isWithinFirst150CampaignWindow(freshStartsAtMillis, freshEndsAtMillis, nowMillis)) {
         responseMessage = enabled ? "Offer limit reached" : "Offer disabled";
         return;
       }
@@ -4740,6 +4779,15 @@ exports.claimFirst150Trial = onRequest({region: "asia-south1"}, async (req, res)
         latestOrderId: null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      tx.set(emailClaimRef, {
+        uid,
+        emailHash: sha256(normalizedEmail),
+        source: first150TrialSource,
+        claimedAt: nowTimestamp,
+        expiryTime: expiryTimestamp,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       }, {merge: true});
 
       tx.set(eventRef, {

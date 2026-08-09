@@ -258,6 +258,7 @@ class AppHomeBannerService {
       targetCity: (data['targetCity'] as String? ?? '').trim(),
       targetRegionIds: _stringList(data['targetRegionIds']),
       targetReligions: _stringList(data['targetReligions']),
+      promoCardGroup: _toInt(data['promoCardGroup']).clamp(1, 3).toInt(),
       sortOrder: _toInt(data['sortOrder']),
       active: data['active'] is bool ? data['active'] as bool : true,
     );

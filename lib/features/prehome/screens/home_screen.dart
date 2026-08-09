@@ -48,6 +48,7 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
 import 'package:mana_poster/app/services/play_engagement_service.dart';
+import 'package:mana_poster/app/services/rewarded_access_service.dart';
 import 'package:mana_poster/app/services/screen_security_service.dart';
 import 'package:mana_poster/app/services/time_slot_service.dart';
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
@@ -80,6 +81,7 @@ import 'package:mana_poster/features/prehome/services/community_status_service.d
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.dart';
+import 'package:mana_poster/features/prehome/services/home_export_ad_settings_service.dart';
 import 'package:mana_poster/features/prehome/services/manual_event_category_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
@@ -436,18 +438,27 @@ class _CategoryChipSlot {
 
 enum _HomePromoCardType { featured, subscribe, renewalReminder, update, rate }
 
+class _HomePromoSlide {
+  const _HomePromoSlide({required this.imageUrl, required this.ctaTarget});
+
+  final String imageUrl;
+  final String ctaTarget;
+}
+
 class _HomeFeedPromoCardData {
   const _HomeFeedPromoCardData({
     required this.type,
     required this.title,
     required this.subtitle,
     required this.buttonLabel,
+    this.slides = const <_HomePromoSlide>[],
   });
 
   final _HomePromoCardType type;
   final String title;
   final String subtitle;
   final String buttonLabel;
+  final List<_HomePromoSlide> slides;
 }
 
 class _HomeFeedEntry {
@@ -4002,10 +4013,16 @@ class _HomeScreenState extends State<HomeScreen>
       'vardhanthulu',
       'birthday',
       'birthdays',
+      'devotional',
       'important_day',
       'special_day',
       'regional_special',
       'weekday_special',
+      'global',
+      'india',
+      'andhra_pradesh',
+      'telangana',
+      'both_telugu_states',
     };
     final output = <String>{};
 
@@ -7194,13 +7211,56 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
+  List<List<_HomePromoSlide>> _buildPromoSlideGroups(
+    List<AppHomeBanner> banners,
+  ) {
+    final groups = List<List<_HomePromoSlide>>.generate(
+      3,
+      (_) => <_HomePromoSlide>[],
+    );
+    for (final banner in banners) {
+      final imageUrl = banner.imageUrl.trim();
+      if (imageUrl.isEmpty) {
+        continue;
+      }
+      final groupIndex = banner.promoCardGroup.clamp(1, 3).toInt() - 1;
+      groups[groupIndex].add(
+        _HomePromoSlide(imageUrl: imageUrl, ctaTarget: banner.ctaTarget.trim()),
+      );
+    }
+    return groups
+        .map((slides) => slides.take(6).toList(growable: false))
+        .toList(growable: false);
+  }
+
   List<_HomeFeedPromoCardData> _buildPromoCards({
     required AppStrings strings,
     required SubscriptionBackendResult? entitlement,
+    required List<List<_HomePromoSlide>> promoSlideGroups,
   }) {
     final isPro = entitlement?.hasAccess ?? false;
     final cards = <_HomeFeedPromoCardData>[
-      if (_promoCardBanners.isNotEmpty)
+      for (final slides in promoSlideGroups)
+        if (slides.isNotEmpty)
+          _HomeFeedPromoCardData(
+            type: _HomePromoCardType.featured,
+            title: strings.localized(
+              telugu: 'à°®à°¨ à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à±à°ªà±†à°·à°²à±',
+              english: 'Mana Poster special',
+            ),
+            subtitle: strings.localized(
+              telugu:
+                  'à°®à±€ à°•à±‹à°¸à°‚ à°•à±Šà°¤à±à°¤ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à±, à°†à°«à°°à±à°²à±, à°…à°ªà±â€Œà°¡à±‡à°Ÿà±à°¸à±.',
+              english: 'Fresh posters, offers, and updates for you.',
+            ),
+            buttonLabel: strings.localized(
+              telugu: 'à°“à°ªà±†à°¨à±',
+              english: 'Open',
+            ),
+            slides: slides,
+          ),
+      if (promoSlideGroups.every((slides) => slides.isEmpty) &&
+          _promoCardBanners.isNotEmpty)
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.featured,
           title: strings.localized(
@@ -7290,12 +7350,6 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
     ];
-    final seed = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
-    if (cards.length > 1) {
-      cards.sort(
-        (a, b) => ((a.type.index + seed) % 11) - ((b.type.index + seed) % 11),
-      );
-    }
     return cards;
   }
 
@@ -7638,9 +7692,19 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Future<void> _handlePromoTap(_HomePromoCardType type) async {
+  Future<void> _handlePromoTap(
+    _HomePromoCardType type, {
+    String ctaTarget = '',
+  }) async {
     switch (type) {
       case _HomePromoCardType.featured:
+        final target = ctaTarget.trim();
+        final uri = Uri.tryParse(target);
+        final canOpenExternal =
+            uri != null && (uri.scheme == 'https' || uri.scheme == 'http');
+        if (canOpenExternal) {
+          await _openExternalPublicUrl(context, target);
+        }
         return;
       case _HomePromoCardType.subscribe:
         if (!mounted) {
@@ -8241,21 +8305,27 @@ class _HomeScreenState extends State<HomeScreen>
     final effectiveEntitlement =
         SubscriptionBackendService.entitlementNotifier.value ??
         _TemplateFeedItem.subscriptionBackendService.cachedEntitlement;
+    final promoSlideGroups = _buildPromoSlideGroups(_promoCardBanners);
+    final remotePromoSlides = promoSlideGroups
+        .expand((slides) => slides)
+        .toList(growable: false);
+    final fallbackPromoSlides = remotePromoSlides.isNotEmpty
+        ? remotePromoSlides.take(6).toList(growable: false)
+        : templates
+              .take(_promoSlidesLimit)
+              .map(
+                (item) => _HomePromoSlide(
+                  imageUrl: (item.thumbnailUrl ?? item.imageUrl ?? '').trim(),
+                  ctaTarget: '',
+                ),
+              )
+              .where((slide) => slide.imageUrl.isNotEmpty)
+              .toList(growable: false);
     final promoCards = _buildPromoCards(
       strings: strings,
       entitlement: effectiveEntitlement,
+      promoSlideGroups: promoSlideGroups,
     );
-    final promoSlides = _promoCardBanners.isNotEmpty
-        ? _promoCardBanners
-              .map((banner) => banner.imageUrl.trim())
-              .where((url) => url.isNotEmpty)
-              .take(6)
-              .toList(growable: false)
-        : templates
-              .take(_promoSlidesLimit)
-              .map((item) => (item.thumbnailUrl ?? item.imageUrl ?? '').trim())
-              .where((url) => url.isNotEmpty)
-              .toList(growable: false);
     final feedEntries = _buildFeedEntries(
       templates: templates,
       promoCards: promoCards,
@@ -8385,6 +8455,10 @@ class _HomeScreenState extends State<HomeScreen>
                               }
                               final entry = feedEntries[index];
                               if (entry.isPromo) {
+                                final promo = entry.promo!;
+                                final cardSlides = promo.slides.isNotEmpty
+                                    ? promo.slides
+                                    : fallbackPromoSlides;
                                 return Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -8394,11 +8468,14 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                   child: Center(
                                     child: _HomeInlinePromoCard(
-                                      data: entry.promo!,
+                                      data: promo,
                                       viewerPosterProfile: _viewerPosterProfile,
-                                      slides: promoSlides,
-                                      onTap: () => unawaited(
-                                        _handlePromoTap(entry.promo!.type),
+                                      slides: cardSlides,
+                                      onTap: (ctaTarget) => unawaited(
+                                        _handlePromoTap(
+                                          promo.type,
+                                          ctaTarget: ctaTarget,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -11338,8 +11415,8 @@ class _HomeInlinePromoCard extends StatefulWidget {
 
   final _HomeFeedPromoCardData data;
   final PosterProfileData viewerPosterProfile;
-  final List<String> slides;
-  final VoidCallback onTap;
+  final List<_HomePromoSlide> slides;
+  final ValueChanged<String> onTap;
 
   @override
   State<_HomeInlinePromoCard> createState() => _HomeInlinePromoCardState();
@@ -11349,9 +11426,8 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
   late final PageController _pageController = PageController(
     viewportFraction: 1,
   );
-  late final List<String> _slideUrls = widget.slides
-      .map((url) => url.trim())
-      .where((url) => url.isNotEmpty)
+  late final List<_HomePromoSlide> _slides = widget.slides
+      .where((slide) => slide.imageUrl.trim().isNotEmpty)
       .take(6)
       .toList(growable: false);
   Timer? _autoScrollTimer;
@@ -11361,10 +11437,10 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
   void initState() {
     super.initState();
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_pageController.hasClients || _slideUrls.length <= 1) {
+      if (!mounted || !_pageController.hasClients || _slides.length <= 1) {
         return;
       }
-      final nextPage = (_pageIndex + 1) % _slideUrls.length;
+      final nextPage = (_pageIndex + 1) % _slides.length;
       _pageController.animateToPage(
         nextPage,
         duration: const Duration(milliseconds: 420),
@@ -11378,6 +11454,14 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
     _autoScrollTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _openCurrentSlideTarget() {
+    final ctaTarget =
+        _slides.isEmpty || _pageIndex < 0 || _pageIndex >= _slides.length
+        ? ''
+        : _slides[_pageIndex].ctaTarget;
+    widget.onTap(ctaTarget);
   }
 
   @override
@@ -11410,234 +11494,240 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
       _HomePromoCardType.update || _HomePromoCardType.rate => null,
     };
 
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 430),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF7C3AED), Color(0xFF4F46E5)],
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(3),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _openCurrentSlideTarget,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 430),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[Color(0xFF7C3AED), Color(0xFF4F46E5)],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(13),
-                ),
-                child: SizedBox(
-                  height: 118,
-                  child: _slideUrls.isEmpty
-                      ? const ColoredBox(color: Color(0xFFF8FAFC))
-                      : PageView.builder(
-                          controller: _pageController,
-                          itemCount: _slideUrls.length,
-                          onPageChanged: (index) => _pageIndex = index,
-                          itemBuilder: (context, index) => Stack(
-                            fit: StackFit.expand,
-                            children: <Widget>[
-                              CachedNetworkImage(
-                                imageUrl: _slideUrls[index],
-                                cacheManager: PosterNetworkImageCache.instance,
-                                maxWidthDiskCache:
-                                    PosterNetworkImageLimits.diskFeedMaxWidth,
-                                maxHeightDiskCache:
-                                    PosterNetworkImageLimits.diskFeedMaxHeight,
-                                fit: BoxFit.cover,
-                              ),
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: <Color>[
-                                      Colors.black.withValues(alpha: 0.10),
-                                      Colors.black.withValues(alpha: 0.42),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
-                child: Row(
-                  children: <Widget>[
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: const Color(0xFFE2E8F0),
-                      backgroundImage: imageProvider,
-                      child: imageProvider == null
-                          ? Text(
-                              userName.isEmpty ? 'U' : userName[0],
-                              style: const TextStyle(
-                                color: Color(0xFF0F172A),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            userName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF0F172A),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          if (contact.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 5),
-                            Row(
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(13),
+                  ),
+                  child: SizedBox(
+                    height: 118,
+                    child: _slides.isEmpty
+                        ? const ColoredBox(color: Color(0xFFF8FAFC))
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: _slides.length,
+                            onPageChanged: (index) => _pageIndex = index,
+                            itemBuilder: (context, index) => Stack(
+                              fit: StackFit.expand,
                               children: <Widget>[
-                                const Icon(
-                                  Icons.call_rounded,
-                                  size: 16,
-                                  color: Color(0xFF16A34A),
+                                CachedNetworkImage(
+                                  imageUrl: _slides[index].imageUrl,
+                                  cacheManager:
+                                      PosterNetworkImageCache.instance,
+                                  maxWidthDiskCache:
+                                      PosterNetworkImageLimits.diskFeedMaxWidth,
+                                  maxHeightDiskCache: PosterNetworkImageLimits
+                                      .diskFeedMaxHeight,
+                                  fit: BoxFit.cover,
                                 ),
-                                const SizedBox(width: 7),
-                                Expanded(
-                                  child: Text(
-                                    contact,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Color(0xFF334155),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: <Color>[
+                                        Colors.black.withValues(alpha: 0.10),
+                                        Colors.black.withValues(alpha: 0.42),
+                                      ],
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                margin: EdgeInsets.zero,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(color: actionStripColor),
-                child: Row(
-                  children: <Widget>[
-                    if (isPlayStoreCard)
-                      const _PromoPlayStoreAccentBadge()
-                    else
-                      _PromoAccentBadge(
-                        icon: accentIcon!,
-                        backgroundColor: Colors.white.withValues(alpha: 0.18),
-                      ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.data.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                child: switch (widget.data.type) {
-                  _HomePromoCardType.update ||
-                  _HomePromoCardType.rate => const Align(
-                    alignment: Alignment.centerLeft,
-                    child: _GooglePlayMiniBadge(),
-                  ),
-                  _ => const SizedBox.shrink(),
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 9, 14, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      widget.data.subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF475569),
-                        fontSize: 12,
-                        height: 1.25,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    FilledButton(
-                      onPressed: widget.onTap,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(40),
-                        backgroundColor: const Color(0xFFFFD60A),
-                        foregroundColor: const Color(0xFF0F172A),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          if (widget.data.type == _HomePromoCardType.subscribe)
-                            const Icon(
-                              Icons.workspace_premium_rounded,
-                              size: 18,
-                            )
-                          else if (widget.data.type ==
-                              _HomePromoCardType.renewalReminder)
-                            const Icon(
-                              Icons.notifications_active_rounded,
-                              size: 18,
-                            )
-                          else
-                            const _GooglePlayActionBadge(),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.data.buttonLabel,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
+                  child: Row(
+                    children: <Widget>[
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        backgroundImage: imageProvider,
+                        child: imageProvider == null
+                            ? Text(
+                                userName.isEmpty ? 'U' : userName[0],
+                                style: const TextStyle(
+                                  color: Color(0xFF0F172A),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              userName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF0F172A),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (contact.isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 5),
+                              Row(
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.call_rounded,
+                                    size: 16,
+                                    color: Color(0xFF16A34A),
+                                  ),
+                                  const SizedBox(width: 7),
+                                  Expanded(
+                                    child: Text(
+                                      contact,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xFF334155),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  margin: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(color: actionStripColor),
+                  child: Row(
+                    children: <Widget>[
+                      if (isPlayStoreCard)
+                        const _PromoPlayStoreAccentBadge()
+                      else
+                        _PromoAccentBadge(
+                          icon: accentIcon!,
+                          backgroundColor: Colors.white.withValues(alpha: 0.18),
+                        ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.data.title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+                  child: switch (widget.data.type) {
+                    _HomePromoCardType.update ||
+                    _HomePromoCardType.rate => const Align(
+                      alignment: Alignment.centerLeft,
+                      child: _GooglePlayMiniBadge(),
+                    ),
+                    _ => const SizedBox.shrink(),
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 9, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        widget.data.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF475569),
+                          fontSize: 12,
+                          height: 1.25,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton(
+                        onPressed: _openCurrentSlideTarget,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(40),
+                          backgroundColor: const Color(0xFFFFD60A),
+                          foregroundColor: const Color(0xFF0F172A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            if (widget.data.type ==
+                                _HomePromoCardType.subscribe)
+                              const Icon(
+                                Icons.workspace_premium_rounded,
+                                size: 18,
+                              )
+                            else if (widget.data.type ==
+                                _HomePromoCardType.renewalReminder)
+                              const Icon(
+                                Icons.notifications_active_rounded,
+                                size: 18,
+                              )
+                            else
+                              const _GooglePlayActionBadge(),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.data.buttonLabel,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -15348,6 +15438,10 @@ class _TemplateFeedItem extends StatefulWidget {
       SubscriptionBackendService();
   static const PoliticalProtocolPhotoService _politicalProtocolPhotoService =
       PoliticalProtocolPhotoService();
+  static final RewardedAccessService _homeExportRewardedAccessService =
+      RewardedAccessService();
+  static final HomeExportAdSettingsService _homeExportAdSettingsService =
+      HomeExportAdSettingsService();
 
   static SubscriptionBackendService get subscriptionBackendService =>
       _subscriptionBackendService;
@@ -15444,6 +15538,29 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   int get posterRenderCycle => widget.posterRenderCycle;
   SubscriptionBackendService get _subscriptionBackendService =>
       _TemplateFeedItem.subscriptionBackendService;
+
+  bool _isCurrentJokesPoster() {
+    final signals = <String>{};
+
+    void addSignal(String raw) {
+      final normalized = _normalizeTagWorker(raw);
+      if (normalized.isEmpty) {
+        return;
+      }
+      signals.add(normalized);
+      signals.addAll(_expandCategoryAliasesWorker(normalized));
+    }
+
+    addSignal(item.primaryFirestoreCategoryId ?? '');
+    addSignal(item.categoryDisplayLabel ?? '');
+    for (final tag in item.categoryTags) {
+      addSignal(tag);
+    }
+    return signals.contains('jokes') ||
+        signals.contains('funny') ||
+        signals.contains('humor') ||
+        signals.contains('comedy');
+  }
 
   bool get _canAddPoliticalProtocolPhotos {
     final partyId = _resolvePoliticalPartyId();
@@ -15655,6 +15772,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _syncManualProtocolPhotoScope();
     _syncPoliticalProtocolPhotos();
     unawaited(_loadHiddenDefaultProtocolPhotoUrls());
+    unawaited(_preloadHomeExportRewardedAdIfEnabled());
     if (item.isVideo && playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
@@ -17387,7 +17505,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     required bool isPhotoVisible,
     ValueChanged<bool>? onPosterReadyChanged,
   }) {
-    final plainCapture = _forcePlainPosterCapture;
+    final plainCapture =
+        _forcePlainPosterCapture || (!item.isVideo && _isCurrentJokesPoster());
     final preview = _buildPosterPreview(
       isPhotoVisible: plainCapture ? false : isPhotoVisible,
       onPosterReadyChanged: onPosterReadyChanged,
@@ -17681,6 +17800,86 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return refreshedEffectiveIsPro;
   }
 
+  Future<void> _openSubscriptionPlanFromFreeExportChoice() async {
+    await onOpenSubscriptionPlan(startPurchaseOnOpen: true);
+    if (!mounted) {
+      return;
+    }
+
+    var result = await _subscriptionBackendService.fetchEntitlement(
+      forceRefresh: true,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!result.hasAccess) {
+      result = await _subscriptionBackendService
+          .fetchFreshEntitlementWithRetry();
+      if (!mounted) {
+        return;
+      }
+    }
+
+    if (result.hasAccess) {
+      await _showSubscriptionThanksVideoPromptOnceFromHome(result);
+      return;
+    }
+
+    await showSubscriptionExitVideoPromptIfAvailable(
+      context,
+      onSubscribe: (_) => onOpenSubscriptionPlan(startPurchaseOnOpen: true),
+    );
+  }
+
+  Future<void> _showSubscriptionThanksVideoPromptOnceFromHome(
+    SubscriptionBackendResult result,
+  ) async {
+    final identity = _subscriptionThanksPromptIdentity(result);
+    if (identity == null) {
+      await showSubscriptionThanksVideoPromptIfAvailable(context);
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = _subscriptionThanksPromptSeenKey(result);
+    if (prefs.getString(key) == identity || !mounted) {
+      return;
+    }
+
+    await showSubscriptionThanksVideoPromptIfAvailable(context);
+    if (!mounted) {
+      return;
+    }
+    await prefs.setString(key, identity);
+  }
+
+  String _subscriptionThanksPromptSeenKey(SubscriptionBackendResult result) {
+    final authUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    final latestOrderId = result.latestOrderId?.trim() ?? '';
+    final identityScope = authUid.isNotEmpty ? authUid : latestOrderId;
+    final resolvedScope = identityScope.isNotEmpty ? identityScope : 'anon';
+    return 'subscription_thanks_video_seen_v1_$resolvedScope';
+  }
+
+  String? _subscriptionThanksPromptIdentity(SubscriptionBackendResult result) {
+    if (!result.hasAccess) {
+      return null;
+    }
+    final latestOrderId = result.latestOrderId?.trim() ?? '';
+    final subscriptionState = result.subscriptionState?.trim() ?? '';
+    final startEpoch =
+        result.startDate?.millisecondsSinceEpoch.toString() ?? '';
+    final expiryEpoch =
+        result.expiryTime?.millisecondsSinceEpoch.toString() ?? '';
+    final identity = <String>[
+      latestOrderId,
+      subscriptionState,
+      startEpoch,
+      expiryEpoch,
+    ].where((value) => value.isNotEmpty).join('|');
+    return identity.isEmpty ? null : identity;
+  }
+
   Future<bool> _hasSubscriptionAccessForExport() async {
     if (_hasImmediateSubscriptionAccess()) {
       unawaited(_subscriptionBackendService.refreshEntitlementInBackground());
@@ -17965,6 +18164,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               }
               setSheetState(() => busy = true);
               try {
+                final adAccessGranted = await _ensureHomeExportRewardedAccess(
+                  debugLabel: share
+                      ? 'home_plain_poster_share'
+                      : 'home_plain_poster_download',
+                );
+                if (!adAccessGranted || !sheetContext.mounted) {
+                  return;
+                }
                 await _performPlainFreeExport(sheetContext, share: share);
               } finally {
                 if (sheetContext.mounted) {
@@ -18023,10 +18230,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                 ladakhi: 'Photo dang ming che',
                               ),
                               message: context.strings.localized(
-                                telugu:
-                                    '${SubscriptionPlanConfig.trialDays} రోజులు ఫోటో, పేరు తో షేర్ చేయండి',
-                                english:
-                                    '${SubscriptionPlanConfig.trialDays} days with photo and name',
+                                telugu: 'ఫోటో, పేరు తో షేర్ చేయండి',
+                                english: 'Share with photo and name',
                                 hindi:
                                     '${SubscriptionPlanConfig.trialDays} दिनों तक फोटो और नाम के साथ शेयर करें',
                                 tamil:
@@ -18062,51 +18267,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                               accentColor: const Color(0xFF16A34A),
                               previewAspectRatio: previewAspectRatio,
-                              actionLabel: context.strings.localized(
-                                telugu:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days',
-                                english:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial for ${SubscriptionPlanConfig.trialDays} days',
-                                hindi:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिन',
-                                tamil:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} சோதனை ${SubscriptionPlanConfig.trialDays} நாட்கள்',
-                                kannada:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ಟ್ರಯಲ್ ${SubscriptionPlanConfig.trialDays} ದಿನಗಳು',
-                                malayalam:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ട്രയൽ ${SubscriptionPlanConfig.trialDays} ദിവസം',
-                                assamese:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ট্ৰায়েল ${SubscriptionPlanConfig.trialDays} দিন',
-                                konkani:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिस',
-                                gujarati:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ટ્રાયલ ${SubscriptionPlanConfig.trialDays} દિવસ',
-                                marathi:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिवस',
-                                meitei:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} numit',
-                                mizo:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} ni',
-                                odia:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ଟ୍ରାୟାଲ ${SubscriptionPlanConfig.trialDays} ଦିନ',
-                                punjabi:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ਟ੍ਰਾਇਲ ${SubscriptionPlanConfig.trialDays} ਦਿਨ',
-                                nepali:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ट्रायल ${SubscriptionPlanConfig.trialDays} दिन',
-                                bengali:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ট্রায়াল ${SubscriptionPlanConfig.trialDays} দিন',
-                                kashmiri:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} ٹرایل ${SubscriptionPlanConfig.trialDays} دوہ',
-                                ladakhi:
-                                    '${SubscriptionPlanConfig.trialPriceDisplay} trial ${SubscriptionPlanConfig.trialDays} nyin',
-                              ),
+                              actionLabel:
+                                  '${SubscriptionPlanConfig.trialPriceDisplay} Trial plan',
                               onTap: busy
                                   ? null
                                   : () async {
                                       Navigator.of(sheetContext).pop();
-                                      await onOpenSubscriptionPlan(
-                                        startPurchaseOnOpen: true,
-                                      );
+                                      await _openSubscriptionPlanFromFreeExportChoice();
                                     },
                               preview: _buildPosterPreview(
                                 isPhotoVisible: true,
@@ -18342,6 +18509,54 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     );
   }
 
+  Future<bool> _ensureHomeExportRewardedAccess({
+    required String debugLabel,
+  }) async {
+    if (item.isVideo || AppPublicInfo.adMobHomeExportRewardedAdUnitId.isEmpty) {
+      return true;
+    }
+    final settings = await _TemplateFeedItem._homeExportAdSettingsService
+        .fetchForSelectedRegion();
+    final manualAd = settings.manualAd;
+    if (manualAd?.canShow == true) {
+      return _showHomeExportManualAd(manualAd!);
+    }
+    if (!settings.rewardedEnabled) {
+      return true;
+    }
+    return _TemplateFeedItem._homeExportRewardedAccessService
+        .showRewardedAccessAd(
+          adUnitId: AppPublicInfo.adMobHomeExportRewardedAdUnitId,
+          debugLabel: debugLabel,
+        );
+  }
+
+  Future<void> _preloadHomeExportRewardedAdIfEnabled() async {
+    if (item.isVideo || !AppPublicInfo.hasHomeExportRewardedAdUnitId) {
+      return;
+    }
+    final settings = await _TemplateFeedItem._homeExportAdSettingsService
+        .fetchForSelectedRegion();
+    if (!settings.rewardedEnabled) {
+      return;
+    }
+    await _TemplateFeedItem._homeExportRewardedAccessService.preloadRewardedAd(
+      adUnitId: AppPublicInfo.adMobHomeExportRewardedAdUnitId,
+    );
+  }
+
+  Future<bool> _showHomeExportManualAd(HomeExportManualAd ad) async {
+    if (!mounted || ad.url.trim().isEmpty) {
+      return true;
+    }
+    final allowed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _HomeExportManualAdDialog(ad: ad),
+    );
+    return allowed ?? false;
+  }
+
   Future<void> _performPlainFreeExport(
     BuildContext context, {
     required bool share,
@@ -18530,6 +18745,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       english: 'Download failed. Please try again.',
     );
     try {
+      if (!item.isVideo && _isCurrentJokesPoster()) {
+        await _performPlainFreeExport(context, share: false);
+        result = true;
+        return;
+      }
       final hasAccess = await _hasSubscriptionAccessForExport();
       if (!context.mounted) {
         result = false;
@@ -18688,6 +18908,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     );
     final shareText = _homePosterShareText();
     try {
+      if (!item.isVideo && _isCurrentJokesPoster()) {
+        await _performPlainFreeExport(context, share: true);
+        result = true;
+        return;
+      }
       final hasAccess = await _hasSubscriptionAccessForExport();
       if (!context.mounted) {
         result = false;
@@ -21068,6 +21293,10 @@ class _FreeExportPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveMessage =
+        actionLabel == '${SubscriptionPlanConfig.trialPriceDisplay} Trial plan'
+        ? 'Share with photo and name'
+        : message;
     final content = LayoutBuilder(
       builder: (context, constraints) {
         final previewWidth = (constraints.maxWidth * 0.44)
@@ -21108,7 +21337,7 @@ class _FreeExportPreviewCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        message,
+                        effectiveMessage,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -21165,6 +21394,135 @@ class _FreeExportPreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: content,
+      ),
+    );
+  }
+}
+
+class _HomeExportManualAdDialog extends StatefulWidget {
+  const _HomeExportManualAdDialog({required this.ad});
+
+  final HomeExportManualAd ad;
+
+  @override
+  State<_HomeExportManualAdDialog> createState() =>
+      _HomeExportManualAdDialogState();
+}
+
+class _HomeExportManualAdDialogState extends State<_HomeExportManualAdDialog> {
+  VideoPlayerController? _controller;
+  bool _videoFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.ad.isVideo) {
+      unawaited(_loadVideo());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadVideo() async {
+    final uri = Uri.tryParse(widget.ad.url.trim());
+    if (uri == null || !uri.hasScheme) {
+      if (mounted) {
+        setState(() => _videoFailed = true);
+      }
+      return;
+    }
+    final controller = VideoPlayerController.networkUrl(uri);
+    _controller = controller;
+    try {
+      await controller.initialize();
+      await controller.setLooping(false);
+      await controller.play();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {
+      await controller.dispose();
+      if (mounted) {
+        setState(() => _videoFailed = true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final showVideo =
+        widget.ad.isVideo &&
+        !_videoFailed &&
+        controller != null &&
+        controller.value.isInitialized;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 430),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            AspectRatio(
+              aspectRatio: showVideo
+                  ? controller.value.aspectRatio
+                  : widget.ad.isVideo
+                  ? 9 / 16
+                  : 4 / 5,
+              child: ColoredBox(
+                color: const Color(0xFF0F172A),
+                child: widget.ad.isVideo
+                    ? showVideo
+                          ? VideoPlayer(controller)
+                          : const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            )
+                    : CachedNetworkImage(
+                        imageUrl: widget.ad.url,
+                        cacheManager: PosterNetworkImageCache.instance,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, _, _) => const Icon(
+                          Icons.campaign_rounded,
+                          color: Colors.white,
+                          size: 54,
+                        ),
+                      ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6D28D9),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    context.strings.localized(
+                      telugu: 'కొనసాగించండి',
+                      english: 'Continue',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

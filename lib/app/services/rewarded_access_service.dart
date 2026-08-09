@@ -7,6 +7,9 @@ import 'package:mana_poster/app/services/admob_consent_service.dart';
 class RewardedAccessService {
   RewardedAccessService();
 
+  static const Duration _loadTimeout = Duration(seconds: 12);
+  static const Duration _showTimeout = Duration(seconds: 75);
+
   RewardedAd? _preloadedAd;
   String? _preloadedAdUnitId;
   bool _isPreloading = false;
@@ -101,11 +104,15 @@ class RewardedAccessService {
     }
     var rewardEarned = false;
     var adShown = false;
+    Timer? loadTimer;
+    Timer? showTimer;
 
     void complete(bool value) {
       if (completer.isCompleted) {
         return;
       }
+      loadTimer?.cancel();
+      showTimer?.cancel();
       _debugLog(
         'RewardedAccessService complete for $debugLabel: value=$value rewardEarned=$rewardEarned adShown=$adShown',
       );
@@ -115,11 +122,17 @@ class RewardedAccessService {
     }
 
     void showAd(RewardedAd ad) {
+      loadTimer?.cancel();
       _debugLog('RewardedAccessService ad ready for $debugLabel');
       rewardedAd = ad;
       ad.fullScreenContentCallback = FullScreenContentCallback(
         onAdShowedFullScreenContent: (RewardedAd ad) {
           adShown = true;
+          showTimer?.cancel();
+          showTimer = Timer(_showTimeout, () {
+            _debugLog('RewardedAccessService show timeout for $debugLabel');
+            complete(rewardEarned);
+          });
           _debugLog('RewardedAccessService ad shown for $debugLabel');
         },
         onAdDismissedFullScreenContent: (RewardedAd ad) async {
@@ -160,6 +173,10 @@ class RewardedAccessService {
       if (rewardedAd != null) {
         showAd(rewardedAd!);
       } else {
+        loadTimer = Timer(_loadTimeout, () {
+          _debugLog('RewardedAccessService load timeout for $debugLabel');
+          complete(true);
+        });
         await RewardedAd.load(
           adUnitId: adUnitId,
           request: const AdRequest(),
@@ -186,7 +203,7 @@ class RewardedAccessService {
     }
 
     return completer.future.timeout(
-      const Duration(minutes: 3),
+      _loadTimeout + _showTimeout + const Duration(seconds: 5),
       onTimeout: () {
         _debugLog('RewardedAccessService timeout for $debugLabel');
         final fallbackValue = rewardEarned || !adShown;

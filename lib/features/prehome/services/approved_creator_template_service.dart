@@ -1520,6 +1520,7 @@ class ApprovedCreatorTemplateService {
         final statsRef = firestore
             .collection('creatorPosterDailyStats')
             .doc('$safePosterId-$dateKey');
+        final statsSnapshot = await statsRef.get();
         batch.set(statsRef, {
           'creatorPublicId': safeCreatorPublicId,
           'posterId': safePosterId,
@@ -1535,7 +1536,7 @@ class ApprovedCreatorTemplateService {
           'downloadCount': FieldValue.increment(isShare ? 0 : 1),
           'totalEngagement': FieldValue.increment(1),
           'updatedAt': now,
-          'createdAt': now,
+          'createdAt': statsSnapshot.data()?['createdAt'] ?? now,
         }, SetOptions(merge: true));
       }
       await batch.commit();

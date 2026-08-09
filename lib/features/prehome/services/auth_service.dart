@@ -13,6 +13,7 @@ import 'package:mana_poster/features/image_editor/services/subscription_backend_
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 import 'package:mana_poster/features/prehome/services/first150_trial_service.dart';
+import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
 class AuthFlowResult {
@@ -185,6 +186,9 @@ class FirebaseAuthService {
     final previousUid = _firebaseAuth.currentUser?.uid;
     try {
       await SubscriptionBackendService.resetLocalClientStateForAuthChange();
+    } catch (_) {}
+    try {
+      await NotificationService.instance.unregisterCurrentUserToken();
     } catch (_) {}
     if (Firebase.apps.isEmpty) {
       try {

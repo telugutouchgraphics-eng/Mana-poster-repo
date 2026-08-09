@@ -437,6 +437,43 @@ class NotificationService {
     await _guardedRegisterCurrentToken();
   }
 
+  Future<void> unregisterCurrentUserToken() async {
+    if (!_supportsNativeNotifications) {
+      return;
+    }
+    final User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return;
+    }
+    try {
+      final String? token = await FirebaseMessaging.instance.getToken();
+      if (token == null || token.trim().isEmpty) {
+        return;
+      }
+      final String tokenId = _tokenToDocId(token);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('deviceTokens')
+          .doc(tokenId)
+          .delete();
+      await FirebaseFirestore.instance
+          .collection('publicDeviceTokens')
+          .doc(tokenId)
+          .set(<String, Object?>{
+            'uid': FieldValue.delete(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+    } catch (error, stackTrace) {
+      developer.log(
+        'Notification token unregister skipped: $error',
+        name: 'notification.service',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   String _tokenToDocId(String token) {
     return token.replaceAll('/', '_');
   }
