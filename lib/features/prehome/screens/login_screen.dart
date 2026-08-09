@@ -117,6 +117,9 @@ class _LoginScreenState extends State<LoginScreen>
       await _showFirst150TrialDialogIfNeeded(authResult);
       await _continueAfterAuth();
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       _showError(_messageForError(e));
     } finally {
       if (mounted) {
@@ -152,6 +155,9 @@ class _LoginScreenState extends State<LoginScreen>
       await _stabilizeBottomSystemUi();
       await _continueAfterAuth();
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       _showError(_messageForError(e));
     } finally {
       if (mounted) {
@@ -388,6 +394,9 @@ class _LoginScreenState extends State<LoginScreen>
       }
       _showSuccess(_AuthUiCopy(context.currentLanguage).resetSuccess(email));
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       _showError(_messageForError(e));
     } finally {
       if (mounted) {
