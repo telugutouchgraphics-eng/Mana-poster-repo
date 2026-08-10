@@ -107,9 +107,8 @@ class ManualEventCategoryService {
     if (id.isEmpty || rawLabel.isEmpty || startAt <= 0 || endAt <= 0) {
       return null;
     }
-    final manualAppVisible = data['manualAppVisible'] == true;
     final visibleAt = startAt - _appLeadMillis;
-    if (!manualAppVisible && (now < visibleAt || now > endAt)) {
+    if (now < visibleAt || now > endAt) {
       return null;
     }
     final normalizedId = _normalizeTag(id);
@@ -131,7 +130,7 @@ class ManualEventCategoryService {
         'manual_event',
         'important_day',
       ],
-      isBlinking: manualAppVisible || (now >= visibleAt && now <= endAt),
+      isBlinking: true,
       iconAssetPath: iconAssetPath == null || iconAssetPath.isEmpty
           ? null
           : iconAssetPath,
