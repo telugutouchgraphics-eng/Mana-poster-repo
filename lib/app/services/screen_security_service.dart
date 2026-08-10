@@ -18,24 +18,34 @@ class ScreenSecurityService {
       defaultValue: '',
     ),
   };
+  static const Set<String> _adminOnlyBypassEmails = <String>{
+    'manaposter2026@gmail.com',
+  };
 
   static const MethodChannel _channel = MethodChannel(
     'mana_poster/screen_security',
   );
 
   static int _protectedScreenDepth = 0;
+  static int _adminOnlyProtectionDepth = 0;
   static StreamSubscription<User?>? _authSubscription;
   static Future<void>? _firebaseReadyFuture;
 
-  static Future<void> protectScreen() async {
+  static Future<void> protectScreen({bool adminOnlyBypass = false}) async {
     _ensureAuthListener();
     _protectedScreenDepth++;
+    if (adminOnlyBypass) {
+      _adminOnlyProtectionDepth++;
+    }
     await enableSecure();
   }
 
-  static Future<void> unprotectScreen() async {
+  static Future<void> unprotectScreen({bool adminOnlyBypass = false}) async {
     if (_protectedScreenDepth > 0) {
       _protectedScreenDepth--;
+    }
+    if (adminOnlyBypass && _adminOnlyProtectionDepth > 0) {
+      _adminOnlyProtectionDepth--;
     }
     await disableSecure();
   }
@@ -94,6 +104,9 @@ class ScreenSecurityService {
     }..removeWhere((email) => email.isEmpty);
     if (currentEmails.isEmpty) {
       return false;
+    }
+    if (_adminOnlyProtectionDepth > 0) {
+      return currentEmails.any(_adminOnlyBypassEmails.contains);
     }
     final bypassEmails = _screenProtectionBypassEmails
         .map(_normalizeEmail)

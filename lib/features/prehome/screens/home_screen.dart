@@ -18148,365 +18148,385 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     if (!context.mounted) {
       return;
     }
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.38),
-      builder: (sheetContext) {
-        var busy = false;
-        return StatefulBuilder(
-          builder: (sheetContext, setSheetState) {
-            Future<void> runFreeAction({required bool share}) async {
-              if (busy) {
-                return;
-              }
-              setSheetState(() => busy = true);
-              try {
-                final adAccessGranted = await _ensureHomeExportRewardedAccess(
-                  debugLabel: share
-                      ? 'home_plain_poster_share'
-                      : 'home_plain_poster_download',
-                );
-                if (!adAccessGranted || !sheetContext.mounted) {
+    await ScreenSecurityService.protectScreen(adminOnlyBypass: true);
+    try {
+      if (!context.mounted) {
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black.withValues(alpha: 0.38),
+        builder: (sheetContext) {
+          var busy = false;
+          return StatefulBuilder(
+            builder: (sheetContext, setSheetState) {
+              Future<void> runFreeAction({required bool share}) async {
+                if (busy) {
                   return;
                 }
-                await _performPlainFreeExport(sheetContext, share: share);
-              } finally {
-                if (sheetContext.mounted) {
-                  setSheetState(() => busy = false);
+                setSheetState(() => busy = true);
+                try {
+                  final adAccessGranted = await _ensureHomeExportRewardedAccess(
+                    debugLabel: share
+                        ? 'home_plain_poster_share'
+                        : 'home_plain_poster_download',
+                  );
+                  if (!adAccessGranted || !sheetContext.mounted) {
+                    return;
+                  }
+                  await _performPlainFreeExport(sheetContext, share: share);
+                } finally {
+                  if (sheetContext.mounted) {
+                    setSheetState(() => busy = false);
+                  }
                 }
               }
-            }
 
-            final previewAspectRatio =
-                _resolvedPreviewAspectRatio ??
-                item.pageConfig?.aspectRatio ??
-                (item.isVideo ? 9 / 16 : 4 / 5);
-            return FractionallySizedBox(
-              heightFactor: 1,
-              child: Material(
-                color: const Color(0xFFF8FAFC),
-                child: SafeArea(
-                  child: Column(
-                    children: <Widget>[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                        child: Row(
-                          children: <Widget>[
-                            IconButton(
-                              onPressed: busy
-                                  ? null
-                                  : () => Navigator.of(sheetContext).pop(),
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                            const Spacer(),
-                          ],
+              final previewAspectRatio =
+                  _resolvedPreviewAspectRatio ??
+                  item.pageConfig?.aspectRatio ??
+                  (item.isVideo ? 9 / 16 : 4 / 5);
+              return FractionallySizedBox(
+                heightFactor: 1,
+                child: Material(
+                  color: const Color(0xFFF8FAFC),
+                  child: SafeArea(
+                    child: Column(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                          child: Row(
+                            children: <Widget>[
+                              IconButton(
+                                onPressed: busy
+                                    ? null
+                                    : () => Navigator.of(sheetContext).pop(),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                              const Spacer(),
+                            ],
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final topCard = _FreeExportPreviewCard(
-                              title: context.strings.localized(
-                                telugu: 'ఫోటో, పేరు తో',
-                                english: 'With photo and name',
-                                hindi: 'फोटो और नाम के साथ',
-                                tamil: 'புகைப்படம் மற்றும் பெயருடன்',
-                                kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ',
-                                malayalam: 'ഫോട്ടോയും പേരും കൂടി',
-                                assamese: 'ফটো আৰু নামসহ',
-                                konkani: 'फोटो आनी नावासयत',
-                                gujarati: 'ફોટો અને નામ સાથે',
-                                marathi: 'फोटो आणि नावासह',
-                                meitei: 'Photo amasung mingga',
-                                mizo: 'Photo leh hming nen',
-                                odia: 'ଫଟୋ ଓ ନାମ ସହିତ',
-                                punjabi: 'ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ',
-                                nepali: 'फोटो र नामसहित',
-                                bengali: 'ছবি ও নামসহ',
-                                kashmiri: 'فوٹو تہٕ ناو سٲتھ',
-                                ladakhi: 'Photo dang ming che',
-                              ),
-                              message: context.strings.localized(
-                                telugu: 'ఫోటో, పేరు తో షేర్ చేయండి',
-                                english: 'Share with photo and name',
-                                hindi:
-                                    '${SubscriptionPlanConfig.trialDays} दिनों तक फोटो और नाम के साथ शेयर करें',
-                                tamil:
-                                    '${SubscriptionPlanConfig.trialDays} நாட்கள் புகைப்படம், பெயருடன் பகிருங்கள்',
-                                kannada:
-                                    '${SubscriptionPlanConfig.trialDays} ದಿನಗಳು ಫೋಟೋ, ಹೆಸರಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ',
-                                malayalam:
-                                    '${SubscriptionPlanConfig.trialDays} ദിവസം ഫോട്ടോയും പേരും ചേർത്ത് ഷെയർ ചെയ്യൂ',
-                                assamese:
-                                    '${SubscriptionPlanConfig.trialDays} দিন ফটো আৰু নামসহ শ্বেয়াৰ কৰক',
-                                konkani:
-                                    '${SubscriptionPlanConfig.trialDays} दिस फोटो आनी नावासयत शेअर करात',
-                                gujarati:
-                                    '${SubscriptionPlanConfig.trialDays} દિવસ ફોટો અને નામ સાથે શેર કરો',
-                                marathi:
-                                    '${SubscriptionPlanConfig.trialDays} दिवस फोटो आणि नावासह शेअर करा',
-                                meitei:
-                                    '${SubscriptionPlanConfig.trialDays} numit photo amasung mingga share tou',
-                                mizo:
-                                    '${SubscriptionPlanConfig.trialDays} ni photo leh hming nen share rawh',
-                                odia:
-                                    '${SubscriptionPlanConfig.trialDays} ଦିନ ଫଟୋ ଓ ନାମ ସହିତ ସେୟାର କରନ୍ତୁ',
-                                punjabi:
-                                    '${SubscriptionPlanConfig.trialDays} ਦਿਨ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਸ਼ੇਅਰ ਕਰੋ',
-                                nepali:
-                                    '${SubscriptionPlanConfig.trialDays} दिन फोटो र नामसहित शेयर गर्नुहोस्',
-                                bengali:
-                                    '${SubscriptionPlanConfig.trialDays} দিন ছবি ও নামসহ শেয়ার করুন',
-                                kashmiri:
-                                    '${SubscriptionPlanConfig.trialDays} دوہ فوٹو تہٕ ناو سٲتھ شیئر کریو',
-                                ladakhi:
-                                    '${SubscriptionPlanConfig.trialDays} nyin photo dang ming che share byed',
-                              ),
-                              accentColor: const Color(0xFF16A34A),
-                              previewAspectRatio: previewAspectRatio,
-                              actionLabel:
-                                  '${SubscriptionPlanConfig.trialPriceDisplay} Trial plan',
-                              onTap: busy
-                                  ? null
-                                  : () async {
-                                      Navigator.of(sheetContext).pop();
-                                      await _openSubscriptionPlanFromFreeExportChoice();
-                                    },
-                              preview: _buildPosterPreview(
-                                isPhotoVisible: true,
-                                playbackEnabledOverride: false,
-                                enableFullScreenTap: false,
-                              ),
-                            );
-                            final bottomCard = _FreeExportPreviewCard(
-                              title: context.strings.localized(
-                                telugu: 'ఉచితంగా షేర్ చేయండి',
-                                english: 'Share free',
-                                hindi: 'मुफ्त शेयर करें',
-                                tamil: 'இலவசமாக பகிருங்கள்',
-                                kannada: 'ಉಚಿತವಾಗಿ ಹಂಚಿಕೊಳ್ಳಿ',
-                                malayalam: 'സൗജന്യമായി ഷെയർ ചെയ്യൂ',
-                                assamese: 'বিনামূল্যে শ্বেয়াৰ কৰক',
-                                konkani: 'फुकट शेअर करात',
-                                gujarati: 'મફતમાં શેર કરો',
-                                marathi: 'मोफत शेअर करा',
-                                meitei: 'Free oina share tou',
-                                mizo: 'Free-a share rawh',
-                                odia: 'ମାଗଣାରେ ସେୟାର କରନ୍ତୁ',
-                                punjabi: 'ਮੁਫ਼ਤ ਸ਼ੇਅਰ ਕਰੋ',
-                                nepali: 'निःशुल्क शेयर गर्नुहोस्',
-                                bengali: 'ফ্রি শেয়ার করুন',
-                                kashmiri: 'مفت شیئر کریو',
-                                ladakhi: 'Free share byed',
-                              ),
-                              message: context.strings.localized(
-                                telugu: 'పేరు, ఫోటో లేకుండా పోస్టర్ మాత్రమే',
-                                english: 'Poster only, without name and photo',
-                                hindi: 'केवल पोस्टर, नाम और फोटो के बिना',
-                                tamil:
-                                    'பெயரும் புகைப்படமும் இல்லாமல் போஸ்டர் மட்டும்',
-                                kannada: 'ಹೆಸರು, ಫೋಟೋ ಇಲ್ಲದೆ ಪೋಸ್ಟರ್ ಮಾತ್ರ',
-                                malayalam:
-                                    'പേര്, ഫോട്ടോ ഇല്ലാതെ പോസ്റ്റർ മാത്രം',
-                                assamese: 'নাম আৰু ফটো নোহোৱাকৈ কেৱল পোষ্টাৰ',
-                                konkani: 'नाव आनी फोटो नासतना फकत पोस्टर',
-                                gujarati: 'નામ અને ફોટા વગર માત્ર પોસ્ટર',
-                                marathi: 'नाव आणि फोटोशिवाय फक्त पोस्टर',
-                                meitei:
-                                    'Ming amasung photo yaodana poster khaktang',
-                                mizo: 'Hming leh photo tel lo poster chauh',
-                                odia: 'ନାମ ଓ ଫଟୋ ବିନା କେବଳ ପୋଷ୍ଟର',
-                                punjabi: 'ਨਾਮ ਤੇ ਫੋਟੋ ਬਿਨਾਂ ਸਿਰਫ਼ ਪੋਸਟਰ',
-                                nepali: 'नाम र फोटो बिना पोस्टर मात्र',
-                                bengali: 'নাম ও ছবি ছাড়া শুধু পোস্টার',
-                                kashmiri: 'ناو تہٕ فوٹو بغیر صرف پوسٹر',
-                                ladakhi: 'Ming dang photo medpa poster tsam',
-                              ),
-                              accentColor: const Color(0xFF2563EB),
-                              previewAspectRatio: previewAspectRatio,
-                              preview: _buildPosterPreview(
-                                isPhotoVisible: false,
-                                playbackEnabledOverride: false,
-                                enableFullScreenTap: false,
-                                personalizationEnabled: false,
-                              ),
-                              footer: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  FilledButton.icon(
-                                    onPressed: busy
-                                        ? null
-                                        : () => runFreeAction(share: false),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFF0F172A),
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size.fromHeight(40),
-                                      shape: const StadiumBorder(),
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final topCard = _FreeExportPreviewCard(
+                                title: context.strings.localized(
+                                  telugu: 'ఫోటో, పేరు తో',
+                                  english: 'With photo and name',
+                                  hindi: 'फोटो और नाम के साथ',
+                                  tamil: 'புகைப்படம் மற்றும் பெயருடன்',
+                                  kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ',
+                                  malayalam: 'ഫോട്ടോയും പേരും കൂടി',
+                                  assamese: 'ফটো আৰু নামসহ',
+                                  konkani: 'फोटो आनी नावासयत',
+                                  gujarati: 'ફોટો અને નામ સાથે',
+                                  marathi: 'फोटो आणि नावासह',
+                                  meitei: 'Photo amasung mingga',
+                                  mizo: 'Photo leh hming nen',
+                                  odia: 'ଫଟୋ ଓ ନାମ ସହିତ',
+                                  punjabi: 'ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ',
+                                  nepali: 'फोटो र नामसहित',
+                                  bengali: 'ছবি ও নামসহ',
+                                  kashmiri: 'فوٹو تہٕ ناو سٲتھ',
+                                  ladakhi: 'Photo dang ming che',
+                                ),
+                                message: context.strings.localized(
+                                  telugu: 'ఫోటో, పేరు తో షేర్ చేయండి',
+                                  english: 'Share with photo and name',
+                                  hindi:
+                                      '${SubscriptionPlanConfig.trialDays} दिनों तक फोटो और नाम के साथ शेयर करें',
+                                  tamil:
+                                      '${SubscriptionPlanConfig.trialDays} நாட்கள் புகைப்படம், பெயருடன் பகிருங்கள்',
+                                  kannada:
+                                      '${SubscriptionPlanConfig.trialDays} ದಿನಗಳು ಫೋಟೋ, ಹೆಸರಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ',
+                                  malayalam:
+                                      '${SubscriptionPlanConfig.trialDays} ദിവസം ഫോട്ടോയും പേരും ചേർത്ത് ഷെയർ ചെയ്യൂ',
+                                  assamese:
+                                      '${SubscriptionPlanConfig.trialDays} দিন ফটো আৰু নামসহ শ্বেয়াৰ কৰক',
+                                  konkani:
+                                      '${SubscriptionPlanConfig.trialDays} दिस फोटो आनी नावासयत शेअर करात',
+                                  gujarati:
+                                      '${SubscriptionPlanConfig.trialDays} દિવસ ફોટો અને નામ સાથે શેર કરો',
+                                  marathi:
+                                      '${SubscriptionPlanConfig.trialDays} दिवस फोटो आणि नावासह शेअर करा',
+                                  meitei:
+                                      '${SubscriptionPlanConfig.trialDays} numit photo amasung mingga share tou',
+                                  mizo:
+                                      '${SubscriptionPlanConfig.trialDays} ni photo leh hming nen share rawh',
+                                  odia:
+                                      '${SubscriptionPlanConfig.trialDays} ଦିନ ଫଟୋ ଓ ନାମ ସହିତ ସେୟାର କରନ୍ତୁ',
+                                  punjabi:
+                                      '${SubscriptionPlanConfig.trialDays} ਦਿਨ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਸ਼ੇਅਰ ਕਰੋ',
+                                  nepali:
+                                      '${SubscriptionPlanConfig.trialDays} दिन फोटो र नामसहित शेयर गर्नुहोस्',
+                                  bengali:
+                                      '${SubscriptionPlanConfig.trialDays} দিন ছবি ও নামসহ শেয়ার করুন',
+                                  kashmiri:
+                                      '${SubscriptionPlanConfig.trialDays} دوہ فوٹو تہٕ ناو سٲتھ شیئر کریو',
+                                  ladakhi:
+                                      '${SubscriptionPlanConfig.trialDays} nyin photo dang ming che share byed',
+                                ),
+                                accentColor: const Color(0xFF16A34A),
+                                previewAspectRatio: previewAspectRatio,
+                                actionLabel:
+                                    '${SubscriptionPlanConfig.trialPriceDisplay} Trial plan',
+                                onTap: busy
+                                    ? null
+                                    : () async {
+                                        Navigator.of(sheetContext).pop();
+                                        await _openSubscriptionPlanFromFreeExportChoice();
+                                      },
+                                preview: _buildPosterPreview(
+                                  isPhotoVisible: true,
+                                  playbackEnabledOverride: false,
+                                  enableFullScreenTap: false,
+                                ),
+                              );
+                              final bottomCard = _FreeExportPreviewCard(
+                                title: context.strings.localized(
+                                  telugu: 'ఉచితంగా షేర్ చేయండి',
+                                  english: 'Share free',
+                                  hindi: 'मुफ्त शेयर करें',
+                                  tamil: 'இலவசமாக பகிருங்கள்',
+                                  kannada: 'ಉಚಿತವಾಗಿ ಹಂಚಿಕೊಳ್ಳಿ',
+                                  malayalam: 'സൗജന്യമായി ഷെയർ ചെയ്യൂ',
+                                  assamese: 'বিনামূল্যে শ্বেয়াৰ কৰক',
+                                  konkani: 'फुकट शेअर करात',
+                                  gujarati: 'મફતમાં શેર કરો',
+                                  marathi: 'मोफत शेअर करा',
+                                  meitei: 'Free oina share tou',
+                                  mizo: 'Free-a share rawh',
+                                  odia: 'ମାଗଣାରେ ସେୟାର କରନ୍ତୁ',
+                                  punjabi: 'ਮੁਫ਼ਤ ਸ਼ੇਅਰ ਕਰੋ',
+                                  nepali: 'निःशुल्क शेयर गर्नुहोस्',
+                                  bengali: 'ফ্রি শেয়ার করুন',
+                                  kashmiri: 'مفت شیئر کریو',
+                                  ladakhi: 'Free share byed',
+                                ),
+                                message: context.strings.localized(
+                                  telugu: 'పేరు, ఫోటో లేకుండా పోస్టర్ మాత్రమే',
+                                  english:
+                                      'Poster only, without name and photo',
+                                  hindi: 'केवल पोस्टर, नाम और फोटो के बिना',
+                                  tamil:
+                                      'பெயரும் புகைப்படமும் இல்லாமல் போஸ்டர் மட்டும்',
+                                  kannada: 'ಹೆಸರು, ಫೋಟೋ ಇಲ್ಲದೆ ಪೋಸ್ಟರ್ ಮಾತ್ರ',
+                                  malayalam:
+                                      'പേര്, ഫോട്ടോ ഇല്ലാതെ പോസ്റ്റർ മാത്രം',
+                                  assamese: 'নাম আৰু ফটো নোহোৱাকৈ কেৱল পোষ্টাৰ',
+                                  konkani: 'नाव आनी फोटो नासतना फकत पोस्टर',
+                                  gujarati: 'નામ અને ફોટા વગર માત્ર પોસ્ટર',
+                                  marathi: 'नाव आणि फोटोशिवाय फक्त पोस्टर',
+                                  meitei:
+                                      'Ming amasung photo yaodana poster khaktang',
+                                  mizo: 'Hming leh photo tel lo poster chauh',
+                                  odia: 'ନାମ ଓ ଫଟୋ ବିନା କେବଳ ପୋଷ୍ଟର',
+                                  punjabi: 'ਨਾਮ ਤੇ ਫੋਟੋ ਬਿਨਾਂ ਸਿਰਫ਼ ਪੋਸਟਰ',
+                                  nepali: 'नाम र फोटो बिना पोस्टर मात्र',
+                                  bengali: 'নাম ও ছবি ছাড়া শুধু পোস্টার',
+                                  kashmiri: 'ناو تہٕ فوٹو بغیر صرف پوسٹر',
+                                  ladakhi: 'Ming dang photo medpa poster tsam',
+                                ),
+                                accentColor: const Color(0xFF2563EB),
+                                previewAspectRatio: previewAspectRatio,
+                                preview: _buildPosterPreview(
+                                  isPhotoVisible: false,
+                                  playbackEnabledOverride: false,
+                                  enableFullScreenTap: false,
+                                  personalizationEnabled: false,
+                                ),
+                                footer: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    FilledButton.icon(
+                                      onPressed: busy
+                                          ? null
+                                          : () => runFreeAction(share: false),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF0F172A,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size.fromHeight(40),
+                                        shape: const StadiumBorder(),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                      ),
+                                      icon: busy && !preferShare
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(Icons.download_rounded),
+                                      label: Text(
+                                        context.strings.localized(
+                                          telugu: 'డౌన్‌లోడ్',
+                                          english: 'Download',
+                                          hindi: 'डाउनलोड',
+                                          tamil: 'பதிவிறக்கம்',
+                                          kannada: 'ಡೌನ್‌ಲೋಡ್',
+                                          malayalam: 'ഡൗൺലോഡ്',
+                                          assamese: 'ডাউনলোড',
+                                          konkani: 'डाउनलोड',
+                                          gujarati: 'ડાઉનલોડ',
+                                          marathi: 'डाउनलोड',
+                                          meitei: 'Download',
+                                          mizo: 'Download',
+                                          odia: 'ଡାଉନଲୋଡ୍',
+                                          punjabi: 'ਡਾਊਨਲੋਡ',
+                                          nepali: 'डाउनलोड',
+                                          bengali: 'ডাউনলোড',
+                                          kashmiri: 'ڈاؤنلوڈ',
+                                          ladakhi: 'Download',
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    FilledButton.icon(
+                                      onPressed: busy
+                                          ? null
+                                          : () => runFreeAction(share: true),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF7C3AED,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size.fromHeight(40),
+                                        shape: const StadiumBorder(),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                      ),
+                                      icon: busy && preferShare
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(Icons.ios_share_rounded),
+                                      label: Text(
+                                        context.strings.localized(
+                                          telugu: 'షేర్',
+                                          english: 'Share',
+                                          hindi: 'शेयर',
+                                          tamil: 'பகிர்',
+                                          kannada: 'ಹಂಚಿಕೆ',
+                                          malayalam: 'ഷെയർ',
+                                          assamese: 'শ্বেয়াৰ',
+                                          konkani: 'शेअर',
+                                          gujarati: 'શેર',
+                                          marathi: 'शेअर',
+                                          meitei: 'Share',
+                                          mizo: 'Share',
+                                          odia: 'ସେୟାର',
+                                          punjabi: 'ਸ਼ੇਅਰ',
+                                          nepali: 'शेयर',
+                                          bengali: 'শেয়ার',
+                                          kashmiri: 'شیئر',
+                                          ladakhi: 'Share',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              return Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  18,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: <Widget>[
+                                    Expanded(child: Center(child: topCard)),
+                                    Padding(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
+                                        vertical: 2,
                                       ),
-                                    ),
-                                    icon: busy && !preferShare
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Icon(Icons.download_rounded),
-                                    label: Text(
-                                      context.strings.localized(
-                                        telugu: 'డౌన్‌లోడ్',
-                                        english: 'Download',
-                                        hindi: 'डाउनलोड',
-                                        tamil: 'பதிவிறக்கம்',
-                                        kannada: 'ಡೌನ್‌ಲೋಡ್',
-                                        malayalam: 'ഡൗൺലോഡ്',
-                                        assamese: 'ডাউনলোড',
-                                        konkani: 'डाउनलोड',
-                                        gujarati: 'ડાઉનલોડ',
-                                        marathi: 'डाउनलोड',
-                                        meitei: 'Download',
-                                        mizo: 'Download',
-                                        odia: 'ଡାଉନଲୋଡ୍',
-                                        punjabi: 'ਡਾਊਨਲੋਡ',
-                                        nepali: 'डाउनलोड',
-                                        bengali: 'ডাউনলোড',
-                                        kashmiri: 'ڈاؤنلوڈ',
-                                        ladakhi: 'Download',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  FilledButton.icon(
-                                    onPressed: busy
-                                        ? null
-                                        : () => runFreeAction(share: true),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: const Color(0xFF7C3AED),
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size.fromHeight(40),
-                                      shape: const StadiumBorder(),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                    ),
-                                    icon: busy && preferShare
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const Icon(Icons.ios_share_rounded),
-                                    label: Text(
-                                      context.strings.localized(
-                                        telugu: 'షేర్',
-                                        english: 'Share',
-                                        hindi: 'शेयर',
-                                        tamil: 'பகிர்',
-                                        kannada: 'ಹಂಚಿಕೆ',
-                                        malayalam: 'ഷെയർ',
-                                        assamese: 'শ্বেয়াৰ',
-                                        konkani: 'शेअर',
-                                        gujarati: 'શેર',
-                                        marathi: 'शेअर',
-                                        meitei: 'Share',
-                                        mizo: 'Share',
-                                        odia: 'ସେୟାର',
-                                        punjabi: 'ਸ਼ੇਅਰ',
-                                        nepali: 'शेयर',
-                                        bengali: 'শেয়ার',
-                                        kashmiri: 'شیئر',
-                                        ladakhi: 'Share',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: <Widget>[
-                                  Expanded(child: Center(child: topCard)),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 2,
-                                    ),
-                                    child: Row(
-                                      children: <Widget>[
-                                        const Expanded(
-                                          child: Divider(
-                                            color: Color(0xFFE2E8F0),
-                                            thickness: 1,
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                          ),
-                                          child: Text(
-                                            context.strings.localized(
-                                              telugu: 'లేదా',
-                                              english: 'or',
-                                              hindi: 'या',
-                                              tamil: 'அல்லது',
-                                              kannada: 'ಅಥವಾ',
-                                              malayalam: 'അല്ലെങ്കിൽ',
-                                              assamese: 'অথবা',
-                                              konkani: 'वा',
-                                              gujarati: 'અથવા',
-                                              marathi: 'किंवा',
-                                              meitei: 'nattraga',
-                                              mizo: 'emaw',
-                                              odia: 'କିମ୍ବା',
-                                              punjabi: 'ਜਾਂ',
-                                              nepali: 'वा',
-                                              bengali: 'অথবা',
-                                              kashmiri: 'یا',
-                                              ladakhi: 'yangna',
-                                            ),
-                                            style: const TextStyle(
-                                              color: Color(0xFF94A3B8),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w800,
+                                      child: Row(
+                                        children: <Widget>[
+                                          const Expanded(
+                                            child: Divider(
+                                              color: Color(0xFFE2E8F0),
+                                              thickness: 1,
                                             ),
                                           ),
-                                        ),
-                                        const Expanded(
-                                          child: Divider(
-                                            color: Color(0xFFE2E8F0),
-                                            thickness: 1,
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                            ),
+                                            child: Text(
+                                              context.strings.localized(
+                                                telugu: 'లేదా',
+                                                english: 'or',
+                                                hindi: 'या',
+                                                tamil: 'அல்லது',
+                                                kannada: 'ಅಥವಾ',
+                                                malayalam: 'അല്ലെങ്കിൽ',
+                                                assamese: 'অথবা',
+                                                konkani: 'वा',
+                                                gujarati: 'અથવા',
+                                                marathi: 'किंवा',
+                                                meitei: 'nattraga',
+                                                mizo: 'emaw',
+                                                odia: 'କିମ୍ବା',
+                                                punjabi: 'ਜਾਂ',
+                                                nepali: 'वा',
+                                                bengali: 'অথবা',
+                                                kashmiri: 'یا',
+                                                ladakhi: 'yangna',
+                                              ),
+                                              style: const TextStyle(
+                                                color: Color(0xFF94A3B8),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                          const Expanded(
+                                            child: Divider(
+                                              color: Color(0xFFE2E8F0),
+                                              thickness: 1,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  Expanded(child: Center(child: bottomCard)),
-                                ],
-                              ),
-                            );
-                          },
+                                    Expanded(child: Center(child: bottomCard)),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      unawaited(ScreenSecurityService.unprotectScreen(adminOnlyBypass: true));
+    }
   }
 
   Future<bool> _ensureHomeExportRewardedAccess({
