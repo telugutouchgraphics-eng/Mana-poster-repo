@@ -12,6 +12,10 @@ class AppPublicInfo {
     'MANA_POSTER_SUPPORT_PHONE',
     defaultValue: '',
   );
+  static const String websiteUrl = String.fromEnvironment(
+    'MANA_POSTER_WEBSITE_URL',
+    defaultValue: 'https://manaposter.in',
+  );
   static const String playStorePackageName = 'com.manaposter.app';
   static const String playStoreUrl = String.fromEnvironment(
     'MANA_POSTER_PLAY_STORE_URL',

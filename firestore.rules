@@ -186,8 +186,60 @@ service cloud.firestore {
         (!("appVersion" in request.resource.data) ||
           request.resource.data.appVersion is string) &&
         (!("buildNumber" in request.resource.data) ||
-          request.resource.data.buildNumber is string) &&
+        request.resource.data.buildNumber is string) &&
         validPlatform(request.resource.data.platform);
+    }
+
+    function validQuizPrizeProfileWrite(userId) {
+      return request.resource.data.keys().hasOnly([
+          "uid",
+          "name",
+          "email",
+          "stateId",
+          "stateName",
+          "photoUrl",
+          "whatsappNumber",
+          "upiIdOrNumber",
+          "bankAccountName",
+          "bankAccountNumber",
+          "bankIfscCode",
+          "consentAccepted",
+          "consentVersion",
+          "source",
+          "updatedAt",
+          "updatedAtMillis",
+        ]) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() <= 160 &&
+        request.resource.data.email is string &&
+        request.resource.data.email.size() <= 320 &&
+        request.resource.data.stateId is string &&
+        request.resource.data.stateId.size() <= 80 &&
+        request.resource.data.stateName is string &&
+        request.resource.data.stateName.size() <= 120 &&
+        request.resource.data.photoUrl is string &&
+        request.resource.data.photoUrl.size() <= 2000 &&
+        request.resource.data.whatsappNumber is string &&
+        request.resource.data.whatsappNumber.size() >= 10 &&
+        request.resource.data.whatsappNumber.size() <= 30 &&
+        (!("upiIdOrNumber" in request.resource.data) ||
+          (request.resource.data.upiIdOrNumber is string &&
+            request.resource.data.upiIdOrNumber.size() <= 160)) &&
+        request.resource.data.bankAccountName is string &&
+        request.resource.data.bankAccountName.size() >= 2 &&
+        request.resource.data.bankAccountName.size() <= 160 &&
+        request.resource.data.bankAccountNumber is string &&
+        request.resource.data.bankAccountNumber.size() >= 6 &&
+        request.resource.data.bankAccountNumber.size() <= 40 &&
+        request.resource.data.bankIfscCode is string &&
+        request.resource.data.bankIfscCode.matches("^[A-Z]{4}0[A-Z0-9]{6}$") &&
+        request.resource.data.consentAccepted == true &&
+        request.resource.data.consentVersion is string &&
+        request.resource.data.consentVersion.size() <= 40 &&
+        request.resource.data.source in ["android", "ios"] &&
+        request.resource.data.updatedAtMillis is int &&
+        request.resource.data.updatedAtMillis > 0;
     }
 
     function validUserPosterUploadCreate() {
@@ -397,6 +449,16 @@ service cloud.firestore {
             request.resource.data.shareCount >= resource.data.shareCount &&
             request.resource.data.downloadCount >= resource.data.downloadCount &&
             request.resource.data.totalEngagement >= resource.data.totalEngagement));
+    }
+
+    function validCreatorPosterDailyStatsRead(statId) {
+      return resource.data.posterId is string &&
+        resource.data.posterId.size() > 0 &&
+        resource.data.dateKey is string &&
+        resource.data.dateKey.size() == 10 &&
+        statId == resource.data.posterId + "-" + resource.data.dateKey &&
+        exists(/databases/$(database)/documents/creatorPosters/$(resource.data.posterId)) &&
+        get(/databases/$(database)/documents/creatorPosters/$(resource.data.posterId)).data.status == "approved";
     }
 
     function validCommunityStatusCreate() {
@@ -766,7 +828,8 @@ service cloud.firestore {
     // Per-day creator performance counters for approved poster share/download actions.
     match /creatorPosterDailyStats/{statId} {
       allow create, update: if signedIn() && validCreatorPosterDailyStatsWrite(statId);
-      allow read, delete: if false;
+      allow read: if signedIn() && validCreatorPosterDailyStatsRead(statId);
+      allow delete: if false;
     }
 
     // Public app banners for home/category promotional surfaces.
@@ -908,6 +971,15 @@ service cloud.firestore {
     match /userQuizStats/{userId} {
       allow read: if isOwner(userId);
       allow create, update, delete: if false;
+    }
+
+    // User-owned quiz prize payout profile. Users can save only their own
+    // consent-based contact details; dashboard/backend reads through Admin SDK.
+    match /quizPrizeProfiles/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) &&
+        validQuizPrizeProfileWrite(userId);
+      allow delete: if false;
     }
 
     // Admin-only activity/audit history for dashboard actions.

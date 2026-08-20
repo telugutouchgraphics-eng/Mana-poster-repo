@@ -5,6 +5,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "createdByRole",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "creatorPosters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "creatorPublicId",
           "order": "ASCENDING"
         },

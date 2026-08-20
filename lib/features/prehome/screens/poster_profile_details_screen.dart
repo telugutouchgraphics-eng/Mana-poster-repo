@@ -272,26 +272,26 @@ class _PosterProfileDetailsScreenState
         _optimizeProfilePhotoBytes,
         originalBytes,
       );
-      final Uint8List? finalPhotoBytes = await _removePersonalPhotoBackground(
+      final personalPhotoRevision = DateTime.now().millisecondsSinceEpoch;
+      final finalPhotoBytes = await _removePersonalPhotoBackground(
         optimizedOriginalBytes,
       );
+      if (finalPhotoBytes == null) {
+        throw StateError('Personal photo background removal failed');
+      }
       final Directory dir = await getApplicationDocumentsDirectory();
-      final String stamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final String stamp = personalPhotoRevision.toString();
       final String originalTargetPath =
           '${dir.path}${Platform.pathSeparator}poster_profile_original_photo_$stamp.png';
+      final String cutoutTargetPath =
+          '${dir.path}${Platform.pathSeparator}poster_profile_photo_$stamp.png';
       final File originalLocalFile = File(originalTargetPath);
+      final File cutoutLocalFile = File(cutoutTargetPath);
       await originalLocalFile.writeAsBytes(optimizedOriginalBytes, flush: true);
-      String targetPath = '';
-      File? localFile;
-      if (finalPhotoBytes != null) {
-        targetPath =
-            '${dir.path}${Platform.pathSeparator}poster_profile_photo_$stamp.png';
-        localFile = File(targetPath);
-        await localFile.writeAsBytes(finalPhotoBytes, flush: true);
-      }
+      await cutoutLocalFile.writeAsBytes(finalPhotoBytes, flush: true);
       final Set<String> keepNewPersonalAssets = <String>{
         originalTargetPath,
-        if (targetPath.isNotEmpty) targetPath,
+        cutoutTargetPath,
       };
       await _deleteLocalAssetUnlessKept(
         _draftProfile.photoPath,
@@ -303,9 +303,8 @@ class _PosterProfileDetailsScreenState
       );
       final previousProfile = _draftProfile;
       await PosterProfileService.evictRemoteProfilePhotoCache(previousProfile);
-      final personalPhotoRevision = DateTime.now().millisecondsSinceEpoch;
       final updatedLocalProfile = _draftProfile.copyWith(
-        photoPath: targetPath,
+        photoPath: cutoutTargetPath,
         photoUrl: '',
         originalPhotoPath: originalTargetPath,
         originalPhotoUrl: '',
@@ -324,49 +323,17 @@ class _PosterProfileDetailsScreenState
       if (mounted) {
         setState(() {
           _draftProfile = updatedLocalProfile;
+          _personalPhotoBusy = false;
+          _pickerBusy = false;
         });
       }
-      final cloudSynced = await _syncPersonalPhotoUploads(
-        baseProfile: updatedLocalProfile,
-        originalLocalFile: originalLocalFile,
-        cutoutLocalFile: localFile,
+      unawaited(
+        _syncPersonalPhotoUploads(
+          baseProfile: updatedLocalProfile,
+          originalLocalFile: originalLocalFile,
+          cutoutLocalFile: cutoutLocalFile,
+        ),
       );
-      if (!cloudSynced && mounted) {
-        ScaffoldMessenger.of(context).showTopSnackBar(
-          AppSnackBar.build(
-            content: Text(
-              strings.localized(
-                telugu:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-                english:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-                hindi:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-                tamil:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-                kannada:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-                malayalam:
-                    'Photo saved on this device, but cloud sync failed. Check network and try again.',
-              ),
-            ),
-          ),
-        );
-      }
-      if (finalPhotoBytes == null && mounted) {
-        ScaffoldMessenger.of(context).showTopSnackBar(
-          AppSnackBar.build(
-            content: Text(
-              strings.localized(
-                telugu:
-                    'ఫోటో సేవ్ అయింది, కానీ background remove ఇంకా complete కాలేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
-                english:
-                    'Photo was saved, but background removal did not complete. Please try again after some time.',
-              ),
-            ),
-          ),
-        );
-      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -1045,7 +1012,9 @@ class _PosterProfileDetailsScreenState
                           ),
                           profile: _draftProfile,
                           fit: isBusiness ? BoxFit.contain : BoxFit.cover,
-                          preferOriginalPersonalPhoto: !isBusiness,
+                          preferOriginalPersonalPhoto: false,
+                          allowOriginalFallbackWhenCutoutUnavailable:
+                              isBusiness,
                           textScale: 1.18,
                         ),
                       ),

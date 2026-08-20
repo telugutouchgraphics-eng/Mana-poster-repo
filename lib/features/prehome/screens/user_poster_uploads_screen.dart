@@ -93,8 +93,8 @@ class _ApprovedUploadPosterCardState extends State<_ApprovedUploadPosterCard> {
   final ImagePicker _picker = ImagePicker();
   final SubscriptionBackendService _subscriptionService =
       SubscriptionBackendService.app();
-  final OfflineBackgroundRemovalService _backgroundRemovalService =
-      const OfflineBackgroundRemovalService();
+  final CloudFirstBackgroundRemovalService _backgroundRemovalService =
+      const CloudFirstBackgroundRemovalService();
   Future<_ApprovedTemplatePayload>? _payloadFuture;
   ImageStream? _imageStream;
   ImageStreamListener? _imageStreamListener;

@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui show Image, ImageByteFormat;
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:image_background_remover/image_background_remover.dart';
 
@@ -115,101 +111,19 @@ class OfflineBackgroundRemovalService {
   }
 }
 
-class CloudBackgroundRemovalService {
-  CloudBackgroundRemovalService({
-    FirebaseAuth? firebaseAuth,
-    FirebaseStorage? firebaseStorage,
-    http.Client? httpClient,
-  }) : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-       _firebaseStorage = firebaseStorage ?? FirebaseStorage.instance,
-       _httpClient = httpClient ?? http.Client();
+class CloudFirstBackgroundRemovalService {
+  const CloudFirstBackgroundRemovalService();
 
-  static const String _removeBgApiUrl = String.fromEnvironment(
-    'MANA_POSTER_REMOVE_BG_API_URL',
-    defaultValue: '',
-  );
-
-  final FirebaseAuth _firebaseAuth;
-  final FirebaseStorage _firebaseStorage;
-  final http.Client _httpClient;
-
-  bool get isConfigured => _removeBgApiUrl.trim().isNotEmpty;
+  Future<void> ensureReady() {
+    return const OfflineBackgroundRemovalService().ensureReady();
+  }
 
   Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
-    final endpoint = _removeBgApiUrl.trim();
-    if (endpoint.isEmpty) {
-      throw StateError('Cloud Remove BG endpoint is not configured');
-    }
+    return const OfflineBackgroundRemovalService().removeBackground(imageBytes);
+  }
 
-    final user = _firebaseAuth.currentUser;
-    if (user == null) {
-      throw StateError('Cloud Remove BG requires a signed-in user');
-    }
-
-    final uid = user.uid.trim();
-    if (uid.isEmpty) {
-      throw StateError('Cloud Remove BG requires a valid user id');
-    }
-
-    final jobId = DateTime.now().microsecondsSinceEpoch.toString();
-    final basePath = 'users/$uid/rembg_jobs/$jobId';
-    final inputPath = '$basePath/input.jpg';
-    final outputPath = '$basePath/output.png';
-    final inputRef = _firebaseStorage.ref(inputPath);
-
-    await inputRef.putData(
-      imageBytes,
-      SettableMetadata(contentType: 'image/jpeg'),
-    );
-
-    final idToken = await user.getIdToken();
-    final response = await _httpClient.post(
-      Uri.parse(endpoint),
-      headers: <String, String>{
-        'Authorization': 'Bearer $idToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(<String, dynamic>{
-        'inputPath': inputPath,
-        'outputPath': outputPath,
-        'deleteInput': true,
-      }),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        'Cloud Remove BG failed (${response.statusCode}): ${response.body}',
-      );
-    }
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
-      throw Exception('Cloud Remove BG failed: ${response.body}');
-    }
-
-    final downloadUrl = decoded['downloadUrl']?.toString().trim() ?? '';
-    Uint8List? outputBytes;
-    if (downloadUrl.isNotEmpty) {
-      final downloadResponse = await _httpClient.get(Uri.parse(downloadUrl));
-      if (downloadResponse.statusCode >= 200 &&
-          downloadResponse.statusCode < 300 &&
-          downloadResponse.bodyBytes.isNotEmpty) {
-        outputBytes = downloadResponse.bodyBytes;
-      }
-    }
-    outputBytes ??= await _firebaseStorage
-        .ref(outputPath)
-        .getData(50 * 1024 * 1024);
-    if (outputBytes == null || outputBytes.isEmpty) {
-      throw Exception('Cloud Remove BG output file is empty');
-    }
-
-    return BackgroundRemovalResult(
-      pngBytes: outputBytes,
-      engineLabel: 'cloud_rembg',
-      didRemoveBackground: true,
-      outputFilePath: outputPath,
-    );
+  Future<Uint8List> finalizeCutout(Uint8List pngBytes) {
+    return const OfflineBackgroundRemovalService().finalizeCutout(pngBytes);
   }
 }
 

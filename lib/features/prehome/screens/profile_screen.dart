@@ -22,6 +22,7 @@ import 'package:mana_poster/features/prehome/screens/notifications_settings_scre
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/purchase_invoices_screen.dart';
+import 'package:mana_poster/features/prehome/screens/quiz_prize_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -537,6 +538,7 @@ class _ProfileOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = item.onTap != null && !item.isBusy;
     final iconColor = item.isDestructive
         ? const Color(0xFFB91C1C)
         : const Color(0xFF0F172A);
@@ -564,12 +566,19 @@ class _ProfileOptionTile extends StatelessWidget {
               ),
             ),
             subtitle: null,
-            trailing: Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.black.withValues(alpha: 0.32),
-              size: 21,
-            ),
-            onTap: item.onTap ?? () {},
+            trailing: item.isBusy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.black.withValues(alpha: 0.32),
+                    size: 21,
+                  ),
+            enabled: enabled,
+            onTap: enabled ? item.onTap : null,
           ),
         ),
         if (showDivider)
@@ -664,7 +673,7 @@ class _ProfileOptionTile extends StatelessWidget {
   }
 }
 
-class _ProfileMoreScreen extends StatelessWidget {
+class _ProfileMoreScreen extends StatefulWidget {
   const _ProfileMoreScreen({
     required this.onShareApp,
     required this.onOpenRegionSelection,
@@ -678,6 +687,27 @@ class _ProfileMoreScreen extends StatelessWidget {
   final Future<void> Function(_ProfileCopy copy) onOpenReligionSelection;
   final Future<void> Function(_ProfileCopy copy) onLogout;
   final bool showAdPrivacyChoices;
+
+  @override
+  State<_ProfileMoreScreen> createState() => _ProfileMoreScreenState();
+}
+
+class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
+  bool _loggingOut = false;
+
+  Future<void> _handleLogout(_ProfileCopy copy) async {
+    if (_loggingOut) {
+      return;
+    }
+    setState(() => _loggingOut = true);
+    try {
+      await widget.onLogout(copy);
+    } finally {
+      if (mounted) {
+        setState(() => _loggingOut = false);
+      }
+    }
+  }
 
   Future<void> _openSubscriptionPlan(
     BuildContext context, {
@@ -827,7 +857,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.ios_share_rounded,
                   title: copy.shareAppTitle,
                   subtitle: copy.shareAppSubtitle,
-                  onTap: () => unawaited(onShareApp(copy)),
+                  onTap: () => unawaited(widget.onShareApp(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.language_rounded,
@@ -845,7 +875,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                   icon: Icons.map_rounded,
                   title: copy.stateTitle,
                   subtitle: copy.stateSubtitle,
-                  onTap: () => unawaited(onOpenRegionSelection(copy)),
+                  onTap: () => unawaited(widget.onOpenRegionSelection(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.location_on_outlined,
@@ -860,6 +890,18 @@ class _ProfileMoreScreen extends StatelessWidget {
                   subtitle: copy.subscriptionSubtitle,
                   badge: _ProfileItemBadge.premium,
                   onTap: () => unawaited(_openSubscriptionPlan(context)),
+                ),
+                _ProfileItemData(
+                  icon: Icons.emoji_events_rounded,
+                  title: copy.quizPrizeDetailsTitle,
+                  subtitle: copy.quizPrizeDetailsSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const QuizPrizeDetailsScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _ProfileItemData(
                   icon: Icons.receipt_long_rounded,
@@ -933,7 +975,7 @@ class _ProfileMoreScreen extends StatelessWidget {
                     AppPublicInfo.privacyPolicyUrl,
                   ),
                 ),
-                if (showAdPrivacyChoices)
+                if (widget.showAdPrivacyChoices)
                   _ProfileItemData(
                     icon: Icons.ads_click_outlined,
                     title: copy.adPrivacyChoicesTitle,
@@ -991,7 +1033,10 @@ class _ProfileMoreScreen extends StatelessWidget {
                   title: copy.logoutTitle,
                   subtitle: copy.logoutSubtitle,
                   isDestructive: true,
-                  onTap: () => unawaited(onLogout(copy)),
+                  isBusy: _loggingOut,
+                  onTap: _loggingOut
+                      ? null
+                      : () => unawaited(_handleLogout(copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.delete_forever_outlined,
@@ -1300,6 +1345,7 @@ class _ProfileItemData {
     required this.title,
     this.subtitle,
     this.isDestructive = false,
+    this.isBusy = false,
     this.badge,
     this.onTap,
   });
@@ -1308,6 +1354,7 @@ class _ProfileItemData {
   final String title;
   final String? subtitle;
   final bool isDestructive;
+  final bool isBusy;
   final _ProfileItemBadge? badge;
   final VoidCallback? onTap;
 }
@@ -1477,6 +1524,12 @@ class _ProfileCopy {
     tamil: 'பிளான் விவரங்களை பார்க்கவும்',
     kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
     malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
+  );
+  String get quizPrizeDetailsTitle =>
+      _localized(telugu: 'Quiz Prize Details', english: 'Quiz Prize Details');
+  String get quizPrizeDetailsSubtitle => _localized(
+    telugu: 'Winners verification కోసం WhatsApp మరియు bank details',
+    english: 'WhatsApp and bank details for winner verification',
   );
   String get purchaseInvoicesTitle => _localized(
     telugu: 'కొనుగోలు ఇన్వాయిసులు',

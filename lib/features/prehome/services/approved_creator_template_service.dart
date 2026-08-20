@@ -1,10 +1,12 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/services/ist_time_service.dart';
 import 'package:mana_poster/features/image_editor/models/editor_page_config.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
@@ -34,6 +36,8 @@ const Set<String> _hindiSharedContentRegionIds = <String>{
 };
 const String _appCreatorPostersFeedEndpoint =
     'https://asia-south1-mana-poster-ap.cloudfunctions.net/appCreatorPostersFeed';
+const String _recordPosterEngagementEndpoint =
+    'https://asia-south1-mana-poster-ap.cloudfunctions.net/recordPosterEngagement';
 
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
@@ -76,6 +80,19 @@ class ApprovedCreatorTemplateService {
   }
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
+
+  Future<bool> _ensureFirestoreReady({
+    Source source = Source.serverAndCache,
+  }) async {
+    if (_firestore != null || Firebase.apps.isNotEmpty) {
+      return true;
+    }
+    if (source == Source.cache) {
+      return false;
+    }
+    await FirebaseBootstrap.ensureInitialized();
+    return Firebase.apps.isNotEmpty;
+  }
 
   Future<String> _selectedRegionId() async {
     final region = await AppRegionService.loadSelection();
@@ -165,6 +182,16 @@ class ApprovedCreatorTemplateService {
     if (regionId.isEmpty || scanLimit <= 0) {
       return const <ApprovedCreatorTemplate>[];
     }
+    if (!await _ensureFirestoreReady(source: source)) {
+      if (source == Source.cache) {
+        return const <ApprovedCreatorTemplate>[];
+      }
+      return _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: '',
+        limit: scanLimit,
+      );
+    }
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
@@ -191,7 +218,12 @@ class ApprovedCreatorTemplateService {
         }
       }
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(mapped, docs, scanLimit, regionId);
+      final filtered = _filterPublished(
+        mapped,
+        docs,
+        scanLimit,
+        regionId,
+      );
       if (filtered.length >= scanLimit || source != Source.server) {
         return filtered.length <= scanLimit
             ? filtered
@@ -245,6 +277,16 @@ class ApprovedCreatorTemplateService {
     if (target.isEmpty || regionId.isEmpty) {
       return const <ApprovedCreatorTemplate>[];
     }
+    if (!await _ensureFirestoreReady(source: source)) {
+      if (_isKnownExactDynamicCategoryId(target) || source == Source.cache) {
+        return const <ApprovedCreatorTemplate>[];
+      }
+      return _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: target,
+        limit: scanLimit,
+      );
+    }
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
@@ -283,7 +325,14 @@ class ApprovedCreatorTemplateService {
       }
 
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(mapped, docs, scanLimit, regionId);
+      final filtered = _filterPublished(
+        mapped,
+        docs,
+        scanLimit,
+        regionId,
+        immediateDynamicCategoryId:
+            _isKnownExactDynamicCategoryId(target) ? target : '',
+      );
       if (filtered.isNotEmpty) {
         _debugLog(
           '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
@@ -291,6 +340,15 @@ class ApprovedCreatorTemplateService {
           'filtered=${filtered.length} fallbackScan=skipped source=$source',
         );
         return filtered;
+      }
+
+      if (_isKnownExactDynamicCategoryId(target)) {
+        _debugLog(
+          '[PosterFetch] categoryDirect target=$target queriedDocs=$queriedDocs '
+          'scannedDocs=$scannedDocs matchedDocs=${docs.length} '
+          'filtered=0 fallbackScan=blocked_dynamic_exact source=$source',
+        );
+        return const <ApprovedCreatorTemplate>[];
       }
 
       final fallbackDocs = await _scanApprovedTemplatesForCategory(
@@ -328,6 +386,9 @@ class ApprovedCreatorTemplateService {
         'ApprovedCreatorTemplateService.fetchAllApprovedTemplatesForCategory failed: $error',
         stackTrace,
       );
+      if (_isKnownExactDynamicCategoryId(target)) {
+        return const <ApprovedCreatorTemplate>[];
+      }
       if (source == Source.server) {
         final backendTemplates = await _fetchApprovedTemplatesFromBackend(
           regionId: regionId,
@@ -363,6 +424,16 @@ class ApprovedCreatorTemplateService {
     if (normalizedTarget.isEmpty || regionId.isEmpty) {
       return false;
     }
+    if (!await _ensureFirestoreReady(source: source)) {
+      if (_isKnownExactDynamicCategoryId(normalizedTarget) ||
+          source == Source.cache) {
+        return false;
+      }
+      return _hasPublishedTemplatesFromBackend(
+        categoryId: normalizedTarget,
+        regionId: regionId,
+      );
+    }
     try {
       final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
       final seenIds = <String>{};
@@ -390,6 +461,9 @@ class ApprovedCreatorTemplateService {
       }
 
       if (docs.isEmpty) {
+        if (_isKnownExactDynamicCategoryId(normalizedTarget)) {
+          return false;
+        }
         final fallbackDocs = await _scanApprovedTemplatesForCategory(
           categoryId: normalizedTarget,
           regionId: regionId,
@@ -419,9 +493,22 @@ class ApprovedCreatorTemplateService {
       }
 
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(mapped, docs, 8, regionId);
+      final filtered = _filterPublished(
+        mapped,
+        docs,
+        8,
+        regionId,
+        immediateDynamicCategoryId:
+            _isKnownExactDynamicCategoryId(normalizedTarget)
+                ? normalizedTarget
+                : '',
+      );
       if (filtered.isNotEmpty) {
         return true;
+      }
+
+      if (_isKnownExactDynamicCategoryId(normalizedTarget)) {
+        return false;
       }
 
       final fallbackDocs = await _scanApprovedTemplatesForCategory(
@@ -455,6 +542,9 @@ class ApprovedCreatorTemplateService {
         'ApprovedCreatorTemplateService.hasPublishedTemplatesForExactCategory failed: $error',
         stackTrace,
       );
+      if (_isKnownExactDynamicCategoryId(normalizedTarget)) {
+        return false;
+      }
       return _hasPublishedTemplatesFromBackend(
         categoryId: normalizedTarget,
         regionId: regionId,
@@ -483,7 +573,7 @@ class ApprovedCreatorTemplateService {
     Source source = Source.serverAndCache,
     bool allowFallbackMerge = true,
   }) async {
-    if (_firestore == null && Firebase.apps.isEmpty) {
+    if (!await _ensureFirestoreReady(source: source)) {
       return const ApprovedCreatorTemplatePage(
         templates: <ApprovedCreatorTemplate>[],
         lastDocument: null,
@@ -687,7 +777,7 @@ class ApprovedCreatorTemplateService {
     int pageSize = 5,
     QueryDocumentSnapshot<Map<String, dynamic>>? startAfterDocument,
   }) async {
-    if (_firestore == null && Firebase.apps.isEmpty) {
+    if (!await _ensureFirestoreReady(source: Source.cache)) {
       return const ApprovedCreatorTemplatePage(
         templates: <ApprovedCreatorTemplate>[],
         lastDocument: null,
@@ -1081,6 +1171,35 @@ class ApprovedCreatorTemplateService {
     return output.where((item) => item.isNotEmpty).toSet();
   }
 
+  bool _isKnownExactDynamicCategoryId(String value) {
+    final normalized = _normalizeTag(value);
+    if (normalized.isEmpty) {
+      return false;
+    }
+    const metaDynamicCategoryIds = <String>{
+      'festival',
+      'jayanthi',
+      'vardhanthi',
+      'important_day',
+      'regional_special',
+    };
+    if (metaDynamicCategoryIds.contains(normalized)) {
+      return true;
+    }
+    if (normalized.startsWith('weekday_') &&
+        normalized.endsWith('_special') &&
+        normalized != 'weekday_special') {
+      return true;
+    }
+    for (final event in _dynamicEventRepository.loadEvents()) {
+      if (normalized == _normalizeTag(event.id) ||
+          normalized == _normalizeTag(event.slug)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   List<String> _categoryQueryCandidates(String value) {
     final normalized = _normalizeTag(value);
     final candidates = <String>{
@@ -1171,10 +1290,12 @@ class ApprovedCreatorTemplateService {
     List<ApprovedCreatorTemplate> templates,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     int maxItems,
-    String selectedRegionId,
-  ) {
+    String selectedRegionId, {
+    String immediateDynamicCategoryId = '',
+  }) {
     final now = IstTimeService.nowEpochMillis();
     final nowDate = IstTimeService.now();
+    final immediateDynamicTarget = _normalizeTag(immediateDynamicCategoryId);
     final activeDynamicTags = _activeDynamicTagsForDate(
       nowDate,
       selectedRegionId,
@@ -1207,11 +1328,18 @@ class ApprovedCreatorTemplateService {
       }
       final publishAt = publishMap[template.id] ?? 0;
       final eventEndAt = eventEndMap[template.id] ?? 0;
+      final isImmediateDynamicTarget =
+          immediateDynamicTarget.isNotEmpty &&
+          category == immediateDynamicTarget &&
+          _isKnownExactDynamicCategoryId(category);
       var visibleFrom = publishAt > 0 ? publishAt : template.createdAtMillis;
       if (visibleFrom <= 0) {
         visibleFrom = now;
       }
-      if (visibleFrom > now) {
+      if (isImmediateDynamicTarget && template.createdAtMillis > 0) {
+        visibleFrom = template.createdAtMillis;
+      }
+      if (!isImmediateDynamicTarget && visibleFrom > now) {
         if (collectDebugCounts) {
           publishHiddenByCategory![category] =
               (publishHiddenByCategory[category] ?? 0) + 1;
@@ -1248,12 +1376,14 @@ class ApprovedCreatorTemplateService {
         }
         continue;
       }
-      final dynamicVisible = _isTemplateDynamicCategoryVisible(
-        template.categoryId,
-        activeDynamicTags,
-        knownDynamicTags,
-        nowDate,
-      );
+      final dynamicVisible =
+          isImmediateDynamicTarget ||
+          _isTemplateDynamicCategoryVisible(
+            template.categoryId,
+            activeDynamicTags,
+            knownDynamicTags,
+            nowDate,
+          );
       if (!dynamicVisible) {
         if (collectDebugCounts) {
           dynamicHiddenByCategory![category] =
@@ -1463,7 +1593,7 @@ class ApprovedCreatorTemplateService {
     if (safePosterId.isEmpty) {
       return null;
     }
-    if (_firestore == null && Firebase.apps.isEmpty) {
+    if (!await _ensureFirestoreReady()) {
       return null;
     }
     try {
@@ -1499,60 +1629,42 @@ class ApprovedCreatorTemplateService {
     if (safePosterId.isEmpty) {
       return;
     }
-    if (_firestore == null && Firebase.apps.isEmpty) {
+    if (!await _ensureFirestoreReady()) {
       return;
     }
     try {
-      final firestore = _firestore ?? FirebaseFirestore.instance;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final batch = firestore.batch();
-      final posterRef = firestore
-          .collection('creatorPosters')
-          .doc(safePosterId);
-      batch.update(posterRef, {
-        isShare ? 'shareCount' : 'downloadCount': FieldValue.increment(1),
-        'engagementCount': FieldValue.increment(1),
-        'updatedAt': now,
-      });
-      final safeCreatorPublicId = creatorPublicId.trim();
-      if (safeCreatorPublicId.isNotEmpty) {
-        final dateKey = _istDayKey(now);
-        final statsRef = firestore
-            .collection('creatorPosterDailyStats')
-            .doc('$safePosterId-$dateKey');
-        final statsSnapshot = await statsRef.get();
-        batch.set(statsRef, {
-          'creatorPublicId': safeCreatorPublicId,
-          'posterId': safePosterId,
-          'templateId': safePosterId,
-          'posterTitle': posterTitle.trim().isNotEmpty
-              ? posterTitle.trim()
-              : 'Poster',
-          'categoryId': categoryId.trim(),
-          'categoryLabel': categoryLabel.trim(),
-          'regionId': regionId.trim(),
-          'dateKey': dateKey,
-          'shareCount': FieldValue.increment(isShare ? 1 : 0),
-          'downloadCount': FieldValue.increment(isShare ? 0 : 1),
-          'totalEngagement': FieldValue.increment(1),
-          'updatedAt': now,
-          'createdAt': statsSnapshot.data()?['createdAt'] ?? now,
-        }, SetOptions(merge: true));
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
+      if (token == null || token.isEmpty) {
+        return;
       }
-      await batch.commit();
+      final response = await http
+          .post(
+            Uri.parse(_recordPosterEngagementEndpoint),
+            headers: <String, String>{
+              'authorization': 'Bearer $token',
+              'content-type': 'application/json',
+            },
+            body: jsonEncode(<String, Object?>{
+              'posterId': safePosterId,
+              'action': isShare ? 'share' : 'download',
+              'creatorPublicId': creatorPublicId.trim(),
+              'posterTitle': posterTitle.trim(),
+              'categoryId': categoryId.trim(),
+              'categoryLabel': categoryLabel.trim(),
+              'regionId': regionId.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _debugLog(
+          'poster engagement backend update failed: ${response.statusCode}',
+        );
+      }
     } catch (error, stackTrace) {
       _debugLogStack('poster engagement update failed: $error', stackTrace);
       // Best-effort analytics only; sharing/downloading must never be blocked.
     }
-  }
-
-  String _istDayKey(int epochMillis) {
-    final ist = IstTimeService.toIst(
-      DateTime.fromMillisecondsSinceEpoch(epochMillis),
-    );
-    final month = ist.month.toString().padLeft(2, '0');
-    final day = ist.day.toString().padLeft(2, '0');
-    return '${ist.year}-$month-$day';
   }
 
   CreatorPosterPersonalization _parsePersonalization(Object? raw) {

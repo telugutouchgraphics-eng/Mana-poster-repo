@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -39,6 +40,10 @@ const bool _profileFrames = bool.fromEnvironment(
 );
 const bool _enableNonEssentialProfileStartupServices = bool.fromEnvironment(
   'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
+  defaultValue: false,
+);
+const bool _enableMetaDebugLogging = bool.fromEnvironment(
+  'MANA_POSTER_META_DEBUG_LOGGING',
   defaultValue: false,
 );
 AppLifecycleListener? _subscriptionLifecycleListener;
@@ -79,9 +84,7 @@ Future<void> main() async {
         _attachFrameProfiler();
       }
       if (!kIsWeb) {
-        await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-          DeviceOrientation.portraitUp,
-        ]);
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       }
 
       runApp(const ManaPosterApp(initialLanguage: AppLanguage.english));
@@ -89,6 +92,9 @@ Future<void> main() async {
         FlutterNativeSplash.remove();
         if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
           unawaited(_hideSystemUiAfterFirstFrame());
+        }
+        if (!kIsWeb) {
+          unawaited(_logMetaLaunchTestEvent());
         }
         unawaited(_runDeferredPostSplashInitialization());
       });
@@ -121,6 +127,34 @@ Future<void> main() async {
   );
 }
 
+Future<void> _logMetaLaunchTestEvent() async {
+  if (kIsWeb) {
+    return;
+  }
+  try {
+    final facebookAppEvents = FacebookAppEvents();
+    if (_enableMetaDebugLogging) {
+      await facebookAppEvents.setDebugLoggingEnabled(true);
+    }
+    await facebookAppEvents.setAutoLogAppEventsEnabled(true);
+    await facebookAppEvents.activateApp();
+    await facebookAppEvents.logEvent(
+      name: 'meta_test_event',
+      parameters: <String, Object>{
+        'source': 'app_launch',
+      },
+    );
+    await facebookAppEvents.flush();
+  } catch (error, stackTrace) {
+    developer.log(
+      'Meta app launch test event failed: $error',
+      name: 'app.meta',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+}
+
 Future<void> _hideSystemUiAfterFirstFrame() async {
   await Future<void>.delayed(const Duration(milliseconds: 120));
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -137,7 +171,7 @@ Future<void> _runDeferredPostSplashInitialization() async {
     await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 8));
   } catch (_) {}
   await Future<void>.delayed(
-    kReleaseMode ? const Duration(seconds: 5) : const Duration(seconds: 14),
+    kReleaseMode ? const Duration(seconds: 12) : const Duration(seconds: 14),
   );
   await _runPostFirstFrameInitialization();
 }

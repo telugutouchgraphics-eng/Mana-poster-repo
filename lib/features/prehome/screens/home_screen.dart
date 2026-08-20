@@ -1390,7 +1390,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool get _shouldRunRemoteHomeStartupTasks =>
       _remoteHomeStartupAllowed || _enableDebugHomeStartupServices;
 
-  static const int _dynamicMorePreviewDays = 3;
+  static const int _dynamicMorePreviewDays = 7;
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService();
   final DynamicCategoryService _dynamicPreviewCategoryService =
@@ -3995,66 +3995,13 @@ class _HomeScreenState extends State<HomeScreen>
       category.effectiveSelectionSlug,
     );
     final normalizedSlug = _normalizeTag(category.slug);
-    final weekdaySlug = normalizedSelectionSlug.isNotEmpty
+    final exactSlug = normalizedSelectionSlug.isNotEmpty
         ? normalizedSelectionSlug
         : normalizedSlug;
-    if (weekdaySlug.isEmpty) {
+    if (exactSlug.isEmpty) {
       return const <String>{};
     }
-    if (_isWeekdaySpecialCategorySlug(weekdaySlug)) {
-      return <String>{weekdaySlug};
-    }
-    const broadDynamicTags = <String>{
-      'festival',
-      'festivals',
-      'jayanthi',
-      'jayanthulu',
-      'vardhanthi',
-      'vardhanthulu',
-      'birthday',
-      'birthdays',
-      'devotional',
-      'important_day',
-      'special_day',
-      'regional_special',
-      'weekday_special',
-      'global',
-      'india',
-      'andhra_pradesh',
-      'telangana',
-      'both_telugu_states',
-    };
-    final output = <String>{};
-
-    void addValue(String raw) {
-      final normalized = _normalizeTag(raw);
-      if (normalized.isEmpty || broadDynamicTags.contains(normalized)) {
-        return;
-      }
-      output.add(normalized);
-      output.addAll(
-        _expandCategoryAliases(
-          normalized,
-        ).where((alias) => !broadDynamicTags.contains(alias)),
-      );
-    }
-
-    addValue(category.effectiveSelectionSlug);
-    addValue(category.slug);
-    addValue(category.label);
-    for (final tag in category.presenceTags) {
-      addValue(tag);
-    }
-    for (final tag in category.matchTags) {
-      addValue(tag);
-    }
-    return output;
-  }
-
-  bool _isWeekdaySpecialCategorySlug(String slug) {
-    return slug.startsWith('weekday_') &&
-        slug.endsWith('_special') &&
-        slug != 'weekday_special';
+    return <String>{exactSlug, if (normalizedSlug.isNotEmpty) normalizedSlug};
   }
 
   bool _hasVisibleTemplateForCategoryChip(DynamicCategory category) {
@@ -7567,131 +7514,6 @@ class _HomeScreenState extends State<HomeScreen>
     return null;
   }
 
-  Future<void> _openUserUploadsSheet() async {
-    if (!mounted) {
-      return;
-    }
-    final strings = context.strings;
-    await showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        Future<void> openUploadPoster() async {
-          Navigator.of(sheetContext).pop();
-          if (!mounted) {
-            return;
-          }
-          await _openMyUploadsRoute(context);
-        }
-
-        Future<void> openUploadStatus() async {
-          Navigator.of(sheetContext).pop();
-          if (!mounted) {
-            return;
-          }
-          await Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const CommunityStatusUploadScreen(),
-            ),
-          );
-        }
-
-        Widget action({
-          required String label,
-          required IconData icon,
-          required Color color,
-          required VoidCallback onTap,
-        }) {
-          return InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(999),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.58),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x33000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 28),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: action(
-                    icon: Icons.cloud_upload_rounded,
-                    color: const Color(0xFFD81B60),
-                    label: strings.localized(
-                      telugu: 'Upload Poster',
-                      english: 'Upload Poster',
-                    ),
-                    onTap: () => unawaited(openUploadPoster()),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: action(
-                    icon: Icons.auto_awesome_rounded,
-                    color: const Color(0xFF0F766E),
-                    label: strings.localized(
-                      telugu: 'Upload Status',
-                      english: 'Upload Status',
-                    ),
-                    onTap: () => unawaited(openUploadStatus()),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _handlePromoTap(
     _HomePromoCardType type, {
     String ctaTarget = '',
@@ -8346,17 +8168,6 @@ class _HomeScreenState extends State<HomeScreen>
         _categoryLoadingSlug == activeCategorySlug && templates.isEmpty;
     final mediaSize = MediaQuery.sizeOf(context);
     final useCompactLandscapeHome = mediaSize.width > mediaSize.height;
-    final safePadding = MediaQuery.paddingOf(context);
-    final uploadTabMinTop = safePadding.top + 220;
-    final uploadTabMaxTop = mediaSize.height - safePadding.bottom - 260;
-    final uploadTabPreferredTop = mediaSize.height * 0.32;
-    final uploadTabTop = uploadTabMaxTop >= uploadTabMinTop
-        ? uploadTabPreferredTop
-              .clamp(uploadTabMinTop, uploadTabMaxTop)
-              .toDouble()
-        : uploadTabPreferredTop
-              .clamp(0.0, math.max(0.0, mediaSize.height - safePadding.bottom))
-              .toDouble();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
@@ -8543,64 +8354,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
-          PositionedDirectional(
-            top: uploadTabTop,
-            end: 0,
-            child: _CommunityUploadEdgeTab(
-              onTap: () => unawaited(_openUserUploadsSheet()),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _CommunityUploadEdgeTab extends StatelessWidget {
-  const _CommunityUploadEdgeTab({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      left: false,
-      child: Material(
-        color: Colors.transparent,
-        child: Tooltip(
-          message: 'Community Uploads',
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: const BorderRadius.horizontal(
-              left: Radius.circular(14),
-            ),
-            child: Container(
-              width: 36,
-              height: 58,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.86),
-                borderRadius: const BorderRadiusDirectional.horizontal(
-                  start: Radius.circular(14),
-                ),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x1A0F172A),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.cloud_upload_rounded,
-                  color: Color(0xFFD81B60),
-                  size: 21,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -15452,8 +15206,8 @@ class _TemplateFeedItem extends StatefulWidget {
 
 class _TemplateFeedItemState extends State<_TemplateFeedItem>
     with AutomaticKeepAliveClientMixin<_TemplateFeedItem> {
-  static const OfflineBackgroundRemovalService _backgroundRemovalService =
-      OfflineBackgroundRemovalService();
+  static const CloudFirstBackgroundRemovalService _backgroundRemovalService =
+      CloudFirstBackgroundRemovalService();
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
   static const List<String> _randomPosterNameFonts = <String>[
@@ -15522,6 +15276,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   Future<void>? _politicalProtocolPhotoLoadFuture;
   ValueNotifier<List<String>>? _manualProtocolPhotoNotifier;
   ValueNotifier<List<PoliticalProtocolSlot>>? _manualProtocolPhotoSlotNotifier;
+  bool _directTrialPurchaseBusy = false;
 
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
@@ -17800,35 +17555,135 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return refreshedEffectiveIsPro;
   }
 
-  Future<void> _openSubscriptionPlanFromFreeExportChoice() async {
-    await onOpenSubscriptionPlan(startPurchaseOnOpen: true);
-    if (!mounted) {
+  Future<void> _startDirectTrialPurchaseFromFreeExportChoice() async {
+    if (_directTrialPurchaseBusy || !mounted) {
       return;
     }
+    setState(() => _directTrialPurchaseBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final purchaseGateway = InAppPurchaseGateway();
+    try {
+      await purchaseGateway.initialize();
+      if (!mounted) {
+        return;
+      }
+      final outcome = await purchaseGateway.purchaseMonthlyPro();
+      if (!mounted) {
+        return;
+      }
 
-    var result = await _subscriptionBackendService.fetchEntitlement(
-      forceRefresh: true,
-    );
-    if (!mounted) {
-      return;
-    }
-    if (!result.hasAccess) {
-      result = await _subscriptionBackendService
+      if (outcome.result != PurchaseFlowResult.success ||
+          outcome.evidence == null) {
+        if (outcome.result != PurchaseFlowResult.cancelled) {
+          _showSnack(messenger, _directTrialPurchaseMessage(outcome.result));
+        }
+        if (mounted) {
+          setState(() => _directTrialPurchaseBusy = false);
+        }
+        await showSubscriptionExitVideoPromptIfAvailable(
+          context,
+          onSubscribe: (_) => _startDirectTrialPurchaseFromFreeExportChoice(),
+        );
+        return;
+      }
+
+      final verification = await _verifyDirectTrialPurchaseWithRetry(
+        outcome.evidence!,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (!verification.hasAccess) {
+        _showSnack(
+          messenger,
+          verification.message?.trim().isNotEmpty == true
+              ? verification.message!.trim()
+              : context.strings.localized(
+                  telugu: 'Subscription verification failed',
+                  english: 'Subscription verification failed',
+                ),
+        );
+        if (mounted) {
+          setState(() => _directTrialPurchaseBusy = false);
+        }
+        await showSubscriptionExitVideoPromptIfAvailable(
+          context,
+          onSubscribe: (_) => _startDirectTrialPurchaseFromFreeExportChoice(),
+        );
+        return;
+      }
+
+      await outcome.evidence!.completeStorePurchase();
+      final refreshed = await _subscriptionBackendService
           .fetchFreshEntitlementWithRetry();
       if (!mounted) {
         return;
       }
+      await _showSubscriptionThanksVideoPromptOnceFromHome(
+        refreshed.hasAccess ? refreshed : verification,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _directTrialPurchaseBusy = false);
+      }
     }
+  }
 
-    if (result.hasAccess) {
-      await _showSubscriptionThanksVideoPromptOnceFromHome(result);
-      return;
+  Future<SubscriptionBackendResult> _verifyDirectTrialPurchaseWithRetry(
+    PurchaseVerificationEvidence evidence,
+  ) async {
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+      Duration(seconds: 6),
+    ];
+    SubscriptionBackendResult? lastResult;
+    for (final delay in delays) {
+      if (delay > Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
+      lastResult = await _subscriptionBackendService.verifyPurchase(
+        evidence: evidence,
+      );
+      if (lastResult.hasAccess) {
+        return lastResult;
+      }
     }
+    return lastResult ??
+        const SubscriptionBackendResult(
+          state: SubscriptionBackendState.failed,
+          message: 'Subscription verification failed',
+        );
+  }
 
-    await showSubscriptionExitVideoPromptIfAvailable(
-      context,
-      onSubscribe: (_) => onOpenSubscriptionPlan(startPurchaseOnOpen: true),
-    );
+  String _directTrialPurchaseMessage(PurchaseFlowResult result) {
+    return switch (result) {
+      PurchaseFlowResult.pending => context.strings.localized(
+        telugu: 'Payment pending lo undi',
+        english: 'Payment is pending',
+      ),
+      PurchaseFlowResult.billingUnavailable => context.strings.localized(
+        telugu: 'Billing service available ledu',
+        english: 'Billing service is unavailable',
+      ),
+      PurchaseFlowResult.productNotFound => context.strings.localized(
+        telugu: 'Subscription plan dorakaledu',
+        english: 'Subscription plan was not found',
+      ),
+      PurchaseFlowResult.timedOut => context.strings.localized(
+        telugu: 'Payment time out ayindi',
+        english: 'Payment timed out',
+      ),
+      PurchaseFlowResult.purchaseInProgress => context.strings.localized(
+        telugu: 'Payment already progress lo undi',
+        english: 'Payment is already in progress',
+      ),
+      _ => context.strings.localized(
+        telugu: 'Payment complete avvaledu',
+        english: 'Payment was not completed',
+      ),
+    };
   }
 
   Future<void> _showSubscriptionThanksVideoPromptOnceFromHome(
@@ -18278,7 +18133,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                     ? null
                                     : () async {
                                         Navigator.of(sheetContext).pop();
-                                        await _openSubscriptionPlanFromFreeExportChoice();
+                                        await _startDirectTrialPurchaseFromFreeExportChoice();
                                       },
                                 preview: _buildPosterPreview(
                                   isPhotoVisible: true,
@@ -21313,10 +21168,6 @@ class _FreeExportPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveMessage =
-        actionLabel == '${SubscriptionPlanConfig.trialPriceDisplay} Trial plan'
-        ? 'Share with photo and name'
-        : message;
     final content = LayoutBuilder(
       builder: (context, constraints) {
         final previewWidth = (constraints.maxWidth * 0.44)
@@ -21357,7 +21208,7 @@ class _FreeExportPreviewCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        effectiveMessage,
+                        message,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

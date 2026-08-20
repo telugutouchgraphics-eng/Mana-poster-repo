@@ -12,9 +12,11 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
+import 'package:mana_poster/features/prehome/screens/quiz_prize_details_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/daily_quiz_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/services/quiz_prize_details_service.dart';
 
 enum _QuizSvgIconKind {
   quiz,
@@ -139,81 +141,84 @@ class _QuizCopy {
   static String share(AppStrings strings) =>
       strings.localized(telugu: 'షేర్', english: 'Share');
 
-  static String shareMessage(AppStrings strings, String score, String appLink) =>
-      strings.localized(
-        telugu:
-            'Mana Poster AI లో ప్రతిరోజూ కొత్త పోస్టర్లు, సరదా క్విజ్‌లు మీకోసం.\n'
-            'నా క్విజ్ స్కోర్: $score\n'
-            'యాప్ డౌన్‌లోడ్: $appLink',
-        english:
-            'New posters and fun quizzes every day on Mana Poster AI.\n'
-            'My quiz score: $score\n'
-            'Download app: $appLink',
-        hindi:
-            'Mana Poster AI ऐप में रोज़ाना पोस्टर बनाएं और क्विज़ खेलें.\n'
-            'मेरा क्विज़ स्कोर: $score\n'
-            'ऐप डाउनलोड: $appLink',
-        tamil:
-            'Mana Poster AI செயலியில் தினசரி போஸ்டர்கள் உருவாக்கி வினாடி வினா விளையாடுங்கள்.\n'
-            'என் வினாடி வினா மதிப்பெண்: $score\n'
-            'செயலி பதிவிறக்கம்: $appLink',
-        kannada:
-            'Mana Poster AI ಆಪ್‌ನಲ್ಲಿ ದೈನಂದಿನ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ರಚಿಸಿ, ಕ್ವಿಜ್ ಆಡಿ.\n'
-            'ನನ್ನ ಕ್ವಿಜ್ ಸ್ಕೋರ್: $score\n'
-            'ಆಪ್ ಡೌನ್‌ಲೋಡ್: $appLink',
-        malayalam:
-            'Mana Poster AI ആപ്പിൽ ദിനംപ്രതി പോസ്റ്ററുകൾ സൃഷ്ടിച്ച് ക്വിസ് കളിക്കൂ.\n'
-            'എന്റെ ക്വിസ് സ്കോർ: $score\n'
-            'ആപ്പ് ഡൗൺലോഡ്: $appLink',
-        assamese:
-            'Mana Poster AI এপত দৈনিক পোষ্টাৰ বনাওক আৰু কুইজ খেলক.\n'
-            'মোৰ কুইজ স্ক’ৰ: $score\n'
-            'এপ ডাউনলোড: $appLink',
-        konkani:
-            'Mana Poster AI अ‍ॅपांत रोजचे पोस्टर तयार करात आनी क्विझ खेळात.\n'
-            'म्हजो क्विझ स्कोर: $score\n'
-            'अ‍ॅप डाउनलोड: $appLink',
-        gujarati:
-            'Mana Poster AI એપમાં રોજના પોસ્ટર બનાવો અને ક્વિઝ રમો.\n'
-            'મારો ક્વિઝ સ્કોર: $score\n'
-            'એપ ડાઉનલોડ: $appLink',
-        marathi:
-            'Mana Poster AI अ‍ॅपमध्ये रोजचे पोस्टर तयार करा आणि क्विझ खेळा.\n'
-            'माझा क्विझ स्कोर: $score\n'
-            'अ‍ॅप डाउनलोड: $appLink',
-        meitei:
-            'Mana Poster AI app-da daily poster sem-u amasung quiz saan-u.\n'
-            'Eigi quiz score: $score\n'
-            'App download: $appLink',
-        mizo:
-            'Mana Poster AI app-ah daily poster siam la, quiz khel rawh.\n'
-            'Ka quiz score: $score\n'
-            'App download: $appLink',
-        odia:
-            'Mana Poster AI ଆପ୍‌ରେ ଦୈନିକ ପୋଷ୍ଟର ତିଆରି କରନ୍ତୁ ଏବଂ କ୍ୱିଜ୍ ଖେଳନ୍ତୁ.\n'
-            'ମୋ କ୍ୱିଜ୍ ସ୍କୋର: $score\n'
-            'ଆପ୍ ଡାଉନଲୋଡ୍: $appLink',
-        punjabi:
-            'Mana Poster AI ਐਪ ਵਿੱਚ ਰੋਜ਼ਾਨਾ ਪੋਸਟਰ ਬਣਾਓ ਅਤੇ ਕਵਿਜ਼ ਖੇਡੋ.\n'
-            'ਮੇਰਾ ਕਵਿਜ਼ ਸਕੋਰ: $score\n'
-            'ਐਪ ਡਾਊਨਲੋਡ: $appLink',
-        nepali:
-            'Mana Poster AI एपमा दैनिक पोस्टर बनाउनुहोस् र क्विज खेल्नुहोस्.\n'
-            'मेरो क्विज स्कोर: $score\n'
-            'एप डाउनलोड: $appLink',
-        bengali:
-            'Mana Poster AI অ্যাপে প্রতিদিনের পোস্টার তৈরি করুন এবং কুইজ খেলুন.\n'
-            'আমার কুইজ স্কোর: $score\n'
-            'অ্যাপ ডাউনলোড: $appLink',
-        kashmiri:
-            'Mana Poster AI ایپ منز روزانہ پوسٹر بنٲویو تہ کوئز کھیلیو.\n'
-            'میون کوئز سکور: $score\n'
-            'ایپ ڈاؤنلوڈ: $appLink',
-        ladakhi:
-            'Mana Poster AI app ནང་ཉིན་རེའི་ poster བཟོས་ནས quiz རྩེད།\n'
-            'ངའི quiz score: $score\n'
-            'App download: $appLink',
-      );
+  static String shareMessage(
+    AppStrings strings,
+    String score,
+    String appLink,
+  ) => strings.localized(
+    telugu:
+        'Mana Poster AI లో ప్రతిరోజూ కొత్త పోస్టర్లు, సరదా క్విజ్‌లు మీకోసం.\n'
+        'నా క్విజ్ స్కోర్: $score\n'
+        'యాప్ డౌన్‌లోడ్: $appLink',
+    english:
+        'New posters and fun quizzes every day on Mana Poster AI.\n'
+        'My quiz score: $score\n'
+        'Download app: $appLink',
+    hindi:
+        'Mana Poster AI ऐप में रोज़ाना पोस्टर बनाएं और क्विज़ खेलें.\n'
+        'मेरा क्विज़ स्कोर: $score\n'
+        'ऐप डाउनलोड: $appLink',
+    tamil:
+        'Mana Poster AI செயலியில் தினசரி போஸ்டர்கள் உருவாக்கி வினாடி வினா விளையாடுங்கள்.\n'
+        'என் வினாடி வினா மதிப்பெண்: $score\n'
+        'செயலி பதிவிறக்கம்: $appLink',
+    kannada:
+        'Mana Poster AI ಆಪ್‌ನಲ್ಲಿ ದೈನಂದಿನ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ರಚಿಸಿ, ಕ್ವಿಜ್ ಆಡಿ.\n'
+        'ನನ್ನ ಕ್ವಿಜ್ ಸ್ಕೋರ್: $score\n'
+        'ಆಪ್ ಡೌನ್‌ಲೋಡ್: $appLink',
+    malayalam:
+        'Mana Poster AI ആപ്പിൽ ദിനംപ്രതി പോസ്റ്ററുകൾ സൃഷ്ടിച്ച് ക്വിസ് കളിക്കൂ.\n'
+        'എന്റെ ക്വിസ് സ്കോർ: $score\n'
+        'ആപ്പ് ഡൗൺലോഡ്: $appLink',
+    assamese:
+        'Mana Poster AI এপত দৈনিক পোষ্টাৰ বনাওক আৰু কুইজ খেলক.\n'
+        'মোৰ কুইজ স্ক’ৰ: $score\n'
+        'এপ ডাউনলোড: $appLink',
+    konkani:
+        'Mana Poster AI अ‍ॅपांत रोजचे पोस्टर तयार करात आनी क्विझ खेळात.\n'
+        'म्हजो क्विझ स्कोर: $score\n'
+        'अ‍ॅप डाउनलोड: $appLink',
+    gujarati:
+        'Mana Poster AI એપમાં રોજના પોસ્ટર બનાવો અને ક્વિઝ રમો.\n'
+        'મારો ક્વિઝ સ્કોર: $score\n'
+        'એપ ડાઉનલોડ: $appLink',
+    marathi:
+        'Mana Poster AI अ‍ॅपमध्ये रोजचे पोस्टर तयार करा आणि क्विझ खेळा.\n'
+        'माझा क्विझ स्कोर: $score\n'
+        'अ‍ॅप डाउनलोड: $appLink',
+    meitei:
+        'Mana Poster AI app-da daily poster sem-u amasung quiz saan-u.\n'
+        'Eigi quiz score: $score\n'
+        'App download: $appLink',
+    mizo:
+        'Mana Poster AI app-ah daily poster siam la, quiz khel rawh.\n'
+        'Ka quiz score: $score\n'
+        'App download: $appLink',
+    odia:
+        'Mana Poster AI ଆପ୍‌ରେ ଦୈନିକ ପୋଷ୍ଟର ତିଆରି କରନ୍ତୁ ଏବଂ କ୍ୱିଜ୍ ଖେଳନ୍ତୁ.\n'
+        'ମୋ କ୍ୱିଜ୍ ସ୍କୋର: $score\n'
+        'ଆପ୍ ଡାଉନଲୋଡ୍: $appLink',
+    punjabi:
+        'Mana Poster AI ਐਪ ਵਿੱਚ ਰੋਜ਼ਾਨਾ ਪੋਸਟਰ ਬਣਾਓ ਅਤੇ ਕਵਿਜ਼ ਖੇਡੋ.\n'
+        'ਮੇਰਾ ਕਵਿਜ਼ ਸਕੋਰ: $score\n'
+        'ਐਪ ਡਾਊਨਲੋਡ: $appLink',
+    nepali:
+        'Mana Poster AI एपमा दैनिक पोस्टर बनाउनुहोस् र क्विज खेल्नुहोस्.\n'
+        'मेरो क्विज स्कोर: $score\n'
+        'एप डाउनलोड: $appLink',
+    bengali:
+        'Mana Poster AI অ্যাপে প্রতিদিনের পোস্টার তৈরি করুন এবং কুইজ খেলুন.\n'
+        'আমার কুইজ স্কোর: $score\n'
+        'অ্যাপ ডাউনলোড: $appLink',
+    kashmiri:
+        'Mana Poster AI ایپ منز روزانہ پوسٹر بنٲویو تہ کوئز کھیلیو.\n'
+        'میون کوئز سکور: $score\n'
+        'ایپ ڈاؤنلوڈ: $appLink',
+    ladakhi:
+        'Mana Poster AI app ནང་ཉིན་རེའི་ poster བཟོས་ནས quiz རྩེད།\n'
+        'ངའི quiz score: $score\n'
+        'App download: $appLink',
+  );
 
   static String download(AppStrings strings) =>
       strings.localized(telugu: 'డౌన్లోడ్', english: 'Download');
@@ -847,6 +852,8 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
           ),
         );
       });
+      await _showPrizeDetailsIfPending();
+      if (!mounted) return;
       _showSubmittedDialogAndReturnHome(
         correctCount: correctCount,
         totalQuestions: quiz.questions.length,
@@ -863,6 +870,18 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
       if (mounted) {
         setState(() => _submitting = false);
       }
+    }
+  }
+
+  Future<void> _showPrizeDetailsIfPending() async {
+    try {
+      final hasDetails = await QuizPrizeDetailsService().hasCompleteDetails();
+      if (!mounted || hasDetails) {
+        return;
+      }
+      await showQuizPrizeDetailsSheet(context);
+    } catch (_) {
+      // Prize details should never block quiz result submission.
     }
   }
 
@@ -1401,8 +1420,10 @@ class _AnimatedStartButtonState extends State<_AnimatedStartButton>
     vsync: this,
     duration: const Duration(milliseconds: 1100),
   )..repeat(reverse: true);
-  late final Animation<double> _scale = Tween<double>(begin: 1, end: 1.045)
-      .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1,
+    end: 1.045,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
   @override
   void dispose() {
@@ -2384,174 +2405,174 @@ class _QuizResultTicket extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.zero,
               child: Column(
-            children: <Widget>[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: <Color>[Color(0xFF6D28D9), Color(0xFFEC4899)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 42,
-                      height: 42,
-                      padding: const EdgeInsets.all(5),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                children: <Widget>[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: <Color>[Color(0xFF6D28D9), Color(0xFFEC4899)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
                       ),
-                      child: const Image(
-                        image: AssetImage(
-                          'assets/branding/mana_poster_logo.png',
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          width: 42,
+                          height: 42,
+                          padding: const EdgeInsets.all(5),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Image(
+                            image: AssetImage(
+                              'assets/branding/mana_poster_logo.png',
+                            ),
+                            fit: BoxFit.contain,
+                          ),
                         ),
-                        fit: BoxFit.contain,
-                      ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Mana Poster AI',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.05,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'DAILY QUIZ',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Color(0xFFFDE68A),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
+                  ),
+                  const SizedBox(height: 12),
+                  const _TicketStars(),
+                  const SizedBox(height: 8),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF4C1D95),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _QuizTicketAvatar(details: details, size: 56),
+                  const SizedBox(height: 8),
+                  Text(
+                    details.userName,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF111827),
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      height: 1.05,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _TicketScoreBadge(score: score),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAF5FF),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xFFE9D5FF),
+                          width: 1,
+                        ),
+                      ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(
-                            'Mana Poster AI',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              height: 1.05,
-                            ),
+                          Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: _TicketMiniStat(
+                                  label: 'Correct',
+                                  value: '$correctCount',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _TicketMiniStat(
+                                  label: 'Total',
+                                  value: '$totalQuestions',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _TicketMiniStat(
+                                  label: 'Time',
+                                  value: durationLabel,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 3),
-                          Text(
-                            'DAILY QUIZ',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Color(0xFFFDE68A),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
+                          const SizedBox(height: 10),
+                          _TicketInfoRow(
+                            label: 'State',
+                            value: details.regionName.isEmpty
+                                ? '-'
+                                : details.regionName,
+                            dense: true,
+                          ),
+                          _TicketInfoRow(
+                            label: 'Quiz Date',
+                            value: quizDateKey,
+                            dense: true,
+                          ),
+                          _TicketInfoRow(
+                            label: _QuizCopy.submitted(context.strings),
+                            value: submittedAt,
+                            dense: true,
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              const _TicketStars(),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF4C1D95),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _QuizTicketAvatar(details: details, size: 56),
-              const SizedBox(height: 8),
-              Text(
-                details.userName,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
-                  height: 1.05,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _TicketScoreBadge(score: score),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAF5FF),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: const Color(0xFFE9D5FF),
-                      width: 1,
+                  ),
+                  const Spacer(),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  child: Column(
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _TicketMiniStat(
-                              label: 'Correct',
-                              value: '$correctCount',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _TicketMiniStat(
-                              label: 'Total',
-                              value: '$totalQuestions',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _TicketMiniStat(
-                              label: 'Time',
-                              value: durationLabel,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _TicketInfoRow(
-                        label: 'State',
-                        value: details.regionName.isEmpty
-                            ? '-'
-                            : details.regionName,
-                        dense: true,
-                      ),
-                      _TicketInfoRow(
-                        label: 'Quiz Date',
-                        value: quizDateKey,
-                        dense: true,
-                      ),
-                      _TicketInfoRow(
-                        label: _QuizCopy.submitted(context.strings),
-                        value: submittedAt,
-                        dense: true,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+                ],
               ),
             ),
           ),
@@ -2720,9 +2741,7 @@ class _TicketMiniStat extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE9D5FF),
-        ),
+        border: Border.all(color: const Color(0xFFE9D5FF)),
       ),
       child: Column(
         children: <Widget>[

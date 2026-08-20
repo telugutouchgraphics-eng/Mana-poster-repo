@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _continueWithGoogle() async {
-    if (_loadingEmail || _loadingReset) {
+    if (_isBusy) {
       return;
     }
     setState(() => _loadingGoogle = true);
@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _continueWithEmail() async {
-    if (_loadingGoogle || _loadingReset) {
+    if (_isBusy) {
       return;
     }
     final formState = _formKey.currentState;
@@ -376,7 +376,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _onForgotPassword() async {
-    if (_loadingEmail || _loadingGoogle) {
+    if (_isBusy) {
       return;
     }
 
@@ -700,7 +700,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     : strings.signUpLabel,
                                 icon: Icons.arrow_forward_rounded,
                                 loading: _loadingEmail,
-                                onPressed: _continueWithEmail,
+                                onPressed: _isBusy ? null : _continueWithEmail,
                               ),
                               const SizedBox(height: 10),
                               OutlinedButton.icon(

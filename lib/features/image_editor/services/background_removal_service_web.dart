@@ -41,3 +41,19 @@ class CloudBackgroundRemovalService {
     throw UnsupportedError('Cloud Remove BG is not supported on web');
   }
 }
+
+class CloudFirstBackgroundRemovalService {
+  const CloudFirstBackgroundRemovalService();
+
+  Future<void> ensureReady() {
+    return const OfflineBackgroundRemovalService().ensureReady();
+  }
+
+  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) {
+    return const OfflineBackgroundRemovalService().removeBackground(imageBytes);
+  }
+
+  Future<Uint8List> finalizeCutout(Uint8List pngBytes) {
+    return const OfflineBackgroundRemovalService().finalizeCutout(pngBytes);
+  }
+}

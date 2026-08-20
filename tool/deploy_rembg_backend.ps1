@@ -26,7 +26,7 @@ Write-Host "Deploying Cloud Run service..."
   --memory 2Gi `
   --cpu 2 `
   --timeout 300 `
-  --set-env-vars "FIREBASE_STORAGE_BUCKET=$bucket,REMBG_MODEL=u2net_human_seg,MAX_INPUT_BYTES=20971520,ALLOW_ORIGIN=*,REMBG_ALPHA_MATTING=true,REMBG_ALPHA_FG_THRESHOLD=240,REMBG_ALPHA_BG_THRESHOLD=12,REMBG_ALPHA_ERODE_SIZE=8"
+  --set-env-vars "FIREBASE_STORAGE_BUCKET=$bucket,REMBG_MODEL=u2net_human_seg,MAX_INPUT_BYTES=20971520,ALLOW_ORIGIN=*,REMBG_ALPHA_MATTING=true,REMBG_ALPHA_FG_THRESHOLD=240,REMBG_ALPHA_BG_THRESHOLD=12,REMBG_ALPHA_ERODE_SIZE=8,NUMBA_NUM_THREADS=1,OMP_NUM_THREADS=1"
 
 $url = & $gcloud run services describe $serviceName --region $region --format "value(status.url)"
 Write-Host ""

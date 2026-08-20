@@ -296,6 +296,8 @@ async function verifySubscriptionPurchaseWithGoogle({
     productIds,
     primaryProductId,
     basePlanId: subscriptionLineItemBasePlanId(selectedLineItem),
+    offerId: subscriptionLineItemOfferId(selectedLineItem),
+    isTrialOrIntro: looksLikeTrialOrIntroLineItem(selectedLineItem),
     linkedPurchaseToken: String(payload.linkedPurchaseToken || "").trim(),
     subscriptionState: String(payload.subscriptionState || "").trim(),
     startTime,
@@ -629,6 +631,8 @@ function buildSubscriptionMetadataPatch(verification) {
     autoRenewing: verification.autoRenewing === true,
     latestOrderId: verification.latestOrderId || null,
     basePlanId: verification.basePlanId || null,
+    offerId: verification.offerId || null,
+    isTrialOrIntro: verification.isTrialOrIntro === true,
     lastSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   const startTime = toFirestoreTimestamp(verification.startTime);
@@ -726,6 +730,8 @@ async function upsertServerSubscriptionToken({
   tokenHash,
   productId,
   basePlanId,
+  offerId,
+  isTrialOrIntro,
   platform,
   source,
   linkedPurchaseTokenHash,
@@ -739,6 +745,8 @@ async function upsertServerSubscriptionToken({
     tokenHash,
     productId: productId || null,
     basePlanId: basePlanId || null,
+    offerId: offerId || null,
+    isTrialOrIntro: isTrialOrIntro === true,
     platform: platform || null,
     source: source || null,
     linkedPurchaseTokenHash: linkedPurchaseTokenHash || null,
@@ -773,6 +781,9 @@ async function resolveStoredSubscriptionToken({
       token: legacyToken,
       tokenHash: legacyTokenHash,
       productId: String(entitlementData.productId || "").trim(),
+      basePlanId: String(entitlementData.basePlanId || "").trim(),
+      offerId: String(entitlementData.offerId || "").trim(),
+      isTrialOrIntro: entitlementData.isTrialOrIntro === true,
       platform: String(entitlementData.platform || "").trim(),
       source: String(entitlementData.source || "").trim(),
     });
@@ -4487,6 +4498,133 @@ exports.appCreatorPostersFeed = onRequest({region: "asia-south1"}, async (req, r
   }
 });
 
+exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ok: false, error: "Method not allowed."});
+    return;
+  }
+
+  try {
+    const decoded = await verifyAuth(req);
+    const uid = String(decoded.uid || "").trim();
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const posterId = String(body.posterId || "").trim();
+    const action = String(body.action || "").trim().toLowerCase();
+    if (!posterId || !["share", "download"].includes(action)) {
+      res.status(400).json({ok: false, error: "Invalid engagement request."});
+      return;
+    }
+
+    const [userSnap, posterSnap] = await Promise.all([
+      db.collection("users").doc(uid).get(),
+      db.collection("creatorPosters").doc(posterId).get(),
+    ]);
+    if (!userSnap.exists || !posterSnap.exists) {
+      res.status(404).json({ok: false, error: "Record not found."});
+      return;
+    }
+
+    const userData = userSnap.data() || {};
+    const posterData = posterSnap.data() || {};
+    const status = String(posterData.status || "").trim().toLowerCase();
+    if (status !== "approved") {
+      res.status(403).json({ok: false, error: "Poster is not approved."});
+      return;
+    }
+
+    const userRegionId = normalizeRegionId(
+        userData.selectedRegion ||
+        userData.regionId ||
+        userData.stateId ||
+        body.regionId ||
+        "telangana",
+    );
+    const posterRegionId = normalizeRegionId(posterData.regionId || body.regionId || "");
+    const posterCategoryId = normalizeRegionId(posterData.categoryId || body.categoryId || "");
+    const sharedRegionIds = sharedContentRegionIdsFor(userRegionId, posterCategoryId);
+    const targetRegionIds = Array.isArray(posterData.targetRegionIds) ?
+      posterData.targetRegionIds.map((item) => normalizeRegionId(item)).filter(Boolean) :
+      [];
+    const isVisibleForUser =
+      sharedRegionIds.includes(posterRegionId) ||
+      targetRegionIds.includes(userRegionId);
+    if (!isVisibleForUser) {
+      res.status(403).json({ok: false, error: "Poster is outside user region scope."});
+      return;
+    }
+
+    const nowMillis = Date.now();
+    const dateKey = getIstDayKey(new Date(nowMillis));
+    const statsRef = db.collection("creatorPosterDailyStats").doc(`${posterId}-${dateKey}`);
+    const posterRef = db.collection("creatorPosters").doc(posterId);
+    const increment = admin.firestore.FieldValue.increment(1);
+    const zero = admin.firestore.FieldValue.increment(0);
+
+    await db.runTransaction(async (tx) => {
+      const freshPosterSnap = await tx.get(posterRef);
+      if (!freshPosterSnap.exists) {
+        throw new Error("Poster not found.");
+      }
+      const freshPoster = freshPosterSnap.data() || {};
+      const freshStatus = String(freshPoster.status || "").trim().toLowerCase();
+      if (freshStatus !== "approved") {
+        throw new Error("Poster is not approved.");
+      }
+      const statsSnap = await tx.get(statsRef);
+      const safeCreatorPublicId = String(
+          freshPoster.creatorPublicId ||
+          body.creatorPublicId ||
+          "",
+      ).trim();
+      const safeTitle = String(
+          freshPoster.title ||
+          body.posterTitle ||
+          "Poster",
+      ).trim();
+      const safeCategoryId = normalizeRegionId(freshPoster.categoryId || body.categoryId || "");
+      const safeCategoryLabel = String(
+          freshPoster.categoryLabel ||
+          body.categoryLabel ||
+          "",
+      ).trim();
+      const safeRegionId = normalizeRegionId(freshPoster.regionId || body.regionId || "");
+      tx.update(posterRef, {
+        [action === "share" ? "shareCount" : "downloadCount"]: increment,
+        engagementCount: increment,
+        updatedAt: nowMillis,
+      });
+      tx.set(statsRef, {
+        creatorPublicId: safeCreatorPublicId,
+        posterId,
+        templateId: posterId,
+        posterTitle: safeTitle || "Poster",
+        categoryId: safeCategoryId,
+        categoryLabel: safeCategoryLabel,
+        regionId: safeRegionId,
+        dateKey,
+        shareCount: action === "share" ? increment : zero,
+        downloadCount: action === "download" ? increment : zero,
+        totalEngagement: increment,
+        updatedAt: nowMillis,
+        createdAt: statsSnap.exists ? statsSnap.data().createdAt || nowMillis : nowMillis,
+      }, {merge: true});
+    });
+
+    res.status(200).json({ok: true});
+  } catch (error) {
+    logger.error("recordPosterEngagement failed", error);
+    res.status(httpStatusForError(error)).json({
+      ok: false,
+      error: "Unable to record poster engagement.",
+    });
+  }
+});
+
 function posterVisibleFromMillis(data) {
   const publishAt = toMillis(data.publishAt);
   if (publishAt > 0) {
@@ -4501,6 +4639,18 @@ function posterExpiryBaseMillis(data) {
     return posterVisibleFromMillis(data);
   }
   return toMillis(data.createdAt);
+}
+
+function posterCleanupCutoffMillis(data) {
+  const status = String(data.status || "").trim().toLowerCase();
+  if (status === "approved") {
+    const eventEndAt = toMillis(data.eventEndAt);
+    if (eventEndAt > 0) {
+      return eventEndAt;
+    }
+  }
+  const expiryBase = posterExpiryBaseMillis(data);
+  return expiryBase > 0 ? expiryBase + posterRetentionWindowMillis : 0;
 }
 
 async function deletePosterStorageAssets(bucket, data) {
@@ -4949,6 +5099,8 @@ exports.verifySubscription = onRequest({region: "asia-south1"}, async (req, res)
       tokenHash,
       productId: verification.primaryProductId || productId || null,
       basePlanId: verification.basePlanId || null,
+      offerId: verification.offerId || null,
+      isTrialOrIntro: verification.isTrialOrIntro === true,
       platform,
       source,
       linkedPurchaseTokenHash,
@@ -5247,6 +5399,8 @@ async function syncSubscriptionEntitlementFromToken({
     tokenHash,
     productId: verification.primaryProductId || productIdHint || null,
     basePlanId: verification.basePlanId || null,
+    offerId: verification.offerId || null,
+    isTrialOrIntro: verification.isTrialOrIntro === true,
     linkedPurchaseTokenHash,
     ackPending: false,
   });
@@ -5259,6 +5413,8 @@ async function syncSubscriptionEntitlementFromToken({
     accessScope: access.accessScope,
     productId: verification.primaryProductId || productIdHint || null,
     basePlanId: verification.basePlanId || null,
+    offerId: verification.offerId || null,
+    isTrialOrIntro: verification.isTrialOrIntro === true,
     verificationTokenHash: tokenHash,
     subscriptionState: verification.subscriptionState || null,
     expiryTime: verification.expiryTime || null,
@@ -5872,11 +6028,11 @@ exports.cleanupExpiredCreatorPosters = onSchedule(
         for (const doc of snapshot.docs) {
           scannedCount += 1;
           const data = doc.data() || {};
-          const expiryBase = posterExpiryBaseMillis(data);
-          if (!expiryBase) {
+          const cleanupCutoff = posterCleanupCutoffMillis(data);
+          if (!cleanupCutoff) {
             continue;
           }
-          if (expiryBase + posterRetentionWindowMillis <= now) {
+          if (cleanupCutoff <= now) {
             expiredDocs.push({doc, data});
           }
         }

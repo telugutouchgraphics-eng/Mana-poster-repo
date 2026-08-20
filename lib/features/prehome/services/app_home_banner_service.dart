@@ -188,6 +188,12 @@ class AppHomeBannerService {
   bool _religionMatches(
     AppReligionPreference selectedReligion,
     List<String> targetReligions,
+  ) => religionMatchesForSelection(selectedReligion, targetReligions);
+
+  @visibleForTesting
+  static bool religionMatchesForSelection(
+    AppReligionPreference selectedReligion,
+    List<String> targetReligions,
   ) {
     final normalizedTargets = targetReligions
         .map(_normalizeAreaToken)
@@ -197,6 +203,9 @@ class AppHomeBannerService {
       return true;
     }
     final selected = _normalizeAreaToken(selectedReligion.name);
+    if (selected == 'all') {
+      return true;
+    }
     return normalizedTargets.contains(selected);
   }
 
@@ -221,7 +230,7 @@ class AppHomeBannerService {
         same(localCity, targetCity);
   }
 
-  String _normalizeAreaToken(String value) {
+  static String _normalizeAreaToken(String value) {
     return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
   }
 

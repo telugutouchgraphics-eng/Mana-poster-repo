@@ -297,8 +297,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
   final GlobalKey _cropBoundaryKey = GlobalKey();
   final EditorDraftStorageService _draftStorageService =
       const EditorDraftStorageService();
-  final OfflineBackgroundRemovalService _backgroundRemovalService =
-      const OfflineBackgroundRemovalService();
+  final CloudFirstBackgroundRemovalService _backgroundRemovalService =
+      const CloudFirstBackgroundRemovalService();
   final RewardedAccessService _rewardedAccessService = RewardedAccessService();
   final SubscriptionBackendService _appEntitlementService =
       SubscriptionBackendService.app();
