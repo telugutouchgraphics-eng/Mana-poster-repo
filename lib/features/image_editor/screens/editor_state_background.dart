@@ -111,6 +111,10 @@ extension _EditorBackgroundState on _ImageEditorScreenState {
     try {
       final selected = await _imagePicker.pickImage(
         source: ImageSource.gallery,
+        maxWidth: _editorPhotoImportMaxSide.toDouble(),
+        maxHeight: _editorPhotoImportMaxSide.toDouble(),
+        imageQuality: 95,
+        requestFullMetadata: false,
       );
       if (selected == null) {
         return false;
@@ -146,6 +150,15 @@ extension _EditorBackgroundState on _ImageEditorScreenState {
                 english: 'Could not select the image',
               ),
             ),
+          ),
+        );
+      }
+      return false;
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Unsupported or damaged image file.'),
           ),
         );
       }

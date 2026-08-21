@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/painting.dart';
@@ -250,6 +251,36 @@ class PosterProfileData {
     profileRevision,
     setupCompleted,
   );
+}
+
+class UserSavedCutoutPhoto {
+  const UserSavedCutoutPhoto({
+    required this.id,
+    required this.downloadUrl,
+    required this.localPath,
+    required this.source,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String downloadUrl;
+  final String localPath;
+  final String source;
+  final DateTime? createdAt;
+
+  static UserSavedCutoutPhoto fromSnapshot(
+    QueryDocumentSnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final data = snapshot.data();
+    final createdValue = data['createdAt'];
+    return UserSavedCutoutPhoto(
+      id: snapshot.id,
+      downloadUrl: (data['downloadUrl'] as String? ?? '').trim(),
+      localPath: (data['localPath'] as String? ?? '').trim(),
+      source: (data['source'] as String? ?? '').trim(),
+      createdAt: createdValue is Timestamp ? createdValue.toDate() : null,
+    );
+  }
 }
 
 class ScriptLocalizationService {
@@ -1049,6 +1080,65 @@ class PosterProfileService {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  static Future<void> saveReusableCutoutPhoto({
+    required File cutoutFile,
+    required String downloadUrl,
+    required int personalPhotoRevision,
+    String source = 'profile',
+  }) async {
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
+    final user = _currentFirebaseUserOrNull();
+    if (user == null || downloadUrl.trim().isEmpty) {
+      return;
+    }
+    final bytes = await cutoutFile.readAsBytes();
+    if (bytes.isEmpty) {
+      return;
+    }
+    final id = sha256.convert(bytes).toString();
+    final email = user.email?.trim() ?? '';
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('savedCutoutPhotos')
+        .doc(id)
+        .set(<String, dynamic>{
+          'uid': user.uid,
+          'email': email,
+          'downloadUrl': downloadUrl.trim(),
+          'localPath': cutoutFile.path,
+          'source': source.trim().isEmpty ? 'profile' : source.trim(),
+          'revision': personalPhotoRevision,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+  }
+
+  static Future<List<UserSavedCutoutPhoto>> fetchReusableCutoutPhotos({
+    int limit = 40,
+  }) async {
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
+    final user = _currentFirebaseUserOrNull();
+    if (user == null) {
+      return const <UserSavedCutoutPhoto>[];
+    }
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('savedCutoutPhotos')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .get();
+    return snapshot.docs
+        .map(UserSavedCutoutPhoto.fromSnapshot)
+        .where(
+          (item) =>
+              item.downloadUrl.trim().isNotEmpty ||
+              item.localPath.trim().isNotEmpty,
+        )
+        .toList(growable: false);
   }
 
   static Future<void> evictRemoteProfilePhotoCache(

@@ -4,17 +4,17 @@ import uuid
 from datetime import datetime, timezone
 from urllib.parse import quote
 
+import requests
 from flask import Flask, jsonify, request
 from firebase_admin import auth, firestore, initialize_app
 from google.cloud import storage
-from rembg import new_session, remove
 
 app = Flask(__name__)
 
 initialize_app()
 storage_client = storage.Client()
 firestore_client = firestore.Client()
-rembg_session = new_session(model_name=os.getenv("REMBG_MODEL", "u2net"))
+rembg_session = None
 
 bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "").strip()
 max_input_bytes = int(os.getenv("MAX_INPUT_BYTES", str(20 * 1024 * 1024)))
@@ -28,6 +28,26 @@ alpha_matting_enabled = os.getenv("REMBG_ALPHA_MATTING", "true").lower() == "tru
 alpha_fg_threshold = int(os.getenv("REMBG_ALPHA_FG_THRESHOLD", "240"))
 alpha_bg_threshold = int(os.getenv("REMBG_ALPHA_BG_THRESHOLD", "12"))
 alpha_erode_size = int(os.getenv("REMBG_ALPHA_ERODE_SIZE", "8"))
+pixelcut_api_key = os.getenv("PIXELCUT_API_KEY", "").strip()
+pixelcut_remove_bg_url = os.getenv(
+    "PIXELCUT_REMOVE_BG_URL",
+    "https://api.developer.pixelcut.ai/v1/remove-background",
+).strip()
+pixelcut_timeout_seconds = int(os.getenv("PIXELCUT_TIMEOUT_SECONDS", "45"))
+clearbackdrop_remove_bg_url = os.getenv(
+    "CLEARBACKDROP_REMOVE_BG_URL",
+    "https://clearbackdrop.com/api/v1/remove-background",
+).strip()
+clearbackdrop_timeout_seconds = int(os.getenv("CLEARBACKDROP_TIMEOUT_SECONDS", "45"))
+
+
+def _rembg_session():
+    global rembg_session
+    if rembg_session is None:
+        from rembg import new_session
+
+        rembg_session = new_session(model_name=os.getenv("REMBG_MODEL", "u2net"))
+    return rembg_session
 
 
 def _cors_headers(response):
@@ -76,7 +96,7 @@ def _as_datetime(value):
         return None
 
 
-def _has_active_pro_entitlement(uid):
+def _has_active_editor_entitlement(uid):
     if not uid:
         return False
     try:
@@ -91,6 +111,8 @@ def _has_active_pro_entitlement(uid):
             return False
         data = snapshot.to_dict() or {}
         if data.get("isPro") is not True:
+            return False
+        if data.get("editorAccess") is not True:
             return False
         status = str(data.get("status") or "").strip().lower()
         if status == "active":
@@ -127,6 +149,47 @@ def _firebase_download_url(bucket, output_path):
     )
 
 
+def _remove_with_pixelcut(image_bytes):
+    response = requests.post(
+        pixelcut_remove_bg_url,
+        headers={
+            "X-API-KEY": pixelcut_api_key,
+            "Accept": "application/json",
+        },
+        files={"image": ("input.png", image_bytes, "image/png")},
+        data={"format": "png"},
+        timeout=pixelcut_timeout_seconds,
+    )
+    if 200 <= response.status_code < 300 and response.content:
+        content_type = response.headers.get("Content-Type", "")
+        if content_type.startswith("image/"):
+            return response.content
+
+    response.raise_for_status()
+    data = response.json()
+    result_url = str(data.get("result_url") or "").strip()
+    if not result_url:
+        raise RuntimeError("Pixelcut response did not include result_url.")
+    download = requests.get(result_url, timeout=pixelcut_timeout_seconds)
+    download.raise_for_status()
+    if not download.content:
+        raise RuntimeError("Pixelcut returned an empty result image.")
+    return download.content
+
+
+def _remove_with_clearbackdrop(image_bytes):
+    response = requests.post(
+        clearbackdrop_remove_bg_url,
+        headers={"Accept": "image/png"},
+        files={"image": ("input.png", image_bytes, "image/png")},
+        timeout=clearbackdrop_timeout_seconds,
+    )
+    response.raise_for_status()
+    if not response.content:
+        raise RuntimeError("ClearBackdrop returned an empty result image.")
+    return response.content
+
+
 @app.post("/remove-bg")
 def remove_bg():
     if not bucket_name:
@@ -136,47 +199,69 @@ def remove_bg():
     if user is None:
         return _error("Unauthorized", 401)
 
-    payload = request.get_json(silent=True) or {}
+    direct_file = request.files.get("image")
+    payload = request.form if direct_file is not None else (request.get_json(silent=True) or {})
     uid = user.get("uid")
-    if not _has_active_pro_entitlement(uid):
-        return _error("Cloud background removal requires an active subscription.", 403)
-
-    input_path = _validate_path_for_user(payload.get("inputPath"), uid)
-    output_path = _validate_path_for_user(payload.get("outputPath"), uid)
-
-    if not input_path:
-        return _error("Invalid inputPath. Must be in users/<uid>/rembg_jobs/*")
-    if not output_path:
-        return _error("Invalid outputPath. Must be in users/<uid>/rembg_jobs/*")
+    purpose = str(payload.get("purpose") or "editor_remove_bg").strip()
 
     delete_input = bool(payload.get("deleteInput", True))
     try:
         bucket = storage_client.bucket(bucket_name)
-        input_blob = bucket.blob(input_path)
-        if not input_blob.exists():
-            return _error("Input image not found in Firebase Storage.", 404)
+        input_path = None
+        output_path = None
+        if direct_file is not None:
+            image_bytes = direct_file.read()
+        else:
+            input_path = _validate_path_for_user(payload.get("inputPath"), uid)
+            output_path = _validate_path_for_user(payload.get("outputPath"), uid)
+            if not input_path:
+                return _error("Invalid inputPath. Must be in users/<uid>/rembg_jobs/*")
+            if not output_path:
+                return _error("Invalid outputPath. Must be in users/<uid>/rembg_jobs/*")
+            input_blob = bucket.blob(input_path)
+            if not input_blob.exists():
+                return _error("Input image not found in Firebase Storage.", 404)
+            image_bytes = input_blob.download_as_bytes()
 
-        image_bytes = input_blob.download_as_bytes()
         if len(image_bytes) > max_input_bytes:
             return _error(
                 f"Input image too large. Max {max_input_bytes} bytes supported.", 413
             )
 
-        output_png = remove(
-            image_bytes,
-            session=rembg_session,
-            alpha_matting=alpha_matting_enabled,
-            alpha_matting_foreground_threshold=alpha_fg_threshold,
-            alpha_matting_background_threshold=alpha_bg_threshold,
-            alpha_matting_erode_size=alpha_erode_size,
-            force_return_bytes=True,
-        )
+        use_pixelcut_first = False
+        if purpose == "profile_photo":
+            use_pixelcut_first = bool(pixelcut_api_key)
+        elif purpose == "editor_pro_remove_bg":
+            use_pixelcut_first = bool(pixelcut_api_key) and _has_active_editor_entitlement(
+                uid
+            )
+
+        if use_pixelcut_first:
+            try:
+                output_png = _remove_with_pixelcut(image_bytes)
+                engine = "pixelcut"
+                model = "pixelcut_remove_background"
+            except Exception:
+                output_png = _remove_with_clearbackdrop(image_bytes)
+                engine = "clearbackdrop"
+                model = "clearbackdrop_standard"
+        else:
+            output_png = _remove_with_clearbackdrop(image_bytes)
+            engine = "clearbackdrop"
+            model = "clearbackdrop_standard"
+
+        if direct_file is not None:
+            response = app.response_class(output_png, mimetype="image/png")
+            response.headers["X-Remove-BG-Engine"] = engine
+            response.headers["X-Remove-BG-Model"] = model
+            return _cors_headers(response)
 
         output_blob = bucket.blob(output_path)
         output_blob.metadata = {
             "uid": uid,
-            "engine": "rembg",
-            "model": os.getenv("REMBG_MODEL", "u2net"),
+            "engine": engine,
+            "model": model,
+            "purpose": purpose,
             "processedAt": datetime.now(timezone.utc).isoformat(),
         }
         output_blob.upload_from_file(
@@ -192,8 +277,8 @@ def remove_bg():
             {
                 "success": True,
                 "uid": uid,
-                "engine": "rembg",
-                "model": os.getenv("REMBG_MODEL", "u2net"),
+                "engine": engine,
+                "model": model,
                 "inputPath": input_path,
                 "outputPath": output_path,
                 "downloadUrl": download_url,

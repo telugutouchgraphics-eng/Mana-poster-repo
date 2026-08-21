@@ -2,6 +2,9 @@ part of '../image_editor_screen.dart';
 
 const int _designImportMaxCanvasPixels = 64 * 1000 * 1000;
 const int _designImportMaxPsdLayerWorkPixels = 512 * 1000 * 1000;
+const int _editorPhotoImportMaxPixels = 18 * 1000 * 1000;
+const int _editorPhotoImportMaxEncodedBytes = 14 * 1024 * 1024;
+const int _editorPhotoImportMaxSide = 4096;
 
 final LinkedHashMap<int, ui.ImageFilter> _expandedMaskFilterCache =
     LinkedHashMap<int, ui.ImageFilter>();
@@ -1140,7 +1143,36 @@ double? _rotationSnapGuideAngle(double angle) {
 }
 
 Uint8List _optimizeEditorPhotoBytes(Uint8List bytes) {
-  return bytes;
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null || decoded.width <= 0 || decoded.height <= 0) {
+    throw const FormatException('Unsupported editor image');
+  }
+
+  final sourcePixels = decoded.width * decoded.height;
+  if (sourcePixels <= _editorPhotoImportMaxPixels &&
+      bytes.length <= _editorPhotoImportMaxEncodedBytes) {
+    return bytes;
+  }
+
+  var working = img.bakeOrientation(decoded);
+  final width = working.width;
+  final height = working.height;
+  final pixelScale = math.sqrt(_editorPhotoImportMaxPixels / (width * height));
+  final sideScale = _editorPhotoImportMaxSide / math.max(width, height);
+  final scale = math.min(1.0, math.min(pixelScale, sideScale));
+  if (scale < 0.999) {
+    working = img.copyResize(
+      working,
+      width: math.max(1, (width * scale).round()),
+      height: math.max(1, (height * scale).round()),
+      interpolation: img.Interpolation.linear,
+    );
+  }
+
+  if (_editorImageHasTransparency(working)) {
+    return Uint8List.fromList(img.encodePng(working));
+  }
+  return Uint8List.fromList(img.encodeJpg(working, quality: 92));
 }
 
 _OptimizedPhotoPayload _optimizeEditorPhotoPayload(Uint8List bytes) {
@@ -1155,6 +1187,17 @@ _OptimizedPhotoPayload _optimizeEditorPhotoPayload(Uint8List bytes) {
     bytes: optimizedBytes,
     aspectRatio: aspectRatio,
   );
+}
+
+bool _editorImageHasTransparency(img.Image image) {
+  for (var y = 0; y < image.height; y++) {
+    for (var x = 0; x < image.width; x++) {
+      if (image.getPixel(x, y).a < 255) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 Map<String, Object?>? _decodePsdToEditorPayload(Uint8List bytes) {

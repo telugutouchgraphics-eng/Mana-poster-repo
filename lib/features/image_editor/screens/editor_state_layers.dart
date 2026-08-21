@@ -1629,7 +1629,13 @@ extension _EditorLayersState on _ImageEditorScreenState {
         : sourceLayer.layerMaskShape.trim();
     _isPickingMedia = true;
     try {
-      final picked = await _imagePicker.pickImage(source: ImageSource.gallery);
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: _editorPhotoImportMaxSide.toDouble(),
+        maxHeight: _editorPhotoImportMaxSide.toDouble(),
+        imageQuality: 95,
+        requestFullMetadata: false,
+      );
       if (!mounted || picked == null) {
         return;
       }
@@ -1688,6 +1694,14 @@ extension _EditorLayersState on _ImageEditorScreenState {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
             content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Unsupported or damaged image file.'),
           ),
         );
       }
@@ -1759,7 +1773,13 @@ extension _EditorLayersState on _ImageEditorScreenState {
     _isPickingMedia = true;
     XFile? pickedFile;
     try {
-      pickedFile = await _imagePicker.pickImage(source: ImageSource.gallery);
+      pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: _editorPhotoImportMaxSide.toDouble(),
+        maxHeight: _editorPhotoImportMaxSide.toDouble(),
+        imageQuality: 95,
+        requestFullMetadata: false,
+      );
     } on PlatformException catch (error) {
       if (!_isExpectedPickerException(error) && mounted) {
         ScaffoldMessenger.of(context).showTopSnackBar(
@@ -1786,16 +1806,28 @@ extension _EditorLayersState on _ImageEditorScreenState {
       return;
     }
 
-    final optimizedPhoto = await _runQueuedCommitJob<_OptimizedPhotoPayload>(
-      jobKey: 'replace_smart_source_${DateTime.now().microsecondsSinceEpoch}',
-      label: 'Replacing smart source',
-      detail: 'Preparing the selected source photo',
-      operation: () async {
-        final rawBytes = await pickedFile!.readAsBytes();
-        return compute(_optimizeEditorPhotoPayload, rawBytes);
-      },
-      showBusyMessage: false,
-    );
+    final _OptimizedPhotoPayload? optimizedPhoto;
+    try {
+      optimizedPhoto = await _runQueuedCommitJob<_OptimizedPhotoPayload>(
+        jobKey: 'replace_smart_source_${DateTime.now().microsecondsSinceEpoch}',
+        label: 'Replacing smart source',
+        detail: 'Preparing the selected source photo',
+        operation: () async {
+          final rawBytes = await pickedFile!.readAsBytes();
+          return compute(_optimizeEditorPhotoPayload, rawBytes);
+        },
+        showBusyMessage: false,
+      );
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Unsupported or damaged image file.'),
+          ),
+        );
+      }
+      return;
+    }
     if (!mounted || optimizedPhoto == null) {
       return;
     }
@@ -5387,10 +5419,16 @@ extension _EditorLayersActions on _ImageEditorScreenState {
   }
 
   Future<BackgroundRemovalResult> _removeBackgroundForCurrentUser(
-    Uint8List sourceBytes,
-  ) async {
+    Uint8List sourceBytes, {
+    bool preferCloud = true,
+    String cloudPurpose = 'editor_remove_bg',
+  }) async {
     await _backgroundRemoverInitialization;
-    return _backgroundRemovalService.removeBackground(sourceBytes);
+    return _backgroundRemovalService.removeBackground(
+      sourceBytes,
+      preferCloud: preferCloud,
+      cloudPurpose: cloudPurpose,
+    );
   }
 
   Future<void> _handleRemoveBackgroundTap() async {
@@ -5455,6 +5493,10 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     if (!mounted || !rewardedAccessGranted) {
       return;
     }
+    const useCloudRemoval = true;
+    final cloudPurpose = _hasActiveEditorCloudSubscriptionAccess
+        ? 'editor_pro_remove_bg'
+        : 'editor_remove_bg';
 
     try {
       final result = await _runQueuedCommitJob<BackgroundRemovalResult>(
@@ -5474,7 +5516,11 @@ extension _EditorLayersActions on _ImageEditorScreenState {
           _isRemovingBackground = false;
         },
         operation: () async {
-          return _removeBackgroundForCurrentUser(sourceBytes);
+          return _removeBackgroundForCurrentUser(
+            sourceBytes,
+            preferCloud: useCloudRemoval,
+            cloudPurpose: cloudPurpose,
+          );
         },
       );
       if (result == null || !mounted || taskId != _removeBackgroundTaskId) {
@@ -5754,7 +5800,12 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
     _isPickingMedia = true;
     try {
-      final pickedFiles = await _imagePicker.pickMultiImage();
+      final pickedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: _editorPhotoImportMaxSide.toDouble(),
+        maxHeight: _editorPhotoImportMaxSide.toDouble(),
+        imageQuality: 95,
+        requestFullMetadata: false,
+      );
       if (!mounted || pickedFiles.isEmpty) {
         return;
       }
@@ -5777,6 +5828,120 @@ extension _EditorLayersActions on _ImageEditorScreenState {
 
   Future<void> _handleAddPhotoFromCamera() async {
     await _handleAddPhotoFromSource(ImageSource.camera);
+  }
+
+  Future<void> _handleAddReusableCutoutPhoto() async {
+    if (_isPickingMedia) {
+      return;
+    }
+    _isPickingMedia = true;
+    try {
+      final cutouts = await PosterProfileService.fetchReusableCutoutPhotos();
+      if (!mounted) {
+        return;
+      }
+      if (cutouts.isEmpty) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('No saved cutout photos yet.'),
+          ),
+        );
+        return;
+      }
+      final selected = await showModalBottomSheet<UserSavedCutoutPhoto>(
+        context: context,
+        useSafeArea: true,
+        backgroundColor: const Color(0xFF111827),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        builder: (sheetContext) {
+          return _SavedCutoutPhotoPicker(cutouts: cutouts);
+        },
+      );
+      if (!mounted || selected == null) {
+        return;
+      }
+      await _importReusableCutoutPhoto(selected);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not load saved cutouts.'),
+          ),
+        );
+      }
+    } finally {
+      _isPickingMedia = false;
+    }
+  }
+
+  Future<void> _importReusableCutoutPhoto(UserSavedCutoutPhoto cutout) async {
+    final bytes = await _loadReusableCutoutBytes(cutout);
+    final optimizedPhoto = await compute(_optimizeEditorPhotoPayload, bytes);
+    final processedPhoto = await compute(
+      _trimTransparentEditorPhotoPayload,
+      optimizedPhoto.bytes,
+    );
+    if (!mounted) {
+      return;
+    }
+    final layer = _CanvasLayer(
+      id: 'layer_${_layerSeed++}',
+      type: _CanvasLayerType.photo,
+      bytes: processedPhoto.bytes,
+      originalPhotoBytes: optimizedPhoto.bytes,
+      photoAspectRatio:
+          processedPhoto.aspectRatio ?? optimizedPhoto.aspectRatio,
+      photoMaskShape: widget.defaultAddedPhotoMaskShape.trim(),
+      transform: Matrix4.identity(),
+    );
+    _pushUndoSnapshot();
+    _resetWorkspaceViewportToFit();
+    _photoGestureVelocity = Offset.zero;
+    _photoGlideTotalTravel = Offset.zero;
+    _photoGlideAppliedTravel = Offset.zero;
+    _photoGlideController.stop();
+    _snapGuideNotifier.value = const _SnapGuideState.none();
+    _transformationController.value = Matrix4.identity();
+    setState(() {
+      if (_pageAspectRatio == null && optimizedPhoto.aspectRatio != null) {
+        _pageAspectRatio = optimizedPhoto.aspectRatio;
+        _pageAspectRatioAutoFromImage = widget.pageConfig == null;
+      }
+      _layers.add(layer);
+      _selectedLayerId = layer.id;
+      _activeMainToolLabel = 'Photo';
+      _activeBottomPrimaryTool = _BottomPrimaryTool.photo;
+      _syncControllerFromSelection();
+    });
+  }
+
+  Future<Uint8List> _loadReusableCutoutBytes(
+    UserSavedCutoutPhoto cutout,
+  ) async {
+    final localPath = cutout.localPath.trim();
+    if (localPath.isNotEmpty) {
+      final file = File(localPath);
+      if (await file.exists()) {
+        return file.readAsBytes();
+      }
+    }
+    final url = cutout.downloadUrl.trim();
+    if (url.isEmpty) {
+      throw StateError('Saved cutout has no image source.');
+    }
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Cutout download failed: ${response.statusCode}');
+      }
+      return consolidateHttpClientResponseBytes(response);
+    } finally {
+      client.close(force: true);
+    }
   }
 
   Future<void> _handleImportDesignFile() async {
@@ -6208,7 +6373,13 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
     _isPickingMedia = true;
     try {
-      final XFile? pickedFile = await _imagePicker.pickImage(source: source);
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: _editorPhotoImportMaxSide.toDouble(),
+        maxHeight: _editorPhotoImportMaxSide.toDouble(),
+        imageQuality: 95,
+        requestFullMetadata: false,
+      );
       if (!mounted || pickedFile == null) {
         return;
       }
@@ -6218,6 +6389,14 @@ extension _EditorLayersActions on _ImageEditorScreenState {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
             content: const Text('Could not open image picker.'),
+          ),
+        );
+      }
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Unsupported or damaged image file.'),
           ),
         );
       }
@@ -6286,6 +6465,9 @@ extension _EditorLayersActions on _ImageEditorScreenState {
           try {
             final result = await _removeBackgroundForCurrentUser(
               optimizedPhoto.bytes,
+              cloudPurpose: _hasActiveEditorCloudSubscriptionAccess
+                  ? 'editor_pro_remove_bg'
+                  : 'editor_remove_bg',
             );
             processedBytes = result.pngBytes;
           } catch (_) {}
@@ -6358,5 +6540,111 @@ extension _EditorLayersActions on _ImageEditorScreenState {
     }
     final path = file.path.toLowerCase();
     return path.endsWith('.png') || path.endsWith('.webp');
+  }
+}
+
+class _SavedCutoutPhotoPicker extends StatelessWidget {
+  const _SavedCutoutPhotoPicker({required this.cutouts});
+
+  final List<UserSavedCutoutPhoto> cutouts;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: math.min(MediaQuery.sizeOf(context).height * 0.72, 520),
+      child: Column(
+        children: <Widget>[
+          const SizedBox(height: 10),
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFF94A3B8),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  Icons.person_pin_circle_outlined,
+                  color: Color(0xFFE2E8F0),
+                  size: 22,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'My Cutouts',
+                  style: TextStyle(
+                    color: Color(0xFFF8FAFC),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              ),
+              itemCount: cutouts.length,
+              itemBuilder: (context, index) {
+                final cutout = cutouts[index];
+                return _SavedCutoutPhotoTile(cutout: cutout);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SavedCutoutPhotoTile extends StatelessWidget {
+  const _SavedCutoutPhotoTile({required this.cutout});
+
+  final UserSavedCutoutPhoto cutout;
+
+  @override
+  Widget build(BuildContext context) {
+    final localPath = cutout.localPath.trim();
+    final localFile = localPath.isEmpty ? null : File(localPath);
+    final image = localFile != null && localFile.existsSync()
+        ? Image.file(
+            localFile,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          )
+        : Image.network(
+            cutout.downloadUrl,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          );
+    return Material(
+      color: const Color(0xFF1F2937),
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).pop(cutout),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/editor_ui/pattern_1.png'),
+              fit: BoxFit.cover,
+              opacity: 0.10,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: image,
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -14,24 +14,6 @@ class BackgroundRemovalResult {
   final String? outputFilePath;
 }
 
-class OfflineBackgroundRemovalService {
-  const OfflineBackgroundRemovalService();
-
-  static Future<void> warmUp() async {}
-
-  Future<void> ensureReady() async {}
-
-  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) async {
-    return BackgroundRemovalResult(
-      pngBytes: imageBytes,
-      engineLabel: 'web-noop',
-      didRemoveBackground: false,
-    );
-  }
-
-  Future<Uint8List> finalizeCutout(Uint8List pngBytes) async => pngBytes;
-}
-
 class CloudBackgroundRemovalService {
   const CloudBackgroundRemovalService();
 
@@ -46,14 +28,18 @@ class CloudFirstBackgroundRemovalService {
   const CloudFirstBackgroundRemovalService();
 
   Future<void> ensureReady() {
-    return const OfflineBackgroundRemovalService().ensureReady();
+    return Future<void>.value();
   }
 
-  Future<BackgroundRemovalResult> removeBackground(Uint8List imageBytes) {
-    return const OfflineBackgroundRemovalService().removeBackground(imageBytes);
+  Future<BackgroundRemovalResult> removeBackground(
+    Uint8List imageBytes, {
+    bool preferCloud = true,
+    String cloudPurpose = 'editor_remove_bg',
+  }) {
+    throw UnsupportedError('Cloud Remove BG is not supported on web');
   }
 
   Future<Uint8List> finalizeCutout(Uint8List pngBytes) {
-    return const OfflineBackgroundRemovalService().finalizeCutout(pngBytes);
+    return Future<Uint8List>.value(pngBytes);
   }
 }

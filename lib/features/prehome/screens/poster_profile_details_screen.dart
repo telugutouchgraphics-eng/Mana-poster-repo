@@ -50,8 +50,8 @@ class PosterProfileDetailsScreen extends StatefulWidget {
 
 class _PosterProfileDetailsScreenState
     extends State<PosterProfileDetailsScreen> {
-  static const OfflineBackgroundRemovalService _backgroundRemovalService =
-      OfflineBackgroundRemovalService();
+  static const CloudFirstBackgroundRemovalService _backgroundRemovalService =
+      CloudFirstBackgroundRemovalService();
   static const List<String> _businessLogoStyles = <String>[
     'style_1',
     'style_2',
@@ -141,7 +141,7 @@ class _PosterProfileDetailsScreenState
     super.dispose();
   }
 
-  Future<void> _ensureBackgroundRemoverReady() {
+  Future<void> _ensureBackgroundRemovalReady() {
     return _backgroundRemoverInitialization ??= _backgroundRemovalService
         .ensureReady();
   }
@@ -206,6 +206,193 @@ class _PosterProfileDetailsScreenState
         await file.delete();
       }
     } catch (_) {}
+  }
+
+  Future<void> _openPersonalPhotoPicker() async {
+    if (_personalPhotoBusy || _pickerBusy) {
+      return;
+    }
+    try {
+      final remoteCutouts = await PosterProfileService.fetchReusableCutoutPhotos();
+      final cutouts = _profileCutoutsIncludingCurrent(remoteCutouts);
+      if (!mounted) {
+        return;
+      }
+      final action = await Navigator.of(context).push<_ProfilePhotoPickAction>(
+        MaterialPageRoute<_ProfilePhotoPickAction>(
+          builder: (_) => _ProfilePhotoPickerScreen(cutouts: cutouts),
+        ),
+      );
+      if (!mounted || action == null) {
+        return;
+      }
+      if (action.uploadNew) {
+        await _pickPersonalPhoto();
+        return;
+      }
+      final croppedPath = action.croppedPath?.trim() ?? '';
+      if (croppedPath.isNotEmpty) {
+        await _setPersonalPhotoFromCroppedSavedCutout(croppedPath);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Saved profile cutout crop failed: $error\n$stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not open saved profile photos.'),
+          ),
+        );
+      }
+    }
+  }
+
+  List<UserSavedCutoutPhoto> _profileCutoutsIncludingCurrent(
+    List<UserSavedCutoutPhoto> remoteCutouts,
+  ) {
+    final currentPhotoPath = _draftProfile.photoPath.trim();
+    final currentPhotoUrl = _draftProfile.photoUrl.trim();
+    if (currentPhotoPath.isEmpty && currentPhotoUrl.isEmpty) {
+      return remoteCutouts;
+    }
+    final current = UserSavedCutoutPhoto(
+      id: 'current_profile_${_draftProfile.personalPhotoRevision}',
+      downloadUrl: currentPhotoUrl,
+      localPath: currentPhotoPath,
+      source: 'current_profile',
+      createdAt: null,
+    );
+    final currentKey = currentPhotoUrl.isNotEmpty
+        ? currentPhotoUrl
+        : currentPhotoPath;
+    final merged = <UserSavedCutoutPhoto>[current];
+    for (final cutout in remoteCutouts) {
+      final key = cutout.downloadUrl.trim().isNotEmpty
+          ? cutout.downloadUrl.trim()
+          : cutout.localPath.trim();
+      if (key.isEmpty || key == currentKey) {
+        continue;
+      }
+      merged.add(cutout);
+    }
+    return merged;
+  }
+
+  Future<void> _setPersonalPhotoFromCroppedSavedCutout(String croppedPath) async {
+    if (_personalPhotoBusy) {
+      return;
+    }
+    setState(() {
+      _personalPhotoBusy = true;
+      _pickerBusy = true;
+    });
+    try {
+      final croppedBytes = await File(croppedPath).readAsBytes();
+      final Directory dir = await getApplicationDocumentsDirectory();
+      final revision = DateTime.now().millisecondsSinceEpoch;
+      final targetPath =
+          '${dir.path}${Platform.pathSeparator}poster_profile_photo_$revision.png';
+      final targetFile = File(targetPath);
+      await targetFile.writeAsBytes(croppedBytes, flush: true);
+      final keepNewPersonalAssets = <String>{
+        targetPath,
+        _draftProfile.originalPhotoPath,
+      };
+      await _deleteLocalAssetUnlessKept(
+        _draftProfile.photoPath,
+        keepNewPersonalAssets,
+      );
+      final previousProfile = _draftProfile;
+      await PosterProfileService.evictRemoteProfilePhotoCache(previousProfile);
+      final updatedProfile = _draftProfile.copyWith(
+        photoPath: targetPath,
+        photoUrl: '',
+        personalPhotoRevision: revision,
+      );
+      await PosterProfileService.savePersonalPhotoAssets(
+        photoPath: updatedProfile.photoPath,
+        originalPhotoPath: updatedProfile.originalPhotoPath,
+        photoUrl: updatedProfile.photoUrl,
+        originalPhotoUrl: updatedProfile.originalPhotoUrl,
+        saveRemoteUrls: true,
+        personalPhotoRevision: revision,
+      );
+      if (mounted) {
+        setState(() {
+          _draftProfile = updatedProfile;
+        });
+      }
+      unawaited(
+        _syncSavedCutoutProfileUpload(
+          baseProfile: updatedProfile,
+          cutoutLocalFile: targetFile,
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Set saved profile cutout failed: $error\n$stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not set saved profile photo.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _personalPhotoBusy = false;
+          _pickerBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _syncSavedCutoutProfileUpload({
+    required PosterProfileData baseProfile,
+    required File cutoutLocalFile,
+  }) async {
+    try {
+      final cutoutRemoteUrl = await PosterProfileService.uploadProfilePhoto(
+        file: cutoutLocalFile,
+        extension: 'png',
+      );
+      if (cutoutRemoteUrl.trim().isNotEmpty) {
+        await PosterProfileService.saveReusableCutoutPhoto(
+          cutoutFile: cutoutLocalFile,
+          downloadUrl: cutoutRemoteUrl,
+          personalPhotoRevision: baseProfile.personalPhotoRevision,
+        );
+      }
+      final updatedProfile = baseProfile.copyWith(
+        photoUrl: cutoutRemoteUrl.isEmpty
+            ? baseProfile.photoUrl
+            : cutoutRemoteUrl,
+        personalPhotoRevision: DateTime.now().millisecondsSinceEpoch,
+      );
+      await PosterProfileService.savePersonalPhotoAssets(
+        photoPath: updatedProfile.photoPath,
+        originalPhotoPath: updatedProfile.originalPhotoPath,
+        photoUrl: updatedProfile.photoUrl,
+        originalPhotoUrl: updatedProfile.originalPhotoUrl,
+        saveRemoteUrls: true,
+        personalPhotoRevision: updatedProfile.personalPhotoRevision,
+      );
+      if (!mounted) {
+        return true;
+      }
+      setState(() {
+        _draftProfile = updatedProfile;
+        if (_isSameProfileChangeIgnoringRemoteUrls(
+          _savedProfile,
+          updatedProfile,
+        )) {
+          _savedProfile = updatedProfile;
+        }
+      });
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('Saved cutout profile sync failed: $error\n$stackTrace');
+      return false;
+    }
   }
 
   Future<void> _pickPersonalPhoto() async {
@@ -382,6 +569,13 @@ class _PosterProfileDetailsScreenState
           file: cutoutLocalFile,
           extension: 'png',
         );
+        if (cutoutRemoteUrl.trim().isNotEmpty) {
+          await PosterProfileService.saveReusableCutoutPhoto(
+            cutoutFile: cutoutLocalFile,
+            downloadUrl: cutoutRemoteUrl,
+            personalPhotoRevision: baseProfile.personalPhotoRevision,
+          );
+        }
       }
 
       final updatedProfile = baseProfile.copyWith(
@@ -425,22 +619,22 @@ class _PosterProfileDetailsScreenState
     Uint8List optimizedOriginalBytes,
   ) async {
     Future<Uint8List?> attempt(Uint8List sourceBytes, Duration timeout) async {
-      await _ensureBackgroundRemoverReady();
+      await _ensureBackgroundRemovalReady();
       final removedResult = await _backgroundRemovalService
-          .removeBackground(sourceBytes)
+          .removeBackground(sourceBytes, cloudPurpose: 'profile_photo')
           .timeout(timeout);
       return removedResult.pngBytes;
     }
 
     try {
-      return await attempt(optimizedOriginalBytes, const Duration(seconds: 30));
+      return await attempt(optimizedOriginalBytes, const Duration(seconds: 75));
     } catch (_) {
       try {
         final smallerBytes = await compute(
           _prepareProfilePhotoRemovalBytes,
           optimizedOriginalBytes,
         );
-        return await attempt(smallerBytes, const Duration(seconds: 30));
+        return await attempt(smallerBytes, const Duration(seconds: 75));
       } catch (_) {
         return null;
       }
@@ -990,7 +1184,7 @@ class _PosterProfileDetailsScreenState
                     busy: isBusiness ? _businessLogoBusy : _personalPhotoBusy,
                     onVisualTap: isBusiness
                         ? _pickBusinessLogo
-                        : _pickPersonalPhoto,
+                        : _openPersonalPhotoPicker,
                     child: SizedBox(
                       width: 148,
                       height: 148,
@@ -1405,6 +1599,254 @@ Uint8List _optimizeProfilePhotoBytes(Uint8List bytes) {
 
 Uint8List _prepareProfilePhotoRemovalBytes(Uint8List bytes) {
   return bytes;
+}
+
+class _ProfilePhotoPickAction {
+  const _ProfilePhotoPickAction.upload()
+    : uploadNew = true,
+      croppedPath = null;
+
+  const _ProfilePhotoPickAction.cropped(this.croppedPath) : uploadNew = false;
+
+  final bool uploadNew;
+  final String? croppedPath;
+}
+
+class _ProfilePhotoPickerScreen extends StatelessWidget {
+  const _ProfilePhotoPickerScreen({required this.cutouts});
+
+  final List<UserSavedCutoutPhoto> cutouts;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Profile Photos'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pop(const _ProfilePhotoPickAction.upload()),
+                  icon: const Icon(Icons.upload_rounded),
+                  label: const Text('Upload Photo'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6D28D9),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (cutouts.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'No saved PNG photos yet.',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                      ),
+                  itemCount: cutouts.length,
+                  itemBuilder: (context, index) {
+                    return _ProfileSavedCutoutTile(cutout: cutouts[index]);
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSavedCutoutTile extends StatefulWidget {
+  const _ProfileSavedCutoutTile({required this.cutout});
+
+  final UserSavedCutoutPhoto cutout;
+
+  @override
+  State<_ProfileSavedCutoutTile> createState() =>
+      _ProfileSavedCutoutTileState();
+}
+
+class _ProfileSavedCutoutTileState extends State<_ProfileSavedCutoutTile> {
+  bool _busy = false;
+
+  Future<void> _cropSavedCutout() async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+    });
+    File? stagedCropSourceFile;
+    try {
+      stagedCropSourceFile = await _materializeProfileCutoutForCrop(
+        widget.cutout,
+      );
+      if (!mounted) {
+        return;
+      }
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: stagedCropSourceFile.path,
+        compressFormat: ImageCompressFormat.png,
+        compressQuality: 100,
+        uiSettings: <PlatformUiSettings>[
+          AndroidUiSettings(
+            toolbarTitle: 'Crop Photo',
+            toolbarColor: const Color(0xFF0F172A),
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: const Color(0xFF0F172A),
+            activeControlsWidgetColor: const Color(0xFF2563EB),
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: 'Crop Photo',
+            aspectRatioLockEnabled: false,
+            rotateButtonsHidden: false,
+          ),
+        ],
+      );
+      if (!mounted || cropped == null) {
+        return;
+      }
+      Navigator.of(context).pop(_ProfilePhotoPickAction.cropped(cropped.path));
+    } catch (error, stackTrace) {
+      debugPrint('Profile saved cutout crop picker failed: $error\n$stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: const Text('Could not crop saved profile photo.'),
+          ),
+        );
+      }
+    } finally {
+      if (stagedCropSourceFile != null) {
+        unawaited(_deleteStagedFileSilently(stagedCropSourceFile));
+      }
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteStagedFileSilently(File? file) async {
+    if (file == null) {
+      return;
+    }
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localPath = widget.cutout.localPath.trim();
+    final localFile = localPath.isEmpty ? null : File(localPath);
+    final image = localFile != null && localFile.existsSync()
+        ? Image.file(localFile, fit: BoxFit.contain)
+        : Image.network(widget.cutout.downloadUrl, fit: BoxFit.contain);
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _busy ? null : _cropSavedCutout,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: image,
+              ),
+              if (_busy)
+                const ColoredBox(
+                  color: Color(0x66FFFFFF),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<File> _materializeProfileCutoutForCrop(
+  UserSavedCutoutPhoto cutout,
+) async {
+  final tempDir = await getTemporaryDirectory();
+  final tempFile = File(
+    '${tempDir.path}${Platform.pathSeparator}'
+    'poster_profile_saved_cutout_${DateTime.now().millisecondsSinceEpoch}.png',
+  );
+  final localPath = cutout.localPath.trim();
+  if (localPath.isNotEmpty) {
+    final localFile = File(localPath);
+    if (await localFile.exists() && await localFile.length() > 0) {
+      return localFile.copy(tempFile.path);
+    }
+  }
+  final url = cutout.downloadUrl.trim();
+  if (url.isEmpty) {
+    throw StateError('Saved cutout has no image source.');
+  }
+  final client = HttpClient();
+  try {
+    final request = await client.getUrl(Uri.parse(url));
+    final response = await request.close();
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw HttpException('Cutout download failed: ${response.statusCode}');
+    }
+    final bytes = await consolidateHttpClientResponseBytes(response);
+    await tempFile.writeAsBytes(bytes, flush: true);
+    return tempFile;
+  } finally {
+    client.close(force: true);
+  }
 }
 
 class _IdentityPreviewCard extends StatelessWidget {

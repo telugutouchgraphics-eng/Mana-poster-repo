@@ -15811,7 +15811,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
   }
 
-  Future<void> _ensureBackgroundRemoverReady() {
+  Future<void> _ensureBackgroundRemovalReady() {
     return _backgroundRemoverInitialization ??= _backgroundRemovalService
         .ensureReady();
   }
@@ -15858,7 +15858,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     Uint8List optimizedOriginalBytes,
   ) async {
     Future<Uint8List?> attempt(Uint8List sourceBytes, Duration timeout) async {
-      await _ensureBackgroundRemoverReady();
+      await _ensureBackgroundRemovalReady();
       final removedResult = await _backgroundRemovalService
           .removeBackground(sourceBytes)
           .timeout(timeout);

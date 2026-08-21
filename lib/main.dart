@@ -93,8 +93,11 @@ Future<void> main() async {
         if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
           unawaited(_hideSystemUiAfterFirstFrame());
         }
-        if (!kIsWeb) {
-          unawaited(_logMetaLaunchTestEvent());
+        if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
+          unawaited(() async {
+            await Future<void>.delayed(const Duration(seconds: 30));
+            await _logMetaLaunchTestEvent();
+          }());
         }
         unawaited(_runDeferredPostSplashInitialization());
       });
@@ -140,9 +143,7 @@ Future<void> _logMetaLaunchTestEvent() async {
     await facebookAppEvents.activateApp();
     await facebookAppEvents.logEvent(
       name: 'meta_test_event',
-      parameters: <String, Object>{
-        'source': 'app_launch',
-      },
+      parameters: <String, Object>{'source': 'app_launch'},
     );
     await facebookAppEvents.flush();
   } catch (error, stackTrace) {
@@ -171,7 +172,7 @@ Future<void> _runDeferredPostSplashInitialization() async {
     await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 8));
   } catch (_) {}
   await Future<void>.delayed(
-    kReleaseMode ? const Duration(seconds: 12) : const Duration(seconds: 14),
+    kReleaseMode ? const Duration(seconds: 24) : const Duration(seconds: 14),
   );
   await _runPostFirstFrameInitialization();
 }
@@ -209,7 +210,7 @@ Future<void> _runPostLaunchInitialization() async {
     _scheduleStartupTask(
       'temp_directory_cleanup',
       AppTemporaryCleanup.runAfterColdStart,
-      delay: const Duration(seconds: 12),
+      delay: const Duration(seconds: 30),
     );
     if (_shouldRunNonEssentialStartupServices) {
       _scheduleUiReadyStartupTask(
@@ -218,7 +219,7 @@ Future<void> _runPostLaunchInitialization() async {
           NotificationService.registerBackgroundHandler();
           await NotificationService.instance.initialize();
         },
-        delay: const Duration(seconds: 24),
+        delay: const Duration(seconds: 45),
       );
     }
     if (_shouldRunNonEssentialStartupServices &&
@@ -236,7 +237,7 @@ Future<void> _runPostLaunchInitialization() async {
     _scheduleUiReadyStartupTask(
       'device_session_start',
       DeviceSessionService.instance.start,
-      delay: const Duration(seconds: 8),
+      delay: const Duration(seconds: 18),
     );
     _scheduleUiReadyStartupTask('subscription_refresh_post_launch', () async {
       final service = SubscriptionBackendService();
@@ -245,22 +246,22 @@ Future<void> _runPostLaunchInitialization() async {
         clearCacheFirst: false,
       );
       await service.recoverPendingPurchaseInBackground();
-    }, delay: const Duration(seconds: 14));
+    }, delay: const Duration(seconds: 28));
     _scheduleUiReadyStartupTask(
       'sync_stored_language',
       AppFlowService.syncStoredLanguageToRemote,
-      delay: const Duration(seconds: 20),
+      delay: const Duration(seconds: 38),
     );
     _scheduleUiReadyStartupTask(
       'sync_stored_party_preferences',
       AppPartyPreferenceService.syncStoredSelectionToRemote,
-      delay: const Duration(seconds: 24),
+      delay: const Duration(seconds: 48),
     );
   }
   _subscriptionLifecycleListener ??= AppLifecycleListener(
     onResume: () {
       unawaited(() async {
-        await Future<void>.delayed(const Duration(seconds: 3));
+        await Future<void>.delayed(const Duration(seconds: 45));
         await _runStartupTask(
           'temp_directory_cleanup_resume',
           AppTemporaryCleanup.sweepEligibleTemporaryFiles,
@@ -439,7 +440,15 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('cannot retrieve length of file') ||
       normalized.contains('mana_poster_network_images') ||
       normalized.contains('failed host lookup') ||
+      normalized.contains('handshakeexception') ||
+      normalized.contains('connection terminated during handshake') ||
+      normalized.contains('cachednetworkimageprovider') ||
+      normalized.contains('multiimagestreamcompleter') ||
+      normalized.contains('imagestreamcompleter.reporterror') ||
       normalized.contains('permission-denied') ||
+      normalized.contains('permission_denied') ||
+      normalized.contains('[cloud_firestore/permission-denied]') ||
+      normalized.contains('permission denied') ||
       normalized.contains('already_active') ||
       normalized.contains('camera_access_denied') ||
       normalized.contains('photo_access_denied') ||

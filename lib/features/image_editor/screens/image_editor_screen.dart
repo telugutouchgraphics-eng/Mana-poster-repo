@@ -1126,6 +1126,20 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
         productId == 'manual_lifetime_whitelist';
   }
 
+  bool get _hasActiveEditorCloudSubscriptionAccess {
+    if (_editorEntitlementService.cachedEntitlement?.hasAccess == true) {
+      return true;
+    }
+    final appEntitlement =
+        SubscriptionBackendService.entitlementNotifier.value ??
+        _appEntitlementService.cachedEntitlement;
+    if (appEntitlement?.hasAccess != true) {
+      return false;
+    }
+    return appEntitlement?.productId?.trim() ==
+        EditorSubscriptionPlanConfig.productId;
+  }
+
   Future<void> _refreshEditorAdEntitlementInBackground() async {
     await Future.wait(<Future<void>>[
       _appEntitlementService.refreshEntitlementInBackground(),
@@ -4690,6 +4704,8 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
                                     onBack: _closeBottomPrimaryTool,
                                     onPhotoGalleryTap: _handleAddPhoto,
                                     onPhotoCameraTap: _handleAddPhotoFromCamera,
+                                    onPhotoCutoutsTap:
+                                        _handleAddReusableCutoutPhoto,
                                     onPhotoFileImportTap:
                                         _handleImportDesignFile,
                                     onPhotoMagicWandTap: _activateMagicWandMode,

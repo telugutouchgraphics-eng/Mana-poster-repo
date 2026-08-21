@@ -341,6 +341,7 @@ class _EditorSubToolsStrip extends StatelessWidget {
     required this.onBack,
     required this.onPhotoGalleryTap,
     required this.onPhotoCameraTap,
+    required this.onPhotoCutoutsTap,
     required this.onPhotoFileImportTap,
     required this.onPhotoMagicWandTap,
     required this.hasSelectedPhotoLayer,
@@ -375,6 +376,7 @@ class _EditorSubToolsStrip extends StatelessWidget {
   final VoidCallback onBack;
   final Future<void> Function() onPhotoGalleryTap;
   final Future<void> Function() onPhotoCameraTap;
+  final Future<void> Function() onPhotoCutoutsTap;
   final Future<void> Function() onPhotoFileImportTap;
   final void Function() onPhotoMagicWandTap;
   final bool hasSelectedPhotoLayer;
@@ -512,6 +514,12 @@ class _EditorSubToolsStrip extends StatelessWidget {
                   icon: Icons.photo_camera_outlined,
                   compact: compact,
                   onTap: () => unawaited(onPhotoCameraTap()),
+                ),
+                _ToolItem(
+                  label: 'Cutouts',
+                  icon: Icons.person_pin_circle_outlined,
+                  compact: compact,
+                  onTap: () => unawaited(onPhotoCutoutsTap()),
                 ),
                 _ToolItem(
                   label: 'PSD',

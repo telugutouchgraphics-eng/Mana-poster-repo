@@ -344,6 +344,9 @@ class _PageSetupScreenState extends State<PageSetupScreen>
     try {
       final picked = await _imagePicker.pickImage(
         source: ImageSource.gallery,
+        maxWidth: 4096,
+        maxHeight: 4096,
+        imageQuality: 95,
         requestFullMetadata: false,
       );
       if (!mounted || picked == null || picked.path.trim().isEmpty) {
