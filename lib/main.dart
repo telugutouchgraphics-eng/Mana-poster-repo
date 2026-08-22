@@ -424,6 +424,8 @@ Future<void> _configureFirebaseMonitoring() async {
 bool _isRecoverableFlutterError(FlutterErrorDetails details) {
   return _isRecoverableError(details.exception) ||
       _containsRecoverableSignal(details.exceptionAsString()) ||
+      _containsRecoverableSignal(details.library ?? '') ||
+      _containsRecoverableSignal(details.context?.toDescription() ?? '') ||
       _containsRecoverableSignal(details.stack?.toString() ?? '');
 }
 
@@ -434,11 +436,17 @@ bool _isRecoverableError(Object error) {
 bool _containsRecoverableSignal(String value) {
   final normalized = value.toLowerCase();
   return normalized.contains('httpexception: invalid statuscode') ||
+      normalized.contains('http request failed, statuscode') ||
       normalized.contains('imagecodec') ||
       normalized.contains('could not decompress image') ||
+      normalized.contains('_network_image_io.dart') ||
+      normalized.contains('networkimage._loadasync') ||
       normalized.contains('pathnotfoundexception') ||
       normalized.contains('cannot retrieve length of file') ||
       normalized.contains('mana_poster_network_images') ||
+      normalized.contains('firebasestorage.googleapis.com') ||
+      normalized.contains('clientexception: software caused connection abort') ||
+      normalized.contains('software caused connection abort') ||
       normalized.contains('failed host lookup') ||
       normalized.contains('handshakeexception') ||
       normalized.contains('connection terminated during handshake') ||

@@ -300,6 +300,27 @@ void main() {
       },
     );
 
+    test('includes Chiranjeevi birthday for Telugu states on August 22', () {
+      const service = DynamicCategoryService();
+
+      Set<String> slugsForRegion(String regionId) {
+        return service
+            .categoriesForDate(
+              DateTime(2026, 8, 22, 10),
+              language: AppLanguage.english,
+              selectedRegionId: regionId,
+            )
+            .map((item) => item.slug)
+            .toSet();
+      }
+
+      expect(
+        slugsForRegion('andhra_pradesh'),
+        contains('chiranjeevi_birthday'),
+      );
+      expect(slugsForRegion('telangana'), contains('chiranjeevi_birthday'));
+    });
+
     test('filters events by scope', () {
       const service = DynamicCategoryService(
         repository: _FakeDynamicEventRepository(<DynamicCalendarEvent>[

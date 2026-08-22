@@ -9,6 +9,8 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'
+    as emoji_picker;
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9485,11 +9487,11 @@ class _CommunityStatusViewerScreenState
     with SingleTickerProviderStateMixin {
   static const Duration _viewDuration = Duration(seconds: 7);
   static const List<String> _reactions = <String>[
-    'ðŸ”¥',
-    'ðŸ‘',
-    'ðŸ˜',
-    'ðŸ™',
-    'ðŸ˜ ',
+    'emoji:1f525',
+    'emoji:1f44f',
+    'emoji:1f60d',
+    'emoji:1f64f',
+    'emoji:1f621',
   ];
 
   late final AnimationController _progressController;
@@ -10743,6 +10745,7 @@ class _StatusEngagementPanel extends StatelessWidget {
                   const SizedBox(width: 12),
                   for (final reaction in reactions)
                     _StatusReactionButton(status: status, reaction: reaction),
+                  _StatusEmojiPickerButton(status: status),
                 ],
               ),
               const SizedBox(height: 10),
@@ -10965,12 +10968,18 @@ class _StatusReactionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = status.viewerReaction == reaction;
+    final normalizedReaction = _StatusReactionCodec.normalize(reaction);
+    final selected =
+        _StatusReactionCodec.normalize(status.viewerReaction) ==
+        normalizedReaction;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 3),
       child: InkWell(
         onTap: () => unawaited(
-          CommunityStatusService.instance.setReaction(status.id, reaction),
+          CommunityStatusService.instance.setReaction(
+            status.id,
+            normalizedReaction,
+          ),
         ),
         borderRadius: BorderRadius.circular(18),
         child: Container(
@@ -10983,10 +10992,154 @@ class _StatusReactionButton extends StatelessWidget {
                 : Colors.white.withValues(alpha: 0.14),
             shape: BoxShape.circle,
           ),
-          child: Text(reaction, style: const TextStyle(fontSize: 18)),
+          child: Text(
+            _StatusReactionCodec.display(normalizedReaction),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, height: 1),
+          ),
         ),
       ),
     );
+  }
+}
+
+class _StatusEmojiPickerButton extends StatelessWidget {
+  const _StatusEmojiPickerButton({required this.status});
+
+  final CommunityStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: InkWell(
+        onTap: () => _openPicker(context),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.add_reaction_rounded,
+            color: Colors.white,
+            size: 21,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+            ),
+            child: emoji_picker.EmojiPicker(
+              onEmojiSelected:
+                  (emoji_picker.Category? category, emoji_picker.Emoji emoji) {
+                    final reaction = _StatusReactionCodec.encode(emoji.emoji);
+                    Navigator.of(sheetContext).pop();
+                    unawaited(
+                      CommunityStatusService.instance.setReaction(
+                        status.id,
+                        reaction,
+                      ),
+                    );
+                  },
+              config: const emoji_picker.Config(
+                height: 320,
+                checkPlatformCompatibility: true,
+                emojiViewConfig: emoji_picker.EmojiViewConfig(
+                  columns: 8,
+                  emojiSizeMax: 30,
+                  backgroundColor: Colors.white,
+                ),
+                categoryViewConfig: emoji_picker.CategoryViewConfig(
+                  backgroundColor: Colors.white,
+                  iconColor: Color(0xFF667085),
+                  iconColorSelected: Color(0xFF16A34A),
+                  indicatorColor: Color(0xFF16A34A),
+                ),
+                bottomActionBarConfig: emoji_picker.BottomActionBarConfig(
+                  backgroundColor: Colors.white,
+                  buttonColor: Color(0xFF16A34A),
+                  buttonIconColor: Colors.white,
+                ),
+                searchViewConfig: emoji_picker.SearchViewConfig(
+                  backgroundColor: Colors.white,
+                  buttonIconColor: Color(0xFF16A34A),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatusReactionCodec {
+  static const String _prefix = 'emoji:';
+
+  static const Map<String, String> _legacyValues = <String, String>{
+    'fire': 'emoji:1f525',
+    'clap': 'emoji:1f44f',
+    'love': 'emoji:1f60d',
+    'pray': 'emoji:1f64f',
+    'angry': 'emoji:1f621',
+  };
+
+  static String encode(String emoji) {
+    final trimmed = emoji.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    return '$_prefix${trimmed.runes.map((codePoint) {
+      return codePoint.toRadixString(16);
+    }).join('-')}';
+  }
+
+  static String normalize(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    final legacy = _legacyValues[trimmed];
+    if (legacy != null) {
+      return legacy;
+    }
+    if (trimmed.startsWith(_prefix)) {
+      return trimmed.toLowerCase();
+    }
+    return encode(trimmed);
+  }
+
+  static String display(String value) {
+    final normalized = normalize(value);
+    if (!normalized.startsWith(_prefix)) {
+      return '';
+    }
+    final payload = normalized.substring(_prefix.length);
+    final codePoints = <int>[];
+    for (final part in payload.split('-')) {
+      final codePoint = int.tryParse(part, radix: 16);
+      if (codePoint == null) {
+        return '';
+      }
+      codePoints.add(codePoint);
+    }
+    return String.fromCharCodes(codePoints);
   }
 }
 
