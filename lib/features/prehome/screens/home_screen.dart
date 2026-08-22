@@ -9,8 +9,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart'
-    as emoji_picker;
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart' as emoji_picker;
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -64,13 +63,11 @@ import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
-import 'package:mana_poster/features/prehome/models/user_poster_upload.dart';
 import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
 import 'package:mana_poster/features/prehome/screens/daily_quiz_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
-import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_downloads_service.dart';
 import 'package:mana_poster/features/prehome/services/approved_creator_template_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -1447,6 +1444,10 @@ class _HomeScreenState extends State<HomeScreen>
   List<_TemplateItem> _remoteApprovedTemplates = const <_TemplateItem>[];
   List<AppHomeBanner> _homeBanners = const <AppHomeBanner>[];
   List<AppHomeBanner> _promoCardBanners = const <AppHomeBanner>[];
+  List<AppHomeBanner> _fullscreenPopupBanners = const <AppHomeBanner>[];
+  AppHomeBanner? _activeFullscreenPopupBanner;
+  bool _fullscreenPopupDismissed = false;
+  final Set<String> _countedFullscreenPopupBannerIds = <String>{};
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
@@ -2385,6 +2386,9 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         _selectedRegionId = regionId;
         _homeBanners = const <AppHomeBanner>[];
+        _fullscreenPopupBanners = const <AppHomeBanner>[];
+        _activeFullscreenPopupBanner = null;
+        _fullscreenPopupDismissed = false;
         _remoteApprovedTemplates = const <_TemplateItem>[];
         _manualEventCategories = const <DynamicCategory>[];
         _templatesLoading = true;
@@ -4604,29 +4608,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openProfile() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ProfileScreen(
-          openMyUploads: (routeContext) =>
-              _openMyUploadsRoute(routeContext, profileOnly: true),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openMyUploadsRoute(
-    BuildContext routeContext, {
-    bool profileOnly = false,
-  }) async {
-    await Navigator.of(routeContext).push(
-      MaterialPageRoute<void>(
-        builder: (_) => UserPosterUploadsScreen(
-          initialTabIndex: 0,
-          profileOnly: profileOnly,
-          approvedPosterBuilder: _buildApprovedUploadPosterPreview,
-        ),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
   }
 
   void _setPosterPhotoDragInProgress(bool value) {
@@ -4686,10 +4670,18 @@ class _HomeScreenState extends State<HomeScreen>
       maxItems: 6,
       placement: 'home_promo_card_carousel',
     );
+    final remotePopupFuture = _appHomeBannerService.fetchBanners(
+      maxItems: 1,
+      placement: 'home_fullscreen_popup',
+    );
     final cached = await _appHomeBannerService.fetchBannersFromCache();
     final cachedPromo = await _appHomeBannerService.fetchBannersFromCache(
       maxItems: 6,
       placement: 'home_promo_card_carousel',
+    );
+    final cachedPopup = await _appHomeBannerService.fetchBannersFromCache(
+      maxItems: 1,
+      placement: 'home_fullscreen_popup',
     );
     if (mounted && cached.isNotEmpty) {
       if (!_sameHomeBannerSequence(_homeBanners, cached)) {
@@ -4701,9 +4693,15 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _promoCardBanners = cachedPromo);
       }
     }
+    if (mounted && cachedPopup.isNotEmpty) {
+      if (!_sameHomeBannerSequence(_fullscreenPopupBanners, cachedPopup)) {
+        _applyFullscreenPopupBanners(cachedPopup);
+      }
+    }
 
     final remote = await remoteFuture;
     final remotePromo = await remotePromoFuture;
+    final remotePopup = await remotePopupFuture;
     if (!mounted) {
       return;
     }
@@ -4712,7 +4710,11 @@ class _HomeScreenState extends State<HomeScreen>
       _promoCardBanners,
       remotePromo,
     );
-    if (!homeChanged && !promoChanged) {
+    final popupChanged = !_sameHomeBannerSequence(
+      _fullscreenPopupBanners,
+      remotePopup,
+    );
+    if (!homeChanged && !promoChanged && !popupChanged) {
       return;
     }
     setState(() {
@@ -4721,6 +4723,9 @@ class _HomeScreenState extends State<HomeScreen>
       }
       if (promoChanged) {
         _promoCardBanners = remotePromo;
+      }
+      if (popupChanged) {
+        _setFullscreenPopupBanners(remotePopup);
       }
     });
   }
@@ -6446,6 +6451,70 @@ class _HomeScreenState extends State<HomeScreen>
     return true;
   }
 
+  void _applyFullscreenPopupBanners(List<AppHomeBanner> banners) {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _setFullscreenPopupBanners(banners));
+  }
+
+  void _setFullscreenPopupBanners(List<AppHomeBanner> banners) {
+    final previousId = _activeFullscreenPopupBanner?.id;
+    _fullscreenPopupBanners = banners;
+    _activeFullscreenPopupBanner = banners.isNotEmpty ? banners.first : null;
+    if (_activeFullscreenPopupBanner?.id != previousId) {
+      _fullscreenPopupDismissed = false;
+    }
+  }
+
+  void _dismissFullscreenPopupBanner() {
+    if (_fullscreenPopupDismissed) {
+      return;
+    }
+    setState(() => _fullscreenPopupDismissed = true);
+  }
+
+  void _recordFullscreenPopupBannerView(String bannerId) {
+    if (bannerId.trim().isEmpty ||
+        !_countedFullscreenPopupBannerIds.add(bannerId)) {
+      return;
+    }
+    unawaited(() async {
+      try {
+        final ref = FirebaseFirestore.instance
+            .collection('appBanners')
+            .doc(bannerId);
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          final snapshot = await transaction.get(ref);
+          if (!snapshot.exists) {
+            return;
+          }
+          final data = snapshot.data();
+          final current = _readCounter(data?['viewCount']);
+          transaction.update(ref, <String, Object?>{
+            'viewCount': current + 1,
+            'lastViewedAt': FieldValue.serverTimestamp(),
+          });
+        });
+      } catch (error, stackTrace) {
+        _homeDebugLogStack(
+          'fullscreen popup banner view count skipped: $error',
+          stackTrace,
+        );
+      }
+    }());
+  }
+
+  int _readCounter(Object? value) {
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
   String _templateSequenceKey(_TemplateItem item) {
     final id = item.templateId?.trim() ?? '';
     if (id.isNotEmpty) {
@@ -7434,88 +7503,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildApprovedUploadPosterPreview(
-    BuildContext context,
-    ApprovedUploadPosterRenderData data,
-  ) {
-    final item = _mapApprovedCreatorTemplateWorker(data.template);
-    final forcedPartyId = _resolveApprovedUploadPartyId(item, data.upload);
-    final normalizedScope = _normalizeTag(
-      forcedPartyId?.trim().isNotEmpty == true
-          ? 'party_$forcedPartyId'
-          : item.primaryFirestoreCategoryId?.trim().isNotEmpty == true
-          ? item.primaryFirestoreCategoryId!.trim()
-          : item.categoryDisplayLabel?.trim().isNotEmpty == true
-          ? item.categoryDisplayLabel!.trim()
-          : item.templateId?.trim() ?? '',
-    );
-    return _TemplateFeedItem(
-      key: ValueKey<String>(
-        'approved-upload-${data.upload.id}-${item.templateId ?? item.imageUrl ?? item.thumbnailUrl ?? 'poster'}',
-      ),
-      item: item,
-      hostContext: context,
-      language: data.language,
-      deferRichPosterPreview: false,
-      onOpenSubscriptionPlan: _pushSubscriptionPlanRoute,
-      viewerPosterProfile: data.profile,
-      posterRenderCycle: _posterRenderCycle,
-      onPosterPhotoDragStateChanged: _setPosterPhotoDragInProgress,
-      playbackEnabled: false,
-      enablePoliticalProtocolOverlay:
-          item.personalizationConfig?.hasPoliticalProtocolLayout ?? false,
-      showPartyLogoInNameChip: false,
-      politicalProtocolPhotoScopeKey: normalizedScope,
-      partyLogoOverridesByPartyId: _partyLogoOverridesByPartyId,
-      politicalParties: _politicalParties,
-      forcedPoliticalProtocolPartyId: forcedPartyId,
-      showPosterEditButton: false,
-      allowPoliticalProtocolWithoutParty: true,
-      preferUltraLightImage: false,
-    );
-  }
-
-  String? _resolveApprovedUploadPartyId(
-    _TemplateItem item,
-    UserPosterUpload upload,
-  ) {
-    final tags = <String>{
-      for (final tag in item.categoryTags) _normalizeTag(tag),
-      _normalizeTag(item.primaryFirestoreCategoryId ?? ''),
-      _normalizeTag(item.categoryDisplayLabel ?? ''),
-      _normalizeTag(item.templateId ?? ''),
-      _normalizeTag(upload.categoryId),
-      _normalizeTag(upload.categoryLabel),
-    }..removeWhere((tag) => tag.isEmpty);
-    for (final tag in tags) {
-      final partyId = _partyIdFromCategorySlug(tag);
-      if (partyId != null && partyId.isNotEmpty) {
-        return partyId;
-      }
-    }
-    final knownParties = _politicalParties.isEmpty
-        ? politicalParties
-        : _politicalParties;
-    for (final party in knownParties) {
-      final partyId = _normalizeTag(party.id);
-      final shortName = _normalizeTag(party.shortName);
-      if (partyId.isEmpty) {
-        continue;
-      }
-      if (tags.contains(partyId) ||
-          tags.contains('party_$partyId') ||
-          (shortName.isNotEmpty && tags.contains(shortName)) ||
-          (shortName.isNotEmpty && tags.contains('party_$shortName'))) {
-        return party.id;
-      }
-    }
-    final selected = _selectedPoliticalPartyId();
-    if (selected != null && selected.trim().isNotEmpty) {
-      return selected.trim();
-    }
-    return null;
-  }
-
   Future<void> _handlePromoTap(
     _HomePromoCardType type, {
     String ctaTarget = '',
@@ -8356,7 +8343,133 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
+          if (_activeFullscreenPopupBanner != null &&
+              !_fullscreenPopupDismissed)
+            _HomeFullscreenPopupBanner(
+              banner: _activeFullscreenPopupBanner!,
+              onClose: _dismissFullscreenPopupBanner,
+              onViewed: _recordFullscreenPopupBannerView,
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeFullscreenPopupBanner extends StatefulWidget {
+  const _HomeFullscreenPopupBanner({
+    required this.banner,
+    required this.onClose,
+    required this.onViewed,
+  });
+
+  final AppHomeBanner banner;
+  final VoidCallback onClose;
+  final ValueChanged<String> onViewed;
+
+  @override
+  State<_HomeFullscreenPopupBanner> createState() =>
+      _HomeFullscreenPopupBannerState();
+}
+
+class _HomeFullscreenPopupBannerState extends State<_HomeFullscreenPopupBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
+  );
+  late final Animation<Offset> _slideAnimation = Tween<Offset>(
+    begin: const Offset(0, 1),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onViewed(widget.banner.id);
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeFullscreenPopupBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.banner.id != widget.banner.id) {
+      widget.onViewed(widget.banner.id);
+      _controller
+        ..value = 0
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final safePadding = MediaQuery.paddingOf(context);
+    final imageUrl = widget.banner.imageUrl.trim();
+    if (imageUrl.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Positioned.fill(
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.82),
+        child: SafeArea(
+          child: Stack(
+            children: <Widget>[
+              SlideTransition(
+                position: _slideAnimation,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 14,
+                    ),
+                    child: AspectRatio(
+                      aspectRatio: 1080 / 1920,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          cacheManager: PosterNetworkImageCache.instance,
+                          maxWidthDiskCache:
+                              PosterNetworkImageLimits.diskFeedMaxWidth,
+                          maxHeightDiskCache:
+                              PosterNetworkImageLimits.diskFeedMaxHeight,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
+                          placeholder: (_, _) => const _ImageLoadingState(),
+                          errorWidget: (_, _, _) => const _ImageErrorState(
+                            compact: true,
+                            title: 'Banner unavailable',
+                            subtitle: 'Please try again shortly.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: math.max(8, safePadding.top * 0.25),
+                right: 12,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.58),
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: IconButton(
+                    tooltip: 'Close',
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -23986,7 +24099,9 @@ class _PhotoShapeFrame extends StatelessWidget {
       return 'bottom_fade';
     }
     if (currentShape == 'transparent_soft_round') {
-      return 'feather';
+      return currentEdgeStyle == 'bottom_fade' || currentEdgeStyle == 'feather'
+          ? currentEdgeStyle
+          : 'feather';
     }
     if (currentShape == 'transparent_clean' ||
         currentShape == 'transparent_sharp_round') {
@@ -24179,7 +24294,47 @@ class _PhotoShapeFrame extends StatelessWidget {
       if (shouldForceCleanOriginal) {
         return layer;
       }
-      if (normalizedEdgeStyle == 'feather') {
+      if (shape == 'transparent_soft_round') {
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const RadialGradient(
+              center: Alignment(0, -0.6),
+              radius: 0.92,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xFAFFFFFF),
+                Color(0xDBFFFFFF),
+                Color(0x8FFFFFFF),
+                Color(0x38FFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.58, 0.68, 0.77, 0.86, 0.93, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xE6FFFFFF),
+                Color(0x99FFFFFF),
+                Color(0x33FFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.64, 0.76, 0.86, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+      } else if (normalizedEdgeStyle == 'feather') {
         layer = ShaderMask(
           blendMode: BlendMode.dstIn,
           shaderCallback: (Rect bounds) {
@@ -24233,7 +24388,9 @@ class _PhotoShapeFrame extends StatelessWidget {
 
     Widget imageWidget;
     if (effectivePhotoRenderMode == 'cutout' && !isBusinessLogo) {
-      if (normalizedEdgeStyle == 'feather' && !shouldDeferHeavyEffects) {
+      if (normalizedEdgeStyle == 'feather' &&
+          shape != 'transparent_soft_round' &&
+          !shouldDeferHeavyEffects) {
         imageWidget = Stack(
           fit: StackFit.expand,
           children: <Widget>[
@@ -24279,6 +24436,10 @@ class _PhotoShapeFrame extends StatelessWidget {
         photoLayer,
       ],
     );
+
+    if (_isTransparentRoundShape(shape)) {
+      return ClipOval(clipBehavior: Clip.antiAlias, child: framedChild);
+    }
 
     if (_isTransparentPhotoShape(shape)) {
       return framedChild;

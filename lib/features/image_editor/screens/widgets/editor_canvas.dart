@@ -4712,7 +4712,47 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
           child: layer,
         ),
       );
-      if (normalizedEdgeStyle == 'feather') {
+      if (shape == 'transparent_soft_round') {
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const RadialGradient(
+              center: Alignment(0, -0.6),
+              radius: 0.92,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xFAFFFFFF),
+                Color(0xDBFFFFFF),
+                Color(0x8FFFFFFF),
+                Color(0x38FFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.58, 0.68, 0.77, 0.86, 0.93, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+        layer = ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (Rect bounds) {
+            return const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0xFFFFFFFF),
+                Color(0xFFFFFFFF),
+                Color(0xE6FFFFFF),
+                Color(0x99FFFFFF),
+                Color(0x33FFFFFF),
+                Color(0x00FFFFFF),
+              ],
+              stops: <double>[0.0, 0.64, 0.76, 0.86, 0.94, 1.0],
+            ).createShader(bounds);
+          },
+          child: layer,
+        );
+      } else if (normalizedEdgeStyle == 'feather') {
         layer = ShaderMask(
           blendMode: BlendMode.dstIn,
           shaderCallback: (Rect bounds) {
@@ -4765,7 +4805,7 @@ class _EditorPhotoMaskFrame extends StatelessWidget {
     }
 
     Widget alignedChild;
-    if (normalizedEdgeStyle == 'feather') {
+    if (normalizedEdgeStyle == 'feather' && shape != 'transparent_soft_round') {
       alignedChild = Stack(
         fit: StackFit.expand,
         children: <Widget>[

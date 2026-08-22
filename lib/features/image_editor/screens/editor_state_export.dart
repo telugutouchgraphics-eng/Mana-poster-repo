@@ -512,7 +512,7 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (_isExporting) {
       return;
     }
-    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    final hasAccess = await _ensureExportActionAccess('download');
     if (!mounted || !hasAccess) {
       return;
     }
@@ -528,7 +528,7 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (_isCropMode || _isExporting || _isCommitWorkerBusy) {
       return;
     }
-    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    final hasAccess = await _ensureExportActionAccess('export');
     if (!mounted || !hasAccess) {
       return;
     }
@@ -547,7 +547,7 @@ extension _EditorExportState on _ImageEditorScreenState {
     if (_isCropMode || _isSharing || _isExporting || _isCommitWorkerBusy) {
       return;
     }
-    final hasAccess = await _ensureSubscriptionAccessForExportActions();
+    final hasAccess = await _ensureExportActionAccess('share');
     if (!mounted || !hasAccess) {
       return;
     }
@@ -1267,7 +1267,7 @@ extension _EditorExportState on _ImageEditorScreenState {
       return;
     }
     if (recheckAccess) {
-      final hasAccess = await _ensureSubscriptionAccessForExportActions();
+      final hasAccess = await _ensureExportActionAccess('share_latest');
       if (!mounted || !hasAccess) {
         return;
       }

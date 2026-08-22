@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
-import 'package:mana_poster/features/prehome/screens/user_poster_uploads_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -29,7 +28,6 @@ class PosterProfileDetailsScreen extends StatefulWidget {
     this.openPersonalPhotoPickerOnStart = false,
     this.embeddedInProfileScreen = false,
     this.appBarActions = const <Widget>[],
-    this.openMyUploads,
     this.onSaved,
   });
 
@@ -40,7 +38,6 @@ class PosterProfileDetailsScreen extends StatefulWidget {
   final bool openPersonalPhotoPickerOnStart;
   final bool embeddedInProfileScreen;
   final List<Widget> appBarActions;
-  final Future<void> Function(BuildContext context)? openMyUploads;
   final ValueChanged<PosterProfileData>? onSaved;
 
   @override
@@ -213,7 +210,8 @@ class _PosterProfileDetailsScreenState
       return;
     }
     try {
-      final remoteCutouts = await PosterProfileService.fetchReusableCutoutPhotos();
+      final remoteCutouts =
+          await PosterProfileService.fetchReusableCutoutPhotos();
       final cutouts = _profileCutoutsIncludingCurrent(remoteCutouts);
       if (!mounted) {
         return;
@@ -277,7 +275,9 @@ class _PosterProfileDetailsScreenState
     return merged;
   }
 
-  Future<void> _setPersonalPhotoFromCroppedSavedCutout(String croppedPath) async {
+  Future<void> _setPersonalPhotoFromCroppedSavedCutout(
+    String croppedPath,
+  ) async {
     if (_personalPhotoBusy) {
       return;
     }
@@ -1004,43 +1004,6 @@ class _PosterProfileDetailsScreenState
                   ),
                 ),
                 const SizedBox(height: 10),
-                OutlinedButton(
-                  onPressed: _saving
-                      ? null
-                      : () {
-                          final openMyUploads = widget.openMyUploads;
-                          if (openMyUploads != null) {
-                            unawaited(openMyUploads(context));
-                            return;
-                          }
-                          Navigator.of(context).push<void>(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const UserPosterUploadsScreen(
-                                profileOnly: true,
-                              ),
-                            ),
-                          );
-                        },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0F766E),
-                    side: const BorderSide(color: Color(0xFF99F6E4)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    strings.localized(
-                      telugu: 'నా అప్‌లోడ్లు',
-                      english: 'My Uploads',
-                      hindi: 'मेरे अपलोड',
-                      tamil: 'எனது அப்லோட்கள்',
-                      kannada: 'ನನ್ನ ಅಪ್‌ಲೋಡ್‌ಗಳು',
-                      malayalam: 'എന്റെ അപ്‌ലോഡുകൾ',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
               ],
               FilledButton(
                 onPressed: _saving || !canSubmitProfile ? null : _saveProfile,
@@ -1602,9 +1565,7 @@ Uint8List _prepareProfilePhotoRemovalBytes(Uint8List bytes) {
 }
 
 class _ProfilePhotoPickAction {
-  const _ProfilePhotoPickAction.upload()
-    : uploadNew = true,
-      croppedPath = null;
+  const _ProfilePhotoPickAction.upload() : uploadNew = true, croppedPath = null;
 
   const _ProfilePhotoPickAction.cropped(this.croppedPath) : uploadNew = false;
 
@@ -1667,12 +1628,11 @@ class _ProfilePhotoPickerScreen extends StatelessWidget {
               Expanded(
                 child: GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                      ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                  ),
                   itemCount: cutouts.length,
                   itemBuilder: (context, index) {
                     return _ProfileSavedCutoutTile(cutout: cutouts[index]);
@@ -1740,7 +1700,9 @@ class _ProfileSavedCutoutTileState extends State<_ProfileSavedCutoutTile> {
       }
       Navigator.of(context).pop(_ProfilePhotoPickAction.cropped(cropped.path));
     } catch (error, stackTrace) {
-      debugPrint('Profile saved cutout crop picker failed: $error\n$stackTrace');
+      debugPrint(
+        'Profile saved cutout crop picker failed: $error\n$stackTrace',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
@@ -1792,10 +1754,7 @@ class _ProfileSavedCutoutTileState extends State<_ProfileSavedCutoutTile> {
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: image,
-              ),
+              Padding(padding: const EdgeInsets.all(8), child: image),
               if (_busy)
                 const ColoredBox(
                   color: Color(0x66FFFFFF),

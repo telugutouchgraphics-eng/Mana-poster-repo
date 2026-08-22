@@ -1188,6 +1188,80 @@ class _ImageEditorScreenState extends State<ImageEditorScreen>
     return refreshed?.hasAccess == true;
   }
 
+  Future<bool> _ensureExportActionAccess(String actionLabel) async {
+    if (widget.requireSubscriptionForExportActions) {
+      return _ensureSubscriptionAccessForExportActions();
+    }
+    if (_hasImmediateEditorSubscriptionAccess || _hasRewardedEditorProAccess) {
+      unawaited(_refreshEditorAdEntitlementInBackground());
+      return true;
+    }
+
+    if (_appEntitlementService.isConfigured &&
+        FirebaseAuth.instance.currentUser != null) {
+      final appResult = await _appEntitlementService.fetchEntitlement(
+        forceRefresh: true,
+      );
+      if (!mounted) {
+        return false;
+      }
+      if (appResult.hasAccess) {
+        return true;
+      }
+    }
+    if (_editorEntitlementService.isConfigured &&
+        FirebaseAuth.instance.currentUser != null) {
+      final editorResult = await _editorEntitlementService.fetchEntitlement(
+        forceRefresh: true,
+      );
+      if (!mounted) {
+        return false;
+      }
+      if (editorResult.hasAccess) {
+        return true;
+      }
+    }
+
+    if (_isRewardedGateBusy) {
+      return false;
+    }
+
+    setState(() {
+      _isRewardedGateBusy = true;
+    });
+    try {
+      final granted = await _rewardedAccessService.showRewardedAccessAd(
+        adUnitId: AppPublicInfo.adMobEditorRewardedAdUnitId,
+        debugLabel: 'editor_export_$actionLabel',
+      );
+      if (!mounted) {
+        return false;
+      }
+      if (!granted) {
+        ScaffoldMessenger.of(context).showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              context.strings.localized(
+                telugu: 'Continue cheyyadaniki full ad chudali',
+                english: 'Watch the full ad to continue',
+              ),
+            ),
+          ),
+        );
+        return false;
+      }
+      return true;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRewardedGateBusy = false;
+        });
+      } else {
+        _isRewardedGateBusy = false;
+      }
+    }
+  }
+
   bool _isPremiumTeluguFontFamily(String family) =>
       _textFontFamilies.contains(family) ||
       _remoteTeluguFontFamilies.contains(family);

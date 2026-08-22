@@ -876,7 +876,16 @@ service cloud.firestore {
     // Public app banners for home/category promotional surfaces.
     match /appBanners/{bannerId} {
       allow read: if resource.data.active == true;
-      allow create, update, delete: if false;
+      allow update: if signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "viewCount",
+          "lastViewedAt",
+        ]) &&
+        request.resource.data.viewCount is int &&
+        resource.data.viewCount is int &&
+        request.resource.data.viewCount == resource.data.viewCount + 1 &&
+        request.resource.data.lastViewedAt == request.time;
+      allow create, delete: if false;
     }
 
     // Admin-uploaded political protocol photos shown as public overlays in app.

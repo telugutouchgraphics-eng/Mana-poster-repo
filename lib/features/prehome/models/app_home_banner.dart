@@ -15,6 +15,7 @@ class AppHomeBanner {
     this.promoCardGroup = 1,
     required this.sortOrder,
     required this.active,
+    this.viewCount = 0,
   });
 
   final String id;
@@ -32,4 +33,5 @@ class AppHomeBanner {
   final int promoCardGroup;
   final int sortOrder;
   final bool active;
+  final int viewCount;
 }
