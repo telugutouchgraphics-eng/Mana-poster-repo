@@ -22,7 +22,6 @@ import 'package:mana_poster/features/prehome/screens/notifications_settings_scre
 import 'package:mana_poster/features/prehome/screens/permission_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/purchase_invoices_screen.dart';
-import 'package:mana_poster/features/prehome/screens/quiz_prize_details_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -889,18 +888,6 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
                   onTap: () => unawaited(_openSubscriptionPlan(context)),
                 ),
                 _ProfileItemData(
-                  icon: Icons.emoji_events_rounded,
-                  title: copy.quizPrizeDetailsTitle,
-                  subtitle: copy.quizPrizeDetailsSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const QuizPrizeDetailsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _ProfileItemData(
                   icon: Icons.receipt_long_rounded,
                   title: copy.purchaseInvoicesTitle,
                   subtitle: copy.purchaseInvoicesSubtitle,
@@ -1521,12 +1508,6 @@ class _ProfileCopy {
     tamil: 'பிளான் விவரங்களை பார்க்கவும்',
     kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
     malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
-  );
-  String get quizPrizeDetailsTitle =>
-      _localized(telugu: 'Quiz Prize Details', english: 'Quiz Prize Details');
-  String get quizPrizeDetailsSubtitle => _localized(
-    telugu: 'Winners verification కోసం WhatsApp మరియు bank details',
-    english: 'WhatsApp and bank details for winner verification',
   );
   String get purchaseInvoicesTitle => _localized(
     telugu: 'కొనుగోలు ఇన్వాయిసులు',

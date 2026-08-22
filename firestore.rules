@@ -224,58 +224,6 @@ service cloud.firestore {
         validPlatform(request.resource.data.platform);
     }
 
-    function validQuizPrizeProfileWrite(userId) {
-      return request.resource.data.keys().hasOnly([
-          "uid",
-          "name",
-          "email",
-          "stateId",
-          "stateName",
-          "photoUrl",
-          "whatsappNumber",
-          "upiIdOrNumber",
-          "bankAccountName",
-          "bankAccountNumber",
-          "bankIfscCode",
-          "consentAccepted",
-          "consentVersion",
-          "source",
-          "updatedAt",
-          "updatedAtMillis",
-        ]) &&
-        request.resource.data.uid == userId &&
-        request.resource.data.name is string &&
-        request.resource.data.name.size() <= 160 &&
-        request.resource.data.email is string &&
-        request.resource.data.email.size() <= 320 &&
-        request.resource.data.stateId is string &&
-        request.resource.data.stateId.size() <= 80 &&
-        request.resource.data.stateName is string &&
-        request.resource.data.stateName.size() <= 120 &&
-        request.resource.data.photoUrl is string &&
-        request.resource.data.photoUrl.size() <= 2000 &&
-        request.resource.data.whatsappNumber is string &&
-        request.resource.data.whatsappNumber.size() >= 10 &&
-        request.resource.data.whatsappNumber.size() <= 30 &&
-        (!("upiIdOrNumber" in request.resource.data) ||
-          (request.resource.data.upiIdOrNumber is string &&
-            request.resource.data.upiIdOrNumber.size() <= 160)) &&
-        request.resource.data.bankAccountName is string &&
-        request.resource.data.bankAccountName.size() >= 2 &&
-        request.resource.data.bankAccountName.size() <= 160 &&
-        request.resource.data.bankAccountNumber is string &&
-        request.resource.data.bankAccountNumber.size() >= 6 &&
-        request.resource.data.bankAccountNumber.size() <= 40 &&
-        request.resource.data.bankIfscCode is string &&
-        request.resource.data.bankIfscCode.matches("^[A-Z]{4}0[A-Z0-9]{6}$") &&
-        request.resource.data.consentAccepted == true &&
-        request.resource.data.consentVersion is string &&
-        request.resource.data.consentVersion.size() <= 40 &&
-        request.resource.data.source in ["android", "ios"] &&
-        request.resource.data.updatedAtMillis is int &&
-        request.resource.data.updatedAtMillis > 0;
-    }
-
     function validUserPosterUploadCreate() {
       return request.resource.data.keys().hasOnly([
           "id",
@@ -1023,13 +971,9 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    // User-owned quiz prize payout profile. Users can save only their own
-    // consent-based contact details; dashboard/backend reads through Admin SDK.
     match /quizPrizeProfiles/{userId} {
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) &&
-        validQuizPrizeProfileWrite(userId);
-      allow delete: if false;
+      allow create, update, delete: if false;
     }
 
     // Admin-only activity/audit history for dashboard actions.

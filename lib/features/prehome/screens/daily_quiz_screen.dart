@@ -12,11 +12,9 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
-import 'package:mana_poster/features/prehome/screens/quiz_prize_details_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/daily_quiz_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
-import 'package:mana_poster/features/prehome/services/quiz_prize_details_service.dart';
 
 enum _QuizSvgIconKind {
   quiz,
@@ -852,8 +850,6 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
           ),
         );
       });
-      await _showPrizeDetailsIfPending();
-      if (!mounted) return;
       _showSubmittedDialogAndReturnHome(
         correctCount: correctCount,
         totalQuestions: quiz.questions.length,
@@ -870,18 +866,6 @@ class _DailyQuizScreenState extends State<DailyQuizScreen> {
       if (mounted) {
         setState(() => _submitting = false);
       }
-    }
-  }
-
-  Future<void> _showPrizeDetailsIfPending() async {
-    try {
-      final hasDetails = await QuizPrizeDetailsService().hasCompleteDetails();
-      if (!mounted || hasDetails) {
-        return;
-      }
-      await showQuizPrizeDetailsSheet(context);
-    } catch (_) {
-      // Prize details should never block quiz result submission.
     }
   }
 
