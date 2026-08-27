@@ -237,7 +237,13 @@ class _PosterProfileDetailsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
-            content: const Text('Could not open saved profile photos.'),
+            content: Text(
+              context.strings.localized(
+                telugu:
+                    '\u0C38\u0C47\u0C35\u0C4D \u0C1A\u0C47\u0C38\u0C3F\u0C28 \u0C2A\u0C4D\u0C30\u0C4A\u0C2B\u0C48\u0C32\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B\u0C32\u0C41 \u0C24\u0C46\u0C30\u0C35\u0C32\u0C47\u0C15\u0C2A\u0C4B\u0C2F\u0C3E\u0C02.',
+                english: 'Could not open saved profile photos.',
+              ),
+            ),
           ),
         );
       }
@@ -332,7 +338,13 @@ class _PosterProfileDetailsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showTopSnackBar(
           AppSnackBar.build(
-            content: const Text('Could not set saved profile photo.'),
+            content: Text(
+              context.strings.localized(
+                telugu:
+                    '\u0C38\u0C47\u0C35\u0C4D \u0C1A\u0C47\u0C38\u0C3F\u0C28 \u0C2A\u0C4D\u0C30\u0C4A\u0C2B\u0C48\u0C32\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B \u0C38\u0C46\u0C1F\u0C4D \u0C1A\u0C47\u0C2F\u0C32\u0C47\u0C15\u0C2A\u0C4B\u0C2F\u0C3E\u0C02.',
+                english: 'Could not set saved profile photo.',
+              ),
+            ),
           ),
         );
       }
@@ -521,7 +533,8 @@ class _PosterProfileDetailsScreenState
           cutoutLocalFile: cutoutLocalFile,
         ),
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Personal photo update failed: $error\n$stackTrace');
       if (!mounted) {
         return;
       }
@@ -628,14 +641,21 @@ class _PosterProfileDetailsScreenState
 
     try {
       return await attempt(optimizedOriginalBytes, const Duration(seconds: 75));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Profile photo background removal failed: $error\n$stackTrace',
+      );
       try {
         final smallerBytes = await compute(
           _prepareProfilePhotoRemovalBytes,
           optimizedOriginalBytes,
         );
         return await attempt(smallerBytes, const Duration(seconds: 75));
-      } catch (_) {
+      } catch (fallbackError, fallbackStackTrace) {
+        debugPrint(
+          'Profile photo background removal fallback failed: '
+          '$fallbackError\n$fallbackStackTrace',
+        );
         return null;
       }
     }
@@ -1583,7 +1603,13 @@ class _ProfilePhotoPickerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Profile Photos'),
+        title: Text(
+          context.strings.localized(
+            telugu:
+                '\u0C2A\u0C4D\u0C30\u0C4A\u0C2B\u0C48\u0C32\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B\u0C32\u0C41',
+            english: 'Profile Photos',
+          ),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
@@ -1600,7 +1626,13 @@ class _ProfilePhotoPickerScreen extends StatelessWidget {
                     context,
                   ).pop(const _ProfilePhotoPickAction.upload()),
                   icon: const Icon(Icons.upload_rounded),
-                  label: const Text('Upload Photo'),
+                  label: Text(
+                    context.strings.localized(
+                      telugu:
+                          '\u0C2B\u0C4B\u0C1F\u0C4B \u0C05\u0C2A\u0C4D\u0C32\u0C4B\u0C21\u0C4D',
+                      english: 'Upload Photo',
+                    ),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF6D28D9),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1612,11 +1644,15 @@ class _ProfilePhotoPickerScreen extends StatelessWidget {
               ),
             ),
             if (cutouts.isEmpty)
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
-                    'No saved PNG photos yet.',
-                    style: TextStyle(
+                    context.strings.localized(
+                      telugu:
+                          '\u0C07\u0C02\u0C15\u0C3E \u0C38\u0C47\u0C35\u0C4D \u0C1A\u0C47\u0C38\u0C3F\u0C28 PNG \u0C2B\u0C4B\u0C1F\u0C4B\u0C32\u0C41 \u0C32\u0C47\u0C35\u0C41.',
+                      english: 'No saved PNG photos yet.',
+                    ),
+                    style: const TextStyle(
                       color: Color(0xFF64748B),
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

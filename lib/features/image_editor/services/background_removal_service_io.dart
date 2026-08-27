@@ -26,8 +26,19 @@ class BackgroundRemovalResult {
 class CloudFirstBackgroundRemovalService {
   const CloudFirstBackgroundRemovalService();
 
+  static const String _productionApiUrl =
+      'https://mana-poster-rembg-lwqq2szeza-el.a.run.app/remove-bg';
   static const String _apiUrl = String.fromEnvironment(
     'MANA_POSTER_REMOVE_BG_API_URL',
+    defaultValue: _productionApiUrl,
+  );
+  static const String _pixelcutApiUrl = String.fromEnvironment(
+    'MANA_POSTER_PIXELCUT_REMOVE_BG_API_URL',
+    defaultValue: _productionApiUrl,
+  );
+  static const String _backgroundRemoveApiUrl = String.fromEnvironment(
+    'MANA_POSTER_BACKGROUND_REMOVE_API_URL',
+    defaultValue: _productionApiUrl,
   );
 
   Future<void> ensureReady() {
@@ -39,15 +50,39 @@ class CloudFirstBackgroundRemovalService {
     bool preferCloud = true,
     String cloudPurpose = 'editor_remove_bg',
   }) async {
-    final cloudUrl = _apiUrl.trim();
-    if (!preferCloud || cloudUrl.isEmpty) {
+    final cloudUrls = _cloudRemoveBgUrls();
+    if (!preferCloud || cloudUrls.isEmpty) {
       throw StateError('Cloud background removal endpoint is not configured.');
     }
-    return _removeWithCloud(
-      imageBytes,
-      cloudUrl,
-      cloudPurpose,
-    ).timeout(const Duration(seconds: 75));
+    Object? lastError;
+    StackTrace? lastStackTrace;
+    for (final cloudUrl in cloudUrls) {
+      try {
+        return await _removeWithCloud(
+          imageBytes,
+          cloudUrl,
+          cloudPurpose,
+        ).timeout(const Duration(seconds: 75));
+      } catch (error, stackTrace) {
+        lastError = error;
+        lastStackTrace = stackTrace;
+      }
+    }
+    Error.throwWithStackTrace(lastError!, lastStackTrace!);
+  }
+
+  List<String> _cloudRemoveBgUrls() {
+    final urls =
+        <String>[
+              _apiUrl,
+              _pixelcutApiUrl,
+              _backgroundRemoveApiUrl,
+              _productionApiUrl,
+            ]
+            .map((url) => url.trim())
+            .where((url) => url.isNotEmpty)
+            .toList(growable: false);
+    return <String>{for (final url in urls) url}.toList(growable: false);
   }
 
   Future<BackgroundRemovalResult> _removeWithCloud(
@@ -108,7 +143,9 @@ class CloudFirstBackgroundRemovalService {
 
   var working = img.bakeOrientation(decoded);
   for (final quality in <int>[96, 92, 88]) {
-    final encoded = Uint8List.fromList(img.encodeJpg(working, quality: quality));
+    final encoded = Uint8List.fromList(
+      img.encodeJpg(working, quality: quality),
+    );
     if (encoded.length <= _cloudRemoveBgMaxUploadBytes) {
       return (bytes: encoded, filename: 'input.jpg');
     }

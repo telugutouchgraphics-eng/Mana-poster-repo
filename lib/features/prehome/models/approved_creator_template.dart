@@ -307,6 +307,13 @@ class ApprovedCreatorTemplate {
     required this.personalizationConfig,
     this.creatorPublicId = '',
     this.pageConfig,
+    this.viewCount = 0,
+    this.shareCount = 0,
+    this.downloadCount = 0,
+    this.displayViewCount = 0,
+    this.displayShareCount = 0,
+    this.displayDownloadCount = 0,
+    this.displayEngagementCount = 0,
   });
 
   final String id;
@@ -325,4 +332,11 @@ class ApprovedCreatorTemplate {
   final CreatorPosterPersonalization personalizationConfig;
   final String creatorPublicId;
   final EditorPageConfig? pageConfig;
+  final int viewCount;
+  final int shareCount;
+  final int downloadCount;
+  final int displayViewCount;
+  final int displayShareCount;
+  final int displayDownloadCount;
+  final int displayEngagementCount;
 }

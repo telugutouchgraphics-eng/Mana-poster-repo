@@ -579,6 +579,9 @@ class _QuizCopy {
   );
 }
 
+String localizedDailyQuizTitle(AppStrings strings) =>
+    _QuizCopy.dailyQuiz(strings);
+
 class DailyQuizScreen extends StatefulWidget {
   const DailyQuizScreen({super.key});
 

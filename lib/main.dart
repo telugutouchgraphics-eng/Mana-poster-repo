@@ -2,7 +2,6 @@ import 'dart:developer' as developer;
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -42,10 +41,6 @@ const bool _enableNonEssentialProfileStartupServices = bool.fromEnvironment(
   'MANA_POSTER_ENABLE_PROFILE_STARTUP_SERVICES',
   defaultValue: false,
 );
-const bool _enableMetaDebugLogging = bool.fromEnvironment(
-  'MANA_POSTER_META_DEBUG_LOGGING',
-  defaultValue: false,
-);
 AppLifecycleListener? _subscriptionLifecycleListener;
 DateTime? _lastSubscriptionResumeRefreshAt;
 
@@ -83,21 +78,11 @@ Future<void> main() async {
       if (_profileFrames) {
         _attachFrameProfiler();
       }
-      if (!kIsWeb) {
-        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      }
-
       runApp(const ManaPosterApp(initialLanguage: AppLanguage.english));
       SchedulerBinding.instance.addPostFrameCallback((_) {
         FlutterNativeSplash.remove();
         if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
           unawaited(_hideSystemUiAfterFirstFrame());
-        }
-        if (!kIsWeb && _shouldRunNonEssentialStartupServices) {
-          unawaited(() async {
-            await Future<void>.delayed(const Duration(seconds: 30));
-            await _logMetaLaunchTestEvent();
-          }());
         }
         unawaited(_runDeferredPostSplashInitialization());
       });
@@ -130,32 +115,6 @@ Future<void> main() async {
   );
 }
 
-Future<void> _logMetaLaunchTestEvent() async {
-  if (kIsWeb) {
-    return;
-  }
-  try {
-    final facebookAppEvents = FacebookAppEvents();
-    if (_enableMetaDebugLogging) {
-      await facebookAppEvents.setDebugLoggingEnabled(true);
-    }
-    await facebookAppEvents.setAutoLogAppEventsEnabled(true);
-    await facebookAppEvents.activateApp();
-    await facebookAppEvents.logEvent(
-      name: 'meta_test_event',
-      parameters: <String, Object>{'source': 'app_launch'},
-    );
-    await facebookAppEvents.flush();
-  } catch (error, stackTrace) {
-    developer.log(
-      'Meta app launch test event failed: $error',
-      name: 'app.meta',
-      error: error,
-      stackTrace: stackTrace,
-    );
-  }
-}
-
 Future<void> _hideSystemUiAfterFirstFrame() async {
   await Future<void>.delayed(const Duration(milliseconds: 120));
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -172,32 +131,30 @@ Future<void> _runDeferredPostSplashInitialization() async {
     await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 8));
   } catch (_) {}
   await Future<void>.delayed(
-    kReleaseMode ? const Duration(seconds: 24) : const Duration(seconds: 14),
+    kReleaseMode ? const Duration(seconds: 60) : const Duration(seconds: 14),
   );
   await _runPostFirstFrameInitialization();
 }
 
 Future<void> _runPostFirstFrameInitialization() async {
-  await _runStartupTask(
-    'firebase_bootstrap',
-    () => FirebaseBootstrap.ensureInitialized(activateAppCheck: kReleaseMode),
-  );
-  unawaited(
-    _runStartupTask('firebase_monitoring_gate', () async {
+  _scheduleUiReadyStartupTask(
+    'firebase_bootstrap_and_post_launch',
+    () async {
+      await FirebaseBootstrap.ensureInitialized(activateAppCheck: kReleaseMode);
       final enableMonitoring = await _shouldEnableFirebaseMonitoring();
       developer.log(
         'trustedPlayInstallMonitoring=$enableMonitoring',
         name: 'app.monitoring',
       );
-      if (!enableMonitoring || Firebase.apps.isEmpty) {
-        return;
+      if (enableMonitoring && Firebase.apps.isNotEmpty) {
+        await Firebase.app().setAutomaticDataCollectionEnabled(true);
+        await _configureFirebaseMonitoring();
       }
-      await Firebase.app().setAutomaticDataCollectionEnabled(true);
-      await _configureFirebaseMonitoring();
-    }),
-  );
-  unawaited(
-    _runStartupTask('post_launch_initialization', _runPostLaunchInitialization),
+      await _runPostLaunchInitialization();
+    },
+    delay: kReleaseMode
+        ? const Duration(seconds: 30)
+        : const Duration(seconds: 4),
   );
 }
 

@@ -39,6 +39,19 @@ const String _appCreatorPostersFeedEndpoint =
 const String _recordPosterEngagementEndpoint =
     'https://asia-south1-mana-poster-ap.cloudfunctions.net/recordPosterEngagement';
 
+int _readInt(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  if (value is String) {
+    return int.tryParse(value.trim()) ?? 0;
+  }
+  return 0;
+}
+
 class ApprovedCreatorTemplatePage {
   const ApprovedCreatorTemplatePage({
     required this.templates,
@@ -80,6 +93,10 @@ class ApprovedCreatorTemplateService {
   }
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
+
+  bool _shouldUseBackendForCreatorPosterReads(Source source) {
+    return _firestore == null && source != Source.cache;
+  }
 
   Future<bool> _ensureFirestoreReady({
     Source source = Source.serverAndCache,
@@ -182,6 +199,13 @@ class ApprovedCreatorTemplateService {
     if (regionId.isEmpty || scanLimit <= 0) {
       return const <ApprovedCreatorTemplate>[];
     }
+    if (_shouldUseBackendForCreatorPosterReads(source)) {
+      return _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: '',
+        limit: scanLimit,
+      );
+    }
     if (!await _ensureFirestoreReady(source: source)) {
       if (source == Source.cache) {
         return const <ApprovedCreatorTemplate>[];
@@ -218,12 +242,7 @@ class ApprovedCreatorTemplateService {
         }
       }
       final mapped = _mapSortedTemplates(docs);
-      final filtered = _filterPublished(
-        mapped,
-        docs,
-        scanLimit,
-        regionId,
-      );
+      final filtered = _filterPublished(mapped, docs, scanLimit, regionId);
       if (filtered.length >= scanLimit || source != Source.server) {
         return filtered.length <= scanLimit
             ? filtered
@@ -276,6 +295,13 @@ class ApprovedCreatorTemplateService {
     final regionId = await _selectedRegionId();
     if (target.isEmpty || regionId.isEmpty) {
       return const <ApprovedCreatorTemplate>[];
+    }
+    if (_shouldUseBackendForCreatorPosterReads(source)) {
+      return _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: target,
+        limit: scanLimit,
+      );
     }
     if (!await _ensureFirestoreReady(source: source)) {
       if (_isKnownExactDynamicCategoryId(target) || source == Source.cache) {
@@ -330,8 +356,9 @@ class ApprovedCreatorTemplateService {
         docs,
         scanLimit,
         regionId,
-        immediateDynamicCategoryId:
-            _isKnownExactDynamicCategoryId(target) ? target : '',
+        immediateDynamicCategoryId: _isKnownExactDynamicCategoryId(target)
+            ? target
+            : '',
       );
       if (filtered.isNotEmpty) {
         _debugLog(
@@ -424,6 +451,12 @@ class ApprovedCreatorTemplateService {
     if (normalizedTarget.isEmpty || regionId.isEmpty) {
       return false;
     }
+    if (_shouldUseBackendForCreatorPosterReads(source)) {
+      return _hasPublishedTemplatesFromBackend(
+        categoryId: normalizedTarget,
+        regionId: regionId,
+      );
+    }
     if (!await _ensureFirestoreReady(source: source)) {
       if (_isKnownExactDynamicCategoryId(normalizedTarget) ||
           source == Source.cache) {
@@ -500,8 +533,8 @@ class ApprovedCreatorTemplateService {
         regionId,
         immediateDynamicCategoryId:
             _isKnownExactDynamicCategoryId(normalizedTarget)
-                ? normalizedTarget
-                : '',
+            ? normalizedTarget
+            : '',
       );
       if (filtered.isNotEmpty) {
         return true;
@@ -573,6 +606,26 @@ class ApprovedCreatorTemplateService {
     Source source = Source.serverAndCache,
     bool allowFallbackMerge = true,
   }) async {
+    if (_shouldUseBackendForCreatorPosterReads(source)) {
+      final regionId = await _selectedRegionId();
+      if (regionId.isEmpty) {
+        return const ApprovedCreatorTemplatePage(
+          templates: <ApprovedCreatorTemplate>[],
+          lastDocument: null,
+          hasMore: false,
+        );
+      }
+      final backendTemplates = await _fetchApprovedTemplatesFromBackend(
+        regionId: regionId,
+        categoryId: '',
+        limit: pageSize,
+      );
+      return ApprovedCreatorTemplatePage(
+        templates: backendTemplates,
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
     if (!await _ensureFirestoreReady(source: source)) {
       return const ApprovedCreatorTemplatePage(
         templates: <ApprovedCreatorTemplate>[],
@@ -711,7 +764,7 @@ class ApprovedCreatorTemplateService {
           return ApprovedCreatorTemplatePage(
             templates: filteredTemplates,
             lastDocument: lastDocument,
-            hasMore: backendTemplates.length >= pageSize,
+            hasMore: false,
           );
         }
       }
@@ -1067,6 +1120,13 @@ class ApprovedCreatorTemplateService {
       ),
       creatorPublicId: (data['creatorPublicId'] as String?)?.trim() ?? '',
       pageConfig: pageConfig,
+      viewCount: _readInt(data['viewCount']),
+      shareCount: _readInt(data['shareCount']),
+      downloadCount: _readInt(data['downloadCount']),
+      displayViewCount: _readInt(data['displayViewCount']),
+      displayShareCount: _readInt(data['displayShareCount']),
+      displayDownloadCount: _readInt(data['displayDownloadCount']),
+      displayEngagementCount: _readInt(data['displayEngagementCount']),
     );
   }
 
@@ -1582,6 +1642,13 @@ class ApprovedCreatorTemplateService {
       ),
       creatorPublicId: (data['creatorPublicId'] as String? ?? '').trim(),
       pageConfig: pageConfig,
+      viewCount: _readInt(data['viewCount']),
+      shareCount: _readInt(data['shareCount']),
+      downloadCount: _readInt(data['downloadCount']),
+      displayViewCount: _readInt(data['displayViewCount']),
+      displayShareCount: _readInt(data['displayShareCount']),
+      displayDownloadCount: _readInt(data['displayDownloadCount']),
+      displayEngagementCount: _readInt(data['displayEngagementCount']),
     );
   }
 
@@ -1625,6 +1692,45 @@ class ApprovedCreatorTemplateService {
     String categoryLabel = '',
     String regionId = '',
   }) async {
+    await _recordPosterEngagementCount(
+      posterId: posterId,
+      action: isShare ? 'share' : 'download',
+      creatorPublicId: creatorPublicId,
+      posterTitle: posterTitle,
+      categoryId: categoryId,
+      categoryLabel: categoryLabel,
+      regionId: regionId,
+    );
+  }
+
+  Future<void> incrementPosterViewCount({
+    required String posterId,
+    String creatorPublicId = '',
+    String posterTitle = '',
+    String categoryId = '',
+    String categoryLabel = '',
+    String regionId = '',
+  }) async {
+    await _recordPosterEngagementCount(
+      posterId: posterId,
+      action: 'view',
+      creatorPublicId: creatorPublicId,
+      posterTitle: posterTitle,
+      categoryId: categoryId,
+      categoryLabel: categoryLabel,
+      regionId: regionId,
+    );
+  }
+
+  Future<void> _recordPosterEngagementCount({
+    required String posterId,
+    required String action,
+    String creatorPublicId = '',
+    String posterTitle = '',
+    String categoryId = '',
+    String categoryLabel = '',
+    String regionId = '',
+  }) async {
     final safePosterId = posterId.trim();
     if (safePosterId.isEmpty) {
       return;
@@ -1647,7 +1753,7 @@ class ApprovedCreatorTemplateService {
             },
             body: jsonEncode(<String, Object?>{
               'posterId': safePosterId,
-              'action': isShare ? 'share' : 'download',
+              'action': action,
               'creatorPublicId': creatorPublicId.trim(),
               'posterTitle': posterTitle.trim(),
               'categoryId': categoryId.trim(),

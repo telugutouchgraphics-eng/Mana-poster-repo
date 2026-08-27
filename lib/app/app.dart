@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
+import 'package:mana_poster/app/services/app_screen_usage_service.dart';
 import 'package:mana_poster/app/services/install_source_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -87,7 +88,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
       await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 6));
     } catch (_) {}
     await Future<void>.delayed(
-      kReleaseMode ? const Duration(seconds: 5) : const Duration(seconds: 12),
+      kReleaseMode ? const Duration(seconds: 90) : const Duration(seconds: 12),
     );
     if (!mounted) {
       return;
@@ -192,6 +193,7 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             title: AppPublicInfo.appName,
             theme: _appTheme,
             navigatorObservers: <NavigatorObserver>[
+              AppScreenUsageService.instance,
               AppNavigator.routeObserver,
               ?analyticsObserver,
             ],

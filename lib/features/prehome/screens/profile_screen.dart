@@ -29,7 +29,6 @@ import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
-import 'package:mana_poster/features/prehome/services/app_location_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
@@ -63,7 +62,8 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
     AppSnackBar.build(
       content: Text(
         context.strings.localized(
-          telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+          telugu:
+              'Ã Â°Â²Ã Â°Â¿Ã Â°â€šÃ Â°â€¢Ã Â±Â Ã Â°Â¤Ã Â±â€ Ã Â°Â°Ã Â°ÂµÃ Â°Â²Ã Â±â€¡Ã Â°â€¢Ã Â°ÂªÃ Â±â€¹Ã Â°Â¯Ã Â°Â¾Ã Â°â€š. Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Â¨Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
           english: 'Could not open the link. Please try again.',
         ),
       ),
@@ -214,6 +214,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Future<void> _openLogin() async {
+    await Navigator.of(context).pushNamed(AppRoutes.login);
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
   Future<void> _shareApp(_ProfileCopy copy) async {
     try {
       final user = _authService.currentUser;
@@ -328,6 +336,17 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     final strings = context.strings;
     final copy = _ProfileCopy(context.currentLanguage, strings);
+    final currentUser = Firebase.apps.isNotEmpty
+        ? FirebaseAuth.instance.currentUser
+        : null;
+    final accountLabel = currentUser?.email?.trim().isNotEmpty == true
+        ? currentUser!.email!.trim()
+        : currentUser?.phoneNumber?.trim() ??
+              context.strings.localized(
+                telugu: 'గెస్ట్ మోడ్',
+                english: 'Guest mode',
+              );
+    final isAuthenticated = currentUser != null;
 
     if (_loadingProfile) {
       return const Scaffold(
@@ -338,9 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return PosterProfileDetailsScreen(
       initialProfile: _posterProfile,
-      accountEmail: Firebase.apps.isNotEmpty
-          ? FirebaseAuth.instance.currentUser?.email?.trim() ?? ''
-          : '',
+      accountEmail: accountLabel,
       accountSubtitle: _selectedRegionName,
       embeddedInProfileScreen: true,
       onSaved: (profile) {
@@ -348,6 +365,20 @@ class _ProfileScreenState extends State<ProfileScreen>
         _warmPosterProfileImage(profile);
       },
       appBarActions: <Widget>[
+        if (!isAuthenticated)
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: context.strings.localized(
+              telugu: 'లాగిన్ చేయండి',
+              english: 'Login',
+            ),
+            icon: const Icon(
+              Icons.login_rounded,
+              size: 22,
+              color: Color(0xFF0F172A),
+            ),
+            onPressed: () => unawaited(_openLogin()),
+          ),
         IconButton(
           visualDensity: VisualDensity.compact,
           tooltip: copy.religionTitle,
@@ -739,75 +770,10 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
     );
   }
 
-  Future<void> _enableLocationSuggestions(
-    BuildContext context,
-    _ProfileCopy copy,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(copy.locationTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(copy.locationDialogMessage),
-              const SizedBox(height: 8),
-              TextButton(
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () {
-                  _openExternalPublicUrl(
-                    dialogContext,
-                    AppPublicInfo.privacyPolicyUrl,
-                  );
-                },
-                child: Text(copy.privacyPolicyTitle),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(copy.cancelAction),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(copy.allowAction),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
-    final result = await AppLocationService.instance
-        .requestAndSyncApproxLocation();
-    if (!context.mounted) {
-      return;
-    }
-    final message = switch (result) {
-      AppLocationSyncResult.synced => copy.locationSavedMessage,
-      AppLocationSyncResult.serviceDisabled =>
-        copy.locationServiceDisabledMessage,
-      AppLocationSyncResult.permissionDenied ||
-      AppLocationSyncResult.permanentlyDenied =>
-        copy.locationPermissionDeniedMessage,
-      AppLocationSyncResult.failed => copy.locationFailedMessage,
-    };
-    ScaffoldMessenger.of(
-      context,
-    ).showTopSnackBar(AppSnackBar.build(content: Text(message)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final copy = _ProfileCopy(context.currentLanguage, context.strings);
+    final isAuthenticated = FirebaseAuth.instance.currentUser != null;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -849,6 +815,21 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
             _SettingsGroup(
               title: copy.quickActionsTitle,
               items: <_ProfileItemData>[
+                if (!isAuthenticated)
+                  _ProfileItemData(
+                    icon: Icons.login_rounded,
+                    title: context.strings.localized(
+                      telugu: 'లాగిన్ చేయండి',
+                      english: 'Login',
+                    ),
+                    subtitle: context.strings.localized(
+                      telugu: 'పూర్తి ఫీచర్లు ఉపయోగించడానికి లాగిన్ చేయండి',
+                      english: 'Login to use all features',
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pushNamed(AppRoutes.login);
+                    },
+                  ),
                 _ProfileItemData(
                   icon: Icons.ios_share_rounded,
                   title: copy.shareAppTitle,
@@ -872,13 +853,6 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
                   title: copy.stateTitle,
                   subtitle: copy.stateSubtitle,
                   onTap: () => unawaited(widget.onOpenRegionSelection(copy)),
-                ),
-                _ProfileItemData(
-                  icon: Icons.location_on_outlined,
-                  title: copy.locationTitle,
-                  subtitle: copy.locationSubtitle,
-                  onTap: () =>
-                      unawaited(_enableLocationSuggestions(context, copy)),
                 ),
                 _ProfileItemData(
                   icon: Icons.card_membership_rounded,
@@ -1351,6 +1325,73 @@ class _ProfileCopy {
   final AppLanguage language;
   final AppStrings strings;
 
+  static const Map<String, String> _cleanTeluguOverrides = <String, String>{
+    'Quick actions': 'త్వరిత ఎంపికలు',
+    'Daily Quiz Stats': 'రోజువారీ క్విజ్ స్టాట్స్',
+    'Personal & Business Details': 'వ్యక్తిగత & బిజినెస్ వివరాలు',
+    'Update photo, personal, and business details':
+        'ఫోటో, వ్యక్తిగత, బిజినెస్ వివరాలు అప్డేట్ చేయండి',
+    'More': 'మరిన్ని',
+    'Remaining options': 'మిగతా ఎంపికలు',
+    'Change religion': 'మతం మార్చండి',
+    'Update which categories appear in home':
+        'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి',
+    'Hindu preference saved': 'హిందూ ఎంపిక సేవ్ అయింది',
+    'Muslim preference saved': 'ముస్లిం ఎంపిక సేవ్ అయింది',
+    'Christian preference saved': 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది',
+    'All categories preference saved': 'అన్ని కేటగిరీల ఎంపిక సేవ్ అయింది',
+    'Change State / UT': 'రాష్ట్రం / కేంద్ర పాలిత ప్రాంతం మార్చండి',
+    'Update app language and state categories':
+        'యాప్ భాష మరియు రాష్ట్ర కేటగిరీలను అప్డేట్ చేయండి',
+    'State updated. Please review political parties':
+        'రాష్ట్రం అప్డేట్ అయింది. దయచేసి రాజకీయ పార్టీలను చూసుకోండి',
+    'Political parties': 'రాజకీయ పార్టీలు',
+    'Update political party categories shown in home':
+        'హోమ్‌లో కనిపించే రాజకీయ పార్టీ కేటగిరీలను అప్డేట్ చేయండి',
+    'Political parties updated': 'రాజకీయ పార్టీలు అప్డేట్ అయ్యాయి',
+    'View plan details': 'ప్లాన్ వివరాలు చూడండి',
+    'Purchase invoices': 'కొనుగోలు ఇన్వాయిసులు',
+    'View purchase details': 'కొనుగోలు వివరాలు చూడండి',
+    'Referral rewards': 'రెఫరల్ రివార్డులు',
+    'View referral code and current cycle':
+        'రెఫరల్ కోడ్ మరియు ప్రస్తుత సైకిల్ చూడండి',
+    'Copy code': 'కోడ్ కాపీ',
+    'Share': 'షేర్',
+    'View Terms & Conditions': 'నిబంధనలు & షరతులు చూడండి',
+    'Enter referral code': 'రెఫరల్ కోడ్ నమోదు చేయండి',
+    'Apply': 'అప్లై',
+    'Referral code copied': 'రెఫరల్ కోడ్ కాపీ అయింది',
+    'Referral code applied': 'రెఫరల్ కోడ్ అప్లై అయింది',
+    'Referral already applied': 'రెఫరల్ ఇప్పటికే అప్లై అయింది',
+    'Referral code apply failed. Please try again.':
+        'రెఫరల్ కోడ్ అప్లై కాలేదు. మళ్లీ ప్రయత్నించండి.',
+    'Referral details could not load. Please try again.':
+        'రెఫరల్ వివరాలు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+    'Close': 'మూసివేయి',
+    'Restore subscriptions': 'సబ్‌స్క్రిప్షన్‌లను రీస్టోర్ చేయండి',
+    'Restore purchases for this account': 'ఈ ఖాతా కొనుగోళ్లను రీస్టోర్ చేయండి',
+    'Share App': 'యాప్ షేర్ చేయండి',
+    'Share the app icon and Play Store link':
+        'యాప్ ఐకాన్ మరియు Play Store లింక్ షేర్ చేయండి',
+    'App share failed. Please try again.':
+        'యాప్ షేర్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+    'Email not available for this account': 'ఈ ఖాతాకు ఇమెయిల్ అందుబాటులో లేదు',
+    'Report a poster or issue': 'పోస్టర్ లేదా సమస్యను రిపోర్ట్ చేయండి',
+    'Send an inappropriate poster or app issue report to support':
+        'తగని పోస్టర్ లేదా యాప్ సమస్యను సపోర్ట్‌కి పంపండి',
+    'Logout failed. Please try again.': 'లాగౌట్ కాలేదు. మళ్లీ ప్రయత్నించండి.',
+    'Delete account': 'ఖాతా తొలగించండి',
+    'Start your account and data removal request':
+        'ఖాతా మరియు డేటా తొలగింపు అభ్యర్థన ప్రారంభించండి',
+    'Privacy Policy': 'ప్రైవసీ పాలసీ',
+    'Data usage and privacy': 'డేటా వినియోగం మరియు ప్రైవసీ',
+    'Ad privacy choices': 'ప్రకటనల ప్రైవసీ ఎంపికలు',
+    'Manage personalized ad settings':
+        'పర్సనలైజ్డ్ యాడ్ సెట్టింగ్స్ నిర్వహించండి',
+    'Terms & Conditions': 'నిబంధనలు & షరతులు',
+    'Usage and subscription terms': 'వినియోగం మరియు సబ్‌స్క్రిప్షన్ నిబంధనలు',
+  };
+
   String _localized({
     required String telugu,
     required String english,
@@ -1359,6 +1400,12 @@ class _ProfileCopy {
     String? kannada,
     String? malayalam,
   }) {
+    if (language.supportedUiLanguage == SupportedUiLanguage.telugu) {
+      final cleanTelugu = _cleanTeluguOverrides[english];
+      if (cleanTelugu != null) {
+        return cleanTelugu;
+      }
+    }
     return strings.localized(
       telugu: telugu,
       english: english,
@@ -1370,12 +1417,17 @@ class _ProfileCopy {
   }
 
   String get quickActionsTitle => _localized(
-    telugu: 'త్వరిత ఎంపికలు',
+    telugu:
+        'Ã Â°Â¤Ã Â±ÂÃ Â°ÂµÃ Â°Â°Ã Â°Â¿Ã Â°Â¤ Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢Ã Â°Â²Ã Â±Â',
     english: 'Quick actions',
-    hindi: 'त्वरित विकल्प',
-    tamil: 'விரைவு செயல்கள்',
-    kannada: 'ತ್ವರಿತ ಆಯ್ಕೆಗಳು',
-    malayalam: 'വേഗത്തിലുള്ള ഓപ്ഷനുകൾ',
+    hindi:
+        'Ã Â¤Â¤Ã Â¥ÂÃ Â¤ÂµÃ Â¤Â°Ã Â¤Â¿Ã Â¤Â¤ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤â€¢Ã Â¤Â²Ã Â¥ÂÃ Â¤Âª',
+    tamil:
+        'Ã Â®ÂµÃ Â®Â¿Ã Â®Â°Ã Â¯Ë†Ã Â®ÂµÃ Â¯Â Ã Â®Å¡Ã Â¯â€ Ã Â®Â¯Ã Â®Â²Ã Â¯ÂÃ Â®â€¢Ã Â®Â³Ã Â¯Â',
+    kannada:
+        'Ã Â²Â¤Ã Â³ÂÃ Â²ÂµÃ Â²Â°Ã Â²Â¿Ã Â²Â¤ Ã Â²â€ Ã Â²Â¯Ã Â³ÂÃ Â²â€¢Ã Â³â€ Ã Â²â€”Ã Â²Â³Ã Â³Â',
+    malayalam:
+        'Ã Â´ÂµÃ Âµâ€¡Ã Â´â€”Ã Â´Â¤Ã ÂµÂÃ Â´Â¤Ã Â´Â¿Ã Â´Â²Ã ÂµÂÃ Â´Â³Ã ÂµÂÃ Â´Â³ Ã Â´â€œÃ Â´ÂªÃ ÂµÂÃ Â´Â·Ã Â´Â¨Ã ÂµÂÃ Â´â€¢Ã ÂµÂ¾',
   );
   String get supportTitle => strings.supportSection;
 
@@ -1391,194 +1443,232 @@ class _ProfileCopy {
   );
 
   String get posterProfileTitle => _localized(
-    telugu: 'వ్యక్తిగత & బిజినెస్ వివరాలు',
+    telugu:
+        'Ã Â°ÂµÃ Â±ÂÃ Â°Â¯Ã Â°â€¢Ã Â±ÂÃ Â°Â¤Ã Â°Â¿Ã Â°â€”Ã Â°Â¤ & Ã Â°Â¬Ã Â°Â¿Ã Â°Å“Ã Â°Â¿Ã Â°Â¨Ã Â±â€ Ã Â°Â¸Ã Â±Â Ã Â°ÂµÃ Â°Â¿Ã Â°ÂµÃ Â°Â°Ã Â°Â¾Ã Â°Â²Ã Â±Â',
     english: 'Personal & Business Details',
   );
   String get posterProfileSubtitle => _localized(
-    telugu: 'ఫోటో, పేరు, బిజినెస్ వివరాలు అప్‌డేట్ చేయండి',
+    telugu:
+        'Ã Â°Â«Ã Â±â€¹Ã Â°Å¸Ã Â±â€¹, Ã Â°ÂªÃ Â±â€¡Ã Â°Â°Ã Â±Â, Ã Â°Â¬Ã Â°Â¿Ã Â°Å“Ã Â°Â¿Ã Â°Â¨Ã Â±â€ Ã Â°Â¸Ã Â±Â Ã Â°ÂµÃ Â°Â¿Ã Â°ÂµÃ Â°Â°Ã Â°Â¾Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ¢â‚¬Å’Ã Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Update photo, personal, and business details',
   );
-  String get moreTitle => _localized(telugu: 'మరిన్ని', english: 'More');
-  String get moreSubtitle =>
-      _localized(telugu: 'మిగతా అన్ని ఆప్షన్లు', english: 'Remaining options');
+  String get moreTitle => _localized(
+    telugu: 'Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¿',
+    english: 'More',
+  );
+  String get moreSubtitle => _localized(
+    telugu:
+        'Ã Â°Â®Ã Â°Â¿Ã Â°â€”Ã Â°Â¤Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¿ Ã Â°â€ Ã Â°ÂªÃ Â±ÂÃ Â°Â·Ã Â°Â¨Ã Â±ÂÃ Â°Â²Ã Â±Â',
+    english: 'Remaining options',
+  );
   String get settingsTitle => strings.appSettingsSection;
-  String get religionTitle =>
-      _localized(telugu: 'మతం మార్చండి', english: 'Change religion');
+  String get religionTitle => _localized(
+    telugu:
+        'Ã Â°Â®Ã Â°Â¤Ã Â°â€š Ã Â°Â®Ã Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
+    english: 'Change religion',
+  );
   String get religionSubtitle => _localized(
-    telugu: 'హోమ్‌లో కనిపించే కేటగిరీలను మార్చండి',
+    telugu:
+        'Ã Â°Â¹Ã Â±â€¹Ã Â°Â®Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¢Ã Â°Â¨Ã Â°Â¿Ã Â°ÂªÃ Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â±â€¡ Ã Â°â€¢Ã Â±â€¡Ã Â°Å¸Ã Â°â€”Ã Â°Â¿Ã Â°Â°Ã Â±â‚¬Ã Â°Â²Ã Â°Â¨Ã Â±Â Ã Â°Â®Ã Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Update which categories appear in home',
   );
   String get religionSavedHinduMessage => _localized(
-    telugu: 'హిందూ ఎంపిక సేవ్ అయింది',
+    telugu:
+        'Ã Â°Â¹Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â±â€š Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Hindu preference saved',
   );
   String get religionSavedMuslimMessage => _localized(
-    telugu: 'ముస్లిం ఎంపిక సేవ్ అయింది',
+    telugu:
+        'Ã Â°Â®Ã Â±ÂÃ Â°Â¸Ã Â±ÂÃ Â°Â²Ã Â°Â¿Ã Â°â€š Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Muslim preference saved',
   );
   String get religionSavedChristianMessage => _localized(
-    telugu: 'క్రిస్టియన్ ఎంపిక సేవ్ అయింది',
+    telugu:
+        'Ã Â°â€¢Ã Â±ÂÃ Â°Â°Ã Â°Â¿Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°Â¯Ã Â°Â¨Ã Â±Â Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Christian preference saved',
   );
   String get religionSavedAllMessage => _localized(
-    telugu: 'అన్ని కేటగిరీల ఎంపిక సేవ్ అయింది',
+    telugu:
+        'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¿ Ã Â°â€¢Ã Â±â€¡Ã Â°Å¸Ã Â°â€”Ã Â°Â¿Ã Â°Â°Ã Â±â‚¬Ã Â°Â² Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢ Ã Â°Â¸Ã Â±â€¡Ã Â°ÂµÃ Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'All categories preference saved',
   );
 
   String get languageTitle => strings.languageOption;
   String? get languageSubtitle => strings.languageOptionSubtitle;
   String get stateTitle => _localized(
-    telugu: 'రాష్ట్రం / కేంద్ర పాలిత ప్రాంతం మార్చండి',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¾Ã Â°Â·Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ Â°Â°Ã Â°â€š / Ã Â°â€¢Ã Â±â€¡Ã Â°â€šÃ Â°Â¦Ã Â±ÂÃ Â°Â° Ã Â°ÂªÃ Â°Â¾Ã Â°Â²Ã Â°Â¿Ã Â°Â¤ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¾Ã Â°â€šÃ Â°Â¤Ã Â°â€š Ã Â°Â®Ã Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Change State / UT',
-    hindi: 'राज्य / केंद्र शासित प्रदेश बदलें',
-    tamil: 'மாநிலம் / யூனியன் பிரதேசம் மாற்றவும்',
-    kannada: 'ರಾಜ್ಯ / ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶ ಬದಲಿಸಿ',
-    malayalam: 'സംസ്ഥാനം / കേന്ദ്രഭരണ പ്രദേശം മാറ്റുക',
+    hindi:
+        'Ã Â¤Â°Ã Â¤Â¾Ã Â¤Å“Ã Â¥ÂÃ Â¤Â¯ / Ã Â¤â€¢Ã Â¥â€¡Ã Â¤â€šÃ Â¤Â¦Ã Â¥ÂÃ Â¤Â° Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â¸Ã Â¤Â¿Ã Â¤Â¤ Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â°Ã Â¤Â¦Ã Â¥â€¡Ã Â¤Â¶ Ã Â¤Â¬Ã Â¤Â¦Ã Â¤Â²Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®Â®Ã Â®Â¾Ã Â®Â¨Ã Â®Â¿Ã Â®Â²Ã Â®Â®Ã Â¯Â / Ã Â®Â¯Ã Â¯â€šÃ Â®Â©Ã Â®Â¿Ã Â®Â¯Ã Â®Â©Ã Â¯Â Ã Â®ÂªÃ Â®Â¿Ã Â®Â°Ã Â®Â¤Ã Â¯â€¡Ã Â®Å¡Ã Â®Â®Ã Â¯Â Ã Â®Â®Ã Â®Â¾Ã Â®Â±Ã Â¯ÂÃ Â®Â±Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²Â°Ã Â²Â¾Ã Â²Å“Ã Â³ÂÃ Â²Â¯ / Ã Â²â€¢Ã Â³â€¡Ã Â²â€šÃ Â²Â¦Ã Â³ÂÃ Â²Â°Ã Â²Â¾Ã Â²Â¡Ã Â²Â³Ã Â²Â¿Ã Â²Â¤ Ã Â²ÂªÃ Â³ÂÃ Â²Â°Ã Â²Â¦Ã Â³â€¡Ã Â²Â¶ Ã Â²Â¬Ã Â²Â¦Ã Â²Â²Ã Â²Â¿Ã Â²Â¸Ã Â²Â¿',
+    malayalam:
+        'Ã Â´Â¸Ã Â´â€šÃ Â´Â¸Ã ÂµÂÃ Â´Â¥Ã Â´Â¾Ã Â´Â¨Ã Â´â€š / Ã Â´â€¢Ã Âµâ€¡Ã Â´Â¨Ã ÂµÂÃ Â´Â¦Ã ÂµÂÃ Â´Â°Ã Â´Â­Ã Â´Â°Ã Â´Â£ Ã Â´ÂªÃ ÂµÂÃ Â´Â°Ã Â´Â¦Ã Âµâ€¡Ã Â´Â¶Ã Â´â€š Ã Â´Â®Ã Â´Â¾Ã Â´Â±Ã ÂµÂÃ Â´Â±Ã ÂµÂÃ Â´â€¢',
   );
   String get stateSubtitle => _localized(
-    telugu: 'యాప్ భాష మరియు రాష్ట్ర కేటగిరీలు అప్డేట్ అవుతాయి',
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°Â­Ã Â°Â¾Ã Â°Â· Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°Â°Ã Â°Â¾Ã Â°Â·Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ Â°Â° Ã Â°â€¢Ã Â±â€¡Ã Â°Å¸Ã Â°â€”Ã Â°Â¿Ã Â°Â°Ã Â±â‚¬Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â±Â Ã Â°â€¦Ã Â°ÂµÃ Â±ÂÃ Â°Â¤Ã Â°Â¾Ã Â°Â¯Ã Â°Â¿',
     english: 'Update app language and state categories',
-    hindi: 'ऐप भाषा और राज्य कैटेगरी अपडेट करें',
-    tamil: 'ஆப் மொழி மற்றும் மாநில வகைகளை புதுப்பிக்கவும்',
-    kannada: 'ಆಪ್ ಭಾಷೆ ಮತ್ತು ರಾಜ್ಯ ವಿಭಾಗಗಳನ್ನು ಅಪ್ಡೇಟ್ ಮಾಡಿ',
-    malayalam: 'ആപ്പ് ഭാഷയും സംസ്ഥാന വിഭാഗങ്ങളും അപ്ഡേറ്റ് ചെയ്യുക',
+    hindi:
+        'Ã Â¤ÂÃ Â¤Âª Ã Â¤Â­Ã Â¤Â¾Ã Â¤Â·Ã Â¤Â¾ Ã Â¤â€Ã Â¤Â° Ã Â¤Â°Ã Â¤Â¾Ã Â¤Å“Ã Â¥ÂÃ Â¤Â¯ Ã Â¤â€¢Ã Â¥Ë†Ã Â¤Å¸Ã Â¥â€¡Ã Â¤â€”Ã Â¤Â°Ã Â¥â‚¬ Ã Â¤â€¦Ã Â¤ÂªÃ Â¤Â¡Ã Â¥â€¡Ã Â¤Å¸ Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®â€ Ã Â®ÂªÃ Â¯Â Ã Â®Â®Ã Â¯Å Ã Â®Â´Ã Â®Â¿ Ã Â®Â®Ã Â®Â±Ã Â¯ÂÃ Â®Â±Ã Â¯ÂÃ Â®Â®Ã Â¯Â Ã Â®Â®Ã Â®Â¾Ã Â®Â¨Ã Â®Â¿Ã Â®Â² Ã Â®ÂµÃ Â®â€¢Ã Â¯Ë†Ã Â®â€¢Ã Â®Â³Ã Â¯Ë† Ã Â®ÂªÃ Â¯ÂÃ Â®Â¤Ã Â¯ÂÃ Â®ÂªÃ Â¯ÂÃ Â®ÂªÃ Â®Â¿Ã Â®â€¢Ã Â¯ÂÃ Â®â€¢Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²â€ Ã Â²ÂªÃ Â³Â Ã Â²Â­Ã Â²Â¾Ã Â²Â·Ã Â³â€  Ã Â²Â®Ã Â²Â¤Ã Â³ÂÃ Â²Â¤Ã Â³Â Ã Â²Â°Ã Â²Â¾Ã Â²Å“Ã Â³ÂÃ Â²Â¯ Ã Â²ÂµÃ Â²Â¿Ã Â²Â­Ã Â²Â¾Ã Â²â€”Ã Â²â€”Ã Â²Â³Ã Â²Â¨Ã Â³ÂÃ Â²Â¨Ã Â³Â Ã Â²â€¦Ã Â²ÂªÃ Â³ÂÃ Â²Â¡Ã Â³â€¡Ã Â²Å¸Ã Â³Â Ã Â²Â®Ã Â²Â¾Ã Â²Â¡Ã Â²Â¿',
+    malayalam:
+        'Ã Â´â€ Ã Â´ÂªÃ ÂµÂÃ Â´ÂªÃ ÂµÂ Ã Â´Â­Ã Â´Â¾Ã Â´Â·Ã Â´Â¯Ã ÂµÂÃ Â´â€š Ã Â´Â¸Ã Â´â€šÃ Â´Â¸Ã ÂµÂÃ Â´Â¥Ã Â´Â¾Ã Â´Â¨ Ã Â´ÂµÃ Â´Â¿Ã Â´Â­Ã Â´Â¾Ã Â´â€”Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã Â´Â³Ã ÂµÂÃ Â´â€š Ã Â´â€¦Ã Â´ÂªÃ ÂµÂÃ Â´Â¡Ã Âµâ€¡Ã Â´Â±Ã ÂµÂÃ Â´Â±Ã ÂµÂ Ã Â´Å¡Ã Âµâ€ Ã Â´Â¯Ã ÂµÂÃ Â´Â¯Ã ÂµÂÃ Â´â€¢',
   );
   String get stateSavedMessage => _localized(
-    telugu: 'రాష్ట్రం అప్‌డేట్ అయింది. రాజకీయ పార్టీలను మళ్లీ ఎంచుకోండి',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¾Ã Â°Â·Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ Â°Â°Ã Â°â€š Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ¢â‚¬Å’Ã Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿. Ã Â°Â°Ã Â°Â¾Ã Â°Å“Ã Â°â€¢Ã Â±â‚¬Ã Â°Â¯ Ã Â°ÂªÃ Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±â‚¬Ã Â°Â²Ã Â°Â¨Ã Â±Â Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°Å½Ã Â°â€šÃ Â°Å¡Ã Â±ÂÃ Â°â€¢Ã Â±â€¹Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'State updated. Please review political parties',
   );
   String get politicalPartyTitle => _localized(
-    telugu: 'రాజకీయ పార్టీలు',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¾Ã Â°Å“Ã Â°â€¢Ã Â±â‚¬Ã Â°Â¯ Ã Â°ÂªÃ Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±â‚¬Ã Â°Â²Ã Â±Â',
     english: 'Political parties',
-    hindi: 'राजनीतिक पार्टियां',
-    tamil: 'அரசியல் கட்சிகள்',
-    kannada: 'ರಾಜಕೀಯ ಪಕ್ಷಗಳು',
-    malayalam: 'രാഷ്ട്രീയ പാർട്ടികൾ',
+    hindi:
+        'Ã Â¤Â°Ã Â¤Â¾Ã Â¤Å“Ã Â¤Â¨Ã Â¥â‚¬Ã Â¤Â¤Ã Â¤Â¿Ã Â¤â€¢ Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â°Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â¿Ã Â¤Â¯Ã Â¤Â¾Ã Â¤â€š',
+    tamil:
+        'Ã Â®â€¦Ã Â®Â°Ã Â®Å¡Ã Â®Â¿Ã Â®Â¯Ã Â®Â²Ã Â¯Â Ã Â®â€¢Ã Â®Å¸Ã Â¯ÂÃ Â®Å¡Ã Â®Â¿Ã Â®â€¢Ã Â®Â³Ã Â¯Â',
+    kannada:
+        'Ã Â²Â°Ã Â²Â¾Ã Â²Å“Ã Â²â€¢Ã Â³â‚¬Ã Â²Â¯ Ã Â²ÂªÃ Â²â€¢Ã Â³ÂÃ Â²Â·Ã Â²â€”Ã Â²Â³Ã Â³Â',
+    malayalam:
+        'Ã Â´Â°Ã Â´Â¾Ã Â´Â·Ã ÂµÂÃ Â´Å¸Ã ÂµÂÃ Â´Â°Ã Âµâ‚¬Ã Â´Â¯ Ã Â´ÂªÃ Â´Â¾Ã ÂµÂ¼Ã Â´Å¸Ã ÂµÂÃ Â´Å¸Ã Â´Â¿Ã Â´â€¢Ã ÂµÂ¾',
   );
   String get politicalPartySubtitle => _localized(
-    telugu: 'హోమ్‌లో కనిపించే పార్టీ కేటగిరీలను మార్చండి',
+    telugu:
+        'Ã Â°Â¹Ã Â±â€¹Ã Â°Â®Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â²Ã Â±â€¹ Ã Â°â€¢Ã Â°Â¨Ã Â°Â¿Ã Â°ÂªÃ Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â±â€¡ Ã Â°ÂªÃ Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±â‚¬ Ã Â°â€¢Ã Â±â€¡Ã Â°Å¸Ã Â°â€”Ã Â°Â¿Ã Â°Â°Ã Â±â‚¬Ã Â°Â²Ã Â°Â¨Ã Â±Â Ã Â°Â®Ã Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Update political party categories shown in home',
-    hindi: 'होम में दिखने वाली पार्टी कैटेगरी अपडेट करें',
-    tamil: 'ஹோமில் காணப்படும் கட்சி வகைகளை புதுப்பிக்கவும்',
-    kannada: 'ಹೋಮ್‌ನಲ್ಲಿ ಕಾಣುವ ಪಕ್ಷ ವಿಭಾಗಗಳನ್ನು ಅಪ್ಡೇಟ್ ಮಾಡಿ',
-    malayalam: 'ഹോമിൽ കാണുന്ന പാർട്ടി വിഭാഗങ്ങൾ അപ്ഡേറ്റ് ചെയ്യുക',
+    hindi:
+        'Ã Â¤Â¹Ã Â¥â€¹Ã Â¤Â® Ã Â¤Â®Ã Â¥â€¡Ã Â¤â€š Ã Â¤Â¦Ã Â¤Â¿Ã Â¤â€“Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤ÂµÃ Â¤Â¾Ã Â¤Â²Ã Â¥â‚¬ Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â°Ã Â¥ÂÃ Â¤Å¸Ã Â¥â‚¬ Ã Â¤â€¢Ã Â¥Ë†Ã Â¤Å¸Ã Â¥â€¡Ã Â¤â€”Ã Â¤Â°Ã Â¥â‚¬ Ã Â¤â€¦Ã Â¤ÂªÃ Â¤Â¡Ã Â¥â€¡Ã Â¤Å¸ Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®Â¹Ã Â¯â€¹Ã Â®Â®Ã Â®Â¿Ã Â®Â²Ã Â¯Â Ã Â®â€¢Ã Â®Â¾Ã Â®Â£Ã Â®ÂªÃ Â¯ÂÃ Â®ÂªÃ Â®Å¸Ã Â¯ÂÃ Â®Â®Ã Â¯Â Ã Â®â€¢Ã Â®Å¸Ã Â¯ÂÃ Â®Å¡Ã Â®Â¿ Ã Â®ÂµÃ Â®â€¢Ã Â¯Ë†Ã Â®â€¢Ã Â®Â³Ã Â¯Ë† Ã Â®ÂªÃ Â¯ÂÃ Â®Â¤Ã Â¯ÂÃ Â®ÂªÃ Â¯ÂÃ Â®ÂªÃ Â®Â¿Ã Â®â€¢Ã Â¯ÂÃ Â®â€¢Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²Â¹Ã Â³â€¹Ã Â²Â®Ã Â³ÂÃ¢â‚¬Å’Ã Â²Â¨Ã Â²Â²Ã Â³ÂÃ Â²Â²Ã Â²Â¿ Ã Â²â€¢Ã Â²Â¾Ã Â²Â£Ã Â³ÂÃ Â²Âµ Ã Â²ÂªÃ Â²â€¢Ã Â³ÂÃ Â²Â· Ã Â²ÂµÃ Â²Â¿Ã Â²Â­Ã Â²Â¾Ã Â²â€”Ã Â²â€”Ã Â²Â³Ã Â²Â¨Ã Â³ÂÃ Â²Â¨Ã Â³Â Ã Â²â€¦Ã Â²ÂªÃ Â³ÂÃ Â²Â¡Ã Â³â€¡Ã Â²Å¸Ã Â³Â Ã Â²Â®Ã Â²Â¾Ã Â²Â¡Ã Â²Â¿',
+    malayalam:
+        'Ã Â´Â¹Ã Âµâ€¹Ã Â´Â®Ã Â´Â¿Ã ÂµÂ½ Ã Â´â€¢Ã Â´Â¾Ã Â´Â£Ã ÂµÂÃ Â´Â¨Ã ÂµÂÃ Â´Â¨ Ã Â´ÂªÃ Â´Â¾Ã ÂµÂ¼Ã Â´Å¸Ã ÂµÂÃ Â´Å¸Ã Â´Â¿ Ã Â´ÂµÃ Â´Â¿Ã Â´Â­Ã Â´Â¾Ã Â´â€”Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã ÂµÂ¾ Ã Â´â€¦Ã Â´ÂªÃ ÂµÂÃ Â´Â¡Ã Âµâ€¡Ã Â´Â±Ã ÂµÂÃ Â´Â±Ã ÂµÂ Ã Â´Å¡Ã Âµâ€ Ã Â´Â¯Ã ÂµÂÃ Â´Â¯Ã ÂµÂÃ Â´â€¢',
   );
   String get politicalPartySavedMessage => _localized(
-    telugu: 'రాజకీయ పార్టీలు అప్‌డేట్ అయ్యాయి',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¾Ã Â°Å“Ã Â°â€¢Ã Â±â‚¬Ã Â°Â¯ Ã Â°ÂªÃ Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±â‚¬Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ¢â‚¬Å’Ã Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â±Â Ã Â°â€¦Ã Â°Â¯Ã Â±ÂÃ Â°Â¯Ã Â°Â¾Ã Â°Â¯Ã Â°Â¿',
     english: 'Political parties updated',
   );
-  String get locationTitle => _localized(
-    telugu: 'లొకేషన్ ఆధారిత స్టేటస్',
-    english: 'Location-based status',
-  );
-  String get locationSubtitle => _localized(
-    telugu: 'మీ city/district ఆధారంగా దగ్గరలోని స్టేటస్‌లకు ప్రాధాన్యం ఇవ్వండి',
-    english: 'Prioritize nearby city/district statuses',
-  );
-  String get locationDialogMessage => _localized(
-    telugu: 'దగ్గరలోని స్టేటస్‌ల కోసం లొకేషన్ అనుమతి ఇవ్వండి.',
-    english: 'Allow location to show nearby statuses.',
-  );
-  String get locationSavedMessage => _localized(
-    telugu: 'లొకేషన్ స్టేటస్ సూచనలు ఆన్ అయ్యాయి',
-    english: 'Location-based status suggestions enabled',
-  );
-  String get locationPermissionDeniedMessage => _localized(
-    telugu: 'లొకేషన్ అనుమతి ఇవ్వలేదు. Settings నుంచి తర్వాత ఆన్ చేయవచ్చు.',
-    english:
-        'Location permission was not allowed. You can enable it later from settings.',
-  );
-  String get locationServiceDisabledMessage => _localized(
-    telugu: 'ఈ ఫోన్‌లో లొకేషన్ సర్వీస్ ఆఫ్‌లో ఉంది.',
-    english: 'Location service is turned off on this phone.',
-  );
-  String get locationFailedMessage => _localized(
-    telugu: 'లొకేషన్ అప్‌డేట్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
-    english: 'Location could not be updated. Please try again.',
-  );
-  String get cancelAction => _localized(telugu: 'వద్దు', english: 'Cancel');
-  String get allowAction =>
-      _localized(telugu: 'Allow చేయండి', english: 'Allow');
-
   String get subscriptionTitle => strings.subscriptionOption;
   String get subscriptionSubtitle => _localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్ చూడండి',
+    telugu:
+        'Ã Â°Â¸Ã Â°Â¬Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â¸Ã Â±ÂÃ Â°â€¢Ã Â±ÂÃ Â°Â°Ã Â°Â¿Ã Â°ÂªÃ Â±ÂÃ Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â°Â¾Ã Â°Â¨Ã Â±Â Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'View plan details',
-    hindi: 'प्लान विवरण देखें',
-    tamil: 'பிளான் விவரங்களை பார்க்கவும்',
-    kannada: 'ಪ್ಲಾನ್ ವಿವರಗಳನ್ನು ನೋಡಿ',
-    malayalam: 'പ്ലാൻ വിവരങ്ങൾ കാണുക',
+    hindi:
+        'Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â²Ã Â¤Â¾Ã Â¤Â¨ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤ÂµÃ Â¤Â°Ã Â¤Â£ Ã Â¤Â¦Ã Â¥â€¡Ã Â¤â€“Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®ÂªÃ Â®Â¿Ã Â®Â³Ã Â®Â¾Ã Â®Â©Ã Â¯Â Ã Â®ÂµÃ Â®Â¿Ã Â®ÂµÃ Â®Â°Ã Â®â„¢Ã Â¯ÂÃ Â®â€¢Ã Â®Â³Ã Â¯Ë† Ã Â®ÂªÃ Â®Â¾Ã Â®Â°Ã Â¯ÂÃ Â®â€¢Ã Â¯ÂÃ Â®â€¢Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²ÂªÃ Â³ÂÃ Â²Â²Ã Â²Â¾Ã Â²Â¨Ã Â³Â Ã Â²ÂµÃ Â²Â¿Ã Â²ÂµÃ Â²Â°Ã Â²â€”Ã Â²Â³Ã Â²Â¨Ã Â³ÂÃ Â²Â¨Ã Â³Â Ã Â²Â¨Ã Â³â€¹Ã Â²Â¡Ã Â²Â¿',
+    malayalam:
+        'Ã Â´ÂªÃ ÂµÂÃ Â´Â²Ã Â´Â¾Ã ÂµÂ» Ã Â´ÂµÃ Â´Â¿Ã Â´ÂµÃ Â´Â°Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã ÂµÂ¾ Ã Â´â€¢Ã Â´Â¾Ã Â´Â£Ã ÂµÂÃ Â´â€¢',
   );
   String get purchaseInvoicesTitle => _localized(
-    telugu: 'కొనుగోలు ఇన్వాయిసులు',
+    telugu:
+        'Ã Â°â€¢Ã Â±Å Ã Â°Â¨Ã Â±ÂÃ Â°â€”Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°â€¡Ã Â°Â¨Ã Â±ÂÃ Â°ÂµÃ Â°Â¾Ã Â°Â¯Ã Â°Â¿Ã Â°Â¸Ã Â±ÂÃ Â°Â²Ã Â±Â',
     english: 'Purchase invoices',
-    hindi: 'खरीद इनवॉइस',
-    tamil: 'வாங்கிய ரசீதுகள்',
-    kannada: 'ಖರೀದಿ ಇನ್ವಾಯ್ಸ್',
-    malayalam: 'വാങ്ങൽ ഇൻവോയിസുകൾ',
+    hindi: 'Ã Â¤â€“Ã Â¤Â°Ã Â¥â‚¬Ã Â¤Â¦ Ã Â¤â€¡Ã Â¤Â¨Ã Â¤ÂµÃ Â¥â€°Ã Â¤â€¡Ã Â¤Â¸',
+    tamil:
+        'Ã Â®ÂµÃ Â®Â¾Ã Â®â„¢Ã Â¯ÂÃ Â®â€¢Ã Â®Â¿Ã Â®Â¯ Ã Â®Â°Ã Â®Å¡Ã Â¯â‚¬Ã Â®Â¤Ã Â¯ÂÃ Â®â€¢Ã Â®Â³Ã Â¯Â',
+    kannada:
+        'Ã Â²â€“Ã Â²Â°Ã Â³â‚¬Ã Â²Â¦Ã Â²Â¿ Ã Â²â€¡Ã Â²Â¨Ã Â³ÂÃ Â²ÂµÃ Â²Â¾Ã Â²Â¯Ã Â³ÂÃ Â²Â¸Ã Â³Â',
+    malayalam:
+        'Ã Â´ÂµÃ Â´Â¾Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã ÂµÂ½ Ã Â´â€¡Ã ÂµÂ»Ã Â´ÂµÃ Âµâ€¹Ã Â´Â¯Ã Â´Â¿Ã Â´Â¸Ã ÂµÂÃ Â´â€¢Ã ÂµÂ¾',
   );
   String get purchaseInvoicesSubtitle => _localized(
-    telugu: 'కొనుగోలు వివరాలు చూడండి',
+    telugu:
+        'Ã Â°â€¢Ã Â±Å Ã Â°Â¨Ã Â±ÂÃ Â°â€”Ã Â±â€¹Ã Â°Â²Ã Â±Â Ã Â°ÂµÃ Â°Â¿Ã Â°ÂµÃ Â°Â°Ã Â°Â¾Ã Â°Â²Ã Â±Â Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'View purchase details',
-    hindi: 'खरीद विवरण देखें',
-    tamil: 'வாங்கிய விவரங்களை பார்க்கவும்',
-    kannada: 'ಖರೀದಿ ವಿವರಗಳನ್ನು ನೋಡಿ',
-    malayalam: 'വാങ്ങൽ വിവരങ്ങൾ കാണുക',
+    hindi:
+        'Ã Â¤â€“Ã Â¤Â°Ã Â¥â‚¬Ã Â¤Â¦ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤ÂµÃ Â¤Â°Ã Â¤Â£ Ã Â¤Â¦Ã Â¥â€¡Ã Â¤â€“Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®ÂµÃ Â®Â¾Ã Â®â„¢Ã Â¯ÂÃ Â®â€¢Ã Â®Â¿Ã Â®Â¯ Ã Â®ÂµÃ Â®Â¿Ã Â®ÂµÃ Â®Â°Ã Â®â„¢Ã Â¯ÂÃ Â®â€¢Ã Â®Â³Ã Â¯Ë† Ã Â®ÂªÃ Â®Â¾Ã Â®Â°Ã Â¯ÂÃ Â®â€¢Ã Â¯ÂÃ Â®â€¢Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²â€“Ã Â²Â°Ã Â³â‚¬Ã Â²Â¦Ã Â²Â¿ Ã Â²ÂµÃ Â²Â¿Ã Â²ÂµÃ Â²Â°Ã Â²â€”Ã Â²Â³Ã Â²Â¨Ã Â³ÂÃ Â²Â¨Ã Â³Â Ã Â²Â¨Ã Â³â€¹Ã Â²Â¡Ã Â²Â¿',
+    malayalam:
+        'Ã Â´ÂµÃ Â´Â¾Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã ÂµÂ½ Ã Â´ÂµÃ Â´Â¿Ã Â´ÂµÃ Â´Â°Ã Â´â„¢Ã ÂµÂÃ Â´â„¢Ã ÂµÂ¾ Ã Â´â€¢Ã Â´Â¾Ã Â´Â£Ã ÂµÂÃ Â´â€¢',
   );
-  String get referralRewardsTitle =>
-      _localized(telugu: 'రిఫరల్ బహుమతులు', english: 'Referral rewards');
+  String get referralRewardsTitle => _localized(
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°Â¬Ã Â°Â¹Ã Â±ÂÃ Â°Â®Ã Â°Â¤Ã Â±ÂÃ Â°Â²Ã Â±Â',
+    english: 'Referral rewards',
+  );
   String get referralRewardsSubtitle => _localized(
-    telugu: 'రిఫరల్ కోడ్ మరియు ప్రస్తుత చక్రం చూడండి',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¸Ã Â±ÂÃ Â°Â¤Ã Â±ÂÃ Â°Â¤ Ã Â°Å¡Ã Â°â€¢Ã Â±ÂÃ Â°Â°Ã Â°â€š Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'View referral code and current cycle',
   );
   String referralProgressText(int current, int required) {
     return _localized(
-      telugu: 'ప్రస్తుత చక్రం: $current / $required',
+      telugu:
+          'Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¸Ã Â±ÂÃ Â°Â¤Ã Â±ÂÃ Â°Â¤ Ã Â°Å¡Ã Â°â€¢Ã Â±ÂÃ Â°Â°Ã Â°â€š: $current / $required',
       english: 'Current cycle: $current / $required',
     );
   }
 
-  String get copyReferralCodeAction =>
-      _localized(telugu: 'కోడ్ కాపీ', english: 'Copy code');
+  String get copyReferralCodeAction => _localized(
+    telugu: 'Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°â€¢Ã Â°Â¾Ã Â°ÂªÃ Â±â‚¬',
+    english: 'Copy code',
+  );
   String get shareReferralAction =>
-      _localized(telugu: 'షేర్', english: 'Share');
+      _localized(telugu: 'Ã Â°Â·Ã Â±â€¡Ã Â°Â°Ã Â±Â', english: 'Share');
   String get referralTermsAction => _localized(
-    telugu: 'నిబంధనలు మరియు షరతులు చూడండి',
+    telugu:
+        'Ã Â°Â¨Ã Â°Â¿Ã Â°Â¬Ã Â°â€šÃ Â°Â§Ã Â°Â¨Ã Â°Â²Ã Â±Â Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°Â·Ã Â°Â°Ã Â°Â¤Ã Â±ÂÃ Â°Â²Ã Â±Â Ã Â°Å¡Ã Â±â€šÃ Â°Â¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'View Terms & Conditions',
   );
   String get applyReferralCodeLabel => _localized(
-    telugu: 'రిఫరల్ కోడ్ నమోదు చేయండి',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°Â¨Ã Â°Â®Ã Â±â€¹Ã Â°Â¦Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Enter referral code',
   );
   String get applyReferralCodeAction =>
-      _localized(telugu: 'అప్లై', english: 'Apply');
+      _localized(telugu: 'Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â±Ë†', english: 'Apply');
   String get referralCodeCopiedMessage => _localized(
-    telugu: 'రిఫరల్ కోడ్ కాపీ అయింది',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°â€¢Ã Â°Â¾Ã Â°ÂªÃ Â±â‚¬ Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Referral code copied',
   );
   String get referralCodeAppliedMessage => _localized(
-    telugu: 'రిఫరల్ కోడ్ అప్లై అయింది',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â±Ë† Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Referral code applied',
   );
   String get referralCodeAlreadyAppliedMessage => _localized(
-    telugu: 'రిఫరల్ ఇప్పటికే అప్లై అయింది',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¡Ã Â°ÂªÃ Â±ÂÃ Â°ÂªÃ Â°Å¸Ã Â°Â¿Ã Â°â€¢Ã Â±â€¡ Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â±Ë† Ã Â°â€¦Ã Â°Â¯Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿',
     english: 'Referral already applied',
   );
   String get referralCodeApplyFailedMessage => _localized(
-    telugu: 'రిఫరల్ కోడ్ అప్లై కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°â€¢Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°â€¦Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â±Ë† Ã Â°â€¢Ã Â°Â¾Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â. Ã Â°Â¦Ã Â°Â¯Ã Â°Å¡Ã Â±â€¡Ã Â°Â¸Ã Â°Â¿ Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Â¨Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
     english: 'Referral code apply failed. Please try again.',
   );
   String get referralLoadFailedMessage => _localized(
-    telugu: 'రిఫరల్ వివరాలు లోడ్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    telugu:
+        'Ã Â°Â°Ã Â°Â¿Ã Â°Â«Ã Â°Â°Ã Â°Â²Ã Â±Â Ã Â°ÂµÃ Â°Â¿Ã Â°ÂµÃ Â°Â°Ã Â°Â¾Ã Â°Â²Ã Â±Â Ã Â°Â²Ã Â±â€¹Ã Â°Â¡Ã Â±Â Ã Â°â€¢Ã Â°Â¾Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â. Ã Â°Â¦Ã Â°Â¯Ã Â°Å¡Ã Â±â€¡Ã Â°Â¸Ã Â°Â¿ Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Â¨Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
     english: 'Referral details could not load. Please try again.',
   );
-  String get closeAction => _localized(telugu: 'మూసివేయండి', english: 'Close');
+  String get closeAction => _localized(
+    telugu: 'Ã Â°Â®Ã Â±â€šÃ Â°Â¸Ã Â°Â¿Ã Â°ÂµÃ Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
+    english: 'Close',
+  );
   String get restoreSubscriptionTitle => _localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ రీస్టోర్ చేయండి',
+    telugu:
+        'Ã Â°Â¸Ã Â°Â¬Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â¸Ã Â±ÂÃ Â°â€¢Ã Â±ÂÃ Â°Â°Ã Â°Â¿Ã Â°ÂªÃ Â±ÂÃ Â°Â·Ã Â°Â¨Ã Â±Â Ã Â°Â°Ã Â±â‚¬Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â±â€¹Ã Â°Â°Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Restore subscriptions',
   );
   String get restoreSubscriptionSubtitle => _localized(
-    telugu: 'ఈ అకౌంట్ కొనుగోళ్లను మళ్లీ తెచ్చుకోండి',
+    telugu:
+        'Ã Â°Ë† Ã Â°â€¦Ã Â°â€¢Ã Â±Å’Ã Â°â€šÃ Â°Å¸Ã Â±Â Ã Â°â€¢Ã Â±Å Ã Â°Â¨Ã Â±ÂÃ Â°â€”Ã Â±â€¹Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â°Â¨Ã Â±Â Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°Â¤Ã Â±â€ Ã Â°Å¡Ã Â±ÂÃ Â°Å¡Ã Â±ÂÃ Â°â€¢Ã Â±â€¹Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Restore purchases for this account',
   );
 
@@ -1589,51 +1679,65 @@ class _ProfileCopy {
   String? get notificationsSubtitle => strings.notificationsOptionSubtitle;
 
   String get shareAppTitle => _localized(
-    telugu: 'యాప్ షేర్ చేయండి',
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°Â·Ã Â±â€¡Ã Â°Â°Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Share App',
-    hindi: 'ऐप शेयर करें',
-    tamil: 'ஆப்பை பகிரவும்',
-    kannada: 'ಆಪ್ ಹಂಚಿಕೊಳ್ಳಿ',
-    malayalam: 'ആപ്പ് പങ്കിടുക',
+    hindi: 'Ã Â¤ÂÃ Â¤Âª Ã Â¤Â¶Ã Â¥â€¡Ã Â¤Â¯Ã Â¤Â° Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®â€ Ã Â®ÂªÃ Â¯ÂÃ Â®ÂªÃ Â¯Ë† Ã Â®ÂªÃ Â®â€¢Ã Â®Â¿Ã Â®Â°Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²â€ Ã Â²ÂªÃ Â³Â Ã Â²Â¹Ã Â²â€šÃ Â²Å¡Ã Â²Â¿Ã Â²â€¢Ã Â³Å Ã Â²Â³Ã Â³ÂÃ Â²Â³Ã Â²Â¿',
+    malayalam:
+        'Ã Â´â€ Ã Â´ÂªÃ ÂµÂÃ Â´ÂªÃ ÂµÂ Ã Â´ÂªÃ Â´â„¢Ã ÂµÂÃ Â´â€¢Ã Â´Â¿Ã Â´Å¸Ã ÂµÂÃ Â´â€¢',
   );
   String get shareAppSubtitle => _localized(
-    telugu: 'యాప్ ఐకాన్, ప్లే స్టోర్ లింక్‌ను పంచుకోండి',
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°ÂÃ Â°â€¢Ã Â°Â¾Ã Â°Â¨Ã Â±Â, Ã Â°ÂªÃ Â±ÂÃ Â°Â²Ã Â±â€¡ Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â±â€¹Ã Â°Â°Ã Â±Â Ã Â°Â²Ã Â°Â¿Ã Â°â€šÃ Â°â€¢Ã Â±ÂÃ¢â‚¬Å’Ã Â°Â¨Ã Â±Â Ã Â°ÂªÃ Â°â€šÃ Â°Å¡Ã Â±ÂÃ Â°â€¢Ã Â±â€¹Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Share the app icon and Play Store link',
-    hindi: 'ऐप आइकन और Play Store लिंक शेयर करें',
-    tamil: 'ஆப் ஐகான் மற்றும் Play Store இணைப்பை பகிரவும்',
-    kannada: 'ಆಪ್ ಐಕಾನ್ ಮತ್ತು Play Store ಲಿಂಕ್ ಹಂಚಿಕೊಳ್ಳಿ',
-    malayalam: 'ആപ്പ് ഐകണും Play Store ലിങ്കും പങ്കിടുക',
+    hindi:
+        'Ã Â¤ÂÃ Â¤Âª Ã Â¤â€ Ã Â¤â€¡Ã Â¤â€¢Ã Â¤Â¨ Ã Â¤â€Ã Â¤Â° Play Store Ã Â¤Â²Ã Â¤Â¿Ã Â¤â€šÃ Â¤â€¢ Ã Â¤Â¶Ã Â¥â€¡Ã Â¤Â¯Ã Â¤Â° Ã Â¤â€¢Ã Â¤Â°Ã Â¥â€¡Ã Â¤â€š',
+    tamil:
+        'Ã Â®â€ Ã Â®ÂªÃ Â¯Â Ã Â®ÂÃ Â®â€¢Ã Â®Â¾Ã Â®Â©Ã Â¯Â Ã Â®Â®Ã Â®Â±Ã Â¯ÂÃ Â®Â±Ã Â¯ÂÃ Â®Â®Ã Â¯Â Play Store Ã Â®â€¡Ã Â®Â£Ã Â¯Ë†Ã Â®ÂªÃ Â¯ÂÃ Â®ÂªÃ Â¯Ë† Ã Â®ÂªÃ Â®â€¢Ã Â®Â¿Ã Â®Â°Ã Â®ÂµÃ Â¯ÂÃ Â®Â®Ã Â¯Â',
+    kannada:
+        'Ã Â²â€ Ã Â²ÂªÃ Â³Â Ã Â²ÂÃ Â²â€¢Ã Â²Â¾Ã Â²Â¨Ã Â³Â Ã Â²Â®Ã Â²Â¤Ã Â³ÂÃ Â²Â¤Ã Â³Â Play Store Ã Â²Â²Ã Â²Â¿Ã Â²â€šÃ Â²â€¢Ã Â³Â Ã Â²Â¹Ã Â²â€šÃ Â²Å¡Ã Â²Â¿Ã Â²â€¢Ã Â³Å Ã Â²Â³Ã Â³ÂÃ Â²Â³Ã Â²Â¿',
+    malayalam:
+        'Ã Â´â€ Ã Â´ÂªÃ ÂµÂÃ Â´ÂªÃ ÂµÂ Ã Â´ÂÃ Â´â€¢Ã Â´Â£Ã ÂµÂÃ Â´â€š Play Store Ã Â´Â²Ã Â´Â¿Ã Â´â„¢Ã ÂµÂÃ Â´â€¢Ã ÂµÂÃ Â´â€š Ã Â´ÂªÃ Â´â„¢Ã ÂµÂÃ Â´â€¢Ã Â´Â¿Ã Â´Å¸Ã ÂµÂÃ Â´â€¢',
   );
   String get shareAppFailedMessage => _localized(
-    telugu: 'యాప్ షేర్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°Â·Ã Â±â€¡Ã Â°Â°Ã Â±Â Ã Â°â€¢Ã Â°Â¾Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â. Ã Â°Â¦Ã Â°Â¯Ã Â°Å¡Ã Â±â€¡Ã Â°Â¸Ã Â°Â¿ Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Â¨Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
     english: 'App share failed. Please try again.',
   );
   String get accountEmailFallback => _localized(
-    telugu: 'ఈ అకౌంట్‌కు ఇమెయిల్ అందుబాటులో లేదు',
+    telugu:
+        'Ã Â°Ë† Ã Â°â€¦Ã Â°â€¢Ã Â±Å’Ã Â°â€šÃ Â°Å¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°â€¢Ã Â±Â Ã Â°â€¡Ã Â°Â®Ã Â±â€ Ã Â°Â¯Ã Â°Â¿Ã Â°Â²Ã Â±Â Ã Â°â€¦Ã Â°â€šÃ Â°Â¦Ã Â±ÂÃ Â°Â¬Ã Â°Â¾Ã Â°Å¸Ã Â±ÂÃ Â°Â²Ã Â±â€¹ Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â',
     english: 'Email not available for this account',
   );
 
   String get helpTitle => strings.helpSupport;
   String? get helpSubtitle => strings.helpSupportSubtitle;
   String get reportIssueTitle => _localized(
-    telugu: 'పోస్టర్ లేదా సమస్యను రిపోర్ట్ చేయండి',
+    telugu:
+        'Ã Â°ÂªÃ Â±â€¹Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â°Ã Â±Â Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â°Â¾ Ã Â°Â¸Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°Â¯Ã Â°Â¨Ã Â±Â Ã Â°Â°Ã Â°Â¿Ã Â°ÂªÃ Â±â€¹Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Report a poster or issue',
   );
   String get reportIssueSubtitle => _localized(
-    telugu: 'అనుచిత పోస్టర్ లేదా యాప్ సమస్యను సపోర్ట్‌కు పంపండి',
+    telugu:
+        'Ã Â°â€¦Ã Â°Â¨Ã Â±ÂÃ Â°Å¡Ã Â°Â¿Ã Â°Â¤ Ã Â°ÂªÃ Â±â€¹Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â°Ã Â±Â Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â°Â¾ Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°Â¸Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°Â¯Ã Â°Â¨Ã Â±Â Ã Â°Â¸Ã Â°ÂªÃ Â±â€¹Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±ÂÃ¢â‚¬Å’Ã Â°â€¢Ã Â±Â Ã Â°ÂªÃ Â°â€šÃ Â°ÂªÃ Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Send an inappropriate poster or app issue report to support',
   );
   String get reportIssueEmailSubject => 'Mana Poster Ai Poster Report';
   String get reportIssueEmailBody => _localized(
-    telugu: '''నమస్కారం Mana Poster Ai టీమ్,
+    telugu:
+        '''Ã Â°Â¨Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°â€¢Ã Â°Â¾Ã Â°Â°Ã Â°â€š Mana Poster Ai Ã Â°Å¸Ã Â±â‚¬Ã Â°Â®Ã Â±Â,
 
-నేను ఒక పోస్టర్ లేదా యాప్ సమస్యను రిపోర్ట్ చేయాలనుకుంటున్నాను.
+Ã Â°Â¨Ã Â±â€¡Ã Â°Â¨Ã Â±Â Ã Â°â€™Ã Â°â€¢ Ã Â°ÂªÃ Â±â€¹Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â°Ã Â±Â Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â°Â¾ Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°Â¸Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°Â¯Ã Â°Â¨Ã Â±Â Ã Â°Â°Ã Â°Â¿Ã Â°ÂªÃ Â±â€¹Ã Â°Â°Ã Â±ÂÃ Â°Å¸Ã Â±Â Ã Â°Å¡Ã Â±â€¡Ã Â°Â¯Ã Â°Â¾Ã Â°Â²Ã Â°Â¨Ã Â±ÂÃ Â°â€¢Ã Â±ÂÃ Â°â€šÃ Â°Å¸Ã Â±ÂÃ Â°Â¨Ã Â±ÂÃ Â°Â¨Ã Â°Â¾Ã Â°Â¨Ã Â±Â.
 
-వివరాలు:
-- సమస్య రకం:
-- పోస్టర్ పేరు లేదా కేటగిరీ:
-- Creator ID (తెలిస్తే):
-- ఏమి సమస్యగా అనిపించింది:
+Ã Â°ÂµÃ Â°Â¿Ã Â°ÂµÃ Â°Â°Ã Â°Â¾Ã Â°Â²Ã Â±Â:
+- Ã Â°Â¸Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°Â¯ Ã Â°Â°Ã Â°â€¢Ã Â°â€š:
+- Ã Â°ÂªÃ Â±â€¹Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â°Â°Ã Â±Â Ã Â°ÂªÃ Â±â€¡Ã Â°Â°Ã Â±Â Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â°Â¾ Ã Â°â€¢Ã Â±â€¡Ã Â°Å¸Ã Â°â€”Ã Â°Â¿Ã Â°Â°Ã Â±â‚¬:
+- Creator ID (Ã Â°Â¤Ã Â±â€ Ã Â°Â²Ã Â°Â¿Ã Â°Â¸Ã Â±ÂÃ Â°Â¤Ã Â±â€¡):
+- Ã Â°ÂÃ Â°Â®Ã Â°Â¿ Ã Â°Â¸Ã Â°Â®Ã Â°Â¸Ã Â±ÂÃ Â°Â¯Ã Â°â€”Ã Â°Â¾ Ã Â°â€¦Ã Â°Â¨Ã Â°Â¿Ã Â°ÂªÃ Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°Â¿Ã Â°â€šÃ Â°Â¦Ã Â°Â¿:
 ''',
     english: '''Hello Mana Poster Ai team,
 
@@ -1652,33 +1756,48 @@ Details:
   String get logoutTitle => strings.logout;
   String get logoutSubtitle => strings.logoutSubtitle;
   String get logoutFailedMessage => _localized(
-    telugu: 'లాగ్ అవుట్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    telugu:
+        'Ã Â°Â²Ã Â°Â¾Ã Â°â€”Ã Â±Â Ã Â°â€¦Ã Â°ÂµÃ Â±ÂÃ Â°Å¸Ã Â±Â Ã Â°â€¢Ã Â°Â¾Ã Â°Â²Ã Â±â€¡Ã Â°Â¦Ã Â±Â. Ã Â°Â¦Ã Â°Â¯Ã Â°Å¡Ã Â±â€¡Ã Â°Â¸Ã Â°Â¿ Ã Â°Â®Ã Â°Â³Ã Â±ÂÃ Â°Â²Ã Â±â‚¬ Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Â¨Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿.',
     english: 'Logout failed. Please try again.',
   );
-  String get deleteAccountTitle =>
-      _localized(telugu: 'అకౌంట్ డిలీట్', english: 'Delete account');
+  String get deleteAccountTitle => _localized(
+    telugu:
+        'Ã Â°â€¦Ã Â°â€¢Ã Â±Å’Ã Â°â€šÃ Â°Å¸Ã Â±Â Ã Â°Â¡Ã Â°Â¿Ã Â°Â²Ã Â±â‚¬Ã Â°Å¸Ã Â±Â',
+    english: 'Delete account',
+  );
   String get deleteAccountSubtitle => _localized(
-    telugu: 'మీ అకౌంట్ మరియు డేటా తొలగింపు రిక్వెస్ట్ ప్రారంభించండి',
+    telugu:
+        'Ã Â°Â®Ã Â±â‚¬ Ã Â°â€¦Ã Â°â€¢Ã Â±Å’Ã Â°â€šÃ Â°Å¸Ã Â±Â Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â°Â¾ Ã Â°Â¤Ã Â±Å Ã Â°Â²Ã Â°â€”Ã Â°Â¿Ã Â°â€šÃ Â°ÂªÃ Â±Â Ã Â°Â°Ã Â°Â¿Ã Â°â€¢Ã Â±ÂÃ Â°ÂµÃ Â±â€ Ã Â°Â¸Ã Â±ÂÃ Â°Å¸Ã Â±Â Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â°Â¾Ã Â°Â°Ã Â°â€šÃ Â°Â­Ã Â°Â¿Ã Â°â€šÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Start your account and data removal request',
   );
-  String get privacyPolicyTitle =>
-      _localized(telugu: 'ప్రైవసీ పాలసీ', english: 'Privacy Policy');
+  String get privacyPolicyTitle => _localized(
+    telugu:
+        'Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â±Ë†Ã Â°ÂµÃ Â°Â¸Ã Â±â‚¬ Ã Â°ÂªÃ Â°Â¾Ã Â°Â²Ã Â°Â¸Ã Â±â‚¬',
+    english: 'Privacy Policy',
+  );
   String get privacyPolicySubtitle => _localized(
-    telugu: 'డేటా వినియోగం మరియు ప్రైవసీ',
+    telugu:
+        'Ã Â°Â¡Ã Â±â€¡Ã Â°Å¸Ã Â°Â¾ Ã Â°ÂµÃ Â°Â¿Ã Â°Â¨Ã Â°Â¿Ã Â°Â¯Ã Â±â€¹Ã Â°â€”Ã Â°â€š Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â±Ë†Ã Â°ÂµÃ Â°Â¸Ã Â±â‚¬',
     english: 'Data usage and privacy',
   );
-  String get adPrivacyChoicesTitle =>
-      _localized(telugu: 'యాడ్ ప్రైవసీ ఎంపికలు', english: 'Ad privacy choices');
+  String get adPrivacyChoicesTitle => _localized(
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°Â¡Ã Â±Â Ã Â°ÂªÃ Â±ÂÃ Â°Â°Ã Â±Ë†Ã Â°ÂµÃ Â°Â¸Ã Â±â‚¬ Ã Â°Å½Ã Â°â€šÃ Â°ÂªÃ Â°Â¿Ã Â°â€¢Ã Â°Â²Ã Â±Â',
+    english: 'Ad privacy choices',
+  );
   String get adPrivacyChoicesSubtitle => _localized(
-    telugu: 'పర్సనలైజ్డ్ యాడ్స్ సెట్టింగ్స్ మార్చండి',
+    telugu:
+        'Ã Â°ÂªÃ Â°Â°Ã Â±ÂÃ Â°Â¸Ã Â°Â¨Ã Â°Â²Ã Â±Ë†Ã Â°Å“Ã Â±ÂÃ Â°Â¡Ã Â±Â Ã Â°Â¯Ã Â°Â¾Ã Â°Â¡Ã Â±ÂÃ Â°Â¸Ã Â±Â Ã Â°Â¸Ã Â±â€ Ã Â°Å¸Ã Â±ÂÃ Â°Å¸Ã Â°Â¿Ã Â°â€šÃ Â°â€”Ã Â±ÂÃ Â°Â¸Ã Â±Â Ã Â°Â®Ã Â°Â¾Ã Â°Â°Ã Â±ÂÃ Â°Å¡Ã Â°â€šÃ Â°Â¡Ã Â°Â¿',
     english: 'Manage personalized ad settings',
   );
   String get legalNoticesTitle => _localized(
-    telugu: 'నిబంధనలు మరియు షరతులు',
+    telugu:
+        'Ã Â°Â¨Ã Â°Â¿Ã Â°Â¬Ã Â°â€šÃ Â°Â§Ã Â°Â¨Ã Â°Â²Ã Â±Â Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°Â·Ã Â°Â°Ã Â°Â¤Ã Â±ÂÃ Â°Â²Ã Â±Â',
     english: 'Terms & Conditions',
   );
   String get legalNoticesSubtitle => _localized(
-    telugu: 'యాప్ వాడకం మరియు సభ్యత్వ నియమాలు',
+    telugu:
+        'Ã Â°Â¯Ã Â°Â¾Ã Â°ÂªÃ Â±Â Ã Â°ÂµÃ Â°Â¾Ã Â°Â¡Ã Â°â€¢Ã Â°â€š Ã Â°Â®Ã Â°Â°Ã Â°Â¿Ã Â°Â¯Ã Â±Â Ã Â°Â¸Ã Â°Â­Ã Â±ÂÃ Â°Â¯Ã Â°Â¤Ã Â±ÂÃ Â°Âµ Ã Â°Â¨Ã Â°Â¿Ã Â°Â¯Ã Â°Â®Ã Â°Â¾Ã Â°Â²Ã Â±Â',
     english: 'Usage and subscription terms',
   );
 }

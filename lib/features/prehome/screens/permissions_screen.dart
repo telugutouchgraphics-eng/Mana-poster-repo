@@ -406,8 +406,8 @@ class _PermissionIntroCopy {
 
   String get locationSubtitle => _localized(
     telugu:
-        '\u0C26\u0C17\u0C4D\u0C17\u0C30\u0C32\u0C4B\u0C28\u0C3F \u0C38\u0C4D\u0C1F\u0C47\u0C1F\u0C38\u0C4D\u0C32\u0C41 \u0C1A\u0C42\u0C2A\u0C21\u0C3E\u0C28\u0C3F\u0C15\u0C3F.',
-    english: 'To show nearby statuses.',
+        '\u0C2E\u0C40 \u0C2A\u0C4D\u0C30\u0C3E\u0C02\u0C24\u0C3E\u0C28\u0C3F\u0C15\u0C3F \u0C38\u0C30\u0C3F\u0C2A\u0C4B\u0C2F\u0C47 \u0C15\u0C02\u0C1F\u0C46\u0C02\u0C1F\u0C4D \u0C1A\u0C42\u0C2A\u0C21\u0C3E\u0C28\u0C3F\u0C15\u0C3F.',
+    english: 'To show content relevant to your area.',
   );
 
   String get footerHint => _localized(

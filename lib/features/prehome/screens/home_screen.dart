@@ -9,7 +9,6 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart' as emoji_picker;
 import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide Type;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -60,10 +59,8 @@ import 'package:mana_poster/features/image_editor/screens/image_editor_screen_we
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/models/approved_creator_template.dart';
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
-import 'package:mana_poster/features/prehome/models/community_status.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
-import 'package:mana_poster/features/prehome/screens/community_status_upload_screen.dart';
 import 'package:mana_poster/features/prehome/screens/daily_quiz_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
@@ -76,7 +73,6 @@ import 'package:mana_poster/features/prehome/services/app_location_service.dart'
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
-import 'package:mana_poster/features/prehome/services/community_status_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_category_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_event_schedule_service.dart';
 import 'package:mana_poster/features/prehome/services/dynamic_lunar_event_dates.dart';
@@ -138,7 +134,7 @@ Future<void> _openExternalPublicUrl(BuildContext context, String url) async {
         content: Text(
           context.strings.localized(
             telugu:
-                'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english: 'Could not open the link. Please try again.',
           ),
         ),
@@ -295,6 +291,13 @@ class _TemplateItem {
     this.createdAtMillis = 0,
     this.publishAtMillis = 0,
     this.preferOriginalPosterQuality = false,
+    this.viewCount = 0,
+    this.shareCount = 0,
+    this.downloadCount = 0,
+    this.displayViewCount = 0,
+    this.displayShareCount = 0,
+    this.displayDownloadCount = 0,
+    this.displayEngagementCount = 0,
   });
 
   final String titleTe;
@@ -317,7 +320,7 @@ class _TemplateItem {
   final int createdAtMillis;
   final int publishAtMillis;
 
-  /// Firestore `categoryId` only â€” used for home dynamic chips, not label tokens.
+  /// Firestore `categoryId` only ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â used for home dynamic chips, not label tokens.
   final String? primaryFirestoreCategoryId;
 
   /// Firestore manual / admin category label for home chip + matching.
@@ -325,9 +328,45 @@ class _TemplateItem {
   final String? creatorPublicId;
   final CreatorPosterPersonalization? personalizationConfig;
   final bool preferOriginalPosterQuality;
+  final int viewCount;
+  final int shareCount;
+  final int downloadCount;
+  final int displayViewCount;
+  final int displayShareCount;
+  final int displayDownloadCount;
+  final int displayEngagementCount;
 
   bool get isVideo =>
       mediaType == 'video' && (videoUrl?.trim().isNotEmpty ?? false);
+
+  int displayCountFor(String kind) {
+    final real = switch (kind) {
+      'view' => viewCount,
+      'share' => shareCount,
+      'download' => downloadCount,
+      _ => 0,
+    };
+    final display = switch (kind) {
+      'view' => displayViewCount,
+      'share' => displayShareCount,
+      'download' => displayDownloadCount,
+      _ => 0,
+    };
+    if (display > 0) {
+      return display;
+    }
+    final id = templateId?.trim().isNotEmpty == true
+        ? templateId!.trim()
+        : (imageUrl ?? imageStoragePath ?? titleEn);
+    return _boostedPosterDisplayCount(id, kind, real);
+  }
+
+  int displayCombinedEngagementCount() {
+    final id = templateId?.trim().isNotEmpty == true
+        ? templateId!.trim()
+        : (imageUrl ?? imageStoragePath ?? titleEn);
+    return _boostedPosterDisplayEngagementCount(id, shareCount + downloadCount);
+  }
 
   String titleFor(AppLanguage language) =>
       _repairLegacyUiText(switch (language.supportedUiLanguage) {
@@ -350,6 +389,65 @@ class _TemplateItem {
         SupportedUiLanguage.kashmiri ||
         SupportedUiLanguage.ladakhi => titleEn,
       });
+}
+
+int _stablePosterHash(String value) {
+  var hash = 2166136261;
+  for (final unit in value.codeUnits) {
+    hash ^= unit;
+    hash = (hash * 16777619) & 0x7fffffff;
+  }
+  return hash;
+}
+
+int _boostedPosterDisplayCount(String posterId, String kind, int realCount) {
+  if (realCount <= 0) {
+    if (kind == 'view') {
+      return _defaultPosterDisplayViewCount(posterId);
+    }
+    if (kind == 'share') {
+      return _defaultPosterDisplayShareCount(posterId);
+    }
+    return 0;
+  }
+  final baseCount = switch (kind) {
+    'view' => _defaultPosterDisplayViewCount(posterId),
+    'share' => _defaultPosterDisplayShareCount(posterId),
+    'download' => 0,
+    _ => 0,
+  };
+  final range = switch (kind) {
+    'view' => (min: 25, max: 60),
+    'share' => (min: 8, max: 20),
+    'download' => (min: 10, max: 25),
+    _ => (min: 1, max: 1),
+  };
+  final spread = range.max - range.min + 1;
+  final multiplier =
+      range.min + (_stablePosterHash('$kind:$posterId') % spread);
+  return baseCount + (realCount * multiplier);
+}
+
+int _defaultPosterDisplayViewCount(String posterId) {
+  return 120 + (_stablePosterHash('default-view:$posterId') % 121);
+}
+
+int _defaultPosterDisplayShareCount(String posterId) {
+  final views = _defaultPosterDisplayViewCount(posterId);
+  final percentage = 62 + (_stablePosterHash('default-share:$posterId') % 14);
+  return math.min(views - 1, (views * percentage / 100).round());
+}
+
+int _boostedPosterDisplayEngagementCount(
+  String posterId,
+  int realEngagementCount,
+) {
+  final baseCount = _defaultPosterDisplayShareCount(posterId);
+  if (realEngagementCount <= 0) {
+    return baseCount;
+  }
+  final multiplier = 2 + (_stablePosterHash('engagement:$posterId') % 4);
+  return baseCount + (realEngagementCount * multiplier);
 }
 
 class _PosterPhotoUserAdjustment {
@@ -744,6 +842,13 @@ _TemplateItem _mapApprovedCreatorTemplateWorker(
     createdAtMillis: template.createdAtMillis,
     publishAtMillis: template.publishAtMillis,
     pageConfig: template.pageConfig,
+    viewCount: template.viewCount,
+    shareCount: template.shareCount,
+    downloadCount: template.downloadCount,
+    displayViewCount: template.displayViewCount,
+    displayShareCount: template.displayShareCount,
+    displayDownloadCount: template.displayDownloadCount,
+    displayEngagementCount: template.displayEngagementCount,
     // Web portal uploads must stay visually lossless in app preview/export.
     // Thumbnails can still exist as fallback metadata, but approved posters
     // should render from the original image source.
@@ -1447,7 +1552,11 @@ class _HomeScreenState extends State<HomeScreen>
   List<AppHomeBanner> _fullscreenPopupBanners = const <AppHomeBanner>[];
   AppHomeBanner? _activeFullscreenPopupBanner;
   bool _fullscreenPopupDismissed = false;
+  bool _fullscreenPopupDismissedThisSession = false;
   final Set<String> _countedFullscreenPopupBannerIds = <String>{};
+  final Set<String> _countedHomeBannerIds = <String>{};
+  final Set<String> _countedPosterViewIds = <String>{};
+  int _fullscreenPopupBannerGeneration = 0;
   QueryDocumentSnapshot<Map<String, dynamic>>? _templatesLastDocument;
   Future<void>? _homeBannersLoadFuture;
   Future<void>? _approvedTemplatesLoadFuture;
@@ -1525,24 +1634,30 @@ class _HomeScreenState extends State<HomeScreen>
   // ignore: unused_field
   static const List<_TemplateItem> _freeTemplates = <_TemplateItem>[
     _TemplateItem(
-      titleTe: 'à°¶à±à°­à±‹à°¦à°¯à°‚ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤—à¥à¤¡ à¤®à¥‰à¤°à¥à¤¨à¤¿à¤‚à¤— à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â­ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
+      titleHi:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°',
       titleEn: 'Good Morning Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200',
       categoryTags: <String>['good_morning'],
     ),
     _TemplateItem(
-      titleTe: 'à°¬à°°à±à°¤à±â€Œà°¡à±‡ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤¬à¤°à¥à¤¥à¤¡à¥‡ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
+      titleHi:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¥ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°',
       titleEn: 'Birthday Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=1200',
       categoryTags: <String>['birthdays'],
     ),
     _TemplateItem(
-      titleTe: 'à°­à°•à±à°¤à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±',
-      titleHi: 'à¤­à¤•à¥à¤¤à¤¿ à¤ªà¥‹à¤¸à¥à¤Ÿà¤°',
+      titleTe:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â­ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
+      titleHi:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â­ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°',
       titleEn: 'Devotional Poster',
       imageUrl:
           'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200',
@@ -1927,6 +2042,25 @@ class _HomeScreenState extends State<HomeScreen>
     _scheduleAllFeedInterestSave();
   }
 
+  void _recordPosterViewCount(_TemplateItem item) {
+    final posterId = item.templateId?.trim();
+    if (posterId == null || posterId.isEmpty) {
+      return;
+    }
+    if (!_countedPosterViewIds.add(posterId)) {
+      return;
+    }
+    unawaited(
+      _approvedCreatorTemplateService.incrementPosterViewCount(
+        posterId: posterId,
+        creatorPublicId: item.creatorPublicId ?? '',
+        posterTitle: item.titleEn,
+        categoryId: item.primaryFirestoreCategoryId ?? '',
+        categoryLabel: item.categoryDisplayLabel ?? '',
+      ),
+    );
+  }
+
   void _handleRegionSelectionChanged() {
     if (!mounted) {
       return;
@@ -2268,21 +2402,18 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
     if (!_shouldRunFirebaseUiServices) {
-      unawaited(FirebaseBootstrap.ensureInitialized());
-      _homeAuthReadyRetryTimer ??= Timer.periodic(
-        const Duration(milliseconds: 350),
-        (timer) {
-          if (!mounted) {
-            timer.cancel();
-            return;
-          }
-          if (_shouldRunFirebaseUiServices) {
-            timer.cancel();
-            _homeAuthReadyRetryTimer = null;
+      _homeAuthReadyRetryTimer ??= Timer(const Duration(seconds: 75), () {
+        _homeAuthReadyRetryTimer = null;
+        if (!mounted) {
+          return;
+        }
+        unawaited(() async {
+          await FirebaseBootstrap.ensureInitialized();
+          if (mounted) {
             _attachHomeAuthStateSubscriptionIfReady();
           }
-        },
-      );
+        }());
+      });
       return;
     }
     _lastHomeAuthUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
@@ -2389,6 +2520,7 @@ class _HomeScreenState extends State<HomeScreen>
         _fullscreenPopupBanners = const <AppHomeBanner>[];
         _activeFullscreenPopupBanner = null;
         _fullscreenPopupDismissed = false;
+        _fullscreenPopupDismissedThisSession = false;
         _remoteApprovedTemplates = const <_TemplateItem>[];
         _manualEventCategories = const <DynamicCategory>[];
         _templatesLoading = true;
@@ -2573,15 +2705,15 @@ class _HomeScreenState extends State<HomeScreen>
           'mahabharata',
           'mahabharatam',
           'mahabharatham',
-          'మహాభారత',
-          'महाभारत',
-          'மகாபாரத',
-          'ಮಹಾಭಾರತ',
-          'മഹാഭാരത',
-          'মহাভারত',
-          'મહાભારત',
-          'ਮਹਾਭਾਰਤ',
-          'ମହାଭାରତ',
+          'ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â°Ã‚Â¹ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â­ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¤',
+          'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â­ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¤',
+          'ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â®Ã‚Â¤',
+          'ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â­ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¤',
+          'ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¹ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â­ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â¤',
+          'ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â­ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¤',
+          'ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¹ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â­ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¤',
+          'ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â­ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¤',
+          'ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â­ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¤',
         ])) {
       return true;
     }
@@ -2590,15 +2722,15 @@ class _HomeScreenState extends State<HomeScreen>
         containsAny(const <String>[
           'devotional',
           'bhakti',
-          'భక్తి',
-          'भक्ति',
-          'பக்தி',
-          'ಭಕ್ತಿ',
-          'ഭക്തി',
-          'ভক্তি',
-          'ભક્તિ',
-          'ਭਗਤੀ',
-          'ଭକ୍ତି',
+          'ÃƒÂ Ã‚Â°Ã‚Â­ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â°Ã‚Â¿',
+          'ÃƒÂ Ã‚Â¤Ã‚Â­ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¿',
+          'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿',
+          'ÃƒÂ Ã‚Â²Ã‚Â­ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â¿',
+          'ÃƒÂ Ã‚Â´Ã‚Â­ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚Â´Ã‚Â¿',
+          'ÃƒÂ Ã‚Â¦Ã‚Â­ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿',
+          'ÃƒÂ Ã‚ÂªÃ‚Â­ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¤ÃƒÂ Ã‚ÂªÃ‚Â¿',
+          'ÃƒÂ Ã‚Â¨Ã‚Â­ÃƒÂ Ã‚Â¨Ã¢â‚¬â€ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â€šÂ¬',
+          'ÃƒÂ Ã‚Â¬Ã‚Â­ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â¬Ã‚Â¿',
         ])) {
       return true;
     }
@@ -3378,7 +3510,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     // Admin manual Firestore categories (manualEventCategories) are not in the
-    // local calendar JSON â€” add chips from loaded templates so filters match.
+    // local calendar JSON ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â add chips from loaded templates so filters match.
     final covered = <String>{
       for (final chip in merged.values) ...chip.matchTags.map(_normalizeTag),
       for (final chip in merged.values) _normalizeTag(chip.slug),
@@ -4174,9 +4306,9 @@ class _HomeScreenState extends State<HomeScreen>
   String? _teluguDynamicCategoryLabelOverride(String slug) {
     return switch (_normalizeTag(slug)) {
       'gurram_jashuva_jayanthi' =>
-        'à°—à±à°°à±à°°à°‚ à°œà°¾à°·à±à°µà°¾ à°œà°¯à°‚à°¤à°¿',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
       'gurram_jashuva_vardhanthi' =>
-        'à°—à±à°°à±à°°à°‚ à°œà°¾à°·à±à°µà°¾ à°µà°°à±à°§à°‚à°¤à°¿',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
       _ => null,
     };
   }
@@ -4417,7 +4549,8 @@ class _HomeScreenState extends State<HomeScreen>
     return _CategoryChipData(
       slug: _allCategorySlug,
       label: context.strings.localized(
-        telugu: 'à°…à°¨à±à°¨à±€',
+        telugu:
+            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬',
         english: 'All',
       ),
       matchTags: const <String>['all'],
@@ -4438,10 +4571,7 @@ class _HomeScreenState extends State<HomeScreen>
   _CategoryChipData _dailyQuizCategoryChip() {
     return _CategoryChipData(
       slug: _dailyQuizCategorySlug,
-      label: context.strings.localized(
-        telugu: 'డైలీ క్విజ్',
-        english: 'Daily Quiz',
-      ),
+      label: localizedDailyQuizTitle(context.strings),
       matchTags: const <String>['daily_quiz', 'quiz'],
     );
   }
@@ -4582,17 +4712,17 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             strings.localized(
               telugu:
-                  'à°µà±†à°¬à±â€Œà°²à±‹ editor à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±. à°ªà±‹à°¸à±à°Ÿà°°à± create à°šà±‡à°¯à°¾à°²à°‚à°Ÿà±‡ mobile app à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ editor ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â create ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ mobile app ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
               english:
                   'Editor is not available on web. Use the mobile app to create posters.',
               hindi:
-                  'à¤µà¥‡à¤¬ à¤ªà¤° editor à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆà¥¤ à¤ªà¥‹à¤¸à¥à¤Ÿà¤° à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ mobile app à¤‰à¤ªà¤¯à¥‹à¤— à¤•à¤°à¥‡à¤‚à¥¤',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â° editor ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â§ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â° ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â mobile app ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚Â¤',
               tamil:
-                  'à®µà¯†à®ªà®¿à®²à¯ editor à®•à®¿à®Ÿà¯ˆà®•à¯à®•à®¾à®¤à¯. Poster create à®šà¯†à®¯à¯à®¯ mobile app à®ªà®¯à®©à¯à®ªà®Ÿà¯à®¤à¯à®¤à¯à®™à¯à®•à®³à¯.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚Â editor ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚Â. Poster create ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¯ mobile app ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â©ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚Â.',
               kannada:
-                  'à²µà³†à²¬à³â€Œà²¨à²²à³à²²à²¿ editor à²²à²­à³à²¯à²µà²¿à²²à³à²². Poster create à²®à²¾à²¡à²²à³ mobile app à²¬à²³à²¸à²¿.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ editor ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â­ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â². Poster create ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚Â mobile app ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿.',
               malayalam:
-                  'à´µàµ†à´¬à´¿àµ½ editor à´²à´­àµà´¯à´®à´²àµà´². Poster create à´šàµ†à´¯àµà´¯à´¾àµ» mobile app à´‰à´ªà´¯àµ‹à´—à´¿à´•àµà´•àµà´•.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚Â½ editor ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â­ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â². Poster create ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚Â» mobile app ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢.',
             ),
           ),
         ),
@@ -4671,7 +4801,7 @@ class _HomeScreenState extends State<HomeScreen>
       placement: 'home_promo_card_carousel',
     );
     final remotePopupFuture = _appHomeBannerService.fetchBanners(
-      maxItems: 1,
+      maxItems: 12,
       placement: 'home_fullscreen_popup',
     );
     final cached = await _appHomeBannerService.fetchBannersFromCache();
@@ -4680,7 +4810,7 @@ class _HomeScreenState extends State<HomeScreen>
       placement: 'home_promo_card_carousel',
     );
     final cachedPopup = await _appHomeBannerService.fetchBannersFromCache(
-      maxItems: 1,
+      maxItems: 12,
       placement: 'home_fullscreen_popup',
     );
     if (mounted && cached.isNotEmpty) {
@@ -4724,10 +4854,10 @@ class _HomeScreenState extends State<HomeScreen>
       if (promoChanged) {
         _promoCardBanners = remotePromo;
       }
-      if (popupChanged) {
-        _setFullscreenPopupBanners(remotePopup);
-      }
     });
+    if (popupChanged) {
+      unawaited(_applyFullscreenPopupBanners(remotePopup));
+    }
   }
 
   developer.TimelineTask _startStartupTimelineTask(
@@ -5045,6 +5175,13 @@ class _HomeScreenState extends State<HomeScreen>
       'categoryDisplayLabel': item.categoryDisplayLabel,
       'creatorPublicId': item.creatorPublicId,
       'pageConfig': _serializePageConfig(item.pageConfig),
+      'viewCount': item.viewCount,
+      'shareCount': item.shareCount,
+      'downloadCount': item.downloadCount,
+      'displayViewCount': item.displayViewCount,
+      'displayShareCount': item.displayShareCount,
+      'displayDownloadCount': item.displayDownloadCount,
+      'displayEngagementCount': item.displayEngagementCount,
       'personalizationConfig': _serializePersonalization(
         item.personalizationConfig,
       ),
@@ -5107,6 +5244,15 @@ class _HomeScreenState extends State<HomeScreen>
       categoryDisplayLabel: (data['categoryDisplayLabel'] as String?)?.trim(),
       creatorPublicId: (data['creatorPublicId'] as String?)?.trim(),
       pageConfig: pageConfig,
+      viewCount: (data['viewCount'] as num?)?.toInt() ?? 0,
+      shareCount: (data['shareCount'] as num?)?.toInt() ?? 0,
+      downloadCount: (data['downloadCount'] as num?)?.toInt() ?? 0,
+      displayViewCount: (data['displayViewCount'] as num?)?.toInt() ?? 0,
+      displayShareCount: (data['displayShareCount'] as num?)?.toInt() ?? 0,
+      displayDownloadCount:
+          (data['displayDownloadCount'] as num?)?.toInt() ?? 0,
+      displayEngagementCount:
+          (data['displayEngagementCount'] as num?)?.toInt() ?? 0,
       personalizationConfig: personalizationConfig,
       preferOriginalPosterQuality:
           (data['preferOriginalPosterQuality'] as bool?) ??
@@ -5275,7 +5421,7 @@ class _HomeScreenState extends State<HomeScreen>
           return _posterStringLooksHttpUrl(image) ? image : '';
         })
         .where((url) => url.isNotEmpty)
-        .take(2)
+        .take(1)
         .toList(growable: false);
     if (urls.isEmpty) {
       return;
@@ -5287,7 +5433,7 @@ class _HomeScreenState extends State<HomeScreen>
     _startupFeedWarmupSignature = signature;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 80));
+        await Future<void>.delayed(const Duration(seconds: 7));
         if (!mounted) {
           return;
         }
@@ -5297,7 +5443,7 @@ class _HomeScreenState extends State<HomeScreen>
           }
           try {
             final provider = ResizeImage.resizeIfNeeded(
-              960,
+              720,
               null,
               CachedNetworkImageProvider(
                 url,
@@ -5309,7 +5455,7 @@ class _HomeScreenState extends State<HomeScreen>
             await precacheImage(
               provider,
               context,
-            ).timeout(const Duration(milliseconds: 900));
+            ).timeout(const Duration(milliseconds: 650));
           } catch (error, stackTrace) {
             _homeDebugLogStack(
               'startup feed image warmup skipped: $error',
@@ -6451,27 +6597,97 @@ class _HomeScreenState extends State<HomeScreen>
     return true;
   }
 
-  void _applyFullscreenPopupBanners(List<AppHomeBanner> banners) {
+  Future<void> _applyFullscreenPopupBanners(List<AppHomeBanner> banners) async {
     if (!mounted) {
       return;
     }
-    setState(() => _setFullscreenPopupBanners(banners));
+    final generation = ++_fullscreenPopupBannerGeneration;
+    final currentBannerId = _activeFullscreenPopupBanner?.id;
+    final selectedBanner = currentBannerId == null
+        ? await _selectNextFullscreenPopupBanner(banners)
+        : _findBannerById(banners, currentBannerId) ??
+              await _selectNextFullscreenPopupBanner(banners);
+    if (!mounted || generation != _fullscreenPopupBannerGeneration) {
+      return;
+    }
+    setState(() => _setFullscreenPopupBanners(banners, selectedBanner));
   }
 
-  void _setFullscreenPopupBanners(List<AppHomeBanner> banners) {
+  void _setFullscreenPopupBanners(
+    List<AppHomeBanner> banners,
+    AppHomeBanner? selectedBanner,
+  ) {
     final previousId = _activeFullscreenPopupBanner?.id;
     _fullscreenPopupBanners = banners;
-    _activeFullscreenPopupBanner = banners.isNotEmpty ? banners.first : null;
+    _activeFullscreenPopupBanner = selectedBanner;
     if (_activeFullscreenPopupBanner?.id != previousId) {
-      _fullscreenPopupDismissed = false;
+      _fullscreenPopupDismissed = _fullscreenPopupDismissedThisSession;
     }
+  }
+
+  Future<AppHomeBanner?> _selectNextFullscreenPopupBanner(
+    List<AppHomeBanner> banners,
+  ) async {
+    if (banners.isEmpty) {
+      return null;
+    }
+    if (banners.length == 1) {
+      return banners.first;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      const indexKey = 'home_fullscreen_popup_next_index_v1';
+      const idsKey = 'home_fullscreen_popup_banner_ids_v1';
+      final currentIds = banners.map((banner) => banner.id).toList();
+      final previousIds = prefs.getStringList(idsKey) ?? const <String>[];
+      final rawIndex =
+          previousIds.length == currentIds.length &&
+              _sameStringSequence(previousIds, currentIds)
+          ? prefs.getInt(indexKey) ?? 0
+          : 0;
+      final selectedIndex = rawIndex.clamp(0, banners.length - 1).toInt();
+      final nextIndex = (selectedIndex + 1) % banners.length;
+      await prefs.setStringList(idsKey, currentIds);
+      await prefs.setInt(indexKey, nextIndex);
+      return banners[selectedIndex];
+    } catch (error, stackTrace) {
+      _homeDebugLogStack(
+        'fullscreen popup banner rotation skipped: $error',
+        stackTrace,
+      );
+      return banners.first;
+    }
+  }
+
+  AppHomeBanner? _findBannerById(List<AppHomeBanner> banners, String id) {
+    for (final banner in banners) {
+      if (banner.id == id) {
+        return banner;
+      }
+    }
+    return null;
+  }
+
+  bool _sameStringSequence(List<String> left, List<String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _dismissFullscreenPopupBanner() {
     if (_fullscreenPopupDismissed) {
       return;
     }
-    setState(() => _fullscreenPopupDismissed = true);
+    setState(() {
+      _fullscreenPopupDismissed = true;
+      _fullscreenPopupDismissedThisSession = true;
+    });
   }
 
   void _recordFullscreenPopupBannerView(String bannerId) {
@@ -6479,6 +6695,23 @@ class _HomeScreenState extends State<HomeScreen>
         !_countedFullscreenPopupBannerIds.add(bannerId)) {
       return;
     }
+    _recordAppBannerView(
+      bannerId: bannerId,
+      debugLabel: 'fullscreen popup banner',
+    );
+  }
+
+  void _recordHomeBannerView(String bannerId) {
+    if (bannerId.trim().isEmpty || !_countedHomeBannerIds.add(bannerId)) {
+      return;
+    }
+    _recordAppBannerView(bannerId: bannerId, debugLabel: 'home banner');
+  }
+
+  void _recordAppBannerView({
+    required String bannerId,
+    required String debugLabel,
+  }) {
     unawaited(() async {
       try {
         final ref = FirebaseFirestore.instance
@@ -6498,7 +6731,7 @@ class _HomeScreenState extends State<HomeScreen>
         });
       } catch (error, stackTrace) {
         _homeDebugLogStack(
-          'fullscreen popup banner view count skipped: $error',
+          '$debugLabel view count skipped: $error',
           stackTrace,
         );
       }
@@ -7263,16 +7496,18 @@ class _HomeScreenState extends State<HomeScreen>
           _HomeFeedPromoCardData(
             type: _HomePromoCardType.featured,
             title: strings.localized(
-              telugu: 'à°®à°¨ à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à±à°ªà±†à°·à°²à±',
+              telugu:
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
               english: 'Mana Poster special',
             ),
             subtitle: strings.localized(
               telugu:
-                  'à°®à±€ à°•à±‹à°¸à°‚ à°•à±Šà°¤à±à°¤ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à±, à°†à°«à°°à±à°²à±, à°…à°ªà±â€Œà°¡à±‡à°Ÿà±à°¸à±.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â.',
               english: 'Fresh posters, offers, and updates for you.',
             ),
             buttonLabel: strings.localized(
-              telugu: 'à°“à°ªà±†à°¨à±',
+              telugu:
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
               english: 'Open',
             ),
             slides: slides,
@@ -7282,26 +7517,32 @@ class _HomeScreenState extends State<HomeScreen>
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.featured,
           title: strings.localized(
-            telugu: 'మన పోస్టర్ స్పెషల్',
+            telugu:
+                'ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â°Ã‚Â¨ ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â',
             english: 'Mana Poster special',
           ),
           subtitle: strings.localized(
-            telugu: 'మీ కోసం కొత్త పోస్టర్లు, ఆఫర్లు, అప్‌డేట్స్.',
+            telugu:
+                'ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã…Â ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¤ ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â, ÃƒÂ Ã‚Â°Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â«ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â, ÃƒÂ Ã‚Â°Ã¢â‚¬Â¦ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚Â.',
             english: 'Fresh posters, offers, and updates for you.',
           ),
-          buttonLabel: strings.localized(telugu: 'ఓపెన్', english: 'Open'),
+          buttonLabel: strings.localized(
+            telugu:
+                'ÃƒÂ Ã‚Â°Ã¢â‚¬Å“ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â',
+            english: 'Open',
+          ),
         ),
       if (!isPro)
         _HomeFeedPromoCardData(
           type: _HomePromoCardType.subscribe,
           title: strings.localized(
             telugu:
-                'à°®à°°à°¿à°¨à±à°¨à°¿ à°ªà±‹à°¸à±à°Ÿà°°à±à°² à°•à±‹à°¸à°‚ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±€à°¸à±à°•à±‹à°‚à°¡à°¿',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
             english: 'Unlock more posters with membership',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à±, à°·à±‡à°°à°¿à°‚à°—à± à°®à°°à°¿à°¯à± à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¸à±Œà°•à°°à±à°¯à°¾à°² à°•à±‹à°¸à°‚ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english:
                 'Subscribe for downloads, sharing, and membership benefits.',
           ),
@@ -7315,12 +7556,12 @@ class _HomeScreenState extends State<HomeScreen>
           type: _HomePromoCardType.renewalReminder,
           title: strings.localized(
             telugu:
-                'à°®à±€ à°®à±†à°‚à°¬à°°à±â€Œà°·à°¿à°ªà± à°¤à±à°µà°°à°²à±‹ à°®à±à°—à°¿à°¯à°¬à±‹à°¤à±‹à°‚à°¦à°¿',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
             english: 'Your membership is expiring soon',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°‡à°‚à°•à°¾ 3 à°°à±‹à°œà±à°²à°²à±‹à°ªà± à°ªà±à°²à°¾à°¨à± à°®à±à°—à±à°¸à±à°¤à±à°‚à°¦à°¿. à°…à°‚à°¤à°°à°¾à°¯à°‚ à°²à±‡à°•à±à°‚à°¡à°¾ à°ªà±‹à°¸à±à°Ÿà°°à±à°²à± à°µà°¾à°¡à°¾à°²à°‚à°Ÿà±‡ à°‡à°ªà±à°ªà±à°¡à±‡ renew à°šà±‡à°¯à°‚à°¡à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ 3 ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ renew ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english:
                 'Your plan ends within the next 3 days. Renew now to keep using posters without interruption.',
           ),
@@ -7334,12 +7575,12 @@ class _HomeScreenState extends State<HomeScreen>
           type: _HomePromoCardType.update,
           title: strings.localized(
             telugu:
-                'à°•à±Šà°¤à±à°¤ à°¯à°¾à°ªà± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°¸à°¿à°¦à±à°§à°‚à°—à°¾ à°‰à°‚à°¦à°¿',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
             english: 'A new app update is ready',
           ),
           subtitle: strings.localized(
             telugu:
-                'Play Store à°²à±‹ à°•à±Šà°¤à±à°¤ version à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°‰à°‚à°¦à°¿. à°¤à°¾à°œà°¾ à°®à±†à°°à±à°—à±à°¦à°²à°² à°•à±‹à°¸à°‚ à°‡à°ªà±à°ªà±à°¡à± à°…à°ªà±â€Œà°¡à±‡à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿.',
+                'Play Store ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ version ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english:
                 'A newer version is available on the Play Store. Update now for the latest improvements.',
           ),
@@ -7353,12 +7594,12 @@ class _HomeScreenState extends State<HomeScreen>
           type: _HomePromoCardType.rate,
           title: strings.localized(
             telugu:
-                'Mana Poster Ai à°•à°¿ à°°à±‡à°Ÿà°¿à°‚à°—à± à°‡à°µà±à°µà°‚à°¡à°¿',
+                'Mana Poster Ai ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
             english: 'Rate Mana Poster Ai',
           ),
           subtitle: strings.localized(
             telugu:
-                'à°®à±€ rating à°®à°°à°¿à°¯à± review à°µà°²à±à°² à°®à°°à°¿à°‚à°¤ à°®à°‚à°¦à°¿à°•à°¿ à°¯à°¾à°ªà± à°—à±à°°à°¿à°‚à°šà°¿ à°¤à±†à°²à±à°¸à±à°¤à±à°‚à°¦à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ rating ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â review ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english:
                 'Your rating and review help more people discover the app.',
           ),
@@ -7432,7 +7673,7 @@ class _HomeScreenState extends State<HomeScreen>
           content: Text(
             context.strings.localized(
               telugu:
-                  'Play Store à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                  'Play Store ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
               english: 'Could not open the Play Store. Please try again.',
             ),
           ),
@@ -7969,6 +8210,7 @@ class _HomeScreenState extends State<HomeScreen>
       final item = feedEntries[index].template;
       if (item != null) {
         _recordAllFeedTemplateInteraction(item, 'view');
+        _recordPosterViewCount(item);
       }
     }
     final feedEntryCount = feedEntries.length;
@@ -8169,13 +8411,6 @@ class _HomeScreenState extends State<HomeScreen>
                 child: _HomeHeader(
                   onHeaderTap: () => unawaited(_scrollHomeFeedToTop()),
                   onCreateTap: _onCreateTap,
-                  onStatusTap: _shouldRunRemoteHomeStartupTasks
-                      ? () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const _CommunityStatusGridScreen(),
-                          ),
-                        )
-                      : () {},
                   onProfileTap: _openProfile,
                   viewerPosterProfile: _viewerPosterProfile,
                   searchController: _searchController,
@@ -8191,6 +8426,7 @@ class _HomeScreenState extends State<HomeScreen>
                 scrollController: _categoryScrollController,
                 onCategoryTap: _selectCategory,
                 banners: _homeBanners,
+                onBannerViewed: _recordHomeBannerView,
                 showAdFallback: _adFallbackSlotEnabled,
                 shouldShowAdFallback: _shouldShowHomeBannerAdFallback(
                   effectiveEntitlement,
@@ -8227,6 +8463,16 @@ class _HomeScreenState extends State<HomeScreen>
                                   activePosterPage,
                                   feedEntries.length - 1,
                                 );
+                          if (feedEntries.isNotEmpty) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                _handlePosterPageChanged(
+                                  activeFeedPage,
+                                  feedEntries,
+                                );
+                              }
+                            });
+                          }
                           return PageView.builder(
                             controller: _posterPageController,
                             scrollDirection: Axis.vertical,
@@ -8504,7 +8750,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
       setState(() {
         _errorText = context.strings.localized(
           telugu:
-              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°¨à°®à±‹à°¦à± à°šà±‡à°¯à°‚à°¡à°¿',
+              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
           english: 'Enter referral code',
         );
       });
@@ -8531,7 +8777,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
         _errorText = result.message.isEmpty
             ? context.strings.localized(
                 telugu:
-                    'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±',
+                    'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â  ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                 english: 'Referral code could not be applied',
               )
             : result.message;
@@ -8544,7 +8790,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
         _applying = false;
         _errorText = context.strings.localized(
           telugu:
-              'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à± à°…à°ªà±à°²à±ˆ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿',
+              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â  ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
           english: 'Referral code apply failed. Please try again.',
         );
       });
@@ -8587,7 +8833,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     const SizedBox(height: 14),
                     Text(
                       strings.localized(
-                        telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
+                        telugu:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                         english: 'Referral code',
                       ),
                       textAlign: TextAlign.center,
@@ -8598,7 +8845,7 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                     Text(
                       strings.localized(
                         telugu:
-                            'à°®à±€ à°¦à°—à±à°—à°° referral code à°‰à°‚à°Ÿà±‡ à°‡à°•à±à°•à°¡ enter à°šà±‡à°¯à°‚à°¡à°¿.',
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â° referral code ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ enter ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                         english: 'Enter a referral code if you have one.',
                       ),
                       textAlign: TextAlign.center,
@@ -8613,7 +8860,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
                         labelText: strings.localized(
-                          telugu: 'à°°à°¿à°«à°°à°²à± à°•à±‹à°¡à±',
+                          telugu:
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                           english: 'Referral code',
                         ),
                         errorText: _errorText,
@@ -8633,14 +8881,15 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       child: Text(
                         strings.localized(
                           telugu:
-                              'à°¨à°¿à°¬à°‚à°§à°¨à°²à± à°®à°°à°¿à°¯à± à°·à°°à°¤à±à°²à± à°šà±‚à°¡à°‚à°¡à°¿',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
                           english: 'View Terms & Conditions',
                         ),
                       ),
                     ),
                     PrimaryButton(
                       label: strings.localized(
-                        telugu: 'à°…à°ªà±à°²à±ˆ',
+                        telugu:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â ',
                         english: 'Apply',
                       ),
                       loading: _applying,
@@ -8659,7 +8908,8 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
                       ),
                       child: Text(
                         strings.localized(
-                          telugu: 'à°¸à±à°•à°¿à°ªà±',
+                          telugu:
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                           english: 'Skip',
                         ),
                       ),
@@ -8675,2592 +8925,10 @@ class _HomeReferralCodeDialogState extends State<_HomeReferralCodeDialog> {
   }
 }
 
-class _CommunityStatusGroup {
-  const _CommunityStatusGroup({required this.statuses});
-
-  final List<CommunityStatus> statuses;
-
-  String get userId => statuses.isEmpty ? '' : statuses.first.userId;
-  CommunityStatus get latestStatus => statuses.last;
-  bool get hasUnseenStatus => statuses.any((status) => !status.viewerHasViewed);
-  String get displayName {
-    for (final status in statuses) {
-      if (status.userName.trim().isNotEmpty) {
-        return status.userName.trim();
-      }
-    }
-    return '';
-  }
-}
-
-class _CommunityStatusGridScreen extends StatefulWidget {
-  const _CommunityStatusGridScreen();
-
-  @override
-  State<_CommunityStatusGridScreen> createState() =>
-      _CommunityStatusGridScreenState();
-}
-
-class _CommunityStatusGridScreenState
-    extends State<_CommunityStatusGridScreen> {
-  static const int _pageSize = 30;
-
-  final ScrollController _scrollController = ScrollController();
-  final ScrollController _statusBubbleScrollController = ScrollController();
-  late Stream<List<CommunityStatus>> _statusesStream;
-  List<CommunityStatus> _lastStatuses = const <CommunityStatus>[];
-  String _selectedRegionId = '';
-  int _statusLimit = _pageSize;
-  bool _loadingMore = false;
-  bool _hasMore = true;
-  bool _loadCheckScheduled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (!_shouldRunFirebaseUiServices) {
-      _statusesStream = const Stream<List<CommunityStatus>>.empty();
-      return;
-    }
-    _statusesStream = CommunityStatusService.instance.watchVisibleStatuses(
-      maxStatuses: _statusLimit,
-    );
-    _scrollController.addListener(_handleScroll);
-    _statusBubbleScrollController.addListener(_handleStatusBubbleScroll);
-    unawaited(_loadSelectedRegion());
-  }
-
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_handleScroll)
-      ..dispose();
-    _statusBubbleScrollController
-      ..removeListener(_handleStatusBubbleScroll)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _handleScroll() {
-    if (_scrollController.position.extentAfter < 520) {
-      _loadMoreStatuses();
-    }
-  }
-
-  void _handleStatusBubbleScroll() {
-    if (_statusBubbleScrollController.position.extentAfter < 360) {
-      _loadMoreStatuses();
-    }
-  }
-
-  Future<void> _loadSelectedRegion() async {
-    final region = await AppRegionService.loadSelection();
-    if (!mounted) {
-      return;
-    }
-    setState(() => _selectedRegionId = region?.id ?? '');
-  }
-
-  void _loadMoreStatuses() {
-    if (_loadingMore || !_hasMore) {
-      return;
-    }
-    setState(() {
-      _loadingMore = true;
-      _statusLimit += _pageSize;
-      _statusesStream = CommunityStatusService.instance.watchVisibleStatuses(
-        maxStatuses: _statusLimit,
-      );
-    });
-  }
-
-  void _scheduleLoadCheck() {
-    if (_loadCheckScheduled || _loadingMore || !_hasMore) {
-      return;
-    }
-    _loadCheckScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCheckScheduled = false;
-      if (!mounted || !_scrollController.hasClients) {
-        return;
-      }
-      if (_scrollController.position.extentAfter < 520) {
-        _loadMoreStatuses();
-      }
-    });
-  }
-
-  Future<void> _openUpload() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const CommunityStatusUploadScreen(),
-      ),
-    );
-  }
-
-  void _openViewer(List<_CommunityStatusGroup> groups, int initialGroupIndex) {
-    if (groups.isEmpty || initialGroupIndex < 0) {
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => _CommunityStatusViewerScreen(
-          initialGroups: groups,
-          initialGroupIndex: initialGroupIndex,
-          visibleStatusLimit: _statusLimit,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: <Widget>[
-          const Positioned.fill(child: ColoredBox(color: Colors.white)),
-          SafeArea(
-            child: StreamBuilder<List<CommunityStatus>>(
-              stream: _statusesStream,
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  _lastStatuses = snapshot.data!;
-                  _hasMore = _lastStatuses.length >= _statusLimit;
-                  _loadingMore = false;
-                  _scheduleLoadCheck();
-                }
-                final statuses = snapshot.data ?? _lastStatuses;
-                final myStatuses = _statusGroupItemsForUser(
-                  statuses,
-                  currentUserId,
-                );
-                final otherGroups =
-                    _statusGroups(statuses)
-                        .where((group) => group.userId != currentUserId)
-                        .toList(growable: false)
-                      ..sort(_compareStatusGroupsForHome);
-                final viewerGroups = <_CommunityStatusGroup>[
-                  if (myStatuses.isNotEmpty)
-                    _CommunityStatusGroup(statuses: myStatuses),
-                  ...otherGroups,
-                ];
-                final calendarEvents = _statusCalendarEvents(
-                  context.currentLanguage,
-                  _selectedRegionId,
-                );
-
-                return CustomScrollView(
-                  controller: _scrollController,
-                  physics: const BouncingScrollPhysics(),
-                  slivers: <Widget>[
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-                        child: Row(
-                          children: <Widget>[
-                            Material(
-                              color: Colors.white,
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                icon: const Icon(Icons.arrow_back_rounded),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                strings.localized(
-                                  telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±à°²à±',
-                                  english: 'Statuses',
-                                  hindi: 'à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
-                                  tamil: 'à®¨à®¿à®²à¯ˆà®•à®³à¯',
-                                  kannada: 'à²¸à³à²Ÿà³‡à²Ÿà²¸à³â€Œà²—à²³à³',
-                                  malayalam:
-                                      'à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµà´•àµ¾',
-                                ),
-                                style: const TextStyle(
-                                  color: Color(0xFF0F172A),
-                                  fontSize: 27,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            Material(
-                              color: const Color(0xFFD81B60),
-                              shape: const CircleBorder(),
-                              child: IconButton(
-                                tooltip: strings.localized(
-                                  telugu:
-                                      'à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°œà±‹à°¡à°¿à°‚à°šà°‚à°¡à°¿',
-                                  english: 'Add Status',
-                                ),
-                                onPressed: () => unawaited(_openUpload()),
-                                icon: const Icon(
-                                  Icons.add_rounded,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 18),
-                        child: SizedBox(
-                          height: 116,
-                          child: ListView.separated(
-                            controller: _statusBubbleScrollController,
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: 1 + otherGroups.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 14),
-                            itemBuilder: (context, index) {
-                              if (index == 0) {
-                                return _StatusBubbleCard(
-                                  group: myStatuses.isEmpty
-                                      ? null
-                                      : _CommunityStatusGroup(
-                                          statuses: myStatuses,
-                                        ),
-                                  label: strings.localized(
-                                    telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
-                                    english: 'My Status',
-                                    hindi: 'à¤®à¥‡à¤°à¤¾ à¤¸à¥à¤Ÿà¥‡à¤Ÿà¤¸',
-                                    tamil: 'à®Žà®©à¯ à®¨à®¿à®²à¯ˆ',
-                                    kannada:
-                                        'à²¨à²¨à³à²¨ à²¸à³à²Ÿà³‡à²Ÿà²¸à³',
-                                    malayalam:
-                                        'à´Žà´¨àµà´±àµ† à´¸àµà´±àµà´±à´¾à´±àµà´±à´¸àµ',
-                                  ),
-                                  isMine: true,
-                                  onAdd: () => unawaited(_openUpload()),
-                                  onOpen: () => _openViewer(viewerGroups, 0),
-                                );
-                              }
-                              final group = otherGroups[index - 1];
-                              final viewerIndex = viewerGroups.indexWhere(
-                                (item) => item.userId == group.userId,
-                              );
-                              return _StatusBubbleCard(
-                                group: group,
-                                label: group.displayName.isEmpty
-                                    ? strings.localized(
-                                        telugu:
-                                            'à°µà°¿à°¨à°¿à°¯à±‹à°—à°¦à°¾à°°à±',
-                                        english: 'User',
-                                        hindi: 'à¤‰à¤ªà¤¯à¥‹à¤—à¤•à¤°à¥à¤¤à¤¾',
-                                        tamil: 'à®ªà®¯à®©à®°à¯',
-                                        kannada: 'à²¬à²³à²•à³†à²¦à²¾à²°',
-                                        malayalam:
-                                            'à´‰à´ªà´¯àµ‹à´•àµà´¤à´¾à´µàµ',
-                                      )
-                                    : group.displayName,
-                                onOpen: () =>
-                                    _openViewer(viewerGroups, viewerIndex),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        statuses.isEmpty)
-                      const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                          child: _SocialMediaCalendarRail(
-                            events: calendarEvents,
-                            monthLabel: _statusCalendarMonthLabel(
-                              IstTimeService.now(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (_loadingMore)
-                      const SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(16, 0, 16, 24),
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusBubbleCard extends StatelessWidget {
-  const _StatusBubbleCard({
-    required this.group,
-    required this.label,
-    required this.onOpen,
-    this.isMine = false,
-    this.onAdd,
-  });
-
-  final _CommunityStatusGroup? group;
-  final String label;
-  final VoidCallback onOpen;
-  final bool isMine;
-  final VoidCallback? onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = group?.latestStatus;
-    final hasStatus = status != null;
-    final ringGradient = hasStatus && (group?.hasUnseenStatus ?? false);
-    return SizedBox(
-      width: 82,
-      child: InkWell(
-        onTap: hasStatus ? onOpen : onAdd,
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          children: <Widget>[
-            Container(
-              width: 74,
-              height: 74,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: ringGradient
-                    ? const LinearGradient(
-                        colors: <Color>[
-                          Color(0xFFFFD60A),
-                          Color(0xFFFF4D8D),
-                          Color(0xFF7C3AED),
-                        ],
-                      )
-                    : null,
-                color: ringGradient ? null : const Color(0xFFCBD5E1),
-              ),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: hasStatus
-                    ? Stack(
-                        fit: StackFit.expand,
-                        children: <Widget>[
-                          _StatusGridPreview(status: status),
-                          if (group!.statuses.length > 1)
-                            Positioned(
-                              right: 3,
-                              bottom: 3,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.58),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  '${group!.statuses.length}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      )
-                    : const ColoredBox(
-                        color: Color(0xFFF8FAFC),
-                        child: Icon(
-                          Icons.add_rounded,
-                          color: Color(0xFFD81B60),
-                          size: 30,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isMine
-                    ? const Color(0xFFD81B60)
-                    : const Color(0xFF0F172A),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusCalendarEvent {
-  const _StatusCalendarEvent({
-    required this.title,
-    required this.date,
-    required this.monthLabel,
-    required this.type,
-  });
-
-  final String title;
-  final DateTime date;
-  final String monthLabel;
-  final DynamicCategoryType type;
-}
-
-class _SocialMediaCalendarRail extends StatefulWidget {
-  const _SocialMediaCalendarRail({
-    required this.events,
-    required this.monthLabel,
-  });
-
-  final List<_StatusCalendarEvent> events;
-  final String monthLabel;
-
-  @override
-  State<_SocialMediaCalendarRail> createState() =>
-      _SocialMediaCalendarRailState();
-}
-
-class _SocialMediaCalendarRailState extends State<_SocialMediaCalendarRail> {
-  final ScrollController _controller = ScrollController();
-  Timer? _timer;
-  bool _paused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _startAutoScroll();
-  }
-
-  @override
-  void didUpdateWidget(covariant _SocialMediaCalendarRail oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.events.length != widget.events.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_controller.hasClients) {
-          _controller.jumpTo(0);
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _startAutoScroll() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 80), (_) {
-      if (_paused || !_controller.hasClients || widget.events.length < 4) {
-        return;
-      }
-      final max = _controller.position.maxScrollExtent;
-      if (max <= 0) {
-        return;
-      }
-      final next = _controller.offset + 0.85;
-      if (next >= max) {
-        _controller.jumpTo(0);
-      } else {
-        _controller.jumpTo(next);
-      }
-    });
-  }
-
-  void _togglePaused() {
-    setState(() => _paused = !_paused);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    final events = widget.events;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _togglePaused,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD81B60).withValues(alpha: 0.11),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: Color(0xFFD81B60),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        strings.localized(
-                          telugu:
-                              'à°¸à±‹à°·à°²à± à°®à±€à°¡à°¿à°¯à°¾ à°•à±à°¯à°¾à°²à±†à°‚à°¡à°°à±',
-                          english: 'Social Media Calendar',
-                          hindi: 'Social Media Calendar',
-                          tamil: 'Social Media Calendar',
-                          kannada: 'Social Media Calendar',
-                          malayalam: 'Social Media Calendar',
-                        ),
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        widget.monthLabel,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  _paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                  color: const Color(0xFF64748B),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 360,
-              child: events.isEmpty
-                  ? Center(
-                      child: Text(
-                        strings.localized(
-                          telugu: 'à°ˆ à°¨à±†à°²à°²à±‹ events à°²à±‡à°µà±',
-                          english: 'No events for this month',
-                          hindi:
-                              'à¤‡à¤¸ à¤®à¤¹à¥€à¤¨à¥‡ à¤•à¥‹à¤ˆ event à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ',
-                          tamil:
-                              'à®‡à®¨à¯à®¤ à®®à®¾à®¤à®¤à¯à®¤à®¿à®²à¯ events à®‡à®²à¯à®²à¯ˆ',
-                          kannada:
-                              'à²ˆ à²¤à²¿à²‚à²—à²³à²²à³à²²à²¿ events à²‡à²²à³à²²',
-                          malayalam:
-                              'à´ˆ à´®à´¾à´¸à´¤àµà´¤à´¿àµ½ events à´‡à´²àµà´²',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      controller: _controller,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: events.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) =>
-                          _StatusCalendarEventTile(event: events[index]),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusCalendarEventTile extends StatelessWidget {
-  const _StatusCalendarEventTile({required this.event});
-
-  final _StatusCalendarEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = _statusCalendarTypeColor(event.type);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 56,
-            height: 58,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  event.date.day.toString().padLeft(2, '0'),
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  event.monthLabel,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              event.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 14,
-                height: 1.25,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-List<_StatusCalendarEvent> _statusCalendarEvents(
-  AppLanguage language,
-  String selectedRegionId,
-) {
-  final now = IstTimeService.now();
-  final schedules = const DynamicEventScheduleService().schedulesForYear(
-    now.year,
-    daysBeforeEvent: 0,
-  );
-  return schedules
-      .where((item) => item.occursInMonth(now.month))
-      .where(
-        (item) => _statusCalendarEventMatchesRegion(item, selectedRegionId),
-      )
-      .map(
-        (item) => _StatusCalendarEvent(
-          title: item.event.title.resolve(language),
-          date: item.startDate,
-          monthLabel: _statusCalendarMonthShort(item.startDate.month),
-          type: item.event.type,
-        ),
-      )
-      .toList(growable: false);
-}
-
-bool _statusCalendarEventMatchesRegion(
-  ResolvedDynamicEventSchedule item,
-  String selectedRegionId,
-) {
-  final region = _statusCalendarNormalize(selectedRegionId);
-  final event = item.event;
-  if (event.regionIds.isNotEmpty) {
-    return event.regionIds.map(_statusCalendarNormalize).contains(region);
-  }
-  switch (event.scope) {
-    case DynamicEventScope.global:
-    case DynamicEventScope.india:
-      return true;
-    case DynamicEventScope.andhraPradesh:
-      return region == 'andhra_pradesh';
-    case DynamicEventScope.telangana:
-      return region == 'telangana';
-    case DynamicEventScope.bothTeluguStates:
-      return region == 'andhra_pradesh' || region == 'telangana';
-  }
-}
-
-String _statusCalendarNormalize(String value) {
-  return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-}
-
-Color _statusCalendarTypeColor(DynamicCategoryType type) {
-  return switch (type) {
-    DynamicCategoryType.festival => const Color(0xFFD97706),
-    DynamicCategoryType.birthday => const Color(0xFFDB2777),
-    DynamicCategoryType.jayanthi => const Color(0xFF2563EB),
-    DynamicCategoryType.vardhanthi => const Color(0xFF64748B),
-    DynamicCategoryType.importantDay => const Color(0xFFD81B60),
-    DynamicCategoryType.weekdaySpecial => const Color(0xFF16A34A),
-    DynamicCategoryType.regionalSpecial => const Color(0xFF7C3AED),
-  };
-}
-
-String _statusCalendarMonthLabel(DateTime date) {
-  return '${_statusCalendarMonthShort(date.month)} ${date.year}';
-}
-
-String _statusCalendarMonthShort(int month) {
-  const labels = <String>[
-    'JAN',
-    'FEB',
-    'MAR',
-    'APR',
-    'MAY',
-    'JUN',
-    'JUL',
-    'AUG',
-    'SEP',
-    'OCT',
-    'NOV',
-    'DEC',
-  ];
-  if (month < 1 || month > 12) {
-    return '';
-  }
-  return labels[month - 1];
-}
-
-class _StatusGridPreview extends StatelessWidget {
-  const _StatusGridPreview({required this.status});
-
-  final CommunityStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    if (status.hasImage) {
-      return CachedNetworkImage(
-        imageUrl: status.imageUrl,
-        fit: BoxFit.cover,
-        placeholder: (_, _) => const ColoredBox(
-          color: Color(0xFFE2E8F0),
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        errorWidget: (_, _, _) => const ColoredBox(
-          color: Color(0xFFF1F5F9),
-          child: Icon(Icons.broken_image_rounded, color: Color(0xFF64748B)),
-        ),
-      );
-    }
-    final color = Color(
-      status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
-    );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 64 || constraints.maxHeight < 64;
-        return ColoredBox(
-          color: color,
-          child: Padding(
-            padding: EdgeInsets.all(compact ? 3 : 14),
-            child: Center(
-              child: Text(
-                status.text,
-                maxLines: compact ? 3 : 6,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 7.5 : 15,
-                  height: compact ? 1.0 : 1.2,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-int _compareStatusGroupsForHome(
-  _CommunityStatusGroup a,
-  _CommunityStatusGroup b,
-) {
-  if (a.hasUnseenStatus != b.hasUnseenStatus) {
-    return a.hasUnseenStatus ? -1 : 1;
-  }
-  return b.latestStatus.createdAtMillis.compareTo(
-    a.latestStatus.createdAtMillis,
-  );
-}
-
-List<CommunityStatus> _statusGroupItemsForUser(
-  List<CommunityStatus> statuses,
-  String? userId,
-) {
-  final safeUserId = userId?.trim() ?? '';
-  if (safeUserId.isEmpty) {
-    return const <CommunityStatus>[];
-  }
-  final items =
-      statuses
-          .where((status) => status.userId == safeUserId)
-          .toList(growable: false)
-        ..sort((a, b) => a.createdAtMillis.compareTo(b.createdAtMillis));
-  return items;
-}
-
-List<_CommunityStatusGroup> _statusGroups(List<CommunityStatus> statuses) {
-  final byUser = <String, List<CommunityStatus>>{};
-  for (final status in statuses) {
-    final userId = status.userId.trim();
-    if (userId.isEmpty) {
-      continue;
-    }
-    byUser.putIfAbsent(userId, () => <CommunityStatus>[]).add(status);
-  }
-  final groups = byUser.values
-      .map((items) {
-        items.sort((a, b) => a.createdAtMillis.compareTo(b.createdAtMillis));
-        return _CommunityStatusGroup(
-          statuses: List<CommunityStatus>.unmodifiable(items),
-        );
-      })
-      .toList(growable: false);
-  return groups..sort(
-    (a, b) => b.latestStatus.createdAtMillis.compareTo(
-      a.latestStatus.createdAtMillis,
-    ),
-  );
-}
-
-class _CommunityStatusViewerScreen extends StatefulWidget {
-  const _CommunityStatusViewerScreen({
-    required this.initialGroups,
-    required this.initialGroupIndex,
-    this.visibleStatusLimit = 60,
-  });
-
-  final List<_CommunityStatusGroup> initialGroups;
-  final int initialGroupIndex;
-  final int visibleStatusLimit;
-
-  @override
-  State<_CommunityStatusViewerScreen> createState() =>
-      _CommunityStatusViewerScreenState();
-}
-
-class _CommunityStatusViewerScreenState
-    extends State<_CommunityStatusViewerScreen>
-    with SingleTickerProviderStateMixin {
-  static const Duration _viewDuration = Duration(seconds: 7);
-  static const List<String> _reactions = <String>[
-    'emoji:1f525',
-    'emoji:1f44f',
-    'emoji:1f60d',
-    'emoji:1f64f',
-    'emoji:1f621',
-  ];
-
-  late final AnimationController _progressController;
-  bool _isDeleting = false;
-  bool _showingReplies = false;
-  bool _isHoldPaused = false;
-  late final List<String> _groupUserOrder;
-  late int _currentGroupIndex;
-  List<_CommunityStatusGroup> _latestViewerGroups =
-      const <_CommunityStatusGroup>[];
-  int _currentIndex = 0;
-  DateTime? _tapStartedAt;
-  String _lastRecordedStatusId = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _groupUserOrder = widget.initialGroups
-        .map((group) => group.userId)
-        .where((userId) => userId.isNotEmpty)
-        .toList(growable: true);
-    _currentGroupIndex = widget.initialGroupIndex.clamp(
-      0,
-      math.max(0, widget.initialGroups.length - 1),
-    );
-    _progressController =
-        AnimationController(
-          vsync: this,
-          duration: _viewDuration,
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed && mounted && !_isDeleting) {
-            _goToNextOrStay(
-              _latestViewerGroups.isEmpty
-                  ? _orderedGroups(widget.initialGroups)
-                  : _latestViewerGroups,
-            );
-          }
-        });
-    unawaited(
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
-      ),
-    );
-    if (widget.initialGroups.isNotEmpty) {
-      _recordActiveView(
-        widget.initialGroups[_currentGroupIndex].statuses.first,
-      );
-    }
-    _progressController.forward();
-  }
-
-  @override
-  void dispose() {
-    _progressController.dispose();
-    unawaited(
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual,
-        overlays: SystemUiOverlay.values,
-      ),
-    );
-    super.dispose();
-  }
-
-  Future<void> _deleteStatus(CommunityStatus status) async {
-    if (_isDeleting) {
-      return;
-    }
-    setState(() => _isDeleting = true);
-    _progressController.stop();
-    await Future<void>.delayed(const Duration(milliseconds: 520));
-    if (!mounted) {
-      return;
-    }
-    Navigator.of(context).pop();
-    unawaited(CommunityStatusService.instance.deleteStatus(status));
-  }
-
-  void _recordActiveView(CommunityStatus status) {
-    if (_lastRecordedStatusId == status.id) {
-      return;
-    }
-    _lastRecordedStatusId = status.id;
-    unawaited(CommunityStatusService.instance.recordView(status.id));
-  }
-
-  List<_CommunityStatusGroup> _orderedGroups(
-    List<_CommunityStatusGroup> groups,
-  ) {
-    if (groups.isEmpty) {
-      return const <_CommunityStatusGroup>[];
-    }
-    final byUserId = <String, _CommunityStatusGroup>{
-      for (final group in groups)
-        if (group.userId.isNotEmpty) group.userId: group,
-    };
-    final ordered = <_CommunityStatusGroup>[];
-    for (final userId in List<String>.of(_groupUserOrder)) {
-      final group = byUserId.remove(userId);
-      if (group == null || group.statuses.isEmpty) {
-        _groupUserOrder.remove(userId);
-      } else {
-        ordered.add(group);
-      }
-    }
-    final newGroups = byUserId.values.toList(growable: false)
-      ..sort(_compareStatusGroupsForHome);
-    for (final group in newGroups) {
-      _groupUserOrder.add(group.userId);
-      ordered.add(group);
-    }
-    return ordered;
-  }
-
-  void _goToNextOrStay(List<_CommunityStatusGroup> groups) {
-    if (groups.isEmpty) {
-      return;
-    }
-    final statuses = groups[_currentGroupIndex].statuses;
-    if (_currentIndex < statuses.length - 1) {
-      setState(() {
-        _currentIndex += 1;
-      });
-      _progressController
-        ..reset()
-        ..forward();
-      _recordActiveView(statuses[_currentIndex]);
-      return;
-    }
-    if (_currentGroupIndex < groups.length - 1) {
-      setState(() {
-        _currentGroupIndex += 1;
-        _currentIndex = 0;
-      });
-      _progressController
-        ..reset()
-        ..forward();
-      _recordActiveView(groups[_currentGroupIndex].statuses.first);
-      return;
-    }
-    _progressController.stop();
-    Navigator.of(context).maybePop();
-  }
-
-  void _goToPrevious(List<_CommunityStatusGroup> groups) {
-    if (groups.isEmpty) {
-      return;
-    }
-    if (_currentIndex <= 0 && _currentGroupIndex <= 0) {
-      _progressController
-        ..reset()
-        ..forward();
-      _recordActiveView(groups.first.statuses.first);
-      return;
-    }
-    if (_currentIndex <= 0) {
-      final previousGroupIndex = _currentGroupIndex - 1;
-      final previousStatuses = groups[previousGroupIndex].statuses;
-      setState(() {
-        _currentGroupIndex = previousGroupIndex;
-        _currentIndex = math.max(0, previousStatuses.length - 1);
-      });
-      _progressController
-        ..reset()
-        ..forward();
-      _recordActiveView(groups[_currentGroupIndex].statuses[_currentIndex]);
-      return;
-    }
-    setState(() {
-      _currentIndex -= 1;
-    });
-    _progressController
-      ..reset()
-      ..forward();
-    _recordActiveView(groups[_currentGroupIndex].statuses[_currentIndex]);
-  }
-
-  Future<void> _showRepliesSheet(CommunityStatus status) async {
-    if (_showingReplies || _isDeleting) {
-      return;
-    }
-    setState(() => _showingReplies = true);
-    _progressController.stop();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _StatusRepliesSheet(status: status),
-    );
-    if (!mounted) {
-      return;
-    }
-    setState(() => _showingReplies = false);
-    if (!_isDeleting && _progressController.value < 1) {
-      unawaited(_progressController.forward());
-    }
-  }
-
-  void _pauseProgressForInput() {
-    if (!_isDeleting) {
-      _progressController.stop();
-    }
-  }
-
-  void _resumeProgressAfterInput() {
-    if (!_isDeleting && !_showingReplies && _progressController.value < 1) {
-      unawaited(_progressController.forward());
-    }
-  }
-
-  void _pauseProgressForHold() {
-    if (_isDeleting || _showingReplies || _progressController.value >= 1) {
-      return;
-    }
-    _isHoldPaused = true;
-    _progressController.stop();
-  }
-
-  void _resumeProgressAfterHold() {
-    if (!_isHoldPaused) {
-      return;
-    }
-    _isHoldPaused = false;
-    if (!_isDeleting && !_showingReplies && _progressController.value < 1) {
-      unawaited(_progressController.forward());
-    }
-  }
-
-  double _progressValueForSegment(int index) {
-    if (index < _currentIndex) {
-      return 1;
-    }
-    if (index == _currentIndex) {
-      return _progressController.value;
-    }
-    return 0;
-  }
-
-  void _handleViewerTapUp(
-    TapUpDetails details,
-    List<_CommunityStatusGroup> groups,
-  ) {
-    final startedAt = _tapStartedAt;
-    _tapStartedAt = null;
-    final tapDuration = startedAt == null
-        ? Duration.zero
-        : DateTime.now().difference(startedAt);
-    _resumeProgressAfterHold();
-    if (_isDeleting ||
-        _showingReplies ||
-        tapDuration > const Duration(milliseconds: 280)) {
-      return;
-    }
-    final width = MediaQuery.sizeOf(context).width;
-    final dx = details.localPosition.dx;
-    if (dx < width * 0.42) {
-      _goToPrevious(groups);
-    } else if (dx > width * 0.58) {
-      _goToNextOrStay(groups);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_shouldRunFirebaseUiServices) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF3F6FB),
-        body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid.trim();
-    return StreamBuilder<List<_CommunityStatusGroup>>(
-      stream: CommunityStatusService.instance
-          .watchVisibleStatuses(maxStatuses: widget.visibleStatusLimit)
-          .map((statuses) {
-            final myStatuses = _statusGroupItemsForUser(
-              statuses,
-              currentUserId,
-            );
-            final otherGroups =
-                _statusGroups(statuses)
-                    .where((group) => group.userId != currentUserId)
-                    .toList(growable: false)
-                  ..sort(_compareStatusGroupsForHome);
-            return <_CommunityStatusGroup>[
-              if (myStatuses.isNotEmpty)
-                _CommunityStatusGroup(statuses: myStatuses),
-              ...otherGroups,
-            ];
-          }),
-      initialData: widget.initialGroups,
-      builder: (context, snapshot) {
-        final strings = context.strings;
-        final groups = _orderedGroups(snapshot.data ?? widget.initialGroups);
-        _latestViewerGroups = groups;
-        if (groups.isEmpty && !_isDeleting) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).maybePop();
-            }
-          });
-        }
-        if (groups.isEmpty && widget.initialGroups.isEmpty) {
-          return const Scaffold(backgroundColor: Color(0xFF050505));
-        }
-        if (_currentGroupIndex >= groups.length && groups.isNotEmpty) {
-          _currentGroupIndex = groups.length - 1;
-        }
-        final activeGroup = groups.isEmpty
-            ? widget.initialGroups[_currentGroupIndex]
-            : groups[_currentGroupIndex];
-        if (_currentIndex >= activeGroup.statuses.length &&
-            activeGroup.statuses.isNotEmpty) {
-          _currentIndex = activeGroup.statuses.length - 1;
-        }
-        final statuses = activeGroup.statuses;
-        final status = statuses[_currentIndex];
-        _recordActiveView(status);
-        final isOwner =
-            FirebaseAuth.instance.currentUser?.uid.trim() == status.userId;
-        final statusTitle = isOwner
-            ? strings.localized(
-                telugu: 'à°¨à°¾ à°¸à±à°Ÿà±‡à°Ÿà°¸à±',
-                english: 'My Status',
-              )
-            : (status.userName.isNotEmpty ? status.userName : 'User');
-        final statusColor = Color(
-          status.backgroundColor == 0 ? 0xFF4CAF50 : status.backgroundColor,
-        );
-        return Scaffold(
-          backgroundColor: status.imageUrl.isEmpty
-              ? statusColor
-              : const Color(0xFF050505),
-          body: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTapDown: (_) {
-              _tapStartedAt = DateTime.now();
-              _pauseProgressForHold();
-            },
-            onTapUp: (details) => _handleViewerTapUp(details, groups),
-            onTapCancel: () {
-              _tapStartedAt = null;
-              _resumeProgressAfterHold();
-            },
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              if (velocity < -220) {
-                _goToNextOrStay(groups);
-              } else if (velocity > 220) {
-                _goToPrevious(groups);
-              }
-            },
-            onVerticalDragEnd: isOwner
-                ? (details) {
-                    final velocity = details.primaryVelocity ?? 0;
-                    if (velocity < -220) {
-                      unawaited(_showRepliesSheet(status));
-                    }
-                  }
-                : null,
-            child: Stack(
-              children: <Widget>[
-                Positioned.fill(
-                  child: AnimatedSlide(
-                    offset: _isDeleting
-                        ? const Offset(0.42, -0.42)
-                        : Offset.zero,
-                    duration: const Duration(milliseconds: 520),
-                    curve: Curves.easeInBack,
-                    child: AnimatedScale(
-                      scale: _isDeleting ? 0.08 : 1,
-                      duration: const Duration(milliseconds: 520),
-                      curve: Curves.easeInBack,
-                      child: AnimatedRotation(
-                        turns: _isDeleting ? -0.06 : 0,
-                        duration: const Duration(milliseconds: 520),
-                        curve: Curves.easeInBack,
-                        child: AnimatedOpacity(
-                          opacity: _isDeleting ? 0.12 : 1,
-                          duration: const Duration(milliseconds: 520),
-                          child: _StatusFullScreenContent(status: status),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: MediaQuery.of(context).padding.top,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedBuilder(
-                    animation: _progressController,
-                    builder: (context, _) {
-                      return _StatusSegmentProgressBar(
-                        itemCount: statuses.length,
-                        valueForIndex: _progressValueForSegment,
-                      );
-                    },
-                  ),
-                ),
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 12,
-                  left: 12,
-                  right: 12,
-                  child: Row(
-                    children: <Widget>[
-                      IconButton.filled(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black.withValues(alpha: 0.35),
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          statusTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: isOwner
-                                ? FontWeight.w700
-                                : FontWeight.w900,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      if (isOwner) ...<Widget>[
-                        const SizedBox(width: 8),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          decoration: BoxDecoration(
-                            color: _isDeleting
-                                ? Colors.redAccent.withValues(alpha: 0.9)
-                                : Colors.black.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18),
-                            ),
-                          ),
-                          child: IconButton(
-                            color: Colors.white,
-                            onPressed: _isDeleting
-                                ? null
-                                : () => unawaited(_deleteStatus(status)),
-                            icon: const Icon(Icons.delete_rounded),
-                          ),
-                        ),
-                      ] else ...<Widget>[
-                        const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          tooltip: strings.localized(
-                            telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
-                            english: 'More',
-                          ),
-                          icon: const Icon(
-                            Icons.more_vert_rounded,
-                            color: Colors.white,
-                          ),
-                          color: const Color(0xFF111827),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          onSelected: (value) {
-                            if (value == 'report') {
-                              unawaited(
-                                _showCommunityStatusReportSheet(
-                                  context,
-                                  status: status,
-                                ),
-                              );
-                            }
-                          },
-                          itemBuilder: (_) => <PopupMenuEntry<String>>[
-                            PopupMenuItem<String>(
-                              value: 'report',
-                              child: Text(
-                                strings.localized(
-                                  telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
-                                  english: 'Report',
-                                ),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: MediaQuery.of(context).padding.bottom + 20,
-                  child: _StatusEngagementPanel(
-                    status: status,
-                    isOwner: isOwner,
-                    reactions: _reactions,
-                    onPauseProgress: _pauseProgressForInput,
-                    onResumeProgress: _resumeProgressAfterInput,
-                    onOpenReplies: isOwner
-                        ? () => unawaited(_showRepliesSheet(status))
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StatusRepliesSheet extends StatelessWidget {
-  const _StatusRepliesSheet({required this.status});
-
-  final CommunityStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    return DraggableScrollableSheet(
-      initialChildSize: 0.62,
-      minChildSize: 0.36,
-      maxChildSize: 0.92,
-      builder: (context, scrollController) {
-        return DecoratedBox(
-          decoration: const BoxDecoration(
-            color: Color(0xFF101418),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          child: Column(
-            children: <Widget>[
-              const SizedBox(height: 10),
-              Container(
-                width: 42,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                strings.localized(
-                  telugu: 'à°°à°¿à°ªà±à°²à±ˆà°²à±',
-                  english: 'Replies',
-                ),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: StreamBuilder<List<CommunityStatusComment>>(
-                  stream: CommunityStatusService.instance.watchComments(
-                    status.id,
-                  ),
-                  builder: (context, snapshot) {
-                    final comments =
-                        snapshot.data ?? const <CommunityStatusComment>[];
-                    if (comments.isEmpty) {
-                      return Center(
-                        child: Text(
-                          strings.localized(
-                            telugu:
-                                'à°‡à°‚à°•à°¾ à°°à°¿à°ªà±à°²à±ˆà°²à± à°²à±‡à°µà±',
-                            english: 'No replies yet',
-                          ),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      );
-                    }
-                    return ListView.separated(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(18, 8, 12, 24),
-                      itemCount: comments.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Expanded(
-                              child: _StatusInlineComment(
-                                userName: comment.userName.isNotEmpty
-                                    ? comment.userName
-                                    : 'User',
-                                text: comment.text,
-                              ),
-                            ),
-                            PopupMenuButton<String>(
-                              tooltip: strings.localized(
-                                telugu: 'à°®à°°à°¿à°¨à±à°¨à°¿',
-                                english: 'More',
-                              ),
-                              icon: const Icon(
-                                Icons.more_vert_rounded,
-                                color: Colors.white54,
-                                size: 17,
-                              ),
-                              color: const Color(0xFF111827),
-                              padding: EdgeInsets.zero,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              onSelected: (value) {
-                                if (value == 'report') {
-                                  unawaited(
-                                    _showCommunityStatusReportSheet(
-                                      context,
-                                      status: status,
-                                      comment: comment,
-                                    ),
-                                  );
-                                }
-                              },
-                              itemBuilder: (_) => <PopupMenuEntry<String>>[
-                                PopupMenuItem<String>(
-                                  value: 'report',
-                                  child: Text(
-                                    strings.localized(
-                                      telugu: 'à°°à°¿à°ªà±‹à°°à±à°Ÿà±',
-                                      english: 'Report',
-                                    ),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-const List<String> _communityReportReasons = <String>[
-  'Harassment or bullying',
-  'Hate speech or discrimination',
-  'Sexual or adult content',
-  'Violence or dangerous content',
-  'Spam, scam, or fake content',
-  'Misinformation or deceptive political content',
-  'Privacy violation or personal information',
-  'Copyright or trademark issue',
-  'Illegal content',
-  'Other safety issue',
-];
-
-String _localizedCommunityReportReason(BuildContext context, String reason) {
-  final strings = context.strings;
-  return switch (reason) {
-    'Harassment or bullying' => strings.localized(
-      telugu: 'à°µà±‡à°§à°¿à°‚à°ªà± à°²à±‡à°¦à°¾ à°¬à±†à°¦à°¿à°°à°¿à°‚à°ªà±',
-      english: 'Harassment or bullying',
-    ),
-    'Hate speech or discrimination' => strings.localized(
-      telugu:
-          'à°¦à±à°µà±‡à°· à°ªà±à°°à°¸à°‚à°—à°‚ à°²à±‡à°¦à°¾ à°µà°¿à°µà°•à±à°·',
-      english: 'Hate speech or discrimination',
-    ),
-    'Sexual or adult content' => strings.localized(
-      telugu:
-          'à°²à±ˆà°‚à°—à°¿à°• à°²à±‡à°¦à°¾ à°ªà±†à°¦à±à°¦à°² à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
-      english: 'Sexual or adult content',
-    ),
-    'Violence or dangerous content' => strings.localized(
-      telugu:
-          'à°¹à°¿à°‚à°¸ à°²à±‡à°¦à°¾ à°ªà±à°°à°®à°¾à°¦à°•à°° à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
-      english: 'Violence or dangerous content',
-    ),
-    'Spam, scam, or fake content' => strings.localized(
-      telugu:
-          'à°¸à±à°ªà°¾à°®à±, à°®à±‹à°¸à°‚ à°²à±‡à°¦à°¾ à°¨à°•à°¿à°²à±€ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
-      english: 'Spam, scam, or fake content',
-    ),
-    'Misinformation or deceptive political content' => strings.localized(
-      telugu:
-          'à°¤à°ªà±à°ªà±à°¡à± à°¸à°®à°¾à°šà°¾à°°à°‚ à°²à±‡à°¦à°¾ à°®à±‹à°¸à°ªà±‚à°°à°¿à°¤ à°°à°¾à°œà°•à±€à°¯ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
-      english: 'Misinformation or deceptive political content',
-    ),
-    'Privacy violation or personal information' => strings.localized(
-      telugu:
-          'à°ªà±à°°à±ˆà°µà°¸à±€ à°‰à°²à±à°²à°‚à°˜à°¨ à°²à±‡à°¦à°¾ à°µà±à°¯à°•à±à°¤à°¿à°—à°¤ à°¸à°®à°¾à°šà°¾à°°à°‚',
-      english: 'Privacy violation or personal information',
-    ),
-    'Copyright or trademark issue' => strings.localized(
-      telugu:
-          'à°•à°¾à°ªà±€à°°à±ˆà°Ÿà± à°²à±‡à°¦à°¾ à°Ÿà±à°°à±‡à°¡à±â€Œà°®à°¾à°°à±à°•à± à°¸à°®à°¸à±à°¯',
-      english: 'Copyright or trademark issue',
-    ),
-    'Illegal content' => strings.localized(
-      telugu: 'à°šà°Ÿà±à°Ÿà°µà°¿à°°à±à°¦à±à°§ à°•à°‚à°Ÿà±†à°‚à°Ÿà±',
-      english: 'Illegal content',
-    ),
-    _ => strings.localized(
-      telugu: 'à°‡à°¤à°° à°¸à±‡à°«à±à°Ÿà±€ à°¸à°®à°¸à±à°¯',
-      english: 'Other safety issue',
-    ),
-  };
-}
-
-Future<void> _showCommunityStatusReportSheet(
-  BuildContext context, {
-  required CommunityStatus status,
-  CommunityStatusComment? comment,
-}) async {
-  final detailsController = TextEditingController();
-  final strings = context.strings;
-  var selectedReason = _communityReportReasons.first;
-  var submitting = false;
-  final reportedLabel = comment == null
-      ? strings.localized(telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±', english: 'status')
-      : strings.localized(telugu: 'à°°à°¿à°ªà±à°²à±ˆ', english: 'reply');
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) {
-      return StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: Color(0xFF101418),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Center(
-                        child: Container(
-                          width: 42,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        strings.localized(
-                          telugu:
-                              '$reportedLabel à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿',
-                          english: 'Report $reportedLabel',
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        strings.localized(
-                          telugu:
-                              'à°¦à°—à±à°—à°°à°—à°¾ à°¸à°°à°¿à°ªà±‹à°¯à±‡ à°•à°¾à°°à°£à°‚ à°Žà°‚à°šà±à°•à±‹à°‚à°¡à°¿. à°°à°¿à°ªà±‹à°°à±à°Ÿà±à°¸à± community safety à°•à±‹à°¸à°‚ team review à°šà±‡à°¯à°µà°šà±à°šà±.',
-                          english:
-                              'Choose the closest reason. Reports help keep the community safe and may be reviewed by our team.',
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w600,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: <Widget>[
-                              for (final reason in _communityReportReasons)
-                                ChoiceChip(
-                                  label: Text(
-                                    _localizedCommunityReportReason(
-                                      context,
-                                      reason,
-                                    ),
-                                  ),
-                                  selected: selectedReason == reason,
-                                  onSelected: submitting
-                                      ? null
-                                      : (_) => setSheetState(
-                                          () => selectedReason = reason,
-                                        ),
-                                  selectedColor: const Color(0xFFFFD166),
-                                  labelStyle: TextStyle(
-                                    color: selectedReason == reason
-                                        ? const Color(0xFF111827)
-                                        : Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                  backgroundColor: Colors.white.withValues(
-                                    alpha: 0.10,
-                                  ),
-                                  side: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: detailsController,
-                        enabled: !submitting,
-                        maxLength:
-                            CommunityStatusService.maxReportDetailsLength,
-                        maxLines: 3,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        decoration: InputDecoration(
-                          counterStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                          ),
-                          hintText: strings.localized(
-                            telugu: 'à°µà°¿à°µà°°à°¾à°²à± optional',
-                            english: 'Add details optional',
-                          ),
-                          hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                            fontWeight: FontWeight.w700,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: submitting
-                                  ? null
-                                  : () => Navigator.of(sheetContext).pop(),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                              child: Text(
-                                strings.localized(
-                                  telugu: 'à°°à°¦à±à°¦à±',
-                                  english: 'Cancel',
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: submitting
-                                  ? null
-                                  : () async {
-                                      setSheetState(() => submitting = true);
-                                      final ok = await CommunityStatusService
-                                          .instance
-                                          .submitReport(
-                                            status: status,
-                                            comment: comment,
-                                            reason: selectedReason,
-                                            details: detailsController.text,
-                                          );
-                                      if (!context.mounted) {
-                                        return;
-                                      }
-                                      Navigator.of(sheetContext).pop();
-                                      ScaffoldMessenger.of(context)
-                                        ..hideCurrentTopSnackBar()
-                                        ..showTopSnackBar(
-                                          AppSnackBar.build(
-                                            content: Text(
-                                              ok
-                                                  ? strings.localized(
-                                                      telugu:
-                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± submit à°…à°¯à°¿à°‚à°¦à°¿. à°§à°¨à±à°¯à°µà°¾à°¦à°¾à°²à±.',
-                                                      english:
-                                                          'Report submitted. Thank you.',
-                                                    )
-                                                  : strings.localized(
-                                                      telugu:
-                                                          'à°°à°¿à°ªà±‹à°°à±à°Ÿà± à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                                                      english:
-                                                          'Report failed. Please try again.',
-                                                    ),
-                                            ),
-                                          ),
-                                        );
-                                    },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFD166),
-                                foregroundColor: const Color(0xFF111827),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                              icon: submitting
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Color(0xFF111827),
-                                      ),
-                                    )
-                                  : const Icon(Icons.flag_rounded),
-                              label: Text(
-                                submitting
-                                    ? strings.localized(
-                                        telugu: 'à°ªà°‚à°ªà±à°¤à±‹à°‚à°¦à°¿',
-                                        english: 'Sending',
-                                      )
-                                    : strings.localized(
-                                        telugu:
-                                            'à°¸à°®à°°à±à°ªà°¿à°‚à°šà°‚à°¡à°¿',
-                                        english: 'Submit',
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
-  detailsController.dispose();
-}
-
-class _StatusInlineComment extends StatefulWidget {
-  const _StatusInlineComment({required this.userName, required this.text});
-
-  final String userName;
-  final String text;
-
-  @override
-  State<_StatusInlineComment> createState() => _StatusInlineCommentState();
-}
-
-class _StatusInlineCommentState extends State<_StatusInlineComment> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    final userName = widget.userName.trim().isEmpty
-        ? 'User'
-        : widget.userName.trim();
-    final text = widget.text.trim();
-    final showReadMore = !_expanded && text.length > 70;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        RichText(
-          maxLines: _expanded ? null : 2,
-          overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-          text: TextSpan(
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              height: 1.25,
-              fontWeight: FontWeight.w400,
-            ),
-            children: <InlineSpan>[
-              TextSpan(
-                text: '$userName  ',
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              TextSpan(text: text),
-            ],
-          ),
-        ),
-        if (showReadMore) ...<Widget>[
-          const SizedBox(height: 3),
-          InkWell(
-            onTap: () => setState(() => _expanded = true),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                strings.localized(
-                  telugu: 'à°®à°°à°¿à°‚à°¤ à°šà°¦à°µà°‚à°¡à°¿',
-                  english: 'Read more',
-                ),
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _StatusSegmentProgressBar extends StatelessWidget {
-  const _StatusSegmentProgressBar({
-    required this.itemCount,
-    required this.valueForIndex,
-  });
-
-  final int itemCount;
-  final double Function(int index) valueForIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final count = math.max(1, itemCount);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Row(
-        children: List<Widget>.generate(count, (index) {
-          return Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: index == 0 ? 0 : 3),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: itemCount <= 0 ? 0 : valueForIndex(index),
-                  minHeight: 3,
-                  backgroundColor: Colors.white.withValues(alpha: 0.28),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _StatusFullScreenContent extends StatelessWidget {
-  const _StatusFullScreenContent({required this.status});
-
-  final CommunityStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    if (status.imageUrl.isNotEmpty) {
-      return Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          CachedNetworkImage(
-            imageUrl: status.imageUrl,
-            fit: BoxFit.contain,
-            placeholder: (_, _) =>
-                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            errorWidget: (_, _, _) => const Center(
-              child: Icon(
-                Icons.broken_image_outlined,
-                color: Colors.white70,
-                size: 44,
-              ),
-            ),
-          ),
-          if (status.text.isNotEmpty)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 132),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.48),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      status.text,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        height: 1.22,
-                        fontWeight: FontWeight.w800,
-                        shadows: <Shadow>[
-                          Shadow(color: Colors.black87, blurRadius: 10),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Text(
-          status.text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 34,
-            height: 1.16,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusEngagementPanel extends StatelessWidget {
-  const _StatusEngagementPanel({
-    required this.status,
-    required this.isOwner,
-    required this.reactions,
-    required this.onPauseProgress,
-    required this.onResumeProgress,
-    this.onOpenReplies,
-  });
-
-  final CommunityStatus status;
-  final bool isOwner;
-  final List<String> reactions;
-  final VoidCallback onPauseProgress;
-  final VoidCallback onResumeProgress;
-  final VoidCallback? onOpenReplies;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                _StatusMetric(
-                  icon: Icons.visibility_rounded,
-                  value: status.viewCount,
-                ),
-                _StatusMetric(
-                  icon: Icons.favorite_rounded,
-                  value: status.likeCount,
-                ),
-                _StatusMetric(
-                  icon: Icons.emoji_emotions_rounded,
-                  value: status.reactionCount,
-                ),
-              ],
-            ),
-            if (isOwner && onOpenReplies != null) ...<Widget>[
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: onOpenReplies,
-                borderRadius: BorderRadius.circular(18),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      const Icon(
-                        Icons.keyboard_double_arrow_up_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        strings.localized(
-                          telugu:
-                              'à°°à°¿à°ªà±à°²à±ˆà°²à± à°šà±‚à°¡à°¡à°¾à°¨à°¿à°•à°¿ à°ªà±ˆà°•à°¿ swipe à°šà±‡à°¯à°‚à°¡à°¿',
-                          english: 'Swipe up for replies',
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-            if (!isOwner) ...<Widget>[
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  _StatusLikeButton(status: status),
-                  const SizedBox(width: 12),
-                  for (final reaction in reactions)
-                    _StatusReactionButton(status: status, reaction: reaction),
-                  _StatusEmojiPickerButton(status: status),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _StatusReplyInput(
-                status: status,
-                onFocusStart: onPauseProgress,
-                onFocusEnd: onResumeProgress,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusReplyInput extends StatefulWidget {
-  const _StatusReplyInput({
-    required this.status,
-    required this.onFocusStart,
-    required this.onFocusEnd,
-  });
-
-  final CommunityStatus status;
-  final VoidCallback onFocusStart;
-  final VoidCallback onFocusEnd;
-
-  @override
-  State<_StatusReplyInput> createState() => _StatusReplyInputState();
-}
-
-class _StatusReplyInputState extends State<_StatusReplyInput> {
-  final TextEditingController _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
-  bool _sending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(_handleFocusChanged);
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_handleFocusChanged);
-    _focusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleFocusChanged() {
-    if (_focusNode.hasFocus) {
-      widget.onFocusStart();
-    } else {
-      widget.onFocusEnd();
-    }
-  }
-
-  Future<void> _send() async {
-    final strings = context.strings;
-    final text = _controller.text.trim();
-    if (_sending || text.isEmpty) {
-      return;
-    }
-    setState(() => _sending = true);
-    final ok = await CommunityStatusService.instance.submitComment(
-      widget.status,
-      text,
-    );
-    if (!mounted) {
-      return;
-    }
-    setState(() => _sending = false);
-    if (ok) {
-      _controller.clear();
-      FocusScope.of(context).unfocus();
-      ScaffoldMessenger.of(context).showTopSnackBar(
-        AppSnackBar.build(
-          content: Text(
-            strings.localized(
-              telugu: 'à°°à°¿à°ªà±à°²à±ˆ à°ªà°‚à°ªà°¬à°¡à°¿à°‚à°¦à°¿',
-              english: 'Reply sent',
-            ),
-          ),
-        ),
-      );
-      return;
-    }
-    ScaffoldMessenger.of(context).showTopSnackBar(
-      AppSnackBar.build(
-        content: Text(
-          strings.localized(
-            telugu:
-                'à°°à°¿à°ªà±à°²à±ˆ à°µà°¿à°«à°²à°®à±ˆà°‚à°¦à°¿. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-            english: 'Reply failed. Try again.',
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = context.strings;
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            enabled: !_sending,
-            minLines: 1,
-            maxLines: 3,
-            maxLength: CommunityStatusService.maxCommentLength,
-            maxLengthEnforcement: MaxLengthEnforcement.enforced,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-            decoration: InputDecoration(
-              counterText: '',
-              hintText: strings.localized(
-                telugu: 'à°°à°¿à°ªà±à°²à±ˆ...',
-                english: 'Reply...',
-              ),
-              hintStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
-                fontWeight: FontWeight.w700,
-              ),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.14),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton.filled(
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFF25D366),
-            foregroundColor: const Color(0xFF06251A),
-          ),
-          onPressed: _sending ? null : () => unawaited(_send()),
-          icon: _sending
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF06251A),
-                  ),
-                )
-              : const Icon(Icons.send_rounded),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusMetric extends StatelessWidget {
-  const _StatusMetric({required this.icon, required this.value});
-
-  final IconData icon;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(width: 6),
-        Text(
-          value.toString(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusLikeButton extends StatelessWidget {
-  const _StatusLikeButton({required this.status});
-
-  final CommunityStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton.filled(
-      style: IconButton.styleFrom(
-        backgroundColor: status.viewerHasLiked
-            ? const Color(0xFFE91E63)
-            : Colors.white.withValues(alpha: 0.18),
-        foregroundColor: Colors.white,
-      ),
-      onPressed: () =>
-          unawaited(CommunityStatusService.instance.toggleLike(status.id)),
-      icon: const Icon(Icons.favorite_rounded),
-    );
-  }
-}
-
-class _StatusReactionButton extends StatelessWidget {
-  const _StatusReactionButton({required this.status, required this.reaction});
-
-  final CommunityStatus status;
-  final String reaction;
-
-  @override
-  Widget build(BuildContext context) {
-    final normalizedReaction = _StatusReactionCodec.normalize(reaction);
-    final selected =
-        _StatusReactionCodec.normalize(status.viewerReaction) ==
-        normalizedReaction;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: InkWell(
-        onTap: () => unawaited(
-          CommunityStatusService.instance.setReaction(
-            status.id,
-            normalizedReaction,
-          ),
-        ),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.32)
-                : Colors.white.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            _StatusReactionCodec.display(normalizedReaction),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 20, height: 1),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusEmojiPickerButton extends StatelessWidget {
-  const _StatusEmojiPickerButton({required this.status});
-
-  final CommunityStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: InkWell(
-        onTap: () => _openPicker(context),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.add_reaction_rounded,
-            color: Colors.white,
-            size: 21,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openPicker(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return SafeArea(
-          top: false,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-            ),
-            child: emoji_picker.EmojiPicker(
-              onEmojiSelected:
-                  (emoji_picker.Category? category, emoji_picker.Emoji emoji) {
-                    final reaction = _StatusReactionCodec.encode(emoji.emoji);
-                    Navigator.of(sheetContext).pop();
-                    unawaited(
-                      CommunityStatusService.instance.setReaction(
-                        status.id,
-                        reaction,
-                      ),
-                    );
-                  },
-              config: const emoji_picker.Config(
-                height: 320,
-                checkPlatformCompatibility: true,
-                emojiViewConfig: emoji_picker.EmojiViewConfig(
-                  columns: 8,
-                  emojiSizeMax: 30,
-                  backgroundColor: Colors.white,
-                ),
-                categoryViewConfig: emoji_picker.CategoryViewConfig(
-                  backgroundColor: Colors.white,
-                  iconColor: Color(0xFF667085),
-                  iconColorSelected: Color(0xFF16A34A),
-                  indicatorColor: Color(0xFF16A34A),
-                ),
-                bottomActionBarConfig: emoji_picker.BottomActionBarConfig(
-                  backgroundColor: Colors.white,
-                  buttonColor: Color(0xFF16A34A),
-                  buttonIconColor: Colors.white,
-                ),
-                searchViewConfig: emoji_picker.SearchViewConfig(
-                  backgroundColor: Colors.white,
-                  buttonIconColor: Color(0xFF16A34A),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _StatusReactionCodec {
-  static const String _prefix = 'emoji:';
-
-  static const Map<String, String> _legacyValues = <String, String>{
-    'fire': 'emoji:1f525',
-    'clap': 'emoji:1f44f',
-    'love': 'emoji:1f60d',
-    'pray': 'emoji:1f64f',
-    'angry': 'emoji:1f621',
-  };
-
-  static String encode(String emoji) {
-    final trimmed = emoji.trim();
-    if (trimmed.isEmpty) {
-      return '';
-    }
-    return '$_prefix${trimmed.runes.map((codePoint) {
-      return codePoint.toRadixString(16);
-    }).join('-')}';
-  }
-
-  static String normalize(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return '';
-    }
-    final legacy = _legacyValues[trimmed];
-    if (legacy != null) {
-      return legacy;
-    }
-    if (trimmed.startsWith(_prefix)) {
-      return trimmed.toLowerCase();
-    }
-    return encode(trimmed);
-  }
-
-  static String display(String value) {
-    final normalized = normalize(value);
-    if (!normalized.startsWith(_prefix)) {
-      return '';
-    }
-    final payload = normalized.substring(_prefix.length);
-    final codePoints = <int>[];
-    for (final part in payload.split('-')) {
-      final codePoint = int.tryParse(part, radix: 16);
-      if (codePoint == null) {
-        return '';
-      }
-      codePoints.add(codePoint);
-    }
-    return String.fromCharCodes(codePoints);
-  }
-}
-
 class _HomeHeader extends StatelessWidget {
   const _HomeHeader({
     required this.onHeaderTap,
     required this.onCreateTap,
-    required this.onStatusTap,
     required this.onProfileTap,
     required this.viewerPosterProfile,
     required this.searchController,
@@ -11272,7 +8940,6 @@ class _HomeHeader extends StatelessWidget {
 
   final VoidCallback onHeaderTap;
   final VoidCallback onCreateTap;
-  final VoidCallback onStatusTap;
   final VoidCallback onProfileTap;
   final PosterProfileData viewerPosterProfile;
   final TextEditingController searchController;
@@ -11371,7 +9038,8 @@ class _HomeHeader extends StatelessWidget {
               icon: const Icon(Icons.add_rounded, size: 20),
               label: Text(
                 strings.localized(
-                  telugu: 'à°•à±à°°à°¿à°¯à±‡à°Ÿà±',
+                  telugu:
+                      'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                   english: 'Create',
                 ),
               ),
@@ -11387,22 +9055,6 @@ class _HomeHeader extends StatelessWidget {
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Tooltip(
-              message: strings.localized(
-                telugu: 'à°¸à±à°Ÿà±‡à°Ÿà°¸à±â€Œà°²à±',
-                english: 'Statuses',
-              ),
-              child: InkWell(
-                onTap: onStatusTap,
-                customBorder: const CircleBorder(),
-                child: const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: _HeaderStatusShortcut(),
                 ),
               ),
             ),
@@ -11755,150 +9407,6 @@ class _HomeInlinePromoCardState extends State<_HomeInlinePromoCard> {
   }
 }
 
-class _HeaderStatusShortcut extends StatefulWidget {
-  const _HeaderStatusShortcut();
-
-  @override
-  State<_HeaderStatusShortcut> createState() => _HeaderStatusShortcutState();
-}
-
-class _HeaderStatusShortcutState extends State<_HeaderStatusShortcut> {
-  Timer? _firebaseReadyRetryTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleFirebaseReadyRetryIfNeeded();
-  }
-
-  @override
-  void dispose() {
-    _firebaseReadyRetryTimer?.cancel();
-    super.dispose();
-  }
-
-  void _scheduleFirebaseReadyRetryIfNeeded() {
-    if (_shouldRunFirebaseUiServices || _firebaseReadyRetryTimer != null) {
-      return;
-    }
-    _firebaseReadyRetryTimer = Timer.periodic(
-      const Duration(milliseconds: 350),
-      (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        if (_shouldRunFirebaseUiServices) {
-          timer.cancel();
-          _firebaseReadyRetryTimer = null;
-          setState(() {});
-        }
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_shouldRunFirebaseUiServices) {
-      _scheduleFirebaseReadyRetryIfNeeded();
-      return const SizedBox(
-        width: 30,
-        height: 30,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.add_rounded, color: Color(0xFF111827), size: 18),
-        ),
-      );
-    }
-    return StreamBuilder<List<CommunityStatus>>(
-      stream: CommunityStatusService.instance.watchMyActiveStatuses(limit: 8),
-      builder: (context, snapshot) {
-        final statuses = snapshot.data ?? const <CommunityStatus>[];
-        final latest = statuses.isEmpty ? null : statuses.first;
-        final hasStatus = latest != null;
-        return SizedBox(
-          width: 30,
-          height: 30,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: <Widget>[
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: hasStatus
-                        ? const SweepGradient(
-                            colors: <Color>[
-                              Color(0xFFFFD60A),
-                              Color(0xFFFF4D8D),
-                              Color(0xFF7C3AED),
-                              Color(0xFFFFD60A),
-                            ],
-                          )
-                        : null,
-                    color: hasStatus
-                        ? null
-                        : Colors.white.withValues(alpha: 0.92),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.8),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(1),
-                        child: ClipOval(
-                          child: ColoredBox(
-                            color: hasStatus
-                                ? Colors.white
-                                : const Color(0xFFFFF7ED),
-                            child: hasStatus
-                                ? _StatusGridPreview(status: latest)
-                                : const Icon(
-                                    Icons.auto_stories_rounded,
-                                    color: Color(0xFFD81B60),
-                                    size: 17,
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (!hasStatus)
-                Positioned(
-                  right: -1,
-                  bottom: -1,
-                  child: Container(
-                    width: 13,
-                    height: 13,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.4),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 9,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _PromoAccentBadge extends StatelessWidget {
   const _PromoAccentBadge({required this.icon, required this.backgroundColor});
 
@@ -12001,8 +9509,9 @@ class _GooglePlayActionBadge extends StatelessWidget {
 }
 
 class _BannerSlideData {
-  const _BannerSlideData({required this.imageUrl});
+  const _BannerSlideData({required this.id, required this.imageUrl});
 
+  final String id;
   final String imageUrl;
 }
 
@@ -12013,6 +9522,7 @@ class _HomePinnedFeedControls extends StatelessWidget {
     required this.scrollController,
     required this.onCategoryTap,
     required this.banners,
+    required this.onBannerViewed,
     required this.showAdFallback,
     required this.shouldShowAdFallback,
     required this.homeRefreshing,
@@ -12024,6 +9534,7 @@ class _HomePinnedFeedControls extends StatelessWidget {
   final ScrollController scrollController;
   final ValueChanged<String> onCategoryTap;
   final List<AppHomeBanner> banners;
+  final ValueChanged<String> onBannerViewed;
   final bool showAdFallback;
   final bool shouldShowAdFallback;
   final bool homeRefreshing;
@@ -12060,7 +9571,12 @@ class _HomePinnedFeedControls extends StatelessWidget {
           ),
           if (!compact && banners.isNotEmpty) ...<Widget>[
             const SizedBox(height: 3),
-            RepaintBoundary(child: _HomeHeroBanner(banners: banners)),
+            RepaintBoundary(
+              child: _HomeHeroBanner(
+                banners: banners,
+                onBannerViewed: onBannerViewed,
+              ),
+            ),
           ] else if (!compact &&
               showAdFallback &&
               shouldShowAdFallback) ...<Widget>[
@@ -12450,9 +9966,10 @@ class _CategoryRowsScrollerState extends State<_CategoryRowsScroller> {
 }
 
 class _HomeHeroBanner extends StatefulWidget {
-  const _HomeHeroBanner({required this.banners});
+  const _HomeHeroBanner({required this.banners, required this.onBannerViewed});
 
   final List<AppHomeBanner> banners;
+  final ValueChanged<String> onBannerViewed;
 
   @override
   State<_HomeHeroBanner> createState() => _HomeHeroBannerState();
@@ -12465,12 +9982,15 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
   int _currentPage = 0;
 
   List<_BannerSlideData> get _slides => widget.banners
-      .map((banner) => _BannerSlideData(imageUrl: banner.imageUrl))
+      .map(
+        (banner) => _BannerSlideData(id: banner.id, imageUrl: banner.imageUrl),
+      )
       .toList(growable: false);
 
   @override
   void initState() {
     super.initState();
+    _recordCurrentSlideView();
     _autoSwipeTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted || !_pageController.hasClients || _slides.length <= 1) {
         return;
@@ -12482,6 +10002,39 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
         curve: Curves.easeOutCubic,
       );
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomeHeroBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.banners.length != oldWidget.banners.length ||
+        !_sameBannerIds(widget.banners, oldWidget.banners)) {
+      if (_currentPage >= widget.banners.length) {
+        _currentPage = 0;
+      }
+      _recordCurrentSlideView();
+    }
+  }
+
+  bool _sameBannerIds(List<AppHomeBanner> left, List<AppHomeBanner> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var index = 0; index < left.length; index++) {
+      if (left[index].id != right[index].id) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _recordCurrentSlideView() {
+    final slides = _slides;
+    if (slides.isEmpty) {
+      return;
+    }
+    final index = _currentPage.clamp(0, slides.length - 1).toInt();
+    widget.onBannerViewed(slides[index].id);
   }
 
   @override
@@ -12503,7 +10056,10 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
         child: PageView.builder(
           controller: _pageController,
           itemCount: _slides.length,
-          onPageChanged: (index) => _currentPage = index,
+          onPageChanged: (index) {
+            _currentPage = index;
+            _recordCurrentSlideView();
+          },
           itemBuilder: (context, index) => LayoutBuilder(
             builder: (context, constraints) {
               final memWidth = constraints.maxWidth.isFinite
@@ -12525,12 +10081,12 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
                   compact: true,
                   title: context.strings.localized(
                     telugu:
-                        'à°¬à±à°¯à°¾à°¨à°°à± à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                     english: 'Banner unavailable',
                   ),
                   subtitle: context.strings.localized(
                     telugu:
-                        'à°¦à°¯à°šà±‡à°¸à°¿ à°•à±Šà°¦à±à°¦à°¿à°¸à±‡à°ªà°Ÿà°¿ à°¤à°°à±à°µà°¾à°¤ à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                     english: 'Please try again shortly.',
                   ),
                 ),
@@ -12924,7 +10480,7 @@ class _CategoryChipFallbackIcon extends StatelessWidget {
 String _subscriptionPromptCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°¾à°²à°¿.',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
     english: 'Activate subscription to share or download posters.',
   );
 }
@@ -12932,7 +10488,8 @@ String _subscriptionPromptCopyLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionDialogTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡',
     english: 'Subscription Required',
   );
 }
@@ -12940,7 +10497,8 @@ String _subscriptionDialogTitleLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTrialTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
+    telugu:
+        '3 ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: '3-day trial plan',
   );
 }
@@ -12949,7 +10507,7 @@ String _subscriptionTrialTitleLocalized(BuildContext context) {
 String _subscriptionTrialValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -12958,7 +10516,8 @@ String _subscriptionTrialValueLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyTitleLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Monthly plan',
   );
 }
@@ -12967,7 +10526,7 @@ String _subscriptionMonthlyTitleLocalized(BuildContext context) {
 String _subscriptionMonthlyValueLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -12976,7 +10535,7 @@ String _subscriptionMonthlyValueLocalized(BuildContext context) {
 String _subscriptionRenewalCopyLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±‚à°°à±à°¤à°¯à±à°¯à°¾à°• à°®à±€à°°à± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±€à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°²à±‹à°ªà± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°µà°šà±à°šà±.',
+        '${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.monthlyPriceDisplay} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿. ${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂºÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
@@ -12985,7 +10544,8 @@ String _subscriptionRenewalCopyLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTermsLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Terms',
   );
 }
@@ -12993,7 +10553,8 @@ String _subscriptionTermsLabelLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionSkipLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à±à°•à°¿à°ªà±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Skip',
   );
 }
@@ -13001,7 +10562,8 @@ String _subscriptionSkipLabelLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionButtonLabelLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
     english: 'Subscribe',
   );
 }
@@ -13010,7 +10572,7 @@ String _subscriptionButtonLabelLocalized(BuildContext context) {
 String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'à°ªà±‹à°¸à±à°Ÿà°°à±à°²à°¨à± à°·à±‡à°°à± à°²à±‡à°¦à°¾ à°¡à±Œà°¨à±â€Œà°²à±‹à°¡à± à°šà±‡à°¯à°¡à°¾à°¨à°¿à°•à°¿ à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¯à°¾à°•à±à°Ÿà°¿à°µà± à°šà±‡à°¯à°‚à°¡à°¿.',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
     english: 'Activate subscription to share or download posters.',
   );
 }
@@ -13018,7 +10580,8 @@ String _subscriptionPromptCopyCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°…à°µà°¸à°°à°‚',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡',
     english: 'Subscription Required',
   );
 }
@@ -13026,7 +10589,8 @@ String _subscriptionDialogTitleCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à±',
+    telugu:
+        '3 ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: '3-day trial plan',
   );
 }
@@ -13035,7 +10599,7 @@ String _subscriptionTrialTitleCleanLocalized(BuildContext context) {
 String _subscriptionTrialValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}',
+        '${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.trialPriceDisplay}',
     english:
         '${SubscriptionPlanConfig.trialPriceDisplay} for ${SubscriptionPlanConfig.trialDays} days',
   );
@@ -13044,7 +10608,8 @@ String _subscriptionTrialValueCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¨à±†à°²à°µà°¾à°°à±€ à°ªà±à°²à°¾à°¨à±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Monthly plan',
   );
 }
@@ -13053,7 +10618,7 @@ String _subscriptionMonthlyTitleCleanLocalized(BuildContext context) {
 String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'à°¤à°°à±à°µà°¾à°¤ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay}',
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.monthlyPriceDisplay}',
     english: '${SubscriptionPlanConfig.monthlyPriceDisplay} per month',
   );
 }
@@ -13062,7 +10627,7 @@ String _subscriptionMonthlyValueCleanLocalized(BuildContext context) {
 String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        '${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°Ÿà±à°°à°¯à°²à± à°¤à°°à±à°µà°¾à°¤, à°°à°¦à±à°¦à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à±†à°¨à±à°¯à±à°µà°²à± à°…à°µà±à°¤à±à°‚à°¦à°¿. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à±à°²à±‹ à°°à°¦à±à°¦à± à°šà±‡à°¸à±à°¤à±‡ à°¨à±†à°²à°µà°¾à°°à±€ à°›à°¾à°°à±à°œà± à°ªà°¡à°¦à±. à°°à°¦à±à°¦à± à°šà±‡à°¸à°¿à°¨à°¾ à°ªà±à°°à°¸à±à°¤à±à°¤ à°ªà±à°²à°¾à°¨à± à°—à°¡à±à°µà± à°®à±à°—à°¿à°¸à±‡ à°µà°°à°•à± à°¬à±†à°¨à°¿à°«à°¿à°Ÿà±à°¸à± à°•à±Šà°¨à°¸à°¾à°—à±à°¤à°¾à°¯à°¿.',
+        '${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ${SubscriptionPlanConfig.monthlyPriceDisplay} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿. ${SubscriptionPlanConfig.trialDays} ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂºÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
     english:
         'After the ${SubscriptionPlanConfig.trialDays}-day trial, it auto-renews at ${SubscriptionPlanConfig.monthlyPriceDisplay}/month unless cancelled. If cancelled within ${SubscriptionPlanConfig.trialDays} days, the monthly charge does not apply. Benefits continue until the current plan expires.',
   );
@@ -13071,7 +10636,8 @@ String _subscriptionRenewalCopyCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¨à°¿à°¬à°‚à°§à°¨à°²à±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Terms',
   );
 }
@@ -13079,7 +10645,8 @@ String _subscriptionTermsLabelCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à±à°•à°¿à°ªà±',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
     english: 'Skip',
   );
 }
@@ -13087,7 +10654,8 @@ String _subscriptionSkipLabelCleanLocalized(BuildContext context) {
 // ignore: unused_element
 String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à±ˆà°¬à± à°šà±‡à°¯à°‚à°¡à°¿',
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
     english: 'Subscribe',
   );
 }
@@ -13095,73 +10663,114 @@ String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
 String _subscriptionPromptCopyAppLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
-        'పోస్టర్లను షేర్ లేదా డౌన్‌లోడ్ చేయడానికి సబ్‌స్క్రిప్షన్ యాక్టివ్ చేయండి.',
+        'ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â°Ã‚Â¾ ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â°Ã‚Â¿ ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â¬ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿.',
     english: 'Activate subscription to share or download posters.',
-    hindi: 'पोस्टर शेयर या डाउनलोड करने के लिए सदस्यता सक्रिय करें।',
-    tamil: 'போஸ்டர்களை பகிர அல்லது பதிவிறக்க சந்தாவை இயக்கவும்.',
+    hindi:
+        'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¥Ã‚Â¤',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‹â€  ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â° ÃƒÂ Ã‚Â®Ã¢â‚¬Â¦ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â¯Ã‹â€  ÃƒÂ Ã‚Â®Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â.',
     kannada:
-        'ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಹಂಚಲು ಅಥವಾ ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ಚಂದಾದಾರಿಕೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ.',
+        'ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã¢â‚¬Â¦ÃƒÂ Ã‚Â²Ã‚Â¥ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¾ ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â³Ã…â€™ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã…Â ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â¿.',
     malayalam:
-        'പോസ്റ്ററുകൾ പങ്കിടാനോ ഡൗൺലോഡ് ചെയ്യാനോ സബ്സ്ക്രിപ്ഷൻ സജീവമാക്കുക.',
-    assamese: 'পোষ্টাৰ শ্বেয়াৰ বা ডাউনলোড কৰিবলৈ সদস্যতা সক্ৰিয় কৰক।',
-    konkani: 'पोस्टर शेअर वा डाउनलोड करपाक सदस्यता सुरू करात.',
-    gujarati: 'પોસ્ટર શેર અથવા ડાઉનલોડ કરવા માટે સબ્સ્ક્રિપ્શન સક્રિય કરો.',
-    marathi: 'पोस्टर शेअर किंवा डाउनलोड करण्यासाठी सदस्यता सक्रिय करा.',
+        'ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚Â¾ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ ÃƒÂ Ã‚Â´Ã‚Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬â€ÃƒÂ Ã‚ÂµÃ‚ÂºÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¡ÃƒÂ Ã‚ÂµÃ‚Â ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¬ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ‚Â» ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã…â€œÃƒÂ Ã‚ÂµÃ¢â€šÂ¬ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢.',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¡ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â°ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¡ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‹â€  ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚Â¤',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤.',
+    gujarati:
+        'ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¦ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¾ ÃƒÂ Ã‚ÂªÃ‚Â¡ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ¢â‚¬Â°ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¡ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¾ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¬ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚ÂªÃ‚Â¨ ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¯ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹.',
+    marathi:
+        'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â£ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾.',
     meitei:
         'Poster share touba nattraga download tounaba subscription active tou.',
     mizo: 'Poster share emaw download turin subscription activate rawh.',
-    odia: 'ପୋଷ୍ଟର ସେୟାର କିମ୍ବା ଡାଉନଲୋଡ୍ ପାଇଁ ସବସ୍କ୍ରିପସନ୍ ସକ୍ରିୟ କରନ୍ତୁ।',
-    punjabi: 'ਪੋਸਟਰ ਸਾਂਝੇ ਜਾਂ ਡਾਊਨਲੋਡ ਕਰਨ ਲਈ ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਚਾਲੂ ਕਰੋ।',
-    nepali: 'पोस्टर सेयर वा डाउनलोड गर्न सदस्यता सक्रिय गर्नुहोस्।',
-    bengali: 'পোস্টার শেয়ার বা ডাউনলোড করতে সাবস্ক্রিপশন চালু করুন।',
-    kashmiri: 'پوسٹر شیئر یا ڈاؤنلوڈ کرنہٕ خٲطرٕ سبسکرپشن چالو کٔریو۔',
-    ladakhi: 'Poster share ཡང་ན download བྱེད་པར subscription འགོ་འཛུགས་བྱེད།',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â·ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¾ ÃƒÂ Ã‚Â¬Ã‚Â¡ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â¡ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â­Ã…Â¸ ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤',
+    punjabi:
+        'ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¨Ã‚ÂÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¨Ã…â€œÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¡ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã…Â ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¡ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¨ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‹â€  ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¬ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â¨Ã‚Â¨ ÃƒÂ Ã‚Â¨Ã…Â¡ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â©Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¥Ã‚Â¤',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¡ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â°ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¡ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â¦Ã‚Â¨ ÃƒÂ Ã‚Â¦Ã…Â¡ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚Â¤',
+    kashmiri:
+        'Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â± ÃƒËœÃ‚Â´Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â¦ÃƒËœÃ‚Â± Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â§ ÃƒÅ¡Ã‹â€ ÃƒËœÃ‚Â§ÃƒËœÃ‚Â¤Ãƒâ„¢Ã¢â‚¬Â Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã‹â€ ÃƒÅ¡Ã‹â€  ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ ÃƒËœÃ‚Â®Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚Â·ÃƒËœÃ‚Â±Ãƒâ„¢Ã¢â‚¬Â¢ ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â³ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ„¢Ã‚Â¾ÃƒËœÃ‚Â´Ãƒâ„¢Ã¢â‚¬Â  ÃƒÅ¡Ã¢â‚¬Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã‹â€  ÃƒÅ¡Ã‚Â©Ãƒâ„¢Ã¢â‚¬ÂÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€ Ãƒâ€ºÃ¢â‚¬Â',
+    ladakhi:
+        'Poster share ÃƒÂ Ã‚Â½Ã‚Â¡ÃƒÂ Ã‚Â½Ã¢â‚¬Å¾ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ download ÃƒÂ Ã‚Â½Ã¢â‚¬â€œÃƒÂ Ã‚Â¾Ã‚Â±ÃƒÂ Ã‚Â½Ã‚ÂºÃƒÂ Ã‚Â½Ã¢â‚¬ËœÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã¢â‚¬ÂÃƒÂ Ã‚Â½Ã‚Â¢ subscription ÃƒÂ Ã‚Â½Ã‚Â ÃƒÂ Ã‚Â½Ã¢â‚¬Å¡ÃƒÂ Ã‚Â½Ã‚Â¼ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã‚Â ÃƒÂ Ã‚Â½Ã¢â‚¬ÂºÃƒÂ Ã‚Â½Ã‚Â´ÃƒÂ Ã‚Â½Ã¢â‚¬Å¡ÃƒÂ Ã‚Â½Ã‚Â¦ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã¢â‚¬â€œÃƒÂ Ã‚Â¾Ã‚Â±ÃƒÂ Ã‚Â½Ã‚ÂºÃƒÂ Ã‚Â½Ã¢â‚¬ËœÃƒÂ Ã‚Â¼Ã‚Â',
   );
 }
 
 String _subscriptionDialogTitleAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రిప్షన్ అవసరం',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â¬ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã¢â‚¬Â¦ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡',
     english: 'Subscription Required',
-    hindi: 'सदस्यता आवश्यक',
-    tamil: 'சந்தா தேவை',
-    kannada: 'ಚಂದಾದಾರಿಕೆ ಅಗತ್ಯ',
-    malayalam: 'സബ്സ്ക്രിപ്ഷൻ ആവശ്യമാണ്',
-    assamese: 'সদস্যতা প্ৰয়োজন',
-    konkani: 'सदस्यता गरजेची',
-    gujarati: 'સબ્સ્ક્રિપ્શન જરૂરી',
-    marathi: 'सदस्यता आवश्यक',
+    hindi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¾ ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â¯Ã‹â€ ',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã¢â‚¬Â  ÃƒÂ Ã‚Â²Ã¢â‚¬Â¦ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¯',
+    malayalam:
+        'ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¬ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ‚Â» ÃƒÂ Ã‚Â´Ã¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¶ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â£ÃƒÂ Ã‚ÂµÃ‚Â',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã…â€œÃƒÂ Ã‚Â¦Ã‚Â¨',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã…â€œÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬',
+    gujarati:
+        'ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¬ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚ÂªÃ‚Â¨ ÃƒÂ Ã‚ÂªÃ…â€œÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Å¡ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â€šÂ¬',
+    marathi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢',
     meitei: 'Subscription mathou tai',
     mizo: 'Subscription a ngai',
-    odia: 'ସବସ୍କ୍ରିପସନ୍ ଆବଶ୍ୟକ',
-    punjabi: 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਲੋੜੀਂਦੀ ਹੈ',
-    nepali: 'सदस्यता आवश्यक',
-    bengali: 'সাবস্ক্রিপশন প্রয়োজন',
-    kashmiri: 'سبسکرپشن ضرٲرت',
-    ladakhi: 'Subscription དགོས།',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã¢â‚¬Â ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¶ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢',
+    punjabi:
+        'ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¬ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â¨Ã‚Â¨ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â©Ã…â€œÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã‹â€ ',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â¦Ã‚Â¨ ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã…â€œÃƒÂ Ã‚Â¦Ã‚Â¨',
+    kashmiri:
+        'ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â³ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ„¢Ã‚Â¾ÃƒËœÃ‚Â´Ãƒâ„¢Ã¢â‚¬Â  ÃƒËœÃ‚Â¶ÃƒËœÃ‚Â±Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚Â±ÃƒËœÃ‚Âª',
+    ladakhi:
+        'Subscription ÃƒÂ Ã‚Â½Ã¢â‚¬ËœÃƒÂ Ã‚Â½Ã¢â‚¬Å¡ÃƒÂ Ã‚Â½Ã‚Â¼ÃƒÂ Ã‚Â½Ã‚Â¦ÃƒÂ Ã‚Â¼Ã‚Â',
   );
 }
 
 String _subscriptionTrialTitleAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: '3 రోజుల ట్రయల్ ప్లాన్',
+    telugu:
+        '3 ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…â€œÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â² ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â',
     english: '3-day trial plan',
-    hindi: '3 दिन का ट्रायल प्लान',
-    tamil: '3 நாள் சோதனை திட்டம்',
-    kannada: '3 ದಿನಗಳ ಟ್ರಯಲ್ ಪ್ಲಾನ್',
-    malayalam: '3 ദിവസത്തെ ട്രയൽ പ്ലാൻ',
-    assamese: '3 দিনৰ ট্রায়েল প্লেন',
-    konkani: '3 दिसांची ट्रायल प्लॅन',
-    gujarati: '3 દિવસનો ટ્રાયલ પ્લાન',
-    marathi: '3 दिवसांचा ट्रायल प्लॅन',
+    hindi:
+        '3 ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    tamil:
+        '3 ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â¯Ã‹â€  ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â',
+    kannada:
+        '3 ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ ÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚Â',
+    malayalam:
+        '3 ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ¢â‚¬Â  ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚Â½ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚ÂµÃ‚Â»',
+    assamese:
+        '3 ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â² ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¨',
+    konkani:
+        '3 ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    gujarati:
+        '3 ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚ÂªÃ‚Â² ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¨',
+    marathi:
+        '3 ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨',
     meitei: '3-day trial plan',
     mizo: '3-day trial plan',
-    odia: '3 ଦିନର ଟ୍ରାୟାଲ୍ ପ୍ଲାନ୍',
-    punjabi: '3 ਦਿਨਾਂ ਦਾ ਟ੍ਰਾਇਲ ਪਲਾਨ',
-    nepali: '3 दिनको ट्रायल प्लान',
-    bengali: '3 দিনের ট্রায়াল প্ল্যান',
-    kashmiri: '3 دۄہ ٹرایل پلان',
-    ladakhi: '3 ཉིན trial plan',
+    odia:
+        '3 ÃƒÂ Ã‚Â¬Ã‚Â¦ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚Â',
+    punjabi:
+        '3 ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¾ ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã‚Â² ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â¨',
+    nepali:
+        '3 ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    bengali:
+        '3 ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â² ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¨',
+    kashmiri:
+        '3 ÃƒËœÃ‚Â¯Ãƒâ€ºÃ¢â‚¬Å¾Ãƒâ€ºÃ‚Â Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â±ÃƒËœÃ‚Â§Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Å¾ Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â ',
+    ladakhi: '3 ÃƒÂ Ã‚Â½Ã¢â‚¬Â°ÃƒÂ Ã‚Â½Ã‚Â²ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ trial plan',
   );
 }
 
@@ -13169,46 +10778,75 @@ String _subscriptionTrialValueAppLocalized(BuildContext context) {
   final days = SubscriptionPlanConfig.trialDays;
   final price = SubscriptionPlanConfig.trialPriceDisplay;
   return context.strings.localized(
-    telugu: '$days రోజులకు $price',
+    telugu:
+        '$days ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…â€œÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚Â $price',
     english: '$price for $days days',
-    hindi: '$days दिनों के लिए $price',
-    tamil: '$days நாட்களுக்கு $price',
-    kannada: '$days ದಿನಗಳಿಗೆ $price',
-    malayalam: '$days ദിവസങ്ങൾക്ക് $price',
-    assamese: '$days দিনৰ বাবে $price',
-    konkani: '$days दिसां खातीर $price',
-    gujarati: '$days દિવસ માટે $price',
-    marathi: '$days दिवसांसाठी $price',
+    hindi:
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â $price',
+    tamil:
+        '$days ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚Â $price',
+    kannada:
+        '$days ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  $price',
+    malayalam:
+        '$days ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚Â¾ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚Â $price',
+    assamese:
+        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price',
+    konkani:
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â° $price',
+    gujarati:
+        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
+    marathi:
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ $price',
     meitei: '$days numitki $price',
     mizo: '$days ni atan $price',
-    odia: '$days ଦିନ ପାଇଁ $price',
-    punjabi: '$days ਦਿਨਾਂ ਲਈ $price',
-    nepali: '$days दिनका लागि $price',
-    bengali: '$days দিনের জন্য $price',
-    kashmiri: '$days دۄہن خٲطرٕ $price',
-    ladakhi: '$days ཉིན་ལ $price',
+    odia:
+        '$days ÃƒÂ Ã‚Â¬Ã‚Â¦ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â $price',
+    punjabi:
+        '$days ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‹â€  $price',
+    nepali:
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â¿ $price',
+    bengali:
+        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã…â€œÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ $price',
+    kashmiri:
+        '$days ÃƒËœÃ‚Â¯Ãƒâ€ºÃ¢â‚¬Å¾Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â  ÃƒËœÃ‚Â®Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚Â·ÃƒËœÃ‚Â±Ãƒâ„¢Ã¢â‚¬Â¢ $price',
+    ladakhi:
+        '$days ÃƒÂ Ã‚Â½Ã¢â‚¬Â°ÃƒÂ Ã‚Â½Ã‚Â²ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã‚Â£ $price',
   );
 }
 
 String _subscriptionMonthlyTitleAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'నెలవారీ ప్లాన్',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚Â',
     english: 'Monthly plan',
-    hindi: 'मासिक प्लान',
-    tamil: 'மாதாந்திர திட்டம்',
-    kannada: 'ಮಾಸಿಕ ಪ್ಲಾನ್',
-    malayalam: 'മാസിക പ്ലാൻ',
-    assamese: 'মাহেকীয়া প্লেন',
-    konkani: 'म्हयन्याचो प्लॅन',
-    gujarati: 'માસિક પ્લાન',
-    marathi: 'मासिक प्लॅन',
+    hindi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â° ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚Â',
+    malayalam:
+        'ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚ÂµÃ‚Â»',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã¢â€šÂ¬ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¨',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    gujarati:
+        'ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¨',
+    marathi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨',
     meitei: 'Monthly plan',
     mizo: 'Monthly plan',
-    odia: 'ମାସିକ ପ୍ଲାନ୍',
-    punjabi: 'ਮਹੀਨਾਵਾਰ ਪਲਾਨ',
-    nepali: 'मासिक प्लान',
-    bengali: 'মাসিক প্ল্যান',
-    kashmiri: 'ماہانہ پلان',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚Â',
+    punjabi:
+        'ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚ÂµÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â¨',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¨',
+    kashmiri:
+        'Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â§Ãƒâ€ºÃ‚ÂÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ‚Â Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â§Ãƒâ„¢Ã¢â‚¬Â ',
     ladakhi: 'Monthly plan',
   );
 }
@@ -13216,24 +10854,37 @@ String _subscriptionMonthlyTitleAppLocalized(BuildContext context) {
 String _subscriptionMonthlyValueAppLocalized(BuildContext context) {
   final price = SubscriptionPlanConfig.monthlyPriceDisplay;
   return context.strings.localized(
-    telugu: 'నెలకు $price',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚Â $price',
     english: '$price per month',
-    hindi: '$price प्रति माह',
-    tamil: 'மாதத்திற்கு $price',
-    kannada: 'ತಿಂಗಳಿಗೆ $price',
-    malayalam: 'മാസം $price',
-    assamese: 'প্ৰতি মাহে $price',
-    konkani: 'म्हयन्याक $price',
-    gujarati: 'દર મહિને $price',
-    marathi: 'दर महिन्याला $price',
+    hindi:
+        '$price ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¹',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚Â $price',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  $price',
+    malayalam: 'ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ $price',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ $price',
+    gujarati:
+        'ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¹ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
+    marathi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ $price',
     meitei: 'tha khuding $price',
     mizo: 'thla tin $price',
-    odia: 'ମାସକୁ $price',
-    punjabi: 'ਪ੍ਰਤੀ ਮਹੀਨਾ $price',
-    nepali: 'प्रति महिना $price',
-    bengali: 'প্রতি মাসে $price',
-    kashmiri: 'مہینس $price',
-    ladakhi: 'ཟླ་རེར $price',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚Â $price',
+    punjabi:
+        'ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ $price',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ $price',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price',
+    kashmiri: 'Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ€ºÃ‚ÂÃƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â³ $price',
+    ladakhi:
+        'ÃƒÂ Ã‚Â½Ã…Â¸ÃƒÂ Ã‚Â¾Ã‚Â³ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã‚Â¢ÃƒÂ Ã‚Â½Ã‚ÂºÃƒÂ Ã‚Â½Ã‚Â¢ $price',
   );
 }
 
@@ -13242,113 +10893,148 @@ String _subscriptionRenewalCopyAppLocalized(BuildContext context) {
   final price = SubscriptionPlanConfig.monthlyPriceDisplay;
   return context.strings.localized(
     telugu:
-        '$days రోజుల ట్రయల్ తర్వాత, రద్దు చేయకపోతే నెలకు $price ఆటో రీన్యూ అవుతుంది.',
+        '$days ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…â€œÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â² ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â¤, ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚Â $price ÃƒÂ Ã‚Â°Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â±Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â°Ã¢â‚¬Â¦ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â°Ã‚Â¿.',
     english:
         'After the $days-day trial, it auto-renews at $price/month unless cancelled.',
     hindi:
-        '$days दिन के ट्रायल के बाद, रद्द नहीं करने पर $price/माह पर ऑटो रिन्यू होगा।',
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â¬ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¦, ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¦ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â° $price/ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¹ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬ËœÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¥Ã‚Â¤',
     tamil:
-        '$days நாள் சோதனைக்குப் பிறகு, ரத்து செய்யாவிட்டால் $price/மாதம் தானாக புதுப்பிக்கும்.',
+        '$days ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚Â, ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â¯Ã¢â‚¬Â ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚Â $price/ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â.',
     kannada:
-        '$days ದಿನಗಳ ಟ್ರಯಲ್ ನಂತರ, ರದ್ದು ಮಾಡದಿದ್ದರೆ ತಿಂಗಳಿಗೆ $price ಸ್ವಯಂ ನವೀಕರಣವಾಗುತ್ತದೆ.',
+        '$days ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ ÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â°, ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã¢â‚¬Â  ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  $price ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â³Ã¢â€šÂ¬ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â£ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã¢â‚¬Â .',
     malayalam:
-        '$days ദിവസത്തെ ട്രയലിന് ശേഷം, റദ്ദാക്കാത്ത പക്ഷം $price/മാസം ഓട്ടോ പുതുക്കും.',
+        '$days ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ¢â‚¬Â  ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ‚Â ÃƒÂ Ã‚Â´Ã‚Â¶ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡, ÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ $price/ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã¢â‚¬Å“ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡.',
     assamese:
-        '$days দিনৰ ট্রায়েলৰ পিছত বাতিল নকৰিলে মাহে $price অটো ৰিনিউ হ’ব।',
+        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â¦Ã‚Â¤ ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â² ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã¢â‚¬Â° ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¥Ã‚Â¤',
     konkani:
-        '$days दिसांच्या ट्रायल उपरांत, रद्द करूंक ना जाल्यार म्हयन्याक $price ऑटो रिन्यू जातलो.',
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¤, ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¦ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã…â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ $price ÃƒÂ Ã‚Â¤Ã¢â‚¬ËœÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã…â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹.',
     gujarati:
-        '$days દિવસના ટ્રાયલ પછી, રદ ન કરો તો દર મહિને $price ઓટો રિન્યુ થશે.',
+        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¾ ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚ÂªÃ‚Â² ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚ÂªÃ¢â‚¬ÂºÃƒÂ Ã‚Â«Ã¢â€šÂ¬, ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¦ ÃƒÂ Ã‚ÂªÃ‚Â¨ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ‚Â¤ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¹ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price ÃƒÂ Ã‚ÂªÃ¢â‚¬Å“ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚Â«Ã‚Â ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡.',
     marathi:
-        '$days दिवसांच्या ट्रायलनंतर, रद्द न केल्यास दर महिन्याला $price ऑटो रिन्यू होईल.',
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â°, ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¦ ÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ $price ÃƒÂ Ã‚Â¤Ã¢â‚¬ËœÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‹â€ ÃƒÂ Ã‚Â¤Ã‚Â².',
     meitei:
         '$days numit trial tungda cancel touroidrabadi tha khuding $price auto renew tougani.',
     mizo:
         '$days ni trial zawhah cancel loh chuan thla tin $price auto renew a ni ang.',
-    odia: '$days ଦିନ ଟ୍ରାୟାଲ୍ ପରେ, ବାତିଲ୍ ନକଲେ ମାସକୁ $price ଅଟୋ ରିନ୍ୟୁ ହେବ।',
+    odia:
+        '$days ÃƒÂ Ã‚Â¬Ã‚Â¦ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡, ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚Â $price ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¥Ã‚Â¤',
     punjabi:
-        '$days ਦਿਨਾਂ ਦੇ ਟ੍ਰਾਇਲ ਤੋਂ ਬਾਅਦ, ਰੱਦ ਨਾ ਕੀਤਾ ਤਾਂ $price/ਮਹੀਨਾ ਆਟੋ ਰੀਨਿਊ ਹੋਵੇਗਾ।',
-    nepali: '$days दिनको ट्रायलपछि, रद्द नगरेमा $price/महिना अटो रिन्यु हुन्छ।',
+        '$days ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã‚Â² ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¬ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â¦, ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã‚Â±ÃƒÂ Ã‚Â¨Ã‚Â¦ ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â¨Ã‚Â¾ ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ $price/ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã…Â  ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚ÂµÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã¢â‚¬â€ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¥Ã‚Â¤',
+    nepali:
+        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã¢â‚¬ÂºÃƒÂ Ã‚Â¤Ã‚Â¿, ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¦ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ $price/ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¥Ã‚Â ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã¢â‚¬ÂºÃƒÂ Ã‚Â¥Ã‚Â¤',
     bengali:
-        '$days দিনের ট্রায়ালের পরে, বাতিল না করলে $price/মাসে অটো রিনিউ হবে।',
+        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡, ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â² ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price/ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã¢â‚¬Â° ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¥Ã‚Â¤',
     kashmiri:
-        '$days دۄہ ٹرایل پتہٕ، کینسل نہٕ کرنہٕ صورتس منز $price/مہینہٕ آٹو رینیو گژھن۔',
+        '$days ÃƒËœÃ‚Â¯Ãƒâ€ºÃ¢â‚¬Å¾Ãƒâ€ºÃ‚Â Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â±ÃƒËœÃ‚Â§Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Å¾ Ãƒâ„¢Ã‚Â¾ÃƒËœÃ‚ÂªÃƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ÃƒËœÃ…â€™ ÃƒÅ¡Ã‚Â©Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â³Ãƒâ„¢Ã¢â‚¬Å¾ Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ ÃƒËœÃ‚ÂµÃƒâ„¢Ã‹â€ ÃƒËœÃ‚Â±ÃƒËœÃ‚ÂªÃƒËœÃ‚Â³ Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â² $price/Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ€ºÃ‚ÂÃƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ ÃƒËœÃ‚Â¢Ãƒâ„¢Ã‚Â¹Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€  ÃƒÅ¡Ã‚Â¯ÃƒÅ¡Ã‹Å“ÃƒÅ¡Ã‚Â¾Ãƒâ„¢Ã¢â‚¬Â Ãƒâ€ºÃ¢â‚¬Â',
     ladakhi:
-        '$days ཉིན trial རྗེས cancel མ་བྱས་ན $price/month auto renew འགྱུར།',
+        '$days ÃƒÂ Ã‚Â½Ã¢â‚¬Â°ÃƒÂ Ã‚Â½Ã‚Â²ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ trial ÃƒÂ Ã‚Â½Ã‚Â¢ÃƒÂ Ã‚Â¾Ã¢â‚¬â€ÃƒÂ Ã‚Â½Ã‚ÂºÃƒÂ Ã‚Â½Ã‚Â¦ cancel ÃƒÂ Ã‚Â½Ã‹Å“ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã¢â‚¬â€œÃƒÂ Ã‚Â¾Ã‚Â±ÃƒÂ Ã‚Â½Ã‚Â¦ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ $price/month auto renew ÃƒÂ Ã‚Â½Ã‚Â ÃƒÂ Ã‚Â½Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¾Ã‚Â±ÃƒÂ Ã‚Â½Ã‚Â´ÃƒÂ Ã‚Â½Ã‚Â¢ÃƒÂ Ã‚Â¼Ã‚Â',
   );
 }
 
 String _subscriptionTermsLabelAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'నిబంధనలు',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚Â¬ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â§ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â',
     english: 'Terms',
-    hindi: 'नियम',
-    tamil: 'விதிமுறைகள்',
-    kannada: 'ನಿಯಮಗಳು',
-    malayalam: 'നിബന്ധനകൾ',
-    assamese: 'চৰ্তসমূহ',
-    konkani: 'नियम',
-    gujarati: 'નિયમો',
-    marathi: 'नियम',
+    hindi: 'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â®',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â³Ã‚Â',
+    malayalam:
+        'ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚Â¬ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â§ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚Â¾',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã…Â¡ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â§Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¦Ã‚Â¹',
+    konkani: 'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â®',
+    gujarati: 'ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹',
+    marathi: 'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â®',
     meitei: 'Terms',
     mizo: 'Terms',
-    odia: 'ନିୟମ',
-    punjabi: 'ਨਿਯਮ',
-    nepali: 'नियम',
-    bengali: 'শর্তাবলী',
-    kashmiri: 'شرط',
+    odia: 'ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â®',
+    punjabi: 'ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¯ÃƒÂ Ã‚Â¨Ã‚Â®',
+    nepali: 'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â®',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â€šÂ¬',
+    kashmiri: 'ÃƒËœÃ‚Â´ÃƒËœÃ‚Â±ÃƒËœÃ‚Â·',
     ladakhi: 'Terms',
   );
 }
 
 String _subscriptionSkipLabelAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'స్కిప్',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚Â',
     english: 'Skip',
-    hindi: 'छोड़ें',
-    tamil: 'தவிர்',
-    kannada: 'ಸ್ಕಿಪ್',
-    malayalam: 'സ്കിപ്പ്',
-    assamese: 'এৰি যাওক',
-    konkani: 'सोडून दिवचें',
-    gujarati: 'સ્કિપ',
-    marathi: 'वगळा',
+    hindi:
+        'ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂºÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¼ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
+    tamil: 'ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚Â',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã‚Â',
+    malayalam:
+        'ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ‚Â',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚ÂÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¥Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã…Â¡ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
+    gujarati: 'ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Âª',
+    marathi: 'ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â³ÃƒÂ Ã‚Â¤Ã‚Â¾',
     meitei: 'Skip',
     mizo: 'Skip',
-    odia: 'ସ୍କିପ୍',
-    punjabi: 'ਛੱਡੋ',
-    nepali: 'छोड्नुहोस्',
-    bengali: 'স্কিপ',
-    kashmiri: 'سکپ',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã‚Â',
+    punjabi: 'ÃƒÂ Ã‚Â¨Ã¢â‚¬ÂºÃƒÂ Ã‚Â©Ã‚Â±ÃƒÂ Ã‚Â¨Ã‚Â¡ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂºÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚Â',
+    bengali: 'ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Âª',
+    kashmiri: 'ÃƒËœÃ‚Â³ÃƒÅ¡Ã‚Â©Ãƒâ„¢Ã‚Â¾',
     ladakhi: 'Skip',
   );
 }
 
 String _subscriptionButtonLabelAppLocalized(BuildContext context) {
   return context.strings.localized(
-    telugu: 'సబ్‌స్క్రైబ్ చేయండి',
+    telugu:
+        'ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â¬ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‹â€ ÃƒÂ Ã‚Â°Ã‚Â¬ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿',
     english: 'Subscribe',
-    hindi: 'सदस्यता लें',
-    tamil: 'சந்தா செலுத்து',
-    kannada: 'ಚಂದಾದಾರರಾಗಿ',
-    malayalam: 'സബ്സ്ക്രൈബ് ചെയ്യുക',
-    assamese: 'সদস্যতা লওক',
-    konkani: 'सदस्यता घेयात',
-    gujarati: 'સબ્સ્ક્રાઇબ કરો',
-    marathi: 'सदस्यता घ्या',
+    hindi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
+    tamil:
+        'ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¾ ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â¯Ã¢â‚¬Â ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â',
+    kannada:
+        'ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¿',
+    malayalam:
+        'ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã‚Â¬ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ‹â€ ÃƒÂ Ã‚Â´Ã‚Â¬ÃƒÂ Ã‚ÂµÃ‚Â ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢',
+    assamese:
+        'ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢',
+    konkani:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‹Å“ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤',
+    gujarati:
+        'ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¬ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â¬ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹',
+    marathi:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‹Å“ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾',
     meitei: 'Subscribe tou',
     mizo: 'Subscribe rawh',
-    odia: 'ସବସ୍କ୍ରାଇବ୍ କରନ୍ତୁ',
-    punjabi: 'ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ',
-    nepali: 'सदस्यता लिनुहोस्',
-    bengali: 'সাবস্ক্রাইব করুন',
-    kashmiri: 'سبسکرایب کٔریو',
-    ladakhi: 'Subscribe བྱེད།',
+    odia:
+        'ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚Â',
+    punjabi:
+        'ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¬ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‹â€ ÃƒÂ Ã‚Â¨Ã‚Â¬ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹',
+    nepali:
+        'ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚Â',
+    bengali:
+        'ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¬ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨',
+    kashmiri:
+        'ÃƒËœÃ‚Â³ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â³ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±ÃƒËœÃ‚Â§Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â¨ ÃƒÅ¡Ã‚Â©Ãƒâ„¢Ã¢â‚¬ÂÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€ ',
+    ladakhi:
+        'Subscribe ÃƒÂ Ã‚Â½Ã¢â‚¬â€œÃƒÂ Ã‚Â¾Ã‚Â±ÃƒÂ Ã‚Â½Ã‚ÂºÃƒÂ Ã‚Â½Ã¢â‚¬ËœÃƒÂ Ã‚Â¼Ã‚Â',
   );
 }
 
 String _posterShareLabel(BuildContext context) {
-  return context.strings.localized(telugu: 'à°·à±‡à°°à±', english: 'Share');
+  return context.strings.localized(
+    telugu:
+        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
+    english: 'Share',
+  );
 }
 
 class _VideoSideActions extends StatelessWidget {
@@ -14110,7 +11796,7 @@ class _PoliticalProtocolPhotoScreenState
           content: Text(
             context.strings.localized(
               telugu:
-                  'à°®à±Šà°¤à±à°¤à°‚ 6 à°«à±‹à°Ÿà±‹à°²à± à°®à°¾à°¤à±à°°à°®à±‡ à°ªà±†à°Ÿà±à°Ÿà°µà°šà±à°šà±.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ 6 ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â.',
               english: 'You can add up to 6 photos only.',
             ),
           ),
@@ -14119,7 +11805,8 @@ class _PoliticalProtocolPhotoScreenState
       return;
     }
     final cropTitle = context.strings.localized(
-      telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+      telugu:
+          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
       english: 'Crop Photo',
     );
     setState(() => _busy = true);
@@ -14192,7 +11879,7 @@ class _PoliticalProtocolPhotoScreenState
           content: Text(
             context.strings.localized(
               telugu:
-                  'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
               english: 'Could not add the photo. Please try again.',
             ),
           ),
@@ -15543,6 +13230,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   ValueNotifier<List<String>>? _manualProtocolPhotoNotifier;
   ValueNotifier<List<PoliticalProtocolSlot>>? _manualProtocolPhotoSlotNotifier;
   bool _directTrialPurchaseBusy = false;
+  int _localViewCountDelta = 0;
+  int _localShareCountDelta = 0;
+  int _localDownloadCountDelta = 0;
+  bool _localViewMarked = false;
 
   _TemplateItem get item => widget.item;
   BuildContext get hostContext => widget.hostContext;
@@ -15559,6 +13250,29 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   int get posterRenderCycle => widget.posterRenderCycle;
   SubscriptionBackendService get _subscriptionBackendService =>
       _TemplateFeedItem.subscriptionBackendService;
+
+  void _markLocalViewCounted() {
+    if (_localViewMarked) {
+      return;
+    }
+    setState(() {
+      _localViewMarked = true;
+      _localViewCountDelta = 1;
+    });
+  }
+
+  void _bumpLocalEngagementCount(String action) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      if (action == 'share') {
+        _localShareCountDelta += 1;
+      } else if (action == 'download') {
+        _localDownloadCountDelta += 1;
+      }
+    });
+  }
 
   bool _isCurrentJokesPoster() {
     final signals = <String>{};
@@ -15793,16 +13507,36 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _syncManualProtocolPhotoScope();
     _syncPoliticalProtocolPhotos();
     unawaited(_loadHiddenDefaultProtocolPhotoUrls());
-    unawaited(_preloadHomeExportRewardedAdIfEnabled());
-    if (item.isVideo && playbackEnabled) {
+    unawaited(_preloadHomeExportRewardedAdAfterFirstSettledFrames());
+    if (playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
+        if (mounted && playbackEnabled) {
+          _markLocalViewCounted();
         }
-        _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: false);
-        _scheduleVideoWarmupRetries();
       });
     }
+    if (item.isVideo && playbackEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_scheduleVideoWarmupAfterSettledFrames());
+      });
+    }
+  }
+
+  Future<void> _preloadHomeExportRewardedAdAfterFirstSettledFrames() async {
+    await Future<void>.delayed(const Duration(seconds: 45));
+    if (!mounted) {
+      return;
+    }
+    await _preloadHomeExportRewardedAdIfEnabled();
+  }
+
+  Future<void> _scheduleVideoWarmupAfterSettledFrames() async {
+    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    if (!mounted || !playbackEnabled) {
+      return;
+    }
+    _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: true);
+    _scheduleVideoWarmupRetries();
   }
 
   @override
@@ -15810,6 +13544,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.playbackEnabled != widget.playbackEnabled) {
       updateKeepAlive();
+    }
+    if (oldWidget.item.templateId != widget.item.templateId) {
+      _localViewCountDelta = 0;
+      _localShareCountDelta = 0;
+      _localDownloadCountDelta = 0;
+      _localViewMarked = false;
+    }
+    if (!oldWidget.playbackEnabled && widget.playbackEnabled) {
+      _markLocalViewCounted();
     }
     if (oldWidget.enablePoliticalProtocolOverlay !=
             widget.enablePoliticalProtocolOverlay ||
@@ -15839,22 +13582,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       _invalidatePreparedPosterCache(cancelVideoExport: item.isVideo);
       if (item.isVideo && playbackEnabled) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
-            return;
-          }
-          _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: false);
-          _scheduleVideoWarmupRetries();
+          unawaited(_scheduleVideoWarmupAfterSettledFrames());
         });
       }
     } else if (item.isVideo &&
         !oldWidget.playbackEnabled &&
         widget.playbackEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        _scheduleVideoWarmup(requireReady: false, allowScrollDeferral: false);
-        _scheduleVideoWarmupRetries();
+        unawaited(_scheduleVideoWarmupAfterSettledFrames());
       });
     }
   }
@@ -16186,7 +13921,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     Text(
                       strings.localized(
                         telugu:
-                            'à°¬à±à°¯à°¾à°•à±â€Œà°—à±à°°à±Œà°‚à°¡à± à°¤à±Šà°²à°—à°¿à°¸à±à°¤à±‹à°‚à°¦à°¿...',
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€¦Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿...',
                         english: 'Removing background...',
                       ),
                       style: const TextStyle(
@@ -16236,7 +13971,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         uiSettings: <PlatformUiSettings>[
           AndroidUiSettings(
             toolbarTitle: strings.localized(
-              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+              telugu:
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
               english: 'Crop Photo',
             ),
             toolbarColor: const Color(0xFF0F172A),
@@ -16248,7 +13984,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           ),
           IOSUiSettings(
             title: strings.localized(
-              telugu: 'à°«à±‹à°Ÿà±‹ à°•à±à°°à°¾à°ªà± à°šà±‡à°¯à°‚à°¡à°¿',
+              telugu:
+                  'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿',
               english: 'Crop Photo',
             ),
             aspectRatioLockEnabled: false,
@@ -16310,7 +14047,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°¾à°‚, à°•à°¾à°¨à±€ background remove à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°•à°¾à°²à±‡à°¦à±. à°‡à°ªà±à°ªà°Ÿà°¿à°•à°¿ original photo à°µà°¾à°¡à±à°¤à±à°¨à±à°¨à°¾à°‚.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ background remove ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ original photo ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡.',
             english:
                 'Photo was added, but background removal did not complete. Using the original photo for now.',
           ),
@@ -16325,7 +14062,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'à°…à°¦à°¨à°ªà± à°«à±‹à°Ÿà±‹ à°œà±‹à°¡à°¿à°‚à°šà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡.',
             english: 'Could not add the extra photo.',
           ),
         );
@@ -16961,6 +14698,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return FirebaseAuth.instance.currentUser != null;
   }
 
+  bool _isAuthenticated() {
+    return FirebaseAuth.instance.currentUser != null;
+  }
+
   bool _shouldRunBlockingSubscriptionStatusCheck() {
     if (!_canAttemptLiveSubscriptionStatusCheck()) {
       return false;
@@ -16972,6 +14713,25 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     // users can otherwise see a false paywall on download/share. If we have
     // a logged-in user, do one live backend check before showing the plan.
     return true;
+  }
+
+  Future<bool> _ensureAuthenticatedForPosterAction(
+    BuildContext context, {
+    required String actionLabel,
+  }) async {
+    if (_isAuthenticated()) {
+      return true;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    _showSnack(
+      messenger,
+      context.strings.localized(
+        telugu: '$actionLabel చేయడానికి ముందుగా లాగిన్ చేయండి.',
+        english: 'Please login before $actionLabel.',
+      ),
+    );
+    await Navigator.of(context).pushNamed(AppRoutes.login);
+    return false;
   }
 
   bool get _legacySubscriptionStatusPopupEnabled => false;
@@ -18029,6 +15789,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   void _recordPosterExportEngagement({required bool isShare}) {
+    _bumpLocalEngagementCount(isShare ? 'share' : 'download');
     widget.onInteraction?.call(item, isShare ? 'share' : 'download');
     final posterId = item.templateId?.trim();
     if (posterId == null || posterId.isEmpty) {
@@ -18132,16 +15893,16 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       child: Text(
                         screenContext.strings.localized(
                           telugu:
-                              'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°¸à±à°Ÿà±‡à°Ÿà°¸à± à°¤à°¨à°¿à°–à±€ à°šà±‡à°¸à±à°¤à±à°¨à±à°¨à°¾à°‚...',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                           english: 'Checking subscription status...',
                           hindi:
-                              'à¤¸à¤¬à¥à¤¸à¤•à¥à¤°à¤¿à¤ªà¥à¤¶à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿ à¤œà¤¾à¤‚à¤š à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚...',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¨ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¥ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€¦Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€¹Ã¢â‚¬Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                           tamil:
-                              'à®šà®¨à¯à®¤à®¾ à®¨à®¿à®²à¯ˆ à®šà®°à®¿à®ªà®¾à®°à¯à®•à¯à®•à®¿à®±à¯‹à®®à¯...',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€¹Ã¢â‚¬Â  ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â±ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚Â...',
                           kannada:
-                              'à²šà²‚à²¦à²¾à²¦à²¾à²°à²¿à²•à³† à²¸à³à²¥à²¿à²¤à²¿ à²ªà²°à²¿à²¶à³€à²²à²¿à²¸à³à²¤à³à²¤à²¿à²¦à³à²¦à³‡à²µà³†...',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â  ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¥ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ...',
                           malayalam:
-                              'à´¸à´¬àµà´¸àµà´•àµà´°à´¿à´ªàµà´·àµ» à´¨à´¿à´² à´ªà´°à´¿à´¶àµ‹à´§à´¿à´•àµà´•àµà´¨àµà´¨àµ...',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚Â» ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â² ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚Â...',
                         ),
                         style: const TextStyle(
                           fontSize: 15,
@@ -18160,12 +15921,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                     },
                     child: Text(
                       screenContext.strings.localized(
-                        telugu: 'à°°à°¦à±à°¦à±',
+                        telugu:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                         english: 'Cancel',
-                        hindi: 'à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚',
-                        tamil: 'à®°à®¤à¯à®¤à¯à®šà¯†à®¯à¯',
-                        kannada: 'à²°à²¦à³à²¦à³à²®à²¾à²¡à²¿',
-                        malayalam: 'à´±à´¦àµà´¦à´¾à´•àµà´•àµà´•',
+                        hindi:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â¦ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¥ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¤ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡',
+                        tamil:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â®Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â¯Ãƒâ€šÃ‚Â',
+                        kannada:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â³Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â²Ãƒâ€šÃ‚Â¿',
+                        malayalam:
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â±ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚ÂµÃƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â´ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢',
                       ),
                     ),
                   ),
@@ -18336,58 +16102,73 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             builder: (context, constraints) {
                               final topCard = _FreeExportPreviewCard(
                                 title: context.strings.localized(
-                                  telugu: 'ఫోటో, పేరు తో',
+                                  telugu:
+                                      'ÃƒÂ Ã‚Â°Ã‚Â«ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹, ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹',
                                   english: 'With photo and name',
-                                  hindi: 'फोटो और नाम के साथ',
-                                  tamil: 'புகைப்படம் மற்றும் பெயருடன்',
-                                  kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ',
-                                  malayalam: 'ഫോട്ടോയും പേരും കൂടി',
-                                  assamese: 'ফটো আৰু নামসহ',
-                                  konkani: 'फोटो आनी नावासयत',
-                                  gujarati: 'ફોટો અને નામ સાથે',
-                                  marathi: 'फोटो आणि नावासह',
+                                  hindi:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â® ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¥',
+                                  tamil:
+                                      'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â¯Ã‚Â',
+                                  kannada:
+                                      'ÃƒÂ Ã‚Â²Ã‚Â«ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â³Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã…Â ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â ',
+                                  malayalam:
+                                      'ÃƒÂ Ã‚Â´Ã‚Â«ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ¢â‚¬Å¡ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚Â´Ã‚Â¿',
+                                  assamese:
+                                      'ÃƒÂ Ã‚Â¦Ã‚Â«ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¹',
+                                  konkani:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤',
+                                  gujarati:
+                                      'ÃƒÂ Ã‚ÂªÃ‚Â«ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¦ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â® ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡',
+                                  marathi:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â£ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¹',
                                   meitei: 'Photo amasung mingga',
                                   mizo: 'Photo leh hming nen',
-                                  odia: 'ଫଟୋ ଓ ନାମ ସହିତ',
-                                  punjabi: 'ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ',
-                                  nepali: 'फोटो र नामसहित',
-                                  bengali: 'ছবি ও নামসহ',
-                                  kashmiri: 'فوٹو تہٕ ناو سٲتھ',
+                                  odia:
+                                      'ÃƒÂ Ã‚Â¬Ã‚Â«ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¬Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â® ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¤',
+                                  punjabi:
+                                      'ÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â® ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â²',
+                                  nepali:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¤',
+                                  bengali:
+                                      'ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¹',
+                                  kashmiri:
+                                      'Ãƒâ„¢Ã‚ÂÃƒâ„¢Ã‹â€ Ãƒâ„¢Ã‚Â¹Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚ÂªÃƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚ÂªÃƒÅ¡Ã‚Â¾',
                                   ladakhi: 'Photo dang ming che',
                                 ),
                                 message: context.strings.localized(
-                                  telugu: 'ఫోటో, పేరు తో షేర్ చేయండి',
+                                  telugu:
+                                      'ÃƒÂ Ã‚Â°Ã‚Â«ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹, ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿',
                                   english: 'Share with photo and name',
                                   hindi:
-                                      '${SubscriptionPlanConfig.trialDays} दिनों तक फोटो और नाम के साथ शेयर करें',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â® ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¥ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
                                   tamil:
-                                      '${SubscriptionPlanConfig.trialDays} நாட்கள் புகைப்படம், பெயருடன் பகிருங்கள்',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â, ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â€žÂ¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â',
                                   kannada:
-                                      '${SubscriptionPlanConfig.trialDays} ದಿನಗಳು ಫೋಟೋ, ಹೆಸರಿನೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â«ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹, ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â³Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã…Â ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã…Â ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿',
                                   malayalam:
-                                      '${SubscriptionPlanConfig.trialDays} ദിവസം ഫോട്ടോയും പേരും ചേർത്ത് ഷെയർ ചെയ്യൂ',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã‚Â«ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚ÂµÃ‚Â¼ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚Â ÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚Â¼ ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ¢â‚¬Å¡',
                                   assamese:
-                                      '${SubscriptionPlanConfig.trialDays} দিন ফটো আৰু নামসহ শ্বেয়াৰ কৰক',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ ÃƒÂ Ã‚Â¦Ã‚Â«ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¹ ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢',
                                   konkani:
-                                      '${SubscriptionPlanConfig.trialDays} दिस फोटो आनी नावासयत शेअर करात',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤',
                                   gujarati:
-                                      '${SubscriptionPlanConfig.trialDays} દિવસ ફોટો અને નામ સાથે શેર કરો',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â«ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¦ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â® ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹',
                                   marathi:
-                                      '${SubscriptionPlanConfig.trialDays} दिवस फोटो आणि नावासह शेअर करा',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â£ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¹ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾',
                                   meitei:
                                       '${SubscriptionPlanConfig.trialDays} numit photo amasung mingga share tou',
                                   mizo:
                                       '${SubscriptionPlanConfig.trialDays} ni photo leh hming nen share rawh',
                                   odia:
-                                      '${SubscriptionPlanConfig.trialDays} ଦିନ ଫଟୋ ଓ ନାମ ସହିତ ସେୟାର କରନ୍ତୁ',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¬Ã‚Â¦ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ ÃƒÂ Ã‚Â¬Ã‚Â«ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¬Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â® ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¤ ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚Â',
                                   punjabi:
-                                      '${SubscriptionPlanConfig.trialDays} ਦਿਨ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਸ਼ੇਅਰ ਕਰੋ',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ ÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â® ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â² ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹',
                                   nepali:
-                                      '${SubscriptionPlanConfig.trialDays} दिन फोटो र नामसहित शेयर गर्नुहोस्',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚Â',
                                   bengali:
-                                      '${SubscriptionPlanConfig.trialDays} দিন ছবি ও নামসহ শেয়ার করুন',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¹ ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨',
                                   kashmiri:
-                                      '${SubscriptionPlanConfig.trialDays} دوہ فوٹو تہٕ ناو سٲتھ شیئر کریو',
+                                      '${SubscriptionPlanConfig.trialDays} ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ Ãƒâ€ºÃ‚Â Ãƒâ„¢Ã‚ÂÃƒâ„¢Ã‹â€ Ãƒâ„¢Ã‚Â¹Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚ÂªÃƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚ÂªÃƒÅ¡Ã‚Â¾ ÃƒËœÃ‚Â´Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â¦ÃƒËœÃ‚Â± ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€ ',
                                   ladakhi:
                                       '${SubscriptionPlanConfig.trialDays} nyin photo dang ming che share byed',
                                 ),
@@ -18409,47 +16190,73 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               );
                               final bottomCard = _FreeExportPreviewCard(
                                 title: context.strings.localized(
-                                  telugu: 'ఉచితంగా షేర్ చేయండి',
+                                  telugu:
+                                      'ÃƒÂ Ã‚Â°Ã¢â‚¬Â°ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã¢â‚¬â€ÃƒÂ Ã‚Â°Ã‚Â¾ ÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿',
                                   english: 'Share free',
-                                  hindi: 'मुफ्त शेयर करें',
-                                  tamil: 'இலவசமாக பகிருங்கள்',
-                                  kannada: 'ಉಚಿತವಾಗಿ ಹಂಚಿಕೊಳ್ಳಿ',
-                                  malayalam: 'സൗജന്യമായി ഷെയർ ചെയ്യൂ',
-                                  assamese: 'বিনামূল্যে শ্বেয়াৰ কৰক',
-                                  konkani: 'फुकट शेअर करात',
-                                  gujarati: 'મફતમાં શેર કરો',
-                                  marathi: 'मोफत शेअर करा',
+                                  hindi:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
+                                  tamil:
+                                      'ÃƒÂ Ã‚Â®Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â€žÂ¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â',
+                                  kannada:
+                                      'ÃƒÂ Ã‚Â²Ã¢â‚¬Â°ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¿ ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã…Â ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿',
+                                  malayalam:
+                                      'ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬â€ÃƒÂ Ã‚Â´Ã…â€œÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â¿ ÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚Â¼ ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ¢â‚¬Å¡',
+                                  assamese:
+                                      'ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â§Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢',
+                                  konkani:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã…Â¸ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤',
+                                  gujarati:
+                                      'ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â«ÃƒÂ Ã‚ÂªÃ‚Â¤ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ¢â‚¬Å¡ ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹',
+                                  marathi:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾',
                                   meitei: 'Free oina share tou',
                                   mizo: 'Free-a share rawh',
-                                  odia: 'ମାଗଣାରେ ସେୟାର କରନ୍ତୁ',
-                                  punjabi: 'ਮੁਫ਼ਤ ਸ਼ੇਅਰ ਕਰੋ',
-                                  nepali: 'निःशुल्क शेयर गर्नुहोस्',
-                                  bengali: 'ফ্রি শেয়ার করুন',
-                                  kashmiri: 'مفت شیئر کریو',
+                                  odia:
+                                      'ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬â€ÃƒÂ Ã‚Â¬Ã‚Â£ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚Â',
+                                  punjabi:
+                                      'ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â©Ã‚ÂÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â¨Ã‚Â¤ ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹',
+                                  nepali:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã†â€™ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚Â',
+                                  bengali:
+                                      'ÃƒÂ Ã‚Â¦Ã‚Â«ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨',
+                                  kashmiri:
+                                      'Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã‚ÂÃƒËœÃ‚Âª ÃƒËœÃ‚Â´Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â¦ÃƒËœÃ‚Â± ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€ ',
                                   ladakhi: 'Free share byed',
                                 ),
                                 message: context.strings.localized(
-                                  telugu: 'పేరు, ఫోటో లేకుండా పోస్టర్ మాత్రమే',
+                                  telugu:
+                                      'ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â, ÃƒÂ Ã‚Â°Ã‚Â«ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¾ ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡',
                                   english:
                                       'Poster only, without name and photo',
-                                  hindi: 'केवल पोस्टर, नाम और फोटो के बिना',
+                                  hindi:
+                                      'ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â² ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â°, ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â® ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â¬ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾',
                                   tamil:
-                                      'பெயரும் புகைப்படமும் இல்லாமல் போஸ்டர் மட்டும்',
-                                  kannada: 'ಹೆಸರು, ಫೋಟೋ ಇಲ್ಲದೆ ಪೋಸ್ಟರ್ ಮಾತ್ರ',
+                                      'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â',
+                                  kannada:
+                                      'ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â³Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚Â, ÃƒÂ Ã‚Â²Ã‚Â«ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â²Ã¢â‚¬Â¡ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã¢â‚¬Â  ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â°',
                                   malayalam:
-                                      'പേര്, ഫോട്ടോ ഇല്ലാതെ പോസ്റ്റർ മാത്രം',
-                                  assamese: 'নাম আৰু ফটো নোহোৱাকৈ কেৱল পোষ্টাৰ',
-                                  konkani: 'नाव आनी फोटो नासतना फकत पोस्टर',
-                                  gujarati: 'નામ અને ફોટા વગર માત્ર પોસ્ટર',
-                                  marathi: 'नाव आणि फोटोशिवाय फक्त पोस्टर',
+                                      'ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ‚Â, ÃƒÂ Ã‚Â´Ã‚Â«ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ ÃƒÂ Ã‚Â´Ã¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ¢â‚¬Â  ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚Â¼ ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã¢â‚¬Å¡',
+                                  assamese:
+                                      'ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â® ÃƒÂ Ã‚Â¦Ã¢â‚¬Â ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã‚Â«ÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â§Ã‚Â±ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‹â€  ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â§Ã‚Â±ÃƒÂ Ã‚Â¦Ã‚Â² ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â°',
+                                  konkani:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Âµ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â°',
+                                  gujarati:
+                                      'ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â® ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¦ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ ÃƒÂ Ã‚ÂªÃ‚Â«ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚ÂªÃ‚Â¾ ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ¢â‚¬â€ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¤ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚ÂªÃ‚Â°',
+                                  marathi:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Âµ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â£ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¯ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â°',
                                   meitei:
                                       'Ming amasung photo yaodana poster khaktang',
                                   mizo: 'Hming leh photo tel lo poster chauh',
-                                  odia: 'ନାମ ଓ ଫଟୋ ବିନା କେବଳ ପୋଷ୍ଟର',
-                                  punjabi: 'ਨਾਮ ਤੇ ਫੋਟੋ ਬਿਨਾਂ ਸਿਰਫ਼ ਪੋਸਟਰ',
-                                  nepali: 'नाम र फोटो बिना पोस्टर मात्र',
-                                  bengali: 'নাম ও ছবি ছাড়া শুধু পোস্টার',
-                                  kashmiri: 'ناو تہٕ فوٹو بغیر صرف پوسٹر',
+                                  odia:
+                                      'ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â® ÃƒÂ Ã‚Â¬Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¬Ã‚Â«ÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¾ ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â³ ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â·ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â°',
+                                  punjabi:
+                                      'ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã‚Â® ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¨Ã‚Â¬ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â¨Ã‚Â¼ ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â¨Ã‚Â°',
+                                  nepali:
+                                      'ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â® ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã‚Â¬ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°',
+                                  bengali:
+                                      'ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â® ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã…â€œÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â§ÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â°',
+                                  kashmiri:
+                                      'Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â§Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚ÂªÃƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â¢ Ãƒâ„¢Ã‚ÂÃƒâ„¢Ã‹â€ Ãƒâ„¢Ã‚Â¹Ãƒâ„¢Ã‹â€  ÃƒËœÃ‚Â¨ÃƒËœÃ‚ÂºÃƒâ€ºÃ…â€™ÃƒËœÃ‚Â± ÃƒËœÃ‚ÂµÃƒËœÃ‚Â±Ãƒâ„¢Ã‚Â Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â±',
                                   ladakhi: 'Ming dang photo medpa poster tsam',
                                 ),
                                 accentColor: const Color(0xFF2563EB),
@@ -18491,23 +16298,37 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                           : const Icon(Icons.download_rounded),
                                       label: Text(
                                         context.strings.localized(
-                                          telugu: 'డౌన్‌లోడ్',
+                                          telugu:
+                                              'ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã‚Â',
                                           english: 'Download',
-                                          hindi: 'डाउनलोड',
-                                          tamil: 'பதிவிறக்கம்',
-                                          kannada: 'ಡೌನ್‌ಲೋಡ್',
-                                          malayalam: 'ഡൗൺലോഡ്',
-                                          assamese: 'ডাউনলোড',
-                                          konkani: 'डाउनलोड',
-                                          gujarati: 'ડાઉનલોડ',
-                                          marathi: 'डाउनलोड',
+                                          hindi:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡',
+                                          tamil:
+                                              'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â',
+                                          kannada:
+                                              'ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â³Ã…â€™ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ¢Ã¢â€šÂ¬Ã…â€™ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â³Ã‚Â',
+                                          malayalam:
+                                              'ÃƒÂ Ã‚Â´Ã‚Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬â€ÃƒÂ Ã‚ÂµÃ‚ÂºÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¡ÃƒÂ Ã‚ÂµÃ‚Â',
+                                          assamese:
+                                              'ÃƒÂ Ã‚Â¦Ã‚Â¡ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â°ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¡',
+                                          konkani:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡',
+                                          gujarati:
+                                              'ÃƒÂ Ã‚ÂªÃ‚Â¡ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ¢â‚¬Â°ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¡',
+                                          marathi:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡',
                                           meitei: 'Download',
                                           mizo: 'Download',
-                                          odia: 'ଡାଉନଲୋଡ୍',
-                                          punjabi: 'ਡਾਊਨਲੋਡ',
-                                          nepali: 'डाउनलोड',
-                                          bengali: 'ডাউনলোড',
-                                          kashmiri: 'ڈاؤنلوڈ',
+                                          odia:
+                                              'ÃƒÂ Ã‚Â¬Ã‚Â¡ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â¡ÃƒÂ Ã‚Â­Ã‚Â',
+                                          punjabi:
+                                              'ÃƒÂ Ã‚Â¨Ã‚Â¡ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã…Â ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¡',
+                                          nepali:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¡ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â°ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¡',
+                                          bengali:
+                                              'ÃƒÂ Ã‚Â¦Ã‚Â¡ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â°ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¡',
+                                          kashmiri:
+                                              'ÃƒÅ¡Ã‹â€ ÃƒËœÃ‚Â§ÃƒËœÃ‚Â¤Ãƒâ„¢Ã¢â‚¬Â Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ„¢Ã‹â€ ÃƒÅ¡Ã‹â€ ',
                                           ladakhi: 'Download',
                                         ),
                                       ),
@@ -18540,23 +16361,37 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                           : const Icon(Icons.ios_share_rounded),
                                       label: Text(
                                         context.strings.localized(
-                                          telugu: 'షేర్',
+                                          telugu:
+                                              'ÃƒÂ Ã‚Â°Ã‚Â·ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â',
                                           english: 'Share',
-                                          hindi: 'शेयर',
-                                          tamil: 'பகிர்',
-                                          kannada: 'ಹಂಚಿಕೆ',
-                                          malayalam: 'ഷെയർ',
-                                          assamese: 'শ্বেয়াৰ',
-                                          konkani: 'शेअर',
-                                          gujarati: 'શેર',
-                                          marathi: 'शेअर',
+                                          hindi:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â°',
+                                          tamil:
+                                              'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚Â',
+                                          kannada:
+                                              'ÃƒÂ Ã‚Â²Ã‚Â¹ÃƒÂ Ã‚Â²Ã¢â‚¬Å¡ÃƒÂ Ã‚Â²Ã…Â¡ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â³Ã¢â‚¬Â ',
+                                          malayalam:
+                                              'ÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚Â¼',
+                                          assamese:
+                                              'ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â°',
+                                          konkani:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â°',
+                                          gujarati:
+                                              'ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â°',
+                                          marathi:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â°',
                                           meitei: 'Share',
                                           mizo: 'Share',
-                                          odia: 'ସେୟାର',
-                                          punjabi: 'ਸ਼ੇਅਰ',
-                                          nepali: 'शेयर',
-                                          bengali: 'শেয়ার',
-                                          kashmiri: 'شیئر',
+                                          odia:
+                                              'ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â°',
+                                          punjabi:
+                                              'ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¨Ã‚Â°',
+                                          nepali:
+                                              'ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â°',
+                                          bengali:
+                                              'ÃƒÂ Ã‚Â¦Ã‚Â¶ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â°',
+                                          kashmiri:
+                                              'ÃƒËœÃ‚Â´Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â¦ÃƒËœÃ‚Â±',
                                           ladakhi: 'Share',
                                         ),
                                       ),
@@ -18594,23 +16429,36 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                             ),
                                             child: Text(
                                               context.strings.localized(
-                                                telugu: 'లేదా',
+                                                telugu:
+                                                    'ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â°Ã‚Â¾',
                                                 english: 'or',
-                                                hindi: 'या',
-                                                tamil: 'அல்லது',
-                                                kannada: 'ಅಥವಾ',
-                                                malayalam: 'അല്ലെങ്കിൽ',
-                                                assamese: 'অথবা',
-                                                konkani: 'वा',
-                                                gujarati: 'અથવા',
-                                                marathi: 'किंवा',
+                                                hindi:
+                                                    'ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾',
+                                                tamil:
+                                                    'ÃƒÂ Ã‚Â®Ã¢â‚¬Â¦ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â',
+                                                kannada:
+                                                    'ÃƒÂ Ã‚Â²Ã¢â‚¬Â¦ÃƒÂ Ã‚Â²Ã‚Â¥ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¾',
+                                                malayalam:
+                                                    'ÃƒÂ Ã‚Â´Ã¢â‚¬Â¦ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚ÂµÃ‚Â½',
+                                                assamese:
+                                                    'ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã‚Â¥ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾',
+                                                konkani:
+                                                    'ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾',
+                                                gujarati:
+                                                    'ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¦ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¾',
+                                                marathi:
+                                                    'ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾',
                                                 meitei: 'nattraga',
                                                 mizo: 'emaw',
-                                                odia: 'କିମ୍ବା',
-                                                punjabi: 'ਜਾਂ',
-                                                nepali: 'वा',
-                                                bengali: 'অথবা',
-                                                kashmiri: 'یا',
+                                                odia:
+                                                    'ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¬ÃƒÂ Ã‚Â¬Ã‚Â¾',
+                                                punjabi:
+                                                    'ÃƒÂ Ã‚Â¨Ã…â€œÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡',
+                                                nepali:
+                                                    'ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾',
+                                                bengali:
+                                                    'ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã‚Â¥ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾',
+                                                kashmiri: 'Ãƒâ€ºÃ…â€™ÃƒËœÃ‚Â§',
                                                 ladakhi: 'yangna',
                                               ),
                                               style: const TextStyle(
@@ -18706,63 +16554,105 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       hostContext.mounted ? hostContext : context,
     );
     final posterNotReadyMessage = context.strings.localized(
-      telugu: 'పోస్టర్ సిద్ధం కాలేదు. మళ్లీ ప్రయత్నించండి.',
+      telugu:
+          'ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â§ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â±Ã‚Â. ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â°Ã‚Â³ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¤ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿.',
       english: 'Poster is not ready. Please try again.',
-      hindi: 'पोस्टर तैयार नहीं है। फिर कोशिश करें।',
-      tamil: 'போஸ்டர் தயாராக இல்லை. மீண்டும் முயற்சிக்கவும்.',
-      kannada: 'ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-      malayalam: 'പോസ്റ്റർ തയ്യാറായിട്ടില്ല. വീണ്ടും ശ്രമിക്കുക.',
-      assamese: 'পোষ্টাৰ সাজু হোৱা নাই। পুনৰ চেষ্টা কৰক।',
-      konkani: 'पोस्टर तयार ना. परत प्रयत्न करात.',
-      gujarati: 'પોસ્ટર તૈયાર નથી. ફરી પ્રયાસ કરો.',
-      marathi: 'पोस्टर तयार नाही. पुन्हा प्रयत्न करा.',
+      hindi:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã‹â€ ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã‹â€ ÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¶ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¶ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      tamil:
+          'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ ÃƒÂ Ã‚Â®Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‹â€ . ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã¢â€šÂ¬ÃƒÂ Ã‚Â®Ã‚Â£ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â.',
+      kannada:
+          'ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â§ÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â². ÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã¢â‚¬Â  ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â¿.',
+      malayalam:
+          'ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚Â¼ ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â². ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚ÂµÃ¢â€šÂ¬ÃƒÂ Ã‚Â´Ã‚Â£ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã‚Â¶ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢.',
+      assamese:
+          'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã…â€œÃƒÂ Ã‚Â§Ã‚Â ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â§Ã‚Â±ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¡ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      konkani:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾. ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤.',
+      gujarati:
+          'ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â¤ÃƒÂ Ã‚Â«Ã‹â€ ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚Â«Ã¢â€šÂ¬. ÃƒÂ Ã‚ÂªÃ‚Â«ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â€šÂ¬ ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â‚¬Â¹.',
+      marathi:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬. ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¾.',
       meitei: 'Poster ready oidiramde. Amuk hotnou.',
       mizo: 'Poster a la ready lo. Han tum leh rawh.',
-      odia: 'ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ନୁହେଁ। ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
-      punjabi: 'ਪੋਸਟਰ ਤਿਆਰ ਨਹੀਂ ਹੈ। ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
-      nepali: 'पोस्टर तयार छैन। फेरि प्रयास गर्नुहोस्।',
-      bengali: 'পোস্টার প্রস্তুত নয়। আবার চেষ্টা করুন।',
-      kashmiri: 'پوسٹر تیار چھُ نٕہ۔ دوبار کوشش کریو۔',
+      odia:
+          'ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â·ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â£ÃƒÂ Ã‚Â¬Ã‚Â¿ ÃƒÂ Ã‚Â¬Ã…Â¡ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â·ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤',
+      punjabi:
+          'ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã‚Â¤ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã¢â‚¬Â ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã‹â€ ÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¨Ã‚Â«ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã‚Â¼ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      nepali:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬ÂºÃƒÂ Ã‚Â¥Ã‹â€ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â«ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¸ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤',
+      bengali:
+          'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¤ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¥Ã‚Â¤ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã…Â¡ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      kashmiri:
+          'Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â± ÃƒËœÃ‚ÂªÃƒâ€ºÃ…â€™ÃƒËœÃ‚Â§ÃƒËœÃ‚Â± ÃƒÅ¡Ã¢â‚¬Â ÃƒÅ¡Ã‚Â¾Ãƒâ„¢Ã‚Â Ãƒâ„¢Ã¢â‚¬Â Ãƒâ„¢Ã¢â‚¬Â¢Ãƒâ€ºÃ‚ÂÃƒâ€ºÃ¢â‚¬Â ÃƒËœÃ‚Â¯Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â¨ÃƒËœÃ‚Â§ÃƒËœÃ‚Â± ÃƒÅ¡Ã‚Â©Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â´ÃƒËœÃ‚Â´ ÃƒÅ¡Ã‚Â©ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã‹â€ Ãƒâ€ºÃ¢â‚¬Â',
       ladakhi: 'Poster ready med. Yang try byed.',
     );
     final posterSavedMessage = context.strings.localized(
-      telugu: 'పోస్టర్ గ్యాలరీలో సేవ్ అయింది.',
+      telugu:
+          'ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã¢â‚¬â€ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã¢â‚¬Â¦ÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â°Ã‚Â¿.',
       english: 'Poster saved to gallery.',
-      hindi: 'पोस्टर गैलरी में सेव हो गया।',
-      tamil: 'போஸ்டர் கேலரியில் சேமிக்கப்பட்டது.',
-      kannada: 'ಪೋಸ್ಟರ್ ಗ್ಯಾಲರಿಯಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
-      malayalam: 'പോസ്റ്റർ ഗാലറിയിൽ സേവ് ചെയ്തു.',
-      assamese: 'পোষ্টাৰ গ্যালাৰীত সেভ কৰা হ’ল।',
-      konkani: 'पोस्टर गॅलरींत सेव जाला.',
-      gujarati: 'પોસ્ટર ગેલેરીમાં સેવ થયું.',
-      marathi: 'पोस्टर गॅलरीत सेव झाले.',
+      hindi:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã‹â€ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Âµ ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      tamil:
+          'ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã¢â‚¬Â¹ÃƒÂ Ã‚Â®Ã‚Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã…Â¡ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â.',
+      kannada:
+          'ÃƒÂ Ã‚Â²Ã‚ÂªÃƒÂ Ã‚Â³Ã¢â‚¬Â¹ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã…Â¸ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚Â ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¿ ÃƒÂ Ã‚Â²Ã¢â‚¬Â°ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã¢â‚¬Â .',
+      malayalam:
+          'ÃƒÂ Ã‚Â´Ã‚ÂªÃƒÂ Ã‚ÂµÃ¢â‚¬Â¹ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚ÂµÃ‚Â¼ ÃƒÂ Ã‚Â´Ã¢â‚¬â€ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚ÂµÃ‚Â½ ÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚ÂµÃ‚Â ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ¢â‚¬Â ÃƒÂ Ã‚Â´Ã‚Â¯ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚ÂµÃ‚Â.',
+      assamese:
+          'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â·ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬â€ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã¢â€šÂ¬ÃƒÂ Ã‚Â¦Ã‚Â¤ ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â­ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¢ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      konkani:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Âµ ÃƒÂ Ã‚Â¤Ã…â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾.',
+      gujarati:
+          'ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚Â«Ã¢â‚¬Â¹ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚ÂªÃ‚Â° ÃƒÂ Ã‚ÂªÃ¢â‚¬â€ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â€šÂ¬ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ¢â‚¬Å¡ ÃƒÂ Ã‚ÂªÃ‚Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Âµ ÃƒÂ Ã‚ÂªÃ‚Â¥ÃƒÂ Ã‚ÂªÃ‚Â¯ÃƒÂ Ã‚Â«Ã‚ÂÃƒÂ Ã‚ÂªÃ¢â‚¬Å¡.',
+      marathi:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â¤ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Âµ ÃƒÂ Ã‚Â¤Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡.',
       meitei: 'Poster gallery-da save toure.',
       mizo: 'Poster gallery-ah save a ni.',
-      odia: 'ପୋଷ୍ଟର ଗ୍ୟାଲେରୀରେ ସେଭ୍ ହେଲା।',
-      punjabi: 'ਪੋਸਟਰ ਗੈਲਰੀ ਵਿੱਚ ਸੇਵ ਹੋ ਗਿਆ।',
-      nepali: 'पोस्टर ग्यालरीमा सेभ भयो।',
-      bengali: 'পোস্টার গ্যালারিতে সেভ হয়েছে।',
-      kashmiri: 'پوسٹر گیلری منز محفوظ گۆو۔',
+      odia:
+          'ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â­Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¬Ã‚Â·ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â° ÃƒÂ Ã‚Â¬Ã¢â‚¬â€ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â­Ã¢â€šÂ¬ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¬Ã‚Â¸ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â­ÃƒÂ Ã‚Â­Ã‚Â ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      punjabi:
+          'ÃƒÂ Ã‚Â¨Ã‚ÂªÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â¨Ã…Â¸ÃƒÂ Ã‚Â¨Ã‚Â° ÃƒÂ Ã‚Â¨Ã¢â‚¬â€ÃƒÂ Ã‚Â©Ã‹â€ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¨Ã‚ÂµÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â©Ã‚Â±ÃƒÂ Ã‚Â¨Ã…Â¡ ÃƒÂ Ã‚Â¨Ã‚Â¸ÃƒÂ Ã‚Â©Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã‚Âµ ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â‚¬Â¹ ÃƒÂ Ã‚Â¨Ã¢â‚¬â€ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã¢â‚¬Â ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      nepali:
+          'ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã…Â¸ÃƒÂ Ã‚Â¤Ã‚Â° ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â­ ÃƒÂ Ã‚Â¤Ã‚Â­ÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      bengali:
+          'ÃƒÂ Ã‚Â¦Ã‚ÂªÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã…Â¸ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã¢â‚¬â€ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¦Ã‚Â¸ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â­ ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã¢â‚¬ÂºÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      kashmiri:
+          'Ãƒâ„¢Ã‚Â¾Ãƒâ„¢Ã‹â€ ÃƒËœÃ‚Â³Ãƒâ„¢Ã‚Â¹ÃƒËœÃ‚Â± ÃƒÅ¡Ã‚Â¯Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™ Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã¢â‚¬Â ÃƒËœÃ‚Â² Ãƒâ„¢Ã¢â‚¬Â¦ÃƒËœÃ‚Â­Ãƒâ„¢Ã‚ÂÃƒâ„¢Ã‹â€ ÃƒËœÃ‚Â¸ ÃƒÅ¡Ã‚Â¯Ãƒâ€ºÃ¢â‚¬Â Ãƒâ„¢Ã‹â€ Ãƒâ€ºÃ¢â‚¬Â',
       ladakhi: 'Poster gallery nang save song.',
     );
     final galleryPermissionMessage = context.strings.localized(
-      telugu: 'గ్యాలరీ permission ఇవ్వలేదు.',
+      telugu:
+          'ÃƒÂ Ã‚Â°Ã¢â‚¬â€ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â¯ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ permission ÃƒÂ Ã‚Â°Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ÃƒÂ Ã‚Â°Ã‚Â¦ÃƒÂ Ã‚Â±Ã‚Â.',
       english: 'Gallery permission was denied.',
-      hindi: 'गैलरी अनुमति नहीं मिली।',
-      tamil: 'கேலரி அனுமதி மறுக்கப்பட்டது.',
-      kannada: 'ಗ್ಯಾಲರಿ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ.',
-      malayalam: 'ഗാലറി അനുമതി നിഷേധിച്ചു.',
-      assamese: 'গ্যালাৰী অনুমতি দিয়া হোৱা নাই।',
-      konkani: 'गॅलरी परवानगी न्हय मेळ्ळी.',
-      gujarati: 'ગેલેરી પરમિશન નકારી.',
-      marathi: 'गॅलरी परवानगी नाकारली.',
+      hindi:
+          'ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã‹â€ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      tamil:
+          'ÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã¢â‚¬Â¡ÃƒÂ Ã‚Â®Ã‚Â²ÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â®Ã‚Â¿ ÃƒÂ Ã‚Â®Ã¢â‚¬Â¦ÃƒÂ Ã‚Â®Ã‚Â©ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â®Ã‚Â¿ ÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â®Ã‚Â±ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚ÂªÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â®Ã‚Â¤ÃƒÂ Ã‚Â¯Ã‚Â.',
+      kannada:
+          'ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â¯ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ ÃƒÂ Ã‚Â²Ã¢â‚¬Â¦ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚Â®ÃƒÂ Ã‚Â²Ã‚Â¤ÃƒÂ Ã‚Â²Ã‚Â¿ ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬Â¢ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¸ÃƒÂ Ã‚Â²Ã‚Â²ÃƒÂ Ã‚Â²Ã‚Â¾ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â³Ã¢â‚¬Â .',
+      malayalam:
+          'ÃƒÂ Ã‚Â´Ã¢â‚¬â€ÃƒÂ Ã‚Â´Ã‚Â¾ÃƒÂ Ã‚Â´Ã‚Â²ÃƒÂ Ã‚Â´Ã‚Â±ÃƒÂ Ã‚Â´Ã‚Â¿ ÃƒÂ Ã‚Â´Ã¢â‚¬Â¦ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã‚Â®ÃƒÂ Ã‚Â´Ã‚Â¤ÃƒÂ Ã‚Â´Ã‚Â¿ ÃƒÂ Ã‚Â´Ã‚Â¨ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚Â·ÃƒÂ Ã‚ÂµÃ¢â‚¬Â¡ÃƒÂ Ã‚Â´Ã‚Â§ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã…Â¡ÃƒÂ Ã‚ÂµÃ‚Â.',
+      assamese:
+          'ÃƒÂ Ã‚Â¦Ã¢â‚¬â€ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â§Ã‚Â°ÃƒÂ Ã‚Â§Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â§Ã¢â‚¬Â¹ÃƒÂ Ã‚Â§Ã‚Â±ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      konkani:
+          'ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¹ÃƒÂ Ã‚Â¤Ã‚Â¯ ÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â³ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â³ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬.',
+      gujarati:
+          'ÃƒÂ Ã‚ÂªÃ¢â‚¬â€ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â²ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â€šÂ¬ ÃƒÂ Ã‚ÂªÃ‚ÂªÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚Â¶ÃƒÂ Ã‚ÂªÃ‚Â¨ ÃƒÂ Ã‚ÂªÃ‚Â¨ÃƒÂ Ã‚ÂªÃ¢â‚¬Â¢ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ‚Â°ÃƒÂ Ã‚Â«Ã¢â€šÂ¬.',
+      marathi:
+          'ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚ÂªÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬.',
       meitei: 'Gallery permission piramde.',
       mizo: 'Gallery permission pek a ni lo.',
-      odia: 'ଗ୍ୟାଲେରୀ ଅନୁମତି ମିଳିଲା ନାହିଁ।',
-      punjabi: 'ਗੈਲਰੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ।',
-      nepali: 'ग्यालरी अनुमति दिइएन।',
-      bengali: 'গ্যালারি অনুমতি দেওয়া হয়নি।',
-      kashmiri: 'گیلری اجازت نٕہ ملی۔',
+      odia:
+          'ÃƒÂ Ã‚Â¬Ã¢â‚¬â€ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â­Ã…Â¸ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â­Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â°ÃƒÂ Ã‚Â­Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â­Ã‚ÂÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¤ÃƒÂ Ã‚Â¬Ã‚Â¿ ÃƒÂ Ã‚Â¬Ã‚Â®ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â³ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â²ÃƒÂ Ã‚Â¬Ã‚Â¾ ÃƒÂ Ã‚Â¬Ã‚Â¨ÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã‚Â¹ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚ÂÃƒÂ Ã‚Â¥Ã‚Â¤',
+      punjabi:
+          'ÃƒÂ Ã‚Â¨Ã¢â‚¬â€ÃƒÂ Ã‚Â©Ã‹â€ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‚Â°ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¨Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¨Ã…â€œÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã…â€œÃƒÂ Ã‚Â¨Ã‚Â¼ÃƒÂ Ã‚Â¨Ã‚Â¤ ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¹ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â®ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â©Ã¢â€šÂ¬ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      nepali:
+          'ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¯ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â°ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â®ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã‚Â¿ ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚ÂÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      bengali:
+          'ÃƒÂ Ã‚Â¦Ã¢â‚¬â€ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â²ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â°ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã¢â‚¬Â¦ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â®ÃƒÂ Ã‚Â¦Ã‚Â¤ÃƒÂ Ã‚Â¦Ã‚Â¿ ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã¢â‚¬Å“ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¾ ÃƒÂ Ã‚Â¦Ã‚Â¹ÃƒÂ Ã‚Â¦Ã‚Â¯ÃƒÂ Ã‚Â¦Ã‚Â¼ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¥Ã‚Â¤',
+      kashmiri:
+          'ÃƒÅ¡Ã‚Â¯Ãƒâ€ºÃ…â€™Ãƒâ„¢Ã¢â‚¬Å¾ÃƒËœÃ‚Â±Ãƒâ€ºÃ…â€™ ÃƒËœÃ‚Â§ÃƒËœÃ‚Â¬ÃƒËœÃ‚Â§ÃƒËœÃ‚Â²ÃƒËœÃ‚Âª Ãƒâ„¢Ã¢â‚¬Â Ãƒâ„¢Ã¢â‚¬Â¢Ãƒâ€ºÃ‚Â Ãƒâ„¢Ã¢â‚¬Â¦Ãƒâ„¢Ã¢â‚¬Å¾Ãƒâ€ºÃ…â€™Ãƒâ€ºÃ¢â‚¬Â',
       ladakhi: 'Gallery permission ma thob.',
     );
     final plainShareText = _homePosterShareText();
@@ -18860,6 +16750,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<void> _onDownloadTap(BuildContext context) async {
+    if (
+        !await _ensureAuthenticatedForPosterAction(
+          context,
+          actionLabel: context.strings.localized(
+            telugu: 'డౌన్‌లోడ్',
+            english: 'download',
+          ),
+        )) {
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
     if (!_beginAction('download')) {
       return;
     }
@@ -18927,6 +16830,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             );
         result = saveResult.success;
         if (result) {
+          _bumpLocalEngagementCount('download');
           widget.onInteraction?.call(item, 'download');
           final posterId = item.templateId?.trim();
           if (posterId != null && posterId.isNotEmpty) {
@@ -18976,6 +16880,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           );
       result = saveResult.success;
       if (result) {
+        _bumpLocalEngagementCount('download');
         widget.onInteraction?.call(item, 'download');
         if (!kIsWeb) {
           unawaited(
@@ -19030,6 +16935,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<void> _onShareTap(BuildContext context) async {
+    if (
+        !await _ensureAuthenticatedForPosterAction(
+          context,
+          actionLabel: context.strings.localized(
+            telugu: 'షేర్',
+            english: 'share',
+          ),
+        )) {
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
     if (!_beginAction('share')) {
       return;
     }
@@ -19087,6 +17005,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
               ? null
               : box.localToGlobal(Offset.zero) & box.size,
         );
+        _bumpLocalEngagementCount('share');
         final posterId = item.templateId?.trim();
         if (posterId != null && posterId.isNotEmpty) {
           unawaited(
@@ -19135,6 +17054,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       );
       final posterId = item.templateId?.trim();
       if (posterId != null && posterId.isNotEmpty) {
+        _bumpLocalEngagementCount('share');
         unawaited(
           ApprovedCreatorTemplateService().incrementPosterEngagementCount(
             posterId: posterId,
@@ -19292,7 +17212,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à°¿à°¦à±à°§à°‚ à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english: 'Poster is not ready yet. Please try again.',
           ),
         );
@@ -19333,7 +17253,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'à°Žà°¡à°¿à°Ÿà°°à± à°“à°ªà±†à°¨à± à°•à°¾à°²à±‡à°¦à±. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â½ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
             english: 'Could not open editor. Please try again.',
           ),
         );
@@ -19341,6 +17261,74 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     } finally {
       _endAction();
     }
+  }
+
+  String _formatEngagementCount(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(value >= 10000000 ? 0 : 1)}M';
+    }
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(value >= 10000 ? 0 : 1)}K';
+    }
+    return value.toString();
+  }
+
+  int _displayCountWithLocalDelta(String kind, int localDelta) {
+    final baseDisplay = item.displayCountFor(kind);
+    return baseDisplay + math.max(0, localDelta);
+  }
+
+  Widget _buildPlainEngagementCount({
+    required IconData icon,
+    required int value,
+    required MainAxisAlignment alignment,
+  }) {
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: alignment,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 15, color: const Color(0xFF64748B)),
+          const SizedBox(width: 4),
+          Text(
+            _formatEngagementCount(value),
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPosterEngagementCounts() {
+    final localShareAndDownloadDelta =
+        _localShareCountDelta + _localDownloadCountDelta;
+    final shareAndDownloadCount =
+        item.displayCombinedEngagementCount() + localShareAndDownloadDelta;
+    final viewCount = math.max(
+      _displayCountWithLocalDelta('view', _localViewCountDelta),
+      shareAndDownloadCount + 1,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: <Widget>[
+          _buildPlainEngagementCount(
+            icon: Icons.visibility_rounded,
+            value: viewCount,
+            alignment: MainAxisAlignment.start,
+          ),
+          _buildPlainEngagementCount(
+            icon: Icons.send_rounded,
+            value: shareAndDownloadCount,
+            alignment: MainAxisAlignment.end,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildViewportItem(
@@ -19447,6 +17435,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   padding: EdgeInsets.only(top: 4),
                   child: LinearProgressIndicator(minHeight: 2),
                 ),
+              const SizedBox(height: 4),
+              _buildPosterEngagementCounts(),
               if (!item.isVideo) ...<Widget>[
                 const SizedBox(height: 3),
                 Row(
@@ -19488,11 +17478,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                      telugu:
+                                          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                                       english: 'Preparing...',
                                     )
                                   : strings.localized(
-                                      telugu: 'à°·à±‡à°°à±',
+                                      telugu:
+                                          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                                       english: 'Share',
                                     ),
                               style: const TextStyle(
@@ -19545,7 +17537,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                               label: Text(
                                 strings.localized(
-                                  telugu: 'à°«à±‹à°Ÿà±‹',
+                                  telugu:
+                                      'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹',
                                   english: 'Photo',
                                 ),
                                 style: TextStyle(
@@ -19609,7 +17602,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             label: Text(
                               isBusy
                                   ? strings.localized(
-                                      telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                      telugu:
+                                          'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                                       english: 'Preparing...',
                                     )
                                   : strings.downloadLabel,
@@ -19901,7 +17895,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                             const SizedBox(width: 4),
                             Text(
                               strings.localized(
-                                telugu: 'à°«à±‹à°Ÿà±‹',
+                                telugu:
+                                    'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹',
                                 english: 'Photo',
                               ),
                               style: TextStyle(
@@ -19978,11 +17973,13 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu:
+                                    'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                                 english: 'Preparing...',
                               )
                             : strings.localized(
-                                telugu: 'à°·à±‡à°°à±',
+                                telugu:
+                                    'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                                 english: 'Share',
                               ),
                         style: const TextStyle(
@@ -20036,7 +18033,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                         ),
                         label: Text(
                           strings.localized(
-                            telugu: 'à°«à±‹à°Ÿà±‹',
+                            telugu:
+                                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹',
                             english: 'Photo',
                           ),
                           style: TextStyle(
@@ -20100,7 +18098,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                       label: Text(
                         isBusy
                             ? strings.localized(
-                                telugu: 'à°¸à°¿à°¦à±à°§à°‚...',
+                                telugu:
+                                    'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â§ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡...',
                                 english: 'Preparing...',
                               )
                             : strings.downloadLabel,
@@ -20627,12 +18626,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                       return _ImageErrorState(
                         title: strings.localized(
                           telugu:
-                              'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                           english: 'Template image unavailable',
                         ),
                         subtitle: strings.localized(
                           telugu:
-                              'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                           english: 'Please refresh or try another template.',
                         ),
                       );
@@ -20643,12 +18642,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 return _ImageErrorState(
                   title: strings.localized(
                     telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
                     telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                     english: 'Please refresh or try another template.',
                   ),
                 );
@@ -20666,12 +18665,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                 child: _ImageErrorState(
                   title: strings.localized(
                     telugu:
-                        'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                     english: 'Template image unavailable',
                   ),
                   subtitle: strings.localized(
                     telugu:
-                        'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                        'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                     english: 'Please refresh or try another template.',
                   ),
                 ),
@@ -20711,12 +18710,12 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
                     return _ImageErrorState(
                       title: context.strings.localized(
                         telugu:
-                            'à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°šà°¿à°¤à±à°°à°‚ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
                         english: 'Template image unavailable',
                       ),
                       subtitle: context.strings.localized(
                         telugu:
-                            'à°°à°¿à°«à±à°°à±†à°·à± à°šà±‡à°¯à°‚à°¡à°¿ à°²à±‡à°¦à°¾ à°®à°°à±‹ à°Ÿà±†à°‚à°ªà±à°²à±‡à°Ÿà± à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+                            'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â·ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
                         english: 'Please refresh or try another template.',
                       ),
                     );
@@ -21651,7 +19650,8 @@ class _HomeExportManualAdDialogState extends State<_HomeExportManualAdDialog> {
                   ),
                   child: Text(
                     context.strings.localized(
-                      telugu: 'కొనసాగించండి',
+                      telugu:
+                          'ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã…Â ÃƒÂ Ã‚Â°Ã‚Â¨ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â°Ã‚Â¾ÃƒÂ Ã‚Â°Ã¢â‚¬â€ÃƒÂ Ã‚Â°Ã‚Â¿ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿',
                       english: 'Continue',
                     ),
                   ),
@@ -21999,6 +19999,8 @@ class _TemplateVideoPlayer extends StatefulWidget {
 }
 
 class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
+  static const Duration _initialVideoInitDelay = Duration(milliseconds: 900);
+
   VideoPlayerController? _controller;
   bool _hasError = false;
   bool _readyNotified = false;
@@ -22011,7 +20013,9 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeWhenSettled();
+      Future<void>.delayed(_initialVideoInitDelay, () {
+        _initializeWhenSettled();
+      });
     });
   }
 
@@ -22027,7 +20031,9 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       _lastReplayNotificationAt = null;
       unawaited(_disposeController());
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _initializeWhenSettled();
+        Future<void>.delayed(_initialVideoInitDelay, () {
+          _initializeWhenSettled();
+        });
       });
     } else if (oldWidget.playbackEnabled != widget.playbackEnabled) {
       unawaited(_applyPlaybackPolicy());
@@ -22179,11 +20185,12 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
       return _ImageErrorState(
         title: context.strings.localized(
           telugu:
-              'à°µà±€à°¡à°¿à°¯à±‹ à°…à°‚à°¦à±à°¬à°¾à°Ÿà±à°²à±‹ à°²à±‡à°¦à±',
+              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â',
           english: 'Video unavailable',
         ),
         subtitle: context.strings.localized(
-          telugu: 'à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
+          telugu:
+              'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â®ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â³ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿.',
           english: 'Please try again.',
         ),
       );
@@ -22197,11 +20204,14 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
     final videoSize = controller.value.size;
     final videoWidth = videoSize.width > 0 ? videoSize.width : 9.0;
     final videoHeight = videoSize.height > 0 ? videoSize.height : 16.0;
+    final aspectRatio = videoWidth > 0 && videoHeight > 0
+        ? videoWidth / videoHeight
+        : 9 / 16;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onOpenPreview ?? () => unawaited(_togglePlayback()),
       child: AspectRatio(
-        aspectRatio: 9 / 16,
+        aspectRatio: aspectRatio,
         child: Stack(
           fit: StackFit.expand,
           alignment: Alignment.center,
@@ -24967,12 +22977,17 @@ class _EmptyPosterGameStateState extends State<_EmptyPosterGameState> {
                 : _SnakeCountdownCard(
                     key: const ValueKey<String>('snake-countdown'),
                     label: strings.localized(
-                      telugu: 'పోస్టర్లు వచ్చే వరకు Snake game ఆడండి',
+                      telugu:
+                          'ÃƒÂ Ã‚Â°Ã‚ÂªÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã‚Â¸ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¸ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã‚Â ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã…Â¡ÃƒÂ Ã‚Â±Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â°Ã‚ÂµÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚Â Snake game ÃƒÂ Ã‚Â°Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã¢â‚¬Å¡ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â°Ã‚Â¿',
                       english: 'Play Snake while posters load',
-                      hindi: 'Posters आने तक Snake खेलें',
-                      tamil: 'Posters வரும் வரை Snake விளையாடுங்கள்',
-                      kannada: 'Posters ಬರುವವರೆಗೆ Snake ಆಡಿ',
-                      malayalam: 'Posters വരും വരെ Snake കളിക്കുക',
+                      hindi:
+                          'Posters ÃƒÂ Ã‚Â¤Ã¢â‚¬Â ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ Snake ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡',
+                      tamil:
+                          'Posters ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã‚Â®ÃƒÂ Ã‚Â¯Ã‚Â ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â°ÃƒÂ Ã‚Â¯Ã‹â€  Snake ÃƒÂ Ã‚Â®Ã‚ÂµÃƒÂ Ã‚Â®Ã‚Â¿ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‹â€ ÃƒÂ Ã‚Â®Ã‚Â¯ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â€žÂ¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚Â',
+                      kannada:
+                          'Posters ÃƒÂ Ã‚Â²Ã‚Â¬ÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã‚ÂÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚ÂµÃƒÂ Ã‚Â²Ã‚Â°ÃƒÂ Ã‚Â³Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  Snake ÃƒÂ Ã‚Â²Ã¢â‚¬Â ÃƒÂ Ã‚Â²Ã‚Â¡ÃƒÂ Ã‚Â²Ã‚Â¿',
+                      malayalam:
+                          'Posters ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â°ÃƒÂ Ã‚ÂµÃ¢â‚¬Â  Snake ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚Â´Ã‚Â³ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢',
                     ),
                     onPlay: () => setState(() => _gameStarted = true),
                   ),
@@ -25340,7 +23355,8 @@ class _SnakePosterGameCardState extends State<_SnakePosterGameCard> {
                                 ),
                                 child: Text(
                                   strings.localized(
-                                    telugu: 'మళ్లీ ఆడు',
+                                    telugu:
+                                        'ÃƒÂ Ã‚Â°Ã‚Â®ÃƒÂ Ã‚Â°Ã‚Â³ÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â±Ã¢â€šÂ¬ ÃƒÂ Ã‚Â°Ã¢â‚¬Â ÃƒÂ Ã‚Â°Ã‚Â¡ÃƒÂ Ã‚Â±Ã‚Â',
                                     english: 'Play again',
                                     hindi: 'Play again',
                                     tamil: 'Play again',

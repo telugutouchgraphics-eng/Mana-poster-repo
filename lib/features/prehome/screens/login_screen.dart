@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,12 +8,13 @@ import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
+import 'package:mana_poster/app/services/screen_security_service.dart';
+import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:mana_poster/features/prehome/screens/legal_document_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
-import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
-import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
+import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/widgets/app_screen_back_button.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/primary_button.dart';
@@ -30,26 +30,32 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with AppLanguageStateMixin, WidgetsBindingObserver {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _service = FirebaseAuthService();
-  final OnboardingAudioService _onboardingAudio = OnboardingAudioService();
-  final _formKey = GlobalKey<FormState>();
+  final FirebaseAuthService _service = FirebaseAuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  _AuthMode _mode = _AuthMode.login;
   bool _authBootstrapping = !FirebaseBootstrap.hasFirebaseApp;
   bool _loadingGoogle = false;
   bool _loadingEmail = false;
   bool _loadingReset = false;
+  bool _skipping = false;
+  bool _showOtherOptions = false;
   bool _showPassword = false;
+  _AuthMode _authMode = _AuthMode.login;
 
   bool get _isBusy =>
-      _authBootstrapping || _loadingGoogle || _loadingEmail || _loadingReset;
+      _authBootstrapping ||
+      _loadingGoogle ||
+      _loadingEmail ||
+      _loadingReset ||
+      _skipping;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(ScreenSecurityService.disableSecure());
     _stabilizeBottomSystemUi();
     unawaited(_prepareAuthDependencies());
   }
@@ -57,9 +63,9 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(ScreenSecurityService.enableSecure());
     _emailController.dispose();
     _passwordController.dispose();
-    unawaited(_onboardingAudio.dispose());
     super.dispose();
   }
 
@@ -112,15 +118,15 @@ class _LoginScreenState extends State<LoginScreen>
     }
     setState(() => _loadingGoogle = true);
     try {
-      final authResult = await _service.signInWithGoogle();
+      final AuthFlowResult authResult = await _service.signInWithGoogle();
       await _stabilizeBottomSystemUi();
       await _showFirst150TrialDialogIfNeeded(authResult);
       await _continueAfterAuth();
-    } catch (e) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      _showError(_messageForError(e));
+      _showError(_messageForError(error));
     } finally {
       if (mounted) {
         setState(() => _loadingGoogle = false);
@@ -132,33 +138,25 @@ class _LoginScreenState extends State<LoginScreen>
     if (_isBusy) {
       return;
     }
-    final formState = _formKey.currentState;
+    final FormState? formState = _formKey.currentState;
     if (formState == null || !formState.validate()) {
       return;
     }
-
     setState(() => _loadingEmail = true);
     try {
-      if (_mode == _AuthMode.login) {
-        final authResult = await _service.signInWithEmail(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-        await _showFirst150TrialDialogIfNeeded(authResult);
-      } else {
-        final authResult = await _service.signUpWithEmail(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
-        await _showFirst150TrialDialogIfNeeded(authResult);
-      }
+      final String email = _emailController.text.trim();
+      final String password = _passwordController.text;
+      final AuthFlowResult authResult = _authMode == _AuthMode.login
+          ? await _service.signInWithEmail(email: email, password: password)
+          : await _service.signUpWithEmail(email: email, password: password);
       await _stabilizeBottomSystemUi();
+      await _showFirst150TrialDialogIfNeeded(authResult);
       await _continueAfterAuth();
-    } catch (e) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      _showError(_messageForError(e));
+      _showError(_messageForError(error));
     } finally {
       if (mounted) {
         setState(() => _loadingEmail = false);
@@ -166,14 +164,65 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _showError(String message) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger
-      ..hideCurrentTopSnackBar()
-      ..showTopSnackBar(AppSnackBar.build(content: Text(message)));
+  Future<void> _sendPasswordReset() async {
+    if (_isBusy) {
+      return;
+    }
+    final String email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _showError(context.strings.validEmailError);
+      return;
+    }
+    setState(() => _loadingReset = true);
+    try {
+      await _service.sendPasswordResetEmail(email: email);
+      if (!mounted) {
+        return;
+      }
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentTopSnackBar()
+        ..showTopSnackBar(
+          AppSnackBar.build(content: Text(_LoginUiCopy(context.currentLanguage).resetSent(email))),
+        );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showError(_messageForError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _loadingReset = false);
+      }
+    }
   }
 
-  void _showSuccess(String message) {
+  Future<void> _skipNow() async {
+    if (_isBusy) {
+      return;
+    }
+    setState(() => _skipping = true);
+    try {
+      await _service.signOut();
+      await AppFlowService.persistLastKnownAuthUid(null);
+      await AppFlowService.loadSnapshot();
+      if (!mounted) {
+        return;
+      }
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    } finally {
+      if (mounted) {
+        setState(() => _skipping = false);
+      }
+    }
+  }
+
+  void _showError(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger
       ..hideCurrentTopSnackBar()
@@ -187,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen>
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
             context.strings.localized(
@@ -225,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   String _localizedAuthError(AuthFailure error) {
-    final strings = context.strings;
+    final AppStrings strings = context.strings;
     switch (error.code) {
       case 'invalid-email':
         return strings.validEmailError;
@@ -251,47 +300,33 @@ class _LoginScreenState extends State<LoginScreen>
           english: 'An account already exists with this email.',
         );
       case 'email-already-in-use-google':
+      case 'use-google-for-this-email':
         return strings.localized(
-          telugu:
-              'ఈ ఇమెయిల్ ఇప్పటికే Google login తో ఉంది. Google తోనే continue చేయండి.',
-          english:
-              'This email is already linked to Google Sign-In. Continue with Google.',
+          telugu: 'ఈ ఖాతాకు Google తోనే continue చేయాలి.',
+          english: 'Continue with Google for this account.',
         );
       case 'weak-password':
         return strings.passwordError;
-      case 'operation-not-allowed':
-        return strings.localized(
-          telugu: 'ఈ లాగిన్ విధానం ఇంకా అందుబాటులో లేదు.',
-          english: 'This sign-in method is not enabled yet.',
-        );
-      case 'unauthorized-domain':
-        return strings.localized(
-          telugu: 'ఈ డొమైన్ Firebase Authentication లో అనుమతించబడలేదు.',
-          english: 'This domain is not authorized in Firebase Authentication.',
-        );
       case 'popup-blocked':
         return strings.localized(
-          telugu:
-              'Google login popup block అయింది. Popups allow చేసి మళ్లీ ప్రయత్నించండి.',
-          english:
-              'Google Sign-In popup was blocked. Allow popups and try again.',
+          telugu: 'Google login popup block అయింది. మళ్లీ ప్రయత్నించండి.',
+          english: 'Google Sign-In popup was blocked. Try again.',
         );
       case 'popup-closed-by-user':
       case 'google-canceled':
         return strings.localized(
-          telugu: 'Google login పూర్తయ్యే ముందే మూసేశారు.',
-          english: 'Google Sign-In was canceled before completing sign-in.',
+          telugu: 'Google login cancel అయింది.',
+          english: 'Google Sign-In was canceled.',
         );
-      case 'cancelled-popup-request':
       case 'google-interrupted':
+      case 'cancelled-popup-request':
         return strings.localized(
           telugu: 'Google login మధ్యలో ఆగింది. మళ్లీ ప్రయత్నించండి.',
           english: 'Google Sign-In was interrupted. Please try again.',
         );
       case 'network-request-failed':
         return strings.localized(
-          telugu:
-              'ఇంటర్నెట్ సమస్య ఉంది. కనెక్షన్ చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
+          telugu: 'ఇంటర్నెట్ సమస్య ఉంది. కనెక్షన్ చెక్ చేయండి.',
           english: 'Network issue. Please check your internet connection.',
         );
       case 'too-many-requests':
@@ -301,34 +336,16 @@ class _LoginScreenState extends State<LoginScreen>
         );
       case 'google-sign-in-incomplete':
       case 'google-client-configuration-error':
-        return strings.localized(
-          telugu:
-              'Google login setup పూర్తిగా లేదు. కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి.',
-          english:
-              'Google Sign-In setup is incomplete. Please try again later.',
-        );
       case 'google-provider-configuration-error':
+        return strings.localized(
+          telugu: 'Google login setup పూర్తి కాలేదు.',
+          english: 'Google Sign-In setup is incomplete.',
+        );
       case 'google-ui-unavailable':
+      case 'unsupported-platform':
         return strings.localized(
           telugu: 'ఈ డివైస్‌లో Google login ప్రస్తుతం అందుబాటులో లేదు.',
           english: 'Google Sign-In is not available on this device right now.',
-        );
-      case 'google-user-mismatch':
-        return strings.localized(
-          telugu: 'Google account mismatch వచ్చింది. మళ్లీ sign in చేయండి.',
-          english: 'Signed-in account mismatch. Please sign in again.',
-        );
-      case 'use-google-for-this-email':
-        return strings.localized(
-          telugu:
-              'ఈ ఇమెయిల్ Google login తో register అయ్యింది. Google తోనే continue చేయండి.',
-          english:
-              'This email is registered with Google Sign-In. Continue with Google.',
-        );
-      case 'unsupported-platform':
-        return strings.localized(
-          telugu: 'ఈ build లో Google login support లేదు.',
-          english: 'Google Sign-In is not supported on this build.',
         );
       case 'not-configured':
         return strings.localized(
@@ -337,25 +354,17 @@ class _LoginScreenState extends State<LoginScreen>
         );
       case 'google-timeout':
         return strings.localized(
-          telugu:
-              'Google login ఎక్కువ సమయం తీసుకుంటోంది. ఇంటర్నెట్, Google Play Services చెక్ చేసి మళ్లీ ప్రయత్నించండి.',
-          english:
-              'Google Sign-In is taking too long. Check internet and Google Play Services, then try again.',
+          telugu: 'Google login ఎక్కువ సమయం తీసుకుంది. మళ్లీ ప్రయత్నించండి.',
+          english: 'Google Sign-In timed out. Please try again.',
         );
       case 'google-sign-in-failed':
       case 'google-unknown-error':
-        return strings.localized(
-          telugu: 'Google login విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
-          english: 'Google Sign-In failed. Please try again.',
-        );
       default:
-        final fallback = error.message.trim();
-        return fallback.isNotEmpty
-            ? fallback
+        return error.message.trim().isNotEmpty
+            ? error.message.trim()
             : strings.localized(
-                telugu:
-                    'à°‡à°‚à°•à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
-                english: 'Please try again.',
+                telugu: 'Google login విఫలమైంది. మళ్లీ ప్రయత్నించండి.',
+                english: 'Google Sign-In failed. Please try again.',
               );
     }
   }
@@ -375,50 +384,20 @@ class _LoginScreenState extends State<LoginScreen>
     Navigator.pushReplacementNamed(context, nextRoute);
   }
 
-  Future<void> _onForgotPassword() async {
-    if (_isBusy) {
-      return;
-    }
-
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      _showError(context.strings.validEmailError);
-      return;
-    }
-
-    setState(() => _loadingReset = true);
-    try {
-      await _service.sendPasswordResetEmail(email: email);
-      if (!mounted) {
-        return;
-      }
-      _showSuccess(_AuthUiCopy(context.currentLanguage).resetSuccess(email));
-    } catch (e) {
-      if (!mounted) {
-        return;
-      }
-      _showError(_messageForError(e));
-    } finally {
-      if (mounted) {
-        setState(() => _loadingReset = false);
-      }
-    }
-  }
-
   Future<void> _openLegalDocument(LegalDocumentType type) async {
-    final url = type == LegalDocumentType.privacyPolicy
+    final String url = type == LegalDocumentType.privacyPolicy
         ? AppPublicInfo.privacyPolicyUrl
         : AppPublicInfo.termsUrl;
-    final uri = Uri.tryParse(url);
+    final Uri? uri = Uri.tryParse(url);
     if (uri != null) {
-      final openedExternally = await launchUrl(
+      final bool openedExternally = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
       );
       if (openedExternally) {
         return;
       }
-      final openedInDefaultMode = await launchUrl(
+      final bool openedInDefaultMode = await launchUrl(
         uri,
         mode: LaunchMode.platformDefault,
       );
@@ -443,322 +422,382 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final strings = context.strings;
-    final isLogin = _mode == _AuthMode.login;
-    final authCopy = _AuthUiCopy(context.currentLanguage);
-    final cs = Theme.of(context).colorScheme;
-    final showGuideAudio = context.currentLanguage == AppLanguage.telugu;
+    final ThemeData theme = Theme.of(context);
+    final _LoginUiCopy copy = _LoginUiCopy(context.currentLanguage);
+    final String screenTitle = context.strings.localized(
+      telugu: 'మన పోస్టర్ AI',
+      english: 'Mana Poster AI',
+    );
+    final String screenSubtitle = context.strings.localized(
+      telugu:
+          'రోజువారీ పోస్టర్లు, కస్టమైజేషన్, షేర్ మరియు డౌన్‌లోడ్‌ల కోసం సురక్షితంగా కొనసాగండి.',
+      english:
+          'Continue securely to access daily posters, customization, sharing, and downloads.',
+    );
+    final String googleButtonLabel = context.strings.localized(
+      telugu: 'Google తో కొనసాగండి',
+      english: 'Continue with Google',
+    );
+    final String otherOptionsLabel = context.strings.localized(
+      telugu: 'ఇతర ఎంపికలు',
+      english: 'Other options',
+    );
+    final String skipNowLabel = context.strings.localized(
+      telugu: 'ప్రస్తుతం దాటవేయండి',
+      english: 'Skip now',
+    );
+    final String disclaimerLabel = context.strings.localized(
+      telugu: 'షేర్, డౌన్‌లోడ్ వంటి కొన్ని చర్యలకు తర్వాత లాగిన్ అవసరం కావచ్చు.',
+      english: 'Some actions like sharing and downloading may require login later.',
+    );
+    final String privacyLabel = context.strings.localized(
+      telugu: 'గోప్యతా విధానం',
+      english: 'Privacy Policy',
+    );
+    final String termsLabel = context.strings.localized(
+      telugu: 'నిబంధనలు',
+      english: 'Terms & Conditions',
+    );
+    final String andLabel = context.strings.localized(
+      telugu: 'మరియు',
+      english: 'and',
+    );
 
     return Scaffold(
       body: Stack(
         children: <Widget>[
           GradientShell(
-            child: GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: SafeArea(
-                child: Center(
+            child: SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 88, 24, 24),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 72, 20, 24),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                          boxShadow: const <BoxShadow>[
-                            BoxShadow(
-                              color: Color(0x120F172A),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: Form(
+                      key: _formKey,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            screenTitle,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF0F172A),
                             ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            screenSubtitle,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: const Color(0xFF475569),
+                              height: 1.45,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          if (_authBootstrapping) ...<Widget>[
+                            const LinearProgressIndicator(minHeight: 2),
+                            const SizedBox(height: 20),
                           ],
-                        ),
-                        child: Form(
-                          key: _formKey,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              Container(
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(999),
-                                  gradient: const LinearGradient(
-                                    colors: <Color>[
-                                      Color(0xFF14B8A6),
-                                      Color(0xFF38BDF8),
-                                      Color(0xFFA78BFA),
+                          FilledButton(
+                            onPressed: _isBusy ? null : _continueWithGoogle,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F766E),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 18,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                if (_loadingGoogle)
+                                  const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                else ...<Widget>[
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(999),
+                                      boxShadow: const <BoxShadow>[
+                                        BoxShadow(
+                                          color: Color(0x1F000000),
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipOval(
+                                      child: Image.asset(
+                                        'assets/branding/google_logo.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Text(
+                                    googleButtonLabel,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF0F766E),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            onPressed: _isBusy
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _showOtherOptions = !_showOtherOptions;
+                                    });
+                                  },
+                            icon: Icon(
+                              _showOtherOptions
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              otherOptionsLabel,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF0F766E),
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                                decorationColor: const Color(0xFF0F766E),
+                              ),
+                            ),
+                          ),
+                          AnimatedCrossFade(
+                            duration: const Duration(milliseconds: 180),
+                            crossFadeState: _showOtherOptions
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
+                            firstChild: const SizedBox.shrink(),
+                            secondChild: Column(
+                              children: <Widget>[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: _ModeChip(
+                                          label: copy.signInLabel,
+                                          selected: _authMode == _AuthMode.login,
+                                          onTap: _isBusy
+                                              ? null
+                                              : () {
+                                                  setState(
+                                                    () => _authMode = _AuthMode.login,
+                                                  );
+                                                },
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _ModeChip(
+                                          label: copy.signUpLabel,
+                                          selected: _authMode == _AuthMode.signup,
+                                          onTap: _isBusy
+                                              ? null
+                                              : () {
+                                                  setState(
+                                                    () => _authMode = _AuthMode.signup,
+                                                  );
+                                                },
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(
-                                isLogin
-                                    ? strings.loginLabel
-                                    : strings.signUpLabel,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                authCopy.formSubtitle(isLogin),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                              if (showGuideAudio) ...<Widget>[
-                                const SizedBox(height: 8),
-                                Align(
-                                  alignment: Alignment.center,
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      unawaited(
-                                        _onboardingAudio.toggleIfSupported(
-                                          language: context.currentLanguage,
-                                          cue: OnboardingAudioCue.login,
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.volume_up_rounded),
-                                    label: Text(
-                                      strings.localized(
-                                        telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
-                                        english: 'Replay voice guide',
-                                      ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  autofillHints: const <String>[AutofillHints.email],
+                                  decoration: InputDecoration(
+                                    hintText: copy.emailHint,
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    prefixIcon: const Icon(Icons.mail_outline_rounded),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
                                     ),
                                   ),
+                                  validator: (String? value) {
+                                    if (!_showOtherOptions) {
+                                      return null;
+                                    }
+                                    final String safeValue = (value ?? '').trim();
+                                    if (safeValue.isEmpty || !safeValue.contains('@')) {
+                                      return context.strings.validEmailError;
+                                    }
+                                    return null;
+                                  },
                                 ),
-                              ],
-                              const SizedBox(height: 18),
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  children: <Widget>[
-                                    Expanded(
-                                      child: _ModeChip(
-                                        label: strings.loginLabel,
-                                        selected: isLogin,
-                                        onTap: _isBusy
-                                            ? null
-                                            : () {
-                                                FocusScope.of(
-                                                  context,
-                                                ).unfocus();
-                                                setState(
-                                                  () => _mode = _AuthMode.login,
-                                                );
-                                              },
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: _ModeChip(
-                                        label: strings.signUpLabel,
-                                        selected: !isLogin,
-                                        onTap: _isBusy
-                                            ? null
-                                            : () {
-                                                FocusScope.of(
-                                                  context,
-                                                ).unfocus();
-                                                setState(
-                                                  () =>
-                                                      _mode = _AuthMode.signup,
-                                                );
-                                              },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                textCapitalization: TextCapitalization.none,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                autofillHints: const <String>[
-                                  AutofillHints.email,
-                                ],
-                                decoration: InputDecoration(
-                                  hintText: strings.emailAddress,
-                                  prefixIcon: const Icon(
-                                    Icons.mail_outline_rounded,
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                                validator: (v) {
-                                  final value = (v ?? '').trim();
-                                  if (value.isEmpty || !value.contains('@')) {
-                                    return strings.validEmailError;
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: !_showPassword,
-                                textInputAction: TextInputAction.done,
-                                keyboardType: TextInputType.visiblePassword,
-                                textCapitalization: TextCapitalization.none,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                autofillHints: isLogin
-                                    ? const <String>[AutofillHints.password]
-                                    : const <String>[AutofillHints.newPassword],
-                                onFieldSubmitted: (_) => _continueWithEmail(),
-                                decoration: InputDecoration(
-                                  hintText: strings.password,
-                                  prefixIcon: const Icon(
-                                    Icons.lock_outline_rounded,
-                                  ),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF8FAFC),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  suffixIcon: IconButton(
-                                    onPressed: () {
-                                      setState(
-                                        () => _showPassword = !_showPassword,
-                                      );
-                                    },
-                                    tooltip: authCopy.passwordVisibilityTooltip(
-                                      _showPassword,
-                                    ),
-                                    icon: Icon(
-                                      _showPassword
-                                          ? Icons.visibility_off_rounded
-                                          : Icons.visibility_rounded,
-                                    ),
-                                  ),
-                                ),
-                                validator: (v) {
-                                  final value = v ?? '';
-                                  if (value.trim().isEmpty) {
-                                    return authCopy.passwordRequired;
-                                  }
-                                  if (value.length < 6) {
-                                    return strings.passwordError;
-                                  }
-                                  return null;
-                                },
-                              ),
-                              if (isLogin) ...<Widget>[
-                                const SizedBox(height: 2),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: _loadingReset
-                                        ? null
-                                        : _onForgotPassword,
-                                    child: Text(strings.forgotPassword),
-                                  ),
-                                ),
-                              ],
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 180),
-                                child: _loadingReset
-                                    ? const Padding(
-                                        key: ValueKey<String>('reset-loading'),
-                                        padding: EdgeInsets.only(bottom: 8),
-                                        child: LinearProgressIndicator(
-                                          minHeight: 2,
-                                        ),
-                                      )
-                                    : const SizedBox(
-                                        key: ValueKey<String>('reset-space'),
-                                        height: 8,
-                                      ),
-                              ),
-                              if (_authBootstrapping) ...<Widget>[
-                                const SizedBox(height: 6),
-                                const LinearProgressIndicator(minHeight: 2),
                                 const SizedBox(height: 10),
-                              ],
-                              PrimaryButton(
-                                label: isLogin
-                                    ? strings.loginLabel
-                                    : strings.signUpLabel,
-                                icon: Icons.arrow_forward_rounded,
-                                loading: _loadingEmail,
-                                onPressed: _isBusy ? null : _continueWithEmail,
-                              ),
-                              const SizedBox(height: 10),
-                              OutlinedButton.icon(
-                                onPressed: _isBusy ? null : _continueWithGoogle,
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                ),
-                                icon: _loadingGoogle
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Image.asset(
-                                        'assets/branding/google_logo.png',
-                                        width: 20,
-                                        height: 20,
-                                        fit: BoxFit.contain,
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: !_showPassword,
+                                  textInputAction: TextInputAction.done,
+                                  autofillHints: _authMode == _AuthMode.login
+                                      ? const <String>[AutofillHints.password]
+                                      : const <String>[AutofillHints.newPassword],
+                                  onFieldSubmitted: (_) => _continueWithEmail(),
+                                  decoration: InputDecoration(
+                                    hintText: copy.passwordHint,
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _showPassword = !_showPassword;
+                                        });
+                                      },
+                                      icon: Icon(
+                                        _showPassword
+                                            ? Icons.visibility_off_rounded
+                                            : Icons.visibility_rounded,
                                       ),
-                                label: Text(strings.googleContinue),
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                spacing: 2,
-                                children: <Widget>[
-                                  TextButton(
-                                    onPressed: () => _openLegalDocument(
-                                      LegalDocumentType.privacyPolicy,
-                                    ),
-                                    child: Text(authCopy.privacyLabel),
-                                  ),
-                                  Text(
-                                    authCopy.andLabel,
-                                    style: TextStyle(
-                                      color: cs.onSurfaceVariant,
-                                      fontSize: 12,
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: () => _openLegalDocument(
-                                      LegalDocumentType.termsAndConditions,
+                                  validator: (String? value) {
+                                    if (!_showOtherOptions) {
+                                      return null;
+                                    }
+                                    final String safeValue = value ?? '';
+                                    if (safeValue.trim().isEmpty) {
+                                      return copy.passwordRequired;
+                                    }
+                                    if (safeValue.length < 6) {
+                                      return context.strings.passwordError;
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                if (_authMode == _AuthMode.login) ...<Widget>[
+                                  const SizedBox(height: 2),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _loadingReset ? null : _sendPasswordReset,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(0xFF0F766E),
+                                      ),
+                                      child: Text(copy.forgotPasswordLabel),
                                     ),
-                                    child: Text(authCopy.termsLabel),
                                   ),
                                 ],
+                                PrimaryButton(
+                                  label: _authMode == _AuthMode.login
+                                      ? copy.signInLabel
+                                      : copy.signUpLabel,
+                                  icon: Icons.arrow_forward_rounded,
+                                  loading: _loadingEmail,
+                                  onPressed: _isBusy ? null : _continueWithEmail,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: _isBusy ? null : _skipNow,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: const Color(0x330F172A),
+                              ),
+                              foregroundColor: const Color(0xFF0F172A),
+                            ),
+                            child: _skipping
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(skipNowLabel),
+                          ),
+                          const SizedBox(height: 18),
+                          Text(
+                            disclaimerLabel,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 2,
+                            children: <Widget>[
+                              TextButton(
+                                onPressed: () => _openLegalDocument(
+                                  LegalDocumentType.privacyPolicy,
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0F766E),
+                                ),
+                                child: Text(privacyLabel),
+                              ),
+                              Text(
+                                andLabel,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF64748B),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => _openLegalDocument(
+                                  LegalDocumentType.termsAndConditions,
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF0F766E),
+                                ),
+                                child: Text(termsLabel),
                               ),
                             ],
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -781,8 +820,8 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<String> _resolveBackRoute() async {
-    final hasRegion = await AppRegionService.hasSelection();
-    final snapshot = await AppFlowService.loadSnapshot();
+    final bool hasRegion = await AppRegionService.hasSelection();
+    final AppFlowSnapshot snapshot = await AppFlowService.loadSnapshot();
     if (!hasRegion) {
       return AppRoutes.language;
     }
@@ -790,6 +829,83 @@ class _LoginScreenState extends State<LoginScreen>
         ? AppRoutes.appLanguage
         : AppRoutes.language;
   }
+}
+
+class _LoginUiCopy {
+  const _LoginUiCopy(this.language);
+
+  final AppLanguage language;
+
+  String _localized({required String telugu, required String english}) =>
+      AppStrings(language).localized(telugu: telugu, english: english);
+
+  String get title => _localized(
+    telugu: 'Mana Poster లోకి రండి',
+    english: 'Continue to Mana Poster',
+  );
+
+  String get subtitle => _localized(
+    telugu: 'Google account తో వెంటనే login అవ్వండి లేదా ఇప్పటికైతే skip చేయండి.',
+    english: 'Continue with Google or skip for now.',
+  );
+
+  String get otherOptionsLabel => _localized(
+    telugu: 'Other options',
+    english: 'Other options',
+  );
+
+  String get signInLabel => _localized(
+    telugu: 'Sign in',
+    english: 'Sign in',
+  );
+
+  String get signUpLabel => _localized(
+    telugu: 'Sign up',
+    english: 'Sign up',
+  );
+
+  String get emailHint => _localized(
+    telugu: 'Email address',
+    english: 'Email address',
+  );
+
+  String get passwordHint => _localized(
+    telugu: 'Password',
+    english: 'Password',
+  );
+
+  String get forgotPasswordLabel => _localized(
+    telugu: 'Forgot password?',
+    english: 'Forgot password?',
+  );
+
+  String get passwordRequired => _localized(
+    telugu: 'పాస్‌వర్డ్ అవసరం',
+    english: 'Password is required',
+  );
+
+  String get skipNowLabel => _localized(
+    telugu: 'ఇప్పటికైతే Skip',
+    english: 'Skip now',
+  );
+
+  String get disclaimer => _localized(
+    telugu: 'Share, download లాంటి actions కి తర్వాత login అవసరం కావచ్చు.',
+    english: 'Some actions like share and download may require login later.',
+  );
+
+  String get privacyLabel =>
+      _localized(telugu: 'గోప్యతా విధానం', english: 'Privacy Policy');
+
+  String get termsLabel =>
+      _localized(telugu: 'నిబంధనలు', english: 'Terms & Conditions');
+
+  String get andLabel => _localized(telugu: 'మరియు', english: 'and');
+
+  String resetSent(String email) => _localized(
+    telugu: '$email కి password reset mail పంపించాం.',
+    english: 'Password reset email sent to $email.',
+  );
 }
 
 class _ModeChip extends StatelessWidget {
@@ -805,98 +921,26 @@ class _ModeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final ColorScheme cs = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          gradient: selected
-              ? const LinearGradient(
-                  colors: <Color>[Color(0xFF14B8A6), Color(0xFF0EA5E9)],
-                )
-              : null,
-          color: selected ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13.5,
             fontWeight: FontWeight.w700,
-            color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+            color: selected ? cs.primary : Colors.white,
           ),
         ),
       ),
     );
   }
-}
-
-class _AuthUiCopy {
-  const _AuthUiCopy(this.language);
-
-  final AppLanguage language;
-
-  String _localized({required String telugu, required String english}) =>
-      AppStrings(language).localized(telugu: telugu, english: english);
-
-  String get passwordRequired => _localized(
-    telugu:
-        '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C05\u0C35\u0C38\u0C30\u0C02',
-    english: 'Password is required',
-  );
-
-  String formSubtitle(bool isLogin) => isLogin
-      ? _localized(
-          telugu:
-              '\u0C2E\u0C40 \u0C05\u0C15\u0C4C\u0C02\u0C1F\u0C4D\u0C24\u0C4B \u0C15\u0C4A\u0C28\u0C38\u0C3E\u0C17\u0C02\u0C21\u0C3F',
-          english: 'Continue with your account',
-        )
-      : _localized(
-          telugu:
-              '\u0C05\u0C15\u0C4C\u0C02\u0C1F\u0C4D \u0C38\u0C43\u0C37\u0C4D\u0C1F\u0C3F\u0C02\u0C1A\u0C02\u0C21\u0C3F',
-          english: 'Create account',
-        );
-
-  String resetSuccess(String email) => _localized(
-    telugu:
-        '$email \u0C15\u0C3F \u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C30\u0C40\u0C38\u0C46\u0C1F\u0C4D \u0C2E\u0C46\u0C2F\u0C3F\u0C32\u0C4D \u0C2A\u0C02\u0C2A\u0C3F\u0C02\u0C1A\u0C3E\u0C02.',
-    english: 'Password reset email sent to $email.',
-  );
-
-  String get legalIntro => _localized(
-    telugu:
-        '\u0C15\u0C4A\u0C28\u0C38\u0C3E\u0C17\u0C3F\u0C02\u0C1A\u0C21\u0C02 \u0C26\u0C4D\u0C35\u0C3E\u0C30\u0C3E \u0C2E\u0C40\u0C30\u0C41 \u0C2E\u0C3E \u0C17\u0C4B\u0C2A\u0C4D\u0C2F\u0C24\u0C3E \u0C35\u0C3F\u0C27\u0C3E\u0C28\u0C02 \u0C2E\u0C30\u0C3F\u0C2F\u0C41 \u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C15\u0C41 \u0C05\u0C02\u0C17\u0C40\u0C15\u0C30\u0C3F\u0C38\u0C4D\u0C24\u0C3E\u0C30\u0C41.',
-    english:
-        'By continuing, you agree to our Privacy Policy and Terms & Conditions.',
-  );
-
-  String get privacyLabel => _localized(
-    telugu:
-        '\u0C17\u0C4B\u0C2A\u0C4D\u0C2F\u0C24\u0C3E \u0C35\u0C3F\u0C27\u0C3E\u0C28\u0C02',
-    english: 'Privacy Policy',
-  );
-
-  String get andLabel =>
-      _localized(telugu: '\u0C2E\u0C30\u0C3F\u0C2F\u0C41', english: 'and');
-
-  String get termsLabel => _localized(
-    telugu: '\u0C28\u0C3F\u0C2C\u0C02\u0C27\u0C28\u0C32\u0C41',
-    english: 'Terms & Conditions',
-  );
-
-  String passwordVisibilityTooltip(bool isVisible) => isVisible
-      ? _localized(
-          telugu:
-              '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C26\u0C3E\u0C1A\u0C41',
-          english: 'Hide password',
-        )
-      : _localized(
-          telugu:
-              '\u0C2A\u0C3E\u0C38\u0C4D\u0C35\u0C30\u0C4D\u0C21\u0C4D \u0C1A\u0C42\u0C2A\u0C41',
-          english: 'Show password',
-        );
 }

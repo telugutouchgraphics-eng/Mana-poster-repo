@@ -73,7 +73,8 @@ class _HelpSupportScreenState extends State<HelpSupportScreen>
       AppSnackBar.build(
         content: Text(
           context.strings.localized(
-            telugu: 'లింక్ తెరవలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
+            telugu:
+                'à°²à°¿à°‚à°•à± à°¤à±†à°°à°µà°²à±‡à°•à°ªà±‹à°¯à°¾à°‚. à°®à°³à±à°²à±€ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.',
             english: 'Could not open the link. Please try again.',
           ),
         ),
@@ -654,40 +655,34 @@ class _HelpSupportCopy {
   List<_HelpFaqItem> get faqs => _isTelugu
       ? const <_HelpFaqItem>[
           _HelpFaqItem(
-            question: 'లాగిన్ పనిచేయకపోతే ఏమి చేయాలి?',
+            question:
+                'à°²à°¾à°—à°¿à°¨à± à°ªà°¨à°¿à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°à°®à°¿ à°šà±‡à°¯à°¾à°²à°¿?',
             answer:
-                '1) ఇంటర్నెట్ కనెక్షన్ సరిగ్గా ఉందో చూడండి.\n2) ఇమెయిల్, పాస్‌వర్డ్ సరిగా ఇచ్చారో పరిశీలించండి.\n3) అవసరమైతే Forgot Password ఉపయోగించండి.\n4) Google Sign-In అయితే account permission ఇవ్వబడిందో చూడండి.',
+                '1) à°‡à°‚à°Ÿà°°à±à°¨à±†à°Ÿà± à°•à°¨à±†à°•à±à°·à°¨à± à°¸à°°à°¿à°—à±à°—à°¾ à°‰à°‚à°¦à±‹ à°šà±‚à°¡à°‚à°¡à°¿.\n2) à°‡à°®à±†à°¯à°¿à°²à±, à°ªà°¾à°¸à±â€Œà°µà°°à±à°¡à± à°¸à°°à°¿à°—à°¾ à°‡à°šà±à°šà°¾à°°à±‹ à°ªà°°à°¿à°¶à±€à°²à°¿à°‚à°šà°‚à°¡à°¿.\n3) à°…à°µà°¸à°°à°®à±ˆà°¤à±‡ Forgot Password à°‰à°ªà°¯à±‹à°—à°¿à°‚à°šà°‚à°¡à°¿.\n4) Google Sign-In à°…à°¯à°¿à°¤à±‡ account permission à°‡à°µà±à°µà°¬à°¡à°¿à°‚à°¦à±‹ à°šà±‚à°¡à°‚à°¡à°¿.',
           ),
           _HelpFaqItem(
-            question: 'Community image/quote upload పనిచేయకపోతే?',
+            question:
+                'Community image/quote upload à°ªà°¨à°¿à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡?',
             answer:
-                '1) Image upload అయితే Photos లేదా media permission ఇచ్చారో చూడండి.\n2) Quote-only అయితే text ఖాళీగా లేకుండా ఉందో చూడండి.\n3) చాలా పెద్ద image అయితే చిన్న ఫైల్‌తో ప్రయత్నించండి.\n4) Submit అయిన తర్వాత manager review పూర్తయ్యాక మాత్రమే poster app category లో కనిపిస్తుంది.',
+                '1) Image upload à°…à°¯à°¿à°¤à±‡ Photos à°²à±‡à°¦à°¾ media permission à°‡à°šà±à°šà°¾à°°à±‹ à°šà±‚à°¡à°‚à°¡à°¿.\n2) Quote-only à°…à°¯à°¿à°¤à±‡ text à°–à°¾à°³à±€à°—à°¾ à°²à±‡à°•à±à°‚à°¡à°¾ à°‰à°‚à°¦à±‹ à°šà±‚à°¡à°‚à°¡à°¿.\n3) à°šà°¾à°²à°¾ à°ªà±†à°¦à±à°¦ image à°…à°¯à°¿à°¤à±‡ à°šà°¿à°¨à±à°¨ à°«à±ˆà°²à±â€Œà°¤à±‹ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.\n4) Submit à°…à°¯à°¿à°¨ à°¤à°°à±à°µà°¾à°¤ manager review à°ªà±‚à°°à±à°¤à°¯à±à°¯à°¾à°• à°®à°¾à°¤à±à°°à°®à±‡ poster app category à°²à±‹ à°•à°¨à°¿à°ªà°¿à°¸à±à°¤à±à°‚à°¦à°¿.',
           ),
           _HelpFaqItem(
-            question: 'Status upload/replies ఎలా పని చేస్తాయి?',
+            question:
+                'à°ªà±‹à°¸à±à°Ÿà°°à± à°¸à±‡à°µà± à°²à±‡à°¦à°¾ à°Žà°—à±à°®à°¤à°¿ à°µà°¿à°«à°²à°®à±ˆà°¤à±‡?',
             answer:
-                '1) Status లో text, image లేదా image + caption upload చేయవచ్చు.\n'
-                '2) 24 గంటల్లో 5 text statuses మరియు 2 image/image + caption statuses వరకు active గా ఉంచవచ్చు. పాత active status delete చేస్తే లేదా expire అయితే మళ్లీ limit లోపల upload చేయవచ్చు.\n'
-                '3) Status same State/Union Territory మరియు matching religion scope users కు మాత్రమే చూపబడుతుంది.\n'
-                '4) Image status upload ముందు file size తగ్గించడానికి compress అవుతుంది.\n'
-                '5) Other users reply/comment పంపవచ్చు; status owner status screen లో up swipe చేస్తే replies చూడవచ్చు.\n'
-                '6) Status, image, replies/comments 24 గంటల expiry తర్వాత backend cleanup ద్వారా delete అవుతాయి. Cleanup scheduled కాబట్టి exact second కు delete కాకపోవచ్చు.\n'
-                '7) Private information, OTP, passwords, addresses, hateful/illegal/spam content status లేదా reply లో పెట్టకండి.',
+                '1) à°«à±‹à°¨à±â€Œà°²à±‹ à°–à°¾à°³à±€ à°¸à±à°Ÿà±‹à°°à±‡à°œà± à°‰à°‚à°¦à±‹ à°šà±‚à°¡à°‚à°¡à°¿.\n2) à°¸à±‡à°µà± à°²à±‡à°¦à°¾ à°Žà°—à±à°®à°¤à°¿ à°œà°°à±à°—à±à°¤à±à°¨à±à°¨ à°¸à°®à°¯à°‚à°²à±‹ à°¯à°¾à°ªà±â€Œà°¨à± à°µà±†à°¨à±à°•à°•à± à°ªà°‚à°ªà°•à°‚à°¡à°¿.\n3) à°®à°°à±‹à°¸à°¾à°°à°¿ à°ªà±à°°à°¯à°¤à±à°¨à°¿à°‚à°šà°‚à°¡à°¿.\n4) à°¸à°®à°¸à±à°¯ à°…à°²à°¾à°—à±‡ à°‰à°‚à°Ÿà±‡ à°¸à±à°•à±à°°à±€à°¨à±â€Œà°·à°¾à°Ÿà±â€Œà°¤à±‹ à°¸à°ªà±‹à°°à±à°Ÿà±â€Œà°•à± à°®à±†à°¯à°¿à°²à± à°ªà°‚à°ªà°‚à°¡à°¿.',
           ),
           _HelpFaqItem(
-            question: 'పోస్టర్ సేవ్ లేదా ఎగుమతి విఫలమైతే?',
+            question:
+                'à°¸à°¬à±â€Œà°¸à±à°•à±à°°à°¿à°ªà±à°·à°¨à± à°—à±à°°à°¿à°‚à°šà°¿ à°¸à°‚à°¦à±‡à°¹à°‚ à°‰à°‚à°Ÿà±‡?',
             answer:
-                '1) ఫోన్‌లో ఖాళీ స్టోరేజ్ ఉందో చూడండి.\n2) సేవ్ లేదా ఎగుమతి జరుగుతున్న సమయంలో యాప్‌ను వెనుకకు పంపకండి.\n3) మరోసారి ప్రయత్నించండి.\n4) సమస్య అలాగే ఉంటే స్క్రీన్‌షాట్‌తో సపోర్ట్‌కు మెయిల్ పంపండి.',
+                'à°Ÿà±à°°à°¯à°²à± à°ªà±à°²à°¾à°¨à± ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°²à°•à± ${SubscriptionPlanConfig.trialPriceDisplay}. ${SubscriptionPlanConfig.trialDays} à°°à±‹à°œà±à°² à°²à±‹à°ªà± à°•à±à°¯à°¾à°¨à±à°¸à°¿à°²à± à°šà±‡à°¯à°•à°ªà±‹à°¤à±‡ à°¨à±†à°²à°•à± ${SubscriptionPlanConfig.monthlyPriceDisplay} à°†à°Ÿà±‹ à°°à°¿à°¨à±à°¯à±à°µà°²à± à°‰à°‚à°Ÿà±à°‚à°¦à°¿. à°ˆ à°ªà±à°²à°¾à°¨à± à°ªà±‹à°¸à±à°Ÿà°°à± à°•à±à°°à°¿à°¯à±‡à°·à°¨à± à°®à°°à°¿à°¯à± à°Žà°—à±à°®à°¤à±à°²à°•à± à°‰à°ªà°¯à±‹à°—à°ªà°¡à±à°¤à±à°‚à°¦à°¿.',
           ),
           _HelpFaqItem(
-            question: 'సబ్‌స్క్రిప్షన్ గురించి సందేహం ఉంటే?',
+            question:
+                'à°¯à°¾à°ªà± à°¸à±à°²à±‹à°—à°¾ à°‰à°‚à°Ÿà±‡ à°²à±‡à°¦à°¾ à°µà°¿à°‚à°¤à°—à°¾ à°ªà±à°°à°µà°°à±à°¤à°¿à°¸à±à°¤à±‡?',
             answer:
-                'ట్రయల్ ప్లాన్ ${SubscriptionPlanConfig.trialDays} రోజులకు ${SubscriptionPlanConfig.trialPriceDisplay}. ${SubscriptionPlanConfig.trialDays} రోజుల లోపు క్యాన్సిల్ చేయకపోతే నెలకు ${SubscriptionPlanConfig.monthlyPriceDisplay} ఆటో రిన్యువల్ ఉంటుంది. ఈ ప్లాన్ పోస్టర్ క్రియేషన్ మరియు ఎగుమతులకు ఉపయోగపడుతుంది.',
-          ),
-          _HelpFaqItem(
-            question: 'యాప్ స్లోగా ఉంటే లేదా వింతగా ప్రవర్తిస్తే?',
-            answer:
-                '1) యాప్‌ను పూర్తిగా మూసి మళ్లీ తెరవండి.\n2) ఫోన్‌ను రీస్టార్ట్ చేయండి.\n3) వెనుక భాగంలో నడుస్తున్న పెద్ద apps ను మూసివేయండి.\n4) సమస్య ఏ దశలో వస్తుందో సపోర్ట్‌కు పంపండి.',
+                '1) à°¯à°¾à°ªà±â€Œà°¨à± à°ªà±‚à°°à±à°¤à°¿à°—à°¾ à°®à±‚à°¸à°¿ à°®à°³à±à°²à±€ à°¤à±†à°°à°µà°‚à°¡à°¿.\n2) à°«à±‹à°¨à±â€Œà°¨à± à°°à±€à°¸à±à°Ÿà°¾à°°à±à°Ÿà± à°šà±‡à°¯à°‚à°¡à°¿.\n3) à°µà±†à°¨à±à°• à°­à°¾à°—à°‚à°²à±‹ à°¨à°¡à±à°¸à±à°¤à±à°¨à±à°¨ à°ªà±†à°¦à±à°¦ apps à°¨à± à°®à±‚à°¸à°¿à°µà±‡à°¯à°‚à°¡à°¿.\n4) à°¸à°®à°¸à±à°¯ à° à°¦à°¶à°²à±‹ à°µà°¸à±à°¤à±à°‚à°¦à±‹ à°¸à°ªà±‹à°°à±à°Ÿà±â€Œà°•à± à°ªà°‚à°ªà°‚à°¡à°¿.',
           ),
         ]
       : const <_HelpFaqItem>[
@@ -700,17 +695,6 @@ class _HelpSupportCopy {
             question: 'What if community image/quote upload is not working?',
             answer:
                 '1) For image upload, check photos or media permission.\n2) For quote-only upload, make sure the text is not empty.\n3) Try a smaller image file if needed.\n4) After submit, the poster appears in the app category only after manager review.',
-          ),
-          _HelpFaqItem(
-            question: 'How do Status uploads and replies work?',
-            answer:
-                '1) A status can be text, image, or image with caption.\n'
-                '2) A user can keep up to 5 text statuses and 2 image/image + caption statuses active in 24 hours. Deleting an old active status or waiting for expiry frees the limit again.\n'
-                '3) If location is allowed, statuses are shown to nearby city/district/state users. If location is not available, the selected State/Union Territory is used as fallback.\n'
-                '4) Image status files are compressed before upload to reduce file size.\n'
-                '5) Other users can reply/comment; the status owner can swipe up on the status screen to read replies.\n'
-                '6) Statuses, images, and replies/comments are deleted by backend cleanup after the 24-hour expiry. Because cleanup is scheduled, deletion may not happen at the exact second.\n'
-                '7) Do not post private information, OTPs, passwords, addresses, hateful/illegal/spam content in a status or reply.',
           ),
           _HelpFaqItem(
             question: 'What if save or export fails?',

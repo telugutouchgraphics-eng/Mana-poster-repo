@@ -69,6 +69,13 @@ const manualLifetimeWhitelistedEmails = new Set([
   "shaikvaseema62@gmail.com",
   "babuy2045@gmail.com",
 ]);
+const manualLifetimeWhitelistedPhones = new Set([
+  "8121111513",
+  "3932006161",
+  "9393206161",
+  "8688520791",
+  "6305949301",
+]);
 const allowedCorsOrigins = parseAllowedOrigins(
     process.env.MANA_POSTER_ALLOWED_ORIGINS || process.env.ALLOW_ORIGIN || "*",
 );
@@ -1208,6 +1215,9 @@ function reminderCategoryKey(input) {
   if (normalized.includes("afternoon")) {
     return "afternoon";
   }
+  if (normalized.includes("evening")) {
+    return "evening";
+  }
   if (normalized.includes("night")) {
     return "night";
   }
@@ -1491,6 +1501,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       welcome: ["Mana Poster కి స్వాగతం", `${name} గారు, మీ కోసం రోజువారీ పోస్టర్లు రెడీగా ఉన్నాయి.`],
       morning: ["శుభోదయం", `${name} గారు, మీ గుడ్ మార్నింగ్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       afternoon: ["శుభ మధ్యాహ్నం", `${name} గారు, మీ మధ్యాహ్నం పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
+      evening: ["శుభ సాయంత్రం", `${name} గారు, మీ గుడ్ ఈవెనింగ్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       night: ["శుభ రాత్రి", `${name} గారు, మీ గుడ్ నైట్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       motivation: ["మోటివేషన్ టైమ్", `${name} గారు, మీ మోటివేషన్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
       jokes: ["జోక్స్ టైమ్", `${name} గారు, మీ జోక్స్ పోస్టర్ షేర్ చేయడానికి రెడీగా ఉంది.`],
@@ -1500,6 +1511,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       welcome: ["Mana Poster में आपका स्वागत है", `${name} जी, आपके लिए रोज़ाना पोस्टर तैयार हैं।`],
       morning: ["सुप्रभात", `${name} जी, आपका गुड मॉर्निंग पोस्टर शेयर करने के लिए तैयार है।`],
       afternoon: ["शुभ दोपहर", `${name} जी, आपका दोपहर पोस्टर शेयर करने के लिए तैयार है।`],
+      evening: ["शुभ संध्या", `${name} जी, आपका गुड ईवनिंग पोस्टर शेयर करने के लिए तैयार है।`],
       night: ["शुभ रात्रि", `${name} जी, आपका गुड नाइट पोस्टर शेयर करने के लिए तैयार है।`],
       motivation: ["मोटिवेशन टाइम", `${name} जी, आपका मोटिवेशन पोस्टर शेयर करने के लिए तैयार है।`],
       jokes: ["जोक्स टाइम", `${name} जी, आपका जोक्स पोस्टर शेयर करने के लिए तैयार है।`],
@@ -1509,6 +1521,7 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
       welcome: ["Welcome to Mana Poster", `${name}, your daily posters are ready to share.`],
       morning: ["Good Morning", `${name}, your good morning poster is ready to share.`],
       afternoon: ["Good Afternoon", `${name}, your afternoon poster is ready to share.`],
+      evening: ["Good Evening", `${name}, your good evening poster is ready to share.`],
       night: ["Good Night", `${name}, your good night poster is ready to share.`],
       motivation: ["Motivation Time", `${name}, your motivational poster is ready to share.`],
       jokes: ["Jokes Time", `${name}, your jokes poster is ready to share.`],
@@ -2634,6 +2647,14 @@ function headerPrefixLabel(kind, language) {
       kannada: "ನಿಮ್ಮ ಮಧ್ಯಾಹ್ನದ ಪೋಸ್ಟರ್",
       malayalam: "നിങ്ങളുടെ ഉച്ചക്കാല പോസ്റ്റർ",
     },
+    evening: {
+      telugu: "మీ సాయంత్రం పోస్టర్",
+      english: "your evening poster",
+      hindi: "आपका शाम का पोस्टर",
+      tamil: "உங்கள் மாலை போஸ்டர்",
+      kannada: "ನಿಮ್ಮ ಸಂಜೆ ಪೋಸ್ಟರ್",
+      malayalam: "നിങ്ങളുടെ വൈകുന്നേരം പോസ്റ്റർ",
+    },
     night: {
       telugu: "మీ రాత్రి పోస్టర్",
       english: "your night poster",
@@ -3346,8 +3367,11 @@ function reminderCategoryAliases(input) {
   if (category === "afternoon") {
     return ["good_afternoon", "good afternoon", "afternoon", "madhyahna"];
   }
+  if (category === "evening") {
+    return ["good_evening", "good evening", "evening", "sayankalam"];
+  }
   if (category === "night") {
-    return ["good_night", "good night", "night", "evening", "ratri"];
+    return ["good_night", "good night", "night", "ratri"];
   }
   if (category === "motivation") {
     return ["motivational", "motivation"];
@@ -3412,11 +3436,15 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
       .map((item) => normalizeText(item))
       .filter((item) => item.length > 0);
   const resolvedRegionId = normalizeRegionId(regionId);
-  if (aliases.length === 0 || !resolvedRegionId) {
+  if (aliases.length === 0) {
     return [];
   }
 
   try {
+    if (!resolvedRegionId) {
+      return [];
+    }
+    const nowMillis = Date.now();
     const lookupRegionIds = sharedContentRegionIdsFor(resolvedRegionId, categoryKey);
     const snap = await applyRegionScope(db
         .collection("creatorPosters")
@@ -3426,7 +3454,6 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
         .get();
 
     const matchedImages = [];
-    const nowMillis = Date.now();
     for (const doc of snap.docs) {
       const data = doc.data() || {};
       const categoryId = String(data.categoryId || "");
@@ -3458,9 +3485,6 @@ async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId 
 
 async function pickImageForReminder(keywords, seed = "", regionId = "") {
   const resolvedRegionId = normalizeRegionId(regionId);
-  if (!resolvedRegionId) {
-    return "";
-  }
   const normalizedCategory = reminderCategoryKey(
       Array.isArray(keywords) ? keywords.join(" ") : keywords,
   );
@@ -3488,9 +3512,6 @@ async function pickImageForReminder(keywords, seed = "", regionId = "") {
 
 async function pickStrictImageForReminderCategory(categoryKey, seed = "", regionId = "") {
   const resolvedRegionId = normalizeRegionId(regionId);
-  if (!resolvedRegionId) {
-    return "";
-  }
   const strictMatches = await getApprovedPosterImagesForReminderCategory(
       categoryKey,
       resolvedRegionId,
@@ -3754,14 +3775,11 @@ async function sendDailyPersonalizedReminder({
     if (imageCache.has(cacheKey)) {
       return imageCache.get(cacheKey);
     }
-    let imageUrl = "";
-    if (resolvedRegionId) {
-      imageUrl = await pickStrictImageForReminderCategory(
-          categoryKey,
-          `${categoryKey}-${dayKey}-${resolvedSeed}-${resolvedRegionId}`,
-          resolvedRegionId,
-      );
-    }
+    const imageUrl = await pickStrictImageForReminderCategory(
+        categoryKey,
+        `${categoryKey}-${dayKey}-${resolvedSeed}-${resolvedRegionId || "fallback"}`,
+        resolvedRegionId,
+    );
     imageCache.set(cacheKey, imageUrl || "");
     return imageUrl || "";
   }
@@ -4331,6 +4349,74 @@ function isManualLifetimeWhitelistedEmail(email) {
   return manualLifetimeWhitelistedEmails.has(normalizeEmail(email));
 }
 
+function normalizePhoneDigits(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+  if (digits.length === 10) {
+    return digits;
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return digits.slice(2);
+  }
+  if (digits.length > 10) {
+    return digits.slice(-10);
+  }
+  return digits;
+}
+
+function isManualLifetimeWhitelistedPhone(phoneNumber) {
+  const normalizedPhone = normalizePhoneDigits(phoneNumber);
+  return normalizedPhone.length === 10 &&
+    manualLifetimeWhitelistedPhones.has(normalizedPhone);
+}
+
+async function manualLifetimeWhitelistResponse({
+  res,
+  uid,
+  entitlementRef,
+  matchedBy,
+  matchedHash,
+}) {
+  logger.info("subscriptionStatus manual whitelist override", {
+    uid,
+    source: manualLifetimeWhitelistSource,
+    matchedBy,
+    matchedHash,
+  });
+  await entitlementRef.set({
+    isPro: true,
+    appAccess: true,
+    editorAccess: true,
+    status: "active",
+    source: manualLifetimeWhitelistSource,
+    productId: "manual_lifetime_whitelist",
+    subscriptionState: manualLifetimeWhitelistSource,
+    autoRenewing: false,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+  res.status(200).json({
+    isPro: true,
+    appAccess: true,
+    editorAccess: true,
+    hasAccess: true,
+    message: "Entitlement active",
+    status: "active",
+    source: manualLifetimeWhitelistSource,
+    productId: "manual_lifetime_whitelist",
+    subscriptionState: manualLifetimeWhitelistSource,
+    startDate: null,
+    expiryTime: null,
+    autoRenewing: false,
+    latestOrderId: null,
+    referralRewardActive: false,
+    referralRewardStartsAt: null,
+    referralRewardExpiresAt: null,
+    lastSyncedAt: new Date().toISOString(),
+  });
+}
+
 async function verifyAuth(req) {
   const auth = req.headers.authorization || "";
   if (!auth.startsWith("Bearer ")) {
@@ -4341,6 +4427,17 @@ async function verifyAuth(req) {
     throw new Error("Missing bearer token");
   }
   return admin.auth().verifyIdToken(token);
+}
+
+async function verifyOptionalAuth(req) {
+  try {
+    return await verifyAuth(req);
+  } catch (error) {
+    if (isAuthVerificationError(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 function isAuthVerificationError(error) {
@@ -4422,8 +4519,106 @@ function serializeApprovedCreatorPoster(doc) {
     publishAt: toMillis(data.publishAt),
     widthPx: Number(data.widthPx) || null,
     heightPx: Number(data.heightPx) || null,
+    viewCount: Number(data.viewCount || 0),
+    shareCount: Number(data.shareCount || 0),
+    downloadCount: Number(data.downloadCount || 0),
+    displayViewCount: Number(
+        data.displayViewCount || boostedPosterDisplayCount(doc.id, "view", Number(data.viewCount || 0)),
+    ),
+    displayShareCount: Number(
+        data.displayShareCount || boostedPosterDisplayCount(doc.id, "share", Number(data.shareCount || 0)),
+    ),
+    displayDownloadCount: Number(
+        data.displayDownloadCount ||
+        boostedPosterDisplayCount(doc.id, "download", Number(data.downloadCount || 0)),
+    ),
+    displayEngagementCount: boostedPosterDisplayEngagementCount(
+        doc.id,
+        Number(data.shareCount || 0),
+        Number(data.downloadCount || 0),
+    ),
     personalizationConfig: data.personalizationConfig || data.personalization || null,
   };
+}
+
+function stablePosterHash(value) {
+  const text = String(value || "");
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash;
+}
+
+function boostedPosterDisplayCount(posterId, kind, realCount) {
+  const real = Math.max(0, Number(realCount) || 0);
+  if (real <= 0) {
+    if (kind === "view") {
+      return defaultPosterDisplayViewCount(posterId);
+    }
+    if (kind === "share") {
+      return defaultPosterDisplayShareCount(posterId);
+    }
+    return 0;
+  }
+  const baseCount = kind === "view" ?
+    defaultPosterDisplayViewCount(posterId) :
+    kind === "share" ?
+      defaultPosterDisplayShareCount(posterId) :
+      0;
+  const ranges = {
+    view: [25, 60],
+    share: [8, 20],
+    download: [10, 25],
+  };
+  const [min, max] = ranges[kind] || [1, 1];
+  const multiplier = min + (stablePosterHash(`${kind}:${posterId}`) % (max - min + 1));
+  return baseCount + (real * multiplier);
+}
+
+function defaultPosterDisplayViewCount(posterId) {
+  return 120 + (stablePosterHash(`default-view:${posterId}`) % 121);
+}
+
+function defaultPosterDisplayShareCount(posterId) {
+  const views = defaultPosterDisplayViewCount(posterId);
+  const percentage = 62 + (stablePosterHash(`default-share:${posterId}`) % 14);
+  return Math.min(views - 1, Math.round((views * percentage) / 100));
+}
+
+function boostedPosterDisplayEngagementCount(posterId, shareCount, downloadCount) {
+  const real = Math.max(0, Number(shareCount || 0) + Number(downloadCount || 0));
+  const base = defaultPosterDisplayShareCount(posterId);
+  if (real <= 0) {
+    return base;
+  }
+  const multiplier = 2 + (stablePosterHash(`engagement:${posterId}`) % 4);
+  return base + (real * multiplier);
+}
+
+function posterEngagementFields(action) {
+  if (action === "view") {
+    return {realField: "viewCount", displayField: "displayViewCount"};
+  }
+  if (action === "share") {
+    return {realField: "shareCount", displayField: "displayShareCount"};
+  }
+  return {realField: "downloadCount", displayField: "displayDownloadCount"};
+}
+
+function hasActivePosterEngagementSubscription(userData, nowMillis = Date.now()) {
+  if (!userData || userData.isPro !== true) {
+    return false;
+  }
+  const expiryMillis = toMillis(userData.expiryTime);
+  return expiryMillis <= 0 || expiryMillis > nowMillis;
+}
+
+function posterEngagementSubscriberBucket(userData, nowMillis = Date.now()) {
+  return hasActivePosterEngagementSubscription(userData, nowMillis) ?
+    "subscriber" :
+    "nonSubscriber";
 }
 
 async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
@@ -4515,7 +4710,7 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const posterId = String(body.posterId || "").trim();
     const action = String(body.action || "").trim().toLowerCase();
-    if (!posterId || !["share", "download"].includes(action)) {
+    if (!posterId || !["view", "share", "download"].includes(action)) {
       res.status(400).json({ok: false, error: "Invalid engagement request."});
       return;
     }
@@ -4560,10 +4755,20 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
 
     const nowMillis = Date.now();
     const dateKey = getIstDayKey(new Date(nowMillis));
-    const statsRef = db.collection("creatorPosterDailyStats").doc(`${posterId}-${dateKey}`);
-    const posterRef = db.collection("creatorPosters").doc(posterId);
     const increment = admin.firestore.FieldValue.increment(1);
     const zero = admin.firestore.FieldValue.increment(0);
+    const subscriberBucket = posterEngagementSubscriberBucket(userData, nowMillis);
+    const subscriberShareIncrement =
+      action === "share" && subscriberBucket === "subscriber" ? increment : zero;
+    const nonSubscriberShareIncrement =
+      action === "share" && subscriberBucket === "nonSubscriber" ? increment : zero;
+    const subscriberDownloadIncrement =
+      action === "download" && subscriberBucket === "subscriber" ? increment : zero;
+    const nonSubscriberDownloadIncrement =
+      action === "download" && subscriberBucket === "nonSubscriber" ? increment : zero;
+    const statsRef = db.collection("creatorPosterDailyStats").doc(`${posterId}-${dateKey}`);
+    const posterRef = db.collection("creatorPosters").doc(posterId);
+    const fieldNames = posterEngagementFields(action);
 
     await db.runTransaction(async (tx) => {
       const freshPosterSnap = await tx.get(posterRef);
@@ -4593,11 +4798,35 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
           "",
       ).trim();
       const safeRegionId = normalizeRegionId(freshPoster.regionId || body.regionId || "");
-      tx.update(posterRef, {
-        [action === "share" ? "shareCount" : "downloadCount"]: increment,
-        engagementCount: increment,
+      const statsData = statsSnap.exists ? statsSnap.data() || {} : {};
+      const nextPosterRealCount = Number(freshPoster[fieldNames.realField] || 0) + 1;
+      const nextDisplayCount = boostedPosterDisplayCount(
+          posterId,
+          action,
+          nextPosterRealCount,
+      );
+      const nextShareCount =
+        Number(freshPoster.shareCount || 0) + (action === "share" ? 1 : 0);
+      const nextDownloadCount =
+        Number(freshPoster.downloadCount || 0) + (action === "download" ? 1 : 0);
+      const posterUpdate = {
+        [fieldNames.realField]: increment,
+        [fieldNames.displayField]: nextDisplayCount,
         updatedAt: nowMillis,
+      };
+      if (action === "share" || action === "download") {
+        posterUpdate.engagementCount = increment;
+        posterUpdate.displayEngagementCount =
+          boostedPosterDisplayEngagementCount(
+              posterId,
+              nextShareCount,
+              nextDownloadCount,
+          );
+      }
+      tx.update(posterRef, {
+        ...posterUpdate,
       });
+      const nextDailyRealCount = Number(statsData[fieldNames.realField] || 0) + 1;
       tx.set(statsRef, {
         creatorPublicId: safeCreatorPublicId,
         posterId,
@@ -4607,9 +4836,23 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
         categoryLabel: safeCategoryLabel,
         regionId: safeRegionId,
         dateKey,
+        viewCount: action === "view" ? increment : zero,
         shareCount: action === "share" ? increment : zero,
         downloadCount: action === "download" ? increment : zero,
-        totalEngagement: increment,
+        subscriberShareCount: subscriberShareIncrement,
+        nonSubscriberShareCount: nonSubscriberShareIncrement,
+        subscriberDownloadCount: subscriberDownloadIncrement,
+        nonSubscriberDownloadCount: nonSubscriberDownloadIncrement,
+        displayViewCount: action === "view" ?
+          boostedPosterDisplayCount(posterId, "view", nextDailyRealCount) :
+          Number(statsData.displayViewCount || 0),
+        displayShareCount: action === "share" ?
+          boostedPosterDisplayCount(posterId, "share", nextDailyRealCount) :
+          Number(statsData.displayShareCount || 0),
+        displayDownloadCount: action === "download" ?
+          boostedPosterDisplayCount(posterId, "download", nextDailyRealCount) :
+          Number(statsData.displayDownloadCount || 0),
+        totalEngagement: action === "view" ? zero : increment,
         updatedAt: nowMillis,
         createdAt: statsSnap.exists ? statsSnap.data().createdAt || nowMillis : nowMillis,
       }, {merge: true});
@@ -4622,6 +4865,578 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
       ok: false,
       error: "Unable to record poster engagement.",
     });
+  }
+});
+
+function normalizeScreenKey(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const normalized = raw
+      .replace(/[^a-z0-9/_-]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80);
+  if (!normalized) {
+    return "unknown";
+  }
+  return normalized.replace(/^\/+/, "").replace(/\/+/g, "_") || "home";
+}
+
+function screenLabelFor(screenKey, rawName) {
+  const explicit = String(rawName || "").trim();
+  if (explicit && !explicit.startsWith("/")) {
+    return explicit.slice(0, 120);
+  }
+  const known = {
+    "": "Home",
+    "home": "Home",
+    "login": "Login",
+    "language": "Language",
+    "app-language": "App Language",
+    "app_language": "App Language",
+    "religion": "Religion Selection",
+    "profile-setup": "Profile Setup",
+    "profile_setup": "Profile Setup",
+    "page-setup": "Page Setup",
+    "page_setup": "Page Setup",
+    "image-editor": "Image Editor",
+    "image_editor": "Image Editor",
+    "notification-unavailable": "Notification Unavailable",
+    "notification_unavailable": "Notification Unavailable",
+  };
+  if (known[screenKey]) {
+    return known[screenKey];
+  }
+  return screenKey
+      .split("_")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+      .slice(0, 120) || "Unknown";
+}
+
+function parseScreenDurationMs(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 800) {
+    return 0;
+  }
+  return Math.min(Math.trunc(parsed), 30 * 60 * 1000);
+}
+
+function normalizeUsageToken(value, fallback, allowed = []) {
+  const normalized = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80);
+  const safeValue = normalized || fallback;
+  return allowed.length === 0 || allowed.includes(safeValue) ? safeValue : fallback;
+}
+
+function authEventFields(eventType) {
+  if (eventType === "auth_start") {
+    return {attempts: 1, successes: 0, errors: 0, cancels: 0};
+  }
+  if (eventType === "auth_success") {
+    return {attempts: 0, successes: 1, errors: 0, cancels: 0};
+  }
+  if (eventType === "auth_cancel") {
+    return {attempts: 0, successes: 0, errors: 0, cancels: 1};
+  }
+  return {attempts: 0, successes: 0, errors: 1, cancels: 0};
+}
+
+function authDropoffDelta(eventType, pending) {
+  if (eventType === "auth_success") {
+    return pending ? -1 : 0;
+  }
+  if (eventType === "auth_start" || eventType === "auth_error" || eventType === "auth_cancel") {
+    return pending ? 0 : 1;
+  }
+  return 0;
+}
+
+exports.recordAppScreenUsage = onRequest({region: "asia-south1"}, async (req, res) => {
+  setCors(req, res);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({ok: false, error: "Method not allowed."});
+    return;
+  }
+
+  try {
+    const decoded = await verifyOptionalAuth(req);
+    const uid = String(decoded?.uid || "").trim();
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const screenName = String(body.screenName || body.routeName || "").trim();
+    const screenKey = normalizeScreenKey(screenName);
+    const screenLabel = screenLabelFor(screenKey, body.screenLabel || screenName);
+    const installId = String(body.installId || "").trim().slice(0, 160);
+    const visitorSource = uid ? `uid:${uid}` : `install:${installId}`;
+    if (!uid && !installId) {
+      res.status(400).json({ok: false, error: "Missing visitor key."});
+      return;
+    }
+    const visitorHash = sha256(visitorSource).slice(0, 40);
+    const nowMillis = Date.now();
+    const dateKey = getIstDayKey(new Date(nowMillis));
+    const regionId = normalizeRegionId(body.regionId || "");
+    const regionName = String(body.regionName || "").trim().slice(0, 80);
+    const language = String(body.language || "").trim().toLowerCase().slice(0, 40);
+    const appVersion = String(body.appVersion || "").trim().slice(0, 40);
+    const buildNumber = String(body.buildNumber || "").trim().slice(0, 40);
+    const isAuthenticated = Boolean(uid);
+    const eventType = normalizeUsageToken(
+        body.eventType,
+        "",
+        ["", "auth_start", "auth_success", "auth_error", "auth_cancel"],
+    );
+
+    if (eventType) {
+      const authMethod = normalizeUsageToken(
+          body.authMethod,
+          "unknown",
+          ["google", "email_password", "unknown"],
+      );
+      const authMode = normalizeUsageToken(
+          body.authMode,
+          "login",
+          ["login", "signup"],
+      );
+      const reasonCode = normalizeUsageToken(body.reasonCode, "none");
+      const fields = authEventFields(eventType);
+      const zero = admin.firestore.FieldValue.increment(0);
+      const attemptIncrement = admin.firestore.FieldValue.increment(fields.attempts);
+      const successIncrement = admin.firestore.FieldValue.increment(fields.successes);
+      const errorIncrement = admin.firestore.FieldValue.increment(fields.errors);
+      const cancelIncrement = admin.firestore.FieldValue.increment(fields.cancels);
+      const authDailyRef = db.collection("appLoginDailyStats")
+          .doc(`${dateKey}_${authMethod}_${authMode}`);
+      const authReasonRef = db.collection("appLoginReasonDailyStats")
+          .doc(`${dateKey}_${authMethod}_${authMode}_${eventType}_${reasonCode}`);
+      const authUserRef = db.collection("appLoginDailyUserKeys")
+          .doc(`${dateKey}_${authMethod}_${authMode}_${visitorHash}`);
+      const regionAuthDailyRef = regionId ?
+        db.collection("appLoginRegionDailyStats")
+            .doc(`${dateKey}_${regionId}_${authMethod}_${authMode}`) :
+        null;
+      const regionAuthUserRef = regionId ?
+        db.collection("appLoginRegionDailyUserKeys")
+            .doc(`${dateKey}_${regionId}_${authMethod}_${authMode}_${visitorHash}`) :
+        null;
+      const regionReasonRef = regionId ?
+        db.collection("appLoginRegionReasonDailyStats")
+            .doc(`${dateKey}_${regionId}_${authMethod}_${authMode}_${eventType}_${reasonCode}`) :
+        null;
+      const dropoffUserRef = db.collection("appLoginDropoffUserState")
+          .doc(`${dateKey}_${authMethod}_${authMode}_${visitorHash}`);
+      const regionDropoffUserRef = regionId ?
+        db.collection("appLoginRegionDropoffUserState")
+            .doc(`${dateKey}_${regionId}_${authMethod}_${authMode}_${visitorHash}`) :
+        null;
+      const dailyRef = db.collection("appDailyUsageStats").doc(dateKey);
+      const screenRef = db.collection("appScreenDailyStats").doc(`${dateKey}_login`);
+      const regionDailyRef = regionId ?
+        db.collection("appRegionDailyUsageStats").doc(`${dateKey}_${regionId}`) :
+        null;
+      const regionScreenRef = regionId ?
+        db.collection("appScreenRegionDailyStats").doc(`${dateKey}_${regionId}_login`) :
+        null;
+
+      await db.runTransaction(async (tx) => {
+        const reads = [tx.get(authUserRef), tx.get(dropoffUserRef)];
+        if (regionAuthUserRef) {
+          reads.push(tx.get(regionAuthUserRef));
+        }
+        if (regionDropoffUserRef) {
+          reads.push(tx.get(regionDropoffUserRef));
+        }
+        const [authUserSnap, dropoffUserSnap, regionAuthUserSnap, regionDropoffUserSnap] =
+          await Promise.all(reads);
+        const isNewAuthUser = !authUserSnap.exists;
+        const isNewRegionAuthUser = Boolean(
+            regionAuthUserRef && regionAuthUserSnap && !regionAuthUserSnap.exists,
+        );
+        const dropoffPending = dropoffUserSnap.exists &&
+          dropoffUserSnap.data()?.pending === true;
+        const dropoffDelta = authDropoffDelta(eventType, dropoffPending);
+        const dropoffIncrement = admin.firestore.FieldValue.increment(dropoffDelta);
+        const nextDropoffPending =
+          eventType === "auth_success" ? false : dropoffPending || dropoffDelta > 0;
+        const regionDropoffPending = Boolean(
+            regionDropoffUserRef &&
+            regionDropoffUserSnap &&
+            regionDropoffUserSnap.exists &&
+            regionDropoffUserSnap.data()?.pending === true,
+        );
+        const regionDropoffDelta = regionDropoffUserRef ?
+          authDropoffDelta(eventType, regionDropoffPending) :
+          0;
+        const regionDropoffIncrement =
+          admin.firestore.FieldValue.increment(regionDropoffDelta);
+        const nextRegionDropoffPending =
+          eventType === "auth_success" ?
+            false :
+            regionDropoffPending || regionDropoffDelta > 0;
+
+        if (isNewAuthUser) {
+          tx.set(authUserRef, {
+            dateKey,
+            authMethod,
+            authMode,
+            visitorHash,
+            firstSeenAt: nowMillis,
+            lastSeenAt: nowMillis,
+          });
+        } else {
+          tx.set(authUserRef, {lastSeenAt: nowMillis}, {merge: true});
+        }
+
+        tx.set(authDailyRef, {
+          dateKey,
+          authMethod,
+          authMode,
+          regionId: "",
+          uniqueUserCount: isNewAuthUser ?
+            admin.firestore.FieldValue.increment(1) :
+            zero,
+          attemptCount: attemptIncrement,
+          successCount: successIncrement,
+          errorCount: errorIncrement,
+          cancelCount: cancelIncrement,
+          lastSeenAt: nowMillis,
+          appVersion,
+          buildNumber,
+        }, {merge: true});
+
+        tx.set(authReasonRef, {
+          dateKey,
+          authMethod,
+          authMode,
+          eventType,
+          reasonCode,
+          eventCount: admin.firestore.FieldValue.increment(1),
+          attemptCount: attemptIncrement,
+          successCount: successIncrement,
+          errorCount: errorIncrement,
+          cancelCount: cancelIncrement,
+          lastSeenAt: nowMillis,
+          appVersion,
+          buildNumber,
+        }, {merge: true});
+
+        tx.set(dropoffUserRef, {
+          dateKey,
+          authMethod,
+          authMode,
+          visitorHash,
+          pending: nextDropoffPending,
+          firstSeenAt: dropoffUserSnap.exists ?
+            dropoffUserSnap.data()?.firstSeenAt || nowMillis :
+            nowMillis,
+          lastSeenAt: nowMillis,
+          lastEventType: eventType,
+        }, {merge: true});
+
+        if (dropoffDelta !== 0) {
+          tx.set(dailyRef, {
+            dateKey,
+            loginDropoffCount: dropoffIncrement,
+            lastSeenAt: nowMillis,
+          }, {merge: true});
+          tx.set(screenRef, {
+            dateKey,
+            screenKey: "login",
+            screenLabel: "Login",
+            loginDropoffCount: dropoffIncrement,
+            lastSeenAt: nowMillis,
+            appVersion,
+            buildNumber,
+          }, {merge: true});
+        }
+
+        if (regionAuthDailyRef && regionAuthUserRef) {
+          if (isNewRegionAuthUser) {
+            tx.set(regionAuthUserRef, {
+              dateKey,
+              regionId,
+              authMethod,
+              authMode,
+              visitorHash,
+              firstSeenAt: nowMillis,
+              lastSeenAt: nowMillis,
+            });
+          } else {
+            tx.set(regionAuthUserRef, {lastSeenAt: nowMillis}, {merge: true});
+          }
+          tx.set(regionAuthDailyRef, {
+            dateKey,
+            regionId,
+            regionName,
+            authMethod,
+            authMode,
+            uniqueUserCount: isNewRegionAuthUser ?
+              admin.firestore.FieldValue.increment(1) :
+              zero,
+            attemptCount: attemptIncrement,
+            successCount: successIncrement,
+            errorCount: errorIncrement,
+            cancelCount: cancelIncrement,
+            lastSeenAt: nowMillis,
+            appVersion,
+            buildNumber,
+          }, {merge: true});
+        }
+
+        if (regionReasonRef) {
+          tx.set(regionReasonRef, {
+            dateKey,
+            regionId,
+            regionName,
+            authMethod,
+            authMode,
+            eventType,
+            reasonCode,
+            eventCount: admin.firestore.FieldValue.increment(1),
+            attemptCount: attemptIncrement,
+            successCount: successIncrement,
+            errorCount: errorIncrement,
+            cancelCount: cancelIncrement,
+            lastSeenAt: nowMillis,
+            appVersion,
+            buildNumber,
+          }, {merge: true});
+        }
+
+        if (regionDropoffUserRef && regionDropoffDelta !== 0) {
+          tx.set(regionDropoffUserRef, {
+            dateKey,
+            regionId,
+            authMethod,
+            authMode,
+            visitorHash,
+            pending: nextRegionDropoffPending,
+            firstSeenAt: regionDropoffUserSnap && regionDropoffUserSnap.exists ?
+              regionDropoffUserSnap.data()?.firstSeenAt || nowMillis :
+              nowMillis,
+            lastSeenAt: nowMillis,
+            lastEventType: eventType,
+          }, {merge: true});
+          if (regionDailyRef) {
+            tx.set(regionDailyRef, {
+              dateKey,
+              regionId,
+              regionName,
+              loginDropoffCount: regionDropoffIncrement,
+              lastSeenAt: nowMillis,
+            }, {merge: true});
+          }
+          if (regionScreenRef) {
+            tx.set(regionScreenRef, {
+              dateKey,
+              regionId,
+              regionName,
+              screenKey: "login",
+              screenLabel: "Login",
+              loginDropoffCount: regionDropoffIncrement,
+              lastSeenAt: nowMillis,
+              appVersion,
+              buildNumber,
+            }, {merge: true});
+          }
+        } else if (regionDropoffUserRef) {
+          tx.set(regionDropoffUserRef, {
+            dateKey,
+            regionId,
+            authMethod,
+            authMode,
+            visitorHash,
+            pending: nextRegionDropoffPending,
+            firstSeenAt: regionDropoffUserSnap && regionDropoffUserSnap.exists ?
+              regionDropoffUserSnap.data()?.firstSeenAt || nowMillis :
+              nowMillis,
+            lastSeenAt: nowMillis,
+            lastEventType: eventType,
+          }, {merge: true});
+        }
+      });
+
+      res.status(200).json({ok: true});
+      return;
+    }
+
+    const durationMs = parseScreenDurationMs(body.durationMs);
+    if (!durationMs) {
+      res.status(200).json({ok: true, skipped: true});
+      return;
+    }
+
+    const loginDropoffIncrement = 0;
+    const increment = admin.firestore.FieldValue.increment(1);
+    const durationIncrement = admin.firestore.FieldValue.increment(durationMs);
+    const dropoffIncrement =
+      admin.firestore.FieldValue.increment(loginDropoffIncrement);
+    const uniqueIncrement = admin.firestore.FieldValue.increment(1);
+    const zeroIncrement = admin.firestore.FieldValue.increment(0);
+
+    const dailyRef = db.collection("appDailyUsageStats").doc(dateKey);
+    const activeUserRef =
+      db.collection("appDailyActiveUserKeys").doc(`${dateKey}_${visitorHash}`);
+    const screenRef =
+      db.collection("appScreenDailyStats").doc(`${dateKey}_${screenKey}`);
+    const screenUserRef =
+      db.collection("appScreenDailyUserKeys").doc(`${dateKey}_${screenKey}_${visitorHash}`);
+    const regionDailyRef = regionId ?
+      db.collection("appRegionDailyUsageStats").doc(`${dateKey}_${regionId}`) :
+      null;
+    const regionScreenRef = regionId ?
+      db.collection("appScreenRegionDailyStats").doc(`${dateKey}_${regionId}_${screenKey}`) :
+      null;
+    const regionUserRef = regionId ?
+      db.collection("appRegionDailyUserKeys").doc(`${dateKey}_${regionId}_${visitorHash}`) :
+      null;
+    const regionScreenUserRef = regionId ?
+      db.collection("appScreenRegionDailyUserKeys")
+          .doc(`${dateKey}_${regionId}_${screenKey}_${visitorHash}`) :
+      null;
+
+    await db.runTransaction(async (tx) => {
+      const reads = [
+        tx.get(activeUserRef),
+        tx.get(screenUserRef),
+      ];
+      if (regionUserRef) {
+        reads.push(tx.get(regionUserRef));
+      }
+      if (regionScreenUserRef) {
+        reads.push(tx.get(regionScreenUserRef));
+      }
+      const [activeUserSnap, screenUserSnap, regionUserSnap, regionScreenUserSnap] =
+        await Promise.all(reads);
+      const isNewDailyUser = !activeUserSnap.exists;
+      const isNewScreenUser = !screenUserSnap.exists;
+      const isNewRegionUser = Boolean(regionUserRef && regionUserSnap && !regionUserSnap.exists);
+      const isNewRegionScreenUser = Boolean(
+          regionScreenUserRef && regionScreenUserSnap && !regionScreenUserSnap.exists,
+      );
+
+      if (isNewDailyUser) {
+        tx.set(activeUserRef, {
+          dateKey,
+          visitorHash,
+          authenticated: isAuthenticated,
+          regionId,
+          language,
+          firstSeenAt: nowMillis,
+          lastSeenAt: nowMillis,
+        });
+      } else {
+        tx.set(activeUserRef, {lastSeenAt: nowMillis, regionId, language}, {merge: true});
+      }
+
+      if (isNewScreenUser) {
+        tx.set(screenUserRef, {
+          dateKey,
+          screenKey,
+          visitorHash,
+          authenticated: isAuthenticated,
+          firstSeenAt: nowMillis,
+          lastSeenAt: nowMillis,
+        });
+      } else {
+        tx.set(screenUserRef, {lastSeenAt: nowMillis}, {merge: true});
+      }
+
+      tx.set(dailyRef, {
+        dateKey,
+        visitCount: increment,
+        activeUserCount: isNewDailyUser ? uniqueIncrement : zeroIncrement,
+        authenticatedVisitCount: isAuthenticated ? increment : zeroIncrement,
+        anonymousVisitCount: isAuthenticated ? zeroIncrement : increment,
+        totalDurationMs: durationIncrement,
+        loginDropoffCount: dropoffIncrement,
+        lastSeenAt: nowMillis,
+      }, {merge: true});
+
+      tx.set(screenRef, {
+        dateKey,
+        screenKey,
+        screenLabel,
+        visitCount: increment,
+        uniqueUserCount: isNewScreenUser ? uniqueIncrement : zeroIncrement,
+        authenticatedVisitCount: isAuthenticated ? increment : zeroIncrement,
+        anonymousVisitCount: isAuthenticated ? zeroIncrement : increment,
+        totalDurationMs: durationIncrement,
+        loginDropoffCount: dropoffIncrement,
+        lastSeenAt: nowMillis,
+        appVersion,
+        buildNumber,
+      }, {merge: true});
+
+      if (regionDailyRef && regionUserRef) {
+        if (isNewRegionUser) {
+          tx.set(regionUserRef, {
+            dateKey,
+            regionId,
+            visitorHash,
+            authenticated: isAuthenticated,
+            firstSeenAt: nowMillis,
+            lastSeenAt: nowMillis,
+          });
+        } else {
+          tx.set(regionUserRef, {lastSeenAt: nowMillis}, {merge: true});
+        }
+        tx.set(regionDailyRef, {
+          dateKey,
+          regionId,
+          regionName,
+          visitCount: increment,
+          activeUserCount: isNewRegionUser ? uniqueIncrement : zeroIncrement,
+          totalDurationMs: durationIncrement,
+          loginDropoffCount: dropoffIncrement,
+          lastSeenAt: nowMillis,
+        }, {merge: true});
+      }
+
+      if (regionScreenRef && regionScreenUserRef) {
+        if (isNewRegionScreenUser) {
+          tx.set(regionScreenUserRef, {
+            dateKey,
+            regionId,
+            screenKey,
+            visitorHash,
+            authenticated: isAuthenticated,
+            firstSeenAt: nowMillis,
+            lastSeenAt: nowMillis,
+          });
+        } else {
+          tx.set(regionScreenUserRef, {lastSeenAt: nowMillis}, {merge: true});
+        }
+        tx.set(regionScreenRef, {
+          dateKey,
+          regionId,
+          regionName,
+          screenKey,
+          screenLabel,
+          visitCount: increment,
+          uniqueUserCount: isNewRegionScreenUser ? uniqueIncrement : zeroIncrement,
+          authenticatedVisitCount: isAuthenticated ? increment : zeroIncrement,
+          anonymousVisitCount: isAuthenticated ? zeroIncrement : increment,
+          totalDurationMs: durationIncrement,
+          loginDropoffCount: dropoffIncrement,
+          lastSeenAt: nowMillis,
+          appVersion,
+          buildNumber,
+        }, {merge: true});
+      }
+    });
+
+    res.status(200).json({ok: true});
+  } catch (error) {
+    logger.error("recordAppScreenUsage failed", error);
+    res.status(500).json({ok: false, error: "Unable to record app usage."});
   }
 });
 
@@ -5216,44 +6031,39 @@ exports.subscriptionStatus = onRequest({region: "asia-south1"}, async (req, res)
     const decoded = await verifyAuth(req);
     const uid = decoded.uid;
     const email = normalizeEmail(decoded.email);
+    const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
 
     if (isManualLifetimeWhitelistedEmail(email)) {
-      logger.info("subscriptionStatus manual whitelist override", {
+      await manualLifetimeWhitelistResponse({
+        res,
         uid,
-        source: manualLifetimeWhitelistSource,
-        emailHash: sha256(email).slice(0, 12),
-      });
-      const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
-      await entitlementRef.set({
-        isPro: true,
-        status: "active",
-        source: manualLifetimeWhitelistSource,
-        productId: "manual_lifetime_whitelist",
-        subscriptionState: manualLifetimeWhitelistSource,
-        autoRenewing: false,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, {merge: true});
-      res.status(200).json({
-        isPro: true,
-        hasAccess: true,
-        message: "Entitlement active",
-        status: "active",
-        source: manualLifetimeWhitelistSource,
-        productId: "manual_lifetime_whitelist",
-        subscriptionState: manualLifetimeWhitelistSource,
-        startDate: null,
-        expiryTime: null,
-        autoRenewing: false,
-        latestOrderId: null,
-        referralRewardActive: false,
-        referralRewardStartsAt: null,
-        referralRewardExpiresAt: null,
-        lastSyncedAt: new Date().toISOString(),
+        entitlementRef,
+        matchedBy: "email",
+        matchedHash: sha256(email).slice(0, 12),
       });
       return;
     }
 
-    const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
+    let authPhone = String(decoded.phone_number || "").trim();
+    if (!authPhone) {
+      try {
+        const userRecord = await admin.auth().getUser(uid);
+        authPhone = String(userRecord.phoneNumber || "").trim();
+      } catch (error) {
+        logger.warn("subscriptionStatus phone lookup failed", {uid, error});
+      }
+    }
+    if (isManualLifetimeWhitelistedPhone(authPhone)) {
+      await manualLifetimeWhitelistResponse({
+        res,
+        uid,
+        entitlementRef,
+        matchedBy: "phone",
+        matchedHash: sha256(normalizePhoneDigits(authPhone)).slice(0, 12),
+      });
+      return;
+    }
+
     const snap = await entitlementRef.get();
     const data = snap.data() || {};
     const requestedScope = requestedSubscriptionScope(req.body || {});
@@ -5775,7 +6585,7 @@ exports.processWelcomeNotifications = onSchedule(
 exports.dailyGoodMorningReminder0730 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "30 7 * * *",
+      schedule: "0 7 * * *",
       timeZone: "Asia/Kolkata",
       memory: "1GiB",
       timeoutSeconds: 300,
@@ -5850,6 +6660,26 @@ exports.dailyGoodAfternoonReminder1300 = onSchedule(
         ],
         categoryKey: "afternoon",
         reminderSeed: "1300",
+      });
+    },
+);
+
+exports.dailyGoodEveningReminder1700 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "0 17 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "1GiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendDailyPersonalizedReminder({
+        keywords: [
+        "good evening",
+        "evening",
+        ],
+        categoryKey: "evening",
+        reminderSeed: "1700",
       });
     },
 );
@@ -6288,29 +7118,7 @@ function weekKeyForMillis(ms = Date.now()) {
 
 function normalizeQuizLanguage(value) {
   const normalized = String(value || "").trim().toLowerCase();
-  if ([
-    "telugu",
-    "hindi",
-    "english",
-    "tamil",
-    "kannada",
-    "malayalam",
-    "assamese",
-    "konkani",
-    "gujarati",
-    "marathi",
-    "meitei",
-    "mizo",
-    "odia",
-    "punjabi",
-    "nepali",
-    "bengali",
-    "kashmiri",
-    "ladakhi",
-  ].includes(normalized)) {
-    return normalized;
-  }
-  return "english";
+  return normalized === "telugu" ? "telugu" : "english";
 }
 
 function localizedQuizText(source, language) {

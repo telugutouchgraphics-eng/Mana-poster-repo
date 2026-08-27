@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +10,7 @@ import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/painting.dart';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
@@ -18,6 +20,8 @@ import 'package:mana_poster/app/media/poster_network_image_cache.dart';
 enum PosterDisplayNameMode { auto, telugu, english }
 
 enum PosterIdentityMode { personal, business }
+
+const int _profileUploadMaxBytes = 14 * 1024 * 1024;
 
 class _PreparedStorageUpload {
   const _PreparedStorageUpload({
@@ -1316,9 +1320,10 @@ class PosterProfileService {
     final ref = FirebaseStorage.instance.ref(
       'users/${user.uid}/poster_profile/${upload.fileName}',
     );
-    await ref.putData(
-      upload.bytes,
-      SettableMetadata(contentType: upload.contentType),
+    await _putProfileUploadWithRetry(
+      ref,
+      upload,
+      logName: 'poster_profile.photo_upload',
     );
     return ref.getDownloadURL();
   }
@@ -1340,11 +1345,61 @@ class PosterProfileService {
     final ref = FirebaseStorage.instance.ref(
       'users/${user.uid}/poster_profile/${upload.fileName}',
     );
-    await ref.putData(
-      upload.bytes,
-      SettableMetadata(contentType: upload.contentType),
+    await _putProfileUploadWithRetry(
+      ref,
+      upload,
+      logName: 'poster_profile.logo_upload',
     );
     return ref.getDownloadURL();
+  }
+
+  static Future<void> _putProfileUploadWithRetry(
+    Reference ref,
+    _PreparedStorageUpload upload, {
+    required String logName,
+  }) async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    for (var attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await ref
+            .putData(
+              upload.bytes,
+              SettableMetadata(contentType: upload.contentType),
+            )
+            .timeout(const Duration(seconds: 45));
+        return;
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+        if (attempt == 0 && _isRetryableStorageUploadError(error)) {
+          await Future<void>.delayed(const Duration(milliseconds: 650));
+          continue;
+        }
+        developer.log(
+          'Profile storage upload failed: $error',
+          name: logName,
+          error: error,
+          stackTrace: stackTrace,
+        );
+        rethrow;
+      }
+    }
+    Error.throwWithStackTrace(firstError!, firstStackTrace!);
+  }
+
+  static bool _isRetryableStorageUploadError(Object error) {
+    if (error is TimeoutException) {
+      return true;
+    }
+    if (error is FirebaseException) {
+      final code = error.code.toLowerCase();
+      return code == 'retry-limit-exceeded' ||
+          code == 'canceled' ||
+          code == 'unknown' ||
+          code == 'unavailable';
+    }
+    return error is IOException;
   }
 
   static Future<void> deleteProfilePhoto({required String photoUrl}) async {
@@ -1620,11 +1675,70 @@ class PosterProfileService {
     final cleanExtension = extension.trim().isEmpty ? 'jpg' : extension.trim();
     final originalBytes = await file.readAsBytes();
     final normalizedExtension = _normalizedUploadExtension(cleanExtension);
-    final fileHash = _stableBytesHash(originalBytes);
+    final upload = _fitProfileUploadBytes(originalBytes, normalizedExtension);
+    final fileHash = _stableBytesHash(upload.bytes);
     return _PreparedStorageUpload(
-      bytes: originalBytes,
-      contentType: _contentTypeForExtension(normalizedExtension),
-      fileName: '${assetPrefix}_$fileHash.$normalizedExtension',
+      bytes: upload.bytes,
+      contentType: _contentTypeForExtension(upload.extension),
+      fileName: '${assetPrefix}_$fileHash.${upload.extension}',
+    );
+  }
+
+  static ({Uint8List bytes, String extension}) _fitProfileUploadBytes(
+    Uint8List sourceBytes,
+    String extension,
+  ) {
+    if (sourceBytes.length <= _profileUploadMaxBytes) {
+      return (bytes: sourceBytes, extension: extension);
+    }
+
+    final decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) {
+      return (bytes: sourceBytes, extension: extension);
+    }
+
+    var working = img.bakeOrientation(decoded);
+    final encodePngFirst = extension == 'png' && working.hasAlpha;
+    if (encodePngFirst) {
+      final png = Uint8List.fromList(img.encodePng(working, level: 6));
+      if (png.length <= _profileUploadMaxBytes) {
+        return (bytes: png, extension: 'png');
+      }
+    }
+
+    for (final quality in <int>[94, 90, 86, 82]) {
+      final encoded = Uint8List.fromList(
+        img.encodeJpg(working, quality: quality),
+      );
+      if (encoded.length <= _profileUploadMaxBytes) {
+        return (bytes: encoded, extension: 'jpg');
+      }
+    }
+
+    final longestSide = math.max(working.width, working.height);
+    for (final targetSide in <int>[4096, 3200, 2560, 1920]) {
+      if (longestSide > targetSide) {
+        final scale = targetSide / longestSide;
+        working = img.copyResize(
+          working,
+          width: math.max(1, (working.width * scale).round()),
+          height: math.max(1, (working.height * scale).round()),
+          interpolation: img.Interpolation.linear,
+        );
+      }
+      for (final quality in <int>[92, 88, 84, 80]) {
+        final encoded = Uint8List.fromList(
+          img.encodeJpg(working, quality: quality),
+        );
+        if (encoded.length <= _profileUploadMaxBytes) {
+          return (bytes: encoded, extension: 'jpg');
+        }
+      }
+    }
+
+    return (
+      bytes: Uint8List.fromList(img.encodeJpg(working, quality: 76)),
+      extension: 'jpg',
     );
   }
 

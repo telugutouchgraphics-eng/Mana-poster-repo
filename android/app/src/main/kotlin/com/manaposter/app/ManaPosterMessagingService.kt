@@ -40,7 +40,6 @@ object ManaPosterNotificationRenderer {
     private const val channelId = "mana_poster_general"
     private const val channelName = "Mana Poster Ai Notifications"
     private const val channelDescription = "General reminders and event updates"
-    private const val activeNotificationId = 1001
 
     fun show(context: Context, message: RemoteMessage) {
         val data = message.data
@@ -53,6 +52,7 @@ object ManaPosterNotificationRenderer {
         val posterImageUrl = data["posterImage"].orEmpty().trim()
         val categoryKey = data["categoryKey"].orEmpty().trim().lowercase()
         val source = data["source"].orEmpty().trim()
+        val notificationId = uniqueNotificationId(message, data)
         val isQuizWinnerNotification =
             categoryKey == "daily_quiz" ||
                 data["category"].orEmpty().trim().lowercase() == "daily_quiz" ||
@@ -74,7 +74,7 @@ object ManaPosterNotificationRenderer {
         val footerText = sanitizeNotificationText(data["footerText"].orEmpty().trim(), localizedCopy.footer)
 
         if (posterImageUrl.isBlank() && !isQuizWinnerNotification) {
-            showFallbackNotification(context, title, body, route, categoryKey)
+            showFallbackNotification(context, title, body, route, categoryKey, notificationId)
             return
         }
 
@@ -119,7 +119,7 @@ object ManaPosterNotificationRenderer {
 
             val posterBitmap = if (isQuizWinnerNotification) null else downloadBitmap(posterImageUrl)
             if (!isQuizWinnerNotification && posterBitmap == null) {
-                    showFallbackNotification(context, title, body, route, categoryKey)
+                    showFallbackNotification(context, title, body, route, categoryKey, notificationId)
                     return
             }
             if (posterBitmap != null) {
@@ -153,12 +153,11 @@ object ManaPosterNotificationRenderer {
             builder.setCustomContentView(compactViews)
             builder.setCustomBigContentView(expandedViews)
 
-            NotificationManagerCompat.from(context).cancelAll()
-            postNotification(context, activeNotificationId, builder.build())
+            postNotification(context, notificationId, builder.build())
             Log.i("ManaPosterNotif", "custom notification posted")
         } catch (t: Throwable) {
             Log.e("ManaPosterNotif", "custom render failed", t)
-            showFallbackNotification(context, title, body, route, categoryKey)
+            showFallbackNotification(context, title, body, route, categoryKey, notificationId)
         }
     }
 
@@ -168,6 +167,7 @@ object ManaPosterNotificationRenderer {
         body: String,
         route: String,
         categoryKey: String,
+        notificationId: Int,
     ) {
         val contentIntent = buildContentIntent(context, route, categoryKey, "")
         val builder = NotificationCompat.Builder(context, channelId)
@@ -180,8 +180,19 @@ object ManaPosterNotificationRenderer {
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)
-        NotificationManagerCompat.from(context).cancelAll()
-        postNotification(context, activeNotificationId, builder.build())
+        postNotification(context, notificationId, builder.build())
+    }
+
+    private fun uniqueNotificationId(message: RemoteMessage, data: Map<String, String>): Int {
+        val stableSeed = listOf(
+            message.messageId.orEmpty().trim(),
+            data["messageId"].orEmpty().trim(),
+            data["sentAt"].orEmpty().trim(),
+            data["renderedAt"].orEmpty().trim(),
+        ).firstOrNull { it.isNotEmpty() } ?: System.currentTimeMillis().toString()
+        val mixed = "$stableSeed:${data["categoryKey"].orEmpty()}:${data["posterImage"].orEmpty()}".hashCode()
+        val positive = mixed and 0x7fffffff
+        return if (positive == 0) 1001 else positive
     }
 
     private fun buildContentIntent(
