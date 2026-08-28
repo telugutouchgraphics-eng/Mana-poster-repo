@@ -9,6 +9,10 @@ class SubscriptionPlanConfig {
     'MANA_POSTER_PREMIUM_PLAN_BASE_PLAN_ID',
     defaultValue: 'monthly-149',
   );
+  static const String primaryYearlyBasePlanId = String.fromEnvironment(
+    'MANA_POSTER_PREMIUM_YEARLY_BASE_PLAN_ID',
+    defaultValue: 'yearly-699',
+  );
   static const String primaryTrialOfferId = String.fromEnvironment(
     'MANA_POSTER_PREMIUM_PLAN_OFFER_ID',
     defaultValue: 'intro-4rs-3days',
@@ -17,6 +21,7 @@ class SubscriptionPlanConfig {
   static const String trialPriceDisplay = '₹4';
   static const int trialDays = 3;
   static const String monthlyPriceDisplay = '₹149';
+  static const String yearlyPriceDisplay = '₹699';
   static const Duration entitlementCacheTtl = Duration(minutes: 10);
 
   /// Must cover cold billing + Firebase entitlement fetch on slower networks.

@@ -28,6 +28,7 @@ const subscriptionPlanConfig = {
   trialDays: 3,
   trialPrice: 4,
   monthlyPrice: 149,
+  yearlyPrice: 699,
 };
 const editorSubscriptionPlanConfig = {
   productId: "mana_poster_editor_pro",
@@ -68,6 +69,7 @@ const manualLifetimeWhitelistedEmails = new Set([
   "manaposter2026@gmail.com",
   "shaikvaseema62@gmail.com",
   "babuy2045@gmail.com",
+  "vkrseafoods901@gmail.com",
 ]);
 const manualLifetimeWhitelistedPhones = new Set([
   "8121111513",
@@ -4607,16 +4609,27 @@ function posterEngagementFields(action) {
   return {realField: "downloadCount", displayField: "displayDownloadCount"};
 }
 
-function hasActivePosterEngagementSubscription(userData, nowMillis = Date.now()) {
-  if (!userData || userData.isPro !== true) {
-    return false;
-  }
-  const expiryMillis = toMillis(userData.expiryTime);
-  return expiryMillis <= 0 || expiryMillis > nowMillis;
+function hasActivePosterEngagementSubscription(userData, entitlementData, nowMillis = Date.now()) {
+  const hasActiveAccess = (source) => {
+    if (!source) {
+      return false;
+    }
+    const accessFlag =
+      source.isPro === true ||
+      source.appAccess === true ||
+      source.editorAccess === true ||
+      String(source.status || "").trim().toLowerCase() === "active";
+    if (!accessFlag) {
+      return false;
+    }
+    const expiryMillis = toMillis(source.expiryTime);
+    return expiryMillis <= 0 || expiryMillis > nowMillis;
+  };
+  return hasActiveAccess(entitlementData) || hasActiveAccess(userData);
 }
 
-function posterEngagementSubscriberBucket(userData, nowMillis = Date.now()) {
-  return hasActivePosterEngagementSubscription(userData, nowMillis) ?
+function posterEngagementSubscriberBucket(userData, entitlementData, nowMillis = Date.now()) {
+  return hasActivePosterEngagementSubscription(userData, entitlementData, nowMillis) ?
     "subscriber" :
     "nonSubscriber";
 }
@@ -4715,8 +4728,10 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
       return;
     }
 
-    const [userSnap, posterSnap] = await Promise.all([
+    const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
+    const [userSnap, entitlementSnap, posterSnap] = await Promise.all([
       db.collection("users").doc(uid).get(),
+      entitlementRef.get(),
       db.collection("creatorPosters").doc(posterId).get(),
     ]);
     if (!userSnap.exists || !posterSnap.exists) {
@@ -4725,6 +4740,7 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
     }
 
     const userData = userSnap.data() || {};
+    const entitlementData = entitlementSnap.data() || {};
     const posterData = posterSnap.data() || {};
     const status = String(posterData.status || "").trim().toLowerCase();
     if (status !== "approved") {
@@ -4757,7 +4773,11 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
     const dateKey = getIstDayKey(new Date(nowMillis));
     const increment = admin.firestore.FieldValue.increment(1);
     const zero = admin.firestore.FieldValue.increment(0);
-    const subscriberBucket = posterEngagementSubscriberBucket(userData, nowMillis);
+    const subscriberBucket = posterEngagementSubscriberBucket(
+        userData,
+        entitlementData,
+        nowMillis,
+    );
     const subscriberShareIncrement =
       action === "share" && subscriberBucket === "subscriber" ? increment : zero;
     const nonSubscriberShareIncrement =

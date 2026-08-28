@@ -1427,24 +1427,7 @@ extension AppLanguageContextX on BuildContext {
       AppLanguageScope._fallbackController;
 
   bool get _usesEditorEnglishUi {
-    var isEditorContext = false;
-    void inspect(Element element) {
-      final typeName = element.widget.runtimeType.toString();
-      if (typeName == 'ImageEditorScreen' || typeName == 'PageSetupScreen') {
-        isEditorContext = true;
-      }
-    }
-
-    if (this is Element) {
-      inspect(this as Element);
-      if (!isEditorContext) {
-        (this as Element).visitAncestorElements((Element ancestor) {
-          inspect(ancestor);
-          return !isEditorContext;
-        });
-      }
-    }
-    return isEditorContext;
+    return false;
   }
 
   AppLanguage get currentLanguage => _usesEditorEnglishUi
@@ -3642,6 +3625,48 @@ class AppStrings {
           '\u0d21\u0d57\u0d7a\u0d32\u0d4b\u0d21\u0d4d',
         _ => 'Download',
       };
+
+  String get shareLabel =>
+      _regionalFallback('Share') ??
+      switch (language.supportedUiLanguage) {
+        SupportedUiLanguage.telugu => '\u0c37\u0c47\u0c30\u0c4d',
+        SupportedUiLanguage.hindi => '\u0936\u0947\u092f\u0930',
+        SupportedUiLanguage.english => 'Share',
+        SupportedUiLanguage.tamil => '\u0baa\u0b95\u0bbf\u0bb0\u0bcd',
+        SupportedUiLanguage.kannada => '\u0cb9\u0c82\u0c9a\u0cbf\u0c95\u0cc6',
+        SupportedUiLanguage.malayalam => '\u0d37\u0d46\u0d2f\u0d7c',
+        _ => _regionalFallback('Share') ?? 'Share',
+      };
+
+  String get freeExportWithPhotoTitle => localized(
+    telugu: '\u0c2b\u0c4b\u0c1f\u0c4b, \u0c2a\u0c47\u0c30\u0c41 \u0c24\u0c4b',
+    english: 'With photo and name',
+    hindi: '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925',
+  );
+
+  String get freeExportWithPhotoMessage => localized(
+    telugu: '\u0c2b\u0c4b\u0c1f\u0c4b, \u0c2a\u0c47\u0c30\u0c41 \u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
+    english: 'Share with photo and name',
+    hindi: '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
+  );
+
+  String get freeExportPlainTitle => localized(
+    telugu: '\u0c09\u0c1a\u0c3f\u0c24\u0c02\u0c17\u0c3e \u0c37\u0c47\u0c30\u0c4d',
+    english: 'Share free',
+    hindi: '\u092e\u0941\u092b\u094d\u0924 \u0936\u0947\u092f\u0930',
+  );
+
+  String get freeExportPlainMessage => localized(
+    telugu: '\u0c2a\u0c47\u0c30\u0c41, \u0c2b\u0c4b\u0c1f\u0c4b \u0c32\u0c47\u0c15\u0c41\u0c02\u0c21\u0c3e \u0c15\u0c47\u0c35\u0c32\u0c02 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d',
+    english: 'Poster only without name and photo',
+    hindi: '\u0928\u093e\u092e \u0914\u0930 \u092b\u094b\u091f\u094b \u0915\u0947 \u092c\u093f\u0928\u093e \u0938\u093f\u0930\u094d\u092b \u092a\u094b\u0938\u094d\u091f\u0930',
+  );
+
+  String get orLabel => localized(
+    telugu: '\u0c32\u0c47\u0c26\u0c3e',
+    english: 'or',
+    hindi: '\u092f\u093e',
+  );
 
   String get addPoliticalPhotos => localized(
     telugu: 'పొలిటికల్ ఫోటోలు జోడించండి',

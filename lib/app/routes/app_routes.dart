@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
-import 'package:mana_poster/features/image_editor/screens/image_editor_screen_web.dart'
-    if (dart.library.io) 'package:mana_poster/features/image_editor/screens/image_editor_screen.dart';
-import 'package:mana_poster/features/image_editor/screens/page_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
@@ -31,7 +28,6 @@ class AppRoutes {
 
   static String poster(String id) => '/poster/$id';
   static String category(String id) => '/category/$id';
-  static String editor(String id) => '/editor/$id';
   static String offer(String id) => '/offer/$id';
   static String event(String id) => '/event/$id';
 
@@ -72,8 +68,8 @@ class AppRoutes {
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),
     home: (_) => _readyEntry(const HomeScreen()),
-    pageSetup: (_) => _readyEntry(const PageSetupScreen()),
-    imageEditor: (_) => _readyEntry(const ImageEditorScreen()),
+    pageSetup: (_) => _readyEntry(const NotificationUnavailableScreen()),
+    imageEditor: (_) => _readyEntry(const NotificationUnavailableScreen()),
     notificationUnavailable: (_) =>
         _readyEntry(const NotificationUnavailableScreen()),
   };
@@ -122,11 +118,7 @@ class AppRoutes {
         );
         break;
       case 'editor':
-        if (id.isEmpty) {
-          screen = _readyEntry(const NotificationUnavailableScreen());
-        } else {
-          screen = _readyEntry(ImageEditorScreen(templateDocumentSource: id));
-        }
+        screen = _readyEntry(const NotificationUnavailableScreen());
         break;
       default:
         screen = _readyEntry(const NotificationUnavailableScreen());

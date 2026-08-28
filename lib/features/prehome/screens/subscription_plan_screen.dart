@@ -16,25 +16,15 @@ import 'package:mana_poster/features/image_editor/services/pro_purchase_gateway.
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/widgets/subscription_exit_video_prompt.dart';
 
-enum SubscriptionPlanMode { appPlan, editorPlan }
-
 class SubscriptionPlanScreen extends StatefulWidget {
   const SubscriptionPlanScreen({
     super.key,
     this.triggerRestoreOnOpen = false,
     this.startPurchaseOnOpen = false,
-    this.mode = SubscriptionPlanMode.appPlan,
   });
-
-  const SubscriptionPlanScreen.editorPro({
-    super.key,
-    this.triggerRestoreOnOpen = false,
-    this.startPurchaseOnOpen = false,
-  }) : mode = SubscriptionPlanMode.editorPlan;
 
   final bool triggerRestoreOnOpen;
   final bool startPurchaseOnOpen;
-  final SubscriptionPlanMode mode;
 
   @override
   State<SubscriptionPlanScreen> createState() => _SubscriptionPlanScreenState();
@@ -50,6 +40,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   ProductDetails? _selectedProduct;
   bool _loading = true;
   bool _busyFree = false;
+  bool _busyYearly = false;
   bool _busyRestore = false;
   bool _didAutoStartPurchase = false;
   bool _didAutoTriggerRestore = false;
@@ -63,18 +54,17 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
   }
 
-  bool get _isBusy => _loading || _busyFree || _busyRestore;
+  bool get _isBusy => _loading || _busyFree || _busyYearly || _busyRestore;
   bool get _isSubscriptionActive => _backendResult?.hasAccess == true;
   bool get _isSubscriptionExpired => _backendResult?.isExpired == true;
   bool get _canSubscribe => !_isSubscriptionActive;
   AppStrings get _strings => AppStrings(_languageSnapshot);
-  bool get _isEditorPlan => widget.mode == SubscriptionPlanMode.editorPlan;
-  Set<String> get _productIdsToQuery => _isEditorPlan
-      ? EditorSubscriptionPlanConfig.resolvedProductIds()
-      : SubscriptionPlanConfig.resolvedPremiumProductIds();
-  String get _monthlyFallbackPrice => _isEditorPlan
-      ? EditorSubscriptionPlanConfig.monthlyPriceDisplay
-      : SubscriptionPlanConfig.monthlyPriceDisplay;
+  bool get _isEditorPlan => false;
+  Set<String> get _productIdsToQuery =>
+      SubscriptionPlanConfig.resolvedPremiumProductIds();
+  String get _monthlyFallbackPrice =>
+      SubscriptionPlanConfig.monthlyPriceDisplay;
+  String get _yearlyFallbackPrice => SubscriptionPlanConfig.yearlyPriceDisplay;
 
   @override
   void didChangeDependencies() {
@@ -86,20 +76,8 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   void initState() {
     super.initState();
     unawaited(ScreenSecurityService.protectScreen());
-    _backendService = _isEditorPlan
-        ? SubscriptionBackendService.editor()
-        : SubscriptionBackendService.app();
-    _purchaseGateway = _isEditorPlan
-        ? InAppPurchaseGateway(
-            productId: EditorSubscriptionPlanConfig.productId,
-            fallbackProductIds:
-                EditorSubscriptionPlanConfig.resolvedProductIds().toList(
-                  growable: false,
-                ),
-            preferredBasePlanId: EditorSubscriptionPlanConfig.monthlyBasePlanId,
-            preferredOfferId: EditorSubscriptionPlanConfig.trialOfferId,
-          )
-        : InAppPurchaseGateway();
+    _backendService = SubscriptionBackendService.app();
+    _purchaseGateway = InAppPurchaseGateway();
     WidgetsBinding.instance.addObserver(this);
     _screenShownAt = DateTime.now();
     unawaited(_purchaseGateway.initialize());
@@ -288,30 +266,15 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     }
   }
 
-  ProPurchaseGateway _purchaseGatewayForBasePlan(String? basePlanId) {
-    if (basePlanId == null || basePlanId.isEmpty) {
-      return _purchaseGateway;
-    }
-    final isEditorBasePlan =
-        basePlanId == EditorSubscriptionPlanConfig.monthlyBasePlanId ||
-        basePlanId == EditorSubscriptionPlanConfig.yearlyBasePlanId;
-    if (!isEditorBasePlan) {
-      return _purchaseGateway;
-    }
-    return InAppPurchaseGateway(
-      productId: EditorSubscriptionPlanConfig.productId,
-      fallbackProductIds: EditorSubscriptionPlanConfig.resolvedProductIds()
-          .toList(growable: false),
-      preferredBasePlanId: basePlanId,
-      preferredOfferId: '',
-    );
+  ProPurchaseGateway _purchaseGatewayForBasePlan() {
+    return _purchaseGateway;
   }
 
-  Future<void> _subscribeFreePlan({String? editorBasePlanId}) async {
+  Future<void> _subscribeFreePlan() async {
     if (_isBusy || !_canSubscribe) {
       return;
     }
-    final purchaseGateway = _purchaseGatewayForBasePlan(editorBasePlanId);
+    final purchaseGateway = _purchaseGatewayForBasePlan();
     await purchaseGateway.initialize();
     if (!await _prepareForStoreFlow()) {
       return;
@@ -343,6 +306,55 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     } finally {
       if (mounted) {
         setState(() => _busyFree = false);
+      }
+    }
+    if (!mounted) {
+      return;
+    }
+    if (shouldShowThanksPrompt) {
+      await _showThanksPromptOnce();
+      if (!mounted) {
+        return;
+      }
+      AppNavigator.openHome();
+    }
+  }
+
+  Future<void> _subscribeYearlyPlan() async {
+    if (_isBusy || !_canSubscribe) {
+      return;
+    }
+    await _purchaseGateway.initialize();
+    if (!await _prepareForStoreFlow()) {
+      return;
+    }
+    var shouldShowThanksPrompt = false;
+    setState(() => _busyYearly = true);
+    try {
+      final outcome = await _purchaseGateway.purchaseYearlyPro();
+      if (!mounted) {
+        return;
+      }
+      final activated = await _finalizeOutcome(
+        outcome,
+        successMessage: _t(
+          telugu: 'సంవత్సర ప్లాన్ యాక్టివ్ అయింది',
+          english: 'Yearly plan activated',
+          hindi: 'Yearly plan activated',
+          tamil: 'Yearly plan activated',
+          kannada: 'Yearly plan activated',
+          malayalam: 'Yearly plan activated',
+        ),
+      );
+      if (!mounted) {
+        return;
+      }
+      if (activated) {
+        shouldShowThanksPrompt = true;
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busyYearly = false);
       }
     }
     if (!mounted) {
@@ -952,6 +964,18 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     String? tamil,
     String? kannada,
     String? malayalam,
+    String? assamese,
+    String? konkani,
+    String? gujarati,
+    String? marathi,
+    String? meitei,
+    String? mizo,
+    String? odia,
+    String? punjabi,
+    String? nepali,
+    String? bengali,
+    String? kashmiri,
+    String? ladakhi,
   }) {
     if (_isEditorPlan) {
       return english;
@@ -963,6 +987,18 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       tamil: tamil,
       kannada: kannada,
       malayalam: malayalam,
+      assamese: assamese,
+      konkani: konkani,
+      gujarati: gujarati,
+      marathi: marathi,
+      meitei: meitei,
+      mizo: mizo,
+      odia: odia,
+      punjabi: punjabi,
+      nepali: nepali,
+      bengali: bengali,
+      kashmiri: kashmiri,
+      ladakhi: ladakhi,
     );
   }
 
@@ -975,20 +1011,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
 
   int get _trialDays => SubscriptionPlanConfig.trialDays;
 
-  String get _trialOfferBody => _t(
-    telugu:
-        'ఈ ప్లాన్ రూ.4 తో 3 రోజుల ట్రయల్‌గా ప్రారంభమవుతుంది. ఈ సమయంలో మీరు రద్దు చేయవచ్చు.',
-    english:
-        'The plan starts with a $_trialPriceLabel trial for $_trialDays days. You can cancel within this period.',
-    hindi:
-        'यह प्लान 3 दिनों के लिए Rs.4 ट्रायल से शुरू होता है। इस अवधि में आप रद्द कर सकते हैं।',
-    tamil:
-        'இந்த திட்டம் Rs.4 க்கு 3 நாள் சோதனையாக தொடங்கும். இந்த காலத்தில் நீங்கள் ரத்து செய்யலாம்.',
-    kannada:
-        'ಈ ಯೋಜನೆ Rs.4 ಗೆ 3 ದಿನಗಳ ಟ್ರಯಲ್‌ನೊಂದಿಗೆ ಆರಂಭವಾಗುತ್ತದೆ. ಈ ಅವಧಿಯಲ್ಲಿ ನೀವು ರದ್ದುಗೊಳಿಸಬಹುದು.',
-    malayalam:
-        'ഈ പ്ലാൻ Rs.4യ്ക്ക് 3 ദിവസത്തെ ട്രയലായി തുടങ്ങുന്നു. ഈ സമയത്ത് നിങ്ങൾക്ക് റദ്ദാക്കാം.',
-  );
+  String get _yearlyPriceLabel => '$_yearlyFallbackPrice / year';
 
   String get _alreadyActiveLabel => _t(
     telugu: 'ఇప్పటికే యాక్టివ్',
@@ -1018,107 +1041,327 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     malayalam: 'App Pro',
   );
 
-  String get _appProSimpleBenefit => _t(
-    telugu: 'ఫోటో మరియు పేరుతో పోస్టర్లు share/download చేసుకోవచ్చు',
-    english: 'Share and download posters with photo and name',
-    hindi: 'फोटो और नाम के साथ पोस्टर शेयर और डाउनलोड करें',
-    tamil: 'புகைப்படம் மற்றும் பெயருடன் போஸ்டர்களை பகிரவும் பதிவிறக்கவும்',
-    kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಹಂಚಿ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
-    malayalam: 'ഫോട്ടോയും പേരും ചേർത്ത് പോസ്റ്ററുകൾ share/download ചെയ്യാം',
+  String get _appPlanTitleClean => _t(
+    telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
+    english: 'Subscription Plan',
+    hindi: 'सब्सक्रिप्शन प्लान',
+    tamil: 'சந்தா திட்டம்',
+    kannada: 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ',
+    malayalam: 'സബ്സ്ക്രിപ്ഷൻ പ്ലാൻ',
+    assamese: 'চাবস্ক্ৰিপচন প্লেন',
+    konkani: 'सदस्यता प्लॅन',
+    gujarati: 'સબ્સ્ક્રિપ્શન પ્લાન',
+    marathi: 'सबस्क्रिप्शन प्लॅन',
+    meitei: 'Subscription plan',
+    mizo: 'Subscription plan',
+    odia: 'ସବସ୍କ୍ରିପସନ୍ ପ୍ଲାନ୍',
+    punjabi: 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਪਲਾਨ',
+    nepali: 'सब्स्क्रिप्सन प्लान',
+    bengali: 'সাবস্ক্রিপশন প্ল্যান',
+    kashmiri: 'سبسکرپشن پلان',
+    ladakhi: 'Subscription plan',
   );
 
-  String get _appProTrialPriceLabel => _t(
+  String get _appPlanSubtitleClean => _t(
+    telugu:
+        '$_trialPriceLabel ట్రయల్‌తో ప్రారంభించి పోస్టర్ షేర్/డౌన్‌లోడ్ అన్‌లాక్ చేయండి.',
+    english:
+        'Start with a $_trialPriceLabel trial and unlock poster sharing and downloads.',
+    hindi:
+        '$_trialPriceLabel ट्रायल से शुरू करें और पोस्टर शेयर/डाउनलोड अनलॉक करें।',
+    tamil:
+        '$_trialPriceLabel சோதனையுடன் தொடங்கி போஸ்டர் பகிர்வு/பதிவிறக்கத்தை திறக்கவும்.',
+    kannada:
+        '$_trialPriceLabel ಟ್ರಯಲ್‌ನಿಂದ ಪ್ರಾರಂಭಿಸಿ ಪೋಸ್ಟರ್ ಹಂಚಿಕೆ/ಡೌನ್‌ಲೋಡ್ ಅನ್‌ಲಾಕ್ ಮಾಡಿ.',
+    malayalam:
+        '$_trialPriceLabel ട്രയലോടെ തുടങ്ങി പോസ്റ്റർ ഷെയർ/ഡൗൺലോഡ് അൺലോക്ക് ചെയ്യുക.',
+    assamese:
+        '$_trialPriceLabel ট্রায়েলৰে আৰম্ভ কৰি পোষ্টাৰ শ্বেয়াৰ/ডাউনলোড আনলক কৰক।',
+    konkani:
+        '$_trialPriceLabel ट्रायलान सुरू करून पोस्टर शेयर/डाउनलोड अनलॉक करात.',
+    gujarati:
+        '$_trialPriceLabel ટ્રાયલથી શરૂ કરો અને પોસ્ટર શેર/ડાઉનલોડ અનલૉક કરો.',
+    marathi:
+        '$_trialPriceLabel ट्रायलने सुरू करा आणि पोस्टर शेअर/डाउनलोड अनलॉक करा.',
+    meitei:
+        '$_trialPriceLabel trial dagi houro, poster share/download unlock tou.',
+    mizo:
+        '$_trialPriceLabel trial-in tan la, poster share/download unlock rawh.',
+    odia:
+        '$_trialPriceLabel ଟ୍ରାୟାଲ୍ ସହିତ ଆରମ୍ଭ କରି ପୋଷ୍ଟର ଶେୟାର/ଡାଉନଲୋଡ୍ ଅନଲକ୍ କରନ୍ତୁ।',
+    punjabi:
+        '$_trialPriceLabel ਟ੍ਰਾਇਲ ਨਾਲ ਸ਼ੁਰੂ ਕਰੋ ਅਤੇ ਪੋਸਟਰ ਸ਼ੇਅਰ/ਡਾਊਨਲੋਡ ਅਨਲੌਕ ਕਰੋ।',
+    nepali:
+        '$_trialPriceLabel ट्रायलबाट सुरु गर्नुहोस् र पोस्टर शेयर/डाउनलोड अनलक गर्नुहोस्।',
+    bengali:
+        '$_trialPriceLabel ট্রায়াল দিয়ে শুরু করুন এবং পোস্টার শেয়ার/ডাউনলোড আনলক করুন।',
+    kashmiri:
+        '$_trialPriceLabel ٹرائل سٲتھ شروع کٔریو تہ پوسٹر شیئر/ڈاؤنلوڈ ان لاک کٔریو۔',
+    ladakhi:
+        '$_trialPriceLabel trial nas gojug in, poster share/download unlock chog.',
+  );
+
+  String get _trialOfferBodyClean => _t(
+    telugu:
+        'ఈ ప్లాన్ $_trialPriceLabel తో $_trialDays రోజుల ట్రయల్‌గా ప్రారంభమవుతుంది. ఈ సమయంలో మీరు రద్దు చేయవచ్చు.',
+    english:
+        'The plan starts with a $_trialPriceLabel trial for $_trialDays days. You can cancel within this period.',
+    hindi:
+        'यह प्लान $_trialPriceLabel में $_trialDays दिन के ट्रायल से शुरू होता है। इस अवधि में आप रद्द कर सकते हैं।',
+    tamil:
+        'இந்த திட்டம் $_trialPriceLabel க்கு $_trialDays நாள் சோதனையாக தொடங்கும். இந்த காலத்தில் நீங்கள் ரத்து செய்யலாம்.',
+    kannada:
+        'ಈ ಯೋಜನೆ $_trialPriceLabel ಗೆ $_trialDays ದಿನಗಳ ಟ್ರಯಲ್ ಆಗಿ ಆರಂಭವಾಗುತ್ತದೆ. ಈ ಅವಧಿಯಲ್ಲಿ ನೀವು ರದ್ದು ಮಾಡಬಹುದು.',
+    malayalam:
+        'ഈ പ്ലാൻ $_trialPriceLabel ന് $_trialDays ദിവസത്തെ ട്രയലായി തുടങ്ങും. ഈ സമയത്ത് നിങ്ങൾക്ക് റദ്ദാക്കാം.',
+    assamese:
+        'এই প্লেনটো $_trialPriceLabel ত $_trialDays দিনৰ ট্রায়েল হিচাপে আৰম্ভ হয়। এই সময়ত আপুনি বাতিল কৰিব পাৰে।',
+    konkani:
+        'हो प्लॅन $_trialPriceLabel न $_trialDays दिसांच्या ट्रायलान सुरू जाता. ह्या काळांत तुमी रद्द करूंक शकतात.',
+    gujarati:
+        'આ પ્લાન $_trialPriceLabel માં $_trialDays દિવસની ટ્રાયલ તરીકે શરૂ થાય છે. આ સમયગાળા દરમિયાન તમે રદ કરી શકો છો.',
+    marathi:
+        'हा प्लॅन $_trialPriceLabel मध्ये $_trialDays दिवसांच्या ट्रायलने सुरू होतो. या काळात तुम्ही रद्द करू शकता.',
+    meitei:
+        'Plan asi $_trialPriceLabel da $_trialDays numit trial oina houri. Masigi matamda cancel touba yai.',
+    mizo:
+        'He plan hi $_trialPriceLabel-a $_trialDays ni trial-in a tan. He hun chhung hian cancel theih a ni.',
+    odia:
+        'ଏହି ପ୍ଲାନ୍ $_trialPriceLabel ରେ $_trialDays ଦିନର ଟ୍ରାୟାଲ୍ ଭାବେ ଆରମ୍ଭ ହୁଏ। ଏହି ସମୟରେ ଆପଣ ରଦ୍ଦ କରିପାରିବେ।',
+    punjabi:
+        'ਇਹ ਪਲਾਨ $_trialPriceLabel ਨਾਲ $_trialDays ਦਿਨਾਂ ਦੀ ਟ੍ਰਾਇਲ ਵਜੋਂ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ। ਇਸ ਸਮੇਂ ਵਿੱਚ ਤੁਸੀਂ ਰੱਦ ਕਰ ਸਕਦੇ ਹੋ।',
+    nepali:
+        'यो प्लान $_trialPriceLabel मा $_trialDays दिनको ट्रायलबाट सुरु हुन्छ। यो अवधिमा तपाईं रद्द गर्न सक्नुहुन्छ।',
+    bengali:
+        'এই প্ল্যানটি $_trialPriceLabel দিয়ে $_trialDays দিনের ট্রায়াল হিসেবে শুরু হয়। এই সময়ে আপনি বাতিল করতে পারেন।',
+    kashmiri:
+        'یہ پلان $_trialPriceLabel منز $_trialDays دوہہ ٹرائل سٲتھ شروع گژھان چھ۔ امی مدت منز توہیہ منسوخ کٔرتھ ہیکیو۔',
+    ladakhi:
+        'Plan di $_trialPriceLabel la $_trialDays nyin trial nang gojug in. Di dus la cancel chog.',
+  );
+
+  String get _appProSimpleBenefitClean => _t(
+    telugu: 'ఫోటో మరియు పేరుతో పోస్టర్లు షేర్, డౌన్‌లోడ్ చేసుకోవచ్చు',
+    english: 'Share and download posters with photo and name',
+    hindi: 'फोटो और नाम के साथ पोस्टर शेयर और डाउनलोड करें',
+    tamil: 'புகைப்படம் மற்றும் பெயருடன் போஸ்டர்களை பகிர்ந்து பதிவிறக்கலாம்',
+    kannada: 'ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಹಂಚಿ, ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ',
+    malayalam: 'ഫോട്ടോയും പേരും ചേർത്ത് പോസ്റ്ററുകൾ ഷെയർ/ഡൗൺലോഡ് ചെയ്യാം',
+    assamese: 'ফটো আৰু নামৰ সৈতে পোষ্টাৰ শ্বেয়াৰ আৰু ডাউনলোড কৰক',
+    konkani: 'फोटो आनी नांवासयत पोस्टर शेयर आनी डाउनलोड करात',
+    gujarati: 'ફોટો અને નામ સાથે પોસ્ટર શેર અને ડાઉનલોડ કરો',
+    marathi: 'फोटो आणि नावासह पोस्टर शेअर आणि डाउनलोड करा',
+    meitei: 'Photo amasung mingga poster share/download tou',
+    mizo: 'Photo leh hming nen poster share/download rawh',
+    odia: 'ଫଟୋ ଏବଂ ନାମ ସହିତ ପୋଷ୍ଟର ଶେୟାର ଓ ଡାଉନଲୋଡ୍ କରନ୍ତୁ',
+    punjabi: 'ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਪੋਸਟਰ ਸ਼ੇਅਰ ਅਤੇ ਡਾਊਨਲੋਡ ਕਰੋ',
+    nepali: 'फोटो र नामसहित पोस्टर शेयर र डाउनलोड गर्नुहोस्',
+    bengali: 'ছবি ও নামসহ পোস্টার শেয়ার এবং ডাউনলোড করুন',
+    kashmiri: 'فوٹو تہ ناو سٲتھ پوسٹر شیئر تہ ڈاؤنلوڈ کٔریو',
+    ladakhi: 'Photo dang ming che poster share/download chog',
+  );
+
+  String get _appProTrialPriceLabelClean => _t(
     telugu: '₹4 / 3 రోజులు, తర్వాత $_monthlyPriceLabel / నెల',
     english: '₹4 / 3 days, then $_monthlyPriceLabel / month',
     hindi: '₹4 / 3 दिन, फिर $_monthlyPriceLabel / माह',
     tamil: '₹4 / 3 நாட்கள், பிறகு $_monthlyPriceLabel / மாதம்',
     kannada: '₹4 / 3 ದಿನಗಳು, ನಂತರ $_monthlyPriceLabel / ತಿಂಗಳು',
     malayalam: '₹4 / 3 ദിവസം, ശേഷം $_monthlyPriceLabel / മാസം',
+    assamese: '₹4 / 3 দিন, তাৰ পিছত $_monthlyPriceLabel / মাহ',
+    konkani: '₹4 / 3 दिस, मागीर $_monthlyPriceLabel / म्हयनो',
+    gujarati: '₹4 / 3 દિવસ, પછી $_monthlyPriceLabel / મહિનો',
+    marathi: '₹4 / 3 दिवस, नंतर $_monthlyPriceLabel / महिना',
+    meitei: '₹4 / 3 numit, adugi matungda $_monthlyPriceLabel / tha',
+    mizo: '₹4 / 3 ni, chutah $_monthlyPriceLabel / thla',
+    odia: '₹4 / 3 ଦିନ, ପରେ $_monthlyPriceLabel / ମାସ',
+    punjabi: '₹4 / 3 ਦਿਨ, ਫਿਰ $_monthlyPriceLabel / ਮਹੀਨਾ',
+    nepali: '₹4 / 3 दिन, त्यसपछि $_monthlyPriceLabel / महिना',
+    bengali: '₹4 / 3 দিন, তারপর $_monthlyPriceLabel / মাস',
+    kashmiri: '₹4 / 3 دوہہ، پتہ $_monthlyPriceLabel / مہینہ',
+    ladakhi: '₹4 / 3 nyin, dena $_monthlyPriceLabel / month',
   );
 
-  String get _allAccessSimpleBenefit => _t(
-    telugu: 'App Pro + Editor Pro tools',
-    english: 'App Pro + Editor Pro tools',
-    hindi: 'App Pro + Editor Pro tools',
-    tamil: 'App Pro + Editor Pro tools',
-    kannada: 'App Pro + Editor Pro tools',
-    malayalam: 'App Pro + Editor Pro tools',
-  );
-
-  String get _plansAutoRenewNotice => _t(
+  String get _plansAutoRenewNoticeClean => _t(
     telugu:
-        'Plans auto-renew అవుతాయి. Play Store లో ఎప్పుడైనా cancel చేయవచ్చు.',
+        'ప్లాన్ ఆటో-రిన్యూ అవుతుంది. Play Store లో ఎప్పుడైనా రద్దు చేయవచ్చు.',
     english: 'Plans auto-renew. Cancel anytime in Play Store.',
-    hindi:
-        'Plans auto-renew होते हैं। Play Store में कभी भी cancel कर सकते हैं।',
+    hindi: 'प्लान ऑटो-रिन्यू होता है। Play Store में कभी भी रद्द कर सकते हैं।',
     tamil:
-        'Plans auto-renew ஆகும். Play Store-ல் எப்போது வேண்டுமானாலும் cancel செய்யலாம்.',
+        'திட்டம் தானாக புதுப்பிக்கும். Play Store-ல் எப்போது வேண்டுமானாலும் ரத்து செய்யலாம்.',
     kannada:
-        'Plans auto-renew ಆಗುತ್ತವೆ. Play Store ನಲ್ಲಿ ಯಾವಾಗ ಬೇಕಾದರೂ cancel ಮಾಡಬಹುದು.',
+        'ಯೋಜನೆ ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ. Play Store ನಲ್ಲಿ ಯಾವಾಗ ಬೇಕಾದರೂ ರದ್ದು ಮಾಡಬಹುದು.',
     malayalam:
-        'Plans auto-renew ചെയ്യും. Play Store-ൽ എപ്പോൾ വേണമെങ്കിലും cancel ചെയ്യാം.',
+        'പ്ലാൻ ഓട്ടോ-റിന്യൂ ചെയ്യും. Play Store-ൽ എപ്പോൾ വേണമെങ്കിലും റദ്ദാക്കാം.',
+    assamese: 'প্লেন অটো-ৰিনিউ হয়। Play Store ত যিকোনো সময়ত বাতিল কৰিব পাৰে।',
+    konkani: 'प्लॅन ऑटो-रिन्यू जाता. Play Storeांत केन्नाय रद्द करूंक शकतात.',
+    gujarati:
+        'પ્લાન ઓટો-રિન્યુ થાય છે. Play Store માં ક્યારે પણ રદ કરી શકો છો.',
+    marathi: 'प्लॅन ऑटो-रिन्यू होतो. Play Store मध्ये कधीही रद्द करू शकता.',
+    meitei:
+        'Plan auto-renew tougani. Play Store da matam pumnamakta cancel touba yai.',
+    mizo:
+        'Plan chu auto-renew a ni. Play Store-ah engtik lai pawhin cancel theih.',
+    odia: 'ପ୍ଲାନ୍ ଅଟୋ-ରିନ୍ୟୁ ହୁଏ। Play Store ରେ କେବେବି ରଦ୍ଦ କରିପାରିବେ।',
+    punjabi: 'ਪਲਾਨ ਆਟੋ-ਰੀਨਿਊ ਹੁੰਦਾ ਹੈ। Play Store ਵਿੱਚ ਕਦੇ ਵੀ ਰੱਦ ਕਰ ਸਕਦੇ ਹੋ।',
+    nepali:
+        'प्लान अटो-रिन्यू हुन्छ। Play Store मा जुनसुकै बेला रद्द गर्न सकिन्छ।',
+    bengali:
+        'প্ল্যান অটো-রিনিউ হয়। Play Store-এ যেকোনো সময় বাতিল করতে পারবেন।',
+    kashmiri:
+        'پلان آٹو رینیو گژھان چھ۔ Play Store منز کنہِ وقت منسوخ کٔرتھ ہیکیو۔',
+    ladakhi: 'Plan auto-renew in. Play Store la nam yang cancel chog.',
   );
 
-  String get _subscribeAppProLabel => _t(
+  String get _subscribeAppProLabelClean => _t(
     telugu: 'App Pro సబ్‌స్క్రైబ్ చేయండి',
     english: 'Subscribe App Pro',
     hindi: 'App Pro सब्सक्राइब करें',
     tamil: 'App Pro சந்தா எடுக்கவும்',
     kannada: 'App Pro ಚಂದಾದಾರರಾಗಿ',
-    malayalam: 'App Pro സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+    malayalam: 'App Pro സബ്സ്ക്രൈബ് ചെയ്യുക',
+    assamese: 'App Pro চাবস্ক্ৰাইব কৰক',
+    konkani: 'App Pro सदस्यता घेवप',
+    gujarati: 'App Pro સબ્સ્ક્રાઇબ કરો',
+    marathi: 'App Pro सबस्क्राइब करा',
+    meitei: 'App Pro subscribe tou',
+    mizo: 'App Pro subscribe rawh',
+    odia: 'App Pro ସବସ୍କ୍ରାଇବ୍ କରନ୍ତୁ',
+    punjabi: 'App Pro ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ',
+    nepali: 'App Pro सब्स्क्राइब गर्नुहोस्',
+    bengali: 'App Pro সাবস্ক্রাইব করুন',
+    kashmiri: 'App Pro سبسکرائب کٔریو',
+    ladakhi: 'App Pro subscribe chog',
   );
 
-  // ignore: unused_element
-  String get _allAccessYearlyTitle => _t(
-    telugu: 'All Access వార్షిక ప్లాన్',
-    english: 'All Access Yearly',
-    hindi: 'All Access वार्षिक',
-    tamil: 'All Access ஆண்டு திட்டம்',
-    kannada: 'All Access ವಾರ್ಷಿಕ',
-    malayalam: 'All Access വാർഷികം',
+  String get _unlockPosterFeaturesClean => _t(
+    telugu: 'పోస్టర్ షేర్ మరియు డౌన్‌లోడ్ ఫీచర్లు అన్‌లాక్ అవుతాయి.',
+    english: 'Unlock poster share and download features.',
+    hindi: 'पोस्टर शेयर और डाउनलोड फीचर अनलॉक होंगे।',
+    tamil: 'போஸ்டர் பகிர்வு மற்றும் பதிவிறக்க அம்சங்கள் திறக்கும்.',
+    kannada: 'ಪೋಸ್ಟರ್ ಹಂಚಿಕೆ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ವೈಶಿಷ್ಟ್ಯಗಳು ಅನ್‌ಲಾಕ್ ಆಗುತ್ತವೆ.',
+    malayalam: 'പോസ്റ്റർ ഷെയർ, ഡൗൺലോഡ് ഫീച്ചറുകൾ അൺലോക്ക് ചെയ്യും.',
+    assamese: 'পোষ্টাৰ শ্বেয়াৰ আৰু ডাউনলোড ফিচাৰ আনলক হ’ব।',
+    konkani: 'पोस्टर शेयर आनी डाउनलोड सुविधा अनलॉक जातली.',
+    gujarati: 'પોસ્ટર શેર અને ડાઉનલોડ ફીચર અનલૉક થશે.',
+    marathi: 'पोस्टर शेअर आणि डाउनलोड फीचर्स अनलॉक होतील.',
+    meitei: 'Poster share amasung download feature unlock tougani.',
+    mizo: 'Poster share leh download feature unlock a ni ang.',
+    odia: 'ପୋଷ୍ଟର ଶେୟାର ଏବଂ ଡାଉନଲୋଡ୍ ଫିଚର୍ ଅନଲକ୍ ହେବ।',
+    punjabi: 'ਪੋਸਟਰ ਸ਼ੇਅਰ ਅਤੇ ਡਾਊਨਲੋਡ ਫੀਚਰ ਅਨਲੌਕ ਹੋਣਗੇ।',
+    nepali: 'पोस्टर शेयर र डाउनलोड फिचर अनलक हुन्छन्।',
+    bengali: 'পোস্টার শেয়ার ও ডাউনলোড ফিচার আনলক হবে।',
+    kashmiri: 'پوسٹر شیئر تہ ڈاؤنلوڈ فیچر ان لاک گژھن۔',
+    ladakhi: 'Poster share dang download feature unlock jung.',
   );
 
-  String get _allAccessTitle => _t(
-    telugu: 'All Access',
-    english: 'All Access',
-    hindi: 'All Access',
-    tamil: 'All Access',
-    kannada: 'All Access',
-    malayalam: 'All Access',
+  String get _afterTrialRenewalClean => _t(
+    telugu:
+        '$_trialDays రోజుల తర్వాత ప్లాన్ $_monthlyPriceLabel / నెలగా ఆటో-రిన్యూ అవుతుంది.',
+    english:
+        'After $_trialDays days, the plan auto-renews at $_monthlyPriceLabel per month.',
+    hindi:
+        '$_trialDays दिन के बाद प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा।',
+    tamil:
+        '$_trialDays நாட்களுக்கு பிறகு திட்டம் மாதத்திற்கு $_monthlyPriceLabel ஆக தானாக புதுப்பிக்கும்.',
+    kannada:
+        '$_trialDays ದಿನಗಳ ನಂತರ ಯೋಜನೆ ತಿಂಗಳಿಗೆ $_monthlyPriceLabel ಆಗಿ ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ.',
+    malayalam:
+        '$_trialDays ദിവസത്തിന് ശേഷം പ്ലാൻ മാസം $_monthlyPriceLabel ആയി ഓട്ടോ-റിന്യൂ ചെയ്യും.',
+    assamese:
+        '$_trialDays দিনৰ পিছত প্লেনটো মাহে $_monthlyPriceLabel ত অটো-ৰিনিউ হ’ব।',
+    konkani:
+        '$_trialDays दिसां उपरांत प्लॅन म्हयन्याक $_monthlyPriceLabel न ऑटो-रिन्यू जातलो.',
+    gujarati:
+        '$_trialDays દિવસ પછી પ્લાન દર મહિને $_monthlyPriceLabel પર ઓટો-રિન્યુ થશે.',
+    marathi:
+        '$_trialDays दिवसांनंतर प्लॅन $_monthlyPriceLabel प्रति महिना ऑटो-रिन्यू होईल.',
+    meitei:
+        '$_trialDays numit matungda plan asi $_monthlyPriceLabel / tha auto-renew tougani.',
+    mizo:
+        '$_trialDays ni hnuah plan chu thla tin $_monthlyPriceLabel-a auto-renew a ni ang.',
+    odia:
+        '$_trialDays ଦିନ ପରେ ପ୍ଲାନ୍ ପ୍ରତି ମାସ $_monthlyPriceLabel ରେ ଅଟୋ-ରିନ୍ୟୁ ହେବ।',
+    punjabi:
+        '$_trialDays ਦਿਨਾਂ ਬਾਅਦ ਪਲਾਨ $_monthlyPriceLabel ਪ੍ਰਤੀ ਮਹੀਨਾ ਆਟੋ-ਰੀਨਿਊ ਹੋਵੇਗਾ।',
+    nepali:
+        '$_trialDays दिनपछि प्लान $_monthlyPriceLabel प्रति महिना अटो-रिन्यू हुन्छ।',
+    bengali:
+        '$_trialDays দিন পরে প্ল্যানটি প্রতি মাসে $_monthlyPriceLabel হিসেবে অটো-রিনিউ হবে।',
+    kashmiri:
+        '$_trialDays دوہہ پتہ پلان $_monthlyPriceLabel فی مہینہ آٹو رینیو گژھ۔',
+    ladakhi:
+        '$_trialDays nyin nas plan $_monthlyPriceLabel / month auto-renew jung.',
   );
 
-  // ignore: unused_element
-  String get _appEditorTogetherSubtitle => _t(
-    telugu: 'App Pro + Editor Pro కలిపి',
-    english: 'App Pro + Editor Pro together',
-    hindi: 'App Pro + Editor Pro साथ में',
-    tamil: 'App Pro + Editor Pro ஒன்றாக',
-    kannada: 'App Pro + Editor Pro ಒಟ್ಟಿಗೆ',
-    malayalam: 'App Pro + Editor Pro ഒരുമിച്ച്',
+  String get _cancelTrialClean => _t(
+    telugu: 'నెలసరి ఛార్జ్ రాకుండా $_trialDays రోజుల్లో రద్దు చేయవచ్చు.',
+    english: 'Cancel within $_trialDays days to avoid the monthly charge.',
+    hindi: 'मासिक शुल्क से बचने के लिए $_trialDays दिन में रद्द कर सकते हैं।',
+    tamil: 'மாத கட்டணத்தை தவிர்க்க $_trialDays நாட்களில் ரத்து செய்யலாம்.',
+    kannada: 'ಮಾಸಿಕ ಶುಲ್ಕ ತಪ್ಪಿಸಲು $_trialDays ದಿನಗಳಲ್ಲಿ ರದ್ದು ಮಾಡಬಹುದು.',
+    malayalam: 'മാസ ചാർജ് ഒഴിവാക്കാൻ $_trialDays ദിവസത്തിനുള്ളിൽ റദ്ദാക്കാം.',
+    assamese: 'মাহেকীয়া চার্জ এৰাবলৈ $_trialDays দিনৰ ভিতৰত বাতিল কৰিব পাৰে।',
+    konkani: 'म्हयन्याच्या शुल्का पासून वाचपाक $_trialDays दिसांत रद्द करात.',
+    gujarati: 'માસિક ચાર્જથી બચવા માટે $_trialDays દિવસમાં રદ કરી શકો છો.',
+    marathi: 'मासिक शुल्क टाळण्यासाठी $_trialDays दिवसांत रद्द करू शकता.',
+    meitei:
+        'Tha khudinggi charge leitaba $_trialDays numit manungda cancel touba yai.',
+    mizo: 'Thla tin charge pumpelh nan $_trialDays ni chhungin cancel rawh.',
+    odia: 'ମାସିକ ଚାର୍ଜ ଏଡାଇବାକୁ $_trialDays ଦିନ ମଧ୍ୟରେ ରଦ୍ଦ କରିପାରିବେ।',
+    punjabi: 'ਮਾਸਿਕ ਚਾਰਜ ਤੋਂ ਬਚਣ ਲਈ $_trialDays ਦਿਨਾਂ ਵਿੱਚ ਰੱਦ ਕਰ ਸਕਦੇ ਹੋ।',
+    nepali: 'मासिक शुल्कबाट बच्न $_trialDays दिनभित्र रद्द गर्न सक्नुहुन्छ।',
+    bengali: 'মাসিক চার্জ এড়াতে $_trialDays দিনের মধ্যে বাতিল করতে পারবেন।',
+    kashmiri:
+        'ماہانہ چارج بچاونہ خٲطرہ $_trialDays دوہن اندر منسوخ کٔرتھ ہیکیو۔',
+    ladakhi: 'Monthly charge skyabse $_trialDays nyin nang cancel chog.',
   );
 
-  String get _allAccessBundleSubtitle => _t(
-    telugu: 'App Pro + Editor Pro బండిల్',
-    english: 'App Pro + Editor Pro bundle',
-    hindi: 'App Pro + Editor Pro बंडल',
-    tamil: 'App Pro + Editor Pro பண்டில்',
-    kannada: 'App Pro + Editor Pro ಬಂಡಲ್',
-    malayalam: 'App Pro + Editor Pro ബണ്ടിൽ',
+  String get _noEditorAssetsClean => _t(
+    telugu: 'ఈ ప్లాన్‌లో ప్రీమియం ఎడిటర్ ఆస్తులు లేదా తెలుగు ఫాంట్లు ఉండవు.',
+    english:
+        'This plan does not include premium editor assets or Telugu fonts.',
+    hindi: 'इस प्लान में प्रीमियम एडिटर एसेट्स या तेलुगु फॉन्ट शामिल नहीं हैं।',
+    tamil:
+        'இந்த திட்டத்தில் பிரீமியம் எடிட்டர் ஆஸெட்டுகள் அல்லது தெலுங்கு எழுத்துருக்கள் இல்லை.',
+    kannada:
+        'ಈ ಯೋಜನೆಯಲ್ಲಿ ಪ್ರೀಮಿಯಂ ಎಡಿಟರ್ ಆಸ್ತಿಗಳು ಅಥವಾ ತೆಲುಗು ಫಾಂಟ್‌ಗಳು ಇಲ್ಲ.',
+    malayalam: 'ഈ പ്ലാനിൽ പ്രീമിയം എഡിറ്റർ ആസെറ്റുകളോ തെലുങ്ക് ഫോണ്ടുകളോ ഇല്ല.',
+    assamese:
+        'এই প্লেনত প্ৰিমিয়াম এডিটৰ এচেট বা তেলুগু ফণ্ট অন্তৰ্ভুক্ত নহয়।',
+    konkani: 'ह्या प्लॅनांत premium editor assets वा Telugu fonts आसपाव नात.',
+    gujarati: 'આ પ્લાનમાં પ્રીમિયમ એડિટર એસેટ્સ અથવા તેલુગુ ફૉન્ટ્સ સામેલ નથી.',
+    marathi:
+        'या प्लॅनमध्ये प्रीमियम एडिटर अ‍ॅसेट्स किंवा तेलुगू फॉन्ट्स नाहीत.',
+    meitei: 'Plan asida premium editor assets nattraga Telugu fonts yaode.',
+    mizo: 'He plan-ah premium editor assets emaw Telugu fonts a tel lo.',
+    odia: 'ଏହି ପ୍ଲାନ୍‌ରେ ପ୍ରିମିୟମ୍ ଏଡିଟର୍ ଆସେଟ୍ କିମ୍ବା ତେଲୁଗୁ ଫଣ୍ଟ୍ ନାହିଁ।',
+    punjabi: 'ਇਸ ਪਲਾਨ ਵਿੱਚ ਪ੍ਰੀਮੀਅਮ ਐਡੀਟਰ ਐਸੈਟ ਜਾਂ ਤੇਲਗੂ ਫੌਂਟ ਸ਼ਾਮਲ ਨਹੀਂ ਹਨ।',
+    nepali: 'यो प्लानमा प्रिमियम एडिटर एसेट वा तेलुगु फन्ट समावेश छैन।',
+    bengali: 'এই প্ল্যানে প্রিমিয়াম এডিটর অ্যাসেট বা তেলুগু ফন্ট নেই।',
+    kashmiri: 'امس پلان منز پریمیم ایڈیٹر اثاثہ یا تیلگو فونٹ شامل چھنہ۔',
+    ladakhi: 'Di plan nang premium editor assets yangna Telugu fonts med.',
   );
 
-  String get _yearlyPriceLabel =>
-      '${EditorSubscriptionPlanConfig.yearlyPriceDisplay} / ${_t(telugu: 'సంవత్సరం', english: 'year', hindi: 'वर्ष', tamil: 'ஆண்டு', kannada: 'ವರ್ಷ', malayalam: 'വർഷം')}';
-
-  String get _editorMonthlyPriceLabel =>
-      '${EditorSubscriptionPlanConfig.monthlyPriceDisplay} / ${_t(telugu: 'నెల', english: 'month', hindi: 'माह', tamil: 'மாதம்', kannada: 'ತಿಂಗಳು', malayalam: 'മാസം')}';
-
-  String get _subscribeYearlyLabel => _t(
-    telugu: 'వార్షికంగా సబ్‌స్క్రైబ్ చేయండి',
-    english: 'Subscribe Yearly',
-    hindi: 'वार्षिक सब्सक्राइब करें',
-    tamil: 'ஆண்டு சந்தா எடுக்கவும்',
-    kannada: 'ವಾರ್ಷಿಕವಾಗಿ ಚಂದಾದಾರರಾಗಿ',
-    malayalam: 'വാർഷികമായി സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
+  String get _restorePurchasedPlanClean => _t(
+    telugu: 'కొనుగోలు చేసిన ప్లాన్ కనిపించకపోతే రీస్టోర్ చేయండి.',
+    english: 'Restore if a purchased plan is not showing.',
+    hindi: 'खरीदा हुआ प्लान नहीं दिखे तो रिस्टोर करें।',
+    tamil: 'வாங்கிய திட்டம் தெரியவில்லை என்றால் மீட்டெடுக்கவும்.',
+    kannada: 'ಖರೀದಿಸಿದ ಯೋಜನೆ ಕಾಣಿಸದಿದ್ದರೆ ರಿಸ್ಟೋರ್ ಮಾಡಿ.',
+    malayalam: 'വാങ്ങിയ പ്ലാൻ കാണുന്നില്ലെങ്കിൽ റിസ്റ്റോർ ചെയ്യുക.',
+    assamese: 'ক্ৰয় কৰা প্লেন দেখা নাযায় যদি ৰিষ্ট’ৰ কৰক।',
+    konkani: 'घेतिल्लो प्लॅन दिसना जाल्यार restore करात.',
+    gujarati: 'ખરીદેલો પ્લાન ન દેખાય તો રિસ્ટોર કરો.',
+    marathi: 'खरेदी केलेला प्लॅन दिसत नसेल तर रिस्टोर करा.',
+    meitei: 'Leiraba plan udrabadi restore tou.',
+    mizo: 'Plan lei tawh a lang loh chuan restore rawh.',
+    odia: 'କିଣାଯାଇଥିବା ପ୍ଲାନ୍ ଦେଖାନଥିଲେ ରିଷ୍ଟୋର୍ କରନ୍ତୁ।',
+    punjabi: 'ਖਰੀਦਿਆ ਪਲਾਨ ਨਾ ਦਿਖੇ ਤਾਂ ਰੀਸਟੋਰ ਕਰੋ।',
+    nepali: 'किनेको प्लान नदेखिए रिस्टोर गर्नुहोस्।',
+    bengali: 'কেনা প্ল্যান না দেখালে রিস্টোর করুন।',
+    kashmiri: 'خرید کرنہ آمت پلان نہ ہاونہ صورتس منز ریسٹور کٔریو۔',
+    ladakhi: 'Nyospa plan mathong na restore chog.',
   );
 
   String get _editorProTitle => _t(
@@ -1128,148 +1371,6 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
     tamil: 'Editor Pro',
     kannada: 'Editor Pro',
     malayalam: 'Editor Pro',
-  );
-
-  String get _editorOnlySubtitle => _t(
-    telugu: 'ఎడిటర్ ప్రీమియం టూల్స్ మాత్రమే',
-    english: 'Only editor premium tools',
-    hindi: 'केवल एडिटर प्रीमियम टूल्स',
-    tamil: 'எடிட்டர் பிரீமியம் கருவிகள் மட்டும்',
-    kannada: 'ಎಡಿಟರ್ ಪ್ರೀಮಿಯಂ ಟೂಲ್‌ಗಳು ಮಾತ್ರ',
-    malayalam: 'എഡിറ്റർ പ്രീമിയം ടൂളുകൾ മാത്രം',
-  );
-
-  String get _premiumAssetsLabel => _t(
-    telugu: 'ప్రీమియం Assets',
-    english: 'Premium Assets',
-    hindi: 'प्रीमियम Assets',
-    tamil: 'பிரீமியம் Assets',
-    kannada: 'ಪ್ರೀಮಿಯಂ Assets',
-    malayalam: 'പ്രീമിയം Assets',
-  );
-
-  String get _teluguLegacyFontsLabel => _t(
-    telugu: 'తెలుగు లెగసీ ఫాంట్స్',
-    english: 'Telugu legacy fonts',
-    hindi: 'तेलुगु लेगेसी फॉन्ट्स',
-    tamil: 'தெலுங்கு லெகசி எழுத்துருக்கள்',
-    kannada: 'ತೆಲುಗು ಲೆಗಸಿ ಫಾಂಟ್‌ಗಳು',
-    malayalam: 'తెలുങ്ക് ലെഗസി ഫോണ്ടുകൾ',
-  );
-
-  String get _removeBgToolLabel => _t(
-    telugu: 'Remove BG టూల్',
-    english: 'Remove BG tool',
-    hindi: 'Remove BG टूल',
-    tamil: 'Remove BG கருவி',
-    kannada: 'Remove BG ಟೂಲ್',
-    malayalam: 'Remove BG ടൂൾ',
-  );
-
-  String get _doesNotIncludeAppProLabel => _t(
-    telugu: 'App Pro సబ్‌స్క్రిప్షన్ ఇందులో ఉండదు',
-    english: 'Does not include App Pro subscription',
-    hindi: 'इसमें App Pro सब्सक्रिप्शन शामिल नहीं है',
-    tamil: 'இதில் App Pro சந்தா இல்லை',
-    kannada: 'ಇದು App Pro ಚಂದಾದಾರಿಕೆಯನ್ನು ಒಳಗೊಂಡಿಲ್ಲ',
-    malayalam: 'ഇതിൽ App Pro സബ്‌സ്‌ക്രിപ്ഷൻ ഉൾപ്പെടില്ല',
-  );
-
-  String get _subscribeEditorProLabel => _t(
-    telugu: 'Editor Pro సబ్‌స్క్రైబ్ చేయండి',
-    english: 'Subscribe Editor Pro',
-    hindi: 'Editor Pro सब्सक्राइब करें',
-    tamil: 'Editor Pro சந்தா எடுக்கவும்',
-    kannada: 'Editor Pro ಚಂದಾದಾರರಾಗಿ',
-    malayalam: 'Editor Pro സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
-  );
-
-  String get _includesAppProFeaturesLabel => _t(
-    telugu: 'App Pro ఫీచర్స్ ఉంటాయి',
-    english: 'Includes App Pro features',
-    hindi: 'App Pro फीचर्स शामिल हैं',
-    tamil: 'App Pro அம்சங்கள் அடங்கும்',
-    kannada: 'App Pro ವೈಶಿಷ್ಟ್ಯಗಳು ಒಳಗೊಂಡಿವೆ',
-    malayalam: 'App Pro ഫീച്ചറുകൾ ഉൾപ്പെടും',
-  );
-
-  String get _includesEditorProToolsLabel => _t(
-    telugu: 'అన్ని Editor Pro టూల్స్ ఉంటాయి',
-    english: 'Includes all Editor Pro tools',
-    hindi: 'सभी Editor Pro टूल्स शामिल हैं',
-    tamil: 'அனைத்து Editor Pro கருவிகளும் அடங்கும்',
-    kannada: 'ಎಲ್ಲಾ Editor Pro ಟೂಲ್‌ಗಳು ಒಳಗೊಂಡಿವೆ',
-    malayalam: 'എല്ലാ Editor Pro ടൂളുകളും ഉൾപ്പെടും',
-  );
-
-  // ignore: unused_element
-  String get _yearlyAutoRenewingBundleLabel => _t(
-    telugu: 'ఒకే వార్షిక auto-renewing బండిల్ ప్లాన్',
-    english: 'One yearly auto-renewing bundle plan',
-    hindi: 'एक वार्षिक auto-renewing बंडल प्लान',
-    tamil: 'ஒரு ஆண்டு auto-renewing பண்டில் திட்டம்',
-    kannada: 'ಒಂದು ವಾರ್ಷಿಕ auto-renewing ಬಂಡಲ್ ಯೋಜನೆ',
-    malayalam: 'ഒരു വാർഷിക auto-renewing ബണ്ടിൽ പ്ലാൻ',
-  );
-
-  String get _yearlyAutoRenewingPlanLabel => _t(
-    telugu: 'ఒకే వార్షిక auto-renewing ప్లాన్',
-    english: 'One yearly auto-renewing plan',
-    hindi: 'एक वार्षिक auto-renewing प्लान',
-    tamil: 'ஒரு ஆண்டு auto-renewing திட்டம்',
-    kannada: 'ಒಂದು ವಾರ್ಷಿಕ auto-renewing ಯೋಜನೆ',
-    malayalam: 'ഒരു വാർഷിക auto-renewing പ്ലാൻ',
-  );
-
-  // ignore: unused_element
-  String get _includesPosterAccessLabel => _t(
-    telugu: 'పోస్టర్ share/download access ఉంటుంది',
-    english: 'Includes poster share and download access',
-    hindi: 'पोस्टर शेयर और डाउनलोड access शामिल है',
-    tamil: 'போஸ்டர் பகிர்வு மற்றும் பதிவிறக்க access அடங்கும்',
-    kannada: 'ಪೋಸ್ಟರ್ share ಮತ್ತು download access ಒಳಗೊಂಡಿದೆ',
-    malayalam: 'പോസ്റ്റർ share/download access ഉൾപ്പെടും',
-  );
-
-  // ignore: unused_element
-  String get _includesEditorPremiumLabel => _t(
-    telugu: 'ప్రీమియం editor assets, Telugu fonts, Remove BG ఉంటాయి',
-    english: 'Includes premium editor assets, Telugu fonts, and Remove BG',
-    hindi: 'प्रीमियम editor assets, Telugu fonts और Remove BG शामिल हैं',
-    tamil: 'பிரீமியம் editor assets, Telugu fonts மற்றும் Remove BG அடங்கும்',
-    kannada: 'ಪ್ರೀಮಿಯಂ editor assets, Telugu fonts ಮತ್ತು Remove BG ಒಳಗೊಂಡಿವೆ',
-    malayalam: 'പ്രീമിയം editor assets, Telugu fonts, Remove BG ഉൾപ്പെടും',
-  );
-
-  // ignore: unused_element
-  String get _bestForBothLabel => _t(
-    telugu: 'Home posters మరియు editor tools రెండూ వాడితే best option',
-    english: 'Best option if you use both home posters and editor tools',
-    hindi:
-        'Home posters और editor tools दोनों उपयोग करने वालों के लिए best option',
-    tamil:
-        'Home posters மற்றும் editor tools இரண்டும் பயன்படுத்தினால் சிறந்த தேர்வு',
-    kannada: 'Home posters ಮತ್ತು editor tools ಎರಡನ್ನೂ ಬಳಸಿದರೆ ಉತ್ತಮ ಆಯ್ಕೆ',
-    malayalam:
-        'Home posters, editor tools രണ്ടും ഉപയോഗിക്കുന്നവർക്ക് മികച്ച ഓപ്ഷൻ',
-  );
-
-  String get _bestValueForBothLabel => _t(
-    telugu: 'రెండూ అవసరమైన users కి best value',
-    english: 'Best value for users who need both',
-    hindi: 'दोनों चाहिए वाले users के लिए best value',
-    tamil: 'இரண்டும் தேவைப்படும் users க்கு best value',
-    kannada: 'ಎರಡೂ ಬೇಕಾದ users ಗೆ best value',
-    malayalam: 'രണ്ടും ആവശ്യമായ users ന് best value',
-  );
-
-  String get _subscribeAllAccessLabel => _t(
-    telugu: 'All Access సబ్‌స్క్రైబ్ చేయండి',
-    english: 'Subscribe All Access',
-    hindi: 'All Access सब्सक्राइब करें',
-    tamil: 'All Access சந்தா எடுக்கவும்',
-    kannada: 'All Access ಚಂದಾದಾರರಾಗಿ',
-    malayalam: 'All Access സബ്‌സ്‌ക്രൈബ് ചെയ്യുക',
   );
 
   String get _editorPlanHeroSubtitle => _t(
@@ -1321,83 +1422,60 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   }
 
   List<Widget> _buildPlanCards(List<String> appPlanDetails) {
-    if (!_isEditorPlan) {
-      return <Widget>[
-        _PlanChoiceCard(
-          title: _appProTitle,
-          subtitle: _appProSimpleBenefit,
-          price: _appProTrialPriceLabel,
-          details: const <String>[],
-          buttonLabel: _isSubscriptionActive
-              ? _alreadyActiveLabel
-              : _subscribeAppProLabel,
-          busy: _busyFree,
-          accent: const Color(0xFF1D4ED8),
-          enabled: _canSubscribe,
-          onTap: () => unawaited(_subscribeFreePlan()),
-        ),
-        const SizedBox(height: 14),
-        _PlanChoiceCard(
-          title: _allAccessTitle,
-          subtitle: _allAccessSimpleBenefit,
-          price: _yearlyPriceLabel,
-          details: const <String>[],
-          buttonLabel: _isSubscriptionActive
-              ? _alreadyActiveLabel
-              : _subscribeYearlyLabel,
-          busy: _busyFree,
-          enabled: _canSubscribe,
-          accent: const Color(0xFF9333EA),
-          onTap: () => unawaited(
-            _subscribeFreePlan(
-              editorBasePlanId: EditorSubscriptionPlanConfig.yearlyBasePlanId,
-            ),
-          ),
-        ),
-      ];
-    }
-
     return <Widget>[
       _PlanChoiceCard(
-        title: _editorProTitle,
-        subtitle: _editorOnlySubtitle,
-        price: _editorMonthlyPriceLabel,
-        details: <String>[
-          _premiumAssetsLabel,
-          _teluguLegacyFontsLabel,
-          _removeBgToolLabel,
-          _doesNotIncludeAppProLabel,
-        ],
+        title: _appProTitle,
+        subtitle: _appProSimpleBenefitClean,
+        price: _appProTrialPriceLabelClean,
+        details: const <String>[],
         buttonLabel: _isSubscriptionActive
             ? _alreadyActiveLabel
-            : _subscribeEditorProLabel,
+            : _subscribeAppProLabelClean,
         busy: _busyFree,
         enabled: _canSubscribe,
         accent: const Color(0xFF1D4ED8),
         onTap: () => unawaited(_subscribeFreePlan()),
       ),
-      const SizedBox(height: 14),
+      const SizedBox(height: 10),
       _PlanChoiceCard(
-        title: _allAccessTitle,
-        subtitle: _allAccessBundleSubtitle,
+        title: _t(
+          telugu: 'సంవత్సర ప్లాన్',
+          english: 'Yearly Plan',
+          hindi: 'Yearly Plan',
+          tamil: 'Yearly Plan',
+          kannada: 'Yearly Plan',
+          malayalam: 'Yearly Plan',
+        ),
+        subtitle: _t(
+          telugu:
+              'ఒకసారి చెల్లించి సంవత్సరం మొత్తం పోస్టర్ షేర్/డౌన్‌లోడ్ వాడండి.',
+          english:
+              'Pay once and use poster sharing and downloads for the full year.',
+          hindi:
+              'Pay once and use poster sharing and downloads for the full year.',
+          tamil:
+              'Pay once and use poster sharing and downloads for the full year.',
+          kannada:
+              'Pay once and use poster sharing and downloads for the full year.',
+          malayalam:
+              'Pay once and use poster sharing and downloads for the full year.',
+        ),
         price: _yearlyPriceLabel,
-        details: <String>[
-          _includesAppProFeaturesLabel,
-          _includesEditorProToolsLabel,
-          _yearlyAutoRenewingPlanLabel,
-          _bestValueForBothLabel,
-        ],
+        details: const <String>[],
         buttonLabel: _isSubscriptionActive
             ? _alreadyActiveLabel
-            : _subscribeAllAccessLabel,
-        busy: _busyFree,
+            : _t(
+                telugu: 'సంవత్సర ప్లాన్ తీసుకోండి',
+                english: 'Choose Yearly',
+                hindi: 'Choose Yearly',
+                tamil: 'Choose Yearly',
+                kannada: 'Choose Yearly',
+                malayalam: 'Choose Yearly',
+              ),
+        busy: _busyYearly,
         enabled: _canSubscribe,
-        accent: const Color(0xFF9333EA),
-        onTap: () => unawaited(
-          _subscribeFreePlan(
-            editorBasePlanId: EditorSubscriptionPlanConfig.yearlyBasePlanId,
-          ),
-        ),
+        accent: const Color(0xFF047857),
+        onTap: () => unawaited(_subscribeYearlyPlan()),
       ),
     ];
   }
@@ -1416,49 +1494,11 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
         ? Colors.white
         : const Color(0xFF0F172A);
     final List<String> planDetails = <String>[
-      _trialOfferBody,
-      _t(
-        telugu: 'పోస్టర్ share/download ఫీచర్స్ అన్‌లాక్ అవుతాయి.',
-        english: 'Unlock poster share and download features.',
-        hindi: 'पोस्टर share/download फीचर्स अनलॉक होते हैं।',
-        tamil: 'போஸ்டர் share/download அம்சங்கள் திறக்கும்.',
-        kannada: 'ಪೋಸ್ಟರ್ share/download ವೈಶಿಷ್ಟ್ಯಗಳು unlock ಆಗುತ್ತವೆ.',
-        malayalam: 'പോസ്റ്റർ share/download ഫീച്ചറുകൾ unlock ചെയ്യും.',
-      ),
-      _t(
-        telugu:
-            '3 రోజుల తర్వాత ప్లాన్ $_monthlyPriceLabel నెలసరి ధరతో ఆటో రిన్యువల్ అవుతుంది',
-        english:
-            'After 3 days, the active plan becomes $_monthlyPriceLabel per month (auto-renewal)',
-        hindi:
-            '3 दिनों के बाद प्लान $_monthlyPriceLabel प्रति माह पर ऑटो-रिन्यू होगा',
-        tamil:
-            '3 நாட்களுக்கு பிறகு திட்டம் $_monthlyPriceLabel மாதாந்திர கட்டணத்தில் தானாக புதுப்பிக்கும்',
-        kannada:
-            '3 ದಿನಗಳ ನಂತರ ಯೋಜನೆ $_monthlyPriceLabel ಪ್ರತಿ ತಿಂಗಳು ಸ್ವಯಂ ನವೀಕರಿಸುತ್ತದೆ',
-        malayalam:
-            '3 ദിവസങ്ങൾക്ക് ശേഷം പ്ലാൻ $_monthlyPriceLabel മാസംതോറും ഓട്ടോ റിന്യൂവാകും',
-      ),
-      _t(
-        telugu: 'నెలసరి ఛార్జ్ రాకుండా 3 రోజుల్లో cancel చేయవచ్చు.',
-        english: 'Cancel within 3 days to avoid the monthly charge.',
-        hindi: 'मासिक शुल्क से बचने के लिए 3 दिनों में cancel कर सकते हैं।',
-        tamil: 'மாத கட்டணத்தை தவிர்க்க 3 நாட்களில் cancel செய்யலாம்.',
-        kannada: 'ಮಾಸಿಕ ಶುಲ್ಕ ತಪ್ಪಿಸಲು 3 ದಿನಗಳಲ್ಲಿ cancel ಮಾಡಬಹುದು.',
-        malayalam: 'മാസചാർജ് ഒഴിവാക്കാൻ 3 ദിവസത്തിനുള്ളിൽ cancel ചെയ്യാം.',
-      ),
-      _t(
-        telugu: 'ఈ ప్లాన్‌లో premium editor assets లేదా Telugu fonts ఉండవు.',
-        english:
-            'This plan does not include premium editor assets or Telugu fonts.',
-        hindi:
-            'इस प्लान में premium editor assets या Telugu fonts शामिल नहीं हैं।',
-        tamil:
-            'இந்த திட்டத்தில் premium editor assets அல்லது Telugu fonts இல்லை.',
-        kannada: 'ಈ ಯೋಜನೆಯಲ್ಲಿ premium editor assets ಅಥವಾ Telugu fonts ಇಲ್ಲ.',
-        malayalam:
-            'ഈ പ്ലാനിൽ premium editor assets അല്ലെങ്കിൽ Telugu fonts ഇല്ല.',
-      ),
+      _trialOfferBodyClean,
+      _unlockPosterFeaturesClean,
+      _afterTrialRenewalClean,
+      _cancelTrialClean,
+      _noEditorAssetsClean,
     ];
     return Scaffold(
       backgroundColor: pageBackground,
@@ -1548,16 +1588,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                 const SizedBox(height: 18),
               ],
               Text(
-                isEditorPlan
-                    ? _editorProTitle
-                    : _t(
-                        telugu: 'సబ్‌స్క్రిప్షన్ ప్లాన్',
-                        english: 'Subscription Plan',
-                        hindi: 'सब्सक्रिप्शन प्लान',
-                        tamil: 'சந்தா திட்டம்',
-                        kannada: 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆ',
-                        malayalam: 'സബ്സ്ക്രിപ്ഷൻ പ്ലാൻ',
-                      ),
+                isEditorPlan ? _editorProTitle : _appPlanTitleClean,
                 style: const TextStyle(
                   fontSize: 27,
                   fontWeight: FontWeight.w800,
@@ -1566,22 +1597,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
               ),
               SizedBox(height: isEditorPlan ? 8 : 5),
               Text(
-                isEditorPlan
-                    ? _editorPlanHeroSubtitle
-                    : _t(
-                        telugu:
-                            'రూ.4 trial తో మొదలుపెట్టి poster share/download unlock చేయండి.',
-                        english:
-                            'Start with a $_trialPriceLabel trial and unlock poster sharing and downloads.',
-                        hindi:
-                            '$_trialPriceLabel trial से शुरू करें और poster share/download unlock करें।',
-                        tamil:
-                            '$_trialPriceLabel trial மூலம் தொடங்கி poster share/download unlock செய்யவும்.',
-                        kannada:
-                            '$_trialPriceLabel trial ಮೂಲಕ ಪ್ರಾರಂಭಿಸಿ poster share/download unlock ಮಾಡಿ.',
-                        malayalam:
-                            '$_trialPriceLabel trial ഉപയോഗിച്ച് തുടങ്ങി poster share/download unlock ചെയ്യുക.',
-                      ),
+                isEditorPlan ? _editorPlanHeroSubtitle : _appPlanSubtitleClean,
                 style:
                     const TextStyle(
                       fontSize: 14.5,
@@ -1625,18 +1641,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _t(
-                          telugu:
-                              'Purchase చేసిన plan కనిపించకపోతే restore చేయండి.',
-                          english:
-                              'Restore if a purchased plan is not showing.',
-                          hindi: 'खरीदा हुआ plan नहीं दिखे तो restore करें।',
-                          tamil:
-                              'வாங்கிய plan தெரியவில்லை என்றால் restore செய்யவும்.',
-                          kannada: 'ಖರೀದಿಸಿದ plan ಕಾಣಿಸದಿದ್ದರೆ restore ಮಾಡಿ.',
-                          malayalam:
-                              'വാങ്ങിയ plan കാണുന്നില്ലെങ്കിൽ restore ചെയ്യുക.',
-                        ),
+                        _restorePurchasedPlanClean,
                         style: const TextStyle(
                           color: Color(0xFF334155),
                           fontSize: 12.5,
@@ -1687,7 +1692,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
                       child: Text(
                         isEditorPlan
                             ? _billingNoticeText
-                            : _plansAutoRenewNotice,
+                            : _plansAutoRenewNoticeClean,
                         style: const TextStyle(
                           color: Color(0xFF92400E),
                           fontSize: 12.5,

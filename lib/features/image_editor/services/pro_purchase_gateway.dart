@@ -338,6 +338,7 @@ abstract class ProPurchaseGateway {
 
   Future<void> initialize();
   Future<PurchaseFlowOutcome> purchaseMonthlyPro();
+  Future<PurchaseFlowOutcome> purchaseYearlyPro();
   Future<PurchaseFlowOutcome> restorePurchases();
   Future<void> abandonPendingPurchaseFlow();
   bool get isPurchaseFlowActive;
@@ -355,6 +356,12 @@ class MockProPurchaseGateway extends ProPurchaseGateway {
 
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    return const PurchaseFlowOutcome(result: PurchaseFlowResult.success);
+  }
+
+  @override
+  Future<PurchaseFlowOutcome> purchaseYearlyPro() async {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     return const PurchaseFlowOutcome(result: PurchaseFlowResult.success);
   }
@@ -426,6 +433,21 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
 
   @override
   Future<PurchaseFlowOutcome> purchaseMonthlyPro() async {
+    return _purchasePro();
+  }
+
+  @override
+  Future<PurchaseFlowOutcome> purchaseYearlyPro() async {
+    return InAppPurchaseGateway(
+      productId: productId,
+      fallbackProductIds: _fallbackProductIds,
+      preferredBasePlanId: SubscriptionPlanConfig.primaryYearlyBasePlanId,
+      preferredOfferId: '',
+      inAppPurchase: _inAppPurchase,
+    )._purchasePro();
+  }
+
+  Future<PurchaseFlowOutcome> _purchasePro() async {
     await initialize();
     final available = await _inAppPurchase.isAvailable();
     if (!available) {
@@ -765,6 +787,11 @@ class InAppPurchaseGateway extends ProPurchaseGateway {
     }
     for (final offer in offers) {
       if (offer.basePlanId == preferredBasePlanId && offer.offerId == null) {
+        return offer;
+      }
+    }
+    for (final offer in offers) {
+      if (offer.basePlanId == preferredBasePlanId) {
         return offer;
       }
     }

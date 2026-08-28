@@ -189,9 +189,13 @@ class FirebaseBootstrap {
     }
 
     developer.log(
-      'Skipping App Check on sideloaded release install to avoid false attestation failures during local validation. Play installs still use Play Integrity.',
+      'Using debug App Check provider for sideloaded Android release validation. Play installs still use Play Integrity.',
       name: 'bootstrap.firebase',
     );
-    return null;
+    return AndroidDebugProvider(
+      debugToken: _androidAppCheckDebugToken.isEmpty
+          ? null
+          : _androidAppCheckDebugToken,
+    );
   }
 }
