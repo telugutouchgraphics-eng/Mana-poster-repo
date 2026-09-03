@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mana_poster/app/widgets/app_snack_bar.dart';
@@ -14,6 +15,7 @@ import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/services/profile_photo_guide_service.dart';
 import 'package:mana_poster/features/prehome/widgets/gradient_shell.dart';
 import 'package:mana_poster/features/prehome/widgets/onboarding_surface_card.dart';
 import 'package:mana_poster/features/prehome/widgets/poster_identity_visual.dart';
@@ -49,6 +51,8 @@ class _PosterProfileDetailsScreenState
     extends State<PosterProfileDetailsScreen> {
   static const CloudFirstBackgroundRemovalService _backgroundRemovalService =
       CloudFirstBackgroundRemovalService();
+  static const ProfilePhotoGuideService _profilePhotoGuideService =
+      ProfilePhotoGuideService();
   static const List<String> _businessLogoStyles = <String>[
     'style_1',
     'style_2',
@@ -207,6 +211,23 @@ class _PosterProfileDetailsScreenState
 
   Future<void> _openPersonalPhotoPicker() async {
     if (_personalPhotoBusy || _pickerBusy) {
+      return;
+    }
+    final shouldContinue = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => FutureBuilder<ProfilePhotoGuideConfig>(
+        future: _profilePhotoGuideService.fetchConfig(),
+        builder: (context, snapshot) => _ProfilePhotoUploadGuideSheet(
+          strings: sheetContext.strings,
+          config: snapshot.data ?? const ProfilePhotoGuideConfig(),
+          loading: snapshot.connectionState == ConnectionState.waiting,
+        ),
+      ),
+    );
+    if (!mounted || shouldContinue != true) {
       return;
     }
     try {
@@ -1841,6 +1862,295 @@ Future<File> _materializeProfileCutoutForCrop(
     return tempFile;
   } finally {
     client.close(force: true);
+  }
+}
+
+class _ProfilePhotoUploadGuideSheet extends StatelessWidget {
+  const _ProfilePhotoUploadGuideSheet({
+    required this.strings,
+    required this.config,
+    required this.loading,
+  });
+
+  final AppStrings strings;
+  final ProfilePhotoGuideConfig config;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = strings.localized(
+      telugu:
+          '\u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C15\u0C4B\u0C38\u0C02 \u0C38\u0C30\u0C48\u0C28 \u0C2B\u0C4B\u0C1F\u0C4B \u0C0E\u0C02\u0C1A\u0C41\u0C15\u0C4B\u0C02\u0C21\u0C3F',
+      english: 'Choose the right photo for posters',
+    );
+    final guidance = strings.localized(
+      telugu:
+          '\u0C2E\u0C41\u0C02\u0C26\u0C41 \u0C35\u0C48\u0C2A\u0C41 \u0C2E\u0C41\u0C16\u0C02 \u0C15\u0C4D\u0C32\u0C3F\u0C2F\u0C30\u0C4D \u0C17\u0C3E, \u0C24\u0C32 \u0C2A\u0C42\u0C30\u0C4D\u0C24\u0C3F\u0C17\u0C3E, \u0C2D\u0C41\u0C1C\u0C3E\u0C32\u0C41 \u0C15\u0C28\u0C3F\u0C2A\u0C3F\u0C02\u0C1A\u0C47 \u0C2B\u0C4B\u0C1F\u0C4B \u0C35\u0C3E\u0C21\u0C02\u0C21\u0C3F.',
+      english: 'Use a clear front photo with full head and shoulders visible.',
+    );
+    final avoid = strings.localized(
+      telugu:
+          '\u0C24\u0C32 \u0C15\u0C1F\u0C4D, \u0C2C\u0C4D\u0C32\u0C30\u0C4D, \u0C17\u0C4D\u0C30\u0C42\u0C2A\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B \u0C35\u0C26\u0C4D\u0C26\u0C41.',
+      english: 'Avoid cut heads, blur, and group photos.',
+    );
+    final goodLabel = strings.localized(
+      telugu: '\u0C07\u0C32\u0C3E \u0C09\u0C02\u0C21\u0C3E\u0C32\u0C3F',
+      english: 'Use this type',
+    );
+    final badLabel = strings.localized(
+      telugu:
+          '\u0C07\u0C32\u0C3E \u0C09\u0C02\u0C21\u0C15\u0C42\u0C21\u0C26\u0C41',
+      english: 'Avoid this type',
+    );
+    final continueLabel = strings.localized(
+      telugu:
+          '\u0C2B\u0C4B\u0C1F\u0C4B \u0C0E\u0C02\u0C1A\u0C41\u0C15\u0C4B\u0C02\u0C21\u0C3F',
+      english: 'Choose photo',
+    );
+
+    return SafeArea(
+      top: false,
+      child: FractionallySizedBox(
+        heightFactor: 0.56,
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        height: 1.15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.close_rounded),
+                    color: const Color(0xFF64748B),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _ProfilePhotoExampleTile(
+                        label: goodLabel,
+                        caption: guidance,
+                        imageUrl: config.goodImage?.url ?? '',
+                        missingText: strings.localized(
+                          telugu:
+                              '\u0C17\u0C48\u0C21\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B \u0C05\u0C2A\u0C4D\u0C32\u0C4B\u0C21\u0C4D \u0C15\u0C3E\u0C32\u0C47\u0C26\u0C41',
+                          english: 'Guide photo not uploaded',
+                        ),
+                        good: true,
+                        loading: loading,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _ProfilePhotoExampleTile(
+                        label: badLabel,
+                        caption: avoid,
+                        imageUrl: config.badImage?.url ?? '',
+                        missingText: strings.localized(
+                          telugu:
+                              '\u0C17\u0C48\u0C21\u0C4D \u0C2B\u0C4B\u0C1F\u0C4B \u0C05\u0C2A\u0C4D\u0C32\u0C4B\u0C21\u0C4D \u0C15\u0C3E\u0C32\u0C47\u0C26\u0C41',
+                          english: 'Guide photo not uploaded',
+                        ),
+                        good: false,
+                        loading: loading,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  icon: const Icon(Icons.photo_library_rounded),
+                  label: Text(
+                    continueLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfilePhotoExampleTile extends StatelessWidget {
+  const _ProfilePhotoExampleTile({
+    required this.label,
+    required this.caption,
+    required this.imageUrl,
+    required this.missingText,
+    required this.good,
+    required this.loading,
+  });
+
+  final String label;
+  final String caption;
+  final String imageUrl;
+  final String missingText;
+  final bool good;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = good ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
+    final icon = good ? Icons.check_circle_rounded : Icons.cancel_rounded;
+    final hasImage = imageUrl.trim().isNotEmpty;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                if (loading)
+                  const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                else if (hasImage)
+                  CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    ),
+                    errorWidget: (context, url, error) =>
+                        _ProfilePhotoGuideMissing(message: missingText),
+                  )
+                else
+                  _ProfilePhotoGuideMissing(message: missingText),
+                if (!good && hasImage)
+                  ColoredBox(color: Colors.black.withValues(alpha: 0.08)),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Icon(icon, color: accent, size: 25),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  caption,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.25,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfilePhotoGuideMissing extends StatelessWidget {
+  const _ProfilePhotoGuideMissing({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 11.5,
+            height: 1.25,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF94A3B8),
+          ),
+        ),
+      ),
+    );
   }
 }
 
