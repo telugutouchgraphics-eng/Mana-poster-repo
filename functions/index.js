@@ -70,6 +70,7 @@ const manualLifetimeWhitelistedEmails = new Set([
   "shaikvaseema62@gmail.com",
   "babuy2045@gmail.com",
   "vkrseafoods901@gmail.com",
+  "shaiknaziya973@gmail.com",
 ]);
 const manualLifetimeWhitelistedPhones = new Set([
   "8121111513",
