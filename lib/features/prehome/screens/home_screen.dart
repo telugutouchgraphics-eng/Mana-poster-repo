@@ -13979,7 +13979,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           messenger,
           strings.localized(
             telugu:
-                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡, ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ background remove ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â°ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â. ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ original photo ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂµÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¤ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡.',
+                'ఫోటో జోడించాం, కానీ background remove పూర్తిగా కాలేదు. ఇప్పటికి original photo వాడుతున్నాం.',
             english:
                 'Photo was added, but background removal did not complete. Using the original photo for now.',
           ),
@@ -13993,8 +13993,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         _showSnack(
           messenger,
           strings.localized(
-            telugu:
-                'ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¨ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â«ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â²ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚ÂªÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â±ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°Ãƒâ€šÃ‚Â¾ÃƒÆ’Ã‚Â Ãƒâ€šÃ‚Â°ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡.',
+            telugu: 'అదనపు ఫోటో జోడించలేకపోయాం.',
             english: 'Could not add the extra photo.',
           ),
         );
@@ -15513,9 +15512,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return refreshedEffectiveIsPro;
   }
 
-  Future<void> _startDirectTrialPurchaseFromFreeExportChoice() async {
+  Future<bool> _startDirectTrialPurchaseFromFreeExportChoice() async {
     if (_directTrialPurchaseBusy || !mounted) {
-      return;
+      return false;
     }
     setState(() => _directTrialPurchaseBusy = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -15523,11 +15522,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     try {
       await purchaseGateway.initialize();
       if (!mounted) {
-        return;
+        return false;
       }
       final outcome = await purchaseGateway.purchaseMonthlyPro();
       if (!mounted) {
-        return;
+        return false;
       }
 
       if (outcome.result != PurchaseFlowResult.success ||
@@ -15542,14 +15541,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           context,
           onSubscribe: (_) => _startDirectTrialPurchaseFromFreeExportChoice(),
         );
-        return;
+        return false;
       }
 
       final verification = await _verifyDirectTrialPurchaseWithRetry(
         outcome.evidence!,
       );
       if (!mounted) {
-        return;
+        return false;
       }
       if (!verification.hasAccess) {
         _showSnack(
@@ -15568,18 +15567,19 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           context,
           onSubscribe: (_) => _startDirectTrialPurchaseFromFreeExportChoice(),
         );
-        return;
+        return false;
       }
 
       await outcome.evidence!.completeStorePurchase();
       final refreshed = await _subscriptionBackendService
           .fetchFreshEntitlementWithRetry();
       if (!mounted) {
-        return;
+        return false;
       }
       await _showSubscriptionThanksVideoPromptOnceFromHome(
         refreshed.hasAccess ? refreshed : verification,
       );
+      return true;
     } finally {
       if (mounted) {
         setState(() => _directTrialPurchaseBusy = false);
@@ -15960,6 +15960,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     return false;
   }
 
+  // ignore: unused_element
   String _freeExportWithPhotoTitle(BuildContext context) =>
       context.strings.localized(
         telugu: 'ఫోటో మరియు పేరుతో',
@@ -15982,6 +15983,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Photo dang ming che',
       );
 
+  // ignore: unused_element
   String _freeExportWithPhotoMessage(BuildContext context) =>
       context.strings.localized(
         telugu: 'ఫోటో, పేరుతో షేర్ చేయండి',
@@ -16004,6 +16006,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Photo dang ming che share byed',
       );
 
+  // ignore: unused_element
   String _freeExportTrialPlanLabel(BuildContext context) {
     final price = SubscriptionPlanConfig.trialPriceDisplay;
     return context.strings.localized(
@@ -16028,6 +16031,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     );
   }
 
+  // ignore: unused_element
   String _freeExportPlainTitle(BuildContext context) =>
       context.strings.localized(
         telugu: 'ఉచితంగా షేర్ చేయండి',
@@ -16050,6 +16054,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Free share byed',
       );
 
+  // ignore: unused_element
   String _freeExportPlainMessage(BuildContext context) =>
       context.strings.localized(
         telugu: 'పేరు, ఫోటో లేకుండా పోస్టర్ మాత్రమే',
@@ -16072,6 +16077,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Ming dang photo medpa poster tsam',
       );
 
+  // ignore: unused_element
   String _freeExportDownloadLabel(BuildContext context) =>
       context.strings.localized(
         telugu: 'డౌన్‌లోడ్',
@@ -16094,6 +16100,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Download',
       );
 
+  // ignore: unused_element
   String _freeExportShareLabel(BuildContext context) =>
       context.strings.localized(
         telugu: 'షేర్',
@@ -16116,19 +16123,125 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'Share',
       );
 
-  Future<void> _showFreeExportChoiceSheet(
+  Future<bool> _showFreeExportChoiceSheet(
     BuildContext context, {
     required bool preferShare,
   }) async {
     if (!context.mounted) {
-      return;
+      return false;
     }
     await ScreenSecurityService.protectScreen(adminOnlyBypass: true);
     try {
       if (!context.mounted) {
-        return;
+        return false;
       }
-      await showModalBottomSheet<void>(
+      final title = context.strings.localized(
+        telugu: 'సబ్‌స్క్రైబ్ చేసి పోస్టర్ ఉపయోగించండి',
+        english: 'Subscribe to use this poster',
+        hindi: 'इस पोस्टर का उपयोग करने के लिए सब्सक्राइब करें',
+        tamil: 'இந்த போஸ்டரை பயன்படுத்த சந்தா செலுத்துங்கள்',
+        kannada: 'ಈ ಪೋಸ್ಟರ್ ಬಳಸಲು ಸಬ್‌ಸ್ಕ್ರೈಬ್ ಮಾಡಿ',
+        malayalam: 'ഈ പോസ്റ്റർ ഉപയോഗിക്കാൻ സബ്സ്ക്രൈബ് ചെയ്യുക',
+        assamese: 'এই পোষ্টাৰ ব্যৱহাৰ কৰিবলৈ চাবস্ক্ৰাইব কৰক',
+        konkani: 'हो पोस्टर वापरपाक सबस्क्राइब करात',
+        gujarati: 'આ પોસ્ટર વાપરવા માટે સબ્સ્ક્રાઇબ કરો',
+        marathi: 'हा पोस्टर वापरण्यासाठी सबस्क्राइब करा',
+        meitei: 'Poster asi sijinnaba subscribe tou',
+        mizo: 'He poster hman turin subscribe rawh',
+        odia: 'ଏହି ପୋଷ୍ଟର ବ୍ୟବହାର ପାଇଁ ସବସ୍କ୍ରାଇବ କରନ୍ତୁ',
+        punjabi: 'ਇਹ ਪੋਸਟਰ ਵਰਤਣ ਲਈ ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ',
+        nepali: 'यो पोस्टर प्रयोग गर्न सदस्यता लिनुहोस्',
+        bengali: 'এই পোস্টার ব্যবহার করতে সাবস্ক্রাইব করুন',
+        kashmiri: 'یہ پوسٹر استعمال کرنہ خٲطر سبسکرائب کریو',
+        ladakhi: 'Poster di use bya la subscribe byed',
+      );
+      final message = context.strings.localized(
+        telugu:
+            'మీ ఫోటో, పేరుతో పోస్టర్‌ను డౌన్‌లోడ్ లేదా షేర్ చేయడానికి సబ్‌స్క్రైబ్ చేయండి.',
+        english:
+            'Subscribe to download or share this poster with your photo and name.',
+        hindi:
+            'अपनी फोटो और नाम के साथ इस पोस्टर को डाउनलोड या शेयर करने के लिए सब्सक्राइब करें।',
+        tamil:
+            'உங்கள் புகைப்படம் மற்றும் பெயருடன் இந்த போஸ்டரை பதிவிறக்கம் அல்லது பகிர சந்தா செலுத்துங்கள்.',
+        kannada:
+            'ನಿಮ್ಮ ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ ಈ ಪೋಸ್ಟರ್ ಡೌನ್‌ಲೋಡ್ ಅಥವಾ ಶೇರ್ ಮಾಡಲು ಸಬ್‌ಸ್ಕ್ರೈಬ್ ಮಾಡಿ.',
+        malayalam:
+            'നിങ്ങളുടെ ഫോട്ടോയും പേരും ചേർത്ത് ഈ പോസ്റ്റർ ഡൗൺലോഡ് അല്ലെങ്കിൽ ഷെയർ ചെയ്യാൻ സബ്സ്ക്രൈബ് ചെയ്യുക.',
+        assamese:
+            'আপোনাৰ ফটো আৰু নামৰ সৈতে এই পোষ্টাৰ ডাউনলোড বা শ্বেয়াৰ কৰিবলৈ চাবস্ক্ৰাইব কৰক।',
+        konkani:
+            'तुमच्या फोटो आनी नांवासयत हो पोस्टर डाउनलोड वा शेयर करपाक सबस्क्राइब करात.',
+        gujarati:
+            'તમારા ફોટો અને નામ સાથે આ પોસ્ટર ડાઉનલોડ અથવા શેર કરવા માટે સબ્સ્ક્રાઇબ કરો.',
+        marathi:
+            'तुमचा फोटो आणि नावासह हा पोस्टर डाउनलोड किंवा शेअर करण्यासाठी सबस्क्राइब करा.',
+        meitei:
+            'Nakhoigi photo amasung mingga poster asi download/share tounaba subscribe tou.',
+        mizo:
+            'I photo leh hming nen he poster download/share turin subscribe rawh.',
+        odia:
+            'ଆପଣଙ୍କ ଫଟୋ ଏବଂ ନାମ ସହ ଏହି ପୋଷ୍ଟର ଡାଉନଲୋଡ୍ କିମ୍ବା ସେୟାର ପାଇଁ ସବସ୍କ୍ରାଇବ କରନ୍ତୁ।',
+        punjabi:
+            'ਆਪਣੀ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਇਹ ਪੋਸਟਰ ਡਾਊਨਲੋਡ ਜਾਂ ਸ਼ੇਅਰ ਕਰਨ ਲਈ ਸਬਸਕ੍ਰਾਈਬ ਕਰੋ।',
+        nepali:
+            'आफ्नो फोटो र नामसहित यो पोस्टर डाउनलोड वा शेयर गर्न सदस्यता लिनुहोस्।',
+        bengali:
+            'আপনার ছবি ও নামসহ এই পোস্টার ডাউনলোড বা শেয়ার করতে সাবস্ক্রাইব করুন।',
+        kashmiri:
+            'پنُن فوٹو تہ ناو سٲتھ یہ پوسٹر ڈاؤنلوڈ یا شیئر کرنہ خٲطر سبسکرائب کریو۔',
+        ladakhi:
+            'Rang gi photo dang ming che poster download/share bya la subscribe byed.',
+      );
+      final continueLabel = context.strings.localized(
+        telugu: 'కొనసాగించండి',
+        english: 'Continue',
+        hindi: 'जारी रखें',
+        tamil: 'தொடரவும்',
+        kannada: 'ಮುಂದುವರಿಸಿ',
+        malayalam: 'തുടരുക',
+        assamese: 'আগবাঢ়ক',
+        konkani: 'मुखार वचात',
+        gujarati: 'આગળ વધો',
+        marathi: 'पुढे जा',
+        meitei: 'Continue tou',
+        mizo: 'Continue rawh',
+        odia: 'ଆଗକୁ ଯାଆନ୍ତୁ',
+        punjabi: 'ਜਾਰੀ ਰੱਖੋ',
+        nepali: 'जारी राख्नुहोस्',
+        bengali: 'চালিয়ে যান',
+        kashmiri: 'جاری تھأیو',
+        ladakhi: 'Continue byed',
+      );
+      // ignore: unused_local_variable
+      final posterLabel = context.strings.localized(
+        telugu: 'ఎంచుకున్న పోస్టర్',
+        english: 'Selected poster',
+        hindi: 'चुना गया पोस्टर',
+        tamil: 'தேர்ந்தெடுத்த போஸ்டர்',
+        kannada: 'ಆಯ್ಕೆ ಮಾಡಿದ ಪೋಸ್ಟರ್',
+        malayalam: 'തിരഞ്ഞെടുത്ത പോസ്റ്റർ',
+        assamese: 'বাছনি কৰা পোষ্টাৰ',
+        konkani: 'वेंचिल्लो पोस्टर',
+        gujarati: 'પસંદ કરેલું પોસ્ટર',
+        marathi: 'निवडलेला पोस्टर',
+        meitei: 'Khanbiba poster',
+        mizo: 'Poster thlan',
+        odia: 'ଚୟନିତ ପୋଷ୍ଟର',
+        punjabi: 'ਚੁਣਿਆ ਪੋਸਟਰ',
+        nepali: 'चयन गरिएको पोस्टर',
+        bengali: 'নির্বাচিত পোস্টার',
+        kashmiri: 'ژارنہ آمُت پوسٹر',
+        ladakhi: 'Selected poster',
+      );
+      final posterTitle = item.titleFor(language).trim().isNotEmpty
+          ? item.titleFor(language).trim()
+          : item.titleEn.trim();
+      final previewAspectRatio =
+          _resolvedPreviewAspectRatio ??
+          item.pageConfig?.aspectRatio ??
+          (item.isVideo ? 9 / 16 : 4 / 5);
+      final shouldStartPayment = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
@@ -16138,199 +16251,153 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           var busy = false;
           return StatefulBuilder(
             builder: (sheetContext, setSheetState) {
-              Future<void> runFreeAction({required bool share}) async {
-                if (busy) {
-                  return;
-                }
-                setSheetState(() => busy = true);
-                try {
-                  final adAccessGranted = await _ensureHomeExportRewardedAccess(
-                    debugLabel: share
-                        ? 'home_plain_poster_share'
-                        : 'home_plain_poster_download',
-                  );
-                  if (!adAccessGranted || !sheetContext.mounted) {
-                    return;
-                  }
-                  await _performPlainFreeExport(sheetContext, share: share);
-                } finally {
-                  if (sheetContext.mounted) {
-                    setSheetState(() => busy = false);
-                  }
-                }
-              }
-
-              final previewAspectRatio =
-                  _resolvedPreviewAspectRatio ??
-                  item.pageConfig?.aspectRatio ??
-                  (item.isVideo ? 9 / 16 : 4 / 5);
-              final topCard = _FreeExportPreviewCard(
-                title: _freeExportWithPhotoTitle(context),
-                message: _freeExportWithPhotoMessage(context),
-                accentColor: const Color(0xFF16A34A),
-                previewAspectRatio: previewAspectRatio,
-                actionLabel: _freeExportTrialPlanLabel(context),
-                onTap: busy
-                    ? null
-                    : () async {
-                        Navigator.of(sheetContext).pop();
-                        await _startDirectTrialPurchaseFromFreeExportChoice();
-                      },
-                preview: _buildPosterPreview(
-                  isPhotoVisible: true,
-                  playbackEnabledOverride: false,
-                  enableFullScreenTap: false,
-                ),
-              );
-              final bottomCard = _FreeExportPreviewCard(
-                title: _freeExportPlainTitle(context),
-                message: _freeExportPlainMessage(context),
-                accentColor: const Color(0xFF2563EB),
-                previewAspectRatio: previewAspectRatio,
-                preview: _buildPosterPreview(
-                  isPhotoVisible: false,
-                  playbackEnabledOverride: false,
-                  enableFullScreenTap: false,
-                  personalizationEnabled: false,
-                ),
-                footer: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      onPressed: busy
-                          ? null
-                          : () => runFreeAction(share: false),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F172A),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(40),
-                        shape: const StadiumBorder(),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      icon: busy && !preferShare
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.download_rounded),
-                      label: Text(_freeExportDownloadLabel(context)),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: busy ? null : () => runFreeAction(share: true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF7C3AED),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(40),
-                        shape: const StadiumBorder(),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      icon: busy && preferShare
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.ios_share_rounded),
-                      label: Text(_freeExportShareLabel(context)),
-                    ),
-                  ],
-                ),
-              );
-
               return FractionallySizedBox(
-                heightFactor: 1,
-                child: Material(
-                  color: const Color(0xFFF8FAFC),
-                  child: SafeArea(
+                heightFactor: 0.72,
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(26),
+                      ),
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                          child: Row(
-                            children: <Widget>[
-                              IconButton(
-                                onPressed: busy
-                                    ? null
-                                    : () => Navigator.of(sheetContext).pop(),
-                                icon: const Icon(Icons.close_rounded),
-                              ),
-                              const Spacer(),
-                            ],
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
                           ),
                         ),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: <Widget>[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 44,
+                              ),
+                              child: Text(
+                                title,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFFDC2626),
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.12,
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton(
+                                onPressed: busy
+                                    ? null
+                                    : () =>
+                                          Navigator.of(sheetContext).pop(false),
+                                icon: const Icon(Icons.close_rounded),
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: <Widget>[
-                                Expanded(child: Center(child: topCard)),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 2,
-                                  ),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Divider(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.08,
-                                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final aspectRatio = previewAspectRatio <= 0
+                                  ? 4 / 5
+                                  : previewAspectRatio;
+                              final maxPreviewWidth =
+                                  (constraints.maxHeight * aspectRatio).clamp(
+                                    0.0,
+                                    constraints.maxWidth,
+                                  );
+                              return Center(
+                                child: SizedBox(
+                                  width: maxPreviewWidth,
+                                  child: AspectRatio(
+                                    aspectRatio: aspectRatio,
+                                    child: ClipRect(
+                                      child: Semantics(
+                                        label: posterTitle.isEmpty
+                                            ? AppPublicInfo.appName
+                                            : posterTitle,
+                                        image: true,
+                                        child: _buildPosterPreview(
+                                          isPhotoVisible: true,
+                                          playbackEnabledOverride: false,
+                                          enableFullScreenTap: false,
                                         ),
                                       ),
-                                      Container(
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          boxShadow: <BoxShadow>[
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.06,
-                                              ),
-                                              blurRadius: 10,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Text(
-                                          'OR',
-                                          style: TextStyle(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.45,
-                                            ),
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Divider(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.08,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                                Expanded(child: Center(child: bottomCard)),
-                              ],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: busy
+                                ? null
+                                : () {
+                                    setSheetState(() => busy = true);
+                                    Navigator.of(sheetContext).pop(true);
+                                  },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF16A34A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                            ),
+                            icon: busy
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Icon(
+                                    preferShare
+                                        ? Icons.ios_share_rounded
+                                        : Icons.download_rounded,
+                                  ),
+                            label: Text(
+                              continueLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
@@ -16343,6 +16410,10 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           );
         },
       );
+      if (shouldStartPayment != true || !context.mounted) {
+        return false;
+      }
+      return _startDirectTrialPurchaseFromFreeExportChoice();
     } finally {
       if (context.mounted) {
         await ScreenSecurityService.protectScreen(adminOnlyBypass: false);
@@ -16350,6 +16421,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
   }
 
+  // ignore: unused_element
   Future<bool> _ensureHomeExportRewardedAccess({
     required String debugLabel,
   }) async {
@@ -16651,13 +16723,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         return;
       }
       if (!hasAccess) {
-        if (item.isVideo) {
-          result = await _ensureSubscriptionAccess(context);
+        final purchased = await _showFreeExportChoiceSheet(
+          context,
+          preferShare: false,
+        );
+        if (!context.mounted || !purchased) {
+          result = false;
           return;
         }
-        await _showFreeExportChoiceSheet(context, preferShare: false);
-        result = false;
-        return;
       }
       final hasPermission = await _ensureGallerySavePermission();
       if (!hasPermission) {
@@ -16825,13 +16898,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         return;
       }
       if (!hasAccess) {
-        if (item.isVideo) {
-          result = await _ensureSubscriptionAccess(context);
+        final purchased = await _showFreeExportChoiceSheet(
+          context,
+          preferShare: true,
+        );
+        if (!context.mounted || !purchased) {
+          result = false;
           return;
         }
-        await _showFreeExportChoiceSheet(context, preferShare: true);
-        result = false;
-        return;
       }
       if (item.isVideo) {
         final preparedVideoPath = await _ensurePreparedVideoFile();
@@ -19175,6 +19249,7 @@ class _SubscriptionInfoLine extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _FreeExportPreviewCard extends StatelessWidget {
   const _FreeExportPreviewCard({
     required this.title,
