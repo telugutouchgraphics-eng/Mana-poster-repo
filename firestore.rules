@@ -172,6 +172,8 @@ service cloud.firestore {
             "locationArea",
             "locationUpdatedAt",
             "statusFeedSeed",
+            "lastActiveDay",
+            "lastActiveAt",
             "updatedAt",
           ])
         : request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -187,6 +189,8 @@ service cloud.firestore {
             "locationArea",
             "locationUpdatedAt",
             "statusFeedSeed",
+            "lastActiveDay",
+            "lastActiveAt",
             "updatedAt",
           ]);
     }

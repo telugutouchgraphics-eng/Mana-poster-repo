@@ -776,4 +776,38 @@ class AppFlowService {
       return auth.currentUser;
     }
   }
+
+  static const String _lastDailyHeartbeatKey = 'user_last_heartbeat_ist_day_v1';
+
+  static Future<void> recordZeroCostDailyHeartbeat() async {
+    if (Firebase.apps.isEmpty) {
+      return;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.uid.trim().isEmpty) {
+      return;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+      final todayKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final lastRecordedDay = prefs.getString(_lastDailyHeartbeatKey);
+      if (lastRecordedDay == todayKey) {
+        return; // Zero cost: already recorded once today for this user
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set(<String, dynamic>{
+            'lastActiveDay': todayKey,
+            'lastActiveAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 4));
+
+      await prefs.setString(_lastDailyHeartbeatKey, todayKey);
+    } catch (_) {}
+  }
 }
