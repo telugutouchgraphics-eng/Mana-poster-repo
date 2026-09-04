@@ -101,6 +101,16 @@ const quizCollections = {
   weeklyLeaderboards: "weeklyQuizLeaderboards",
 };
 const istOffsetMillis = 5.5 * 60 * 60 * 1000;
+const notificationTokenScanLimit = readPositiveInt(
+    process.env.MANA_NOTIFICATION_TOKEN_SCAN_LIMIT,
+    1500,
+    10000,
+);
+const publicNotificationTokenScanLimit = readPositiveInt(
+    process.env.MANA_PUBLIC_NOTIFICATION_TOKEN_SCAN_LIMIT,
+    1500,
+    10000,
+);
 
 function parseAllowedOrigins(rawValue) {
   const raw = String(rawValue || "").trim();
@@ -111,6 +121,14 @@ function parseAllowedOrigins(rawValue) {
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
   return new Set(parts.length > 0 ? parts : ["*"]);
+}
+
+function readPositiveInt(rawValue, fallback, maxValue) {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.trunc(parsed), maxValue);
 }
 
 function setCors(req, res) {
@@ -3766,7 +3784,10 @@ async function sendDailyPersonalizedReminder({
   const now = new Date();
   const dayKey = getIstDayKey(now);
   const resolvedSeed = normalizeText(reminderSeed) || "default";
-  const userTokenSnap = await db.collectionGroup("deviceTokens").get();
+  const userTokenSnap = await db
+      .collectionGroup("deviceTokens")
+      .limit(notificationTokenScanLimit)
+      .get();
   const seenTokens = new Set();
   const profileCache = new Map();
   const imageCache = new Map();
@@ -3895,7 +3916,10 @@ async function sendDailyPersonalizedReminder({
     }
   });
 
-  const publicSnap = await db.collection("publicDeviceTokens").get();
+  const publicSnap = await db
+      .collection("publicDeviceTokens")
+      .limit(publicNotificationTokenScanLimit)
+      .get();
   const publicJobs = [];
   for (const doc of publicSnap.docs) {
     const data = doc.data() || {};
@@ -3991,8 +4015,14 @@ async function sendDirectReminderToEligibleTokens({
   eventKeywords = [],
   dynamicEvent = null,
 }) {
-  const userTokenSnap = await db.collectionGroup("deviceTokens").get();
-  const publicSnap = await db.collection("publicDeviceTokens").get();
+  const userTokenSnap = await db
+      .collectionGroup("deviceTokens")
+      .limit(notificationTokenScanLimit)
+      .get();
+  const publicSnap = await db
+      .collection("publicDeviceTokens")
+      .limit(publicNotificationTokenScanLimit)
+      .get();
   const seenTokens = new Set();
   const profileCache = new Map();
   const imageCache = new Map();
@@ -4155,8 +4185,14 @@ async function sendLocalizedGreetingReminder({
 }) {
   const now = new Date();
   const dayKey = getIstDayKey(now);
-  const userTokenSnap = await db.collectionGroup("deviceTokens").get();
-  const publicSnap = await db.collection("publicDeviceTokens").get();
+  const userTokenSnap = await db
+      .collectionGroup("deviceTokens")
+      .limit(notificationTokenScanLimit)
+      .get();
+  const publicSnap = await db
+      .collection("publicDeviceTokens")
+      .limit(publicNotificationTokenScanLimit)
+      .get();
   const seenTokens = new Set();
   const profileCache = new Map();
   const imageCache = new Map();
@@ -4934,6 +4970,19 @@ function screenLabelFor(screenKey, rawName) {
       .slice(0, 120) || "Unknown";
 }
 
+function isLowValueUsageScreen(screenName, screenKey, screenLabel) {
+  const combined = `${screenName} ${screenKey} ${screenLabel}`.toLowerCase();
+  const blockedFragments = [
+    "materialpageroute",
+    "dialogroute",
+    "modalbottomsheetroute",
+    "pageroutebuilder",
+    "popupmenuroute",
+    "_profilephotopickaction",
+  ];
+  return blockedFragments.some((fragment) => combined.includes(fragment));
+}
+
 function parseScreenDurationMs(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 800) {
@@ -4994,6 +5043,10 @@ exports.recordAppScreenUsage = onRequest({region: "asia-south1"}, async (req, re
     const screenName = String(body.screenName || body.routeName || "").trim();
     const screenKey = normalizeScreenKey(screenName);
     const screenLabel = screenLabelFor(screenKey, body.screenLabel || screenName);
+    if (isLowValueUsageScreen(screenName, screenKey, screenLabel)) {
+      res.status(200).json({ok: true, skipped: true});
+      return;
+    }
     const installId = String(body.installId || "").trim().slice(0, 160);
     const visitorSource = uid ? `uid:${uid}` : `install:${installId}`;
     if (!uid && !installId) {
@@ -6503,7 +6556,7 @@ exports.reminderToolSendTriple = onRequest(
 exports.processWelcomeNotifications = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 15 minutes",
+      schedule: "every 60 minutes",
       timeZone: "Asia/Kolkata",
       memory: "512MiB",
       timeoutSeconds: 180,
