@@ -7099,8 +7099,64 @@ exports.dailyDynamicEventReminder = onSchedule(
       timeZone: "Asia/Kolkata",
     },
     async () => {
-      // Dynamic event reminders disabled as per user request (categories may not have posters)
-      logger.info("dailyDynamicEventReminder skipped: event reminders disabled");
+      const now = new Date();
+      const matchingEvents = dynamicEventCatalog.filter((event) => {
+        const delta = daysUntilEvent(event.month, event.day, now);
+        return delta === 1 || delta === 0;
+      });
+
+      if (matchingEvents.length === 0) {
+        return;
+      }
+
+      for (const event of matchingEvents) {
+        const delta = daysUntilEvent(event.month, event.day, now);
+        const eventTiming = delta === 1 ? "tomorrow" : "today";
+        const eventTimingLabel = delta === 1 ? "repu" : "ee roju";
+
+        const key = `${now.getFullYear()}-${event.id}-${eventTiming}-${now.getMonth() + 1}-${now.getDate()}`;
+        const sentRef = db.collection("notificationJobs").doc("dynamicEventReminders")
+            .collection("sent").doc(key);
+        const exists = await sentRef.get();
+        if (exists.exists) {
+          continue;
+        }
+
+        // STRICT POSTER CHECK:
+        // Only send notification if approved poster image actually exists for this event
+        const eventKeywords = event.keywords || [event.title];
+        const hasPoster = await pickImageForReminder(
+            eventKeywords,
+            `${event.title}-${eventTiming}-check`,
+        );
+
+        if (!hasPoster) {
+          logger.info("dailyDynamicEventReminder skipped: no poster found for event", {
+            eventTitle: event.title,
+            eventTiming,
+          });
+          continue;
+        }
+
+        await sendDirectReminderToEligibleTokens({
+          categoryKey: "dynamic_event",
+          title: `${event.title} reminder`,
+          body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
+          imageUrl: hasPoster,
+          eventTitle: event.title,
+          eventTiming,
+          eventKeywords,
+          dynamicEvent: event,
+        });
+
+        await sentRef.set({
+          eventId: event.id,
+          eventTitle: event.title,
+          eventTiming,
+          hasPosterImage: true,
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
     },
 );
 
