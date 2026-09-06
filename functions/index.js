@@ -4229,19 +4229,6 @@ async function sendDailyPersonalizedReminder({
       status: deliveredCount > 0 ? "sent" : "failed",
       deliveredCount,
       failedCount,
-  const logCopy = reminderCopyLocalized(categoryKey, "te", "", now);
-  await recordAutomatedPushNotificationHistory({
-    title: logCopy.title,
-    message: logCopy.body,
-    titleKey: `${categoryKey}_title`,
-    bodyKey: "",
-    imageUrl: await imageForRegion("andhra_pradesh") || "",
-    category: categoryKey,
-    audience: "personalized_device_tokens",
-    targetReligion: targetReligion || "all",
-    status: deliveredCount > 0 ? "sent" : "failed",
-    deliveredCount,
-    failedCount,
       targetCount: deliveredCount + failedCount,
     });
   }
@@ -8214,3 +8201,4 @@ exports.biweeklyFreeTrialReminder = onSchedule(
       }
     },
 );
+}
