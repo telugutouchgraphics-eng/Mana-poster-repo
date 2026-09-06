@@ -57,3 +57,7 @@ context.strings.localized(
 - Translations should be contextually natural, polite, and culturally appropriate in each language.
 - Run `flutter analyze lib/` to ensure zero compilation or analyzer errors after UI edits.
 
+## 3. Concise Communication (MANDATORY)
+- Always keep responses to the user concise and to the point, strictly within a maximum of 5 lines, unless the user explicitly asks for detailed explanations or code snippets.
+- Respond in natural, polite Telugu by default.
+
