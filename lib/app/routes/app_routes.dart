@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:mana_poster/app/startup/post_splash_startup_gate.dart';
+import 'package:mana_poster/features/prehome/screens/digital_visiting_card_screen.dart';
 import 'package:mana_poster/features/prehome/screens/home_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/login_screen.dart';
@@ -22,6 +23,7 @@ class AppRoutes {
   static const permissions = '/permissions';
   static const religion = '/religion';
   static const profileSetup = '/profile-setup';
+  static const digitalVisitingCard = '/digital-visiting-card';
   static const home = '/home';
   static const pageSetup = '/page-setup';
   static const imageEditor = '/image-editor';
@@ -71,6 +73,8 @@ class AppRoutes {
     login: (_) => _readyEntry(const LoginScreen()),
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),
+    digitalVisitingCard: (_) =>
+        _readyEntry(const DigitalVisitingCardScreen()),
     home: (_) => _readyEntry(const HomeScreen()),
     pageSetup: (_) => _readyEntry(const NotificationUnavailableScreen()),
     imageEditor: (_) => _readyEntry(const NotificationUnavailableScreen()),

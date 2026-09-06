@@ -16,6 +16,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/account_deletion_screen.dart';
 import 'package:mana_poster/features/prehome/screens/about_app_screen.dart';
+import 'package:mana_poster/features/prehome/screens/digital_visiting_card_screen.dart';
 import 'package:mana_poster/features/prehome/screens/help_support_screen.dart';
 import 'package:mana_poster/features/prehome/screens/language_settings_screen.dart';
 import 'package:mana_poster/features/prehome/screens/notifications_settings_screen.dart';
@@ -918,6 +919,56 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
                       Navigator.of(context).pushNamed(AppRoutes.login);
                     },
                   ),
+                _ProfileItemData(
+                  icon: Icons.badge_rounded,
+                  title: context.strings.localized(
+                    telugu: 'నా డిజిటల్ విజిటింగ్ కార్డ్',
+                    english: 'My Digital Visiting Card',
+                    hindi: 'मेरा डिजिटल विजिटिंग कार्ड',
+                    tamil: 'எனது டிஜிட்டல் விசிட்டிங் கார்டு',
+                    kannada: 'ನನ್ನ ಡಿಜಿಟಲ್ ವಿಸಿಟಿಂಗ್ ಕಾರ್ಡ್',
+                    malayalam: 'എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ്',
+                    marathi: 'माझे डिजिटल व्हिजिटिंग कार्ड',
+                    gujarati: 'મારું ડિજિટલ વિઝિટિંગ કાર્ડ',
+                    bengali: 'আমার ডিজিটাল ভিজিটিং কার্ড',
+                    punjabi: 'ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ',
+                    odia: 'ମୋର ଡିଜିଟାଲ୍ ଭିଜିଟିଂ କାର୍ଡ',
+                    assamese: 'মোৰ ডিজিটেল ভিজিটিং কাৰ্ড',
+                    konkani: 'म्हजें डिजीटल विझिटींग कार्ड',
+                    nepali: 'मेरो डिजिटल भिजिटिङ कार्ड',
+                    meitei: 'ইহাক্কী দিজিতেল বিজিতিং কার্দ',
+                    mizo: 'Ka Digital Visiting Card',
+                    kashmiri: 'میٛون ڈِجیٹَل وزٹنگ کارڈ',
+                    ladakhi: 'Nye Digital Visiting Card',
+                  ),
+                  subtitle: context.strings.localized(
+                    telugu: '3 ప్రొఫెషనల్ డిజైన్లు • ప్రింటబుల్ సైజ్',
+                    english: '3 Professional Designs • Printable Size',
+                    hindi: '3 पेशेवर डिज़ाइन • प्रिंट करने योग्य आकार',
+                    tamil: '3 தொழில்முறை வடிவமைப்புகள் • அச்சிடக்கூடிய அளவு',
+                    kannada: '3 ವೃತ್ತಿಪರ ವಿನ್ಯಾಸಗಳು • ಮುದ್ರಿಸಬಹುದಾದ ಗಾತ್ರ',
+                    malayalam: '3 പ്രൊഫഷണൽ ഡിസൈനുകൾ • പ്രിന്റ് ചെയ്യാവുന്ന വലുപ്പം',
+                    marathi: '3 व्यावसायिक डिझाईन्स • मुद्रणयोग्य आकार',
+                    gujarati: '3 વ્યાવસાયિક ડિઝાઇન • પ્રિન્ટ કરી શકાય તેવું કદ',
+                    bengali: '৩টি পেশাদার ডিজাইন • প্রিন্টযোগ্য আকার',
+                    punjabi: '3 ਪੇਸ਼ੇਵਰ ਡਿਜ਼ਾਈਨ • ਛਪਣਯੋਗ ਆਕਾਰ',
+                    odia: '3 ବୃତ୍ତିଗତ ଡିଜାଇନ୍ • ମୁଦ୍ରଣଯୋଗ୍ୟ ଆକାର',
+                    assamese: '৩টা পেছাদাৰী ডিজাইন • প্ৰিণ্টযোগ্য আকাৰ',
+                    konkani: '3 वेवसायीक डिझायनां • छापपा सारकें माप',
+                    nepali: '३ व्यावसायिक डिजाइनहरू • मुद्रणयोग्य आकार',
+                    meitei: 'প্রোফেসনেল ডিজাইন ৩ • নমবা য়াবা অকক',
+                    mizo: 'Design mawi tak 3 • Chhut theih chin',
+                    kashmiri: '3 پیشہ ورانہ ڈیزائن • پرِنٛٹ کَرنہٕ لائق سائز',
+                    ladakhi: 'Bzo lta legs po 3 • Par thub pa’i thad',
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const DigitalVisitingCardScreen(),
+                      ),
+                    );
+                  },
+                ),
                 _ProfileItemData(
                   icon: Icons.ios_share_rounded,
                   title: copy.shareAppTitle,
