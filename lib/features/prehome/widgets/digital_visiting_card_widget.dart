@@ -252,12 +252,12 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          buildLine(primary, baseFontSize: 12.0),
+          buildLine(primary, baseFontSize: 11.5),
           SizedBox(height: 2 * scale),
           buildLine(
             secondary,
-            baseFontSize: 10.5,
-            textColor: color.withValues(alpha: 0.88),
+            baseFontSize: 11.5,
+            textColor: color,
           ),
         ],
       );

@@ -11724,8 +11724,6 @@ String _subscriptionTrialValueAppLocalized(BuildContext context) {
     konkani:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â° $price',
     gujarati:
-        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ 
-... [truncated for diff preview]
         '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
     marathi:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ $price',
@@ -23674,34 +23672,34 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             child: hasBothDesignations
                 ? Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       _legacyAwareText(
                         text: resolvedDesignation,
                         fontFamily: designationFontFamily,
                         maxLines: 1,
-                        textAlign: TextAlign.right,
+                        textAlign: TextAlign.left,
                         fitToWidth: true,
                         style: TextStyle(
                           color: mutedStripTextColor,
                           fontWeight: designationFontWeight,
-                          fontSize: designationFontSize * 0.84,
+                          fontSize: designationFontSize * 0.82,
                           height: designationHeight,
                         ),
                       ),
-                      const SizedBox(height: 1),
+                      const SizedBox(height: 2),
                       _legacyAwareText(
                         text: resolvedSecondaryDesignation,
                         fontFamily: secondaryDesignationFontFamily ??
                             designationFontFamily,
                         maxLines: 1,
-                        textAlign: TextAlign.right,
+                        textAlign: TextAlign.left,
                         fitToWidth: true,
                         style: TextStyle(
-                          color: mutedStripTextColor.withValues(alpha: 0.90),
-                          fontWeight: FontWeight.w400,
-                          fontSize: designationFontSize * 0.72,
+                          color: mutedStripTextColor,
+                          fontWeight: designationFontWeight,
+                          fontSize: designationFontSize * 0.82,
                           height: designationHeight,
                         ),
                       ),

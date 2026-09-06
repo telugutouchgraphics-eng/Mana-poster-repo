@@ -777,10 +777,8 @@ class PersonalizedVideoExportService {
     final rawName = profile.resolvedName(language: language).trim();
     final isBusinessProfile =
         profile.identityMode == PosterIdentityMode.business;
-    final rawDesignation = isBusinessProfile
     final primaryDesignation = isBusinessProfile
         ? profile.businessTagline.trim()
-        : profile.effectivePersonalDesignation;
         : profile.primaryPersonalDesignation;
     final secondaryDesignation = isBusinessProfile
         ? ''
@@ -798,7 +796,6 @@ class PersonalizedVideoExportService {
       personalization: personalization,
       stripGradientTapOffset: stripGradientTapOffset,
     );
-    final designationFontFamily = _resolveDesignationFontFamily(rawDesignation);
     final primaryDesignationFontFamily = _resolveDesignationFontFamily(
       primaryDesignation,
     );
@@ -809,9 +806,6 @@ class PersonalizedVideoExportService {
       displayNameSource,
       displayNameFontFamily,
     );
-    final displayDesignation = await _legacyTextForExport(
-      rawDesignation,
-      designationFontFamily,
     final displayPrimary = await _legacyTextForExport(
       primaryDesignation,
       primaryDesignationFontFamily,
@@ -830,12 +824,10 @@ class PersonalizedVideoExportService {
         : rawPhone;
     final nameUsesTeluguLayout = _containsTelugu(displayNameSource);
     final trailingUsesTeluguLayout =
-        _containsTelugu(rawDesignation) ||
         _containsTelugu(primaryDesignation) ||
         _containsTelugu(secondaryDesignation) ||
         (displayDesignation.isEmpty && _containsTelugu(rawPhone));
     final trailingFontFamily = displayDesignation.isNotEmpty
-        ? designationFontFamily
         ? primaryDesignationFontFamily
         : (_containsTelugu(displayTrailing)
               ? 'Anek Telugu Condensed Medium'
