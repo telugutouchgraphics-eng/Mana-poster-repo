@@ -800,26 +800,15 @@ class AppFlowService {
       final hasRecordedInstall = prefs.getBool(_installRecordedKey) ?? false;
       if (!hasRecordedInstall) {
         // Record createdAt on user doc if missing
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .set(<String, dynamic>{
-              'createdAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true))
-            .timeout(const Duration(seconds: 4));
-
-        // Atomic +1 to daily install stats counter
-        await FirebaseFirestore.instance
-            .collection('system')
-            .doc('dailyInstallStats')
-            .collection('days')
-            .doc(todayKey)
-            .set(<String, dynamic>{
-              'installs': FieldValue.increment(1),
-              'date': todayKey,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true))
-            .timeout(const Duration(seconds: 4));
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set(<String, dynamic>{
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true))
+              .timeout(const Duration(seconds: 4));
+        } catch (_) {}
 
         await prefs.setBool(_installRecordedKey, true);
       }
