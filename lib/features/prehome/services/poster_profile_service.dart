@@ -57,6 +57,7 @@ class PosterProfileData {
     this.personalPhotoRevision = 0,
     this.profileRevision = 0,
     this.setupCompleted = false,
+    this.personalPhoneNumber = '',
   });
 
   final String nameTelugu;
@@ -79,6 +80,7 @@ class PosterProfileData {
   final int personalPhotoRevision;
   final int profileRevision;
   final bool setupCompleted;
+  final String personalPhoneNumber;
 
   String get displayName {
     final te = nameTelugu.trim();
@@ -104,6 +106,9 @@ class PosterProfileData {
     if (identityMode == PosterIdentityMode.business &&
         businessWhatsappNumber.trim().isNotEmpty) {
       return businessWhatsappNumber.trim();
+    }
+    if (personalPhoneNumber.trim().isNotEmpty) {
+      return personalPhoneNumber.trim();
     }
     return whatsappNumber.trim();
   }
@@ -137,6 +142,7 @@ class PosterProfileData {
     int? personalPhotoRevision,
     int? profileRevision,
     bool? setupCompleted,
+    String? personalPhoneNumber,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
     final nextTelugu =
@@ -170,6 +176,7 @@ class PosterProfileData {
           personalPhotoRevision ?? this.personalPhotoRevision,
       profileRevision: profileRevision ?? this.profileRevision,
       setupCompleted: setupCompleted ?? this.setupCompleted,
+      personalPhoneNumber: personalPhoneNumber ?? this.personalPhoneNumber,
     );
   }
 
@@ -236,11 +243,12 @@ class PosterProfileData {
             other.preferOriginalPersonalPhoto == preferOriginalPersonalPhoto &&
             other.personalPhotoRevision == personalPhotoRevision &&
             other.profileRevision == profileRevision &&
-            other.setupCompleted == setupCompleted;
+            other.setupCompleted == setupCompleted &&
+            other.personalPhoneNumber == personalPhoneNumber;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll(<Object?>[
     nameTelugu,
     nameEnglish,
     whatsappNumber,
@@ -261,7 +269,8 @@ class PosterProfileData {
     personalPhotoRevision,
     profileRevision,
     setupCompleted,
-  );
+    personalPhoneNumber,
+  ]);
 }
 
 class UserSavedCutoutPhoto {
@@ -422,6 +431,7 @@ class PosterProfileService {
   static const String _nameTeluguKey = 'poster_profile_name_telugu';
   static const String _nameEnglishKey = 'poster_profile_name_english';
   static const String _whatsappKey = 'poster_profile_whatsapp';
+  static const String _personalPhoneKey = 'poster_profile_personal_phone';
   static const String _nameFontKey = 'poster_profile_name_font';
   static const String _photoPathKey = 'poster_profile_photo_path';
   static const String _photoUrlKey = 'poster_profile_photo_url';
@@ -511,6 +521,7 @@ class PosterProfileService {
   static bool isSetupComplete(PosterProfileData profile) {
     return (profile.setupCompleted && _hasMeaningfulPersonalName(profile)) ||
         profile.whatsappNumber.trim().isNotEmpty ||
+        profile.personalPhoneNumber.trim().isNotEmpty ||
         profile.photoPath.trim().isNotEmpty ||
         profile.photoUrl.trim().isNotEmpty ||
         profile.originalPhotoPath.trim().isNotEmpty ||
@@ -620,6 +631,12 @@ class PosterProfileService {
       whatsappNumber:
           (resolvedPrefs.getString(
                     _scopedKey(_whatsappKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      personalPhoneNumber:
+          (resolvedPrefs.getString(
+                    _scopedKey(_personalPhoneKey, fallbackUid: fallbackUid),
                   ) ??
                   '')
               .trim(),
@@ -771,6 +788,11 @@ class PosterProfileService {
         whatsappNumber: preferLocalProfile
             ? fallbackProfile.whatsappNumber
             : remote.whatsappNumber,
+        personalPhoneNumber:
+            preferLocalProfile ||
+                fallbackProfile.personalPhoneNumber.trim().isNotEmpty
+            ? fallbackProfile.personalPhoneNumber
+            : remote.personalPhoneNumber,
         nameFontFamily: preferLocalProfile
             ? fallbackProfile.nameFontFamily
             : remote.nameFontFamily,
@@ -1008,6 +1030,7 @@ class PosterProfileService {
             'nameTelugu': data.nameTelugu.trim(),
             'nameEnglish': data.nameEnglish.trim(),
             'whatsappNumber': data.whatsappNumber.trim(),
+            'personalPhoneNumber': data.personalPhoneNumber.trim(),
             'nameFontFamily': _sanitizeFont(data.nameFontFamily),
             'photoUrl': data.photoUrl.trim(),
             'originalPhotoUrl': data.originalPhotoUrl.trim(),
@@ -1507,6 +1530,10 @@ class PosterProfileService {
     await prefs.setString(_scopedKey(_nameEnglishKey), data.nameEnglish.trim());
     await prefs.setString(_scopedKey(_whatsappKey), data.whatsappNumber.trim());
     await prefs.setString(
+      _scopedKey(_personalPhoneKey),
+      data.personalPhoneNumber.trim(),
+    );
+    await prefs.setString(
       _scopedKey(_nameFontKey),
       _sanitizeFont(data.nameFontFamily),
     );
@@ -1607,6 +1634,7 @@ class PosterProfileService {
       _nameTeluguKey,
       _nameEnglishKey,
       _whatsappKey,
+      _personalPhoneKey,
       _nameFontKey,
       _photoPathKey,
       _photoUrlKey,
@@ -1656,6 +1684,7 @@ class PosterProfileService {
       _nameTeluguKey,
       _nameEnglishKey,
       _whatsappKey,
+      _personalPhoneKey,
       _nameFontKey,
       _photoPathKey,
       _photoUrlKey,
@@ -1706,6 +1735,8 @@ class PosterProfileService {
           ? remoteNameEnglish
           : inferred.$2,
       whatsappNumber: (data['whatsappNumber'] as String? ?? '').trim(),
+      personalPhoneNumber: (data['personalPhoneNumber'] as String? ?? '')
+          .trim(),
       nameFontFamily: _sanitizeFont(data['nameFontFamily'] as String?),
       displayNameMode: _defaultDisplayNameMode,
       photoPath: '',

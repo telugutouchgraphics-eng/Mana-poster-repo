@@ -1,7 +1,8 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
+import 'package:mana_poster/features/prehome/services/telugu_legacy_text_service.dart';
 
 enum VisitingCardStyle { royalBlue, royalGold, emeraldTech }
 
@@ -84,6 +85,10 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     if (personalRaw.isNotEmpty && digits.length < 10) {
       return personalRaw;
     }
+    if (profile.identityMode == PosterIdentityMode.personal &&
+        personalRaw.isNotEmpty) {
+      return personalRaw;
+    }
     final tagline = profile.businessTagline.trim();
     if (tagline.isNotEmpty) {
       return tagline;
@@ -100,10 +105,24 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       return _formatPhone(phoneNumber!.trim());
     }
 
+    if (profile.identityMode == PosterIdentityMode.personal) {
+      final personalPhone = profile.personalPhoneNumber.trim();
+      final personalPhoneDigits = personalPhone.replaceAll(RegExp(r'\D'), '');
+      if (personalPhoneDigits.length >= 10) {
+        return _formatPhone(personalPhone);
+      }
+    }
+
     final biz = profile.businessWhatsappNumber.trim();
     final bizDigits = biz.replaceAll(RegExp(r'\D'), '');
     if (bizDigits.length >= 10) {
       return _formatPhone(biz);
+    }
+
+    final personalPhone = profile.personalPhoneNumber.trim();
+    final personalPhoneDigits = personalPhone.replaceAll(RegExp(r'\D'), '');
+    if (personalPhoneDigits.length >= 10) {
+      return _formatPhone(personalPhone);
     }
 
     try {
@@ -138,6 +157,75 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       return '+91 ${digits.substring(0, 5)} ${digits.substring(5)}';
     }
     return '+91 $clean';
+  }
+
+  static final RegExp _teluguRegExp = RegExp(r'[\u0C00-\u0C7F]');
+
+  Widget _buildNameWidget({required Color color, required double scale}) {
+    final rawName = _effectiveName;
+    final isTelugu = _teluguRegExp.hasMatch(rawName);
+    String displayName = rawName;
+    String? fontFamily;
+    if (isTelugu) {
+      final converted = TeluguLegacyTextService.convertSync(
+        rawName,
+        fontFamily: 'Pallavi Bold',
+      );
+      if (converted != null && converted.trim().isNotEmpty) {
+        displayName = converted;
+        fontFamily = 'Pallavi Bold';
+      }
+    }
+
+    return Text(
+      displayName,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: color,
+        fontSize: (fontFamily != null ? 20.0 : 18.0) * scale,
+        fontWeight: FontWeight.w900,
+        fontFamily: fontFamily,
+        letterSpacing: fontFamily != null ? 0.0 : -0.2,
+        height: fontFamily != null ? 1.05 : 1.15,
+      ),
+    );
+  }
+
+  Widget _buildDesignationWidget({
+    required Color color,
+    required double scale,
+  }) {
+    final rawDesig = _effectiveDesignation;
+    if (rawDesig.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final isTelugu = _teluguRegExp.hasMatch(rawDesig);
+    String displayDesig = rawDesig;
+    String? fontFamily;
+    if (isTelugu) {
+      final converted = TeluguLegacyTextService.convertSync(
+        rawDesig,
+        fontFamily: 'Pallavi Medium',
+      );
+      if (converted != null && converted.trim().isNotEmpty) {
+        displayDesig = converted;
+        fontFamily = 'Pallavi Medium';
+      }
+    }
+
+    return Text(
+      displayDesig,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: color,
+        fontSize: (fontFamily != null ? 13.5 : 12.0) * scale,
+        fontWeight: FontWeight.w700,
+        fontFamily: fontFamily,
+        height: fontFamily != null ? 1.05 : 1.2,
+      ),
+    );
   }
 
   ImageProvider? _resolvePhotoProvider() {
@@ -261,30 +349,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          Text(
-                            _effectiveName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF0F172A),
-                              fontSize: 18 * scale,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.2,
-                              height: 1.15,
-                            ),
+                          _buildNameWidget(
+                            color: const Color(0xFF0F172A),
+                            scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
                           if (_effectiveDesignation.isNotEmpty) ...<Widget>[
-                            Text(
-                              _effectiveDesignation,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(0xFF2563EB),
-                                fontSize: 12 * scale,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
-                              ),
+                            _buildDesignationWidget(
+                              color: const Color(0xFF2563EB),
+                              scale: scale,
                             ),
                             SizedBox(height: 10 * scale),
                           ] else
@@ -351,11 +424,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0F172A),
-                Color(0xFF1E293B),
-                Color(0xFF0A0F1D),
-              ],
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0A0F1D)],
             ),
           ),
           child: Stack(
@@ -417,7 +486,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                           ),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withValues(alpha: 0.35),
                               blurRadius: 12 * scale,
                               offset: Offset(0, 4 * scale),
                             ),
@@ -426,7 +497,10 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         child: ClipOval(
                           child: _buildPhotoBox(
                             borderRadius: BorderRadius.zero,
-                            border: Border.all(color: Colors.transparent, width: 0),
+                            border: Border.all(
+                              color: Colors.transparent,
+                              width: 0,
+                            ),
                           ),
                         ),
                       ),
@@ -448,30 +522,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          Text(
-                            _effectiveName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFFF8FAFC),
-                              fontSize: 18 * scale,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.2,
-                              height: 1.15,
-                            ),
+                          _buildNameWidget(
+                            color: const Color(0xFFF8FAFC),
+                            scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
                           if (_effectiveDesignation.isNotEmpty) ...<Widget>[
-                            Text(
-                              _effectiveDesignation,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(0xFFFBBF24),
-                                fontSize: 12 * scale,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
-                              ),
+                            _buildDesignationWidget(
+                              color: const Color(0xFFFBBF24),
+                              scale: scale,
                             ),
                             SizedBox(height: 10 * scale),
                           ] else
@@ -590,7 +649,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                           width: 3.2 * scale,
                         ),
                         shadow: BoxShadow(
-                          color: const Color(0xFF059669).withValues(alpha: 0.25),
+                          color: const Color(
+                            0xFF059669,
+                          ).withValues(alpha: 0.25),
                           blurRadius: 10 * scale,
                           offset: Offset(0, 4 * scale),
                         ),
@@ -613,30 +674,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          Text(
-                            _effectiveName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF0F172A),
-                              fontSize: 18 * scale,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.2,
-                              height: 1.15,
-                            ),
+                          _buildNameWidget(
+                            color: const Color(0xFF0F172A),
+                            scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
                           if (_effectiveDesignation.isNotEmpty) ...<Widget>[
-                            Text(
-                              _effectiveDesignation,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(0xFF059669),
-                                fontSize: 12 * scale,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
-                              ),
+                            _buildDesignationWidget(
+                              color: const Color(0xFF059669),
+                              scale: scale,
                             ),
                             SizedBox(height: 10 * scale),
                           ] else
@@ -698,10 +744,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     required double scale,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 6 * scale,
-        vertical: 3 * scale,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 6 * scale, vertical: 3 * scale),
       decoration: BoxDecoration(
         color: badgeBg ?? Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(8 * scale),
