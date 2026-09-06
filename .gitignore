@@ -86,3 +86,12 @@ flutter_01.png
 /latest-logcat.txt
 /screenshots/
 /functions/assets/notification_frames/variant_preview.html
+
+# Local test captures
+/cutout_test.png
+/original_test.png
+
+# Gradle build dirs inside local package overrides
+packages/**/.gradle/
+packages/**/example/android/.gradle/
+packages/**/android/.gradle/
