@@ -72,7 +72,7 @@ class _PosterProfileDetailsScreenState
   late PosterProfileData _savedProfile;
   late final TextEditingController _nameController;
   late final TextEditingController _whatsappController;
-  late final TextEditingController _personalPhoneController;
+  late final TextEditingController _secondaryDesignationController;
   late final TextEditingController _businessNameController;
   late final TextEditingController _businessTaglineController;
   late final TextEditingController _businessWhatsappController;
@@ -97,8 +97,8 @@ class _PosterProfileDetailsScreenState
     _whatsappController = TextEditingController(
       text: widget.initialProfile.whatsappNumber,
     );
-    _personalPhoneController = TextEditingController(
-      text: widget.initialProfile.personalPhoneNumber,
+    _secondaryDesignationController = TextEditingController(
+      text: widget.initialProfile.secondaryDesignation,
     );
     _businessNameController = TextEditingController(
       text: widget.initialProfile.businessName,
@@ -196,7 +196,7 @@ class _PosterProfileDetailsScreenState
   void dispose() {
     _nameController.dispose();
     _whatsappController.dispose();
-    _personalPhoneController.dispose();
+    _secondaryDesignationController.dispose();
     _businessNameController.dispose();
     _businessTaglineController.dispose();
     _businessWhatsappController.dispose();
@@ -1355,7 +1355,7 @@ class _PosterProfileDetailsScreenState
       nameTelugu: splitName.$1,
       nameEnglish: splitName.$2,
       whatsappNumber: _whatsappController.text.trim(),
-      personalPhoneNumber: _onlyDigits(_personalPhoneController.text),
+      secondaryDesignation: _secondaryDesignationController.text.trim(),
       businessName: _businessNameController.text.trim(),
       businessTagline: _businessTaglineController.text.trim(),
       businessWhatsappNumber: _onlyDigits(_businessWhatsappController.text),
@@ -1387,6 +1387,7 @@ class _PosterProfileDetailsScreenState
       profile.nameTelugu.trim(),
       profile.nameEnglish.trim(),
       profile.whatsappNumber.trim(),
+      profile.secondaryDesignation.trim(),
       _onlyDigits(profile.personalPhoneNumber),
       profile.nameFontFamily.trim(),
       profile.displayNameMode.name,
@@ -2141,52 +2142,51 @@ class _PosterProfileDetailsScreenState
                     ),
                     const SizedBox(height: 12),
                     _CleanInputField(
-                      controller: _personalPhoneController,
+                      controller: _secondaryDesignationController,
                       label: strings.localized(
-                        telugu: 'వాట్సాప్ నంబర్ (ఐచ్ఛికం)',
-                        english: 'WhatsApp Number (Optional)',
-                        hindi: 'व्हाट्सएप नंबर (वैकल्पिक)',
-                        tamil: 'வாட்ஸ்அப் எண் (விருப்பத்தேர்வு)',
-                        kannada: 'ವಾಟ್ಸಾಪ್ ಸಂಖ್ಯೆ (ಐಚ್ಛಿಕ)',
-                        malayalam: 'വാട്ട്‌സ്ആപ്പ് നമ്പർ (ഓപ്ഷണൽ)',
-                        marathi: 'व्हॉट्सअ‍ॅप क्रमांक (पर्यायी)',
-                        gujarati: 'વ્હોટ્સએપ નંબર (વૈકલ્પિક)',
-                        bengali: 'হোয়াটসঅ্যাপ নম্বর (ঐচ্ছিক)',
-                        punjabi: 'ਵਟਸਐਪ ਨੰਬਰ (ਵਿਕਲਪਿਕ)',
-                        odia: 'ହ୍ୱାଟ୍ସଆପ୍ ନମ୍ବର (ଇଚ୍ଛାଧୀନ)',
-                        assamese: 'হোৱাটছএপ নম্বৰ (ঐচ্ছিক)',
-                        konkani: 'ವಾಟ್ಸಾಪ್ ನಂಬರ್ (ಖುಶೆಚೆಂ)',
-                        nepali: 'व्हाट्सएप नम्बर (वैकल्पिक)',
-                        meitei: 'ৱাত্সএপ নম্বর (অপশনাল)',
-                        mizo: 'WhatsApp Number (Duhthlan)',
-                        kashmiri: 'واٹس ایپ نَمبَر (اِختیاری)',
-                        ladakhi: 'ཝཊས་ཨེཔ་ཨང་གྲངས། (འདེམས་ཁ)',
+                        telugu: 'అదనపు హోదా (ఐచ్ఛికం)',
+                        english: 'Additional Designation (Optional)',
+                        hindi: 'अतिरिक्त पद (वैकल्पिक)',
+                        tamil: 'கூடுதல் பதவி (விருப்பத்தேர்வு)',
+                        kannada: 'ಹೆಚ್ಚುವರಿ ಹುದ್ದೆ (ಐಚ್ಛಿಕ)',
+                        malayalam: 'അധിക പദവി (ഓപ്ഷണൽ)',
+                        marathi: 'अतिरिक्त पद (पर्यायी)',
+                        gujarati: 'વધારાનો હોદ્દો (વૈકલ્પિક)',
+                        bengali: 'অতিরিক্ত পদবি (ঐচ্ছিক)',
+                        punjabi: 'ਵਾਧੂ ਅਹੁਦਾ (ਵਿਕਲਪਿਕ)',
+                        odia: 'ଅତିରିକ୍ତ ପଦବୀ (ଇଚ୍ଛାଧୀନ)',
+                        assamese: 'অতিৰিক্ত পদবী (ঐচ্ছিক)',
+                        konkani: 'ಹೆಚ್ಚು ವೊರೊ ಹುದ್ದೊ (ಖುಶೆಚೆಂ)',
+                        nepali: 'थप पद (वैकल्पिक)',
+                        meitei: 'অহেনবা ফম (অপশনাল)',
+                        mizo: 'Nihna dang (Duhthlan)',
+                        kashmiri: 'اِضافی عُہدٕ (اِختیاری)',
+                        ladakhi: 'འཕར་མའི་གོ་གནས། (འདེམས་ཁ)',
                       ),
                       hintText: strings.localized(
-                        telugu: '10 అంకెల నంబర్',
-                        english: '10-digit number',
-                        hindi: '10-अंकों का नंबर',
-                        tamil: '10 இலக்க எண்',
-                        kannada: '10-ಅಂಕಿಯ ಸಂಖ್ಯೆ',
-                        malayalam: '10 അക്ക നമ്പർ',
-                        marathi: '१०-अंकी क्रमांक',
-                        gujarati: '10-અંકનો નંબર',
-                        bengali: '১০-সংখ্যার নম্বর',
-                        punjabi: '10-ਅੰਕਾਂ ਦਾ ਨੰਬਰ',
-                        odia: '୧୦ ଅଙ୍କ ବିଶିଷ୍ଟ ନମ୍ବର',
-                        assamese: '১০টা সংখ্যাৰ নম্বৰ',
-                        konkani: '10-ಅಂಕ್ಯಾಂಚೊ ನಂಬರ್',
-                        nepali: '१०-अङ्कको नम्बर',
-                        meitei: 'দিজিৎ ১০ গী নম্বর',
-                        mizo: 'Digit 10 number',
-                        kashmiri: '۱۰ ہِندسَن ہُنٛد نَمبَر',
-                        ladakhi: 'ཨང་གྲངས་ ༡༠ ཅན།',
+                        telugu: 'మీ రెండవ హోదా నమోదు చేయండి',
+                        english: 'Enter your additional designation',
+                        hindi: 'अपना अतिरिक्त पद दर्ज करें',
+                        tamil: 'உங்கள் கூடுதல் பதவியை உள்ளிடவும்',
+                        kannada: 'ನಿಮ್ಮ ಹೆಚ್ಚುವರಿ ಹುದ್ದೆಯನ್ನು ನಮೂದಿಸಿ',
+                        malayalam: 'നിങ്ങളുടെ അധിക പദവി നൽകുക',
+                        marathi: 'तुमचे अतिरिक्त पद प्रविष्ट करा',
+                        gujarati: 'તમારો વધારાનો હોદ્દો દાખલ કરો',
+                        bengali: 'আপনার অতিরিক্ত পদবি লিখুন',
+                        punjabi: 'ਆਪਣਾ ਵਾਧੂ ਅਹੁਦਾ ਦਰਜ ਕਰੋ',
+                        odia: 'ଆପଣଙ୍କ ଅତିରିକ୍ତ ପଦବୀ ଲେଖନ୍ତୁ',
+                        assamese: 'আপোনাৰ অতিৰিক্ত পদবী দিয়ক',
+                        konkani: 'ತುಮ್ಚೊ ಆನ್ಯೆಕ್ ಹುದ್ದೊ ಬರಯಾ',
+                        nepali: 'आफ्नो थप पद प्रविष्ट गर्नुहोस्',
+                        meitei: 'নহাক্কী অহেনবা ফম ইয়ু',
+                        mizo: 'I nihna dang ziak rawh',
+                        kashmiri: 'پنُن اِضافی عُہدٕ دَرٕج کٔریو',
+                        ladakhi: 'ཁྱེད་ཀྱི་འཕར་མའི་གོ་གནས་བྲིས།',
                       ),
-                      keyboardType: TextInputType.phone,
                       onChanged: (value) {
                         setState(() {
                           _draftProfile = _draftProfile.copyWith(
-                            personalPhoneNumber: _onlyDigits(value),
+                            secondaryDesignation: value.trim(),
                           );
                         });
                       },

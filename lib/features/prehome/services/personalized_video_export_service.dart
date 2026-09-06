@@ -779,7 +779,7 @@ class PersonalizedVideoExportService {
         profile.identityMode == PosterIdentityMode.business;
     final rawDesignation = isBusinessProfile
         ? profile.businessTagline.trim()
-        : profile.whatsappNumber.trim();
+        : profile.effectivePersonalDesignation;
     final rawPhone = isBusinessProfile
         ? profile.activeWhatsappNumber.trim()
         : '';

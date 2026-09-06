@@ -15528,7 +15528,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         viewerPosterProfile.identityMode == PosterIdentityMode.business;
     final resolvedDesignation = isBusinessProfile
         ? viewerPosterProfile.businessTagline.trim()
-        : viewerPosterProfile.whatsappNumber.trim();
+        : viewerPosterProfile.effectivePersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
@@ -22656,7 +22656,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
     final resolvedDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.whatsappNumber.trim();
+        : widget.viewerPosterProfile.effectivePersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
@@ -22730,7 +22730,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
     final resolvedDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.whatsappNumber.trim();
+        : widget.viewerPosterProfile.effectivePersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     final entries = await Future.wait<MapEntry<String, String>?>(
       <Future<MapEntry<String, String>?>>[
@@ -22817,7 +22817,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
     final resolvedDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.whatsappNumber.trim();
+        : widget.viewerPosterProfile.effectivePersonalDesignation;
     final resolvedPhone = isBusinessProfile
         ? widget.viewerPosterProfile.activeWhatsappNumber.trim()
         : '';

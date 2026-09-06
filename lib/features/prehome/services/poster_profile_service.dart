@@ -57,6 +57,7 @@ class PosterProfileData {
     this.personalPhotoRevision = 0,
     this.profileRevision = 0,
     this.setupCompleted = false,
+    this.secondaryDesignation = '',
     this.personalPhoneNumber = '',
   });
 
@@ -80,7 +81,17 @@ class PosterProfileData {
   final int personalPhotoRevision;
   final int profileRevision;
   final bool setupCompleted;
+  final String secondaryDesignation;
   final String personalPhoneNumber;
+
+  String get effectivePersonalDesignation {
+    final d1 = whatsappNumber.trim();
+    final d2 = secondaryDesignation.trim();
+    if (d1.isNotEmpty && d2.isNotEmpty) {
+      return '$d1, $d2';
+    }
+    return d1.isNotEmpty ? d1 : d2;
+  }
 
   String get displayName {
     final te = nameTelugu.trim();
@@ -142,6 +153,7 @@ class PosterProfileData {
     int? personalPhotoRevision,
     int? profileRevision,
     bool? setupCompleted,
+    String? secondaryDesignation,
     String? personalPhoneNumber,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
@@ -176,6 +188,7 @@ class PosterProfileData {
           personalPhotoRevision ?? this.personalPhotoRevision,
       profileRevision: profileRevision ?? this.profileRevision,
       setupCompleted: setupCompleted ?? this.setupCompleted,
+      secondaryDesignation: secondaryDesignation ?? this.secondaryDesignation,
       personalPhoneNumber: personalPhoneNumber ?? this.personalPhoneNumber,
     );
   }
@@ -186,6 +199,58 @@ class PosterProfileData {
       PosterIdentityMode.personal => displayName.trim(),
     };
     return name.isEmpty ? PosterProfileService.defaultName : name;
+  }
+
+  String resolvedPersonalDesignation({required AppLanguage language}) {
+    return effectivePersonalDesignation;
+  }
+
+  String get activeWhatsapp {
+    return activeWhatsappNumber;
+  }
+
+  bool get hasValidName {
+    return nameTelugu.trim().isNotEmpty || nameEnglish.trim().isNotEmpty;
+  }
+
+  bool get hasValidWhatsapp {
+    return whatsappNumber.trim().isNotEmpty;
+  }
+
+  bool get hasValidPhoto {
+    return photoPath.trim().isNotEmpty || photoUrl.trim().isNotEmpty;
+  }
+
+  bool get hasBusinessName {
+    return businessName.trim().isNotEmpty;
+  }
+
+  bool get hasBusinessTagline {
+    return businessTagline.trim().isNotEmpty;
+  }
+
+  bool get hasBusinessWhatsapp {
+    return businessWhatsappNumber.trim().isNotEmpty;
+  }
+
+  bool get hasBusinessLogo {
+    return businessLogoPath.trim().isNotEmpty ||
+        businessLogoUrl.trim().isNotEmpty;
+  }
+
+  bool get isBusinessProfileValid {
+    return hasBusinessName && hasBusinessWhatsapp;
+  }
+
+  bool get isPersonalProfileValid {
+    return hasValidName && hasValidWhatsapp;
+  }
+
+  String resolvedDesignation({required AppLanguage language}) {
+    if (identityMode == PosterIdentityMode.business) {
+      return businessTagline.trim();
+    }
+    return effectivePersonalDesignation;
   }
 
   String translatedName({required AppLanguage language}) {
@@ -244,6 +309,7 @@ class PosterProfileData {
             other.personalPhotoRevision == personalPhotoRevision &&
             other.profileRevision == profileRevision &&
             other.setupCompleted == setupCompleted &&
+            other.secondaryDesignation == secondaryDesignation &&
             other.personalPhoneNumber == personalPhoneNumber;
   }
 
@@ -269,6 +335,7 @@ class PosterProfileData {
     personalPhotoRevision,
     profileRevision,
     setupCompleted,
+    secondaryDesignation,
     personalPhoneNumber,
   ]);
 }
@@ -431,6 +498,8 @@ class PosterProfileService {
   static const String _nameTeluguKey = 'poster_profile_name_telugu';
   static const String _nameEnglishKey = 'poster_profile_name_english';
   static const String _whatsappKey = 'poster_profile_whatsapp';
+  static const String _secondaryDesignationKey =
+      'poster_profile_secondary_designation';
   static const String _personalPhoneKey = 'poster_profile_personal_phone';
   static const String _nameFontKey = 'poster_profile_name_font';
   static const String _photoPathKey = 'poster_profile_photo_path';
@@ -521,6 +590,7 @@ class PosterProfileService {
   static bool isSetupComplete(PosterProfileData profile) {
     return (profile.setupCompleted && _hasMeaningfulPersonalName(profile)) ||
         profile.whatsappNumber.trim().isNotEmpty ||
+        profile.secondaryDesignation.trim().isNotEmpty ||
         profile.personalPhoneNumber.trim().isNotEmpty ||
         profile.photoPath.trim().isNotEmpty ||
         profile.photoUrl.trim().isNotEmpty ||
@@ -631,6 +701,15 @@ class PosterProfileService {
       whatsappNumber:
           (resolvedPrefs.getString(
                     _scopedKey(_whatsappKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      secondaryDesignation:
+          (resolvedPrefs.getString(
+                    _scopedKey(
+                      _secondaryDesignationKey,
+                      fallbackUid: fallbackUid,
+                    ),
                   ) ??
                   '')
               .trim(),
@@ -788,6 +867,11 @@ class PosterProfileService {
         whatsappNumber: preferLocalProfile
             ? fallbackProfile.whatsappNumber
             : remote.whatsappNumber,
+        secondaryDesignation:
+            preferLocalProfile ||
+                fallbackProfile.secondaryDesignation.trim().isNotEmpty
+            ? fallbackProfile.secondaryDesignation
+            : remote.secondaryDesignation,
         personalPhoneNumber:
             preferLocalProfile ||
                 fallbackProfile.personalPhoneNumber.trim().isNotEmpty
@@ -1030,6 +1114,7 @@ class PosterProfileService {
             'nameTelugu': data.nameTelugu.trim(),
             'nameEnglish': data.nameEnglish.trim(),
             'whatsappNumber': data.whatsappNumber.trim(),
+            'secondaryDesignation': data.secondaryDesignation.trim(),
             'personalPhoneNumber': data.personalPhoneNumber.trim(),
             'nameFontFamily': _sanitizeFont(data.nameFontFamily),
             'photoUrl': data.photoUrl.trim(),
@@ -1530,6 +1615,10 @@ class PosterProfileService {
     await prefs.setString(_scopedKey(_nameEnglishKey), data.nameEnglish.trim());
     await prefs.setString(_scopedKey(_whatsappKey), data.whatsappNumber.trim());
     await prefs.setString(
+      _scopedKey(_secondaryDesignationKey),
+      data.secondaryDesignation.trim(),
+    );
+    await prefs.setString(
       _scopedKey(_personalPhoneKey),
       data.personalPhoneNumber.trim(),
     );
@@ -1634,6 +1723,7 @@ class PosterProfileService {
       _nameTeluguKey,
       _nameEnglishKey,
       _whatsappKey,
+      _secondaryDesignationKey,
       _personalPhoneKey,
       _nameFontKey,
       _photoPathKey,
@@ -1684,6 +1774,7 @@ class PosterProfileService {
       _nameTeluguKey,
       _nameEnglishKey,
       _whatsappKey,
+      _secondaryDesignationKey,
       _personalPhoneKey,
       _nameFontKey,
       _photoPathKey,
@@ -1735,6 +1826,8 @@ class PosterProfileService {
           ? remoteNameEnglish
           : inferred.$2,
       whatsappNumber: (data['whatsappNumber'] as String? ?? '').trim(),
+      secondaryDesignation: (data['secondaryDesignation'] as String? ?? '')
+          .trim(),
       personalPhoneNumber: (data['personalPhoneNumber'] as String? ?? '')
           .trim(),
       nameFontFamily: _sanitizeFont(data['nameFontFamily'] as String?),

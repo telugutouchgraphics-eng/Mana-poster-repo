@@ -100,6 +100,17 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     return '';
   }
 
+  String get _effectiveSecondaryDesignation {
+    if (profile.identityMode == PosterIdentityMode.personal) {
+      return profile.secondaryDesignation.trim();
+    }
+    return '';
+  }
+
+  bool get _hasAnyDesignation =>
+      _effectiveDesignation.isNotEmpty ||
+      _effectiveSecondaryDesignation.isNotEmpty;
+
   String get _effectivePhone {
     if (phoneNumber != null && phoneNumber!.trim().isNotEmpty) {
       return _formatPhone(phoneNumber!.trim());
@@ -196,35 +207,65 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     required Color color,
     required double scale,
   }) {
-    final rawDesig = _effectiveDesignation;
-    if (rawDesig.isEmpty) {
+    final primary = _effectiveDesignation;
+    final secondary = _effectiveSecondaryDesignation;
+    if (primary.isEmpty && secondary.isEmpty) {
       return const SizedBox.shrink();
     }
-    final isTelugu = _teluguRegExp.hasMatch(rawDesig);
-    String displayDesig = rawDesig;
-    String? fontFamily;
-    if (isTelugu) {
-      final converted = TeluguLegacyTextService.convertSync(
-        rawDesig,
-        fontFamily: 'Pallavi Medium',
-      );
-      if (converted != null && converted.trim().isNotEmpty) {
-        displayDesig = converted;
-        fontFamily = 'Pallavi Medium';
+
+    Widget buildLine(
+      String text, {
+      required double baseFontSize,
+      Color? textColor,
+    }) {
+      final isTelugu = _teluguRegExp.hasMatch(text);
+      String displayDesig = text;
+      String? fontFamily;
+      if (isTelugu) {
+        final converted = TeluguLegacyTextService.convertSync(
+          text,
+          fontFamily: 'Pallavi Medium',
+        );
+        if (converted != null && converted.trim().isNotEmpty) {
+          displayDesig = converted;
+          fontFamily = 'Pallavi Medium';
+        }
       }
+
+      return Text(
+        displayDesig,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: textColor ?? color,
+          fontSize:
+              (fontFamily != null ? baseFontSize * 1.12 : baseFontSize) * scale,
+          fontWeight: FontWeight.w700,
+          fontFamily: fontFamily,
+          height: fontFamily != null ? 1.05 : 1.2,
+        ),
+      );
     }
 
-    return Text(
-      displayDesig,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: color,
-        fontSize: (fontFamily != null ? 13.5 : 12.0) * scale,
-        fontWeight: FontWeight.w700,
-        fontFamily: fontFamily,
-        height: fontFamily != null ? 1.05 : 1.2,
-      ),
+    if (primary.isNotEmpty && secondary.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          buildLine(primary, baseFontSize: 12.0),
+          SizedBox(height: 2 * scale),
+          buildLine(
+            secondary,
+            baseFontSize: 10.5,
+            textColor: color.withValues(alpha: 0.88),
+          ),
+        ],
+      );
+    }
+
+    return buildLine(
+      primary.isNotEmpty ? primary : secondary,
+      baseFontSize: 12.0,
     );
   }
 
@@ -354,7 +395,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
-                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                          if (_hasAnyDesignation) ...<Widget>[
                             _buildDesignationWidget(
                               color: const Color(0xFF2563EB),
                               scale: scale,
@@ -527,7 +568,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
-                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                          if (_hasAnyDesignation) ...<Widget>[
                             _buildDesignationWidget(
                               color: const Color(0xFFFBBF24),
                               scale: scale,
@@ -679,7 +720,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             scale: scale,
                           ),
                           SizedBox(height: 3 * scale),
-                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                          if (_hasAnyDesignation) ...<Widget>[
                             _buildDesignationWidget(
                               color: const Color(0xFF059669),
                               scale: scale,
