@@ -4006,11 +4006,6 @@ async function sendDailyPersonalizedReminder({
         .limit(notificationTokenScanLimit)
         .get();
     for (const doc of userTokenSnap.docs) {
-  const userTokenSnap = await db
-      .collectionGroup("deviceTokens")
-      .limit(notificationTokenScanLimit)
-      .get();
-  for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
     if (!token || seenTokens.has(token) ||
@@ -7104,48 +7099,8 @@ exports.dailyDynamicEventReminder = onSchedule(
       timeZone: "Asia/Kolkata",
     },
     async () => {
-      const now = new Date();
-      const matchingEvents = dynamicEventCatalog.filter((event) => {
-        const delta = daysUntilEvent(event.month, event.day, now);
-        return delta === 1 || delta === 0;
-      });
-
-      if (matchingEvents.length === 0) {
-        return;
-      }
-
-      for (const event of matchingEvents) {
-        const key = `${now.getFullYear()}-${event.id}-${now.getMonth() + 1}-${now.getDate()}`;
-        const sentRef = db.collection("notificationJobs").doc("dynamicEventReminders")
-            .collection("sent").doc(key);
-        const exists = await sentRef.get();
-        if (exists.exists) {
-          continue;
-        }
-
-        const eventTimingLabel = daysUntilEvent(event.month, event.day, now) === 1 ?
-          "repu" :
-          "ee roju";
-        const eventTiming = daysUntilEvent(event.month, event.day, now) === 1 ?
-          "tomorrow" :
-          "today";
-
-        await sendDirectReminderToEligibleTokens({
-          categoryKey: "dynamic_event",
-          title: `${event.title} reminder`,
-          body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
-          eventTitle: event.title,
-          eventTiming,
-          eventKeywords: event.keywords || [event.title],
-          dynamicEvent: event,
-        });
-
-        await sentRef.set({
-          eventId: event.id,
-          eventTitle: event.title,
-          sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-      }
+      // Dynamic event reminders disabled as per user request (categories may not have posters)
+      logger.info("dailyDynamicEventReminder skipped: event reminders disabled");
     },
 );
 
@@ -8201,4 +8156,4 @@ exports.biweeklyFreeTrialReminder = onSchedule(
       }
     },
 );
-}
+
