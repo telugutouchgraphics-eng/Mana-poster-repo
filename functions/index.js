@@ -4265,7 +4265,8 @@ async function sendDirectReminderToEligibleTokens({
           `${eventTitle}-${eventTiming}-${resolvedRegionId}`,
           resolvedRegionId,
       );
-    } else if (!eventTitle) {
+    }
+    if (!regionalImageUrl) {
       regionalImageUrl = String(imageUrl || "").trim();
     }
     imageCache.set(cacheKey, regionalImageUrl || "");
@@ -7125,10 +7126,20 @@ exports.dailyDynamicEventReminder = onSchedule(
         // STRICT POSTER CHECK:
         // Only send notification if approved poster image actually exists for this event
         const eventKeywords = event.keywords || [event.title];
-        const hasPoster = await pickImageForReminder(
-            eventKeywords,
-            `${event.title}-${eventTiming}-check`,
-        );
+        const checkRegions = event.regionIds && event.regionIds.length > 0 ?
+            event.regionIds :
+            (event.regionId ? [event.regionId] : ["andhra_pradesh", "telangana"]);
+        let hasPoster = "";
+        for (const reg of checkRegions) {
+          hasPoster = await pickImageForReminder(
+              eventKeywords,
+              `${event.title}-${eventTiming}-check`,
+              reg,
+          );
+          if (hasPoster) {
+            break;
+          }
+        }
 
         if (!hasPoster) {
           logger.info("dailyDynamicEventReminder skipped: no poster found for event", {
