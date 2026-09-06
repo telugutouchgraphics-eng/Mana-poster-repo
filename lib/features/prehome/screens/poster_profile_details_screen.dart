@@ -1505,6 +1505,58 @@ class _PosterProfileDetailsScreenState
                   ),
                 ),
                 const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _saving
+                      ? null
+                      : () {
+                          final currentProfile = _currentProfileFromInputs();
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => DigitalVisitingCardScreen(
+                                initialProfile: currentProfile,
+                                fromOnboarding: false,
+                              ),
+                            ),
+                          );
+                        },
+                  icon: const Icon(Icons.badge_rounded, size: 20),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2563EB),
+                    side: const BorderSide(color: Color(0xFF93C5FD), width: 1.5),
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  label: Text(
+                    strings.localized(
+                      telugu: 'నా ఐడీ కార్డ్',
+                      english: 'My ID Card',
+                      hindi: 'मेरा आईडी कार्ड',
+                      tamil: 'எனது அடையாள அட்டை',
+                      kannada: 'ನನ್ನ ಐಡಿ ಕಾರ್ಡ್',
+                      malayalam: 'എന്റെ ഐഡി കാർഡ്',
+                      marathi: 'माझे ओळखपत्र',
+                      gujarati: 'મારું ઓળખ કાર્ડ',
+                      bengali: 'আমার আইডি কার্ড',
+                      punjabi: 'ਮੇਰਾ ਸ਼ਨਾਖ਼ਤੀ ਕਾਰਡ',
+                      odia: 'ମୋର ଆଇଡି କାର୍ଡ',
+                      assamese: 'মোৰ পৰিচয় পত্ৰ',
+                      konkani: 'म्हजें आयडी कार्ड',
+                      nepali: 'मेरो परिचय पत्र',
+                      meitei: 'ইহাক্কী আইদি কার্দ',
+                      mizo: 'Ka ID Card',
+                      kashmiri: 'میٛون شِناختی کارڈ',
+                      ladakhi: 'Nye ID Card',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
               FilledButton(
                 onPressed: _saving || !canSubmitProfile ? null : _saveProfile,

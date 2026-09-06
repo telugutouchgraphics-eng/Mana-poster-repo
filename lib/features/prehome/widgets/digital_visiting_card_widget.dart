@@ -1,12 +1,9 @@
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 
-enum VisitingCardStyle {
-  royalBlue,
-  royalGold,
-  emeraldTech,
-}
+enum VisitingCardStyle { royalBlue, royalGold, emeraldTech }
 
 class DigitalVisitingCardWidget extends StatelessWidget {
   const DigitalVisitingCardWidget({
@@ -14,18 +11,28 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     required this.profile,
     this.style = VisitingCardStyle.royalBlue,
     this.designation,
+    this.phoneNumber,
     this.showAppLogo = true,
+    this.enableShineEffect = true,
   });
 
   final PosterProfileData profile;
   final VisitingCardStyle style;
   final String? designation;
+  final String? phoneNumber;
   final bool showAppLogo;
+  final bool enableShineEffect;
 
-  static const double cardAspectRatio = 3.5 / 2.0; // 1.75 (Standard Visiting Card)
+  static const double cardAspectRatio = 3.5 / 2.0;
 
   @override
   Widget build(BuildContext context) {
+    final cardContent = switch (style) {
+      VisitingCardStyle.royalBlue => _buildRoyalBlueCard(context),
+      VisitingCardStyle.royalGold => _buildRoyalGoldCard(context),
+      VisitingCardStyle.emeraldTech => _buildEmeraldTechCard(context),
+    };
+
     return AspectRatio(
       aspectRatio: cardAspectRatio,
       child: Container(
@@ -33,7 +40,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x1E000000),
+              color: Color(0x22000000),
               blurRadius: 18,
               spreadRadius: 2,
               offset: Offset(0, 8),
@@ -41,23 +48,41 @@ class DigitalVisitingCardWidget extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: switch (style) {
-          VisitingCardStyle.royalBlue => _buildRoyalBlueCard(context),
-          VisitingCardStyle.royalGold => _buildRoyalGoldCard(context),
-          VisitingCardStyle.emeraldTech => _buildEmeraldTechCard(context),
-        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            cardContent,
+            if (enableShineEffect)
+              VisitingCardShineOverlay(
+                borderRadius: BorderRadius.circular(16),
+                isActive: enableShineEffect,
+              ),
+          ],
+        ),
       ),
     );
   }
 
   String get _effectiveName {
     final name = profile.displayName.trim();
-    return name.isNotEmpty ? name : 'Mana Poster User';
+    if (name.isNotEmpty) {
+      return name;
+    }
+    final active = profile.activeName.trim();
+    if (active.isNotEmpty) {
+      return active;
+    }
+    return 'Mana Poster User';
   }
 
   String get _effectiveDesignation {
     if (designation != null && designation!.trim().isNotEmpty) {
       return designation!.trim();
+    }
+    final personalRaw = profile.whatsappNumber.trim();
+    final digits = personalRaw.replaceAll(RegExp(r'\D'), '');
+    if (personalRaw.isNotEmpty && digits.length < 10) {
+      return personalRaw;
     }
     final tagline = profile.businessTagline.trim();
     if (tagline.isNotEmpty) {
@@ -67,15 +92,52 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         profile.businessName.trim().isNotEmpty) {
       return profile.businessName.trim();
     }
-    return 'Digital Member';
+    return '';
   }
 
   String get _effectivePhone {
-    final phone = profile.activeWhatsappNumber.trim();
-    if (phone.isNotEmpty) {
-      return phone.startsWith('+') ? phone : '+91 $phone';
+    if (phoneNumber != null && phoneNumber!.trim().isNotEmpty) {
+      return _formatPhone(phoneNumber!.trim());
     }
-    return '+91 98765 43210';
+
+    final biz = profile.businessWhatsappNumber.trim();
+    final bizDigits = biz.replaceAll(RegExp(r'\D'), '');
+    if (bizDigits.length >= 10) {
+      return _formatPhone(biz);
+    }
+
+    try {
+      final authPhone =
+          FirebaseAuth.instance.currentUser?.phoneNumber?.trim() ?? '';
+      if (authPhone.isNotEmpty) {
+        return _formatPhone(authPhone);
+      }
+    } catch (_) {}
+
+    final personal = profile.whatsappNumber.trim();
+    final personalDigits = personal.replaceAll(RegExp(r'\D'), '');
+    if (personalDigits.length >= 10) {
+      return _formatPhone(personal);
+    }
+
+    final active = profile.activeWhatsappNumber.trim();
+    final activeDigits = active.replaceAll(RegExp(r'\D'), '');
+    if (activeDigits.length >= 10) {
+      return _formatPhone(active);
+    }
+
+    return '';
+  }
+
+  String _formatPhone(String raw) {
+    final clean = raw.trim();
+    if (clean.isEmpty) return '';
+    if (clean.startsWith('+')) return clean;
+    final digits = clean.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 10) {
+      return '+91 ${digits.substring(0, 5)} ${digits.substring(5)}';
+    }
+    return '+91 $clean';
   }
 
   ImageProvider? _resolvePhotoProvider() {
@@ -114,11 +176,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
 
   Widget _fallbackPhoto() {
     return const Center(
-      child: Icon(
-        Icons.person_rounded,
-        size: 54,
-        color: Color(0xFF94A3B8),
-      ),
+      child: Icon(Icons.person_rounded, size: 54, color: Color(0xFF94A3B8)),
     );
   }
 
@@ -136,48 +194,33 @@ class DigitalVisitingCardWidget extends StatelessWidget {
           color: Colors.white,
           child: Stack(
             children: <Widget>[
-              // Left blue backdrop accent
               Positioned(
                 left: 0,
                 top: 0,
                 bottom: 0,
                 width: cardW * 0.42,
-                child: Container(
-                  color: const Color(0xFF1E3A8A),
-                ),
+                child: Container(color: const Color(0xFF1E3A8A)),
               ),
-              // Diagonal silver trim
               Positioned(
-                left: cardW * 0.40,
-                top: -cardH * 0.2,
-                bottom: -cardH * 0.2,
-                width: 14 * scale,
+                left: cardW * 0.39,
+                top: -20,
+                bottom: -20,
+                width: 22 * scale,
                 child: Transform.rotate(
-                  angle: 0.16,
+                  angle: 0.12,
                   child: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFFE2E8F0), Color(0xFF94A3B8), Color(0xFFFFFFFF)],
+                        colors: [
+                          Color(0xFFE2E8F0),
+                          Color(0xFF94A3B8),
+                          Color(0xFFE2E8F0),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-              // Subtle background geometric accents
-              Positioned(
-                right: -20 * scale,
-                bottom: -30 * scale,
-                width: 140 * scale,
-                height: 140 * scale,
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
-                  ),
-                ),
-              ),
-
-              // Content Row
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: 16 * scale,
@@ -185,7 +228,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                 ),
                 child: Row(
                   children: <Widget>[
-                    // Left: Large Photo Box
                     SizedBox(
                       width: cardH * 0.78,
                       height: cardH * 0.78,
@@ -202,87 +244,84 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     SizedBox(width: 22 * scale),
-
-                    // Right: Info & Brand
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
-                          // Top App Badge
                           if (showAppLogo)
                             Align(
                               alignment: Alignment.topRight,
                               child: _buildBrandBadge(
-                                color: const Color(0xFF1E3A8A),
                                 textColor: const Color(0xFF1E3A8A),
+                                badgeBg: Colors.white,
+                                borderColor: const Color(0xFFCBD5E1),
                                 scale: scale,
                               ),
                             ),
                           const Spacer(),
-
-                          // Name
                           Text(
                             _effectiveName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: const Color(0xFF0F172A),
-                              fontSize: 19 * scale,
+                              fontSize: 18 * scale,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.2,
                               height: 1.15,
                             ),
                           ),
                           SizedBox(height: 3 * scale),
-
-                          // Designation
-                          Text(
-                            _effectiveDesignation,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF2563EB),
-                              fontSize: 12 * scale,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
+                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                            Text(
+                              _effectiveDesignation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFF2563EB),
+                                fontSize: 12 * scale,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 12 * scale),
-
-                          // Phone chip
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10 * scale,
-                              vertical: 4 * scale,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8 * scale),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Icon(
-                                  Icons.phone_rounded,
-                                  size: 13 * scale,
-                                  color: const Color(0xFF1E3A8A),
+                            SizedBox(height: 10 * scale),
+                          ] else
+                            SizedBox(height: 6 * scale),
+                          if (_effectivePhone.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10 * scale,
+                                vertical: 4 * scale,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8 * scale),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
                                 ),
-                                SizedBox(width: 6 * scale),
-                                Text(
-                                  _effectivePhone,
-                                  style: TextStyle(
-                                    color: const Color(0xFF1E293B),
-                                    fontSize: 11.5 * scale,
-                                    fontWeight: FontWeight.w800,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.phone_rounded,
+                                    size: 13 * scale,
+                                    color: const Color(0xFF2563EB),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 6 * scale),
+                                  Text(
+                                    _effectivePhone,
+                                    style: TextStyle(
+                                      color: const Color(0xFF1E293B),
+                                      fontSize: 11.5 * scale,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                           const Spacer(),
                         ],
                       ),
@@ -298,7 +337,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // Design 2: Royal Gold & Maroon
+  // Design 2: Royal Gold VIP
   // ---------------------------------------------------------------------------
   Widget _buildRoyalGoldCard(BuildContext context) {
     return LayoutBuilder(
@@ -308,73 +347,91 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         final scale = cardW / 420.0;
 
         return Container(
-          color: const Color(0xFFFCFBF7),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF0A0F1D),
+              ],
+            ),
+          ),
           child: Stack(
             children: <Widget>[
-              // Ornate Outer Gold Border
-              Positioned.fill(
-                child: Padding(
-                  padding: EdgeInsets.all(8 * scale),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12 * scale),
-                      border: Border.all(
-                        color: const Color(0xFFC5A059),
-                        width: 1.8 * scale,
-                      ),
+              Positioned(
+                top: 0,
+                right: 0,
+                left: 0,
+                height: 4 * scale,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFFF59E0B),
+                        Color(0xFFFDE68A),
+                        Color(0xFFD97706),
+                      ],
                     ),
                   ),
                 ),
               ),
-              // Corner Gold Flourishes
               Positioned(
-                top: 14 * scale,
-                left: 14 * scale,
-                child: Icon(
-                  Icons.auto_awesome,
-                  size: 12 * scale,
-                  color: const Color(0xFFC5A059),
+                bottom: 0,
+                right: 0,
+                left: 0,
+                height: 4 * scale,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFFD97706),
+                        Color(0xFFFDE68A),
+                        Color(0xFFF59E0B),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              Positioned(
-                bottom: 14 * scale,
-                right: 14 * scale,
-                child: Icon(
-                  Icons.auto_awesome,
-                  size: 12 * scale,
-                  color: const Color(0xFFC5A059),
-                ),
-              ),
-
-              // Content Row
               Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: 20 * scale,
-                  vertical: 18 * scale,
+                  horizontal: 18 * scale,
+                  vertical: 16 * scale,
                 ),
                 child: Row(
                   children: <Widget>[
-                    // Photo with gold & maroon frame
                     SizedBox(
-                      width: cardH * 0.72,
-                      height: cardH * 0.72,
-                      child: _buildPhotoBox(
-                        borderRadius: BorderRadius.circular(16 * scale),
-                        border: Border.all(
-                          color: const Color(0xFF800020),
-                          width: 2.8 * scale,
+                      width: cardH * 0.74,
+                      height: cardH * 0.74,
+                      child: Container(
+                        padding: EdgeInsets.all(3.5 * scale),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFF59E0B),
+                              Color(0xFFFDE68A),
+                              Color(0xFFB45309),
+                            ],
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                              blurRadius: 12 * scale,
+                              offset: Offset(0, 4 * scale),
+                            ),
+                          ],
                         ),
-                        shadow: BoxShadow(
-                          color: const Color(0xFFC5A059).withValues(alpha: 0.4),
-                          blurRadius: 10 * scale,
-                          offset: Offset(0, 3 * scale),
+                        child: ClipOval(
+                          child: _buildPhotoBox(
+                            borderRadius: BorderRadius.zero,
+                            border: Border.all(color: Colors.transparent, width: 0),
+                          ),
                         ),
                       ),
                     ),
-
-                    SizedBox(width: 20 * scale),
-
-                    // Text details
+                    SizedBox(width: 22 * scale),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,68 +441,74 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             Align(
                               alignment: Alignment.topRight,
                               child: _buildBrandBadge(
-                                color: const Color(0xFF800020),
-                                textColor: const Color(0xFF800020),
-                                badgeBg: const Color(0xFFFBF4E8),
-                                borderColor: const Color(0xFFC5A059),
+                                textColor: const Color(0xFFFDE68A),
+                                badgeBg: const Color(0x33F59E0B),
+                                borderColor: const Color(0x66F59E0B),
                                 scale: scale,
                               ),
                             ),
                           const Spacer(),
-
                           Text(
                             _effectiveName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: const Color(0xFF800020),
-                              fontSize: 20 * scale,
+                              color: const Color(0xFFF8FAFC),
+                              fontSize: 18 * scale,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: -0.1,
+                              letterSpacing: -0.2,
                               height: 1.15,
                             ),
                           ),
                           SizedBox(height: 3 * scale),
-
-                          Text(
-                            _effectiveDesignation.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF9A7B38),
-                              fontSize: 10.5 * scale,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
-                              height: 1.2,
+                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                            Text(
+                              _effectiveDesignation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFFFBBF24),
+                                fontSize: 12 * scale,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 10 * scale),
-
-                          Row(
-                            children: <Widget>[
-                              Container(
-                                padding: EdgeInsets.all(5 * scale),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF800020),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.phone_rounded,
-                                  size: 11 * scale,
-                                  color: Colors.white,
+                            SizedBox(height: 10 * scale),
+                          ] else
+                            SizedBox(height: 6 * scale),
+                          if (_effectivePhone.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10 * scale,
+                                vertical: 4 * scale,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0x22FBBF24),
+                                borderRadius: BorderRadius.circular(8 * scale),
+                                border: Border.all(
+                                  color: const Color(0x55FBBF24),
                                 ),
                               ),
-                              SizedBox(width: 8 * scale),
-                              Text(
-                                _effectivePhone,
-                                style: TextStyle(
-                                  color: const Color(0xFF1E293B),
-                                  fontSize: 12 * scale,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.phone_rounded,
+                                    size: 13 * scale,
+                                    color: const Color(0xFFFDE68A),
+                                  ),
+                                  SizedBox(width: 6 * scale),
+                                  Text(
+                                    _effectivePhone,
+                                    style: TextStyle(
+                                      color: const Color(0xFFFDE68A),
+                                      fontSize: 11.5 * scale,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
                           const Spacer(),
                         ],
                       ),
@@ -461,7 +524,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // Design 3: Modern Emerald Tech
+  // Design 3: Emerald Tech Modern
   // ---------------------------------------------------------------------------
   Widget _buildEmeraldTechCard(BuildContext context) {
     return LayoutBuilder(
@@ -474,7 +537,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
           color: Colors.white,
           child: Stack(
             children: <Widget>[
-              // Top diagonal emerald facet
               Positioned(
                 top: -cardH * 0.4,
                 right: -cardW * 0.1,
@@ -494,8 +556,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Bottom right geometric polygon accent
               Positioned(
                 bottom: -20 * scale,
                 right: -20 * scale,
@@ -513,8 +573,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Content Row
               Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: 18 * scale,
@@ -522,7 +580,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                 ),
                 child: Row(
                   children: <Widget>[
-                    // Photo with Emerald rounded border
                     SizedBox(
                       width: cardH * 0.76,
                       height: cardH * 0.76,
@@ -539,10 +596,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     SizedBox(width: 22 * scale),
-
-                    // Details
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -552,7 +606,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             Align(
                               alignment: Alignment.topRight,
                               child: _buildBrandBadge(
-                                color: const Color(0xFF059669),
                                 textColor: const Color(0xFF059669),
                                 badgeBg: const Color(0xFFECFDF5),
                                 borderColor: const Color(0xFFA7F3D0),
@@ -560,64 +613,67 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-
                           Text(
                             _effectiveName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: const Color(0xFF0F172A),
-                              fontSize: 19.5 * scale,
+                              fontSize: 18 * scale,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.2,
                               height: 1.15,
                             ),
                           ),
                           SizedBox(height: 3 * scale),
-
-                          Text(
-                            _effectiveDesignation,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF475569),
-                              fontSize: 11.5 * scale,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
+                          if (_effectiveDesignation.isNotEmpty) ...<Widget>[
+                            Text(
+                              _effectiveDesignation,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFF059669),
+                                fontSize: 12 * scale,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 10 * scale),
-
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 9 * scale,
-                              vertical: 4 * scale,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFECFDF5),
-                              borderRadius: BorderRadius.circular(8 * scale),
-                              border: Border.all(color: const Color(0xFFA7F3D0)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Icon(
-                                  Icons.phone_rounded,
-                                  size: 13 * scale,
-                                  color: const Color(0xFF059669),
+                            SizedBox(height: 10 * scale),
+                          ] else
+                            SizedBox(height: 6 * scale),
+                          if (_effectivePhone.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 9 * scale,
+                                vertical: 4 * scale,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECFDF5),
+                                borderRadius: BorderRadius.circular(8 * scale),
+                                border: Border.all(
+                                  color: const Color(0xFFA7F3D0),
                                 ),
-                                SizedBox(width: 6 * scale),
-                                Text(
-                                  _effectivePhone,
-                                  style: TextStyle(
-                                    color: const Color(0xFF065F46),
-                                    fontSize: 11.5 * scale,
-                                    fontWeight: FontWeight.w800,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.phone_rounded,
+                                    size: 13 * scale,
+                                    color: const Color(0xFF059669),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 6 * scale),
+                                  Text(
+                                    _effectivePhone,
+                                    style: TextStyle(
+                                      color: const Color(0xFF065F46),
+                                      fontSize: 11.5 * scale,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                           const Spacer(),
                         ],
                       ),
@@ -636,7 +692,6 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   // Helper: Mana Poster Logo Badge
   // ---------------------------------------------------------------------------
   Widget _buildBrandBadge({
-    required Color color,
     required Color textColor,
     Color? badgeBg,
     Color? borderColor,
@@ -644,48 +699,150 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: 7 * scale,
+        horizontal: 6 * scale,
         vertical: 3 * scale,
       ),
       decoration: BoxDecoration(
-        color: badgeBg ?? const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(6 * scale),
+        color: badgeBg ?? Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(8 * scale),
         border: Border.all(
           color: borderColor ?? const Color(0xFFE2E8F0),
           width: 1 * scale,
         ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 4 * scale,
+            offset: Offset(0, 1.5 * scale),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Container(
-            width: 14 * scale,
-            height: 14 * scale,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'M',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 9 * scale,
-                fontWeight: FontWeight.w900,
-              ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4 * scale),
+            child: Image.asset(
+              'assets/branding/mana_poster_logo.png',
+              width: 18 * scale,
+              height: 18 * scale,
+              fit: BoxFit.contain,
             ),
           ),
           SizedBox(width: 5 * scale),
           Text(
-            'Mana Poster',
+            'MANA POSTER',
             style: TextStyle(
               color: textColor,
-              fontSize: 9.5 * scale,
+              fontSize: 9 * scale,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.2,
+              letterSpacing: 0.4,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Holographic Shine & Light Beam Sweep Overlay
+// ---------------------------------------------------------------------------
+class VisitingCardShineOverlay extends StatefulWidget {
+  const VisitingCardShineOverlay({
+    super.key,
+    required this.borderRadius,
+    this.isActive = true,
+  });
+
+  final BorderRadius borderRadius;
+  final bool isActive;
+
+  @override
+  State<VisitingCardShineOverlay> createState() =>
+      _VisitingCardShineOverlayState();
+}
+
+class _VisitingCardShineOverlayState extends State<VisitingCardShineOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutSine,
+    );
+    if (widget.isActive) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(VisitingCardShineOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!widget.isActive && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.isActive) return const SizedBox.shrink();
+
+    return IgnorePointer(
+      child: ClipRRect(
+        borderRadius: widget.borderRadius,
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, _) {
+            final pos = -2.2 + (_animation.value * 5.4);
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment(pos - 0.6, -1.3),
+                  end: Alignment(pos + 0.6, 1.3),
+                  colors: <Color>[
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.32),
+                    Colors.white.withValues(alpha: 0.52),
+                    Colors.white.withValues(alpha: 0.32),
+                    Colors.white.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.0),
+                    Colors.white.withValues(alpha: 0.0),
+                  ],
+                  stops: const <double>[
+                    0.0,
+                    0.38,
+                    0.44,
+                    0.48,
+                    0.50,
+                    0.52,
+                    0.56,
+                    0.62,
+                    1.0,
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

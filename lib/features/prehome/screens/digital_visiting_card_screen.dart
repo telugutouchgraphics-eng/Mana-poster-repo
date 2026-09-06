@@ -25,7 +25,8 @@ class DigitalVisitingCardScreen extends StatefulWidget {
   final bool fromOnboarding;
 
   @override
-  State<DigitalVisitingCardScreen> createState() => _DigitalVisitingCardScreenState();
+  State<DigitalVisitingCardScreen> createState() =>
+      _DigitalVisitingCardScreenState();
 }
 
 class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
@@ -59,8 +60,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
   Future<String?> _captureCardToTempFile() async {
     try {
-      final boundary = _cardBoundaryKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          _cardBoundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) {
         return null;
       }
@@ -90,8 +92,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
         !(await MediaExportService.needsGalleryPermission())) {
       return true;
     }
-    final permission =
-        Platform.isAndroid ? Permission.storage : Permission.photos;
+    final permission = Platform.isAndroid
+        ? Permission.storage
+        : Permission.photos;
     final status = await permission.status;
     if (status.isGranted || status.isLimited) return true;
     final requested = await <Permission>[permission].request();
@@ -147,20 +150,31 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                   telugu: 'కార్డ్ సేవ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
                   english: 'Card save failed. Please try again.',
                   hindi: 'कार्ड सहेजना विफल रहा। कृपया पुनः प्रयास करें।',
-                  tamil: 'கார்டைச் சேமிப்பது தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.',
-                  kannada: 'ಕಾರ್ಡ್ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-                  malayalam: 'കാർഡ് സേവ് ചെയ്യുന്നത് പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
-                  marathi: 'कार्ड सेव्ह करणे अयशस्वी. कृपया पुन्हा प्रयत्न करा.',
-                  gujarati: 'કાર્ડ સાચવવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.',
-                  bengali: 'কার্ড সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
-                  punjabi: 'ਕਾਰਡ ਸੁਰੱਖਿਅਤ ਕਰਨਾ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+                  tamil:
+                      'கார்டைச் சேமிப்பது தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.',
+                  kannada:
+                      'ಕಾರ್ಡ್ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                  malayalam:
+                      'കാർഡ് സേവ് ചെയ്യുന്നത് പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+                  marathi:
+                      'कार्ड सेव्ह करणे अयशस्वी. कृपया पुन्हा प्रयत्न करा.',
+                  gujarati:
+                      'કાર્ડ સાચવવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.',
+                  bengali:
+                      'কার্ড সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+                  punjabi:
+                      'ਕਾਰਡ ਸੁਰੱਖਿਅਤ ਕਰਨਾ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
                   odia: 'କାର୍ଡ ସେଭ୍ ବିଫଳ ହେଲା। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।',
-                  assamese: 'কাৰ্ড সংৰক্ষণ ব্যৰ্থ হ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+                  assamese:
+                      'কাৰ্ড সংৰক্ষণ ব্যৰ্থ হ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
                   konkani: 'कार्ड सांबाळप जावंक ना. उपकार करून परत यत्न करा.',
-                  nepali: 'कार्ड बचत गर्न असफल भयो। कृपया पुन: प्रयास गर्नुहोस्।',
-                  meitei: 'কার্দ সেভ তৌবা য়ামদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।',
+                  nepali:
+                      'कार्ड बचत गर्न असफल भयो। कृपया पुन: प्रयास गर्नुहोस्।',
+                  meitei:
+                      'কার্দ সেভ তৌবা য়ামদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।',
                   mizo: 'Card save a hlawhchham. Khawngaihin ti nawn leh rawh.',
-                  kashmiri: 'کارڈ محفوٗظ کرنس منٛز ناکام۔ مہر کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
+                  kashmiri:
+                      'کارڈ محفوٗظ کرنس منٛز ناکام۔ مہر کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
                   ladakhi: 'Card save ma thub. Yang try byed.',
                 ),
               ),
@@ -206,20 +220,27 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                       telugu: 'సేవ్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
                       english: 'Save failed. Please try again.',
                       hindi: 'सहेजना विफल रहा। कृपया पुनः प्रयास करें।',
-                      tamil: 'சேமிப்பது தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.',
+                      tamil:
+                          'சேமிப்பது தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.',
                       kannada: 'ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-                      malayalam: 'സേവ് പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+                      malayalam:
+                          'സേവ് പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
                       marathi: 'सेव्ह करणे अयशस्वी. कृपया पुन्हा प्रयत्न करा.',
                       gujarati: 'સાચવવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.',
-                      bengali: 'সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
-                      punjabi: 'ਸੁਰੱਖਿਅਤ ਕਰਨਾ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+                      bengali:
+                          'সংরক্ষণ ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।',
+                      punjabi:
+                          'ਸੁਰੱਖਿਅਤ ਕਰਨਾ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
                       odia: 'ସେଭ୍ ବିଫଳ ହେଲା। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।',
-                      assamese: 'সংৰক্ষণ ব্যৰ্থ হ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+                      assamese:
+                          'সংৰক্ষণ ব্যৰ্থ হ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
                       konkani: 'सांबाळप जावंक ना. उपकार करून परत यत्न करा.',
                       nepali: 'बचत गर्न असफल भयो। कृपया पुन: प्रयास गर्नुहोस्।',
-                      meitei: 'সেভ তৌবা য়ামদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।',
+                      meitei:
+                          'সেভ তৌবা য়ামদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।',
                       mizo: 'Save a hlawhchham. Khawngaihin ti nawn leh rawh.',
-                      kashmiri: 'محفوٗظ کرنس منٛز ناکام۔ مہر کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
+                      kashmiri:
+                          'محفوٗظ کرنس منٛز ناکام۔ مہر کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
                       ladakhi: 'Save ma thub. Yang try byed.',
                     ),
             ),
@@ -245,25 +266,33 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
       if (!mounted) return;
       final box = context.findRenderObject() as RenderBox?;
       final shareText = context.strings.localized(
-          telugu: 'నా డిజిటల్ విజిటింగ్ కార్డ్ - మన పోస్టర్ యాప్ ద్వారా రూపొందించబడింది.',
-          english: 'My Digital Visiting Card - Created with Mana Poster App.',
-          hindi: 'मेरा डिजिटल विजिटिंग कार्ड - मना पोस्टर ऐप द्वारा निर्मित।',
-          tamil: 'எனது டிஜிட்டல் விசிட்டிங் கார்டு - மனா போஸ்டர் ஆப் மூலம் உருவாக்கப்பட்டது.',
-          kannada: 'ನನ್ನ ಡಿಜಿಟಲ್ ವಿಸಿಟಿಂಗ್ ಕಾರ್ಡ್ - ಮನ ಪೋಸ್ಟರ್ ಆಪ್ ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ.',
-          malayalam: 'എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ് - മനാ പോസ്റ്റർ ആപ്പ് വഴി നിർമ്മിച്ചത്.',
-          marathi: 'माझे डिजिटल व्हिजिटिंग कार्ड - मना पोस्टर ॲपद्वारे तयार केले.',
-          gujarati: 'મારું ડિજિટલ વિઝિટિંગ કાર્ડ - મના પોસ્ટર એપ દ્વારા બનાવેલ.',
-          bengali: 'আমার ডিজিটাল ভিজিটিং কার্ড - মানা পোস্টার অ্যাপ দ্বারা তৈরি।',
-          punjabi: 'ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ - ਮਨਾ ਪੋਸਟਰ ਐਪ ਦੁਆਰਾ ਬਣਾਇਆ ਗਿਆ।',
-          odia: 'ମୋର ଡିଜିଟାଲ୍ ଭିଜିଟିଂ କାର୍ଡ - ମନା ପୋଷ୍ଟର ଆପ୍ ଦ୍ୱାରା ନିର୍ମିତ।',
-          assamese: 'মোৰ ডিজিটেল ভিজিটিং কাৰ্ড - মানা পোষ্টাৰ এপেৰে নিৰ্মিত।',
-          konkani: 'म्हजें डिजीटल विझिटींग कार्ड - मना पोस्टर ॲपा वरवीं तयार केल्लें.',
-          nepali: 'मेरो डिजिटल भिजिटिङ कार्ड - मना पोस्टर एपद्वारा सिर्जना गरिएको।',
-          meitei: 'ইহাক্কী দিজিতেল বিজিতিং কার্দ - মনা পোস্তর এপ্তা শেম্বা।',
-          mizo: 'Ka Digital Visiting Card - Mana Poster App atanga siam.',
-          kashmiri: 'میٛون ڈِجیٹَل وزٹنگ کارڈ - مَنا پوسٹر اَیپہٕ ذٔریعہٕ بنٲومُت۔',
-          ladakhi: 'Nye Digital Visiting Card - Mana Poster App nangi bzos pa.',
-        );
+        telugu:
+            'నా డిజిటల్ విజిటింగ్ కార్డ్ - మన పోస్టర్ యాప్ ద్వారా రూపొందించబడింది.',
+        english: 'My Digital Visiting Card - Created with Mana Poster App.',
+        hindi: 'मेरा डिजिटल विजिटिंग कार्ड - मना पोस्टर ऐप द्वारा निर्मित।',
+        tamil:
+            'எனது டிஜிட்டல் விசிட்டிங் கார்டு - மனா போஸ்டர் ஆப் மூலம் உருவாக்கப்பட்டது.',
+        kannada:
+            'ನನ್ನ ಡಿಜಿಟಲ್ ವಿಸಿಟಿಂಗ್ ಕಾರ್ಡ್ - ಮನ ಪೋಸ್ಟರ್ ಆಪ್ ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ.',
+        malayalam:
+            'എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ് - മനാ പോസ്റ്റർ ആപ്പ് വഴി നിർമ്മിച്ചത്.',
+        marathi:
+            'माझे डिजिटल व्हिजिटिंग कार्ड - मना पोस्टर ॲपद्वारे तयार केले.',
+        gujarati: 'મારું ડિજિટલ વિઝિટિંગ કાર્ડ - મના પોસ્ટર એપ દ્વારા બનાવેલ.',
+        bengali: 'আমার ডিজিটাল ভিজিটিং কার্ড - মানা পোস্টার অ্যাপ দ্বারা তৈরি।',
+        punjabi: 'ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ - ਮਨਾ ਪੋਸਟਰ ਐਪ ਦੁਆਰਾ ਬਣਾਇਆ ਗਿਆ।',
+        odia: 'ମୋର ଡିଜିଟାଲ୍ ଭିଜିଟିଂ କାର୍ଡ - ମନା ପୋଷ୍ଟର ଆପ୍ ଦ୍ୱାରା ନିର୍ମିତ।',
+        assamese: 'মোৰ ডিজিটেল ভিজিটিং কাৰ্ড - মানা পোষ্টাৰ এপেৰে নিৰ্মিত।',
+        konkani:
+            'म्हजें डिजीटल विझिटींग कार्ड - मना पोस्टर ॲपा वरवीं तयार केल्लें.',
+        nepali:
+            'मेरो डिजिटल भिजिटिङ कार्ड - मना पोस्टर एपद्वारा सिर्जना गरिएको।',
+        meitei: 'ইহাক্কী দিজিতেল বিজিতিং কার্দ - মনা পোস্তর এপ্তা শেম্বা।',
+        mizo: 'Ka Digital Visiting Card - Mana Poster App atanga siam.',
+        kashmiri:
+            'میٛون ڈِجیٹَل وزٹنگ کارڈ - مَنا پوسٹر اَیپہٕ ذٔریعہٕ بنٲومُت۔',
+        ladakhi: 'Nye Digital Visiting Card - Mana Poster App nangi bzos pa.',
+      );
       await MediaExportService.shareImageFile(
         path,
         text: shareText,
@@ -317,7 +346,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
               padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 12),
               decoration: const BoxDecoration(
                 color: Color(0xFF1E293B),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(22),
+                ),
               ),
               child: Row(
                 children: <Widget>[
@@ -369,7 +400,8 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                             hindi: 'प्रिंट करने योग्य आकार (3.5" × 2.0")',
                             tamil: 'அச்சிடக்கூடிய அளவு (3.5" × 2.0")',
                             kannada: 'ಮುದ್ರಿಸಬಹುದಾದ ಗಾತ್ರ (3.5" × 2.0")',
-                            malayalam: 'പ്രിന്റ് ചെയ്യാവുന്ന വലുപ്പം (3.5" × 2.0")',
+                            malayalam:
+                                'പ്രിന്റ് ചെയ്യാവുന്ന വലുപ്പം (3.5" × 2.0")',
                             marathi: 'मुद्रणयोग्य आकार (3.5" × 2.0")',
                             gujarati: 'પ્રિન્ટ કરી શકાય તેવું કદ (3.5" × 2.0")',
                             bengali: 'প্রিন্টযোগ্য আকার (3.5" × 2.0")',
@@ -431,7 +463,10 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
@@ -538,23 +573,40 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                     Center(
                       child: Text(
                         context.strings.localized(
-                          telugu: '💡 మీ ప్రొఫైల్ వివరాలతో ఆటోమేటిక్‌గా రూపొందించబడింది',
-                          english: '💡 Automatically generated with your profile details',
-                          hindi: '💡 आपके प्रोफाइल विवरण के साथ स्वचालित रूप से तैयार',
-                          tamil: '💡 உங்கள் சுயவிவர விவரங்களுடன் தானாக உருவாக்கப்பட்டது',
-                          kannada: '💡 ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ವಿವರಗಳೊಂದಿಗೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರಚಿಸಲಾಗಿದೆ',
-                          malayalam: '💡 നിങ്ങളുടെ പ്രൊഫൈൽ വിശദാംശങ്ങൾ ഉപയോഗിച്ച് സ്വയമേവ സൃഷ്ടിച്ചു',
-                          marathi: '💡 तुमच्या प्रोफाइल तपशीलांसह स्वयंचलितपणे तयार केले',
-                          gujarati: '💡 તમારી પ્રોફાઇલ વિગતો સાથે આપમેળે જનરેટ થયેલ',
-                          bengali: '💡 আপনার প্রোফাইলের তথ্যের সাথে স্বয়ংক্রিয়ভাবে তৈরি',
-                          punjabi: '💡 ਤੁਹਾਡੇ ਪ੍ਰੋਫਾਈਲ ਵੇਰਵਿਆਂ ਨਾਲ ਆਟੋਮੈਟਿਕ ਤਿਆਰ ਕੀਤਾ ਗਿਆ',
-                          odia: '💡 ଆପଣଙ୍କ ପ୍ରୋଫାଇଲ୍ ବିବରଣୀ ସହିତ ସ୍ୱତଃ ପ୍ରସ୍ତୁତ',
-                          assamese: '💡 আপোনাৰ প্ৰ’ফাইল বিৱৰণৰ সৈতে স্বয়ংক্ৰিয়ভাৱে সৃষ্টি কৰা হৈছে',
-                          konkani: '💡 तुमच्या प्रोफायल तपशीलां सयत आपशींच तयार केल्लें',
-                          nepali: '💡 तपाईंको प्रोफाइल विवरणसहित स्वतः सिर्जना गरिएको',
-                          meitei: '💡 নহাক্কী প্রোফাইল মরোলগা লোয়ননা অচুম্বা মওংদা শেম্বা',
-                          mizo: '💡 I profile kimchang hmanga mahni intihpuitlinna',
-                          kashmiri: '💡 تہٕنٛزِ پروفائل تفصیٖلاتَن سٟتؠ پانہٕ بَنٲومُت',
+                          telugu:
+                              '💡 మీ ప్రొఫైల్ వివరాలతో ఆటోమేటిక్‌గా రూపొందించబడింది',
+                          english:
+                              '💡 Automatically generated with your profile details',
+                          hindi:
+                              '💡 आपके प्रोफाइल विवरण के साथ स्वचालित रूप से तैयार',
+                          tamil:
+                              '💡 உங்கள் சுயவிவர விவரங்களுடன் தானாக உருவாக்கப்பட்டது',
+                          kannada:
+                              '💡 ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ವಿವರಗಳೊಂದಿಗೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರಚಿಸಲಾಗಿದೆ',
+                          malayalam:
+                              '💡 നിങ്ങളുടെ പ്രൊഫൈൽ വിശദാംശങ്ങൾ ഉപയോഗിച്ച് സ്വയമേവ സൃഷ്ടിച്ചു',
+                          marathi:
+                              '💡 तुमच्या प्रोफाइल तपशीलांसह स्वयंचलितपणे तयार केले',
+                          gujarati:
+                              '💡 તમારી પ્રોફાઇલ વિગતો સાથે આપમેળે જનરેટ થયેલ',
+                          bengali:
+                              '💡 আপনার প্রোফাইলের তথ্যের সাথে স্বয়ংক্রিয়ভাবে তৈরি',
+                          punjabi:
+                              '💡 ਤੁਹਾਡੇ ਪ੍ਰੋਫਾਈਲ ਵੇਰਵਿਆਂ ਨਾਲ ਆਟੋਮੈਟਿਕ ਤਿਆਰ ਕੀਤਾ ਗਿਆ',
+                          odia:
+                              '💡 ଆପଣଙ୍କ ପ୍ରୋଫାଇଲ୍ ବିବରଣୀ ସହିତ ସ୍ୱତଃ ପ୍ରସ୍ତୁତ',
+                          assamese:
+                              '💡 আপোনাৰ প্ৰ’ফাইল বিৱৰণৰ সৈতে স্বয়ংক্ৰিয়ভাৱে সৃষ্টি কৰা হৈছে',
+                          konkani:
+                              '💡 तुमच्या प्रोफायल तपशीलां सयत आपशींच तयार केल्लें',
+                          nepali:
+                              '💡 तपाईंको प्रोफाइल विवरणसहित स्वतः सिर्जना गरिएको',
+                          meitei:
+                              '💡 নহাক্কী প্রোফাইল মরোলগা লোয়ননা অচুম্বা মওংদা শেম্বা',
+                          mizo:
+                              '💡 I profile kimchang hmanga mahni intihpuitlinna',
+                          kashmiri:
+                              '💡 تہٕنٛزِ پروفائل تفصیٖلاتَن سٟتؠ پانہٕ بَنٲومُت',
                           ladakhi: '💡 Nye profile thad dang mnyam du bzos pa',
                         ),
                         textAlign: TextAlign.center,
@@ -576,7 +628,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                           child: SizedBox(
                             height: 54,
                             child: FilledButton.icon(
-                              onPressed: (_saving || _sharing) ? null : _saveToGallery,
+                              onPressed: (_saving || _sharing)
+                                  ? null
+                                  : _saveToGallery,
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF2563EB),
                                 foregroundColor: Colors.white,
@@ -631,7 +685,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                           child: SizedBox(
                             height: 54,
                             child: FilledButton.icon(
-                              onPressed: (_saving || _sharing) ? null : _shareToWhatsApp,
+                              onPressed: (_saving || _sharing)
+                                  ? null
+                                  : _shareToWhatsApp,
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF16A34A),
                                 foregroundColor: Colors.white,
@@ -691,7 +747,10 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                           onPressed: _continueToHome,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            side: const BorderSide(color: Color(0xFF334155), width: 1.5),
+                            side: const BorderSide(
+                              color: Color(0xFF334155),
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),

@@ -73,8 +73,7 @@ class AppRoutes {
     login: (_) => _readyEntry(const LoginScreen()),
     religion: (_) => _readyEntry(const ReligionSelectionScreen()),
     profileSetup: (_) => _readyEntry(const ProfileSetupScreen()),
-    digitalVisitingCard: (_) =>
-        _readyEntry(const DigitalVisitingCardScreen()),
+    digitalVisitingCard: (_) => _readyEntry(const DigitalVisitingCardScreen()),
     home: (_) => _readyEntry(const HomeScreen()),
     pageSetup: (_) => _readyEntry(const NotificationUnavailableScreen()),
     imageEditor: (_) => _readyEntry(const NotificationUnavailableScreen()),
