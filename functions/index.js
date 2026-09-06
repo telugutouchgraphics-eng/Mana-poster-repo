@@ -4307,17 +4307,25 @@ async function sendDirectReminderToEligibleTokens({
     }
     const broadcastImage = await imageForRegion("andhra_pradesh") ||
         await imageForRegion("") || String(imageUrl || "").trim();
-    await sendReminderToTopic({
-      topic: eventTopic,
-      title,
-      body,
-      imageUrl: broadcastImage || "",
-      categoryKey: categoryKey || "dynamic_event",
-      titleKey: "dynamic_event_title",
-      bodyKey: "dynamic_event_body",
-      languageCode: "te",
-    });
-    deliveredCount++;
+    // Skip topic broadcast if no poster exists for this event
+    if (!broadcastImage) {
+      logger.info("sendDirectReminderToEligibleTokens topic broadcast skipped: no poster image", {
+        eventTitle,
+        eventTopic,
+      });
+    } else {
+      await sendReminderToTopic({
+        topic: eventTopic,
+        title,
+        body,
+        imageUrl: broadcastImage,
+        categoryKey: categoryKey || "dynamic_event",
+        titleKey: "dynamic_event_title",
+        bodyKey: "dynamic_event_body",
+        languageCode: "te",
+      });
+      deliveredCount++;
+    }
     logger.info("sendDirectReminderToEligibleTokens topic broadcast complete", {
       eventTopic,
       eventTitle,
