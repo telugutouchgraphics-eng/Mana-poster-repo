@@ -23,6 +23,7 @@ class AppNavigator {
     AppRoutes.language,
     AppRoutes.appLanguage,
     AppRoutes.notificationUnavailable,
+    AppRoutes.subscription,
   };
 
   static void openHome() {

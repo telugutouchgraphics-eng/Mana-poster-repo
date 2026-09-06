@@ -53,6 +53,7 @@ class PosterProfileData {
     this.businessLogoStyleId = 'style_1',
     this.originalPhotoPath = '',
     this.originalPhotoUrl = '',
+    this.preferOriginalPersonalPhoto = false,
     this.personalPhotoRevision = 0,
     this.profileRevision = 0,
     this.setupCompleted = false,
@@ -74,6 +75,7 @@ class PosterProfileData {
   final String businessLogoStyleId;
   final String originalPhotoPath;
   final String originalPhotoUrl;
+  final bool preferOriginalPersonalPhoto;
   final int personalPhotoRevision;
   final int profileRevision;
   final bool setupCompleted;
@@ -131,6 +133,7 @@ class PosterProfileData {
     String? businessLogoStyleId,
     String? originalPhotoPath,
     String? originalPhotoUrl,
+    bool? preferOriginalPersonalPhoto,
     int? personalPhotoRevision,
     int? profileRevision,
     bool? setupCompleted,
@@ -161,6 +164,8 @@ class PosterProfileData {
       businessLogoStyleId: businessLogoStyleId ?? this.businessLogoStyleId,
       originalPhotoPath: originalPhotoPath ?? this.originalPhotoPath,
       originalPhotoUrl: originalPhotoUrl ?? this.originalPhotoUrl,
+      preferOriginalPersonalPhoto:
+          preferOriginalPersonalPhoto ?? this.preferOriginalPersonalPhoto,
       personalPhotoRevision:
           personalPhotoRevision ?? this.personalPhotoRevision,
       profileRevision: profileRevision ?? this.profileRevision,
@@ -228,6 +233,7 @@ class PosterProfileData {
             other.businessLogoStyleId == businessLogoStyleId &&
             other.originalPhotoPath == originalPhotoPath &&
             other.originalPhotoUrl == originalPhotoUrl &&
+            other.preferOriginalPersonalPhoto == preferOriginalPersonalPhoto &&
             other.personalPhotoRevision == personalPhotoRevision &&
             other.profileRevision == profileRevision &&
             other.setupCompleted == setupCompleted;
@@ -251,6 +257,7 @@ class PosterProfileData {
     businessLogoStyleId,
     originalPhotoPath,
     originalPhotoUrl,
+    preferOriginalPersonalPhoto,
     personalPhotoRevision,
     profileRevision,
     setupCompleted,
@@ -262,6 +269,8 @@ class UserSavedCutoutPhoto {
     required this.id,
     required this.downloadUrl,
     required this.localPath,
+    this.originalUrl = '',
+    this.originalLocalPath = '',
     required this.source,
     required this.createdAt,
   });
@@ -269,6 +278,8 @@ class UserSavedCutoutPhoto {
   final String id;
   final String downloadUrl;
   final String localPath;
+  final String originalUrl;
+  final String originalLocalPath;
   final String source;
   final DateTime? createdAt;
 
@@ -281,6 +292,8 @@ class UserSavedCutoutPhoto {
       id: snapshot.id,
       downloadUrl: (data['downloadUrl'] as String? ?? '').trim(),
       localPath: (data['localPath'] as String? ?? '').trim(),
+      originalUrl: (data['originalUrl'] as String? ?? '').trim(),
+      originalLocalPath: (data['originalLocalPath'] as String? ?? '').trim(),
       source: (data['source'] as String? ?? '').trim(),
       createdAt: createdValue is Timestamp ? createdValue.toDate() : null,
     );
@@ -425,6 +438,8 @@ class PosterProfileService {
       'poster_profile_original_photo_path';
   static const String _originalPhotoUrlKey =
       'poster_profile_original_photo_url';
+  static const String _preferOriginalPhotoKey =
+      'poster_profile_prefer_original_photo';
   static const String _personalPhotoRevisionKey =
       'poster_profile_personal_photo_revision';
   static const String _profileRevisionKey = 'poster_profile_revision';
@@ -679,6 +694,11 @@ class PosterProfileService {
                   ) ??
                   '')
               .trim(),
+      preferOriginalPersonalPhoto:
+          resolvedPrefs.getBool(
+            _scopedKey(_preferOriginalPhotoKey, fallbackUid: fallbackUid),
+          ) ??
+          false,
       personalPhotoRevision:
           resolvedPrefs.getInt(
             _scopedKey(_personalPhotoRevisionKey, fallbackUid: fallbackUid),
@@ -728,10 +748,12 @@ class PosterProfileService {
           fallbackProfile.originalPhotoUrl.trim().isEmpty;
       final localPersonalPhotoIsNewer =
           fallbackProfile.personalPhotoRevision > remote.personalPhotoRevision;
+      fallbackProfile.personalPhotoRevision >= remote.personalPhotoRevision;
       final preferLocalPersonalPhoto =
           localPersonalPhotoPendingSync || localPersonalPhotoIsNewer;
       final preferLocalProfile =
           fallbackProfile.profileRevision > remote.profileRevision;
+      fallbackProfile.profileRevision >= remote.profileRevision;
       final localHasBusinessProfile =
           fallbackProfile.identityMode == PosterIdentityMode.business ||
           fallbackProfile.businessName.trim().isNotEmpty ||
@@ -767,6 +789,9 @@ class PosterProfileService {
         originalPhotoUrl: preferLocalPersonalPhoto
             ? fallbackProfile.originalPhotoUrl
             : remote.originalPhotoUrl,
+        preferOriginalPersonalPhoto: preferLocalPersonalPhoto
+            ? fallbackProfile.preferOriginalPersonalPhoto
+            : remote.preferOriginalPersonalPhoto,
         personalPhotoRevision: preferLocalPersonalPhoto
             ? fallbackProfile.personalPhotoRevision
             : remote.personalPhotoRevision,
@@ -809,12 +834,14 @@ class PosterProfileService {
 
   static ImageProvider<Object>? resolveImageProvider(
     PosterProfileData profile, {
-    bool preferOriginalPersonalPhoto = false,
+    bool? preferOriginalPersonalPhoto,
     bool preferPersonalPhotoOverBusinessLogo = false,
     bool allowOriginalFallbackWhenCutoutUnavailable = true,
   }) {
+    final effectivePreferOriginal =
+        preferOriginalPersonalPhoto ?? profile.preferOriginalPersonalPhoto;
     if (preferPersonalPhotoOverBusinessLogo) {
-      if (preferOriginalPersonalPhoto) {
+      if (effectivePreferOriginal) {
         final localOriginalPath = profile.originalPhotoPath.trim();
         if (localOriginalPath.isNotEmpty) {
           final file = File(localOriginalPath);
@@ -850,7 +877,7 @@ class PosterProfileService {
         );
       }
 
-      if (!preferOriginalPersonalPhoto &&
+      if (!effectivePreferOriginal &&
           allowOriginalFallbackWhenCutoutUnavailable) {
         final localOriginalPath = profile.originalPhotoPath.trim();
         if (localOriginalPath.isNotEmpty) {
@@ -891,7 +918,7 @@ class PosterProfileService {
       return null;
     }
 
-    if (preferOriginalPersonalPhoto) {
+    if (effectivePreferOriginal) {
       final localOriginalPath = profile.originalPhotoPath.trim();
       if (localOriginalPath.isNotEmpty) {
         final file = File(localOriginalPath);
@@ -927,7 +954,7 @@ class PosterProfileService {
       );
     }
 
-    if (!preferOriginalPersonalPhoto &&
+    if (!effectivePreferOriginal &&
         allowOriginalFallbackWhenCutoutUnavailable) {
       final localOriginalPath = profile.originalPhotoPath.trim();
       if (localOriginalPath.isNotEmpty) {
@@ -984,6 +1011,7 @@ class PosterProfileService {
             'nameFontFamily': _sanitizeFont(data.nameFontFamily),
             'photoUrl': data.photoUrl.trim(),
             'originalPhotoUrl': data.originalPhotoUrl.trim(),
+            'preferOriginalPersonalPhoto': data.preferOriginalPersonalPhoto,
             'personalPhotoRevision': data.personalPhotoRevision,
             'identityMode': data.identityMode.name,
             'businessName': data.businessName.trim(),
@@ -1010,6 +1038,7 @@ class PosterProfileService {
     required String originalPhotoPath,
     String photoUrl = '',
     String originalPhotoUrl = '',
+    bool? preferOriginalPersonalPhoto,
     bool saveRemoteUrls = false,
     int? personalPhotoRevision,
   }) async {
@@ -1047,6 +1076,12 @@ class PosterProfileService {
         trimmedOriginalPhotoUrl,
       );
     }
+    if (preferOriginalPersonalPhoto != null) {
+      await prefs.setBool(
+        _scopedKey(_preferOriginalPhotoKey),
+        preferOriginalPersonalPhoto,
+      );
+    }
     await prefs.setInt(_scopedKey(_personalPhotoRevisionKey), nextRevision);
 
     if (!saveRemoteUrls) {
@@ -1061,6 +1096,9 @@ class PosterProfileService {
     final Map<String, dynamic> payload = <String, dynamic>{
       'photoUrl': trimmedPhotoUrl,
       'originalPhotoUrl': trimmedOriginalPhotoUrl,
+      if (preferOriginalPersonalPhoto != null) ...<String, dynamic>{
+        'preferOriginalPersonalPhoto': preferOriginalPersonalPhoto,
+      },
       'personalPhotoRevision': nextRevision,
       'personalPhotoSyncPending':
           trimmedPhotoUrl.isEmpty &&
@@ -1089,6 +1127,8 @@ class PosterProfileService {
   static Future<void> saveReusableCutoutPhoto({
     required File cutoutFile,
     required String downloadUrl,
+    String originalUrl = '',
+    String originalLocalPath = '',
     required int personalPhotoRevision,
     String source = 'profile',
   }) async {
@@ -1103,25 +1143,40 @@ class PosterProfileService {
     }
     final id = sha256.convert(bytes).toString();
     final email = user.email?.trim() ?? '';
-    await FirebaseFirestore.instance
+    final photosCol = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
-        .collection('savedCutoutPhotos')
-        .doc(id)
-        .set(<String, dynamic>{
-          'uid': user.uid,
-          'email': email,
-          'downloadUrl': downloadUrl.trim(),
-          'localPath': cutoutFile.path,
-          'source': source.trim().isEmpty ? 'profile' : source.trim(),
-          'revision': personalPhotoRevision,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+        .collection('savedCutoutPhotos');
+
+    try {
+      final existingSnap = await photosCol
+          .orderBy('createdAt', descending: true)
+          .get();
+      final exists = existingSnap.docs.any((d) => d.id == id);
+      if (!exists && existingSnap.docs.length >= 5) {
+        for (int i = 4; i < existingSnap.docs.length; i++) {
+          await existingSnap.docs[i].reference.delete();
+        }
+      }
+    } catch (_) {}
+
+    await photosCol.doc(id).set(<String, dynamic>{
+      'uid': user.uid,
+      'email': email,
+      'downloadUrl': downloadUrl.trim(),
+      'localPath': cutoutFile.path,
+      if (originalUrl.trim().isNotEmpty) 'originalUrl': originalUrl.trim(),
+      if (originalLocalPath.trim().isNotEmpty)
+        'originalLocalPath': originalLocalPath.trim(),
+      'source': source.trim().isEmpty ? 'profile' : source.trim(),
+      'revision': personalPhotoRevision,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   static Future<List<UserSavedCutoutPhoto>> fetchReusableCutoutPhotos({
-    int limit = 40,
+    int limit = 10,
   }) async {
     await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
     final user = _currentFirebaseUserOrNull();
@@ -1143,6 +1198,34 @@ class PosterProfileService {
               item.localPath.trim().isNotEmpty,
         )
         .toList(growable: false);
+  }
+
+  static Future<bool> deleteReusableCutoutPhoto({
+    required String id,
+    String downloadUrl = '',
+  }) async {
+    await FirebaseBootstrap.ensureInitialized(activateAppCheck: true);
+    final user = _currentFirebaseUserOrNull();
+    if (user == null || id.trim().isEmpty) {
+      return false;
+    }
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('savedCutoutPhotos')
+          .doc(id.trim())
+          .delete();
+      return true;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to delete reusable cutout photo: $error',
+        name: 'poster_profile.delete_cutout',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
   }
 
   static Future<void> evictRemoteProfilePhotoCache(
@@ -1489,6 +1572,10 @@ class PosterProfileService {
         data.originalPhotoUrl.trim(),
       );
     }
+    await prefs.setBool(
+      _scopedKey(_preferOriginalPhotoKey),
+      data.preferOriginalPersonalPhoto,
+    );
     await prefs.setInt(
       _scopedKey(_personalPhotoRevisionKey),
       data.personalPhotoRevision,
@@ -1532,6 +1619,7 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _preferOriginalPhotoKey,
       _personalPhotoRevisionKey,
       _profileRevisionKey,
       _setupCompletedKey,
@@ -1580,6 +1668,7 @@ class PosterProfileService {
       _businessLogoStyleKey,
       _originalPhotoPathKey,
       _originalPhotoUrlKey,
+      _preferOriginalPhotoKey,
       _personalPhotoRevisionKey,
       _profileRevisionKey,
       _setupCompletedKey,
@@ -1632,6 +1721,7 @@ class PosterProfileService {
           .trim(),
       originalPhotoPath: '',
       originalPhotoUrl: (data['originalPhotoUrl'] as String? ?? '').trim(),
+      preferOriginalPersonalPhoto: data['preferOriginalPersonalPhoto'] == true,
       personalPhotoRevision: _parseInt(data['personalPhotoRevision']),
       profileRevision: _parseInt(data['profileRevision']),
       setupCompleted:

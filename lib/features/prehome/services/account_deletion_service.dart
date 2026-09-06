@@ -103,13 +103,6 @@ class AccountDeletionService {
           .doc('main')
           .delete();
 
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('activeSession')
-          .doc('current')
-          .delete();
-
       await user.delete();
       await _clearLocalState();
       return const AccountDeletionResult(

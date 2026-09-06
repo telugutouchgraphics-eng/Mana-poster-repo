@@ -10,6 +10,7 @@ import 'package:mana_poster/features/prehome/screens/profile_setup_screen.dart';
 import 'package:mana_poster/features/prehome/screens/region_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/religion_selection_screen.dart';
 import 'package:mana_poster/features/prehome/screens/splash_screen.dart';
+import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
 import 'package:mana_poster/features/prehome/screens/web_reset_screen.dart';
 
 class AppRoutes {
@@ -25,6 +26,7 @@ class AppRoutes {
   static const pageSetup = '/page-setup';
   static const imageEditor = '/image-editor';
   static const notificationUnavailable = '/notification-unavailable';
+  static const subscription = '/subscription';
 
   static String poster(String id) => '/poster/$id';
   static String category(String id) => '/category/$id';
@@ -54,6 +56,8 @@ class AppRoutes {
         return _readyEntry(const LoginScreen());
       case home:
         return _readyEntry(const HomeScreen());
+      case subscription:
+        return _readyEntry(const SubscriptionPlanScreen());
       default:
         return _readyEntry(const RegionSelectionScreen());
     }
@@ -72,6 +76,7 @@ class AppRoutes {
     imageEditor: (_) => _readyEntry(const NotificationUnavailableScreen()),
     notificationUnavailable: (_) =>
         _readyEntry(const NotificationUnavailableScreen()),
+    subscription: (_) => _readyEntry(const SubscriptionPlanScreen()),
   };
 
   static Route<dynamic>? resolveDynamicRoute(RouteSettings settings) {
@@ -119,6 +124,11 @@ class AppRoutes {
         break;
       case 'editor':
         screen = _readyEntry(const NotificationUnavailableScreen());
+        break;
+      case 'subscription':
+      case 'plan':
+      case 'paywall':
+        screen = _readyEntry(const SubscriptionPlanScreen());
         break;
       default:
         screen = _readyEntry(const NotificationUnavailableScreen());

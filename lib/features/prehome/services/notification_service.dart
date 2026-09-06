@@ -21,9 +21,11 @@ import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_region_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
+import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_preferences_service.dart';
 import 'package:mana_poster/features/prehome/services/permission_service.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -47,6 +49,7 @@ class NotificationService {
     importance: Importance.high,
   );
   static const String _topicAllUsers = 'all_users';
+  static const String _topicFreeUsers = 'free_users';
 
   /// Word joiner — non-empty so Android does not substitute app name for title.
   static const String _collapsedImageTitle = '\u2060';
@@ -55,6 +58,12 @@ class NotificationService {
   static const String _nativeNotificationTapAtKey = 'notificationTapAt';
   static const String _nativeNotificationTapCategoryKey =
       'notificationTapCategory';
+  static const String _lastTokenSyncSignatureKey =
+      'notification_token_sync_signature_v2';
+  static const String _lastSubscribedReligionTopicKey =
+      'fcm_last_subscribed_religion_topic';
+  static const String _lastSubscribedRegionTopicKey =
+      'fcm_last_subscribed_region_topic';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -335,13 +344,60 @@ class NotificationService {
       return;
     }
     final User? currentUser = FirebaseAuth.instance.currentUser;
+    final String syncSignature = await _buildTokenSyncSignature(
+      token: token,
+      uid: currentUser?.uid,
+    );
+    if (await _wasTokenSyncAlreadyApplied(syncSignature)) {
+      return;
+    }
     if (currentUser == null) {
       await _syncPublicToken(token);
+      await _markTokenSyncApplied(syncSignature);
       return;
     }
 
     await _syncUserToken(currentUser, token);
     await _syncPublicToken(token, currentUser: currentUser);
+    await _markTokenSyncApplied(syncSignature);
+  }
+
+  Future<String> _buildTokenSyncSignature({
+    required String token,
+    String? uid,
+  }) async {
+    final NotificationPreferencesSnapshot notificationPreferences =
+        await NotificationPreferencesService.load();
+    final AppFlowSnapshot appFlow = await AppFlowService.loadSnapshot();
+    final region = await AppRegionService.loadSelection();
+    final religion = await AppReligionService.loadSelection();
+    return jsonEncode(<String, Object?>{
+      'tokenId': _tokenToDocId(token),
+      'uid': uid ?? '',
+      'language': appFlow.language.name,
+      'regionId': region?.id ?? '',
+      'religion': religion?.name ?? '',
+      'all': notificationPreferences.allNotifications,
+      'newPosters': notificationPreferences.newPosters,
+      'offers': notificationPreferences.offersUpdates,
+      'subscription': notificationPreferences.subscriptionReminders,
+    });
+  }
+
+  Future<bool> _wasTokenSyncAlreadyApplied(String signature) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_lastTokenSyncSignatureKey) == signature;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _markTokenSyncApplied(String signature) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastTokenSyncSignatureKey, signature);
+    } catch (_) {}
   }
 
   Future<void> _syncUserToken(User currentUser, String token) async {
@@ -481,11 +537,98 @@ class NotificationService {
   Future<void> _syncTopicSubscription(FirebaseMessaging messaging) async {
     final NotificationPreferencesSnapshot snapshot =
         await NotificationPreferencesService.load();
-    if (snapshot.allNotifications) {
-      await messaging.subscribeToTopic(_topicAllUsers);
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {}
+
+    if (!snapshot.allNotifications) {
+      await messaging.unsubscribeFromTopic(_topicAllUsers);
+      final String? lastReligion = prefs?.getString(
+        _lastSubscribedReligionTopicKey,
+      );
+      if (lastReligion != null && lastReligion.isNotEmpty) {
+        await messaging.unsubscribeFromTopic(lastReligion);
+        await prefs?.remove(_lastSubscribedReligionTopicKey);
+      }
+      final String? lastRegion = prefs?.getString(
+        _lastSubscribedRegionTopicKey,
+      );
+      if (lastRegion != null && lastRegion.isNotEmpty) {
+        await messaging.unsubscribeFromTopic(lastRegion);
+        await prefs?.remove(_lastSubscribedRegionTopicKey);
+      }
       return;
     }
-    await messaging.unsubscribeFromTopic(_topicAllUsers);
+
+    // 1. Subscribe to broadcast topic
+    await messaging.subscribeToTopic(_topicAllUsers);
+
+    // 2. Subscribe to religion topic
+    final AppReligionPreference? currentReligion =
+        await AppReligionService.loadSelection();
+    final String? newReligionTopic =
+        (currentReligion != null &&
+            currentReligion != AppReligionPreference.all)
+        ? 'religion_${currentReligion.name}'
+        : null;
+    final String? lastReligionTopic = prefs?.getString(
+      _lastSubscribedReligionTopicKey,
+    );
+    if (lastReligionTopic != null &&
+        lastReligionTopic.isNotEmpty &&
+        lastReligionTopic != newReligionTopic) {
+      await messaging.unsubscribeFromTopic(lastReligionTopic);
+      await prefs?.remove(_lastSubscribedReligionTopicKey);
+    }
+    if (newReligionTopic != null && newReligionTopic.isNotEmpty) {
+      await messaging.subscribeToTopic(newReligionTopic);
+      await prefs?.setString(_lastSubscribedReligionTopicKey, newReligionTopic);
+    }
+
+    // 3. Subscribe to region topic
+    final currentRegion = await AppRegionService.loadSelection();
+    final String? newRegionTopic =
+        (currentRegion != null && currentRegion.id.isNotEmpty)
+        ? 'region_${currentRegion.id}'
+        : null;
+    final String? lastRegionTopic = prefs?.getString(
+      _lastSubscribedRegionTopicKey,
+    );
+    if (lastRegionTopic != null &&
+        lastRegionTopic.isNotEmpty &&
+        lastRegionTopic != newRegionTopic) {
+      await messaging.unsubscribeFromTopic(lastRegionTopic);
+      await prefs?.remove(_lastSubscribedRegionTopicKey);
+    }
+    if (newRegionTopic != null && newRegionTopic.isNotEmpty) {
+      await messaging.subscribeToTopic(newRegionTopic);
+      await prefs?.setString(_lastSubscribedRegionTopicKey, newRegionTopic);
+    }
+
+    // 4. Non-subscriber promo topic (free_users) — ₹0 FCM broadcast without reading Firestore
+    final bool isPro =
+        SubscriptionBackendService.entitlementNotifier.value?.hasAccess == true;
+    if (isPro) {
+      await messaging.unsubscribeFromTopic(_topicFreeUsers);
+    } else {
+      await messaging.subscribeToTopic(_topicFreeUsers);
+    }
+  }
+
+  static Future<void> updateSubscriptionTopicStatus({
+    required bool isPro,
+  }) async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      if (isPro) {
+        await messaging.unsubscribeFromTopic(_topicFreeUsers);
+      } else {
+        await messaging.subscribeToTopic(_topicFreeUsers);
+      }
+    } catch (_) {
+      // Best effort topic sync
+    }
   }
 
   Future<bool> _canSyncTokenForCurrentPermissionState() async {
@@ -708,19 +851,26 @@ class NotificationService {
       _readDataValue(data, 'title'),
     );
     final directBody = _sanitizeNotificationText(_readDataValue(data, 'body'));
-    if (directTitle.isNotEmpty || directBody.isNotEmpty) {
-      return _ResolvedNotificationText(title: directTitle, body: directBody);
-    }
+
+    final AppLanguage effectiveLanguage = snapshot.languageSelected
+        ? snapshot.language
+        : AppLanguage.english;
+
     if (titleKey.isNotEmpty || bodyKey.isNotEmpty) {
       final title = _localizedNotificationText(
         key: titleKey,
-        language: snapshot.language,
+        language: effectiveLanguage,
       );
       final body = _localizedNotificationText(
         key: bodyKey,
-        language: snapshot.language,
+        language: effectiveLanguage,
       );
-      return _ResolvedNotificationText(title: title, body: body);
+      if (title.isNotEmpty || body.isNotEmpty) {
+        return _ResolvedNotificationText(
+          title: title.isNotEmpty ? title : directTitle,
+          body: body.isNotEmpty ? body : directBody,
+        );
+      }
     }
 
     return _ResolvedNotificationText(title: directTitle, body: directBody);
@@ -909,6 +1059,73 @@ class NotificationService {
         AppLanguage.kashmiri: 'تُہند رات پوسٹر تیار چھ۔ وُنہ شیئر کریو۔',
         AppLanguage.ladakhi: 'Khyod-kyi night poster ready in. Da share chos.',
       },
+      'free_trial_reminder_title': {
+        AppLanguage.telugu:
+            'మీ ఫోటో & పేరుతో పోస్టర్లు డౌన్‌లోడ్ చేసుకోండి! 🎨',
+        AppLanguage.english: 'Download posters with your photo and name! 🎨',
+        AppLanguage.hindi: 'अपने फोटो और नाम के साथ पोस्टर डाउनलोड करें! 🎨',
+        AppLanguage.tamil:
+            'உங்கள் புகைப்படம் மற்றும் பெயருடன் போஸ்டர்களை பதிவிறக்குங்கள்! 🎨',
+        AppLanguage.kannada:
+            'ನಿಮ್ಮ ಫೋಟೋ ಮತ್ತು ಹೆಸರಿನೊಂದಿಗೆ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ! 🎨',
+        AppLanguage.malayalam:
+            'നിങ്ങളുടെ ഫോട്ടോയും പേരും ചേർത്ത് പോസ്റ്ററുകൾ ഡൗൺലോഡ് ചെയ്യൂ! 🎨',
+        AppLanguage.assamese:
+            'আপোনাৰ ফটো আৰু নামৰ সৈতে পোষ্টাৰ ডাউনলোড কৰক! 🎨',
+        AppLanguage.konkani:
+            'तुमच्या फोटो आनी नांवासयत पोस्टर डाउनलोड करात! 🎨',
+        AppLanguage.gujarati: 'તમારા ફોટા અને નામ સાથે પોસ્ટર ડાઉનલોડ કરો! 🎨',
+        AppLanguage.marathi: 'तुमच्या फोटो आणि नावासह पोस्टर डाउनलोड करा! 🎨',
+        AppLanguage.meitei:
+            'নহাক্কী ফোতো অমসুং মিংগা লোয়ননা পোস্টর ডাউনলোড তৌ! 🎨',
+        AppLanguage.mizo: 'I thlalak leh hming nen poster download rawh! 🎨',
+        AppLanguage.odia: 'ଆପଣଙ୍କ ଫଟୋ ଏବଂ ନାମ ସହିତ ପୋଷ୍ଟର ଡାଉନଲୋଡ୍ କରନ୍ତୁ! 🎨',
+        AppLanguage.punjabi: 'ਆਪਣੀ ਫੋਟੋ ਅਤੇ ਨਾਮ ਨਾਲ ਪੋਸਟਰ ਡਾਊਨਲੋਡ ਕਰੋ! 🎨',
+        AppLanguage.nepali:
+            'तपाईंको फोटो र नामसहित पोस्टर डाउनलोड गर्नुहोस्! 🎨',
+        AppLanguage.bengali: 'আপনার ছবি ও নামসহ পোস্টার ডাউনলোড করুন! 🎨',
+        AppLanguage.kashmiri: 'پنہنس فوٹو تہ ناو سٲتھ پوسٹر ڈاؤنلوڈ کٔریو! 🎨',
+        AppLanguage.ladakhi:
+            'Khyod-kyi photo dang ming che poster download chog! 🎨',
+      },
+      'free_trial_reminder_body': {
+        AppLanguage.telugu:
+            'కేవలం ₹4 తో 3 రోజుల ట్రయల్ ప్రారంభించండి. అపరిమిత పోస్టర్లు పొందండి!',
+        AppLanguage.english:
+            'Start a 3-day trial for just ₹4. Get unlimited posters!',
+        AppLanguage.hindi:
+            'सिर्फ ₹4 में 3 दिन का ट्रायल शुरू करें। अनलिमिटेड पोस्टर पाएं!',
+        AppLanguage.tamil:
+            'வெறும் ₹4 இல் 3 நாள் சோதனையை தொடங்குங்கள். வரம்பற்ற போஸ்டர்களை பெறுங்கள்!',
+        AppLanguage.kannada:
+            'ಕೇವಲ ₹4 ಕ್ಕೆ 3 ದಿನಗಳ ಟ್ರಯಲ್ ಪ್ರಾರಂಭಿಸಿ. ಅನಿಯಮಿತ ಪೋಸ್ಟರ್‌ಗಳನ್ನು ಪಡೆಯಿರಿ!',
+        AppLanguage.malayalam:
+            'വെറും ₹4 ന് 3 ദിവസത്തെ ട്രയൽ തുടങ്ങൂ. പരിധിയില്ലാത്ത പോസ്റ്ററുകൾ നേടൂ!',
+        AppLanguage.assamese:
+            'মাত্ৰ ₹4 ত 3 দিনৰ ট্রায়াল আৰম্ভ কৰক। সীমাহীন পোষ্টাৰ পাওক!',
+        AppLanguage.konkani:
+            'फकत ₹4 न 3 दिसांची ट्रायल सुरू करात. अमर्यादीत पोस्टर मेळयात!',
+        AppLanguage.gujarati:
+            'માત્ર ₹4 માં 3 દિવસની ટ્રાયલ શરૂ કરો. અમર્યાદિત પોસ્ટર મેળવો!',
+        AppLanguage.marathi:
+            'फक्त ₹4 मध्ये 3 दिवसांची ट्रायल सुरू करा. अमर्यादित पोस्टर मिळवा!',
+        AppLanguage.meitei:
+            'মপুং ফাবা ₹4 দা 3 নুমিৎকী ট্রায়াল হৌরো। লোইনাইদবা পোস্টর ফংউ!',
+        AppLanguage.mizo:
+            '₹4 chauhvin ni 3 trial tan rawh. Poster duh zat zat la rawh!',
+        AppLanguage.odia:
+            'କେବଳ ₹4 ରେ 3 ଦିନର ଟ୍ରାୟାଲ୍ ଆରମ୍ଭ କରନ୍ତୁ। ଅସୀମିତ ପୋଷ୍ଟର ପାଆନ୍ତୁ!',
+        AppLanguage.punjabi:
+            'ਸਿਰਫ਼ ₹4 ਵਿੱਚ 3 ਦਿਨਾਂ ਦੀ ਟ੍ਰਾਇਲ ਸ਼ੁਰੂ ਕਰੋ। ਅਸੀਮਤ ਪੋਸਟਰ ਪ੍ਰਾਪਤ ਕਰੋ!',
+        AppLanguage.nepali:
+            'मात्र ₹4 मा 3 दिनको ट्रायल सुरु गर्नुहोस्। असीमित पोस्टर पाउनुहोस्!',
+        AppLanguage.bengali:
+            'মাত্র ₹4 দিয়ে 3 দিনের ট্রায়াল শুরু করুন। আনলিমিটেড পোস্টার পান!',
+        AppLanguage.kashmiri:
+            'صرف ₹4 منز 3 دوہن ہند ٹرائل شروع کٔریو۔ لامحدود پوسٹر حٲصل کٔریو!',
+        AppLanguage.ladakhi:
+            'Tsam-zhig ₹4 la nyin 3 trial gojug in. Unlimited poster thob!',
+      },
     };
 
     final bucket = fallback[normalized];
@@ -1018,9 +1235,11 @@ class NotificationService {
           summaryText: body.isNotEmpty ? body : _collapsedImageTitle,
           htmlFormatContentTitle: false,
           htmlFormatSummaryText: false,
-          largeIcon: collapsedHeaderPath != null
-              ? FilePathAndroidBitmap(collapsedHeaderPath)
-              : null,
+          largeIcon: userPhotoPath != null
+              ? FilePathAndroidBitmap(userPhotoPath)
+              : (collapsedHeaderPath != null
+                    ? FilePathAndroidBitmap(collapsedHeaderPath)
+                    : FilePathAndroidBitmap(posterPath)),
           hideExpandedLargeIcon: true,
         ),
         subText: '',
@@ -1074,21 +1293,26 @@ class NotificationService {
     if (normalizedUrl.isEmpty) {
       return null;
     }
+    HttpClient? client;
     try {
       final Uri uri = Uri.parse(normalizedUrl);
       if (!uri.hasScheme) {
         return null;
       }
-      final HttpClient client = HttpClient();
-      final HttpClientRequest request = await client.getUrl(uri);
-      final HttpClientResponse response = await request.close();
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
+      final HttpClientRequest request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 8));
+      final HttpClientResponse response = await request.close().timeout(
+        const Duration(seconds: 8),
+      );
       if (response.statusCode < 200 || response.statusCode >= 300) {
         client.close(force: true);
         return null;
       }
       final List<int> bytes = await consolidateHttpClientResponseBytes(
         response,
-      );
+      ).timeout(const Duration(seconds: 10));
       client.close(force: true);
       if (bytes.isEmpty) {
         return null;
@@ -1101,6 +1325,7 @@ class NotificationService {
       await file.writeAsBytes(bytes, flush: true);
       return file.path;
     } catch (error, stackTrace) {
+      client?.close(force: true);
       developer.log(
         'Notification image download failed: $error',
         name: 'notification.service',

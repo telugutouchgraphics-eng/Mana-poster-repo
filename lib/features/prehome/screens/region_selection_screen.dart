@@ -58,6 +58,22 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
             context.strings.localized(
               telugu: 'రాష్ట్రం సేవ్ కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
               english: 'Could not save region. Please try again.',
+              hindi: 'क्षेत्र सहेजा नहीं जा सका। कृपया पुन: प्रयास करें।',
+              tamil: 'பிராந்தியத்தைச் சேமிக்க முடியவில்லை. மீண்டும் முயல்க.',
+              kannada: 'ಪ್ರದೇಶವನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam: 'പ്രദേശം സംരക്ഷിക്കാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.',
+              marathi: 'प्रदेश जतन करता आला नाही. कृपया पुन्हा प्रयत्न करा.',
+              gujarati: 'પ્રદેશ સાચવી શકાયો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.',
+              bengali: 'অঞ্চল সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+              punjabi: 'ਖੇਤਰ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+              odia: 'ଅଞ୍ଚଳ ସଂରକ୍ଷଣ ହୋଇପାରିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
+              assamese: 'অঞ্চল সংৰক্ষণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+              konkani: 'प्रदेश सांबाळपाक जमलो ना. उपकार करून परत प्रयत्न करात.',
+              nepali: 'क्षेत्र सुरक्षित गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।',
+              meitei: 'Region save touba ngamkhide. Amuk hanna hotnabiyu.',
+              mizo: 'Bial save thei lo. Khawngaihin ti nawn leh rawh.',
+              kashmiri: 'علاقہ ہیکہِ نہٕ محفوٗظ کٔرِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
+              ladakhi: 'ས་ཁུལ་ཉར་ཚགས་མ་ཐུབ། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
             ),
           ),
         ),
@@ -207,6 +223,22 @@ class _RegionHeader extends StatelessWidget {
                         strings.localized(
                           telugu: 'రాష్ట్రం / యూనియన్ టెరిటరీ ఎంచుకోండి',
                           english: 'Select State / Union Territory',
+                          hindi: 'राज्य / केंद्र शासित प्रदेश चुनें',
+                          tamil: 'மாநிலம் / யூனியன் பிரதேசத்தைத் தேர்ந்தெடுக்கவும்',
+                          kannada: 'ರಾಜ್ಯ / ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+                          malayalam: 'സംസ്ഥാനം / കേന്ദ്രഭരണ പ്രദേശം തിരഞ്ഞെടുക്കുക',
+                          marathi: 'राज्य / केंद्रशासित प्रदेश निवडा',
+                          gujarati: 'રાજ્ય / કેન્દ્રશાસિત પ્રદેશ પસંદ કરો',
+                          bengali: 'রাজ্য / কেন্দ্রশাসিত অঞ্চল নির্বাচন করুন',
+                          punjabi: 'ਰਾਜ / ਕੇਂਦਰ ਸ਼ਾਸਤ ਪ੍ਰਦੇਸ਼ ਚੁਣੋ',
+                          odia: 'ରାଜ୍ୟ / କେନ୍ଦ୍ରଶାସିତ ଅଞ୍ଚଳ ବାଛନ୍ତୁ',
+                          assamese: 'ৰাজ্য / কেন্দ্ৰীয় শাসিত অঞ্চল বাছক',
+                          konkani: 'राज्य / केंद्रशासित प्रदेश वेंचून काडात',
+                          nepali: 'राज्य / केन्द्र शासित प्रदेश छान्नुहोस्',
+                          meitei: 'State / Union Territory khallu',
+                          mizo: 'State / Union Territory thlang rawh',
+                          kashmiri: 'ریاست / یونین ٹیریٹری ژٲریو',
+                          ladakhi: 'མངའ་སྡེའམ་དབུས་གཞུང་ཁུལ་འདེམས།',
                         ),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
@@ -219,6 +251,38 @@ class _RegionHeader extends StatelessWidget {
                               '$stateCount రాష్ట్రాలు • $unionTerritoryCount యూనియన్ టెరిటరీలు',
                           english:
                               '$stateCount States • $unionTerritoryCount Union Territories',
+                          hindi:
+                              '$stateCount राज्य • $unionTerritoryCount केंद्र शासित प्रदेश',
+                          tamil:
+                              '$stateCount மாநிலங்கள் • $unionTerritoryCount யூனியன் பிரதேசங்கள்',
+                          kannada:
+                              '$stateCount ರಾಜ್ಯಗಳು • $unionTerritoryCount ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶಗಳು',
+                          malayalam:
+                              '$stateCount സംസ്ഥാനങ്ങൾ • $unionTerritoryCount കേന്ദ്രഭരണ പ്രദേശങ്ങൾ',
+                          marathi:
+                              '$stateCount राज्ये • $unionTerritoryCount केंद्रशासित प्रदेश',
+                          gujarati:
+                              '$stateCount રાજ્યો • $unionTerritoryCount કેન્દ્રશાસિત પ્રદેશો',
+                          bengali:
+                              '$stateCount রাজ্য • $unionTerritoryCount কেন্দ্রশাসিত অঞ্চল',
+                          punjabi:
+                              '$stateCount ਰਾਜ • $unionTerritoryCount ਕੇਂਦਰ ਸ਼ਾਸਤ ਪ੍ਰਦੇਸ਼',
+                          odia:
+                              '$stateCount ରାଜ୍ୟ • $unionTerritoryCount କେନ୍ଦ୍ରଶାସିତ ଅଞ୍ଚଳ',
+                          assamese:
+                              '$stateCount ৰাজ্য • $unionTerritoryCount কেন্দ্ৰীয় শাসিত অঞ্চল',
+                          konkani:
+                              '$stateCount राज्यां • $unionTerritoryCount केंद्रशासित प्रदेश',
+                          nepali:
+                              '$stateCount राज्यहरू • $unionTerritoryCount केन्द्र शासित प्रदेशहरू',
+                          meitei:
+                              '$stateCount States • $unionTerritoryCount Union Territories',
+                          mizo:
+                              '$stateCount State-te • $unionTerritoryCount Union Territory-te',
+                          kashmiri:
+                              '$stateCount ریاستہٕ • $unionTerritoryCount یونین ٹیریٹری',
+                          ladakhi:
+                              '$stateCount མངའ་སྡེ། • $unionTerritoryCount དབུས་གཞུང་ཁུལ།',
                         ),
                         style: TextStyle(
                           color: cs.onSurfaceVariant,
@@ -239,6 +303,22 @@ class _RegionHeader extends StatelessWidget {
                 hintText: strings.localized(
                   telugu: 'రాష్ట్రం, యూటీ లేదా భాష వెతకండి',
                   english: 'Search State, UT or language',
+                  hindi: 'राज्य, केंद्र शासित प्रदेश या भाषा खोजें',
+                  tamil: 'மாநிலம், யூனியன் பிரதேசம் அல்லது மொழியைத் தேடவும்',
+                  kannada: 'ರಾಜ್ಯ, ಕೇಂದ್ರಾಡಳಿತ ಪ್ರದೇಶ ಅಥವಾ ಭಾಷೆ ಹುಡುಕಿ',
+                  malayalam: 'സംസ്ഥാനം, കേന്ദ്രഭരണ ప్రദേശം അല്ലെങ്കിൽ ഭാഷ തിരയുക',
+                  marathi: 'राज्य, केंद्रशासित प्रदेश किंवा भाषा शोधा',
+                  gujarati: 'રાજ્ય, કેન્દ્રશાસિત પ્રદેશ અથવા ભાષા શોધો',
+                  bengali: 'রাজ্য, কেন্দ্রশাসিত অঞ্চল বা ভাষা অনুসন্ধান করুন',
+                  punjabi: 'ਰਾਜ, ਕੇਂਦਰ ਸ਼ਾਸਤ ਪ੍ਰਦੇਸ਼ ਜਾਂ ਭਾਸ਼ਾ ਖੋਜੋ',
+                  odia: 'ରାଜ୍ୟ, କେନ୍ଦ୍ରଶାସିତ ଅଞ୍ଚଳ କିମ୍ବା ଭାଷା ଖୋଜନ୍ତୁ',
+                  assamese: 'ৰাজ্য, কেন্দ্ৰীয় শাসিত অঞ্চল বা ভাষা সন্ধান কৰক',
+                  konkani: 'राज्य, केंद्रशासित प्रदेश वा भास सोदात',
+                  nepali: 'राज्य, केन्द्र शासित प्रदेश वा भाषा खोज्नुहोस्',
+                  meitei: 'State, UT nattraga Lon thiba',
+                  mizo: 'State, UT emaw ṭawng zawng rawh',
+                  kashmiri: 'ریاست، یونین ٹیریٹری یا زبٲن ژھانٛڈیو',
+                  ladakhi: 'མངའ་སྡེ་དང་སྐད་རིགས་འཚོལ།',
                 ),
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
@@ -393,11 +473,23 @@ class _EmptyRegions extends StatelessWidget {
       child: Text(
         strings.localized(
           telugu: 'సరిపోయే ప్రాంతం లేదు.',
-          hindi: 'कोई मिलता-जुलता क्षेत्र नहीं मिला।',
           english: 'No matching region found.',
-          tamil: 'பொருந்தும் பகுதி இல்லை.',
-          kannada: 'ಹೊಂದುವ ಪ್ರದೇಶ ಕಂಡುಬಂದಿಲ್ಲ.',
-          malayalam: 'ചേരുന്ന പ്രദേശം കണ്ടെത്തിയില്ല.',
+          hindi: 'कोई मिलता-जुलता क्षेत्र नहीं मिला।',
+          tamil: 'பொருந்தும் பிராந்தியம் எதுவும் காணப்படவில்லை.',
+          kannada: 'ಯಾವುದೇ ಹೊಂದಾಣಿಕೆಯ ಪ್ರದೇಶ ಕಂಡುಬಂದಿಲ್ಲ.',
+          malayalam: 'പൊരുത്തപ്പെടുന്ന പ്രദേശമൊന്നും കണ്ടെത്തിയില്ല.',
+          marathi: 'जुळणारा प्रदेश आढळला नाही.',
+          gujarati: 'કોઈ મેળ ખાતો પ્રદેશ મળ્યો નથી.',
+          bengali: 'কোনো মিল থাকা অঞ্চল পাওয়া যায়নি।',
+          punjabi: 'ਕੋਈ ਮੇਲ ਖਾਂਦਾ ਖੇਤਰ ਨਹੀਂ ਮਿਲਿਆ।',
+          odia: 'କୌଣସି ମେଳ ଖାଉଥିବା ଅଞ୍ଚଳ ମିଳିଲା ନାହିଁ।',
+          assamese: 'কোনো মিল থকা অঞ্চল পোৱা নগ’ল।',
+          konkani: 'लागसारचो खंयचोच प्रदेश मेळ्ळो ना.',
+          nepali: 'कुनै मिल्दो क्षेत्र फेला परेन।',
+          meitei: 'Channaba region thengnakhide.',
+          mizo: 'Bial mil hmuh a ni lo.',
+          kashmiri: 'کانٛہہ رلنہٕ وول علاقہ میول نہٕ۔',
+          ladakhi: 'མཐུན་པའི་ས་ཁུལ་མ་རྙེད།',
         ),
         textAlign: TextAlign.center,
         style: const TextStyle(fontWeight: FontWeight.w700),

@@ -115,6 +115,17 @@ class ManualEventCategoryService {
     final localizedLabel = _labelForLanguage(data, rawLabel, language);
     final normalizedLabel = _normalizeTag(rawLabel);
     final iconAssetPath = (data['iconAssetPath'] as String?)?.trim();
+    final rawLabels = data['labelsByLanguage'];
+    final labelsByLanguage = <String, String>{};
+    if (rawLabels is Map) {
+      for (final entry in rawLabels.entries) {
+        final key = entry.key.toString().trim();
+        final val = entry.value?.toString().trim() ?? '';
+        if (key.isNotEmpty && val.isNotEmpty) {
+          labelsByLanguage[key] = val;
+        }
+      }
+    }
     return DynamicCategory(
       id: id,
       slug: id,
@@ -138,6 +149,7 @@ class ManualEventCategoryService {
       eventStartDate: DateTime.fromMillisecondsSinceEpoch(startAt),
       eventEndDate: DateTime.fromMillisecondsSinceEpoch(endAt),
       allowPoliticalProtocol: data['allowPoliticalProtocol'] == true,
+      labelsByLanguage: labelsByLanguage,
     );
   }
 

@@ -136,8 +136,26 @@ class _QuizCopy {
     ladakhi: 'སྒོ་རྒྱག',
   );
 
-  static String share(AppStrings strings) =>
-      strings.localized(telugu: 'షేర్', english: 'Share');
+  static String share(AppStrings strings) => strings.localized(
+    telugu: 'షేర్',
+    english: 'Share',
+    hindi: 'शेयर',
+    tamil: 'பகிர்',
+    kannada: 'ಹಂಚಿಕೊಳ್ಳಿ',
+    malayalam: 'ഷെയർ ചെയ്യുക',
+    marathi: 'शेअर करा',
+    gujarati: 'શેર કરો',
+    bengali: 'শেয়ার করুন',
+    punjabi: 'ਸਾਂਝਾ ਕਰੋ',
+    odia: 'ସେୟାର କରନ୍ତୁ',
+    assamese: 'শ্বেয়াৰ কৰক',
+    konkani: 'शेअर करात',
+    nepali: 'साझेदारी गर्नुहोस्',
+    meitei: 'Share toubiyu',
+    mizo: 'Share rawh',
+    kashmiri: 'شیئر کٔریو',
+    ladakhi: 'བགོ་འགྲེམས།',
+  );
 
   static String shareMessage(
     AppStrings strings,
@@ -218,17 +236,67 @@ class _QuizCopy {
         'App download: $appLink',
   );
 
-  static String download(AppStrings strings) =>
-      strings.localized(telugu: 'డౌన్లోడ్', english: 'Download');
+  static String download(AppStrings strings) => strings.localized(
+    telugu: 'డౌన్లోడ్',
+    english: 'Download',
+    hindi: 'डाउनलोड',
+    tamil: 'பதிவிறக்கு',
+    kannada: 'ಡೌನ್‌ಲೋಡ್',
+    malayalam: 'ഡൗൺലോഡ്',
+    marathi: 'डाउनलोड',
+    gujarati: 'ડાઉનલોડ',
+    bengali: 'ডাউনলোড',
+    punjabi: 'ਡਾਊਨਲੋਡ',
+    odia: 'ଡାଉନଲୋଡ୍',
+    assamese: 'ডাউনলোড',
+    konkani: 'डाऊनलोड',
+    nepali: 'डाउनलोड गर्नुहोस्',
+    meitei: 'Download toubiyu',
+    mizo: 'Download rawh',
+    kashmiri: 'ڈاؤنلوڈ کٔریو',
+    ladakhi: 'ཕབ་ལེན།',
+  );
 
   static String savedToGallery(AppStrings strings) => strings.localized(
     telugu: 'టికెట్ గ్యాలరీలో సేవ్ అయింది.',
     english: 'Ticket saved to gallery.',
+    hindi: 'टिकट गैलरी में सहेजा गया।',
+    tamil: 'டிக்கெட் கேலரியில் சேமிக்கப்பட்டது.',
+    kannada: 'ಟಿಕೆಟ್ ಗ್ಯಾಲರಿಯಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
+    malayalam: 'ടിക്കറ്റ് ഗാലറിയിൽ സേവ് ചെയ്തു.',
+    marathi: 'तिकीट गॅलरीत सेव्ह झाले.',
+    gujarati: 'ટિકિટ ગેલેરીમાં સાચવવામાં આવી.',
+    bengali: 'টিকিট গ্যালারিতে সংরক্ষিত হয়েছে।',
+    punjabi: 'ਟਿਕਟ ਗੈਲਰੀ ਵਿੱਚ ਸੁਰੱਖਿਅਤ ਕੀਤੀ ਗਈ।',
+    odia: 'ଟିକେଟ୍ ଗ୍ୟାଲେରୀରେ ସଂରକ୍ଷଣ ହେଲା।',
+    assamese: 'টিকিট গেলেৰীত সংৰক্ষণ কৰা হ’ল।',
+    konkani: 'तिकीट गॅलरींत जतन जाली.',
+    nepali: 'टिकट ग्यालरीमा सुरक्षित गरियो।',
+    meitei: 'Ticket saved to gallery.',
+    mizo: 'Ticket gallery-ah save a ni.',
+    kashmiri: 'ٹکٹ گیلری منز محفوظ گۆو۔',
+    ladakhi: 'Ticket saved to gallery.',
   );
 
   static String ticketActionFailed(AppStrings strings) => strings.localized(
     telugu: 'టికెట్ సిద్ధం చేయలేకపోయాం. మళ్లీ ప్రయత్నించండి.',
     english: 'Unable to prepare ticket. Please try again.',
+    hindi: 'टिकट तैयार करने में असमर्थ। कृपया पुनः प्रयास करें।',
+    tamil: 'டிக்கெட்டை தயார் செய்ய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    kannada: 'ಟಿಕೆಟ್ ಸಿದ್ಧಪಡಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    malayalam: 'ടിക്കറ്റ് തയ്യാറാക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.',
+    marathi: 'तिकीट तयार करता आले नाही. कृपया पुन्हा प्रयत्न करा.',
+    gujarati: 'ટિકિટ તૈયાર કરવામાં અસમર્થ. કૃપા કરીને ફરી પ્રયાસ કરો.',
+    bengali: 'টিকিট তৈরি করতে অক্ষম। অনুগ্রহ করে আবার চেষ্টা করুন।',
+    punjabi: 'ਟਿਕਟ ਤਿਆਰ ਕਰਨ ਵਿੱਚ ਅਸਮਰੱਥ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+    odia: 'ଟିକେଟ୍ ପ୍ରସ୍ତୁତ କରିବାରେ ଅସମର୍ଥ। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।',
+    assamese: 'টিকিট প্ৰস্তুত কৰিবলৈ অপাৰগ। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+    konkani: 'तिकीट तयार करूंक जमूंक ना. उपकार करून परत यत्न करात.',
+    nepali: 'टिकट तयार गर्न असमर्थ। कृपया पुन: प्रयास गर्नुहोस्।',
+    meitei: 'Unable to prepare ticket. Please try again.',
+    mizo: 'Ticket buatsaih thei lo. Khawngaihin han ti leh rawh.',
+    kashmiri: 'ٹکٹ تیار کرنس منز ناکامیاب۔ مہرَبٲنی کٔرِتھ پؠٹھ کوشش کٔرِو۔',
+    ladakhi: 'Unable to prepare ticket. Please try again.',
   );
 
   static String loadFailed(AppStrings strings) => strings.localized(
@@ -494,6 +562,18 @@ class _QuizCopy {
     tamil: 'சரி பார்க்க',
     kannada: 'ಪರಿಶೀಲಿಸಿ',
     malayalam: 'പരിശോധിക്കുക',
+    marathi: 'तपासा',
+    gujarati: 'તપાસો',
+    bengali: 'পরীক্ষা করুন',
+    punjabi: 'ਜਾਂਚੋ',
+    odia: 'ଯାଞ୍ଚ କରନ୍ତୁ',
+    assamese: 'পৰীক্ষা কৰক',
+    konkani: 'तपासात',
+    nepali: 'जाँच गर्नुहोस्',
+    meitei: 'Check toubiyu',
+    mizo: 'En chhin rawh',
+    kashmiri: 'چیک کریو',
+    ladakhi: 'ཞིབ་བཤེར་གནང།',
   );
 
   static String attemptedQuiz(AppStrings strings) => strings.localized(
@@ -503,6 +583,18 @@ class _QuizCopy {
     tamil: 'உங்கள் வினாடி வினா முடிவு',
     kannada: 'ನಿಮ್ಮ ಕ್ವಿಜ್ ಫಲಿತಾಂಶ',
     malayalam: 'നിങ്ങളുടെ ക്വിസ് ഫലം',
+    marathi: 'तुमचा क्विझ निकाल',
+    gujarati: 'તમારું ક્વિઝ પરિણામ',
+    bengali: 'আপনার কুইজ ফলাফল',
+    punjabi: 'ਤੁਹਾਡਾ ਕਵਿਜ਼ ਨਤੀਜਾ',
+    odia: 'ଆପଣଙ୍କ କ୍ୱିଜ୍ ଫଳାଫଳ',
+    assamese: 'আপোনাৰ কুইজ ফলাফল',
+    konkani: 'तुमचो क्विझ निकाल',
+    nepali: 'तपाईंको क्विज नतिजा',
+    meitei: 'Nangi quiz result',
+    mizo: 'I quiz result',
+    kashmiri: 'تہنٛد کوئز نتیجہ',
+    ladakhi: 'ཁྱེད་ཀྱི་ quiz གྲུབ་འབྲས།',
   );
 
   static String checkAttemptedQuestions(AppStrings strings) =>
@@ -513,6 +605,18 @@ class _QuizCopy {
         tamil: 'நீங்கள் முயன்ற கேள்விகளை பாருங்கள்',
         kannada: 'ನೀವು ಪ್ರಯತ್ನಿಸಿದ ಪ್ರಶ್ನೆಗಳನ್ನು ನೋಡಿ',
         malayalam: 'നിങ്ങൾ ശ്രമിച്ച ചോദ്യങ്ങൾ കാണുക',
+        marathi: 'तुम्ही सोडवलेले प्रश्न पहा',
+        gujarati: 'તમે પ્રયાસ કરેલા પ્રશ્નો જુઓ',
+        bengali: 'আপনার চেষ্টা করা প্রশ্নগুলি দেখুন',
+        punjabi: 'ਆਪਣੇ ਹੱਲ ਕੀਤੇ ਸਵਾਲ ਵੇਖੋ',
+        odia: 'ଆପଣ ପ୍ରୟାସ କରିଥିବା ପ୍ରଶ୍ନ ଦେଖନ୍ତୁ',
+        assamese: 'আপুনি চেষ্টা কৰা প্ৰশ্নসমূহ চাওক',
+        konkani: 'प्रयत्न केल्ले प्रस्न पळयात',
+        nepali: 'तपाईंले प्रयास गर्नुभएको प्रश्नहरू हेर्नुहोस्',
+        meitei: 'Nangna hotnarakhiba wahangsing yeng-u',
+        mizo: 'I chhan tawh zawhnate en rawh',
+        kashmiri: 'تہنٛزِ کوشِش کٔرمٕژ سوال وُچھِو',
+        ladakhi: 'ཁྱེད་ཀྱིས་ལན་བཏབ་པའི་དྲི་བ་རྣམས་གཟིགས།',
       );
 
   static String submitting(AppStrings strings) => strings.localized(

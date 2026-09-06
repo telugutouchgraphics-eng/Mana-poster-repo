@@ -33,7 +33,26 @@ class DynamicLocalizedTitle {
 
   String resolve(AppLanguage language) => AppStrings(
     language,
-  ).localized(telugu: telugu, english: english, hindi: hindi);
+  ).localized(
+    telugu: telugu,
+    english: english,
+    hindi: hindi,
+    tamil: english,
+    kannada: english,
+    malayalam: english,
+    marathi: hindi,
+    gujarati: hindi,
+    bengali: english,
+    punjabi: hindi,
+    odia: english,
+    assamese: english,
+    konkani: hindi,
+    nepali: hindi,
+    meitei: english,
+    mizo: english,
+    kashmiri: hindi,
+    ladakhi: english,
+  );
 }
 
 class DynamicCategory {
@@ -52,6 +71,7 @@ class DynamicCategory {
     this.eventStartDate,
     this.eventEndDate,
     this.allowPoliticalProtocol = false,
+    this.labelsByLanguage = const <String, String>{},
   });
 
   final String id;
@@ -68,6 +88,20 @@ class DynamicCategory {
   final DateTime? eventStartDate;
   final DateTime? eventEndDate;
   final bool allowPoliticalProtocol;
+  final Map<String, String> labelsByLanguage;
+
+  String labelFor(AppLanguage language) {
+    final direct = labelsByLanguage[language.name]?.trim();
+    if (direct != null && direct.isNotEmpty) {
+      return direct;
+    }
+    final supported = labelsByLanguage[language.supportedUiLanguage.name]
+        ?.trim();
+    if (supported != null && supported.isNotEmpty) {
+      return supported;
+    }
+    return label;
+  }
 }
 
 class DynamicCalendarEvent {

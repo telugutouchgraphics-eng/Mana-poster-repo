@@ -1,4 +1,4 @@
-﻿const admin = require("firebase-admin");
+const admin = require("firebase-admin");
 const {onRequest} = require("firebase-functions/v2/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onMessagePublished} = require("firebase-functions/v2/pubsub");
@@ -71,14 +71,9 @@ const manualLifetimeWhitelistedEmails = new Set([
   "babuy2045@gmail.com",
   "vkrseafoods901@gmail.com",
   "shaiknaziya973@gmail.com",
+  "shaiknaziya71950@gmail.com",
 ]);
-const manualLifetimeWhitelistedPhones = new Set([
-  "8121111513",
-  "3932006161",
-  "9393206161",
-  "8688520791",
-  "6305949301",
-]);
+const manualLifetimeWhitelistedPhones = new Set([]);
 const allowedCorsOrigins = parseAllowedOrigins(
     process.env.MANA_POSTER_ALLOWED_ORIGINS || process.env.ALLOW_ORIGIN || "*",
 );
@@ -103,12 +98,14 @@ const quizCollections = {
 const istOffsetMillis = 5.5 * 60 * 60 * 1000;
 const notificationTokenScanLimit = readPositiveInt(
     process.env.MANA_NOTIFICATION_TOKEN_SCAN_LIMIT,
-    1500,
+    500,
+    5000,
     10000,
 );
 const publicNotificationTokenScanLimit = readPositiveInt(
     process.env.MANA_PUBLIC_NOTIFICATION_TOKEN_SCAN_LIMIT,
-    1500,
+    500,
+    5000,
     10000,
 );
 
@@ -1116,6 +1113,11 @@ function getIstDayKey(now = new Date()) {
   return formatter.format(now);
 }
 
+function getIstDayStartMillis(now = new Date()) {
+  const dayKey = getIstDayKey(now);
+  return Date.parse(`${dayKey}T00:00:00+05:30`);
+}
+
 function safeNotificationMetricKey(value) {
   const normalized = normalizeText(value)
       .replace(/[^a-z0-9_-]+/g, "-")
@@ -1337,6 +1339,29 @@ function notificationProfileFromData(data) {
 
 function sanitizeLanguage(value) {
   const normalized = normalizeText(value);
+  const codeMap = {
+    te: "telugu",
+    hi: "hindi",
+    en: "english",
+    ta: "tamil",
+    kn: "kannada",
+    ml: "malayalam",
+    as: "assamese",
+    kok: "konkani",
+    gu: "gujarati",
+    mr: "marathi",
+    mni: "meitei",
+    lus: "mizo",
+    or: "odia",
+    pa: "punjabi",
+    ne: "nepali",
+    bn: "bengali",
+    ks: "kashmiri",
+    lbj: "ladakhi",
+  };
+  if (codeMap[normalized]) {
+    return codeMap[normalized];
+  }
   return new Set([
     "telugu",
     "hindi",
@@ -3181,6 +3206,53 @@ async function sendReminderToToken({
   return admin.messaging().send(message);
 }
 
+async function sendReminderToTopic({
+  topic,
+  title,
+  body,
+  imageUrl = null,
+  posterBaseImageUrl = "",
+  categoryKey = "",
+  titleKey = "",
+  bodyKey = "",
+  route = "",
+  openKind = "",
+  languageCode = "",
+}) {
+  const normalizedTopic = String(topic || "").trim();
+  if (!normalizedTopic) {
+    return null;
+  }
+  const normalizedTitle = String(title || "").trim();
+  const normalizedBody = String(body || "").trim();
+  const normalizedImageUrl = String(imageUrl || "").trim();
+  const resolvedRoute = String(route || "").trim() ||
+      notificationOpenRoute(categoryKey, openKind);
+  const normalizedCategory = reminderCategoryKey(categoryKey);
+  const message = {
+    topic: normalizedTopic,
+    android: {
+      priority: "high",
+    },
+    data: {
+      click_action: "FLUTTER_NOTIFICATION_CLICK",
+      route: resolvedRoute,
+      title: normalizedTitle,
+      body: normalizedBody,
+      title_key: titleKey || "",
+      body_key: bodyKey || "",
+      languageCode: String(languageCode || "").trim(),
+      categoryKey: categoryKey || "",
+      notificationKind: normalizedCategory,
+      posterPreviewImage: normalizedImageUrl,
+      posterBaseImage: posterBaseImageUrl || "",
+      posterImage: normalizedImageUrl,
+    },
+  };
+
+  return admin.messaging().send(message);
+}
+
 async function sendPersonalizedReminderToToken({
   token,
   platform = "",
@@ -3452,56 +3524,78 @@ function posterIsCurrentlyVisible(data, nowMillis = Date.now()) {
   return true;
 }
 
-async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId = "") {
+async function getTieredPosterImagesForReminderCategory(categoryKey, regionId = "") {
   const aliases = reminderCategoryAliases(categoryKey)
       .map((item) => normalizeText(item))
       .filter((item) => item.length > 0);
   const resolvedRegionId = normalizeRegionId(regionId);
-  if (aliases.length === 0) {
-    return [];
+  if (aliases.length === 0 || !resolvedRegionId) {
+    return {fresh: [], previous: []};
   }
 
   try {
-    if (!resolvedRegionId) {
-      return [];
-    }
     const nowMillis = Date.now();
+    const istDayStartMillis = getIstDayStartMillis(new Date(nowMillis));
     const lookupRegionIds = sharedContentRegionIdsFor(resolvedRegionId, categoryKey);
-    const snap = await applyRegionScope(db
-        .collection("creatorPosters")
-        .where("status", "==", "approved"), lookupRegionIds)
-        .orderBy("createdAt", "desc")
-        .limit(300)
-        .get();
 
-    const matchedImages = [];
-    for (const doc of snap.docs) {
+    let docs = [];
+    try {
+      const catSnap = await db.collection("creatorPosters")
+          .where("status", "==", "approved")
+          .where("categoryId", "in", aliases.slice(0, 10))
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get();
+      docs = catSnap.docs;
+    } catch (_) {
+      const snap = await applyRegionScope(db
+          .collection("creatorPosters")
+          .where("status", "==", "approved"), lookupRegionIds)
+          .orderBy("createdAt", "desc")
+          .limit(300)
+          .get();
+      docs = snap.docs;
+    }
+
+    const fresh = [];
+    const previous = [];
+    for (const doc of docs) {
       const data = doc.data() || {};
       const categoryId = String(data.categoryId || "");
       const categoryLabel = String(data.categoryLabel || "");
       const imageUrl = String(data.imageUrl || "").trim();
-      if (!imageUrl) {
-        continue;
-      }
-      if (!posterIsCurrentlyVisible(data, nowMillis)) {
+      if (!imageUrl || !posterIsCurrentlyVisible(data, nowMillis)) {
         continue;
       }
       const matched = aliases.some((alias) =>
         categoryMatchesStrictAlias(categoryId, categoryLabel, alias),
       );
-      if (matched) {
-        matchedImages.push(imageUrl);
+      if (!matched) {
+        continue;
+      }
+      const posterTime = toMillis(data.publishAt) > 0 ?
+          toMillis(data.publishAt) :
+          toMillis(data.createdAt);
+      if (posterTime >= istDayStartMillis) {
+        fresh.push(imageUrl);
+      } else {
+        previous.push(imageUrl);
       }
     }
-    return matchedImages;
+    return {fresh, previous};
   } catch (error) {
-    logger.warn("getApprovedPosterImagesForReminderCategory failed", {
+    logger.warn("getTieredPosterImagesForReminderCategory failed", {
       categoryKey,
       regionId: resolvedRegionId,
       error,
     });
-    return [];
+    return {fresh: [], previous: []};
   }
+}
+
+async function getApprovedPosterImagesForReminderCategory(categoryKey, regionId = "") {
+  const {fresh, previous} = await getTieredPosterImagesForReminderCategory(categoryKey, regionId);
+  return [...fresh, ...previous];
 }
 
 async function pickImageForReminder(keywords, seed = "", regionId = "") {
@@ -3533,17 +3627,23 @@ async function pickImageForReminder(keywords, seed = "", regionId = "") {
 
 async function pickStrictImageForReminderCategory(categoryKey, seed = "", regionId = "") {
   const resolvedRegionId = normalizeRegionId(regionId);
-  const strictMatches = await getApprovedPosterImagesForReminderCategory(
+  const {fresh, previous} = await getTieredPosterImagesForReminderCategory(
       categoryKey,
       resolvedRegionId,
   );
-  if (strictMatches.length === 0) {
-    return "";
+  if (fresh.length > 0) {
+    const index = stableHashNumber(
+        `${reminderCategoryKey(categoryKey)}-${seed || Date.now()}-fresh`,
+    ) % fresh.length;
+    return fresh[index] || "";
   }
-  const index = stableHashNumber(
-      `${reminderCategoryKey(categoryKey)}-${seed || Date.now()}-strict-only`,
-  ) % strictMatches.length;
-  return strictMatches[index] || "";
+  if (previous.length > 0) {
+    const index = stableHashNumber(
+        `${reminderCategoryKey(categoryKey)}-${seed || Date.now()}-previous`,
+    ) % previous.length;
+    return previous[index] || "";
+  }
+  return "";
 }
 
 async function runWithConcurrency(items, limit, worker) {
@@ -3735,6 +3835,8 @@ function tokenAllowsReligion(data, targetReligion = "") {
     return true;
   }
   return tokenReligionFromData(data) === target;
+  const userReligion = tokenReligionFromData(data);
+  return userReligion === target || userReligion === "all" || !userReligion;
 }
 
 function weekdaySpecialCategoryKey(now = new Date()) {
@@ -3774,6 +3876,60 @@ function religionDailyTarget(religion, now = new Date()) {
   return null;
 }
 
+async function recordAutomatedPushNotificationHistory({
+  title,
+  message,
+  titleKey = "",
+  bodyKey = "",
+  imageUrl = "",
+  category = "",
+  audience = "all_users",
+  targetReligion = "all",
+  status = "sent",
+  deliveredCount = 0,
+  failedCount = 0,
+  targetCount = 0,
+  errorMessage = "",
+}) {
+  try {
+    const now = Date.now();
+    const docRef = db.collection("adminPushNotifications").doc();
+    await docRef.set({
+      id: docRef.id,
+      title: String(title || "").trim(),
+      message: String(message || "").trim(),
+      titleKey: String(titleKey || "").trim(),
+      bodyKey: String(bodyKey || "").trim(),
+      imageUrl: String(imageUrl || "").trim(),
+      imagePath: "",
+      route: category === "subscription" ? "/subscription" : "home",
+      audience: audience || "all_users",
+      targetReligion: targetReligion || "all",
+      category: String(category || "").trim(),
+      status: status || "sent",
+      targetCount: targetCount || (deliveredCount + failedCount),
+      deliveredCount: deliveredCount,
+      failedCount: failedCount,
+      scheduledFor: null,
+      errorMessage: errorMessage || "",
+      createdAt: now,
+      updatedAt: now,
+      sentAt: now,
+      expiresAt: null,
+      createdByUid: "system_scheduler",
+      createdByEmail: "System Cloud Function (Auto)",
+    });
+    logger.info("recordAutomatedPushNotificationHistory saved to adminPushNotifications", {
+      id: docRef.id,
+      title,
+      deliveredCount,
+      failedCount,
+    });
+  } catch (error) {
+    logger.warn("recordAutomatedPushNotificationHistory failed (best-effort)", error);
+  }
+}
+
 async function sendDailyPersonalizedReminder({
   keywords,
   categoryKey,
@@ -3784,10 +3940,6 @@ async function sendDailyPersonalizedReminder({
   const now = new Date();
   const dayKey = getIstDayKey(now);
   const resolvedSeed = normalizeText(reminderSeed) || "default";
-  const userTokenSnap = await db
-      .collectionGroup("deviceTokens")
-      .limit(notificationTokenScanLimit)
-      .get();
   const seenTokens = new Set();
   const profileCache = new Map();
   const imageCache = new Map();
@@ -3808,6 +3960,56 @@ async function sendDailyPersonalizedReminder({
     return imageUrl || "";
   }
 
+  let deliveredCount = 0;
+  let failedCount = 0;
+  let broadcastCopy = null;
+  let broadcastImageUrl = "";
+
+  // 1. Broadcast via FCM Topic to 100% of devices with ZERO document limits and ZERO cost
+  try {
+    const targetTopic = targetReligion ? `religion_${targetReligion}` : "all_users";
+    broadcastImageUrl = await imageForRegion("andhra_pradesh") || await imageForRegion("") || "";
+    broadcastCopy = targetReligion ?
+        buildReligionNotificationCopy("te", "", targetReligion) :
+        reminderCopyLocalized(categoryKey, "te", "", now);
+
+    await sendReminderToTopic({
+      topic: targetTopic,
+      title: broadcastCopy.title,
+      body: broadcastCopy.body,
+      imageUrl: broadcastImageUrl || null,
+      posterBaseImageUrl: broadcastImageUrl || "",
+      categoryKey,
+      titleKey: `${categoryKey}_title`,
+      bodyKey: `${categoryKey}_body`,
+      languageCode: "te",
+    });
+    deliveredCount++;
+    logger.info("sendDailyPersonalizedReminder topic broadcast complete", {
+      topic: targetTopic,
+      categoryKey,
+      hasImage: Boolean(broadcastImageUrl),
+    });
+  } catch (topicError) {
+    failedCount++;
+    logger.error("sendDailyPersonalizedReminder topic broadcast error", {
+      categoryKey,
+      error: topicError,
+    });
+  }
+
+  // 2. Prevent duplicate notifications: If topic broadcast succeeded, 100% of devices already received
+  // the notification! Only fall back to individual token looping if topic broadcast failed.
+  if (deliveredCount === 0) {
+    const userTokenSnap = await db
+        .collectionGroup("deviceTokens")
+        .limit(notificationTokenScanLimit)
+        .get();
+    for (const doc of userTokenSnap.docs) {
+  const userTokenSnap = await db
+      .collectionGroup("deviceTokens")
+      .limit(notificationTokenScanLimit)
+      .get();
   for (const doc of userTokenSnap.docs) {
     const data = doc.data() || {};
     const token = String(data.token || "").trim();
@@ -3899,11 +4101,14 @@ async function sendDailyPersonalizedReminder({
         categoryKey,
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
+        bodyKey: "",
         userName: profile.name || "",
         userPhotoUrl: profile.photoUrl || "",
         languageCode: language || profile.preferredLanguage || "",
       });
+      deliveredCount++;
     } catch (error) {
+      failedCount++;
       if (isMessagingTokenGoneError(error)) {
         await cleanupInvalidTokenRef(ref);
       }
@@ -3969,12 +4174,14 @@ async function sendDailyPersonalizedReminder({
         buildReligionNotificationCopy(
             language,
             "Mana Poster User",
+            "",
             targetReligion,
         ) :
         reminderCopyLocalized(
             categoryKey,
             language,
             "Mana Poster User",
+            "",
             now,
         );
       await sendReminderToToken({
@@ -3990,9 +4197,13 @@ async function sendDailyPersonalizedReminder({
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
         userName: "Mana Poster User",
+        bodyKey: "",
+        userName: "",
         languageCode: language,
       });
+      deliveredCount++;
     } catch (error) {
+      failedCount++;
       if (isMessagingTokenGoneError(error)) {
         await cleanupInvalidTokenRef(ref);
       }
@@ -4003,6 +4214,37 @@ async function sendDailyPersonalizedReminder({
       });
     }
   });
+  }
+
+  if (broadcastCopy) {
+    await recordAutomatedPushNotificationHistory({
+      title: broadcastCopy.title,
+      message: broadcastCopy.body,
+      titleKey: `${categoryKey}_title`,
+      bodyKey: `${categoryKey}_body`,
+      imageUrl: broadcastImageUrl || "",
+      category: categoryKey,
+      audience: "all_users",
+      targetReligion: targetReligion || "all",
+      status: deliveredCount > 0 ? "sent" : "failed",
+      deliveredCount,
+      failedCount,
+  const logCopy = reminderCopyLocalized(categoryKey, "te", "", now);
+  await recordAutomatedPushNotificationHistory({
+    title: logCopy.title,
+    message: logCopy.body,
+    titleKey: `${categoryKey}_title`,
+    bodyKey: "",
+    imageUrl: await imageForRegion("andhra_pradesh") || "",
+    category: categoryKey,
+    audience: "personalized_device_tokens",
+    targetReligion: targetReligion || "all",
+    status: deliveredCount > 0 ? "sent" : "failed",
+    deliveredCount,
+    failedCount,
+      targetCount: deliveredCount + failedCount,
+    });
+  }
 }
 
 async function sendDirectReminderToEligibleTokens({
@@ -4046,6 +4288,46 @@ async function sendDirectReminderToEligibleTokens({
     }
     imageCache.set(cacheKey, regionalImageUrl || "");
     return regionalImageUrl || "";
+  }
+
+  let deliveredCount = 0;
+  let failedCount = 0;
+
+  // Topic broadcast for dynamic events — reaches 100% of devices instantly with ZERO database reads
+  try {
+    const eventReligion = dynamicEvent && dynamicEvent.religion ?
+        normalizeReligionPreference(dynamicEvent.religion) : "";
+    const eventRegion = dynamicEvent && dynamicEvent.regionId ?
+        normalizeRegionId(dynamicEvent.regionId) : "";
+    let eventTopic = "all_users";
+    if (eventReligion && eventReligion !== "all") {
+      eventTopic = `religion_${eventReligion}`;
+    } else if (eventRegion && eventRegion !== "all") {
+      eventTopic = `region_${eventRegion}`;
+    }
+    const broadcastImage = await imageForRegion("andhra_pradesh") ||
+        await imageForRegion("") || String(imageUrl || "").trim();
+    await sendReminderToTopic({
+      topic: eventTopic,
+      title,
+      body,
+      imageUrl: broadcastImage || "",
+      categoryKey: categoryKey || "dynamic_event",
+      titleKey: "dynamic_event_title",
+      bodyKey: "dynamic_event_body",
+      languageCode: "te",
+    });
+    deliveredCount++;
+    logger.info("sendDirectReminderToEligibleTokens topic broadcast complete", {
+      eventTopic,
+      eventTitle,
+    });
+  } catch (topicError) {
+    failedCount++;
+    logger.error("sendDirectReminderToEligibleTokens topic broadcast error", {
+      eventTitle,
+      error: topicError,
+    });
   }
 
   for (const doc of userTokenSnap.docs) {
@@ -4166,7 +4448,9 @@ async function sendDirectReminderToEligibleTokens({
         userPhotoUrl: resolvedPhotoUrl,
         languageCode: language,
       });
+      deliveredCount++;
     } catch (error) {
+      failedCount++;
       if (isMessagingTokenGoneError(error)) {
         await cleanupInvalidTokenRef(ref);
       }
@@ -4176,6 +4460,20 @@ async function sendDirectReminderToEligibleTokens({
         error: messagingErrorDetails(error),
       });
     }
+  });
+
+  await recordAutomatedPushNotificationHistory({
+    title,
+    message: body,
+    titleKey: "dynamic_event_title",
+    bodyKey: "dynamic_event_body",
+    imageUrl: imageUrl || "",
+    category: categoryKey || "dynamic_event",
+    audience: "all_users",
+    status: deliveredCount > 0 ? "sent" : "failed",
+    deliveredCount,
+    failedCount,
+    targetCount: deliveredCount + failedCount,
   });
 }
 
@@ -4719,7 +5017,13 @@ async function queryApprovedCreatorPosters({regionId, categoryId, limit}) {
       .map(serializeApprovedCreatorPoster);
 }
 
-exports.appCreatorPostersFeed = onRequest({region: "asia-south1"}, async (req, res) => {
+exports.appCreatorPostersFeed = onRequest(
+    {
+      region: "asia-south1",
+      memory: "512MiB",
+      timeoutSeconds: 60,
+    },
+    async (req, res) => {
   setCors(req, res);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
@@ -4765,6 +5069,13 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
       return;
     }
 
+    // Cost safeguard: Do not perform Firestore writes for passive scrolling views.
+    // Only track real user engagement: Shares and Downloads (strictly ₹0 cost within free tier).
+    if (action === "view") {
+      res.status(200).json({ok: true, skipped: "view"});
+      return;
+    }
+
     const entitlementRef = db.doc(`users/${uid}/entitlements/pro`);
     const [userSnap, entitlementSnap, posterSnap] = await Promise.all([
       db.collection("users").doc(uid).get(),
@@ -4776,8 +5087,8 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
       return;
     }
 
-    const userData = userSnap.data() || {};
-    const entitlementData = entitlementSnap.data() || {};
+    const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+    const entitlementData = entitlementSnap.exists ? (entitlementSnap.data() || {}) : {};
     const posterData = posterSnap.data() || {};
     const status = String(posterData.status || "").trim().toLowerCase();
     if (status !== "approved") {
@@ -4805,6 +5116,12 @@ exports.recordPosterEngagement = onRequest({region: "asia-south1"}, async (req, 
       res.status(403).json({ok: false, error: "Poster is outside user region scope."});
       return;
     }
+    logger.info("recordPosterEngagement tracking real engagement", {
+      action,
+      posterId,
+      uid,
+      posterTitle: posterData.titleEn || body.posterTitle,
+    });
 
     const nowMillis = Date.now();
     const dateKey = getIstDayKey(new Date(nowMillis));
@@ -6556,7 +6873,7 @@ exports.reminderToolSendTriple = onRequest(
 exports.processWelcomeNotifications = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 60 minutes",
+      schedule: "every 4 hours",
       timeZone: "Asia/Kolkata",
       memory: "512MiB",
       timeoutSeconds: 180,
@@ -6656,114 +6973,33 @@ exports.processWelcomeNotifications = onSchedule(
     },
 );
 
-exports.dailyGoodMorningReminder0730 = onSchedule(
+exports.dailyGoodMorningReminder0700 = onSchedule(
     {
       region: "asia-south1",
       schedule: "0 7 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "1GiB",
+      memory: "512MiB",
       timeoutSeconds: 300,
     },
     async () => {
       await sendDailyPersonalizedReminder({
         keywords: [
-        "good morning",
-        "morning",
-        "suprabhatam",
+          "good morning",
+          "morning",
+          "suprabhatam",
         ],
         categoryKey: "morning",
-        reminderSeed: "0730",
+        reminderSeed: "0700",
       });
     },
 );
 
-exports.dailyGoodMorningReminder0930 = onSchedule(
+exports.dailyMotivationReminder1030 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "30 9 * * *",
+      schedule: "30 10 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "1GiB",
-      timeoutSeconds: 300,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-        "good morning",
-        "morning",
-        "suprabhatam",
-        ],
-        categoryKey: "morning",
-        reminderSeed: "0930",
-      });
-    },
-);
-
-exports.dailyGoodAfternoonReminder1200 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "0 12 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "1GiB",
-      timeoutSeconds: 300,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-        "good afternoon",
-        "afternoon",
-        ],
-        categoryKey: "afternoon",
-        reminderSeed: "1200",
-      });
-    },
-);
-
-exports.dailyGoodAfternoonReminder1300 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "0 13 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "1GiB",
-      timeoutSeconds: 300,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-        "good afternoon",
-        "afternoon",
-        ],
-        categoryKey: "afternoon",
-        reminderSeed: "1300",
-      });
-    },
-);
-
-exports.dailyGoodEveningReminder1700 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "0 17 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "1GiB",
-      timeoutSeconds: 300,
-    },
-    async () => {
-      await sendDailyPersonalizedReminder({
-        keywords: [
-        "good evening",
-        "evening",
-        ],
-        categoryKey: "evening",
-        reminderSeed: "1700",
-      });
-    },
-);
-
-exports.dailyMotivationReminder1130 = onSchedule(
-    {
-      region: "asia-south1",
-      schedule: "30 11 * * *",
-      timeZone: "Asia/Kolkata",
-      memory: "1GiB",
+      memory: "512MiB",
       timeoutSeconds: 300,
     },
     async () => {
@@ -6776,82 +7012,99 @@ exports.dailyMotivationReminder1130 = onSchedule(
           "inspiration",
         ],
         categoryKey: "motivation",
-        reminderSeed: "1130",
+        reminderSeed: "1030",
       });
     },
 );
 
-exports.dailyGoodNightReminder2030 = onSchedule(
+exports.dailyGoodAfternoonReminder1200 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "30 20 * * *",
+      schedule: "0 12 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "1GiB",
+      memory: "512MiB",
       timeoutSeconds: 300,
     },
     async () => {
       await sendDailyPersonalizedReminder({
         keywords: [
-        "good night",
-        "night",
+          "good afternoon",
+          "afternoon",
+          "madhyahna",
         ],
-        categoryKey: "night",
-        reminderSeed: "2030",
+        categoryKey: "afternoon",
+        reminderSeed: "1200",
       });
     },
 );
 
-exports.dailyJokesReminder1630 = onSchedule(
+exports.dailyGoodAfternoonReminder1315 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "15 13 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "512MiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      await sendDailyPersonalizedReminder({
+        keywords: [
+          "good afternoon",
+          "afternoon",
+          "madhyahna",
+        ],
+        categoryKey: "afternoon",
+        reminderSeed: "1315",
+      });
+    },
+);
+
+exports.dailyGoodEveningReminder1800 = onSchedule(
     {
       region: "asia-south1",
       schedule: "0 18 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "1GiB",
+      memory: "512MiB",
       timeoutSeconds: 300,
     },
     async () => {
       await sendDailyPersonalizedReminder({
         keywords: [
-          "jokes",
-          "funny",
-          "humor",
-          "comedy",
+          "good evening",
+          "evening",
+          "sayankalam",
         ],
-        categoryKey: "jokes",
+        categoryKey: "evening",
         reminderSeed: "1800",
       });
     },
 );
 
-exports.dailyReligionReminder0815 = onSchedule(
+exports.dailyGoodNightReminder2100 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "15 8 * * *",
+      schedule: "0 21 * * *",
       timeZone: "Asia/Kolkata",
-      memory: "1GiB",
+      memory: "512MiB",
       timeoutSeconds: 300,
     },
     async () => {
-      const now = new Date();
-      const targets = ["hindu", "muslim", "christian"]
-          .map((religion) => religionDailyTarget(religion, now))
-          .filter(Boolean);
-      for (const target of targets) {
-        await sendDailyPersonalizedReminder({
-          keywords: [target.categoryKey, target.label],
-          categoryKey: target.categoryKey,
-          reminderSeed: `religion-${target.religion}`,
-          targetReligion: target.religion,
-          displayLabel: target.label,
-        });
-      }
+      await sendDailyPersonalizedReminder({
+        keywords: [
+          "good night",
+          "night",
+          "ratri",
+        ],
+        categoryKey: "night",
+        reminderSeed: "2100",
+      });
     },
 );
 
 exports.dailyDynamicEventReminder = onSchedule(
     {
       region: "asia-south1",
-      memory: "1GiB",
+      memory: "512MiB",
       schedule: "30 7 * * *",
       timeZone: "Asia/Kolkata",
     },
@@ -7809,6 +8062,147 @@ exports.finalizeWeeklyQuizLeaderboards = onSchedule(
               `${row.correctCount}/${Math.max(row.weeklyExpectedTotal || 0, row.totalAnswered || 0)}`,
           ),
         ));
+      }
+    },
+);
+
+// ─── Point 2: Daily analytics cache reset ────────────────────────────────────
+// Runs at midnight IST (18:30 UTC). Resets cached timestamps so the first
+// dashboard load each morning fetches fully fresh data (no manual Sync needed).
+exports.dailyAnalyticsCacheReset = onSchedule(
+    {
+      schedule: "30 18 * * *", // 00:00 IST
+      timeZone: "Asia/Kolkata",
+      region: "asia-south1",
+    },
+    async () => {
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await Promise.all([
+        db.collection("system").doc("analyticsSummary").set(
+            {lastCalculatedAt: 0, updatedAt: now},
+            {merge: true},
+        ),
+        db.collection("system").doc("portalAnalyticsSnapshot").set(
+            {cachedAt: 0, updatedAt: now},
+            {merge: true},
+        ),
+      ]);
+      logger.info("Daily analytics cache reset complete — fresh data on next dashboard load");
+    },
+);
+
+// ─── Point 3: Weekly stale notification token cleanup ────────────────────────
+// Runs every Sunday at 3:00 AM IST. Deletes device tokens not updated in 90+ days
+// (user uninstalled app or hasn't opened it in 3 months).
+exports.weeklyStaleTokenCleanup = onSchedule(
+    {
+      schedule: "30 21 * * 0", // Sunday 03:00 IST = 21:30 UTC Saturday
+      timeZone: "Asia/Kolkata",
+      region: "asia-south1",
+    },
+    async () => {
+      const cutoffMs = Date.now() - 90 * 24 * 60 * 60 * 1000; // 90 days ago
+      const cutoffDate = new Date(cutoffMs);
+      let totalDeleted = 0;
+
+      // Cleanup publicDeviceTokens (anonymous/logged-out users)
+      let hasMore = true;
+      while (hasMore) {
+        const snap = await db.collection("publicDeviceTokens")
+            .where("updatedAt", "<", cutoffDate)
+            .limit(400)
+            .get();
+        if (snap.empty) {
+          hasMore = false;
+          break;
+        }
+        const batch = db.batch();
+        snap.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        totalDeleted += snap.docs.length;
+        if (snap.docs.length < 400) hasMore = false;
+      }
+
+      // Cleanup authenticated user deviceTokens (collectionGroup)
+      let authHasMore = true;
+      while (authHasMore) {
+        const snap = await db.collectionGroup("deviceTokens")
+            .where("updatedAt", "<", cutoffDate)
+            .limit(400)
+            .get();
+        if (snap.empty) {
+          authHasMore = false;
+          break;
+        }
+        const batch = db.batch();
+        snap.docs.forEach((doc) => batch.delete(doc.ref));
+        await batch.commit();
+        totalDeleted += snap.docs.length;
+        if (snap.docs.length < 400) authHasMore = false;
+      }
+
+      logger.info(`Stale token cleanup complete — deleted ${totalDeleted} tokens older than 90 days`);
+    },
+);
+
+// ─── Free User Trial Reminder Notification ──────────────────────────────────
+// Runs every Tuesday and Friday at 6:30 PM IST (13:00 UTC).
+// Broadcasts to topic "free_users" with ZERO Firestore reads and ₹0 cost.
+// Sends directly to all non-subscribers inviting them to start the ₹4 trial.
+exports.biweeklyFreeTrialReminder = onSchedule(
+    {
+      schedule: "0 13 * * 2,5", // Tuesday & Friday at 18:30 IST (13:00 UTC)
+      timeZone: "Asia/Kolkata",
+      region: "asia-south1",
+    },
+    async () => {
+      const message = {
+        topic: "free_users",
+        android: {
+          priority: "high",
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          route: "/subscription",
+          title: "Download posters with your photo and name! 🎨",
+          body: "Start a 3-day trial for just ₹4. Get unlimited posters!",
+          title_key: "free_trial_reminder_title",
+          body_key: "free_trial_reminder_body",
+          languageCode: "en",
+          categoryKey: "subscription",
+          notificationKind: "subscription_offer",
+        },
+      };
+      try {
+        await admin.messaging().send(message);
+        logger.info("biweeklyFreeTrialReminder broadcast successfully to free_users topic");
+        await recordAutomatedPushNotificationHistory({
+          title: message.data.title,
+          message: message.data.body,
+          titleKey: message.data.title_key,
+          bodyKey: message.data.body_key,
+          category: "subscription",
+          audience: "all_users",
+          status: "sent",
+          deliveredCount: 1,
+          failedCount: 0,
+          targetCount: 1,
+        });
+      } catch (error) {
+        logger.error("biweeklyFreeTrialReminder broadcast failed", error);
+        await recordAutomatedPushNotificationHistory({
+          title: message.data.title,
+          message: message.data.body,
+          titleKey: message.data.title_key,
+          bodyKey: message.data.body_key,
+          category: "subscription",
+          audience: "all_users",
+          status: "failed",
+          deliveredCount: 0,
+          failedCount: 1,
+          targetCount: 1,
+          errorMessage: String(error && error.message ? error.message : error),
+        });
       }
     },
 );

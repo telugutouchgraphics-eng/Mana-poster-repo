@@ -11,5 +11,6 @@
     },
     "search.exclude": {
         "flutter": true
-    }
+    },
+    "gradle.nestedProjects": true
 }

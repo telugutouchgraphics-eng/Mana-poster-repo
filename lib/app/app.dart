@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:mana_poster/app/bootstrap/firebase_bootstrap.dart';
-import 'package:mana_poster/app/services/app_screen_usage_service.dart';
 import 'package:mana_poster/app/services/install_source_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -193,7 +192,6 @@ class _ManaPosterAppState extends State<ManaPosterApp> {
             title: AppPublicInfo.appName,
             theme: _appTheme,
             navigatorObservers: <NavigatorObserver>[
-              AppScreenUsageService.instance,
               AppNavigator.routeObserver,
               ?analyticsObserver,
             ],

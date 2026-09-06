@@ -11,7 +11,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mana_poster/firebase_options.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
-import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 import 'package:mana_poster/features/prehome/services/first150_trial_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -58,7 +57,6 @@ class FirebaseAuthService {
     try {
       if (kIsWeb) {
         final isNewUser = await _signInWithGoogleOnWeb();
-        await _registerCurrentDeviceSessionBestEffort();
         return _claimFirst150TrialIfEligible(isNewUser: isNewUser);
       }
 
@@ -82,7 +80,6 @@ class FirebaseAuthService {
       final userCredential = await _withGoogleTimeout(
         _firebaseAuth.signInWithCredential(credential),
       );
-      await _withGoogleTimeout(_registerCurrentDeviceSessionBestEffort());
       return _claimFirst150TrialIfEligible(
         isNewUser: userCredential.additionalUserInfo?.isNewUser == true,
       );
@@ -120,7 +117,6 @@ class FirebaseAuthService {
         email: normalizedEmail,
         password: normalizedPassword,
       );
-      await _registerCurrentDeviceSessionBestEffort();
       return _claimFirst150TrialIfEligible(isNewUser: false);
     } on FirebaseAuthException catch (error) {
       final canRetryWithTrimmedPassword =
@@ -133,7 +129,6 @@ class FirebaseAuthService {
             email: normalizedEmail,
             password: trimmedPassword,
           );
-          await _registerCurrentDeviceSessionBestEffort();
           return _claimFirst150TrialIfEligible(isNewUser: false);
         } on FirebaseAuthException catch (retryError) {
           throw _mapFirebaseAuthError(retryError);
@@ -155,7 +150,6 @@ class FirebaseAuthService {
         email: normalizedEmail,
         password: normalizedPassword,
       );
-      await _registerCurrentDeviceSessionBestEffort();
       return _claimFirst150TrialIfEligible(isNewUser: true);
     } on FirebaseAuthException catch (error) {
       if (error.code == 'email-already-in-use') {
@@ -470,14 +464,6 @@ class FirebaseAuthService {
       'Authentication is not configured on this build. Complete Firebase setup for this platform first.',
       code: 'not-configured',
     );
-  }
-
-  Future<void> _registerCurrentDeviceSessionBestEffort() async {
-    try {
-      await DeviceSessionService.instance.registerCurrentDeviceSession();
-    } catch (_) {
-      // Auth should still succeed even if post-login session sync is blocked.
-    }
   }
 }
 

@@ -9,7 +9,7 @@ class PosterIdentityVisual extends StatelessWidget {
     super.key,
     required this.profile,
     this.fit = BoxFit.cover,
-    this.preferOriginalPersonalPhoto = false,
+    this.preferOriginalPersonalPhoto,
     this.preferPersonalPhotoOverBusinessLogo = false,
     this.allowOriginalFallbackWhenCutoutUnavailable = true,
     this.fallbackIcon = Icons.person_rounded,
@@ -20,7 +20,7 @@ class PosterIdentityVisual extends StatelessWidget {
 
   final PosterProfileData profile;
   final BoxFit fit;
-  final bool preferOriginalPersonalPhoto;
+  final bool? preferOriginalPersonalPhoto;
   final bool preferPersonalPhotoOverBusinessLogo;
   final bool allowOriginalFallbackWhenCutoutUnavailable;
   final IconData fallbackIcon;
@@ -30,21 +30,51 @@ class PosterIdentityVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectivePreferOriginal =
+        preferOriginalPersonalPhoto ?? profile.preferOriginalPersonalPhoto;
     final imageProvider = PosterProfileService.resolveImageProvider(
       profile,
-      preferOriginalPersonalPhoto: preferOriginalPersonalPhoto,
+      preferOriginalPersonalPhoto: effectivePreferOriginal,
       preferPersonalPhotoOverBusinessLogo: preferPersonalPhotoOverBusinessLogo,
       allowOriginalFallbackWhenCutoutUnavailable:
           allowOriginalFallbackWhenCutoutUnavailable,
     );
     if (imageProvider != null) {
-      return Image(
+      final photoWidget = Image(
         image: imageProvider,
         fit: fit,
         width: double.infinity,
         height: double.infinity,
         errorBuilder: (_, _, _) => _fallbackVisual(),
       );
+      // Show a clean round photo frame when showing original photo
+      if (effectivePreferOriginal &&
+          profile.identityMode == PosterIdentityMode.personal &&
+          (profile.originalPhotoPath.trim().isNotEmpty ||
+              profile.originalPhotoUrl.trim().isNotEmpty)) {
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            ClipOval(
+              child: Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, _, _) => _fallbackVisual(),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2.5),
+              ),
+            ),
+          ],
+        );
+      }
+      return photoWidget;
     }
 
     if (profile.identityMode == PosterIdentityMode.business &&

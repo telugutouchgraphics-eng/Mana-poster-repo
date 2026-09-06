@@ -28,7 +28,6 @@ import 'package:mana_poster/app/services/app_temporary_cleanup_service.dart';
 import 'package:mana_poster/features/image_editor/services/subscription_backend_service.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
 import 'package:mana_poster/features/prehome/services/app_party_preference_service.dart';
-import 'package:mana_poster/features/prehome/services/device_session_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/app/navigation/web_url_strategy.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
@@ -191,11 +190,6 @@ Future<void> _runPostLaunchInitialization() async {
   }
 
   if (_shouldRunNonEssentialStartupServices) {
-    _scheduleUiReadyStartupTask(
-      'device_session_start',
-      DeviceSessionService.instance.start,
-      delay: const Duration(seconds: 18),
-    );
     _scheduleUiReadyStartupTask('subscription_refresh_post_launch', () async {
       final service = SubscriptionBackendService();
       await service.refreshEntitlementInBackground(
@@ -379,20 +373,31 @@ Future<void> _configureFirebaseMonitoring() async {
 }
 
 bool _isRecoverableFlutterError(FlutterErrorDetails details) {
+  final exceptionStr = details.exceptionAsString().toWellFormed();
+  final libStr = (details.library ?? '').toWellFormed();
+  final contextStr = (details.context?.toDescription() ?? '').toWellFormed();
+  final stackStr = (details.stack?.toString() ?? '').toWellFormed();
   return _isRecoverableError(details.exception) ||
-      _containsRecoverableSignal(details.exceptionAsString()) ||
-      _containsRecoverableSignal(details.library ?? '') ||
-      _containsRecoverableSignal(details.context?.toDescription() ?? '') ||
-      _containsRecoverableSignal(details.stack?.toString() ?? '');
+      _containsRecoverableSignal(exceptionStr) ||
+      _containsRecoverableSignal(libStr) ||
+      _containsRecoverableSignal(contextStr) ||
+      _containsRecoverableSignal(stackStr);
 }
 
 bool _isRecoverableError(Object error) {
-  return _containsRecoverableSignal(error.toString());
+  return _containsRecoverableSignal(error.toString().toWellFormed());
 }
 
 bool _containsRecoverableSignal(String value) {
-  final normalized = value.toLowerCase();
-  return normalized.contains('httpexception: invalid statuscode') ||
+  final normalized = value.toWellFormed().toLowerCase();
+  return normalized.contains('string is not well-formed utf-16') ||
+      normalized.contains('securityexception') ||
+      normalized.contains('permission denial: starting intent') ||
+      normalized.contains('bad state: future already completed') ||
+      normalized.contains('ensurecommitnotcalled') ||
+      normalized.contains('transaction object cannot be used') ||
+      normalized.contains('unsatisfiedlinkerror') ||
+      normalized.contains('httpexception: invalid statuscode') ||
       normalized.contains('http request failed, statuscode') ||
       normalized.contains('imagecodec') ||
       normalized.contains('could not decompress image') ||
@@ -423,6 +428,32 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('connection reset') ||
       normalized.contains('connection timed out') ||
       normalized.contains('socketexception');
+}
+
+extension SafeWellFormedStringExtension on String {
+  String toWellFormed() {
+    final buffer = StringBuffer();
+    for (var i = 0; i < length; i++) {
+      final codeUnit = codeUnitAt(i);
+      if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF) {
+        if (i + 1 < length) {
+          final next = codeUnitAt(i + 1);
+          if (next >= 0xDC00 && next <= 0xDFFF) {
+            buffer.writeCharCode(codeUnit);
+            buffer.writeCharCode(next);
+            i++;
+            continue;
+          }
+        }
+        buffer.writeCharCode(0xFFFD);
+      } else if (codeUnit >= 0xDC00 && codeUnit <= 0xDFFF) {
+        buffer.writeCharCode(0xFFFD);
+      } else {
+        buffer.writeCharCode(codeUnit);
+      }
+    }
+    return buffer.toString();
+  }
 }
 
 void _attachFrameProfiler() {

@@ -6,6 +6,8 @@
 -dontwarn com.google.android.gms.**
 -keep class com.android.billingclient.** { *; }
 -keep class io.flutter.plugins.** { *; }
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
 
 -keep class com.antonkarpenko.ffmpegkit.FFmpegKitConfig {
     native <methods>;

@@ -34,8 +34,9 @@ class TeluguLegacyTextService {
       if (converted.trim().isEmpty) {
         return null;
       }
-      _cache[cacheKey] = converted;
-      return converted;
+      final wellFormed = converted.toWellFormed();
+      _cache[cacheKey] = wellFormed;
+      return wellFormed;
     } catch (_) {
       return null;
     }
@@ -47,7 +48,7 @@ class TeluguLegacyTextService {
       return normalized;
     }
     try {
-      return TeluguLegacyOfflineConverter.reverseConvert(normalized);
+      return TeluguLegacyOfflineConverter.reverseConvert(normalized).toWellFormed();
     } catch (_) {
       return normalized;
     }
@@ -64,6 +65,7 @@ class TeluguLegacyTextService {
 
   static String _normalize(String text) {
     return text
+        .toWellFormed()
         .replaceAll('\r\n', '\n')
         .replaceAll('\r', '\n')
         .replaceAll('\u200c', '')
@@ -110,5 +112,31 @@ class TeluguLegacyTextService {
 
   static bool usesTrailingKsaTtaVattu(String fontFamily) {
     return false;
+  }
+}
+
+extension SafeWellFormedStringExtension on String {
+  String toWellFormed() {
+    final buffer = StringBuffer();
+    for (var i = 0; i < length; i++) {
+      final codeUnit = codeUnitAt(i);
+      if (codeUnit >= 0xD800 && codeUnit <= 0xDBFF) {
+        if (i + 1 < length) {
+          final next = codeUnitAt(i + 1);
+          if (next >= 0xDC00 && next <= 0xDFFF) {
+            buffer.writeCharCode(codeUnit);
+            buffer.writeCharCode(next);
+            i++;
+            continue;
+          }
+        }
+        buffer.writeCharCode(0xFFFD);
+      } else if (codeUnit >= 0xDC00 && codeUnit <= 0xDFFF) {
+        buffer.writeCharCode(0xFFFD);
+      } else {
+        buffer.writeCharCode(codeUnit);
+      }
+    }
+    return buffer.toString();
   }
 }

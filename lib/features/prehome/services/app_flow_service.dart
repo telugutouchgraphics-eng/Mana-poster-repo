@@ -778,6 +778,7 @@ class AppFlowService {
   }
 
   static const String _lastDailyHeartbeatKey = 'user_last_heartbeat_ist_day_v1';
+  static const String _installRecordedKey = 'app_install_recorded_v1';
 
   static Future<void> recordZeroCostDailyHeartbeat() async {
     if (Firebase.apps.isEmpty) {
@@ -789,9 +790,41 @@ class AppFlowService {
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+      final now = DateTime.now().toUtc().add(
+        const Duration(hours: 5, minutes: 30),
+      );
       final todayKey =
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      // 1. Record Install Stat once per app installation (Zero-Cost Atomic Increment)
+      final hasRecordedInstall = prefs.getBool(_installRecordedKey) ?? false;
+      if (!hasRecordedInstall) {
+        // Record createdAt on user doc if missing
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set(<String, dynamic>{
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true))
+            .timeout(const Duration(seconds: 4));
+
+        // Atomic +1 to daily install stats counter
+        await FirebaseFirestore.instance
+            .collection('system')
+            .doc('dailyInstallStats')
+            .collection('days')
+            .doc(todayKey)
+            .set(<String, dynamic>{
+              'installs': FieldValue.increment(1),
+              'date': todayKey,
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true))
+            .timeout(const Duration(seconds: 4));
+
+        await prefs.setBool(_installRecordedKey, true);
+      }
+
+      // 2. Record Daily Active Heartbeat (once per IST day)
       final lastRecordedDay = prefs.getString(_lastDailyHeartbeatKey);
       if (lastRecordedDay == todayKey) {
         return; // Zero cost: already recorded once today for this user
