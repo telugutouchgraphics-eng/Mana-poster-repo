@@ -84,11 +84,21 @@ class PosterProfileData {
   final String secondaryDesignation;
   final String personalPhoneNumber;
 
+  String get primaryPersonalDesignation => whatsappNumber.trim();
+  String get secondaryPersonalDesignation => secondaryDesignation.trim();
+  bool get hasBothPersonalDesignations =>
+      identityMode == PosterIdentityMode.personal &&
+      primaryPersonalDesignation.isNotEmpty &&
+      secondaryPersonalDesignation.isNotEmpty;
+
   String get effectivePersonalDesignation {
     final d1 = whatsappNumber.trim();
     final d2 = secondaryDesignation.trim();
+    final d1 = primaryPersonalDesignation;
+    final d2 = secondaryPersonalDesignation;
     if (d1.isNotEmpty && d2.isNotEmpty) {
       return '$d1, $d2';
+      return '$d1\n$d2';
     }
     return d1.isNotEmpty ? d1 : d2;
   }

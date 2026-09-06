@@ -11724,6 +11724,8 @@ String _subscriptionTrialValueAppLocalized(BuildContext context) {
     konkani:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â° $price',
     gujarati:
+        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ 
+... [truncated for diff preview]
         '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
     marathi:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ $price',
@@ -15526,12 +15528,18 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     final resolvedName = viewerPosterProfile.resolvedName(language: language);
     final isBusinessProfile =
         viewerPosterProfile.identityMode == PosterIdentityMode.business;
-    final resolvedDesignation = isBusinessProfile
+    final primaryDesignation = isBusinessProfile
         ? viewerPosterProfile.businessTagline.trim()
-        : viewerPosterProfile.effectivePersonalDesignation;
+        : viewerPosterProfile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : viewerPosterProfile.secondaryPersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
-    final designationFontFamily = _resolveDesignationFontFamily(
-      resolvedDesignation,
+    final primaryDesignationFontFamily = _resolveDesignationFontFamily(
+      primaryDesignation,
+    );
+    final secondaryDesignationFontFamily = _resolveDesignationFontFamily(
+      secondaryDesignation,
     );
     final futures = <Future<String?>>[];
 
@@ -15550,18 +15558,36 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     }
 
     if (_shouldConvertForLegacyTelugu(
-          resolvedDesignation,
-          designationFontFamily,
+          primaryDesignation,
+          primaryDesignationFontFamily,
         ) &&
         TeluguLegacyTextService.cachedValue(
-              resolvedDesignation,
-              fontFamily: designationFontFamily,
+              primaryDesignation,
+              fontFamily: primaryDesignationFontFamily,
             ) ==
             null) {
       futures.add(
         TeluguLegacyTextService.convert(
-          resolvedDesignation,
-          fontFamily: designationFontFamily,
+          primaryDesignation,
+          fontFamily: primaryDesignationFontFamily,
+        ),
+      );
+    }
+
+    if (secondaryDesignation.isNotEmpty &&
+        _shouldConvertForLegacyTelugu(
+          secondaryDesignation,
+          secondaryDesignationFontFamily,
+        ) &&
+        TeluguLegacyTextService.cachedValue(
+              secondaryDesignation,
+              fontFamily: secondaryDesignationFontFamily,
+            ) ==
+            null) {
+      futures.add(
+        TeluguLegacyTextService.convert(
+          secondaryDesignation,
+          fontFamily: secondaryDesignationFontFamily,
         ),
       );
     }
@@ -22654,15 +22680,29 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     );
     final isBusinessProfile =
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
-    final resolvedDesignation = isBusinessProfile
+    final primaryDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.effectivePersonalDesignation;
+        : widget.viewerPosterProfile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : widget.viewerPosterProfile.secondaryPersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
-    final designationFontFamily = _resolveDesignationFontFamily(
-      resolvedDesignation,
+    final primaryDesignationFontFamily = _resolveDesignationFontFamily(
+      primaryDesignation,
+    );
+    final secondaryDesignationFontFamily = _resolveDesignationFontFamily(
+      secondaryDesignation,
     );
     return _legacyTextNeedsAsyncPrime(resolvedName, displayNameFontFamily) ||
-        _legacyTextNeedsAsyncPrime(resolvedDesignation, designationFontFamily);
+        _legacyTextNeedsAsyncPrime(
+          primaryDesignation,
+          primaryDesignationFontFamily,
+        ) ||
+        (secondaryDesignation.isNotEmpty &&
+            _legacyTextNeedsAsyncPrime(
+              secondaryDesignation,
+              secondaryDesignationFontFamily,
+            ));
   }
 
   bool _legacyTextNeedsAsyncPrime(String text, String? fontFamily) {
@@ -22728,17 +22768,25 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     );
     final isBusinessProfile =
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
-    final resolvedDesignation = isBusinessProfile
+    final primaryDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.effectivePersonalDesignation;
+        : widget.viewerPosterProfile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : widget.viewerPosterProfile.secondaryPersonalDesignation;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(resolvedName);
     final entries = await Future.wait<MapEntry<String, String>?>(
       <Future<MapEntry<String, String>?>>[
         _primeLegacyTextValue(resolvedName, displayNameFontFamily),
         _primeLegacyTextValue(
-          resolvedDesignation,
-          _resolveDesignationFontFamily(resolvedDesignation),
+          primaryDesignation,
+          _resolveDesignationFontFamily(primaryDesignation),
         ),
+        if (secondaryDesignation.isNotEmpty)
+          _primeLegacyTextValue(
+            secondaryDesignation,
+            _resolveDesignationFontFamily(secondaryDesignation),
+          ),
       ],
     );
     final updates = <String, String>{};
@@ -22815,9 +22863,18 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     );
     final isBusinessProfile =
         widget.viewerPosterProfile.identityMode == PosterIdentityMode.business;
-    final resolvedDesignation = isBusinessProfile
+    final primaryDesignation = isBusinessProfile
         ? widget.viewerPosterProfile.businessTagline.trim()
-        : widget.viewerPosterProfile.effectivePersonalDesignation;
+        : widget.viewerPosterProfile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : widget.viewerPosterProfile.secondaryPersonalDesignation;
+    final hasBothPersonalDesignations = !isBusinessProfile &&
+        primaryDesignation.isNotEmpty &&
+        secondaryDesignation.isNotEmpty;
+    final resolvedDesignation = primaryDesignation.isNotEmpty
+        ? primaryDesignation
+        : secondaryDesignation;
     final resolvedPhone = isBusinessProfile
         ? widget.viewerPosterProfile.activeWhatsappNumber.trim()
         : '';
@@ -22842,11 +22899,19 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
     );
+    final secondaryDesignationFontFamily = _resolveDesignationFontFamily(
+      secondaryDesignation,
+    );
     final usesLegacyTeluguDesignationFont = _usesLegacyTeluguStripFont(
       resolvedDesignation,
       designationFontFamily,
     );
-    final legacyTeluguDesignationBoost = usesLegacyTeluguDesignationFont
+    final usesLegacyTeluguSecondaryDesignationFont = _usesLegacyTeluguStripFont(
+      secondaryDesignation,
+      secondaryDesignationFontFamily,
+    );
+    final legacyTeluguDesignationBoost = (usesLegacyTeluguDesignationFont ||
+            usesLegacyTeluguSecondaryDesignationFont)
         ? 1.34
         : 1.0;
     final personalDesignationFontSize =
@@ -22874,8 +22939,10 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       return _buildPosterBottomStrip(
         resolvedName: resolvedName,
         resolvedDesignation: resolvedDesignation,
+        resolvedSecondaryDesignation: secondaryDesignation,
         displayNameFontFamily: displayNameFontFamily,
         designationFontFamily: designationFontFamily,
+        secondaryDesignationFontFamily: secondaryDesignationFontFamily,
         isBusinessProfile: isBusinessProfile,
         isTeluguName: isTeluguName,
         businessNameFontSize: businessNameFontSize * stripScale,
@@ -22932,7 +22999,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                             ? businessDesignationFontSize
                             : personalDesignationFontSize)
                         .abs() *
-                    (usesLegacyTeluguDesignationFont ? 1.28 : 1.10)
+                    (usesLegacyTeluguDesignationFont ? 1.28 : 1.10) *
+                    (hasBothPersonalDesignations ? 1.45 : 1.0)
               : 0.0;
           final fontNeededStripHeight =
               math.max(estimatedNameHeight, estimatedDesignationHeight) + 24.0;
@@ -23540,8 +23608,10 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
   Widget _buildPosterBottomStrip({
     required String resolvedName,
     required String resolvedDesignation,
+    String? resolvedSecondaryDesignation,
     required String? displayNameFontFamily,
     required String designationFontFamily,
+    String? secondaryDesignationFontFamily,
     required bool isBusinessProfile,
     required bool isTeluguName,
     required double businessNameFontSize,
@@ -23562,6 +23632,10 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final mutedStripTextColor = _mutedOnStripColor(stripColor);
     final dividerColor = mutedStripTextColor;
     final partyLogoSize = _nameChipPartyLogoSize(stripPixelHeight);
+    final hasBothDesignations = !isBusinessProfile &&
+        resolvedSecondaryDesignation != null &&
+        resolvedSecondaryDesignation.trim().isNotEmpty &&
+        resolvedDesignation.trim().isNotEmpty;
     Widget buildSplitStripRow({
       required double nameFontSize,
       required double designationFontSize,
@@ -23597,19 +23671,55 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
           const SizedBox(width: 6),
           Expanded(
             flex: 46,
-            child: _legacyAwareText(
-              text: resolvedDesignation,
-              fontFamily: designationFontFamily,
-              maxLines: 1,
-              textAlign: TextAlign.right,
-              fitToWidth: true,
-              style: TextStyle(
-                color: mutedStripTextColor,
-                fontWeight: designationFontWeight,
-                fontSize: designationFontSize,
-                height: designationHeight,
-              ),
-            ),
+            child: hasBothDesignations
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      _legacyAwareText(
+                        text: resolvedDesignation,
+                        fontFamily: designationFontFamily,
+                        maxLines: 1,
+                        textAlign: TextAlign.right,
+                        fitToWidth: true,
+                        style: TextStyle(
+                          color: mutedStripTextColor,
+                          fontWeight: designationFontWeight,
+                          fontSize: designationFontSize * 0.84,
+                          height: designationHeight,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      _legacyAwareText(
+                        text: resolvedSecondaryDesignation,
+                        fontFamily: secondaryDesignationFontFamily ??
+                            designationFontFamily,
+                        maxLines: 1,
+                        textAlign: TextAlign.right,
+                        fitToWidth: true,
+                        style: TextStyle(
+                          color: mutedStripTextColor.withValues(alpha: 0.90),
+                          fontWeight: FontWeight.w400,
+                          fontSize: designationFontSize * 0.72,
+                          height: designationHeight,
+                        ),
+                      ),
+                    ],
+                  )
+                : _legacyAwareText(
+                    text: resolvedDesignation,
+                    fontFamily: designationFontFamily,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                    fitToWidth: true,
+                    style: TextStyle(
+                      color: mutedStripTextColor,
+                      fontWeight: designationFontWeight,
+                      fontSize: designationFontSize,
+                      height: designationHeight,
+                    ),
+                  ),
           ),
         ],
       );

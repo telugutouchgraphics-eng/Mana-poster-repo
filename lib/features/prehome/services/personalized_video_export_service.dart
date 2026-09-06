@@ -778,8 +778,16 @@ class PersonalizedVideoExportService {
     final isBusinessProfile =
         profile.identityMode == PosterIdentityMode.business;
     final rawDesignation = isBusinessProfile
+    final primaryDesignation = isBusinessProfile
         ? profile.businessTagline.trim()
         : profile.effectivePersonalDesignation;
+        : profile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : profile.secondaryPersonalDesignation;
+    final hasBothPersonalDesignations = !isBusinessProfile &&
+        primaryDesignation.isNotEmpty &&
+        secondaryDesignation.isNotEmpty;
     final rawPhone = isBusinessProfile
         ? profile.activeWhatsappNumber.trim()
         : '';
@@ -791,6 +799,12 @@ class PersonalizedVideoExportService {
       stripGradientTapOffset: stripGradientTapOffset,
     );
     final designationFontFamily = _resolveDesignationFontFamily(rawDesignation);
+    final primaryDesignationFontFamily = _resolveDesignationFontFamily(
+      primaryDesignation,
+    );
+    final secondaryDesignationFontFamily = _resolveDesignationFontFamily(
+      secondaryDesignation,
+    );
     final displayName = await _legacyTextForExport(
       displayNameSource,
       displayNameFontFamily,
@@ -798,16 +812,31 @@ class PersonalizedVideoExportService {
     final displayDesignation = await _legacyTextForExport(
       rawDesignation,
       designationFontFamily,
+    final displayPrimary = await _legacyTextForExport(
+      primaryDesignation,
+      primaryDesignationFontFamily,
     );
+    final displaySecondary = secondaryDesignation.isNotEmpty
+        ? await _legacyTextForExport(
+            secondaryDesignation,
+            secondaryDesignationFontFamily,
+          )
+        : '';
+    final displayDesignation = hasBothPersonalDesignations
+        ? '$displayPrimary\n$displaySecondary'
+        : (displayPrimary.isNotEmpty ? displayPrimary : displaySecondary);
     final displayTrailing = displayDesignation.isNotEmpty
         ? displayDesignation
         : rawPhone;
     final nameUsesTeluguLayout = _containsTelugu(displayNameSource);
     final trailingUsesTeluguLayout =
         _containsTelugu(rawDesignation) ||
+        _containsTelugu(primaryDesignation) ||
+        _containsTelugu(secondaryDesignation) ||
         (displayDesignation.isEmpty && _containsTelugu(rawPhone));
     final trailingFontFamily = displayDesignation.isNotEmpty
         ? designationFontFamily
+        ? primaryDesignationFontFamily
         : (_containsTelugu(displayTrailing)
               ? 'Anek Telugu Condensed Medium'
               : 'Montserrat');
