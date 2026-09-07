@@ -765,16 +765,14 @@ class PersonalizedVideoExportService {
         ? profile.activeWhatsappNumber.trim()
         : '';
 
-    final stripBaseMultiplier = hasBothPersonalDesignations ? 0.92 : 0.82;
-    final stripHeight =
-        (outputHeight *
-                (personalization.stripHeight / 100) *
-                stripBaseMultiplier)
-            .round()
-            .clamp(1, math.max(1, (outputHeight * 0.20).round()))
-            .toInt();
+    final stripHeight = math
+        .max(
+          1,
+          (outputHeight * (personalization.stripHeight * 0.5 / 100)).round(),
+        )
+        .toInt();
     final stripWidth =
-        (outputWidth * (personalization.stripWidth.clamp(35.0, 100.0) / 100))
+        (outputWidth * (personalization.stripWidth.clamp(20.0, 100.0) / 100))
             .round()
             .clamp(1, outputWidth)
             .toInt();

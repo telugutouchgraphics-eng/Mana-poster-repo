@@ -22856,10 +22856,6 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final secondaryDesignation = isBusinessProfile
         ? ''
         : widget.viewerPosterProfile.secondaryPersonalDesignation;
-    final hasBothPersonalDesignations =
-        !isBusinessProfile &&
-        primaryDesignation.isNotEmpty &&
-        secondaryDesignation.isNotEmpty;
     final resolvedDesignation = primaryDesignation.isNotEmpty
         ? primaryDesignation
         : secondaryDesignation;
@@ -22911,9 +22907,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final englishPersonalNameFontSize = 30.0 * nameScaleFactor;
     final englishSplitNameFontSize = 28.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
-    final hasDesignationText =
-        resolvedDesignation.isNotEmpty || showPhoneInStrip;
-    final stripOverflowAllowance = 0.0;
+    const stripOverflowAllowance = 0.0;
 
     final showPhotoOverlay = _basePosterReady;
     final shouldShowBottomStrip =
@@ -22970,50 +22964,22 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             0.0,
             (constraints.maxWidth - visualWidth) / 2,
           );
-          final double stripBaseMultiplier = hasBothPersonalDesignations
-              ? 0.92
-              : 0.82;
-          final ratioBaseStripHeight = math
-              .max(
-                1.0,
-                visualHeight *
-                    (widget.personalizationConfig.stripHeight / 100) *
-                    stripBaseMultiplier,
-              )
-              .clamp(1.0, math.max(1.0, visualHeight * 0.20))
-              .toDouble();
-          final estimatedNameHeight =
-              (isBusinessProfile ? businessNameFontSize : personalNameFontSize)
-                  .abs() *
-              (usesLegacyTeluguNameFont ? 1.22 : 1.08);
-          final estimatedDesignationHeight = hasDesignationText
-              ? (isBusinessProfile
-                            ? businessDesignationFontSize
-                            : personalDesignationFontSize)
-                        .abs() *
-                    (usesLegacyTeluguDesignationFont ? 1.28 : 1.10) *
-                    (hasBothPersonalDesignations ? 1.45 : 1.0)
-              : 0.0;
-          final fontNeededStripHeight =
-              math.max(estimatedNameHeight, estimatedDesignationHeight) + 8.0;
+          final configuredStripHeightRatio =
+              (widget.personalizationConfig.stripHeight * 0.5) / 100;
           final stripPixelHeight = math
-              .max(ratioBaseStripHeight, fontNeededStripHeight)
-              .clamp(
-                ratioBaseStripHeight,
-                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.35),
-              )
+              .max(1.0, visualHeight * configuredStripHeightRatio)
               .toDouble();
           final defaultStripReferenceHeight = math
-              .max(1.0, visualHeight * (16 / 100) * 0.5)
+              .max(1.0, visualHeight * (16 * 0.5 / 100))
               .toDouble();
           final stripScale = (stripPixelHeight / defaultStripReferenceHeight)
-              .clamp(0.04, 1.42)
+              .clamp(0.1, 3.0)
               .toDouble();
           final scaledBottomStripPadding = (stripPixelHeight * 0.04)
-              .clamp(0.0, 5.0)
+              .clamp(0.0, 6.0)
               .toDouble();
           final stripWidthPercent = widget.personalizationConfig.stripWidth
-              .clamp(35.0, 100.0)
+              .clamp(20.0, 100.0)
               .toDouble();
           final stripWidthPx = visualWidth * (stripWidthPercent / 100);
           final stripCenterX = widget.personalizationConfig.stripX
@@ -23025,7 +22991,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
               (stripWidthPx / 2);
           final stripBottomPx =
               visualHeight *
-              (widget.personalizationConfig.stripBottom.clamp(0.0, 20.0) / 100);
+              (widget.personalizationConfig.stripBottom.clamp(0.0, 50.0) / 100);
           return Stack(
             clipBehavior: Clip.none,
             children: <Widget>[
