@@ -180,11 +180,11 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     if (isTelugu) {
       final converted = TeluguLegacyTextService.convertSync(
         rawName,
-        fontFamily: 'Pallavi Bold',
+        fontFamily: 'Pragathi',
       );
       if (converted != null && converted.trim().isNotEmpty) {
         displayName = converted;
-        fontFamily = 'Pallavi Bold';
+        fontFamily = 'Pragathi';
       }
     }
 
@@ -195,7 +195,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       style: TextStyle(
         color: color,
         fontSize: (fontFamily != null ? 20.0 : 18.0) * scale,
-        fontWeight: FontWeight.w900,
+        fontWeight: FontWeight.w600,
         fontFamily: fontFamily,
         letterSpacing: fontFamily != null ? 0.0 : -0.2,
         height: fontFamily != null ? 1.05 : 1.15,

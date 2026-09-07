@@ -11708,41 +11708,24 @@ String _subscriptionTrialValueAppLocalized(BuildContext context) {
   final days = SubscriptionPlanConfig.trialDays;
   final price = SubscriptionPlanConfig.trialPriceDisplay;
   return context.strings.localized(
-    telugu:
-        '$days ÃƒÂ Ã‚Â°Ã‚Â°ÃƒÂ Ã‚Â±Ã¢â‚¬Â¹ÃƒÂ Ã‚Â°Ã…â€œÃƒÂ Ã‚Â±Ã‚ÂÃƒÂ Ã‚Â°Ã‚Â²ÃƒÂ Ã‚Â°Ã¢â‚¬Â¢ÃƒÂ Ã‚Â±Ã‚Â $price',
+    telugu: '$days రోజులకు $price',
     english: '$price for $days days',
-    hindi:
-        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¹ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¥Ã¢â‚¬Â¡ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â $price',
-    tamil:
-        '$days ÃƒÂ Ã‚Â®Ã‚Â¨ÃƒÂ Ã‚Â®Ã‚Â¾ÃƒÂ Ã‚Â®Ã…Â¸ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â®Ã‚Â³ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚ÂÃƒÂ Ã‚Â®Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¯Ã‚Â $price',
-    kannada:
-        '$days ÃƒÂ Ã‚Â²Ã‚Â¦ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã‚Â¨ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â²Ã‚Â³ÃƒÂ Ã‚Â²Ã‚Â¿ÃƒÂ Ã‚Â²Ã¢â‚¬â€ÃƒÂ Ã‚Â³Ã¢â‚¬Â  $price',
-    malayalam:
-        '$days ÃƒÂ Ã‚Â´Ã‚Â¦ÃƒÂ Ã‚Â´Ã‚Â¿ÃƒÂ Ã‚Â´Ã‚ÂµÃƒÂ Ã‚Â´Ã‚Â¸ÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â€žÂ¢ÃƒÂ Ã‚ÂµÃ‚Â¾ÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚ÂÃƒÂ Ã‚Â´Ã¢â‚¬Â¢ÃƒÂ Ã‚ÂµÃ‚Â $price',
-    assamese:
-        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚Â° ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â¦Ã‚Â¾ÃƒÂ Ã‚Â¦Ã‚Â¬ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ $price',
-    konkani:
-        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â° $price',
-    gujarati:
-        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ 
-... [truncated for diff preview]
-        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
-    marathi:
-        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ $price',
+    hindi: '$days दिनों के लिए $price',
+    tamil: '$days நாட்களுக்கு $price',
+    kannada: '$days ದಿನಗಳಿಗೆ $price',
+    malayalam: '$days ദിവസത്തേക്ക് $price',
+    marathi: '$days दिवसांसाठी $price',
+    gujarati: '$days દિવસો માટે $price',
+    bengali: '$days দিনের জন্য $price',
+    punjabi: '$days ਦਿਨਾਂ ਲਈ $price',
+    odia: '$days ଦିନ ପାଇଁ $price',
+    assamese: '$days দিনৰ বাবে $price',
+    konkani: '$days दिसां खातीर $price',
+    nepali: '$days दिनका लागि $price',
     meitei: '$days numitki $price',
     mizo: '$days ni atan $price',
-    odia:
-        '$days ÃƒÂ Ã‚Â¬Ã‚Â¦ÃƒÂ Ã‚Â¬Ã‚Â¿ÃƒÂ Ã‚Â¬Ã‚Â¨ ÃƒÂ Ã‚Â¬Ã‚ÂªÃƒÂ Ã‚Â¬Ã‚Â¾ÃƒÂ Ã‚Â¬Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¬Ã‚Â $price',
-    punjabi:
-        '$days ÃƒÂ Ã‚Â¨Ã‚Â¦ÃƒÂ Ã‚Â¨Ã‚Â¿ÃƒÂ Ã‚Â¨Ã‚Â¨ÃƒÂ Ã‚Â¨Ã‚Â¾ÃƒÂ Ã‚Â¨Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¨Ã‚Â²ÃƒÂ Ã‚Â¨Ã‹â€  $price',
-    nepali:
-        '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¨ÃƒÂ Ã‚Â¤Ã¢â‚¬Â¢ÃƒÂ Ã‚Â¤Ã‚Â¾ ÃƒÂ Ã‚Â¤Ã‚Â²ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬â€ÃƒÂ Ã‚Â¤Ã‚Â¿ $price',
-    bengali:
-        '$days ÃƒÂ Ã‚Â¦Ã‚Â¦ÃƒÂ Ã‚Â¦Ã‚Â¿ÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã¢â‚¬Â¡ÃƒÂ Ã‚Â¦Ã‚Â° ÃƒÂ Ã‚Â¦Ã…â€œÃƒÂ Ã‚Â¦Ã‚Â¨ÃƒÂ Ã‚Â§Ã‚ÂÃƒÂ Ã‚Â¦Ã‚Â¯ $price',
-    kashmiri:
-        '$days ÃƒËœÃ‚Â¯Ãƒâ€ºÃ¢â‚¬Å¾Ãƒâ€ºÃ‚ÂÃƒâ„¢Ã¢â‚¬Â  ÃƒËœÃ‚Â®Ãƒâ„¢Ã‚Â²ÃƒËœÃ‚Â·ÃƒËœÃ‚Â±Ãƒâ„¢Ã¢â‚¬Â¢ $price',
-    ladakhi:
-        '$days ÃƒÂ Ã‚Â½Ã¢â‚¬Â°ÃƒÂ Ã‚Â½Ã‚Â²ÃƒÂ Ã‚Â½Ã¢â‚¬Å“ÃƒÂ Ã‚Â¼Ã¢â‚¬Â¹ÃƒÂ Ã‚Â½Ã‚Â£ $price',
+    kashmiri: '$days دۄہَن خٲطرٕ $price',
+    ladakhi: '$days ཉིན་གྱི་དོན་དུ་ $price',
   );
 }
 
@@ -14240,8 +14223,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   static final RegExp _teluguTextPattern = RegExp(r'[\u0C00-\u0C7F]');
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
   static const List<String> _randomPosterNameFonts = <String>[
-    'Pallavi Bold',
-    'Pallavi Medium',
     'Pragathi',
     'Brahma',
     'Kranthi',
@@ -14739,7 +14720,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
 
   String? _resolveDisplayNameFontFamily(String text) {
     if (_teluguTextPattern.hasMatch(text)) {
-      return _resolvePosterNameFontFamily(text);
+      final family = _resolvePosterNameFontFamily(text);
+      if (family.toLowerCase().contains('pallavi')) {
+        return 'Pragathi';
+      }
+      return family;
     }
     if (_latinTextPattern.hasMatch(text)) {
       return _resolveEnglishPosterNameFontFamily(text);
@@ -22060,8 +22045,6 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
   static final RegExp _latinTextPattern = RegExp(r'[A-Za-z]');
 
   static const List<String> _randomPosterNameFonts = <String>[
-    'Pallavi Bold',
-    'Pallavi Medium',
     'Pragathi',
     'Brahma',
     'Kranthi',
@@ -22372,7 +22355,11 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
 
   String? _resolveDisplayNameFontFamily(String text) {
     if (_teluguTextPattern.hasMatch(text)) {
-      return _resolvePosterNameFontFamily(text);
+      final family = _resolvePosterNameFontFamily(text);
+      if (family.toLowerCase().contains('pallavi')) {
+        return 'Pragathi';
+      }
+      return family;
     }
     if (_latinTextPattern.hasMatch(text)) {
       return _resolveEnglishPosterNameFontFamily(text);
@@ -22984,8 +22971,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             (constraints.maxWidth - visualWidth) / 2,
           );
           final double stripBaseMultiplier = hasBothPersonalDesignations
-              ? 0.72
-              : 0.58;
+              ? 0.92
+              : 0.82;
           final ratioBaseStripHeight = math
               .max(
                 1.0,
@@ -23013,7 +23000,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
               .max(ratioBaseStripHeight, fontNeededStripHeight)
               .clamp(
                 ratioBaseStripHeight,
-                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.25),
+                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.35),
               )
               .toDouble();
           final defaultStripReferenceHeight = math
@@ -23022,8 +23009,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
           final stripScale = (stripPixelHeight / defaultStripReferenceHeight)
               .clamp(0.04, 1.42)
               .toDouble();
-          final scaledBottomStripPadding = (stripPixelHeight * 0.05)
-              .clamp(0.0, 6.0)
+          final scaledBottomStripPadding = (stripPixelHeight * 0.04)
+              .clamp(0.0, 5.0)
               .toDouble();
           final stripWidthPercent = widget.personalizationConfig.stripWidth
               .clamp(35.0, 100.0)
@@ -23685,20 +23672,17 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             flex: 48,
             child: SizedBox.expand(
               child: hasBothDesignations
-                  ? FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          _legacyAwareText(
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Expanded(
+                          child: _legacyAwareText(
                             text: resolvedDesignation,
                             fontFamily: designationFontFamily,
                             maxLines: 1,
                             textAlign: TextAlign.center,
-                            fitToWidth: false,
+                            fitToWidth: true,
                             style: TextStyle(
                               color: mutedStripTextColor,
                               fontWeight: designationFontWeight,
@@ -23706,24 +23690,26 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                               height: designationHeight,
                             ),
                           ),
-                          const SizedBox(height: 1.5),
-                          _legacyAwareText(
+                        ),
+                        const SizedBox(height: 1.5),
+                        Expanded(
+                          child: _legacyAwareText(
                             text: resolvedSecondaryDesignation,
                             fontFamily:
                                 secondaryDesignationFontFamily ??
                                 designationFontFamily,
                             maxLines: 1,
                             textAlign: TextAlign.center,
-                            fitToWidth: false,
+                            fitToWidth: true,
                             style: TextStyle(
                               color: mutedStripTextColor,
                               fontWeight: designationFontWeight,
-                              fontSize: designationFontSize,
+                              fontSize: designationFontSize * 0.92,
                               height: designationHeight,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     )
                   : _legacyAwareText(
                       text: resolvedDesignation,
@@ -23783,10 +23769,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
               designationFontSize: _isEnglishOnlyText(resolvedName)
                   ? englishDesignationFontSize
                   : businessDesignationFontSize,
-              nameFontWeight: FontWeight.w600,
-              designationFontWeight: _isEnglishOnlyText(resolvedName)
-                  ? FontWeight.w600
-                  : FontWeight.w500,
+              nameFontWeight: FontWeight.w500,
+              designationFontWeight: FontWeight.w500,
               nameHeight: isTeluguName ? 0.98 : 1.0,
               designationHeight: 0.98,
             )
@@ -23818,7 +23802,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                               fitToWidth: true,
                               style: TextStyle(
                                 color: stripTextColor,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w500,
                                 fontSize: businessNameFontSize,
                                 height: isTeluguName ? 0.98 : 1.0,
                               ),
@@ -23841,7 +23825,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             fitToWidth: true,
             style: TextStyle(
               color: stripTextColor,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
               fontSize: englishPersonalNameFontSize,
               height: 1.0,
             ),
@@ -23853,8 +23837,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       content = buildSplitStripRow(
         nameFontSize: englishSplitNameFontSize,
         designationFontSize: englishDesignationFontSize,
-        nameFontWeight: FontWeight.w700,
-        designationFontWeight: FontWeight.w600,
+        nameFontWeight: FontWeight.w500,
+        designationFontWeight: FontWeight.w500,
         nameHeight: 1.0,
         designationHeight: 1.0,
       );
@@ -23863,7 +23847,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         content = buildSplitStripRow(
           nameFontSize: personalNameFontSize,
           designationFontSize: personalDesignationFontSize,
-          nameFontWeight: FontWeight.w600,
+          nameFontWeight: FontWeight.w500,
           designationFontWeight: FontWeight.w500,
           nameHeight: personalNameLineHeight,
           designationHeight: 0.86,
@@ -23871,7 +23855,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       } else {
         content = buildSingleName(
           nameFontSize: personalNameFontSize,
-          nameFontWeight: FontWeight.w600,
+          nameFontWeight: FontWeight.w500,
           nameHeight: personalNameLineHeight,
         );
       }

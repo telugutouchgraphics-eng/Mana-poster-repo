@@ -765,14 +765,12 @@ class PersonalizedVideoExportService {
         ? profile.activeWhatsappNumber.trim()
         : '';
 
-    final stripBaseMultiplier = hasBothPersonalDesignations ? 0.72 : 0.58;
+    final stripBaseMultiplier = hasBothPersonalDesignations ? 0.92 : 0.82;
     final stripHeight =
-        (outputHeight * (personalization.stripHeight / 100) * 0.5)
         (outputHeight *
                 (personalization.stripHeight / 100) *
                 stripBaseMultiplier)
             .round()
-            .clamp(1, math.max(1, (outputHeight * 0.18).round()))
             .clamp(1, math.max(1, (outputHeight * 0.20).round()))
             .toInt();
     final stripWidth =
@@ -795,23 +793,6 @@ class PersonalizedVideoExportService {
       ui.Rect.fromLTWH(0, 0, stripWidth.toDouble(), stripHeight.toDouble()),
       ui.Paint()..color = stripColor,
     );
-
-    final rawName = profile.resolvedName(language: language).trim();
-    final isBusinessProfile =
-        profile.identityMode == PosterIdentityMode.business;
-    final primaryDesignation = isBusinessProfile
-        ? profile.businessTagline.trim()
-        : profile.primaryPersonalDesignation;
-    final secondaryDesignation = isBusinessProfile
-        ? ''
-        : profile.secondaryPersonalDesignation;
-    final hasBothPersonalDesignations =
-        !isBusinessProfile &&
-        primaryDesignation.isNotEmpty &&
-        secondaryDesignation.isNotEmpty;
-    final rawPhone = isBusinessProfile
-        ? profile.activeWhatsappNumber.trim()
-        : '';
     final displayNameSource = rawName.isEmpty ? 'Mana Poster' : rawName;
     final displayNameFontFamily = _resolveDisplayNameFontFamily(
       displayNameSource,
@@ -948,11 +929,9 @@ class PersonalizedVideoExportService {
           ),
           maxWidth: trailingMaxWidth,
           maxHeight: availableTextHeight,
-          textAlign: ui.TextAlign.right,
           textAlign: ui.TextAlign.center,
         ),
         maxWidth: trailingMaxWidth,
-        textAlign: ui.TextAlign.right,
         textAlign: ui.TextAlign.center,
       );
       final trailingY = (stripHeight - trailingParagraph.height) / 2;
@@ -1059,12 +1038,16 @@ class PersonalizedVideoExportService {
     required int stripGradientTapOffset,
   }) {
     if (_teluguTextPattern.hasMatch(text)) {
-      return _resolvePosterNameFontFamily(
+      final family = _resolvePosterNameFontFamily(
         text,
         previewSeed: previewSeed,
         personalization: personalization,
         stripGradientTapOffset: stripGradientTapOffset,
       );
+      if (family.toLowerCase().contains('pallavi')) {
+        return 'Pragathi';
+      }
+      return family;
     }
     if (_latinTextPattern.hasMatch(text)) {
       return _resolveEnglishPosterNameFontFamily(
