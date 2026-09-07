@@ -14,6 +14,7 @@ import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/features/image_editor/services/background_removal_service.dart';
 import 'package:mana_poster/features/prehome/screens/digital_visiting_card_screen.dart';
 import 'package:mana_poster/features/prehome/screens/my_downloads_screen.dart';
+import 'package:mana_poster/features/prehome/widgets/onboarding_visiting_card_dialog.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
 import 'package:mana_poster/features/prehome/services/profile_photo_guide_service.dart';
@@ -1243,13 +1244,9 @@ class _PosterProfileDetailsScreenState
     final updated = _currentProfileFromInputs();
     if (!_hasUnsavedChanges) {
       if (widget.completeToHomeOnSave) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => DigitalVisitingCardScreen(
-              initialProfile: updated,
-              fromOnboarding: true,
-            ),
-          ),
+        OnboardingVisitingCardDialog.show(
+          context,
+          profile: updated,
         );
       }
       return;
@@ -1261,13 +1258,9 @@ class _PosterProfileDetailsScreenState
         return;
       }
       if (widget.completeToHomeOnSave) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => DigitalVisitingCardScreen(
-              initialProfile: updated,
-              fromOnboarding: true,
-            ),
-          ),
+        OnboardingVisitingCardDialog.show(
+          context,
+          profile: updated,
         );
       } else if (widget.embeddedInProfileScreen) {
         widget.onSaved?.call(updated);
