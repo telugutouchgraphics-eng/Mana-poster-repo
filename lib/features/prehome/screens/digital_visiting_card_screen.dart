@@ -32,7 +32,7 @@ class DigitalVisitingCardScreen extends StatefulWidget {
 class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
   final GlobalKey _cardBoundaryKey = GlobalKey();
   late PosterProfileData _profile;
-  VisitingCardStyle _selectedStyle = VisitingCardStyle.royalBlue;
+  VisitingCardStyle _selectedStyle = VisitingCardStyle.classicPearlGold;
   bool _saving = false;
   bool _sharing = false;
   bool _savingDetails = false;
@@ -470,34 +470,6 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        Text(
-                          context.strings.localized(
-                            telugu: 'ప్రింటబుల్ సైజ్ (3.5" × 2.0")',
-                            english: 'Printable Size (3.5" × 2.0")',
-                            hindi: 'प्रिंट करने योग्य आकार (3.5" × 2.0")',
-                            tamil: 'அச்சிடக்கூடிய அளவு (3.5" × 2.0")',
-                            kannada: 'ಮುದ್ರಿಸಬಹುದಾದ ಗಾತ್ರ (3.5" × 2.0")',
-                            malayalam:
-                                'പ്രിന്റ് ചെയ്യാവുന്ന വലുപ്പം (3.5" × 2.0")',
-                            marathi: 'मुद्रणयोग्य आकार (3.5" × 2.0")',
-                            gujarati: 'પ્રિન્ટ કરી શકાય તેવું કદ (3.5" × 2.0")',
-                            bengali: 'প্রিন্টযোগ্য আকার (3.5" × 2.0")',
-                            punjabi: 'ਛਪਣਯੋਗ ਆਕਾਰ (3.5" × 2.0")',
-                            odia: 'ମୁଦ୍ରଣଯୋଗ୍ୟ ଆକାର (3.5" × 2.0")',
-                            assamese: 'প্ৰিণ্টযোগ্য আকাৰ (3.5" × 2.0")',
-                            konkani: 'छापपा सारकें माप (3.5" × 2.0")',
-                            nepali: 'मुद्रणयोग्य आकार (3.5" × 2.0")',
-                            meitei: 'নমবা য়াবা অকক (3.5" × 2.0")',
-                            mizo: 'Chhut theih chin (3.5" × 2.0")',
-                            kashmiri: 'پرِنٛٹ کَرنہٕ لائق سائز (3.5" × 2.0")',
-                            ladakhi: 'Par thub pa’i thad (3.5" × 2.0")',
-                          ),
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -547,86 +519,136 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    // Card Style Switcher Chips
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                    // 5 Premium Card Style Switcher Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
                       child: Row(
                         children: <Widget>[
                           _buildStyleChip(
                             label: context.strings.localized(
-                              telugu: 'రాయల్ బ్లూ',
-                              english: 'Royal Blue',
-                              hindi: 'रॉयल ब्लू',
-                              tamil: 'ராயல் நீலம்',
-                              kannada: 'ರಾಯಲ್ ಬ್ಲೂ',
-                              malayalam: 'റോയൽ ബ്ലൂ',
-                              marathi: 'रॉयल ब्लू',
-                              gujarati: 'રોયલ બ્લુ',
-                              bengali: 'রয়্যাল ব্লু',
-                              punjabi: 'ਰਾਇਲ ਬਲੂ',
-                              odia: 'ରୟାଲ୍ ବ୍ଲୁ',
-                              assamese: 'ৰয়েল ব্লু',
-                              konkani: 'रॉयल ब्लू',
-                              nepali: 'रोयल निलो',
-                              meitei: 'রোয়ল ব্লু',
-                              mizo: 'Royal Blue',
-                              kashmiri: 'رائل بلیو',
-                              ladakhi: 'Royal Blue',
+                              telugu: 'పెర్ల్ & గోల్డ్',
+                              english: 'Pearl & Gold',
+                              hindi: 'पर्ल और गोल्ड',
+                              tamil: 'முத்து & தங்கம்',
+                              kannada: 'ಪರ್ಲ್ & ಗೋಲ್ಡ್',
+                              malayalam: 'പേൾ & ഗോൾഡ്',
+                              marathi: 'पर्ल आणि गोल्ड',
+                              gujarati: 'પર્લ અને ગોલ્ડ',
+                              bengali: 'পার্ল ও গোল্ড',
+                              punjabi: 'ਪਰਲ ਅਤੇ ਗੋਲਡ',
+                              odia: 'ପର୍ଲ ଏବଂ ଗୋଲ୍ଡ',
+                              assamese: 'পাৰ্ল আৰু গোল্ড',
+                              konkani: 'पर्ल आनी गोल्ड',
+                              nepali: 'पर्ल र सुनौलो',
+                              meitei: 'মুক্তা অমসুং শনা',
+                              mizo: 'Pearl & Gold',
+                              kashmiri: 'پَرل تہٕ گولڈ',
+                              ladakhi: 'Pearl & Gold',
                             ),
-                            style: VisitingCardStyle.royalBlue,
-                            activeColor: const Color(0xFF2563EB),
+                            style: VisitingCardStyle.classicPearlGold,
+                            activeColor: const Color(0xFFD4AF37),
+                            activeTextColor: const Color(0xFF0F172A),
                           ),
+                          const SizedBox(width: 8),
                           _buildStyleChip(
                             label: context.strings.localized(
-                              telugu: 'రాయల్ గోల్డ్',
-                              english: 'Royal Gold',
-                              hindi: 'रॉयल गोल्ड',
-                              tamil: 'ராயல் தங்கம்',
-                              kannada: 'ರಾಯಲ್ ಗೋಲ್ಡ್',
-                              malayalam: 'റോയൽ ഗോൾഡ്',
-                              marathi: 'रॉयल गोल्ड',
-                              gujarati: 'રોયલ ગોલ્ડ',
-                              bengali: 'রয়্যাল গোল্ড',
-                              punjabi: 'ਰਾਇਲ ਗੋਲਡ',
-                              odia: 'ରୟାଲ୍ ଗୋଲ୍ଡ',
-                              assamese: 'ৰয়েল গোল্ড',
-                              konkani: 'रॉयल गोल्ड',
-                              nepali: 'रोयल सुनौलो',
-                              meitei: 'রোয়ল শনা',
-                              mizo: 'Royal Gold',
-                              kashmiri: 'رائل گولڈ',
-                              ladakhi: 'Royal Gold',
+                              telugu: 'డ్యూయల్-టోన్ గోల్డ్',
+                              english: 'Dual-Tone Gold',
+                              hindi: 'ड्यूल-टोन गोल्ड',
+                              tamil: 'டூயல்-டோன் தங்கம்',
+                              kannada: 'ಡ್ಯುಯಲ್-ಟೋನ್ ಗೋಲ್ಡ್',
+                              malayalam: 'ഡ്യുവൽ-ടോൺ ಗೋಲ್ಡ್',
+                              marathi: 'ड्युअल-टोन गोल्ड',
+                              gujarati: 'ડ્યુઅલ-ટોન ગોલ્ડ',
+                              bengali: 'ডুয়াল-টোন গোল্ড',
+                              punjabi: 'ਡਿਊਲ-ਟੋਨ ਗੋਲਡ',
+                              odia: 'ଡୁଆଲ୍-ଟୋନ୍ ଗୋଲ୍ଡ',
+                              assamese: 'ডুৱেল-টোন গোল্ড',
+                              konkani: 'ड्युअल-टोन गोल्ड',
+                              nepali: 'डुअल-टोन सुनौलो',
+                              meitei: 'দিয়ুয়েল-তোন শনা',
+                              mizo: 'Dual-Tone Gold',
+                              kashmiri: 'ڈیوٗل ٹون گولڈ',
+                              ladakhi: 'Dual-Tone Gold',
                             ),
-                            style: VisitingCardStyle.royalGold,
-                            activeColor: const Color(0xFF800020),
+                            style: VisitingCardStyle.dualToneObsidian,
+                            activeColor: const Color(0xFFB45309),
                           ),
+                          const SizedBox(width: 8),
                           _buildStyleChip(
                             label: context.strings.localized(
-                              telugu: 'ఎమరాల్డ్',
-                              english: 'Emerald',
-                              hindi: 'एमराल्ड',
-                              tamil: 'மரகதம்',
-                              kannada: 'ಎಮರಾಲ್ಡ್',
-                              malayalam: 'എമറാൾഡ്',
-                              marathi: 'एमराल्ड',
-                              gujarati: 'એમરાલ્ડ',
-                              bengali: 'এমরাল্ড',
-                              punjabi: 'ਐਮਰਾਲਡ',
-                              odia: 'ଏମରାଲ୍ଡ',
-                              assamese: 'এমৰাল্ড',
-                              konkani: 'पाचवो',
-                              nepali: 'पन्ना',
-                              meitei: 'মরকত',
-                              mizo: 'Emerald',
-                              kashmiri: 'زمرد',
-                              ladakhi: 'Emerald',
+                              telugu: 'రాయల్ సాఫైర్',
+                              english: 'Royal Sapphire',
+                              hindi: 'रॉयल नीलम',
+                              tamil: 'ராயல் நீலக்கல்',
+                              kannada: 'ರಾಯಲ್ ನೀಲಮಣಿ',
+                              malayalam: 'റോയൽ സഫയർ',
+                              marathi: 'रॉयल नीलम',
+                              gujarati: 'રોયલ સેફાયર',
+                              bengali: 'রয়্যাল স্যাফায়ার',
+                              punjabi: 'ਰਾਇਲ ਨੀਲਮ',
+                              odia: 'ରୟାଲ୍ ନୀଳମଣି',
+                              assamese: 'ৰয়েল নীলামণি',
+                              konkani: 'रॉयल नीलम',
+                              nepali: 'रोयल नीलम',
+                              meitei: 'রোয়ল সেফায়র',
+                              mizo: 'Royal Sapphire',
+                              kashmiri: 'رائل نیلم',
+                              ladakhi: 'Royal Sapphire',
                             ),
-                            style: VisitingCardStyle.emeraldTech,
+                            style: VisitingCardStyle.royalSapphire,
+                            activeColor: const Color(0xFF0284C7),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStyleChip(
+                            label: context.strings.localized(
+                              telugu: 'ఎమరాల్డ్ క్రెస్ట్',
+                              english: 'Emerald Crest',
+                              hindi: 'एमराल्ड क्रेस्ट',
+                              tamil: 'எமரால்டு க்ரெஸ்ட்',
+                              kannada: 'ಎಮರಾಲ್ಡ್ ಕ್ರೆಸ್ಟ್',
+                              malayalam: 'എമറാൾഡ് ക്രസ്റ്റ്',
+                              marathi: 'एमराल्ड क्रेस्ट',
+                              gujarati: 'એમરાલ્ડ ક્રેસ્ટ',
+                              bengali: 'এমরাল্ড ক্রেস্ট',
+                              punjabi: 'ਐਮਰਾਲਡ ਕ੍ਰੈਸਟ',
+                              odia: 'ଏମରାଲ୍ଡ କ୍ରେଷ୍ଟ',
+                              assamese: 'এমৰাল্ড ক্ৰেষ্ট',
+                              konkani: 'एमराल्ड क्रेस्ट',
+                              nepali: 'एमराल्ड क्रेस्ट',
+                              meitei: 'মরকত ক্রেস্ত',
+                              mizo: 'Emerald Crest',
+                              kashmiri: 'زمرد کریٛسٹ',
+                              ladakhi: 'Emerald Crest',
+                            ),
+                            style: VisitingCardStyle.emeraldCrest,
                             activeColor: const Color(0xFF059669),
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStyleChip(
+                            label: context.strings.localized(
+                              telugu: 'మోడరన్ స్లేట్',
+                              english: 'Modern Slate',
+                              hindi: 'मॉडर्न स्लेट',
+                              tamil: 'மாடர்ன் ஸ்லேட்',
+                              kannada: 'ಮಾಡರ್ನ್ ಸ್ಲೇಟ್',
+                              malayalam: 'മോഡേൺ സ്ലೇറ്റ്',
+                              marathi: 'मॉडर्न स्लेट',
+                              gujarati: 'મોડર્ન સ્લેಟ್',
+                              bengali: 'মডার্ন স্লেট',
+                              punjabi: 'ਮਾਡਰਨ ਸਲੇਟ',
+                              odia: 'ମଡର୍ଣ୍ଣ ସ୍ଲେଟ୍',
+                              assamese: 'মডাৰ্ন শ্লেট',
+                              konkani: 'मॉडर्न स्लेट',
+                              nepali: 'आधुनिक स्लेट',
+                              meitei: 'মদর্ন স্লেত',
+                              mizo: 'Modern Slate',
+                              kashmiri: 'ماڈرن سلیٹ',
+                              ladakhi: 'Modern Slate',
+                            ),
+                            style: VisitingCardStyle.modernTitaniumSlate,
+                            activeColor: const Color(0xFFEA580C),
                           ),
                         ],
                       ),
@@ -646,58 +668,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-
-                    // Prompt Hint
-                    Center(
-                      child: Text(
-                        context.strings.localized(
-                          telugu:
-                              '💡 మీ ప్రొఫైల్ వివరాలతో ఆటోమేటిక్‌గా రూపొందించబడింది',
-                          english:
-                              '💡 Automatically generated with your profile details',
-                          hindi:
-                              '💡 आपके प्रोफाइल विवरण के साथ स्वचालित रूप से तैयार',
-                          tamil:
-                              '💡 உங்கள் சுயவிவர விவரங்களுடன் தானாக உருவாக்கப்பட்டது',
-                          kannada:
-                              '💡 ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ವಿವರಗಳೊಂದಿಗೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ರಚಿಸಲಾಗಿದೆ',
-                          malayalam:
-                              '💡 നിങ്ങളുടെ പ്രൊഫൈൽ വിശദാംശങ്ങൾ ഉപയോഗിച്ച് സ്വയമേവ സൃഷ്ടിച്ചു',
-                          marathi:
-                              '💡 तुमच्या प्रोफाइल तपशीलांसह स्वयंचलितपणे तयार केले',
-                          gujarati:
-                              '💡 તમારી પ્રોફાઇલ વિગતો સાથે આપમેળે જનરેટ થયેલ',
-                          bengali:
-                              '💡 আপনার প্রোফাইলের তথ্যের সাথে স্বয়ংক্রিয়ভাবে তৈরি',
-                          punjabi:
-                              '💡 ਤੁਹਾਡੇ ਪ੍ਰੋਫਾਈਲ ਵੇਰਵਿਆਂ ਨਾਲ ਆਟੋਮੈਟਿਕ ਤਿਆਰ ਕੀਤਾ ਗਿਆ',
-                          odia:
-                              '💡 ଆପଣଙ୍କ ପ୍ରୋଫାଇଲ୍ ବିବରଣୀ ସହିତ ସ୍ୱତଃ ପ୍ରସ୍ତୁତ',
-                          assamese:
-                              '💡 আপোনাৰ প্ৰ’ফাইল বিৱৰণৰ সৈতে স্বয়ংক্ৰিয়ভাৱে সৃষ্টি কৰা হৈছে',
-                          konkani:
-                              '💡 तुमच्या प्रोफायल तपशीलां सयत आपशींच तयार केल्लें',
-                          nepali:
-                              '💡 तपाईंको प्रोफाइल विवरणसहित स्वतः सिर्जना गरिएको',
-                          meitei:
-                              '💡 নহাক্কী প্রোফাইল মরোলগা লোয়ননা অচুম্বা মওংদা শেম্বা',
-                          mizo:
-                              '💡 I profile kimchang hmanga mahni intihpuitlinna',
-                          kashmiri:
-                              '💡 تہٕنٛزِ پروفائل تفصیٖلاتَن سٟتؠ پانہٕ بَنٲومُت',
-                          ladakhi: '💡 Nye profile thad dang mnyam du bzos pa',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF64748B),
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // Action Buttons: Save to Gallery & Share
                     Row(
@@ -823,51 +794,51 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
                     // Primary Button: Go to Home (if from onboarding)
                     if (widget.fromOnboarding)
-                    if (widget.fromOnboarding) ...<Widget>[
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 52,
-                        child: OutlinedButton(
-                          onPressed: _continueToHome,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(
-                              color: Color(0xFF334155),
-                              width: 1.5,
+                      if (widget.fromOnboarding) ...<Widget>[
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: _continueToHome,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(
+                                color: Color(0xFF334155),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: Text(
-                            context.strings.localized(
-                              telugu: 'యాప్ లోకి వెళ్లండి (Home)',
-                              english: 'Continue to Home',
-                              hindi: 'होम पर आगे बढ़ें',
-                              tamil: 'முகப்புக்குத் தொடரவும்',
-                              kannada: 'ಮುಖಪುಟಕ್ಕೆ ಮುಂದುವರಿಯಿರಿ',
-                              malayalam: 'ഹോമിലേക്ക് തുടരുക',
-                              marathi: 'मुख्यपृष्ठावर पुढे जा',
-                              gujarati: 'હોમ પર આગળ વધો',
-                              bengali: 'হোমে এগিয়ে যান',
-                              punjabi: 'ਹੋਮ ਤੇ ਅੱਗੇ ਵਧੋ',
-                              odia: 'ହୋମ୍ କୁ ଆଗକୁ ଯାଆନ୍ତୁ',
-                              assamese: 'হোমলৈ অগ্ৰসৰ হওক',
-                              konkani: 'घरा मुखार वचात',
-                              nepali: 'गृहपृष्ठमा अगाडि बढ्नुहोस्',
-                              meitei: 'হোমদা চৎথরো',
-                              mizo: 'Home-ah kal chhunzawm rawh',
-                              kashmiri: 'ہومس کُن برٛونٛہہ پَکِو',
-                              ladakhi: 'Home la don',
-                            ),
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
+                            child: Text(
+                              context.strings.localized(
+                                telugu: 'యాప్ లోకి వెళ్లండి (Home)',
+                                english: 'Continue to Home',
+                                hindi: 'होम पर आगे बढ़ें',
+                                tamil: 'முகப்புக்குத் தொடரவும்',
+                                kannada: 'ಮುಖಪುಟಕ್ಕೆ ಮುಂದುವರಿಯಿರಿ',
+                                malayalam: 'ഹോമിലേക്ക് തുടരുക',
+                                marathi: 'मुख्यपृष्ठावर पुढे जा',
+                                gujarati: 'હોમ પર આગળ વધો',
+                                bengali: 'হোমে এগিয়ে যান',
+                                punjabi: 'ਹੋਮ ਤੇ ਅੱਗੇ ਵਧੋ',
+                                odia: 'ହୋମ୍ କୁ ଆଗକୁ ଯାଆନ୍ତୁ',
+                                assamese: 'হোমলৈ অগ্ৰসৰ হওক',
+                                konkani: 'घरा मुखार वचात',
+                                nepali: 'गृहपृष्ठमा अगाडि बढ्नुहोस्',
+                                meitei: 'হোমদা চৎথরো',
+                                mizo: 'Home-ah kal chhunzawm rawh',
+                                kashmiri: 'ہومس کُن برٛونٛہہ پَکِو',
+                                ladakhi: 'Home la don',
+                              ),
+                              style: const TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
                   ],
                 ),
               ),
@@ -882,26 +853,38 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
     required String label,
     required VisitingCardStyle style,
     required Color activeColor,
+    Color activeTextColor = Colors.white,
   }) {
     final selected = _selectedStyle == style;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedStyle = style),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? activeColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: () => setState(() => _selectedStyle = style),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? activeColor : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? activeColor : const Color(0xFF334155),
+            width: 1.2,
           ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF94A3B8),
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-            ),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: activeColor.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? activeTextColor : const Color(0xFF94A3B8),
+            fontSize: 12.5,
+            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
           ),
         ),
       ),
@@ -914,82 +897,11 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF334155),
-          width: 1.2,
-        ),
+        border: Border.all(color: const Color(0xFF334155), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Icon(
-                Icons.tune_rounded,
-                color: Color(0xFF38BDF8),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  context.strings.localized(
-                    telugu: 'కార్డ్ వివరాల అనుకూలీకరణ',
-                    english: 'Customize Card Details',
-                    hindi: 'कार्ड विवरण कस्टमाइज़ करें',
-                    tamil: 'கார்டு விவரங்களைத் தனிப்பயனாக்கு',
-                    kannada: 'ಕಾರ್ಡ್ ವಿವರಗಳನ್ನು ಕಸ್ಟಮೈಸ್ ಮಾಡಿ',
-                    malayalam: 'കാർഡ് വിശദാംശങ്ങൾ ക്രമീകരിക്കുക',
-                    marathi: 'कार्ड तपशील सानुकूलित करा',
-                    gujarati: 'કાર્ડ વિગતો કસ્ટમાઇઝ કરો',
-                    bengali: 'কার্ডের বিবরণ কাস্টমাইজ করুন',
-                    punjabi: 'ਕਾਰਡ ਵੇਰਵੇ ਕਸਟਮਾਈਜ਼ ਕਰੋ',
-                    odia: 'କାର୍ଡ ବିବରଣୀ କଷ୍ଟମାଇଜ୍ କରନ୍ତୁ',
-                    assamese: 'কাৰ্ডৰ বিৱৰণ কাষ্টমাইজ কৰক',
-                    konkani: 'कार्ड तपशील बदलून घेयात',
-                    nepali: 'कार्ड विवरणहरू अनुकूलित गर्नुहोस्',
-                    meitei: 'কার্দকী অকুপ্পা মরোল কস্তমাইজ তৌ',
-                    mizo: 'Card kimchang herremna',
-                    kashmiri: 'کارڈ تفصیٖلات کسٹمائز کٔرِو',
-                    ladakhi: 'Card details customize byed',
-                  ),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.strings.localized(
-              telugu: 'మీ ఈమెయిల్ మరియు చిరునామాను ఇక్కడ సెట్ చేసుకోవచ్చు',
-              english: 'Set your email and address here',
-              hindi: 'यहाँ अपना ईमेल और पता दर्ज करें',
-              tamil: 'உங்கள் மின்னஞ்சல் மற்றும் முகவரியை இங்கே அமைக்கவும்',
-              kannada: 'ನಿಮ್ಮ ಇಮೇಲ್ ಮತ್ತು ವಿಳಾಸವನ್ನು ಇಲ್ಲಿ ನಮೂದಿಸಿ',
-              malayalam: 'നിങ്ങളുടെ ഇമെയിലും വിലാസവും ഇവിടെ നൽകുക',
-              marathi: 'येथे तुमचा ईमेल आणि पत्ता प्रविष्ट करा',
-              gujarati: 'તમારો ઇમેઇલ અને સરનામું અહીં સેટ કરો',
-              bengali: 'আপনার ইমেল এবং ঠিকানা এখানে সেট করুন',
-              punjabi: 'ਆਪਣਾ ਈਮੇਲ ਅਤੇ ਪਤਾ ਇੱਥੇ ਦਰਜ ਕਰੋ',
-              odia: 'ଆପଣଙ୍କ ଇମେଲ୍ ଏବଂ ଠିକଣା ଏଠାରେ ସେଟ୍ କରନ୍ତୁ',
-              assamese: 'আপোনাৰ ইমেইল আৰু ঠিকনা ইয়াত যোগ কৰক',
-              konkani: 'तुमचो ईमेल आनी पत्तो हांगा घालात',
-              nepali: 'यहाँ आफ्नो इमेल र ठेगाना सेट गर्नुहोस्',
-              meitei: 'নহাক্কী ইমেল অমসুং লৈফম মফমসিদা থম্মু',
-              mizo: 'I email leh address hetah hian dah rawh',
-              kashmiri: 'پَنُن اِی میل تہٕ پتہٕ اَتھ جایہِ دَرٕج کٔرِو',
-              ladakhi: 'Nye email dang address dir thog',
-            ),
-            style: const TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 16),
           // Email Field
           Text(
             context.strings.localized(
