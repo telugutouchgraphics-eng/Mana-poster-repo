@@ -36,6 +36,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
   bool _saving = false;
   bool _sharing = false;
   bool _savingDetails = false;
+  bool _isCapturing = false;
   bool _loading = true;
   late final TextEditingController _emailController;
   late final TextEditingController _addressController;
@@ -85,6 +86,11 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
   Future<String?> _captureCardToTempFile() async {
     try {
+      if (mounted) {
+        setState(() => _isCapturing = true);
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+
       final boundary =
           _cardBoundaryKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary?;
@@ -108,6 +114,10 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
         debugPrint('Card capture error: $e');
       }
       return null;
+    } finally {
+      if (mounted) {
+        setState(() => _isCapturing = false);
+      }
     }
   }
 
@@ -665,6 +675,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                         email: _emailController.text,
                         address: _addressController.text,
                         showAppLogo: true,
+                        enableShineEffect: !_isCapturing,
                       ),
                     ),
 
