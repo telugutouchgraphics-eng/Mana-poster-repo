@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
@@ -228,6 +229,10 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
         fileName: fileName,
       );
 
+      if (result.success) {
+        _recordVisitingCardEngagement();
+      }
+
       if (mounted) {
         messenger.showTopSnackBar(
           AppSnackBar.build(
@@ -349,9 +354,26 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
             ? null
             : box.localToGlobal(Offset.zero) & box.size,
       );
+      _recordVisitingCardEngagement();
     } finally {
       if (mounted) {
         setState(() => _sharing = false);
+      }
+    }
+  }
+
+  void _recordVisitingCardEngagement() {
+    try {
+      FirebaseFirestore.instance
+          .collection('visitingCardStats')
+          .doc('summary')
+          .set(<String, dynamic>{
+        'totalCount': FieldValue.increment(1),
+        'lastActivityAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Visiting card engagement record error: $e');
       }
     }
   }
