@@ -368,9 +368,9 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
           .collection('visitingCardStats')
           .doc('summary')
           .set(<String, dynamic>{
-        'totalCount': FieldValue.increment(1),
-        'lastActivityAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'totalCount': FieldValue.increment(1),
+            'lastActivityAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Visiting card engagement record error: $e');
