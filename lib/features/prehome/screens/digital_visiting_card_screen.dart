@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/navigation/app_navigator.dart';
 import 'package:mana_poster/app/services/media_export_service.dart';
@@ -302,33 +303,44 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
       }
       if (!mounted) return;
       final box = context.findRenderObject() as RenderBox?;
+      final appLink = AppPublicInfo.playStoreUrl;
       final shareText = context.strings.localized(
         telugu:
-            'నా డిజిటల్ విజిటింగ్ కార్డ్ - మన పోస్టర్ యాప్ ద్వారా రూపొందించబడింది.',
-        english: 'My Digital Visiting Card - Created with Mana Poster App.',
-        hindi: 'मेरा डिजिटल विजिटिंग कार्ड - मना पोस्टर ऐप द्वारा निर्मित।',
+            'నా డిజిటల్ విజిటింగ్ కార్డ్ - మన పోస్టర్ యాప్ ద్వారా రూపొందించబడింది.\n\nయాప్ లింక్: $appLink',
+        english:
+            'My Digital Visiting Card - Created with Mana Poster App.\n\nApp Link: $appLink',
+        hindi:
+            'मेरा डिजिटल विजिटिंग कार्ड - मना पोस्टर ऐप द्वारा निर्मित।\n\nऐप लिंक: $appLink',
         tamil:
-            'எனது டிஜிட்டல் விசிட்டிங் கார்டு - மனா போஸ்டர் ஆப் மூலம் உருவாக்கப்பட்டது.',
+            'எனது டிஜிட்டல் விசிட்டிங் கார்டு - மனா போஸ்டர் ஆப் மூலம் உருவாக்கப்பட்டது.\n\nஆப் இணைப்பு: $appLink',
         kannada:
-            'ನನ್ನ ಡಿಜಿಟಲ್ ವಿಸಿಟಿಂಗ್ ಕಾರ್ಡ್ - ಮನ ಪೋಸ್ಟರ್ ಆಪ್ ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ.',
+            'ನನ್ನ ಡಿಜಿಟಲ್ ವಿಸಿಟಿಂಗ್ ಕಾರ್ಡ್ - ಮನ ಪೋಸ್ಟರ್ ಆಪ್ ಮೂಲಕ ರಚಿಸಲಾಗಿದೆ.\n\nಆಪ್ ಲಿಂಕ್: $appLink',
         malayalam:
-            'എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ് - മനാ പോസ്റ്റർ ആപ്പ് വഴി നിർമ്മിച്ചത്.',
+            'എന്റെ ഡിജിറ്റൽ വിസിറ്റിംഗ് കാർഡ് - മനാ പോസ്റ്റർ ആപ്പ് വഴി നിർമ്മിച്ചത്.\n\nആപ്പ് ലിങ്ക്: $appLink',
         marathi:
-            'माझे डिजिटल व्हिजिटिंग कार्ड - मना पोस्टर ॲपद्वारे तयार केले.',
-        gujarati: 'મારું ડિજિટલ વિઝિટિંગ કાર્ડ - મના પોસ્ટર એપ દ્વારા બનાવેલ.',
-        bengali: 'আমার ডিজিটাল ভিজিটিং কার্ড - মানা পোস্টার অ্যাপ দ্বারা তৈরি।',
-        punjabi: 'ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ - ਮਨਾ ਪੋਸਟਰ ਐਪ ਦੁਆਰਾ ਬਣਾਇਆ ਗਿਆ।',
-        odia: 'ମୋର ଡିଜିଟାଲ୍ ଭିଜିଟିଂ କାର୍ଡ - ମନା ପୋଷ୍ଟର ଆପ୍ ଦ୍ୱାରା ନିର୍ମିତ।',
-        assamese: 'মোৰ ডিজিটেল ভিজিটিং কাৰ্ড - মানা পোষ্টাৰ এপেৰে নিৰ্মিত।',
+            'माझे डिजिटल व्हिजिटिंग कार्ड - मना पोस्टर ॲपद्वारे तयार केले.\n\nॲप लिंक: $appLink',
+        gujarati:
+            'મારું ડિજિટલ વિઝિટિંગ કાર્ડ - મના પોસ્ટર એપ દ્વારા બનાવેલ.\n\nએપ લિંક: $appLink',
+        bengali:
+            'আমার ডিজিটাল ভিজিটিং কার্ড - মানা পোস্টার অ্যাপ দ্বারা তৈরি।\n\nঅ্যাপ লিঙ্ক: $appLink',
+        punjabi:
+            'ਮੇਰਾ ਡਿਜੀਟਲ ਵਿਜ਼ਿਟਿੰਗ ਕਾਰਡ - ਮਨਾ ਪੋਸਟਰ ਐਪ ਦੁਆਰਾ ਬਣਾਇਆ ਗਿਆ।\n\nਐਪ ਲਿੰਕ: $appLink',
+        odia:
+            'ମୋର ଡିଜିଟାଲ୍ ଭିଜିଟିଂ କାର୍ଡ - ମନା ପୋଷ୍ଟର ଆପ୍ ଦ୍ୱାରା ନିର୍ମିତ।\n\nଆପ୍ ଲିଙ୍କ୍: $appLink',
+        assamese:
+            'মোৰ ডিজিটেল ভিজিটিং কাৰ্ড - মানা পোষ্টাৰ এপেৰে নিৰ্মিত।\n\nএপ লিংক: $appLink',
         konkani:
-            'म्हजें डिजीटल विझिटींग कार्ड - मना पोस्टर ॲपा वरवीं तयार केल्लें.',
+            'म्हजें डिजीटल विझिटींग कार्ड - मना पोस्टर ॲपा वरवीं तयार केल्लें.\n\nॲप लिंक: $appLink',
         nepali:
-            'मेरो डिजिटल भिजिटिङ कार्ड - मना पोस्टर एपद्वारा सिर्जना गरिएको।',
-        meitei: 'ইহাক্কী দিজিতেল বিজিতিং কার্দ - মনা পোস্তর এপ্তা শেম্বা।',
-        mizo: 'Ka Digital Visiting Card - Mana Poster App atanga siam.',
+            'मेरो डिजिटल भिजिटिङ कार्ड - मना पोस्टर एपद्वारा सिर्जना गरिएको।\n\nएप लिङ्क: $appLink',
+        meitei:
+            'ইহাক্কী দিজিতেল বিজিতিং কার্দ - মনা পোস্তর এপ্তা শেম্বা।\n\nএপ লিঙ্ক: $appLink',
+        mizo:
+            'Ka Digital Visiting Card - Mana Poster App atanga siam.\n\nApp link: $appLink',
         kashmiri:
-            'میٛون ڈِجیٹَل وزٹنگ کارڈ - مَنا پوسٹر اَیپہٕ ذٔریعہٕ بنٲومُت۔',
-        ladakhi: 'Nye Digital Visiting Card - Mana Poster App nangi bzos pa.',
+            'میٛون ڈِجیٹَل وزٹنگ کارڈ - مَنا پوسٹر اَیپہٕ ذٔریعہٕ بنٲومُت۔\n\nایپ لِنک: $appLink',
+        ladakhi:
+            'Nye Digital Visiting Card - Mana Poster App nangi bzos pa.\n\nApp link: $appLink',
       );
       await MediaExportService.shareImageFile(
         path,
