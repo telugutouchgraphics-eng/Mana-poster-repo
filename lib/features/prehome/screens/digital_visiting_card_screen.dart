@@ -35,17 +35,31 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
   VisitingCardStyle _selectedStyle = VisitingCardStyle.royalBlue;
   bool _saving = false;
   bool _sharing = false;
+  bool _savingDetails = false;
   bool _loading = true;
+  late final TextEditingController _emailController;
+  late final TextEditingController _addressController;
 
   @override
   void initState() {
     super.initState();
+    _emailController = TextEditingController();
+    _addressController = TextEditingController();
     if (widget.initialProfile != null) {
       _profile = widget.initialProfile!;
+      _emailController.text = _profile.effectiveEmail;
+      _addressController.text = _profile.address;
       _loading = false;
     } else {
       _loadProfile();
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -53,8 +67,19 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
     if (mounted) {
       setState(() {
         _profile = loaded;
+        _emailController.text = loaded.effectiveEmail;
+        _addressController.text = loaded.address;
         _loading = false;
       });
+    }
+  }
+
+  void _syncProfileFromControllers() {
+    final newEmail = _emailController.text.trim();
+    final newAddress = _addressController.text.trim();
+    if (newEmail != _profile.email || newAddress != _profile.address) {
+      _profile = _profile.copyWith(email: newEmail, address: newAddress);
+      PosterProfileService.save(_profile);
     }
   }
 
@@ -103,6 +128,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
   Future<void> _saveToGallery() async {
     if (_saving || _sharing) return;
+    _syncProfileFromControllers();
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
 
@@ -256,6 +282,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
   Future<void> _shareToWhatsApp() async {
     if (_sharing || _saving) return;
+    _syncProfileFromControllers();
     setState(() => _sharing = true);
 
     try {
@@ -303,6 +330,56 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
     } finally {
       if (mounted) {
         setState(() => _sharing = false);
+      }
+    }
+  }
+
+  Future<void> _saveCustomDetails() async {
+    if (_savingDetails) return;
+    setState(() => _savingDetails = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final cleanEmail = _emailController.text.trim();
+      final cleanAddress = _addressController.text.trim();
+      final updated = _profile.copyWith(
+        email: cleanEmail,
+        address: cleanAddress,
+      );
+      setState(() => _profile = updated);
+      await PosterProfileService.save(updated);
+
+      if (mounted) {
+        messenger.showTopSnackBar(
+          AppSnackBar.build(
+            content: Text(
+              context.strings.localized(
+                telugu: 'కార్డ్ వివరాలు సేవ్ చేయబడ్డాయి!',
+                english: 'Card details saved!',
+                hindi: 'कार्ड विवरण सहेज लिए गए!',
+                tamil: 'கார்டு விவரங்கள் சேமிக்கப்பட்டன!',
+                kannada: 'ಕಾರ್ಡ್ ವಿವರಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ!',
+                malayalam: 'കാർഡ് വിശദാംശങ്ങൾ സംരക്ഷിച്ചു!',
+                marathi: 'कार्ड तपशील जतन केले!',
+                gujarati: 'કાર્ડ વિગતો સાચવવામાં આવી!',
+                bengali: 'কার্ডের বিবরণ সংরক্ষিত হয়েছে!',
+                punjabi: 'ਕਾਰਡ ਵੇਰਵੇ ਸੁਰੱਖਿਅਤ ਕੀਤੇ ਗਏ!',
+                odia: 'କାର୍ଡ ବିବରଣୀ ସେଭ୍ ହୋଇଛି!',
+                assamese: 'কাৰ্ডৰ বিৱৰণ সংৰক্ষণ কৰা হ’ল!',
+                konkani: 'कार्ड तपशील सांबाळ्ळे!',
+                nepali: 'कार्ड विवरणहरू सुरक्षित गरियो!',
+                meitei: 'কার্দকী অকুপ্পা মরোল সেভ তৌরে!',
+                mizo: 'Card details dahthat a ni ta!',
+                kashmiri: 'کارڈ تفصیٖلات آیہِ محفوٗظ کَرنہٕ!',
+                ladakhi: 'Card details save song!',
+              ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingDetails = false);
       }
     }
   }
@@ -563,6 +640,8 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                       child: DigitalVisitingCardWidget(
                         profile: _profile,
                         style: _selectedStyle,
+                        email: _emailController.text,
+                        address: _addressController.text,
                         showAppLogo: true,
                       ),
                     ),
@@ -739,8 +818,13 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
 
                     const SizedBox(height: 24),
 
+                    // Customization Card
+                    _buildCustomizationCard(),
+
                     // Primary Button: Go to Home (if from onboarding)
                     if (widget.fromOnboarding)
+                    if (widget.fromOnboarding) ...<Widget>[
+                      const SizedBox(height: 20),
                       SizedBox(
                         height: 52,
                         child: OutlinedButton(
@@ -783,6 +867,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
                           ),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -819,6 +904,322 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCustomizationCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF334155),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(
+                Icons.tune_rounded,
+                color: Color(0xFF38BDF8),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.strings.localized(
+                    telugu: 'కార్డ్ వివరాల అనుకూలీకరణ',
+                    english: 'Customize Card Details',
+                    hindi: 'कार्ड विवरण कस्टमाइज़ करें',
+                    tamil: 'கார்டு விவரங்களைத் தனிப்பயனாக்கு',
+                    kannada: 'ಕಾರ್ಡ್ ವಿವರಗಳನ್ನು ಕಸ್ಟಮೈಸ್ ಮಾಡಿ',
+                    malayalam: 'കാർഡ് വിശദാംശങ്ങൾ ക്രമീകരിക്കുക',
+                    marathi: 'कार्ड तपशील सानुकूलित करा',
+                    gujarati: 'કાર્ડ વિગતો કસ્ટમાઇઝ કરો',
+                    bengali: 'কার্ডের বিবরণ কাস্টমাইজ করুন',
+                    punjabi: 'ਕਾਰਡ ਵੇਰਵੇ ਕਸਟਮਾਈਜ਼ ਕਰੋ',
+                    odia: 'କାର୍ଡ ବିବରଣୀ କଷ୍ଟମାଇଜ୍ କରନ୍ତୁ',
+                    assamese: 'কাৰ্ডৰ বিৱৰণ কাষ্টমাইজ কৰক',
+                    konkani: 'कार्ड तपशील बदलून घेयात',
+                    nepali: 'कार्ड विवरणहरू अनुकूलित गर्नुहोस्',
+                    meitei: 'কার্দকী অকুপ্পা মরোল কস্তমাইজ তৌ',
+                    mizo: 'Card kimchang herremna',
+                    kashmiri: 'کارڈ تفصیٖلات کسٹمائز کٔرِو',
+                    ladakhi: 'Card details customize byed',
+                  ),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.strings.localized(
+              telugu: 'మీ ఈమెయిల్ మరియు చిరునామాను ఇక్కడ సెట్ చేసుకోవచ్చు',
+              english: 'Set your email and address here',
+              hindi: 'यहाँ अपना ईमेल और पता दर्ज करें',
+              tamil: 'உங்கள் மின்னஞ்சல் மற்றும் முகவரியை இங்கே அமைக்கவும்',
+              kannada: 'ನಿಮ್ಮ ಇಮೇಲ್ ಮತ್ತು ವಿಳಾಸವನ್ನು ಇಲ್ಲಿ ನಮೂದಿಸಿ',
+              malayalam: 'നിങ്ങളുടെ ഇമെയിലും വിലാസവും ഇവിടെ നൽകുക',
+              marathi: 'येथे तुमचा ईमेल आणि पत्ता प्रविष्ट करा',
+              gujarati: 'તમારો ઇમેઇલ અને સરનામું અહીં સેટ કરો',
+              bengali: 'আপনার ইমেল এবং ঠিকানা এখানে সেট করুন',
+              punjabi: 'ਆਪਣਾ ਈਮੇਲ ਅਤੇ ਪਤਾ ਇੱਥੇ ਦਰਜ ਕਰੋ',
+              odia: 'ଆପଣଙ୍କ ଇମେଲ୍ ଏବଂ ଠିକଣା ଏଠାରେ ସେଟ୍ କରନ୍ତୁ',
+              assamese: 'আপোনাৰ ইমেইল আৰু ঠিকনা ইয়াত যোগ কৰক',
+              konkani: 'तुमचो ईमेल आनी पत्तो हांगा घालात',
+              nepali: 'यहाँ आफ्नो इमेल र ठेगाना सेट गर्नुहोस्',
+              meitei: 'নহাক্কী ইমেল অমসুং লৈফম মফমসিদা থম্মু',
+              mizo: 'I email leh address hetah hian dah rawh',
+              kashmiri: 'پَنُن اِی میل تہٕ پتہٕ اَتھ جایہِ دَرٕج کٔرِو',
+              ladakhi: 'Nye email dang address dir thog',
+            ),
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Email Field
+          Text(
+            context.strings.localized(
+              telugu: 'ఈమెయిల్ ఐడి',
+              english: 'Email ID',
+              hindi: 'ईमेल आईडी',
+              tamil: 'மின்னஞ்சல் ஐடி',
+              kannada: 'ಇಮೇಲ್ ಐಡಿ',
+              malayalam: 'ഇമെയിൽ ഐഡി',
+              marathi: 'ईमेल आयडी',
+              gujarati: 'ઇમેઇલ આઈડી',
+              bengali: 'ইমেল আইডি',
+              punjabi: 'ਈਮੇਲ ਆਈਡੀ',
+              odia: 'ଇମେଲ୍ ଆଇଡି',
+              assamese: 'ইমেইল আইডি',
+              konkani: 'ईमेल आयडी',
+              nepali: 'इमेल आईडी',
+              meitei: 'ইমেল আইদি',
+              mizo: 'Email ID',
+              kashmiri: 'اِی میل آئی ڈی',
+              ladakhi: 'Email ID',
+            ),
+            style: const TextStyle(
+              color: Color(0xFFCBD5E1),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: context.strings.localized(
+                telugu: 'మీ ఈమెయిల్ ఎంటర్ చేయండి',
+                english: 'Enter your email',
+                hindi: 'अपना ईमेल दर्ज करें',
+                tamil: 'உங்கள் மின்னஞ்சலை உள்ளிடவும்',
+                kannada: 'ನಿಮ್ಮ ಇಮೇಲ್ ನಮೂದಿಸಿ',
+                malayalam: 'നിങ്ങളുടെ ഇമെയിൽ നൽകുക',
+                marathi: 'तुमचा ईमेल प्रविष्ट करा',
+                gujarati: 'તમારો ઇમેઇલ દાખલ કરો',
+                bengali: 'আপনার ইমেল লিখুন',
+                punjabi: 'ਆਪਣਾ ਈਮੇਲ ਦਰਜ ਕਰੋ',
+                odia: 'ଆପଣଙ୍କ ଇମେଲ୍ ପ୍ରବେଶ କରନ୍ତୁ',
+                assamese: 'আপোনাৰ ইমেইল লিখক',
+                konkani: 'तुमचो ईमेल बरयात',
+                nepali: 'आफ्नो इमेल प्रविष्ट गर्नुहोस्',
+                meitei: 'নহাক্কী ইমেল ইয়ু',
+                mizo: 'I email chhu lut rawh',
+                kashmiri: 'پَنُن اِی میل دَرٕج کٔرِو',
+                ladakhi: 'Nye email thog',
+              ),
+              hintStyle: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: Color(0xFF38BDF8),
+                size: 20,
+              ),
+              filled: true,
+              fillColor: const Color(0xFF0F172A),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: Color(0xFF38BDF8),
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Address Field
+          Text(
+            context.strings.localized(
+              telugu: 'చిరునామా',
+              english: 'Address',
+              hindi: 'पता',
+              tamil: 'முகவரி',
+              kannada: 'ವಿಳಾಸ',
+              malayalam: 'വിലാസം',
+              marathi: 'पत्ता',
+              gujarati: 'સરનામું',
+              bengali: 'ঠিকানা',
+              punjabi: 'ਪਤਾ',
+              odia: 'ଠିକଣା',
+              assamese: 'ঠিকনা',
+              konkani: 'पत्तो',
+              nepali: 'ठेगाना',
+              meitei: 'লৈফম',
+              mizo: 'Address',
+              kashmiri: 'پتہٕ',
+              ladakhi: 'Address',
+            ),
+            style: const TextStyle(
+              color: Color(0xFFCBD5E1),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _addressController,
+            keyboardType: TextInputType.multiline,
+            maxLines: 2,
+            minLines: 1,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: context.strings.localized(
+                telugu: 'షాప్ నం., వీధి, నగరం',
+                english: 'Shop No., Street, City',
+                hindi: 'दुकान नं., सड़क, शहर',
+                tamil: 'கடை எண், தெரு, நகரம்',
+                kannada: 'ಅಂಗಡಿ ನಂ., ರಸ್ತೆ, ನಗರ',
+                malayalam: 'ഷോപ്പ് നമ്പർ, തെരുവ്, നഗരം',
+                marathi: 'दुकान क्र., रस्ता, शहर',
+                gujarati: 'દુકાન નં., શેરી, શહેર',
+                bengali: 'দোকান নং, রাস্তা, শহর',
+                punjabi: 'ਦੁਕਾਨ ਨੰ., ਗਲੀ, ਸ਼ਹਿਰ',
+                odia: 'ଦୋକାନ ନଂ, ଗଳି, ସହର',
+                assamese: 'দোকান নং, ৰাস্তা, চহৰ',
+                konkani: 'दुकान क्र., रस्तो, शार',
+                nepali: 'पसल नं., सडक, सहर',
+                meitei: 'দোকান নম্বর, লম্বি, সহর',
+                mizo: 'Dawr No., Veng, Khawpui',
+                kashmiri: 'دُکان نمبر، سَڑک، شَہَر',
+                ladakhi: 'Shop No., lam, shahr',
+              ),
+              hintStyle: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.location_on_outlined,
+                color: Color(0xFF38BDF8),
+                size: 20,
+              ),
+              filled: true,
+              fillColor: const Color(0xFF0F172A),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFF334155)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: Color(0xFF38BDF8),
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Save Details Button
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: FilledButton.icon(
+              onPressed: _savingDetails ? null : _saveCustomDetails,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF0284C7),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: _savingDetails
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check_circle_outline_rounded, size: 18),
+              label: Text(
+                context.strings.localized(
+                  telugu: 'వివరాలు సేవ్ చేయండి',
+                  english: 'Save Details',
+                  hindi: 'विवरण सहेजें',
+                  tamil: 'விவரங்களைச் சேமிக்கவும்',
+                  kannada: 'ವಿವರಗಳನ್ನು ಉಳಿಸಿ',
+                  malayalam: 'വിശദാംശങ്ങൾ സൂക്ഷിക്കുക',
+                  marathi: 'तपशील जतन करा',
+                  gujarati: 'વિગતો સાચવો',
+                  bengali: 'বিবরণ সংরক্ষণ করুন',
+                  punjabi: 'ਵੇਰਵੇ ਸੁਰੱਖਿਅਤ ਕਰੋ',
+                  odia: 'ବିବରଣୀ ସେଭ୍ କରନ୍ତୁ',
+                  assamese: 'বিৱৰণ সংৰক্ষণ কৰক',
+                  konkani: 'तपशील सांबाळात',
+                  nepali: 'विवरणहरू बचत गर्नुहोस्',
+                  meitei: 'মরোলশিং সেভ তৌ',
+                  mizo: 'Details dahtha rawh',
+                  kashmiri: 'تفصیٖلات کٔرِو محفوٗظ',
+                  ladakhi: 'Details save byed',
+                ),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

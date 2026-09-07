@@ -59,6 +59,8 @@ class PosterProfileData {
     this.setupCompleted = false,
     this.secondaryDesignation = '',
     this.personalPhoneNumber = '',
+    this.email = '',
+    this.address = '',
   });
 
   final String nameTelugu;
@@ -83,6 +85,8 @@ class PosterProfileData {
   final bool setupCompleted;
   final String secondaryDesignation;
   final String personalPhoneNumber;
+  final String email;
+  final String address;
 
   String get primaryPersonalDesignation => whatsappNumber.trim();
   String get secondaryPersonalDesignation => secondaryDesignation.trim();
@@ -131,6 +135,19 @@ class PosterProfileData {
     return whatsappNumber.trim();
   }
 
+  String get effectiveEmail {
+    if (email.trim().isNotEmpty) {
+      return email.trim();
+    }
+    try {
+      final authEmail = FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
+      if (authEmail.isNotEmpty) {
+        return authEmail;
+      }
+    } catch (_) {}
+    return '';
+  }
+
   bool get usesGeneratedBusinessLogo {
     return identityMode == PosterIdentityMode.business &&
         businessLogoPath.trim().isEmpty &&
@@ -162,6 +179,8 @@ class PosterProfileData {
     bool? setupCompleted,
     String? secondaryDesignation,
     String? personalPhoneNumber,
+    String? email,
+    String? address,
   }) {
     final resolvedDisplayName = displayName?.trim() ?? '';
     final nextTelugu =
@@ -197,6 +216,8 @@ class PosterProfileData {
       setupCompleted: setupCompleted ?? this.setupCompleted,
       secondaryDesignation: secondaryDesignation ?? this.secondaryDesignation,
       personalPhoneNumber: personalPhoneNumber ?? this.personalPhoneNumber,
+      email: email ?? this.email,
+      address: address ?? this.address,
     );
   }
 
@@ -317,7 +338,9 @@ class PosterProfileData {
             other.profileRevision == profileRevision &&
             other.setupCompleted == setupCompleted &&
             other.secondaryDesignation == secondaryDesignation &&
-            other.personalPhoneNumber == personalPhoneNumber;
+            other.personalPhoneNumber == personalPhoneNumber &&
+            other.email == email &&
+            other.address == address;
   }
 
   @override
@@ -344,6 +367,8 @@ class PosterProfileData {
     setupCompleted,
     secondaryDesignation,
     personalPhoneNumber,
+    email,
+    address,
   ]);
 }
 
@@ -508,6 +533,8 @@ class PosterProfileService {
   static const String _secondaryDesignationKey =
       'poster_profile_secondary_designation';
   static const String _personalPhoneKey = 'poster_profile_personal_phone';
+  static const String _emailKey = 'poster_profile_email';
+  static const String _addressKey = 'poster_profile_address';
   static const String _nameFontKey = 'poster_profile_name_font';
   static const String _photoPathKey = 'poster_profile_photo_path';
   static const String _photoUrlKey = 'poster_profile_photo_url';
@@ -726,6 +753,18 @@ class PosterProfileService {
                   ) ??
                   '')
               .trim(),
+      email:
+          (resolvedPrefs.getString(
+                    _scopedKey(_emailKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
+      address:
+          (resolvedPrefs.getString(
+                    _scopedKey(_addressKey, fallbackUid: fallbackUid),
+                  ) ??
+                  '')
+              .trim(),
       nameFontFamily: _sanitizeFont(
         resolvedPrefs.getString(
           _scopedKey(_nameFontKey, fallbackUid: fallbackUid),
@@ -884,6 +923,14 @@ class PosterProfileService {
                 fallbackProfile.personalPhoneNumber.trim().isNotEmpty
             ? fallbackProfile.personalPhoneNumber
             : remote.personalPhoneNumber,
+        email:
+            preferLocalProfile || fallbackProfile.email.trim().isNotEmpty
+            ? fallbackProfile.email
+            : remote.email,
+        address:
+            preferLocalProfile || fallbackProfile.address.trim().isNotEmpty
+            ? fallbackProfile.address
+            : remote.address,
         nameFontFamily: preferLocalProfile
             ? fallbackProfile.nameFontFamily
             : remote.nameFontFamily,
@@ -1123,6 +1170,8 @@ class PosterProfileService {
             'whatsappNumber': data.whatsappNumber.trim(),
             'secondaryDesignation': data.secondaryDesignation.trim(),
             'personalPhoneNumber': data.personalPhoneNumber.trim(),
+            'email': data.email.trim(),
+            'address': data.address.trim(),
             'nameFontFamily': _sanitizeFont(data.nameFontFamily),
             'photoUrl': data.photoUrl.trim(),
             'originalPhotoUrl': data.originalPhotoUrl.trim(),
@@ -1629,6 +1678,8 @@ class PosterProfileService {
       _scopedKey(_personalPhoneKey),
       data.personalPhoneNumber.trim(),
     );
+    await prefs.setString(_scopedKey(_emailKey), data.email.trim());
+    await prefs.setString(_scopedKey(_addressKey), data.address.trim());
     await prefs.setString(
       _scopedKey(_nameFontKey),
       _sanitizeFont(data.nameFontFamily),
@@ -1732,6 +1783,8 @@ class PosterProfileService {
       _whatsappKey,
       _secondaryDesignationKey,
       _personalPhoneKey,
+      _emailKey,
+      _addressKey,
       _nameFontKey,
       _photoPathKey,
       _photoUrlKey,
@@ -1783,6 +1836,8 @@ class PosterProfileService {
       _whatsappKey,
       _secondaryDesignationKey,
       _personalPhoneKey,
+      _emailKey,
+      _addressKey,
       _nameFontKey,
       _photoPathKey,
       _photoUrlKey,
@@ -1837,6 +1892,8 @@ class PosterProfileService {
           .trim(),
       personalPhoneNumber: (data['personalPhoneNumber'] as String? ?? '')
           .trim(),
+      email: (data['email'] as String? ?? '').trim(),
+      address: (data['address'] as String? ?? '').trim(),
       nameFontFamily: _sanitizeFont(data['nameFontFamily'] as String?),
       displayNameMode: _defaultDisplayNameMode,
       photoPath: '',

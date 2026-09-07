@@ -13,6 +13,8 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     this.style = VisitingCardStyle.royalBlue,
     this.designation,
     this.phoneNumber,
+    this.email,
+    this.address,
     this.showAppLogo = true,
     this.enableShineEffect = true,
   });
@@ -21,6 +23,8 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   final VisitingCardStyle style;
   final String? designation;
   final String? phoneNumber;
+  final String? email;
+  final String? address;
   final bool showAppLogo;
   final bool enableShineEffect;
 
@@ -170,6 +174,29 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     return '+91 $clean';
   }
 
+  String get _effectiveEmail {
+    if (email != null && email!.trim().isNotEmpty) {
+      return email!.trim();
+    }
+    if (profile.email.trim().isNotEmpty) {
+      return profile.email.trim();
+    }
+    try {
+      final authEmail = FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
+      if (authEmail.isNotEmpty) {
+        return authEmail;
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  String get _effectiveAddress {
+    if (address != null && address!.trim().isNotEmpty) {
+      return address!.trim();
+    }
+    return profile.address.trim();
+  }
+
   static final RegExp _teluguRegExp = RegExp(r'[\u0C00-\u0C7F]');
 
   Widget _buildNameWidget({required Color color, required double scale}) {
@@ -262,6 +289,112 @@ class DigitalVisitingCardWidget extends StatelessWidget {
     return buildLine(
       primary.isNotEmpty ? primary : secondary,
       baseFontSize: 12.0,
+    );
+  }
+
+  Widget _buildContactSection({
+    required Color iconColor,
+    required Color textColor,
+    required Color addressColor,
+    required double scale,
+  }) {
+    final phone = _effectivePhone;
+    final email = _effectiveEmail;
+    final address = _effectiveAddress;
+
+    if (phone.isEmpty && email.isEmpty && address.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (phone.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(bottom: 2.5 * scale),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.phone_rounded,
+                  size: 11 * scale,
+                  color: iconColor,
+                ),
+                SizedBox(width: 5 * scale),
+                Flexible(
+                  child: Text(
+                    phone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 10.5 * scale,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (email.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(bottom: 2.5 * scale),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.email_outlined,
+                  size: 11 * scale,
+                  color: iconColor,
+                ),
+                SizedBox(width: 5 * scale),
+                Flexible(
+                  child: Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 9.5 * scale,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (address.isNotEmpty)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsets.only(top: 1 * scale),
+                child: Icon(
+                  Icons.location_on_outlined,
+                  size: 11 * scale,
+                  color: iconColor,
+                ),
+              ),
+              SizedBox(width: 5 * scale),
+              Flexible(
+                child: Text(
+                  address,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    color: addressColor,
+                    fontSize: 8.5 * scale,
+                    fontWeight: FontWeight.w600,
+                    height: 1.15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 
@@ -396,42 +529,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               color: const Color(0xFF2563EB),
                               scale: scale,
                             ),
-                            SizedBox(height: 10 * scale),
+                            SizedBox(height: 8 * scale),
                           ] else
                             SizedBox(height: 6 * scale),
-                          if (_effectivePhone.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10 * scale,
-                                vertical: 4 * scale,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(8 * scale),
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.phone_rounded,
-                                    size: 13 * scale,
-                                    color: const Color(0xFF2563EB),
-                                  ),
-                                  SizedBox(width: 6 * scale),
-                                  Text(
-                                    _effectivePhone,
-                                    style: TextStyle(
-                                      color: const Color(0xFF1E293B),
-                                      fontSize: 11.5 * scale,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          _buildContactSection(
+                            iconColor: const Color(0xFF2563EB),
+                            textColor: const Color(0xFF1E293B),
+                            addressColor: const Color(0xFF475569),
+                            scale: scale,
+                          ),
                           const Spacer(),
                         ],
                       ),
@@ -569,42 +675,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               color: const Color(0xFFFBBF24),
                               scale: scale,
                             ),
-                            SizedBox(height: 10 * scale),
+                            SizedBox(height: 8 * scale),
                           ] else
                             SizedBox(height: 6 * scale),
-                          if (_effectivePhone.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 10 * scale,
-                                vertical: 4 * scale,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0x22FBBF24),
-                                borderRadius: BorderRadius.circular(8 * scale),
-                                border: Border.all(
-                                  color: const Color(0x55FBBF24),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.phone_rounded,
-                                    size: 13 * scale,
-                                    color: const Color(0xFFFDE68A),
-                                  ),
-                                  SizedBox(width: 6 * scale),
-                                  Text(
-                                    _effectivePhone,
-                                    style: TextStyle(
-                                      color: const Color(0xFFFDE68A),
-                                      fontSize: 11.5 * scale,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          _buildContactSection(
+                            iconColor: const Color(0xFFFDE68A),
+                            textColor: const Color(0xFFFDE68A),
+                            addressColor: const Color(0xFFFCD34D),
+                            scale: scale,
+                          ),
                           const Spacer(),
                         ],
                       ),
@@ -721,42 +800,15 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               color: const Color(0xFF059669),
                               scale: scale,
                             ),
-                            SizedBox(height: 10 * scale),
+                            SizedBox(height: 8 * scale),
                           ] else
                             SizedBox(height: 6 * scale),
-                          if (_effectivePhone.isNotEmpty)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 9 * scale,
-                                vertical: 4 * scale,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECFDF5),
-                                borderRadius: BorderRadius.circular(8 * scale),
-                                border: Border.all(
-                                  color: const Color(0xFFA7F3D0),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.phone_rounded,
-                                    size: 13 * scale,
-                                    color: const Color(0xFF059669),
-                                  ),
-                                  SizedBox(width: 6 * scale),
-                                  Text(
-                                    _effectivePhone,
-                                    style: TextStyle(
-                                      color: const Color(0xFF065F46),
-                                      fontSize: 11.5 * scale,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          _buildContactSection(
+                            iconColor: const Color(0xFF059669),
+                            textColor: const Color(0xFF065F46),
+                            addressColor: const Color(0xFF047857),
+                            scale: scale,
+                          ),
                           const Spacer(),
                         ],
                       ),
