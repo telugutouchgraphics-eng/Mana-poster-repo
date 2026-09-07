@@ -254,11 +254,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         children: <Widget>[
           buildLine(primary, baseFontSize: 11.5),
           SizedBox(height: 2 * scale),
-          buildLine(
-            secondary,
-            baseFontSize: 11.5,
-            textColor: color,
-          ),
+          buildLine(secondary, baseFontSize: 11.5, textColor: color),
         ],
       );
     }

@@ -11724,6 +11724,8 @@ String _subscriptionTrialValueAppLocalized(BuildContext context) {
     konkani:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ ÃƒÂ Ã‚Â¤Ã¢â‚¬â€œÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â¤ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ÃƒÂ Ã‚Â¤Ã‚Â° $price',
     gujarati:
+        '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ 
+... [truncated for diff preview]
         '$days ÃƒÂ Ã‚ÂªÃ‚Â¦ÃƒÂ Ã‚ÂªÃ‚Â¿ÃƒÂ Ã‚ÂªÃ‚ÂµÃƒÂ Ã‚ÂªÃ‚Â¸ ÃƒÂ Ã‚ÂªÃ‚Â®ÃƒÂ Ã‚ÂªÃ‚Â¾ÃƒÂ Ã‚ÂªÃ…Â¸ÃƒÂ Ã‚Â«Ã¢â‚¬Â¡ $price',
     marathi:
         '$days ÃƒÂ Ã‚Â¤Ã‚Â¦ÃƒÂ Ã‚Â¤Ã‚Â¿ÃƒÂ Ã‚Â¤Ã‚ÂµÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã¢â‚¬Å¡ÃƒÂ Ã‚Â¤Ã‚Â¸ÃƒÂ Ã‚Â¤Ã‚Â¾ÃƒÂ Ã‚Â¤Ã‚Â ÃƒÂ Ã‚Â¥Ã¢â€šÂ¬ $price',
@@ -22867,7 +22869,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final secondaryDesignation = isBusinessProfile
         ? ''
         : widget.viewerPosterProfile.secondaryPersonalDesignation;
-    final hasBothPersonalDesignations = !isBusinessProfile &&
+    final hasBothPersonalDesignations =
+        !isBusinessProfile &&
         primaryDesignation.isNotEmpty &&
         secondaryDesignation.isNotEmpty;
     final resolvedDesignation = primaryDesignation.isNotEmpty
@@ -22888,12 +22891,12 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         (widget.personalizationConfig.designationScale / 100).clamp(0.45, 1.6);
     final legacyTeluguNameBoost = usesLegacyTeluguNameFont ? 1.52 : 1.0;
     final personalNameFontSize =
-        (isTeluguName ? 42.0 : 36.0) * nameScaleFactor * legacyTeluguNameBoost;
+        (isTeluguName ? 46.0 : 40.0) * nameScaleFactor * legacyTeluguNameBoost;
     final personalNameLineHeight = usesLegacyTeluguNameFont
         ? 0.94
         : (isTeluguName ? 0.82 : 0.95);
     final businessNameFontSize =
-        (isTeluguName ? 34.0 : 28.0) * nameScaleFactor * legacyTeluguNameBoost;
+        (isTeluguName ? 36.0 : 30.0) * nameScaleFactor * legacyTeluguNameBoost;
     final designationFontFamily = _resolveDesignationFontFamily(
       resolvedDesignation,
     );
@@ -22908,17 +22911,18 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       secondaryDesignation,
       secondaryDesignationFontFamily,
     );
-    final legacyTeluguDesignationBoost = (usesLegacyTeluguDesignationFont ||
+    final legacyTeluguDesignationBoost =
+        (usesLegacyTeluguDesignationFont ||
             usesLegacyTeluguSecondaryDesignationFont)
         ? 1.34
         : 1.0;
     final personalDesignationFontSize =
-        31.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+        34.0 * designationScaleFactor * legacyTeluguDesignationBoost;
     final businessDesignationFontSize =
-        28.0 * designationScaleFactor * legacyTeluguDesignationBoost;
-    final englishDesignationFontSize = 23.0 * designationScaleFactor;
-    final englishPersonalNameFontSize = 26.0 * nameScaleFactor;
-    final englishSplitNameFontSize = 24.0 * nameScaleFactor;
+        30.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+    final englishDesignationFontSize = 26.0 * designationScaleFactor;
+    final englishPersonalNameFontSize = 30.0 * nameScaleFactor;
+    final englishSplitNameFontSize = 28.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
     final hasDesignationText =
         resolvedDesignation.isNotEmpty || showPhoneInStrip;
@@ -22979,14 +22983,17 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
             0.0,
             (constraints.maxWidth - visualWidth) / 2,
           );
+          final double stripBaseMultiplier = hasBothPersonalDesignations
+              ? 0.72
+              : 0.58;
           final ratioBaseStripHeight = math
               .max(
                 1.0,
                 visualHeight *
                     (widget.personalizationConfig.stripHeight / 100) *
-                    0.5,
+                    stripBaseMultiplier,
               )
-              .clamp(1.0, math.max(1.0, visualHeight * 0.18))
+              .clamp(1.0, math.max(1.0, visualHeight * 0.20))
               .toDouble();
           final estimatedNameHeight =
               (isBusinessProfile ? businessNameFontSize : personalNameFontSize)
@@ -23001,12 +23008,12 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                     (hasBothPersonalDesignations ? 1.45 : 1.0)
               : 0.0;
           final fontNeededStripHeight =
-              math.max(estimatedNameHeight, estimatedDesignationHeight) + 24.0;
+              math.max(estimatedNameHeight, estimatedDesignationHeight) + 8.0;
           final stripPixelHeight = math
               .max(ratioBaseStripHeight, fontNeededStripHeight)
               .clamp(
                 ratioBaseStripHeight,
-                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.08),
+                math.max(ratioBaseStripHeight, ratioBaseStripHeight * 1.25),
               )
               .toDouble();
           final defaultStripReferenceHeight = math
@@ -23015,8 +23022,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
           final stripScale = (stripPixelHeight / defaultStripReferenceHeight)
               .clamp(0.04, 1.42)
               .toDouble();
-          final scaledBottomStripPadding = (stripPixelHeight * 0.08)
-              .clamp(0.0, 12.0)
+          final scaledBottomStripPadding = (stripPixelHeight * 0.05)
+              .clamp(0.0, 6.0)
               .toDouble();
           final stripWidthPercent = widget.personalizationConfig.stripWidth
               .clamp(35.0, 100.0)
@@ -23630,7 +23637,8 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final mutedStripTextColor = _mutedOnStripColor(stripColor);
     final dividerColor = mutedStripTextColor;
     final partyLogoSize = _nameChipPartyLogoSize(stripPixelHeight);
-    final hasBothDesignations = !isBusinessProfile &&
+    final hasBothDesignations =
+        !isBusinessProfile &&
         resolvedSecondaryDesignation != null &&
         resolvedSecondaryDesignation.trim().isNotEmpty &&
         resolvedDesignation.trim().isNotEmpty;
@@ -23643,81 +23651,94 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       required double designationHeight,
     }) {
       return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           if (_showPartyLogoInNameChip) ...<Widget>[
             _buildPartyLogoForNameChip(size: partyLogoSize),
             const SizedBox(width: 6),
           ],
           Expanded(
-            flex: 54,
-            child: _legacyAwareText(
-              text: resolvedName,
-              fontFamily: displayNameFontFamily,
-              maxLines: 1,
-              textAlign: TextAlign.left,
-              fitToWidth: true,
-              style: TextStyle(
-                color: stripTextColor,
-                fontWeight: nameFontWeight,
-                fontSize: nameFontSize,
-                height: nameHeight,
+            flex: 52,
+            child: SizedBox.expand(
+              child: _legacyAwareText(
+                text: resolvedName,
+                fontFamily: displayNameFontFamily,
+                maxLines: 1,
+                textAlign: TextAlign.left,
+                fitToWidth: true,
+                style: TextStyle(
+                  color: stripTextColor,
+                  fontWeight: nameFontWeight,
+                  fontSize: nameFontSize,
+                  height: nameHeight,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 6),
-          _buildNameDesignationSeparator(fallbackColor: dividerColor),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
+          _buildNameDesignationSeparator(
+            fallbackColor: dividerColor,
+            fallbackHeight: hasBothDesignations ? 24 : 18,
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            flex: 46,
-            child: hasBothDesignations
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      _legacyAwareText(
-                        text: resolvedDesignation,
-                        fontFamily: designationFontFamily,
-                        maxLines: 1,
-                        textAlign: TextAlign.left,
-                        fitToWidth: true,
-                        style: TextStyle(
-                          color: mutedStripTextColor,
-                          fontWeight: designationFontWeight,
-                          fontSize: designationFontSize * 0.82,
-                          height: designationHeight,
-                        ),
+            flex: 48,
+            child: SizedBox.expand(
+              child: hasBothDesignations
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _legacyAwareText(
+                            text: resolvedDesignation,
+                            fontFamily: designationFontFamily,
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            fitToWidth: false,
+                            style: TextStyle(
+                              color: mutedStripTextColor,
+                              fontWeight: designationFontWeight,
+                              fontSize: designationFontSize,
+                              height: designationHeight,
+                            ),
+                          ),
+                          const SizedBox(height: 1.5),
+                          _legacyAwareText(
+                            text: resolvedSecondaryDesignation,
+                            fontFamily:
+                                secondaryDesignationFontFamily ??
+                                designationFontFamily,
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                            fitToWidth: false,
+                            style: TextStyle(
+                              color: mutedStripTextColor,
+                              fontWeight: designationFontWeight,
+                              fontSize: designationFontSize,
+                              height: designationHeight,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      _legacyAwareText(
-                        text: resolvedSecondaryDesignation,
-                        fontFamily: secondaryDesignationFontFamily ??
-                            designationFontFamily,
-                        maxLines: 1,
-                        textAlign: TextAlign.left,
-                        fitToWidth: true,
-                        style: TextStyle(
-                          color: mutedStripTextColor,
-                          fontWeight: designationFontWeight,
-                          fontSize: designationFontSize * 0.82,
-                          height: designationHeight,
-                        ),
+                    )
+                  : _legacyAwareText(
+                      text: resolvedDesignation,
+                      fontFamily: designationFontFamily,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      fitToWidth: true,
+                      style: TextStyle(
+                        color: mutedStripTextColor,
+                        fontWeight: designationFontWeight,
+                        fontSize: designationFontSize,
+                        height: designationHeight,
                       ),
-                    ],
-                  )
-                : _legacyAwareText(
-                    text: resolvedDesignation,
-                    fontFamily: designationFontFamily,
-                    maxLines: 1,
-                    textAlign: TextAlign.right,
-                    fitToWidth: true,
-                    style: TextStyle(
-                      color: mutedStripTextColor,
-                      fontWeight: designationFontWeight,
-                      fontSize: designationFontSize,
-                      height: designationHeight,
                     ),
-                  ),
+            ),
           ),
         ],
       );
@@ -23730,128 +23751,131 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       TextAlign textAlign = TextAlign.center,
       MainAxisAlignment alignment = MainAxisAlignment.center,
     }) {
-      return _buildNameWithOptionalPartyLogo(
-        alignment: alignment,
-        logoSize: partyLogoSize,
-        gap: 8,
-        name: _legacyAwareText(
-          text: resolvedName,
-          fontFamily: displayNameFontFamily,
-          maxLines: 1,
-          textAlign: textAlign,
-          fitToWidth: true,
-          style: TextStyle(
-            color: stripTextColor,
-            fontWeight: nameFontWeight,
-            fontSize: nameFontSize,
-            height: nameHeight,
+      return SizedBox.expand(
+        child: _buildNameWithOptionalPartyLogo(
+          alignment: alignment,
+          logoSize: partyLogoSize,
+          gap: 8,
+          name: _legacyAwareText(
+            text: resolvedName,
+            fontFamily: displayNameFontFamily,
+            maxLines: 1,
+            textAlign: textAlign,
+            fitToWidth: true,
+            style: TextStyle(
+              color: stripTextColor,
+              fontWeight: nameFontWeight,
+              fontSize: nameFontSize,
+              height: nameHeight,
+            ),
           ),
         ),
       );
     }
 
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        if (isBusinessProfile)
-          resolvedDesignation.isNotEmpty
-              ? buildSplitStripRow(
-                  nameFontSize: _isEnglishOnlyText(resolvedName)
-                      ? englishSplitNameFontSize
-                      : businessNameFontSize,
-                  designationFontSize: _isEnglishOnlyText(resolvedName)
-                      ? englishDesignationFontSize
-                      : businessDesignationFontSize,
-                  nameFontWeight: FontWeight.w500,
-                  designationFontWeight: _isEnglishOnlyText(resolvedName)
-                      ? FontWeight.w600
-                      : FontWeight.w400,
-                  nameHeight: isTeluguName ? 0.98 : 1.0,
-                  designationHeight: 0.98,
-                )
-              : Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: _isEnglishOnlyText(resolvedName)
-                          ? _buildEnglishBusinessStrip(
-                              resolvedName: resolvedName,
-                              resolvedDesignation: resolvedDesignation,
-                              displayNameFontFamily: displayNameFontFamily,
-                              designationFontFamily: designationFontFamily,
-                              stripTextColor: stripTextColor,
-                              mutedStripTextColor: mutedStripTextColor,
-                              showPhoneInStrip: showPhoneInStrip,
-                              resolvedPhone: resolvedPhone,
-                              partyLogoSize: partyLogoSize,
-                            )
-                          : _buildNameWithOptionalPartyLogo(
-                              alignment: MainAxisAlignment.start,
-                              logoSize: partyLogoSize,
-                              gap: 8,
-                              name: _legacyAwareText(
-                                text: resolvedName,
-                                fontFamily: displayNameFontFamily,
-                                maxLines: 1,
-                                textAlign: TextAlign.left,
-                                fitToWidth: true,
-                                style: TextStyle(
-                                  color: stripTextColor,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: businessNameFontSize,
-                                  height: isTeluguName ? 0.98 : 1.0,
-                                ),
+    final Widget content;
+    if (isBusinessProfile) {
+      content = resolvedDesignation.isNotEmpty
+          ? buildSplitStripRow(
+              nameFontSize: _isEnglishOnlyText(resolvedName)
+                  ? englishSplitNameFontSize
+                  : businessNameFontSize,
+              designationFontSize: _isEnglishOnlyText(resolvedName)
+                  ? englishDesignationFontSize
+                  : businessDesignationFontSize,
+              nameFontWeight: FontWeight.w600,
+              designationFontWeight: _isEnglishOnlyText(resolvedName)
+                  ? FontWeight.w600
+                  : FontWeight.w500,
+              nameHeight: isTeluguName ? 0.98 : 1.0,
+              designationHeight: 0.98,
+            )
+          : SizedBox.expand(
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _isEnglishOnlyText(resolvedName)
+                        ? _buildEnglishBusinessStrip(
+                            resolvedName: resolvedName,
+                            resolvedDesignation: resolvedDesignation,
+                            displayNameFontFamily: displayNameFontFamily,
+                            designationFontFamily: designationFontFamily,
+                            stripTextColor: stripTextColor,
+                            mutedStripTextColor: mutedStripTextColor,
+                            showPhoneInStrip: showPhoneInStrip,
+                            resolvedPhone: resolvedPhone,
+                            partyLogoSize: partyLogoSize,
+                          )
+                        : _buildNameWithOptionalPartyLogo(
+                            alignment: MainAxisAlignment.start,
+                            logoSize: partyLogoSize,
+                            gap: 8,
+                            name: _legacyAwareText(
+                              text: resolvedName,
+                              fontFamily: displayNameFontFamily,
+                              maxLines: 1,
+                              textAlign: TextAlign.left,
+                              fitToWidth: true,
+                              style: TextStyle(
+                                color: stripTextColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: businessNameFontSize,
+                                height: isTeluguName ? 0.98 : 1.0,
                               ),
                             ),
-                    ),
-                  ],
-                )
-        else if (_isEnglishOnlyText(resolvedName) &&
-            resolvedDesignation.isEmpty) ...<Widget>[
-          _buildNameWithOptionalPartyLogo(
-            logoSize: partyLogoSize,
-            name: _legacyAwareText(
-              text: resolvedName,
-              fontFamily: displayNameFontFamily,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              fitToWidth: true,
-              style: TextStyle(
-                color: stripTextColor,
-                fontWeight: FontWeight.w700,
-                fontSize: englishPersonalNameFontSize,
-                height: 1.0,
+                          ),
+                  ),
+                ],
               ),
+            );
+    } else if (_isEnglishOnlyText(resolvedName) &&
+        resolvedDesignation.isEmpty) {
+      content = SizedBox.expand(
+        child: _buildNameWithOptionalPartyLogo(
+          logoSize: partyLogoSize,
+          name: _legacyAwareText(
+            text: resolvedName,
+            fontFamily: displayNameFontFamily,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            fitToWidth: true,
+            style: TextStyle(
+              color: stripTextColor,
+              fontWeight: FontWeight.w700,
+              fontSize: englishPersonalNameFontSize,
+              height: 1.0,
             ),
           ),
-        ] else if (_isEnglishOnlyText(resolvedName) &&
-            resolvedDesignation.isNotEmpty) ...<Widget>[
-          buildSplitStripRow(
-            nameFontSize: englishSplitNameFontSize,
-            designationFontSize: englishDesignationFontSize,
-            nameFontWeight: FontWeight.w700,
-            designationFontWeight: FontWeight.w600,
-            nameHeight: 1.0,
-            designationHeight: 1.0,
-          ),
-        ] else ...<Widget>[
-          if (resolvedDesignation.isNotEmpty)
-            buildSplitStripRow(
-              nameFontSize: personalNameFontSize,
-              designationFontSize: personalDesignationFontSize,
-              nameFontWeight: FontWeight.w500,
-              designationFontWeight: FontWeight.w400,
-              nameHeight: personalNameLineHeight,
-              designationHeight: 0.82,
-            )
-          else
-            buildSingleName(
-              nameFontSize: personalNameFontSize,
-              nameFontWeight: FontWeight.w500,
-              nameHeight: personalNameLineHeight,
-            ),
-        ],
-      ],
-    );
+        ),
+      );
+    } else if (_isEnglishOnlyText(resolvedName) &&
+        resolvedDesignation.isNotEmpty) {
+      content = buildSplitStripRow(
+        nameFontSize: englishSplitNameFontSize,
+        designationFontSize: englishDesignationFontSize,
+        nameFontWeight: FontWeight.w700,
+        designationFontWeight: FontWeight.w600,
+        nameHeight: 1.0,
+        designationHeight: 1.0,
+      );
+    } else {
+      if (resolvedDesignation.isNotEmpty) {
+        content = buildSplitStripRow(
+          nameFontSize: personalNameFontSize,
+          designationFontSize: personalDesignationFontSize,
+          nameFontWeight: FontWeight.w600,
+          designationFontWeight: FontWeight.w500,
+          nameHeight: personalNameLineHeight,
+          designationHeight: 0.86,
+        );
+      } else {
+        content = buildSingleName(
+          nameFontSize: personalNameFontSize,
+          nameFontWeight: FontWeight.w600,
+          nameHeight: personalNameLineHeight,
+        );
+      }
+    }
 
     return _wrapPosterBottomStrip(
       stripColor: stripColor,
@@ -23870,20 +23894,10 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
       decoration: BoxDecoration(color: stripColor),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: 6,
+          horizontal: 10,
           vertical: bottomStripPadding,
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: SizedBox(width: constraints.maxWidth, child: child),
-              ),
-            );
-          },
-        ),
+        child: SizedBox.expand(child: child),
       ),
     );
     final onTap = widget.onNameStripTap;

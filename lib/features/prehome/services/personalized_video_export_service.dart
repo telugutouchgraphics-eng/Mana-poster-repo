@@ -748,10 +748,32 @@ class PersonalizedVideoExportService {
     required String previewSeed,
     required int stripGradientTapOffset,
   }) async {
+    final rawName = profile.resolvedName(language: language).trim();
+    final isBusinessProfile =
+        profile.identityMode == PosterIdentityMode.business;
+    final primaryDesignation = isBusinessProfile
+        ? profile.businessTagline.trim()
+        : profile.primaryPersonalDesignation;
+    final secondaryDesignation = isBusinessProfile
+        ? ''
+        : profile.secondaryPersonalDesignation;
+    final hasBothPersonalDesignations =
+        !isBusinessProfile &&
+        primaryDesignation.isNotEmpty &&
+        secondaryDesignation.isNotEmpty;
+    final rawPhone = isBusinessProfile
+        ? profile.activeWhatsappNumber.trim()
+        : '';
+
+    final stripBaseMultiplier = hasBothPersonalDesignations ? 0.72 : 0.58;
     final stripHeight =
         (outputHeight * (personalization.stripHeight / 100) * 0.5)
+        (outputHeight *
+                (personalization.stripHeight / 100) *
+                stripBaseMultiplier)
             .round()
             .clamp(1, math.max(1, (outputHeight * 0.18).round()))
+            .clamp(1, math.max(1, (outputHeight * 0.20).round()))
             .toInt();
     final stripWidth =
         (outputWidth * (personalization.stripWidth.clamp(35.0, 100.0) / 100))
@@ -783,7 +805,8 @@ class PersonalizedVideoExportService {
     final secondaryDesignation = isBusinessProfile
         ? ''
         : profile.secondaryPersonalDesignation;
-    final hasBothPersonalDesignations = !isBusinessProfile &&
+    final hasBothPersonalDesignations =
+        !isBusinessProfile &&
         primaryDesignation.isNotEmpty &&
         secondaryDesignation.isNotEmpty;
     final rawPhone = isBusinessProfile
@@ -926,9 +949,11 @@ class PersonalizedVideoExportService {
           maxWidth: trailingMaxWidth,
           maxHeight: availableTextHeight,
           textAlign: ui.TextAlign.right,
+          textAlign: ui.TextAlign.center,
         ),
         maxWidth: trailingMaxWidth,
         textAlign: ui.TextAlign.right,
+        textAlign: ui.TextAlign.center,
       );
       final trailingY = (stripHeight - trailingParagraph.height) / 2;
       canvas.drawParagraph(
