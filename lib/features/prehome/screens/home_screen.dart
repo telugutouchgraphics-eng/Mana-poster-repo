@@ -22897,13 +22897,13 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     final legacyTeluguDesignationBoost =
         (usesLegacyTeluguDesignationFont ||
             usesLegacyTeluguSecondaryDesignationFont)
-        ? 1.34
+        ? 1.10
         : 1.0;
     final personalDesignationFontSize =
-        34.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+        23.0 * designationScaleFactor * legacyTeluguDesignationBoost;
     final businessDesignationFontSize =
-        30.0 * designationScaleFactor * legacyTeluguDesignationBoost;
-    final englishDesignationFontSize = 26.0 * designationScaleFactor;
+        21.0 * designationScaleFactor * legacyTeluguDesignationBoost;
+    final englishDesignationFontSize = 18.0 * designationScaleFactor;
     final englishPersonalNameFontSize = 30.0 * nameScaleFactor;
     final englishSplitNameFontSize = 28.0 * nameScaleFactor;
     final showPhoneInStrip = isBusinessProfile && resolvedPhone.isNotEmpty;
