@@ -61,3 +61,8 @@ context.strings.localized(
 - Always keep responses to the user concise and to the point, strictly within a maximum of 5 lines, unless the user explicitly asks for detailed explanations or code snippets.
 - Respond in natural, polite Telugu by default.
 
+## 4. Mandatory Plan Presentation Before Code Changes (MANDATORY)
+- **NEVER make direct code modifications without prior user alignment.**
+- Whenever the user requests any changes, fixes, or new features, **ALWAYS present a clear implementation plan first** explaining what changes will be made and why.
+- **Wait for the user's explicit confirmation or approval** before executing code changes.
+
