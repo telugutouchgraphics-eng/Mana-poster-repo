@@ -3834,9 +3834,11 @@ function tokenAllowsReligion(data, targetReligion = "") {
   if (!target || target === "all") {
     return true;
   }
-  return tokenReligionFromData(data) === target;
   const userReligion = tokenReligionFromData(data);
-  return userReligion === target || userReligion === "all" || !userReligion;
+  if (target === "hindu") {
+    return userReligion === "hindu" || userReligion === "all" || !userReligion;
+  }
+  return userReligion === target;
 }
 
 function weekdaySpecialCategoryKey(now = new Date()) {
@@ -7089,6 +7091,31 @@ exports.dailyGoodNightReminder2100 = onSchedule(
         categoryKey: "night",
         reminderSeed: "2100",
       });
+    },
+);
+
+exports.dailyReligionReminder0815 = onSchedule(
+    {
+      region: "asia-south1",
+      schedule: "15 8 * * *",
+      timeZone: "Asia/Kolkata",
+      memory: "512MiB",
+      timeoutSeconds: 300,
+    },
+    async () => {
+      const now = new Date();
+      const targets = ["hindu", "muslim", "christian"]
+          .map((religion) => religionDailyTarget(religion, now))
+          .filter(Boolean);
+      for (const target of targets) {
+        await sendDailyPersonalizedReminder({
+          keywords: [target.categoryKey, target.label],
+          categoryKey: target.categoryKey,
+          reminderSeed: `religion-${target.religion}`,
+          targetReligion: target.religion,
+          displayLabel: target.label,
+        });
+      }
     },
 );
 
