@@ -179,16 +179,27 @@ class AppRegionService {
       if (prefs.getString(_lastRemoteSyncKey) == syncValue) {
         return;
       }
+      final Map<String, dynamic> updatePayload = <String, dynamic>{
+        'selectedRegion': region.id,
+        'selectedRegionName': region.name,
+        'selectedRegionLanguage': region.primaryLanguage,
+        'selectedRegionLanguageCode': region.primaryLanguageCode,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      try {
+        final existingDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get()
+            .timeout(const Duration(seconds: 4));
+        if (!existingDoc.exists || existingDoc.data()?['createdAt'] == null) {
+          updatePayload['createdAt'] = FieldValue.serverTimestamp();
+        }
+      } catch (_) {}
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .set({
-            'selectedRegion': region.id,
-            'selectedRegionName': region.name,
-            'selectedRegionLanguage': region.primaryLanguage,
-            'selectedRegionLanguageCode': region.primaryLanguageCode,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true))
+          .set(updatePayload, SetOptions(merge: true))
           .timeout(const Duration(seconds: 4));
       await prefs.setString(_lastRemoteSyncKey, syncValue);
     } catch (_) {

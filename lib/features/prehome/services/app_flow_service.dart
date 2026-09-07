@@ -808,9 +808,8 @@ class AppFlowService {
                 'createdAt': FieldValue.serverTimestamp(),
               }, SetOptions(merge: true))
               .timeout(const Duration(seconds: 4));
+          await prefs.setBool(_installRecordedKey, true);
         } catch (_) {}
-
-        await prefs.setBool(_installRecordedKey, true);
       }
 
       // 2. Record Daily Active Heartbeat (once per IST day)
