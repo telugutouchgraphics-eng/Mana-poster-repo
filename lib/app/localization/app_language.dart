@@ -346,24 +346,23 @@ _regionalCommonFallbacks = <AppLanguage, Map<String, String>>{
   AppLanguage.kashmiri: <String, String>{
     'Select State / Union Territory': 'ریاست / یونین ٹیریٹری منتخب کریں',
     'Search State, UT or language': 'ریاست، علاقہ یا زبان تلاش کریں',
-    'No matching region found.':
-        'Ú©ÙˆØ¦ÛŒ Ù…Ù„ØªØ§ Ø¬Ù„ØªØ§ Ø¹Ù„Ø§Ù‚Û Ù†ÛÛŒÚº Ù…Ù„Ø§Û”',
-    'Political Parties': 'Ø³ÛŒØ§Ø³ÛŒ Ø¬Ù…Ø§Ø¹ØªÛŒÚº',
-    'National': 'Ù‚ÙˆÙ…ÛŒ',
-    'State': 'Ø±ÛŒØ§Ø³Øª',
-    'Continue': 'Ø¬Ø§Ø±ÛŒ Ø±Ú©Ú¾ÛŒÚº',
-    'Login': 'Ù„Ø§Ú¯ Ø§Ù†',
-    'Sign Up': 'Ø³Ø§Ø¦Ù† Ø§Ù¾',
-    'Continue with Google': 'Google Ú©Û’ Ø³Ø§ØªÚ¾ Ø¬Ø§Ø±ÛŒ Ø±Ú©Ú¾ÛŒÚº',
-    'Email address': 'Ø§ÛŒ Ù…ÛŒÙ„ Ù¾ØªÛ',
-    'Password': 'Ù¾Ø§Ø³ ÙˆØ±Úˆ',
-    'Forgot Password': 'Ù¾Ø§Ø³ ÙˆØ±Úˆ Ø¨Ú¾ÙˆÙ„ Ú¯Ø¦Û’ØŸ',
+    'No matching region found.': 'کوئی ملتا جلتا علاقہ نہیں ملا۔',
+    'Political Parties': 'سیاسی جماعتیں',
+    'National': 'قومی',
+    'State': 'ریاست',
+    'Continue': 'جاری رکھیں',
+    'Login': 'لاگ ان',
+    'Sign Up': 'سائن اپ',
+    'Continue with Google': 'Google کے ساتھ جاری رکھیں',
+    'Email address': 'ای میل پتہ',
+    'Password': 'پاس ورڈ',
+    'Forgot Password': 'پاس ورڈ بھول گئے؟',
     "Don't have an account?": 'اکاؤنٹ نہیں ہے؟',
     'Already have an account?': 'پہلے سے اکاؤنٹ ہے؟',
-    'Login with Email': 'Ø§ÛŒ Ù…ÛŒÙ„ Ø³Û’ Ù„Ø§Ú¯ Ø§Ù† Ú©Ø±ÛŒÚº',
-    'Sign Up with Email': 'Ø§ÛŒ Ù…ÛŒÙ„ Ø³Û’ Ø³Ø§Ø¦Ù† Ø§Ù¾ Ú©Ø±ÛŒÚº',
+    'Login with Email': 'ای میل سے لاگ ان کریں',
+    'Sign Up with Email': 'ای میل سے سائن اپ کریں',
     'Create & Share': 'بنائیں اور شیئر کریں',
-    'Create': 'Ø¨Ù†Ø§Ø¦ÛŒÚº',
+    'Create': 'بنائیں',
     'Search templates': 'ٹیمپلیٹس تلاش کریں',
     'Profile & Settings': 'پروفائل اور سیٹنگز',
     'Language': 'زبان',
@@ -546,7 +545,7 @@ _regionalCommunityUploadFallbacks = <AppLanguage, Map<String, String>>{
   AppLanguage.kashmiri: <String, String>{
     'Check review rules before submitting your content.':
         'مواد بھیزنہٕ برونہہ جائزہ ضابطہ چیک کریو۔',
-    'Community Upload Instructions': 'Ú©Ù…ÛŒÙˆÙ†Ù¹ÛŒ Ø§Ù¾Ù„ÙˆÚˆ ÛØ¯Ø§ÛŒØ§Øª',
+    'Community Upload Instructions': 'کمیونٹی اپلوڈ ہدایات',
     'Send your quote, text, or quote image to the Mana Poster review team.':
         'پنن قول، متن یا قول والی تصویر Mana Poster جائزہ ٹیمس بھیزو۔',
     'You are responsible for the content you upload. By submitting, you confirm that your upload follows Mana Poster terms and community guidelines.':
@@ -903,39 +902,35 @@ _regionalExtraFallbacks = <AppLanguage, Map<String, String>>{
   },
   AppLanguage.kashmiri: <String, String>{
     'A few permissions are needed': 'کچھ اجازتیں ضروری ہیں',
-    'About App': 'Ø§ÛŒÙ¾ Ú©Û’ Ø¨Ø§Ø±Û’ Ù…ÛŒÚº',
+    'About App': 'ایپ کے بارے میں',
     'Account': 'اکاؤنٹ',
     'Allow': 'اجازت دیں',
-    'App details and version info':
-        'Ø§ÛŒÙ¾ Ú©ÛŒ ØªÙØµÛŒÙ„ Ø§ÙˆØ± ÙˆØ±Ú˜Ù† Ù…Ø¹Ù„ÙˆÙ…Ø§Øª',
+    'App details and version info': 'ایپ کی تفصیل اور ورژن معلومات',
     'App Settings': 'ایپ سیٹنگز',
     'Buy': 'خریدیں',
     'Choose your app language': 'اپنی ایپ زبان منتخب کریں',
-    'Control alerts and updates':
-        'Ø§Ù„Ø±Ù¹Ø³ Ø§ÙˆØ± Ø§Ù¾ ÚˆÛŒÙ¹Ø³ Ú©Ù†Ù¹Ø±ÙˆÙ„ Ú©Ø±ÛŒÚº',
+    'Control alerts and updates': 'الرٹس اور اپ ڈیٹس کنٹرول کریں',
     'Current language': 'موجودہ زبان',
-    'Enter valid email': 'Ø¯Ø±Ø³Øª Ø§ÛŒ Ù…ÛŒÙ„ Ø¯Ø±Ø¬ Ú©Ø±ÛŒÚº',
-    'Get help and contact support':
-        'Ù…Ø¯Ø¯ Ø­Ø§ØµÙ„ Ú©Ø±ÛŒÚº Ø§ÙˆØ± Ø³Ù¾ÙˆØ±Ù¹ Ø³Û’ Ø±Ø§Ø¨Ø·Û Ú©Ø±ÛŒÚº',
-    'Help & Support': 'Ù…Ø¯Ø¯ Ø§ÙˆØ± Ø³Ù¾ÙˆØ±Ù¹',
+    'Enter valid email': 'درست ای میل درج کریں',
+    'Get help and contact support': 'مدد حاصل کریں اور سپورٹ سے رابطہ کریں',
+    'Help & Support': 'مدد اور سپورٹ',
     'Language Settings': 'زبان کی سیٹنگز',
-    'Later': 'Ø¨Ø¹Ø¯ Ù…ÛŒÚº',
+    'Later': 'بعد میں',
     'Manage current plan and upgrades':
         'موجودہ پلان اور اپ گریڈز کا انتظام کریں',
     'Minimum 6 characters required': 'کم از کم ۶ حروف ضروری ہیں',
-    'Notifications': 'Ø§Ø·Ù„Ø§Ø¹Ø§Øª',
-    'Password reset will be available soon.':
-        'Ù¾Ø§Ø³ ÙˆØ±Úˆ Ø±ÛŒ Ø³ÛŒÙ¹ Ø¬Ù„Ø¯ Ø¯Ø³ØªÛŒØ§Ø¨ ÛÙˆÚ¯Ø§Û”',
+    'Notifications': 'اطلاعات',
+    'Password reset will be available soon.': 'پاس ورڈ ری سیٹ جلد دستیاب ہوگا۔',
     'Photos, storage and other access': 'فوٹوز، اسٹوریج اور دیگر رسائی',
     'Photos/Gallery': 'فوٹوز / گیلری',
-    'Ready': 'ØªÛŒØ§Ø±',
-    'Save / Apply': 'Ù…Ø­ÙÙˆØ¸ / Ù„Ø§Ú¯Ùˆ Ú©Ø±ÛŒÚº',
+    'Ready': 'تیار',
+    'Save / Apply': 'محفوظ / لاگو کریں',
     'Share WhatsApp': 'WhatsApp پر شیئر کریں',
     'Sign out logic can be connected later':
         'سائن آؤٹ نظام بعد میں جوڑا جا سکتا ہے',
     'Special': 'خاص',
     'Subscription': 'سبسکرپشن',
-    'Support': 'Ø³Ù¾ÙˆØ±Ù¹',
+    'Support': 'سپورٹ',
     'Welcome to Mana Poster Ai': 'Mana Poster Ai میں خوش آمدید',
   },
   AppLanguage.ladakhi: <String, String>{
@@ -1220,18 +1215,18 @@ _regionalProfileFallbacks = <AppLanguage, Map<String, String>>{
     'Change State / UT': 'ریاست / UT بدلاؤ',
     'Update app language and state categories':
         'ایپ زبان تہ ریاست کیٹگری اپڈیٹ کرو',
-    'Political parties': 'Ø³ÛŒØ§Ø³ÛŒ Ù¾Ø§Ø±Ù¹ÛŒØ§Úº',
+    'Political parties': 'سیاسی پارٹیاں',
     'Update political party categories shown in home':
         'ہومس منز دکھن وٲل پارٹۍ کیٹگری اپڈیٹ کرو',
     'Change religion': 'مذہب بدلاؤ',
     'Update which categories appear in home':
         'ہومس منز دکھن وٲل کیٹگری اپڈیٹ کرو',
     'Location-based status': 'لوکیشن بنیاد سٹیٹس',
-    'View plan details': 'Ù¾Ù„Ø§Ù† ØªÙØµÛŒÙ„ ÙˆÚ†Ú¾ÛŒÙˆ',
-    'Referral rewards': 'Ø±ÛŒÙØ±Ù„ Ø§Ù†Ø¹Ø§Ù…',
+    'View plan details': 'پلان تفصیل وچھیو',
+    'Referral rewards': 'ریفرل انعام',
     'Restore subscriptions': 'سبسکرپشن بحال کرو',
     'Share App': 'ایپ شیئر کرو',
-    'Report a poster or issue': 'Ù¾ÙˆØ³Ù¹Ø± ÛŒØ§ Ù…Ø³Ø¦Ù„Û Ø±Ù¾ÙˆØ±Ù¹ Ú©Ø±Ùˆ',
+    'Report a poster or issue': 'پوسٹر یا مسئلہ رپورٹ کرو',
     'Delete account': 'اکاؤنٹ ڈیلیٹ کرو',
     'Privacy Policy': 'رازداری پالیسی',
     'Ad privacy choices': 'ایڈ رازداری اختیار',
@@ -2327,7 +2322,7 @@ class AppStrings {
       AppLanguage.mizo => const <String, String>{
         'OK': 'A tha',
         'Cancel': 'Sût',
-        'Close': 'Khâr rawh',
+        'Close': 'Khar rawh',
         'Apply': 'Hmang rawh',
         'Share': 'Sem rawh',
         'Download': 'Download rawh',
@@ -2455,29 +2450,29 @@ class AppStrings {
         'Select Category': 'বিভাগ নির্বাচন করুন',
       },
       AppLanguage.kashmiri => const <String, String>{
-        'OK': 'Ù¹Ú¾ÛŒÚ© Ú†Ú¾',
+        'OK': 'ٹھیک چھ',
         'Cancel': 'منسوخ',
-        'Close': 'Ø¨Ù†Ø¯ Ú©Ø±ÛŒÙˆ',
-        'Apply': 'Ù„Ø§Ú¯Ùˆ Ú©Ø±ÛŒÙˆ',
+        'Close': 'بند کریو',
+        'Apply': 'لاگو کریو',
         'Share': 'شیئر',
         'Download': 'ڈاؤن لوڈ',
         'More': 'مزید',
         'Remaining options': 'باقی اختیار',
         'Change religion': 'مذہب بدلٲو',
-        'Referral rewards': 'Ø±ÛŒÙØ±Ù„ Ø§Ù†Ø¹Ø§Ù…',
-        'Copy code': 'Ú©ÙˆÚˆ Ú©Ø§Ù¾ÛŒ Ú©Ø±ÛŒÙˆ',
+        'Referral rewards': 'ریفرل انعام',
+        'Copy code': 'کوڈ کاپی کریو',
         'Delete account': 'اکاؤنٹ مٹٲو',
         'Privacy Policy': 'رازداری پالیسی',
         'Ad privacy choices': 'اشتہار رازداری اختیار',
         'Permissions': 'اجازت',
-        'Check': 'Ú†ÛŒÚ© Ú©Ø±ÛŒÙˆ',
+        'Check': 'چیک کریو',
         'Subscription Required': 'سبسکرپشن ضروری چھ',
-        '3-day trial plan': 'Û³ Ø¯Ù† Ù¹Ø±Ø§Ø¦Ù„ Ù¾Ù„Ø§Ù†',
-        'Monthly plan': 'Ù…Ø§ÛÙˆØ§Ø± Ù¾Ù„Ø§Ù†',
+        '3-day trial plan': '۳ دن ٹرائل پلان',
+        'Monthly plan': 'ماہوار پلان',
         'Terms': 'شرطٕ',
         'Skip': 'چھوڈٲو',
-        'Subscribe': 'Ø³Ø¨Ø³Ú©Ø±Ø§Ø¦Ø¨ Ú©Ø±ÛŒÙˆ',
-        'Trial': 'Ù¹Ø±Ø§Ø¦Ù„',
+        'Subscribe': 'سبسکرائب کریو',
+        'Trial': 'ٹرائل',
         'Select Category': 'زمرہ چنٲو',
       },
       AppLanguage.ladakhi => const <String, String>{
@@ -3641,25 +3636,31 @@ class AppStrings {
   String get freeExportWithPhotoTitle => localized(
     telugu: '\u0c2b\u0c4b\u0c1f\u0c4b, \u0c2a\u0c47\u0c30\u0c41 \u0c24\u0c4b',
     english: 'With photo and name',
-    hindi: '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925',
+    hindi:
+        '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925',
   );
 
   String get freeExportWithPhotoMessage => localized(
-    telugu: '\u0c2b\u0c4b\u0c1f\u0c4b, \u0c2a\u0c47\u0c30\u0c41 \u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
+    telugu:
+        '\u0c2b\u0c4b\u0c1f\u0c4b, \u0c2a\u0c47\u0c30\u0c41 \u0c24\u0c4b \u0c37\u0c47\u0c30\u0c4d \u0c1a\u0c47\u0c2f\u0c02\u0c21\u0c3f',
     english: 'Share with photo and name',
-    hindi: '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
+    hindi:
+        '\u092b\u094b\u091f\u094b \u0914\u0930 \u0928\u093e\u092e \u0915\u0947 \u0938\u093e\u0925 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902',
   );
 
   String get freeExportPlainTitle => localized(
-    telugu: '\u0c09\u0c1a\u0c3f\u0c24\u0c02\u0c17\u0c3e \u0c37\u0c47\u0c30\u0c4d',
+    telugu:
+        '\u0c09\u0c1a\u0c3f\u0c24\u0c02\u0c17\u0c3e \u0c37\u0c47\u0c30\u0c4d',
     english: 'Share free',
     hindi: '\u092e\u0941\u092b\u094d\u0924 \u0936\u0947\u092f\u0930',
   );
 
   String get freeExportPlainMessage => localized(
-    telugu: '\u0c2a\u0c47\u0c30\u0c41, \u0c2b\u0c4b\u0c1f\u0c4b \u0c32\u0c47\u0c15\u0c41\u0c02\u0c21\u0c3e \u0c15\u0c47\u0c35\u0c32\u0c02 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d',
+    telugu:
+        '\u0c2a\u0c47\u0c30\u0c41, \u0c2b\u0c4b\u0c1f\u0c4b \u0c32\u0c47\u0c15\u0c41\u0c02\u0c21\u0c3e \u0c15\u0c47\u0c35\u0c32\u0c02 \u0c2a\u0c4b\u0c38\u0c4d\u0c1f\u0c30\u0c4d',
     english: 'Poster only without name and photo',
-    hindi: '\u0928\u093e\u092e \u0914\u0930 \u092b\u094b\u091f\u094b \u0915\u0947 \u092c\u093f\u0928\u093e \u0938\u093f\u0930\u094d\u092b \u092a\u094b\u0938\u094d\u091f\u0930',
+    hindi:
+        '\u0928\u093e\u092e \u0914\u0930 \u092b\u094b\u091f\u094b \u0915\u0947 \u092c\u093f\u0928\u093e \u0938\u093f\u0930\u094d\u092b \u092a\u094b\u0938\u094d\u091f\u0930',
   );
 
   String get monthlyPlanStartsFromFour => localized(
@@ -4396,23 +4397,23 @@ class AppStrings {
           'আরও',
         ],
         AppLanguage.kashmiri: <String>[
-          'Ø³Ø§Ø±Û’',
+          'سارے',
           'صبح بخیر',
           'دوپہر بخیر',
           'شب بخیر',
           'حوصلہ افزا',
-          'Ù…Ø­Ø¨Øª Ú©Û’ Ø§Ù‚ÙˆØ§Ù„',
+          'محبت کے اقوال',
           'آج کا خاص',
-          'Ø³Ø§Ù„Ú¯Ø±Û',
+          'سالگرہ',
           'زندگی مشورہ',
-          'Ú¯ÛŒØªØ§ Ú¯ÛŒØ§Ù†',
-          'Ø¹Ù‚ÛŒØ¯Øª',
-          'Ù…ÛØ§Ø¨Ú¾Ø§Ø±Øª',
-          'Ø³Ø§Ù„Ú¯Ø±Û ØªÙ‚Ø±ÛŒØ¨',
+          'گیتا گیان',
+          'عقیدت',
+          'مہابھارت',
+          'سالگرہ تقریب',
           'اچھے خیالات',
-          'Ø¨Ø§Ø¦Ø¨Ù„',
-          'Ø§Ø³Ù„Ø§Ù…',
-          'Ù„Ø·ÛŒÙÛ’',
+          'بائبل',
+          'اسلام',
+          'لطیفے',
           'مزید',
         ],
         AppLanguage.ladakhi: <String>[

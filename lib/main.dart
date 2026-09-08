@@ -91,22 +91,19 @@ Future<void> main() async {
       if (Firebase.apps.isNotEmpty && !kIsWeb) {
         if (_isRecoverableError(error)) {
           developer.log(
-            'Recoverable zoned error skipped for Crashlytics: $error',
+            'Recoverable zoned error skipped for Crashlytics: '
+            '${_safeErrorText(error)}',
             name: 'app.recoverable',
             error: error,
             stackTrace: stackTrace,
           );
           return;
         }
-        FirebaseCrashlytics.instance.recordError(
-          error,
-          stackTrace,
-          fatal: true,
-        );
+        _recordFatalErrorSafely(error, stackTrace);
         return;
       }
       developer.log(
-        'Uncaught app error: $error',
+        'Uncaught app error: ${_safeErrorText(error)}',
         name: 'app.errors',
         error: error,
         stackTrace: stackTrace,
@@ -278,7 +275,7 @@ Future<void> _runStartupTask(
     await task();
   } catch (error, stackTrace) {
     developer.log(
-      'Startup task skipped: $taskName: $error',
+      'Startup task skipped: $taskName: ${_safeErrorText(error)}',
       name: 'app.startup',
       error: error,
       stackTrace: stackTrace,
@@ -288,11 +285,10 @@ Future<void> _runStartupTask(
         if (_isRecoverableError(error)) {
           return;
         }
-        await FirebaseCrashlytics.instance.recordError(
+        await _recordNonFatalErrorSafely(
           error,
           stackTrace,
           reason: 'nonfatal_startup_task:$taskName',
-          fatal: false,
         );
       } catch (_) {}
     }
@@ -450,6 +446,8 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('connection closed') ||
       normalized.contains('connection reset') ||
       normalized.contains('connection timed out') ||
+      normalized.contains('skipped frames') ||
+      normalized.contains('choreographer') ||
       normalized.contains('socketexception');
 }
 
@@ -480,6 +478,28 @@ void _recordFatalErrorSafely(Object error, StackTrace stackTrace) {
   } catch (recordingError, recordingStackTrace) {
     developer.log(
       'Crashlytics fatal recording skipped: ${_safeErrorText(recordingError)}',
+      name: 'app.monitoring',
+      error: recordingError,
+      stackTrace: recordingStackTrace,
+    );
+  }
+}
+
+Future<void> _recordNonFatalErrorSafely(
+  Object error,
+  StackTrace stackTrace, {
+  String? reason,
+}) async {
+  try {
+    await FirebaseCrashlytics.instance.recordError(
+      error,
+      stackTrace,
+      reason: reason?.toWellFormed(),
+      fatal: false,
+    );
+  } catch (recordingError, recordingStackTrace) {
+    developer.log(
+      'Crashlytics nonfatal recording skipped: ${_safeErrorText(recordingError)}',
       name: 'app.monitoring',
       error: recordingError,
       stackTrace: recordingStackTrace,

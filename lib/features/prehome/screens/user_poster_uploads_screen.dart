@@ -1275,7 +1275,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
               nepali: 'कृपया तस्विर छान्नुहोस् वा सुविचार लेख्नुहोस्',
               meitei: 'চানবীদুনা ফোতো অমা খনবীয়ু নত্রগা ৱাফম অমা ইবীয়ু',
               mizo: 'Khawngaihin thlalak thlang rawh lehkha thu emaw ziak rawh',
-              kashmiri: 'مہر Ships کٔرِتھ ژارِو اَکھ تصویر یا لؠکھِو اَکھ قول',
+              kashmiri: 'مہر بانی کٔرِتھ ژارِو اَکھ تصویر یا لؠکھِو اَکھ قول',
               ladakhi: 'སྐུ་མཁྱེན་པར་འདེམས་པའམ་གཏམ་དཔེ་ཞིག་བྲིས།',
             ),
           ),
@@ -1550,7 +1550,7 @@ class _UserPosterUploadsScreenState extends State<UserPosterUploadsScreen>
           nepali: 'अपलोड असफल भयो। कृपया पुन: प्रयास गर्नुहोस्।',
           meitei: 'অপলোদ তৌবা য়ামদে। চানবীদুনা অমুক হন্না হোৎনবীয়ু।',
           mizo: 'Upload a hlawhchham. Khawngaihin ti nawn leh rawh.',
-          kashmiri: 'اپلوڈ گوو ناکام۔ مہر Ships کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
+          kashmiri: 'اپلوڈ گوو ناکام۔ مہر بانی کٔرِتھ دُوبارٕ کوٗشِش کٔرِو۔',
           ladakhi: 'ཡར་འཇུག་མ་ཐུབ། སྐུ་མཁྱེན་ཡང་བསྐྱར་འབད་པ་གནང་།',
         );
     }
