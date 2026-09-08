@@ -1863,7 +1863,10 @@ class NotificationService {
     if (categoryKey.trim().toLowerCase() != 'welcome') {
       return text;
     }
-    final name = userName.trim().isEmpty ? 'User' : userName.trim();
+    final name = userName.trim();
+    if (name.isEmpty) {
+      return text;
+    }
     final language = (await AppFlowService.loadSnapshot()).language;
     final suffix = switch (language.supportedUiLanguage) {
       SupportedUiLanguage.telugu => '$name గారు, ',

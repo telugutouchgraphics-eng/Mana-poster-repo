@@ -486,34 +486,34 @@ object ManaPosterNotificationRenderer {
     private fun localizedReminderCopy(categoryKey: String, userName: String, languageCode: String): ReminderCopy {
         val language = normalizeLanguageCode(languageCode)
         val lexicon = notificationLexicon(language)
-        val name = userName.ifBlank { lexicon.user }
+        val name = userName.trim()
         val category = normalizedReminderCategory(categoryKey)
         return when (category) {
             "morning" -> ReminderCopy(
                 title = lexicon.morningTitle,
                 body = lexicon.morningBody,
-                header = lexicon.morningHeader(name),
+                header = if (name.isBlank()) lexicon.morningBody else lexicon.morningHeader(name),
                 footer = lexicon.share,
             )
 
             "afternoon" -> ReminderCopy(
                 title = lexicon.afternoonTitle,
                 body = lexicon.afternoonBody,
-                header = lexicon.afternoonHeader(name),
+                header = if (name.isBlank()) lexicon.afternoonBody else lexicon.afternoonHeader(name),
                 footer = lexicon.share,
             )
 
             "night" -> ReminderCopy(
                 title = lexicon.nightTitle,
                 body = lexicon.nightBody,
-                header = lexicon.nightHeader(name),
+                header = if (name.isBlank()) lexicon.nightBody else lexicon.nightHeader(name),
                 footer = lexicon.share,
             )
 
             "welcome" -> ReminderCopy(
                 title = lexicon.welcomeTitle,
-                body = lexicon.welcomeBody(name),
-                header = lexicon.welcomeHeader(name),
+                body = removeEmptyNamePrefix(lexicon.welcomeBody(name)),
+                header = if (name.isBlank()) removeEmptyNamePrefix(lexicon.welcomeBody(name)) else lexicon.welcomeHeader(name),
                 footer = lexicon.share,
             )
 
@@ -548,9 +548,16 @@ object ManaPosterNotificationRenderer {
         return ReminderCopy(
             title = title,
             body = body,
-            header = copy.header(userName, label),
+            header = if (userName.trim().isBlank()) body else copy.header(userName.trim(), label),
             footer = copy.footer,
         )
+    }
+
+    private fun removeEmptyNamePrefix(value: String): String {
+        return value.trim()
+            .replace(Regex("^(,|،)\\s*"), "")
+            .replace(Regex("^(గారు|जी|அவர்களே|ಅವರೇ)\\s*(,|،)?\\s*"), "")
+            .trim()
     }
 
     private fun categoryReminderTemplate(languageCode: String): CategoryReminderTemplate {

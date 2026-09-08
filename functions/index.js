@@ -1542,6 +1542,31 @@ function notificationDisplayName(userName, language) {
     "Friend";
 }
 
+function hasNotificationUserName(userName) {
+  return Boolean(pickFirstUsablePosterName(userName));
+}
+
+function removeFallbackNotificationAddress(text, userName) {
+  if (hasNotificationUserName(userName)) {
+    return text;
+  }
+  return String(text || "")
+      .replace(/^\s*(మిత్రమా\s*గారు|दोस्त\s*जी|Friend|நண்பரே|ಸ್ನೇಹಿತರೆ|സുഹൃത്തേ|বন্ধু|મિત્ર|मित्रा|मोगाळा|মরুপ|Thian|ବନ୍ଧୁ|ਦੋਸਤ|साथी|دوست|གྲོགས་པོ)\s*[,،]?\s*/u, "")
+      .replace(/^\s*(గారు|जी|அவர்களே|ಅವರೇ)\s*[,،]?\s*/u, "")
+      .trim();
+}
+
+function cleanFallbackNotificationAddress(copy, userName) {
+  if (hasNotificationUserName(userName)) {
+    return copy;
+  }
+  return {
+    ...copy,
+    body: removeFallbackNotificationAddress(copy.body, userName),
+    header: removeFallbackNotificationAddress(copy.header || copy.body, userName),
+  };
+}
+
 function buildNotificationCopy(kind, language, userName, extra = {}) {
   const lang = sanitizeLanguage(language) || "english";
   const name = notificationDisplayName(userName, lang);
@@ -1717,12 +1742,12 @@ function buildNotificationCopy(kind, language, userName, extra = {}) {
   };
   const bucket = map[lang] || map.english;
   const pair = bucket[kind] || bucket.welcome;
-  return {
+  return cleanFallbackNotificationAddress({
     title: pair[0],
     body: pair[1],
     header: pair[1],
     footer: bucket === map.telugu ? "ఇప్పుడే షేర్ చేయండి" : "Share now",
-  };
+  }, userName);
 }
 
 function buildReligionNotificationCopy(language, userName, targetReligion) {
@@ -1842,12 +1867,12 @@ function buildReligionNotificationCopy(language, userName, targetReligion) {
   const bucket = copyByLanguage[lang] || copyByLanguage.english;
   const label = bucket.labels[religion] || bucket.labels.hindu;
   const body = bucket.body(label);
-  return {
+  return cleanFallbackNotificationAddress({
     title: bucket.title,
     body,
     header: body,
     footer: bucket.footer,
-  };
+  }, userName);
 }
 
 function reminderCopy(kind, language, userName) {
@@ -2521,12 +2546,12 @@ function motivationReminderCopyLocalized(language, userName) {
     ladakhi: {title: "Motivation poster ready", body: `${name}, khyod-kyi motivation poster ready in. App phye nas share chos.`, footer: "Da share chos"},
   };
   const resolved = copy[lang] || copy.english;
-  return {
+  return cleanFallbackNotificationAddress({
     title: resolved.title,
     body: resolved.body,
     header: resolved.body,
     footer: resolved.footer,
-  };
+  }, userName);
 }
 
 function categorySpecificReminderCopy(kind, language, userName) {
@@ -2674,12 +2699,12 @@ function categorySpecificReminderCopy(kind, language, userName) {
   const bucket = text[lang] || text.english;
   const label = bucket.labels[copyKey];
   const body = bucket.body(label);
-  return {
+  return cleanFallbackNotificationAddress({
     title: bucket.titles[copyKey],
     body,
     header: body,
     footer: bucket.footer,
-  };
+  }, userName);
 }
 
 function notificationEventNameList(events) {
@@ -4567,17 +4592,17 @@ async function sendDailyPersonalizedReminder({
         return;
       }
       const copy =
-        categorySpecificReminderCopy(categoryKey, language, "Mana Poster User") ||
+        categorySpecificReminderCopy(categoryKey, language, "") ||
         (targetReligion ?
           buildReligionNotificationCopy(
               language,
-              "Mana Poster User",
+              "",
               targetReligion,
           ) :
           reminderCopyLocalized(
               categoryKey,
               language,
-              "Mana Poster User",
+              "",
               now,
           ));
       await sendReminderToToken({
@@ -4592,7 +4617,7 @@ async function sendDailyPersonalizedReminder({
         categoryKey,
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
-        userName: "Mana Poster User",
+        userName: "",
         languageCode: language,
       });
       deliveredCount++;
@@ -4784,14 +4809,14 @@ async function sendDirectReminderToEligibleTokens({
         const copy = buildNotificationCopy(
             "dynamic_event",
             language || profile?.preferredLanguage,
-            profile?.name || "Mana Poster User",
+            profile?.name || "",
             {eventTitle, timing: eventTiming},
         );
         resolvedTitle = copy.title;
         resolvedBody = copy.body;
         resolvedHeader = copy.header || "";
         resolvedFooter = copy.footer || "";
-        resolvedUserName = profile?.name || "Mana Poster User";
+        resolvedUserName = profile?.name || "";
         resolvedPhotoUrl = profile?.photoUrl || "";
       }
       const dayKey = getIstDayKey(new Date());
