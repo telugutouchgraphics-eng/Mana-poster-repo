@@ -1514,7 +1514,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool get _shouldRunRemoteHomeStartupTasks =>
       _remoteHomeStartupAllowed || _enableDebugHomeStartupServices;
 
-  static const int _dynamicMorePreviewDays = 7;
+  static const int _dynamicMorePreviewDays = 0;
   final DynamicCategoryService _dynamicCategoryService =
       const DynamicCategoryService();
   final DynamicCategoryService _dynamicPreviewCategoryService =
@@ -2277,7 +2277,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
       if (snapshot.allGranted) {
         await AppFlowService.markPermissionsStepHandled();
-        await NotificationService.instance.syncCurrentPreferences();
+        await NotificationService.instance.syncCurrentPreferences(force: true);
         await AppLocationService.instance.requestAndSyncApproxLocation();
         return;
       }
@@ -2302,7 +2302,7 @@ class _HomeScreenState extends State<HomeScreen>
       final updatedSnapshot = await permissionService
           .requestEssentialPermissions();
       await AppFlowService.markPermissionsStepHandled();
-      await NotificationService.instance.syncCurrentPreferences();
+      await NotificationService.instance.syncCurrentPreferences(force: true);
       if (updatedSnapshot.location.isGranted) {
         await AppLocationService.instance.requestAndSyncApproxLocation();
       }
@@ -3559,6 +3559,9 @@ class _HomeScreenState extends State<HomeScreen>
       if (norm.isEmpty || covered.contains(norm)) {
         continue;
       }
+      if (_isInactiveExactDynamicTemplateCategory(rawId, now)) {
+        continue;
+      }
       if (_staticCategorySlugs.contains(rawId)) {
         continue;
       }
@@ -3801,6 +3804,43 @@ class _HomeScreenState extends State<HomeScreen>
         return true;
       }
     }
+    return false;
+  }
+
+  bool _isInactiveExactDynamicTemplateCategory(String categoryId, DateTime now) {
+    final normalized = _normalizeTag(categoryId);
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    for (final category in _manualEventCategories) {
+      final categoryId = _normalizeTag(category.id);
+      final categorySlug = _normalizeTag(category.slug);
+      if (normalized == categoryId || normalized == categorySlug) {
+        return !_isCategoryActiveOnEventDay(category, now);
+      }
+    }
+
+    final today = DateTime(now.year, now.month, now.day);
+    final schedules = const DynamicEventScheduleService().schedulesForYear(
+      now.year,
+      daysBeforeEvent: 0,
+    );
+    for (final schedule in schedules) {
+      final eventId = _normalizeTag(schedule.event.id);
+      final eventSlug = _normalizeTag(schedule.event.slug);
+      if (normalized != eventId && normalized != eventSlug) {
+        continue;
+      }
+      if (!_dynamicEventMatchesSelectedRegion(schedule.event)) {
+        return true;
+      }
+      final active =
+          !today.isBefore(schedule.startDate) &&
+          !today.isAfter(schedule.endDate);
+      return !active;
+    }
+
     return false;
   }
 
@@ -11604,6 +11644,7 @@ String _subscriptionButtonLabelCleanLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionPromptCopyAppLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -11643,6 +11684,7 @@ String _subscriptionPromptCopyAppLocalized(BuildContext context) {
   );
 }
 
+// ignore: unused_element
 String _subscriptionDialogTitleAppLocalized(BuildContext context) {
   return context.strings.localized(
     telugu:
@@ -16386,6 +16428,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                   showProfilePhoto: effectiveShowProfilePhoto,
                   deferLegacyTextPrime: deferRichPosterPreview,
                   posterRenderCycle: posterRenderCycle,
+                  photoTapEnabled: _canInteractWithPosterPhoto,
                   interactivePhotoEnabled: false,
                   photoShapeOverride: '',
                   photoRenderModeOverride: '',
@@ -16445,7 +16488,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             showProfilePhoto: effectiveShowProfilePhoto,
             deferLegacyTextPrime: deferRichPosterPreview,
             posterRenderCycle: posterRenderCycle,
-            interactivePhotoEnabled: _canInteractWithPosterPhoto,
+            photoTapEnabled: _canInteractWithPosterPhoto,
+            interactivePhotoEnabled: false,
             photoShapeOverride: '',
             photoRenderModeOverride: '',
             photoFlipHorizontally: _photoUserAdjustment.flipHorizontally,
@@ -17360,8 +17404,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
             vertical: 24,
           ),
           child: _SubscriptionAccessDialog(
-            title: _subscriptionDialogTitleAppLocalized(screenContext),
-            message: _subscriptionPromptCopyAppLocalized(screenContext),
+            message: screenContext.strings.monthlyPlanStartsFromFour,
             trialTitle: _subscriptionTrialTitleAppLocalized(screenContext),
             trialValue: _subscriptionTrialValueAppLocalized(screenContext),
             monthlyTitle: _subscriptionMonthlyTitleAppLocalized(screenContext),
@@ -17579,6 +17622,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       if (!context.mounted) {
         return false;
       }
+      // ignore: unused_local_variable
       final title = context.strings.localized(
         telugu: 'సబ్‌స్క్రైబ్ చేసి పోస్టర్ ఉపయోగించండి',
         english: 'Subscribe to use this poster',
@@ -17599,6 +17643,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         kashmiri: 'یہ پوسٹر استعمال کرنہ خٲطر سبسکرائب کریو',
         ladakhi: 'Poster di use bya la subscribe byed',
       );
+      // ignore: unused_local_variable
       final message = context.strings.localized(
         telugu:
             'మీ ఫోటో, పేరుతో పోస్టర్‌ను డౌన్‌లోడ్ లేదా షేర్ చేయడానికి సబ్‌స్క్రైబ్ చేయండి.',
@@ -17729,12 +17774,12 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                                 horizontal: 44,
                               ),
                               child: Text(
-                                title,
+                                context.strings.monthlyPlanStartsFromFour,
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  color: Color(0xFFDC2626),
+                                  color: Color(0xFF16A34A),
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   height: 1.12,
@@ -17753,19 +17798,6 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
                               ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          message,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF334155),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            height: 1.3,
-                          ),
                         ),
                         const SizedBox(height: 16),
                         Expanded(
@@ -21323,7 +21355,6 @@ class _HomeExportManualAdDialogState extends State<_HomeExportManualAdDialog> {
 
 class _SubscriptionAccessDialog extends StatelessWidget {
   const _SubscriptionAccessDialog({
-    required this.title,
     required this.message,
     required this.trialTitle,
     required this.trialValue,
@@ -21338,7 +21369,6 @@ class _SubscriptionAccessDialog extends StatelessWidget {
     required this.onConfirmTap,
   });
 
-  final String title;
   final String message;
   final String trialTitle;
   final String trialValue;
@@ -21372,10 +21402,10 @@ class _SubscriptionAccessDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Container(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: <Color>[Color(0xFF7C3AED), Color(0xFF2563EB)],
+                colors: <Color>[Color(0xFF16A34A), Color(0xFF0284C7)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -21384,43 +21414,15 @@ class _SubscriptionAccessDialog extends StatelessWidget {
                 topRight: Radius.circular(30),
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.lock_open_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  message,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.94),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1.45,
-                  ),
-                ),
-              ],
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                height: 1.2,
+              ),
             ),
           ),
           Padding(
@@ -21960,6 +21962,7 @@ class CreatorPosterPreview extends StatefulWidget {
     this.showProfilePhoto = true,
     this.deferLegacyTextPrime = false,
     this.posterRenderCycle = 0,
+    this.photoTapEnabled = false,
     this.interactivePhotoEnabled = false,
     this.photoShapeOverride = '',
     this.photoRenderModeOverride = '',
@@ -21999,6 +22002,7 @@ class CreatorPosterPreview extends StatefulWidget {
   final bool showProfilePhoto;
   final bool deferLegacyTextPrime;
   final int posterRenderCycle;
+  final bool photoTapEnabled;
   final bool interactivePhotoEnabled;
   final String photoShapeOverride;
   final String photoRenderModeOverride;
@@ -23240,7 +23244,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
                                             TapGestureRecognizer instance,
                                           ) {
                                             instance.onTap =
-                                                widget.interactivePhotoEnabled
+                                                widget.photoTapEnabled
                                                 ? widget.onPhotoTap
                                                 : null;
                                           }),

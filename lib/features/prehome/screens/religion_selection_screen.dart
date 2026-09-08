@@ -76,15 +76,21 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
                     'തിരഞ്ഞെടുപ്പ് സേവ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
                 marathi: 'निवड जतन करता आली नाही. कृपया पुन्हा प्रयत्न करा.',
                 gujarati: 'પસંદગી સાચવી શકાઈ નથી. ફરી પ્રયાસ કરો.',
-                bengali: 'পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
-                punjabi: 'ਚੋਣ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+                bengali:
+                    'পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+                punjabi:
+                    'ਚੋਣ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
                 odia: 'ଚୟନ ସଂରକ୍ଷଣ ହୋଇପାରିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
-                assamese: 'বাছনি সংৰক্ষণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+                assamese:
+                    'বাছনি সংৰক্ষণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
                 konkani: 'वेंचणूक सांबाळपाक जमली ना. उपकार करून परत यत्न करात.',
-                nepali: 'छनोट सुरक्षित गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।',
+                nepali:
+                    'छनोट सुरक्षित गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।',
                 meitei: 'Khalbasi save touba ngamkhide. Amuk hanna hotnabiyu.',
-                mizo: 'I thlan hi save theih a ni lo. Khawngaihin ti nawn leh rawh.',
-                kashmiri: 'انتخاب ہیکہِ نہٕ محفوٗظ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
+                mizo:
+                    'I thlan hi save theih a ni lo. Khawngaihin ti nawn leh rawh.',
+                kashmiri:
+                    'انتخاب ہیکہِ نہٕ محفوٗظ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
                 ladakhi: 'འདེམས་ཁ་ཉར་ཚགས་མ་ཐུབ། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
               ),
             ),
@@ -93,7 +99,9 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
         return;
       }
 
-      unawaited(NotificationService.instance.syncCurrentPreferences());
+      unawaited(
+        NotificationService.instance.syncCurrentPreferences(force: true),
+      );
 
       if (widget.returnToPreviousOnSave) {
         Navigator.of(context).pop(true);
@@ -125,15 +133,20 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
                   'തിരഞ്ഞെടുപ്പ് സേവ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
               marathi: 'निवड जतन करता आली नाही. कृपया पुन्हा प्रयत्न करा.',
               gujarati: 'પસંદગી સાચવી શકાઈ નથી. ફરી પ્રયાસ કરો.',
-              bengali: 'পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
-              punjabi: 'ਚੋਣ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+              bengali:
+                  'পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+              punjabi:
+                  'ਚੋਣ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
               odia: 'ଚୟନ ସଂରକ୍ଷଣ ହୋଇପାରିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
-              assamese: 'বাছনি সংৰক্ষণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+              assamese:
+                  'বাছনি সংৰক্ষণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
               konkani: 'वेंचणूक सांबाळपाक जमली ना. उपकार करून परत यत्न करात.',
               nepali: 'छनोट सुरक्षित गर्न सकिएन। कृपया पुन: प्रयास गर्नुहोस्।',
               meitei: 'Khalbasi save touba ngamkhide. Amuk hanna hotnabiyu.',
-              mizo: 'I thlan hi save theih a ni lo. Khawngaihin ti nawn leh rawh.',
-              kashmiri: 'انتخاب ہیکہِ نہٕ محفوٗظ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
+              mizo:
+                  'I thlan hi save theih a ni lo. Khawngaihin ti nawn leh rawh.',
+              kashmiri:
+                  'انتخاب ہیکہِ نہٕ محفوٗظ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
               ladakhi: 'འདེམས་ཁ་ཉར་ཚགས་མ་ཐུབ། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
             ),
           ),
@@ -397,21 +410,29 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
                                           telugu: 'వాయిస్ గైడ్ మళ్లీ వినండి',
                                           english: 'Replay voice guide',
                                           hindi: 'वॉइस गाइड फिर से सुनें',
-                                          tamil: 'குரல் வழிகாட்டியை மீண்டும் கேளுங்கள்',
-                                          kannada: 'ಧ್ವನಿ ಮಾರ್ಗದರ್ಶನವನ್ನು ಮತ್ತೆ ಕೇಳಿ',
-                                          malayalam: 'വോയ്‌സ് ഗൈഡ് വീണ്ടും കേൾക്കുക',
-                                          marathi: 'व्हॉइस मार्गदर्शक पुन्हा ऐका',
-                                          gujarati: 'વૉઇસ માર્ગદર્શિકા ફરી સાંભળો',
+                                          tamil:
+                                              'குரல் வழிகாட்டியை மீண்டும் கேளுங்கள்',
+                                          kannada:
+                                              'ಧ್ವನಿ ಮಾರ್ಗದರ್ಶನವನ್ನು ಮತ್ತೆ ಕೇಳಿ',
+                                          malayalam:
+                                              'വോയ്‌സ് ഗൈഡ് വീണ്ടും കേൾക്കുക',
+                                          marathi:
+                                              'व्हॉइस मार्गदर्शक पुन्हा ऐका',
+                                          gujarati:
+                                              'વૉઇસ માર્ગદર્શિકા ફરી સાંભળો',
                                           bengali: 'ভয়েস গাইড আবার শুনুন',
                                           punjabi: 'ਵੌਇਸ ਗਾਈਡ ਦੁਬਾਰਾ ਸੁਣੋ',
                                           odia: 'ଭଏସ୍ ଗାଇଡ୍ ପୁଣି ଶୁଣନ୍ତୁ',
                                           assamese: 'ভইচ গাইড পুনৰ শুনক',
                                           konkani: 'व्हॉईस गाईड परत आयकात',
                                           nepali: 'आवाज गाइड फेरि सुन्नुहोस्',
-                                          meitei: 'Voice guide amuk hanna tabiyu',
-                                          mizo: 'Aw hriattirna ngaithla nawn leh rawh',
+                                          meitei:
+                                              'Voice guide amuk hanna tabiyu',
+                                          mizo:
+                                              'Aw hriattirna ngaithla nawn leh rawh',
                                           kashmiri: 'آواز گائیڈ دۆبارٕ بوٗزِو',
-                                          ladakhi: 'སྐད་ཀྱི་ལམ་སྟོན་ཡང་བསྐྱར་ཉོན།',
+                                          ladakhi:
+                                              'སྐད་ཀྱི་ལམ་སྟོན་ཡང་བསྐྱར་ཉོན།',
                                         ),
                                       ),
                                     ),

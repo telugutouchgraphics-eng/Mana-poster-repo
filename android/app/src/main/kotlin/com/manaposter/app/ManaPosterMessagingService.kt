@@ -67,7 +67,15 @@ object ManaPosterNotificationRenderer {
         val resolvedUserName = payloadUserName.ifBlank { deviceProfile.resolvedName }
         val resolvedUserPhotoUrl = payloadUserPhotoUrl.ifBlank { deviceProfile.resolvedPhotoUrl }
         val effectiveLanguageCode = data["languageCode"].orEmpty().trim().ifBlank { deviceProfile.languageCode }
-        val localizedCopy = localizedReminderCopy(categoryKey, resolvedUserName, effectiveLanguageCode)
+        val eventNames = data["eventNames"].orEmpty().split("|")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        val localizedCopy =
+            if (categoryKey == "dynamic_event" && eventNames.isNotEmpty()) {
+                localizedDynamicEventCopy(eventNames, effectiveLanguageCode)
+            } else {
+                localizedReminderCopy(categoryKey, resolvedUserName, effectiveLanguageCode)
+            }
         val title = sanitizeNotificationText(data["title"].orEmpty().trim(), localizedCopy.title).ifEmpty { appName }
         val body = sanitizeNotificationText(data["body"].orEmpty().trim(), localizedCopy.body)
         val header = sanitizeNotificationText(data["headerText"].orEmpty().trim(), localizedCopy.header)
@@ -479,11 +487,19 @@ object ManaPosterNotificationRenderer {
         val language = normalizeLanguageCode(languageCode)
         val lexicon = notificationLexicon(language)
         val name = userName.ifBlank { lexicon.user }
-        return when (categoryKey) {
+        val category = normalizedReminderCategory(categoryKey)
+        return when (category) {
             "morning" -> ReminderCopy(
                 title = lexicon.morningTitle,
                 body = lexicon.morningBody,
                 header = lexicon.morningHeader(name),
+                footer = lexicon.share,
+            )
+
+            "afternoon" -> ReminderCopy(
+                title = lexicon.afternoonTitle,
+                body = lexicon.afternoonBody,
+                header = lexicon.afternoonHeader(name),
                 footer = lexicon.share,
             )
 
@@ -501,13 +517,200 @@ object ManaPosterNotificationRenderer {
                 footer = lexicon.share,
             )
 
-            else -> ReminderCopy(
-                title = lexicon.afternoonTitle,
-                body = lexicon.afternoonBody,
-                header = lexicon.afternoonHeader(name),
-                footer = lexicon.share,
-            )
+            else -> localizedCategoryReminderCopy(category, name, language)
         }
+    }
+
+    private fun normalizedReminderCategory(categoryKey: String): String {
+        val value = categoryKey.trim().lowercase()
+        return when {
+            value == "good_morning" || value == "morning" -> "morning"
+            value == "good_afternoon" || value == "afternoon" -> "afternoon"
+            value == "good_evening" || value == "evening" -> "evening"
+            value == "good_night" || value == "night" -> "night"
+            value == "motivational" || value == "motivation" -> "motivation"
+            value == "devotional" || value == "bhakti" || value == "hindu" -> "devotional"
+            value == "bible" || value == "christian" || value == "christianity" -> "bible"
+            value == "islam" || value == "muslim" -> "islam"
+            value == "joke" || value == "jokes" -> "jokes"
+            value.startsWith("weekday_") || value == "weekday" || value == "weekday_special" ||
+                value == "today_special" -> "weekday"
+            else -> "generic"
+        }
+    }
+
+    private fun localizedCategoryReminderCopy(category: String, userName: String, languageCode: String): ReminderCopy {
+        val language = normalizeLanguageCode(languageCode)
+        val copy = categoryReminderTemplate(language)
+        val title = copy.titles[category] ?: copy.titles.getValue("generic")
+        val label = copy.labels[category] ?: copy.labels.getValue("generic")
+        val body = copy.body(label)
+        return ReminderCopy(
+            title = title,
+            body = body,
+            header = copy.header(userName, label),
+            footer = copy.footer,
+        )
+    }
+
+    private fun categoryReminderTemplate(languageCode: String): CategoryReminderTemplate {
+        return when (languageCode) {
+            "te" -> CategoryReminderTemplate(
+                titles = mapOf(
+                    "motivation" to "\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                    "evening" to "\u0C36\u0C41\u0C2D \u0C38\u0C3E\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C02",
+                    "devotional" to "\u0C2D\u0C15\u0C4D\u0C24\u0C3F \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                    "weekday" to "\u0C08\u0C30\u0C4B\u0C1C\u0C41 \u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15 \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D",
+                    "bible" to "\u0C2C\u0C48\u0C2C\u0C3F\u0C32\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                    "islam" to "\u0C07\u0C38\u0C4D\u0C32\u0C3E\u0C2E\u0C3F\u0C15\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                    "jokes" to "\u0C1C\u0C4B\u0C15\u0C4D\u0C38\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                    "generic" to "\u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+                ),
+                labels = mapOf(
+                    "motivation" to "\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D",
+                    "evening" to "\u0C38\u0C3E\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C02",
+                    "devotional" to "\u0C2D\u0C15\u0C4D\u0C24\u0C3F",
+                    "weekday" to "\u0C08\u0C30\u0C4B\u0C1C\u0C41 \u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15",
+                    "bible" to "\u0C2C\u0C48\u0C2C\u0C3F\u0C32\u0C4D",
+                    "islam" to "\u0C07\u0C38\u0C4D\u0C32\u0C3E\u0C2E\u0C3F\u0C15\u0C4D",
+                    "jokes" to "\u0C1C\u0C4B\u0C15\u0C4D\u0C38\u0C4D",
+                    "generic" to "\u0C15\u0C4A\u0C24\u0C4D\u0C24",
+                ),
+                body = { "\u0C2E\u0C40 $it \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C02\u0C26\u0C3F. \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C1A\u0C47\u0C38\u0C3F \u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F." },
+                header = { name, label -> "$name, \u0C2E\u0C40 $label \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C02\u0C26\u0C3F" },
+                footer = "\u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F",
+            )
+
+            "hi" -> localizedIndicCategoryTemplate(
+                labels = mapOf("motivation" to "मोटिवेशन", "evening" to "शाम", "devotional" to "भक्ति", "weekday" to "आज का विशेष", "bible" to "बाइबल", "islam" to "इस्लामिक", "jokes" to "जोक्स", "generic" to "नया"),
+                titles = mapOf("motivation" to "मोटिवेशन पोस्टर तैयार", "evening" to "शुभ संध्या", "devotional" to "भक्ति पोस्टर तैयार", "weekday" to "आज का विशेष पोस्टर", "bible" to "बाइबल पोस्टर तैयार", "islam" to "इस्लामिक पोस्टर तैयार", "jokes" to "जोक्स पोस्टर तैयार", "generic" to "पोस्टर तैयार"),
+                body = { "आपका $it पोस्टर तैयार है। ऐप खोलें और शेयर करें।" },
+                header = { name, label -> "$name जी, आपका $label पोस्टर तैयार है" },
+                footer = "अभी शेयर करें",
+            )
+
+            "ta" -> localizedIndicCategoryTemplate(
+                labels = mapOf("motivation" to "மோட்டிவேஷன்", "evening" to "மாலை", "devotional" to "பக்தி", "weekday" to "இன்றைய சிறப்பு", "bible" to "பைபிள்", "islam" to "இஸ்லாமிய", "jokes" to "ஜோக்ஸ்", "generic" to "புதிய"),
+                titles = mapOf("motivation" to "மோட்டிவேஷன் போஸ்டர் தயார்", "evening" to "மாலை வணக்கம்", "devotional" to "பக்தி போஸ்டர் தயார்", "weekday" to "இன்றைய சிறப்பு போஸ்டர்", "bible" to "பைபிள் போஸ்டர் தயார்", "islam" to "இஸ்லாமிய போஸ்டர் தயார்", "jokes" to "ஜோக்ஸ் போஸ்டர் தயார்", "generic" to "போஸ்டர் தயார்"),
+                body = { "உங்கள் $it போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்." },
+                header = { name, label -> "$name, உங்கள் $label போஸ்டர் தயாராக உள்ளது" },
+                footer = "இப்போது பகிருங்கள்",
+            )
+
+            "kn" -> localizedIndicCategoryTemplate(
+                labels = mapOf("motivation" to "ಮೋಟಿವೇಶನ್", "evening" to "ಸಂಜೆ", "devotional" to "ಭಕ್ತಿ", "weekday" to "ಇಂದಿನ ವಿಶೇಷ", "bible" to "ಬೈಬಲ್", "islam" to "ಇಸ್ಲಾಮಿಕ್", "jokes" to "ಜೋಕ್ಸ್", "generic" to "ಹೊಸ"),
+                titles = mapOf("motivation" to "ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "evening" to "ಶುಭ ಸಂಜೆ", "devotional" to "ಭಕ್ತಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "weekday" to "ಇಂದಿನ ವಿಶೇಷ ಪೋಸ್ಟರ್", "bible" to "ಬೈಬಲ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "islam" to "ಇಸ್ಲಾಮಿಕ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "jokes" to "ಜೋಕ್ಸ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "generic" to "ಪೋಸ್ಟರ್ ಸಿದ್ಧ"),
+                body = { "ನಿಮ್ಮ $it ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ." },
+                header = { name, label -> "$name, ನಿಮ್ಮ $label ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ" },
+                footer = "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ",
+            )
+
+            "ml" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "മോട്ടിവേഷൻ", "evening" to "വൈകുന്നേരം", "devotional" to "ഭക്തി", "weekday" to "ഇന്നത്തെ പ്രത്യേക", "bible" to "ബൈബിൾ", "islam" to "ഇസ്ലാമിക്", "jokes" to "ജോക്സ്", "generic" to "പുതിയ"), titles = mapOf("motivation" to "മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്", "evening" to "ശുഭ സായാഹ്നം", "devotional" to "ഭക്തി പോസ്റ്റർ തയ്യാറാണ്", "weekday" to "ഇന്നത്തെ പ്രത്യേക പോസ്റ്റർ", "bible" to "ബൈബിൾ പോസ്റ്റർ തയ്യാറാണ്", "islam" to "ഇസ്ലാമിക് പോസ്റ്റർ തയ്യാറാണ്", "jokes" to "ജോക്സ് പോസ്റ്റർ തയ്യാറാണ്", "generic" to "പോസ്റ്റർ തയ്യാറാണ്"), body = { "നിങ്ങളുടെ $it പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ." }, header = { name, label -> "$name, നിങ്ങളുടെ $label പോസ്റ്റർ തയ്യാറാണ്" }, footer = "ഇപ്പോൾ ഷെയർ ചെയ്യൂ")
+            "mr" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "मोटिवेशन", "evening" to "संध्याकाळ", "devotional" to "भक्ती", "weekday" to "आजचा विशेष", "bible" to "बायबल", "islam" to "इस्लामिक", "jokes" to "जोक्स", "generic" to "नवीन"), titles = mapOf("motivation" to "मोटिवेशन पोस्टर तयार", "evening" to "शुभ संध्याकाळ", "devotional" to "भक्ती पोस्टर तयार", "weekday" to "आजचा विशेष पोस्टर", "bible" to "बायबल पोस्टर तयार", "islam" to "इस्लामिक पोस्टर तयार", "jokes" to "जोक्स पोस्टर तयार", "generic" to "पोस्टर तयार"), body = { "तुमचा $it पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा." }, header = { name, label -> "$name, तुमचा $label पोस्टर तयार आहे" }, footer = "आत्ताच शेअर करा")
+            "gu" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "મોટિવેશન", "evening" to "સાંજ", "devotional" to "ભક્તિ", "weekday" to "આજનું ખાસ", "bible" to "બાઇબલ", "islam" to "ઇસ્લામિક", "jokes" to "જોક્સ", "generic" to "નવું"), titles = mapOf("motivation" to "મોટિવેશન પોસ્ટર તૈયાર", "evening" to "શુભ સાંજ", "devotional" to "ભક્તિ પોસ્ટર તૈયાર", "weekday" to "આજનું ખાસ પોસ્ટર", "bible" to "બાઇબલ પોસ્ટર તૈયાર", "islam" to "ઇસ્લામિક પોસ્ટર તૈયાર", "jokes" to "જોક્સ પોસ્ટર તૈયાર", "generic" to "પોસ્ટર તૈયાર"), body = { "તમારું $it પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો." }, header = { name, label -> "$name, તમારું $label પોસ્ટર તૈયાર છે" }, footer = "હમણાં શેર કરો")
+            "bn" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "মোটিভেশন", "evening" to "সন্ধ্যা", "devotional" to "ভক্তি", "weekday" to "আজকের বিশেষ", "bible" to "বাইবেল", "islam" to "ইসলামিক", "jokes" to "জোক্স", "generic" to "নতুন"), titles = mapOf("motivation" to "মোটিভেশন পোস্টার প্রস্তুত", "evening" to "শুভ সন্ধ্যা", "devotional" to "ভক্তি পোস্টার প্রস্তুত", "weekday" to "আজকের বিশেষ পোস্টার", "bible" to "বাইবেল পোস্টার প্রস্তুত", "islam" to "ইসলামিক পোস্টার প্রস্তুত", "jokes" to "জোক্স পোস্টার প্রস্তুত", "generic" to "পোস্টার প্রস্তুত"), body = { "আপনার $it পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।" }, header = { name, label -> "$name, আপনার $label পোস্টার প্রস্তুত" }, footer = "এখনই শেয়ার করুন")
+            "pa" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "ਮੋਟੀਵੇਸ਼ਨ", "evening" to "ਸ਼ਾਮ", "devotional" to "ਭਗਤੀ", "weekday" to "ਅੱਜ ਦਾ ਖਾਸ", "bible" to "ਬਾਈਬਲ", "islam" to "ਇਸਲਾਮਿਕ", "jokes" to "ਜੋਕਸ", "generic" to "ਨਵਾਂ"), titles = mapOf("motivation" to "ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ", "evening" to "ਸ਼ੁਭ ਸ਼ਾਮ", "devotional" to "ਭਗਤੀ ਪੋਸਟਰ ਤਿਆਰ", "weekday" to "ਅੱਜ ਦਾ ਖਾਸ ਪੋਸਟਰ", "bible" to "ਬਾਈਬਲ ਪੋਸਟਰ ਤਿਆਰ", "islam" to "ਇਸਲਾਮਿਕ ਪੋਸਟਰ ਤਿਆਰ", "jokes" to "ਜੋਕਸ ਪੋਸਟਰ ਤਿਆਰ", "generic" to "ਪੋਸਟਰ ਤਿਆਰ"), body = { "ਤੁਹਾਡਾ $it ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।" }, header = { name, label -> "$name, ਤੁਹਾਡਾ $label ਪੋਸਟਰ ਤਿਆਰ ਹੈ" }, footer = "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ")
+            "or" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "ମୋଟିଭେସନ", "evening" to "ସନ୍ଧ୍ୟା", "devotional" to "ଭକ୍ତି", "weekday" to "ଆଜିର ବିଶେଷ", "bible" to "ବାଇବେଲ", "islam" to "ଇସ୍ଲାମିକ", "jokes" to "ଜୋକ୍ସ", "generic" to "ନୂଆ"), titles = mapOf("motivation" to "ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "evening" to "ଶୁଭ ସନ୍ଧ୍ୟା", "devotional" to "ଭକ୍ତି ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "weekday" to "ଆଜିର ବିଶେଷ ପୋଷ୍ଟର", "bible" to "ବାଇବେଲ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "islam" to "ଇସ୍ଲାମିକ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "jokes" to "ଜୋକ୍ସ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "generic" to "ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ"), body = { "ଆପଣଙ୍କ $it ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।" }, header = { name, label -> "$name, ଆପଣଙ୍କ $label ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ" }, footer = "ଏବେ ଶେୟାର କରନ୍ତୁ")
+            "as" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "মটিভেচন", "evening" to "সন্ধিয়া", "devotional" to "ভক্তি", "weekday" to "আজিৰ বিশেষ", "bible" to "বাইবেল", "islam" to "ইছলামিক", "jokes" to "জোক্স", "generic" to "নতুন"), titles = mapOf("motivation" to "মটিভেচন পোষ্টাৰ সাজু", "evening" to "শুভ সন্ধিয়া", "devotional" to "ভক্তি পোষ্টাৰ সাজু", "weekday" to "আজিৰ বিশেষ পোষ্টাৰ", "bible" to "বাইবেল পোষ্টাৰ সাজু", "islam" to "ইছলামিক পোষ্টাৰ সাজু", "jokes" to "জোক্স পোষ্টাৰ সাজু", "generic" to "পোষ্টাৰ সাজু"), body = { "আপোনাৰ $it পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।" }, header = { name, label -> "$name, আপোনাৰ $label পোষ্টাৰ সাজু" }, footer = "এতিয়াই শ্বেয়াৰ কৰক")
+            "kok" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "मोटिवेशन", "evening" to "सांज", "devotional" to "भक्ती", "weekday" to "आयजचो खास", "bible" to "बायबल", "islam" to "इस्लामिक", "jokes" to "जोक्स", "generic" to "नवो"), titles = mapOf("motivation" to "मोटिवेशन पोस्टर तयार", "evening" to "शुभ सांज", "devotional" to "भक्ती पोस्टर तयार", "weekday" to "आयजचो खास पोस्टर", "bible" to "बायबल पोस्टर तयार", "islam" to "इस्लामिक पोस्टर तयार", "jokes" to "जोक्स पोस्टर तयार", "generic" to "पोस्टर तयार"), body = { "तुमचो $it पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात." }, header = { name, label -> "$name, तुमचो $label पोस्टर तयार आसा" }, footer = "आतां शेअर करात")
+            "ne" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "मोटिभेसन", "evening" to "साँझ", "devotional" to "भक्ति", "weekday" to "आजको विशेष", "bible" to "बाइबल", "islam" to "इस्लामिक", "jokes" to "जोक्स", "generic" to "नयाँ"), titles = mapOf("motivation" to "मोटिभेसन पोस्टर तयार", "evening" to "शुभ साँझ", "devotional" to "भक्ति पोस्टर तयार", "weekday" to "आजको विशेष पोस्टर", "bible" to "बाइबल पोस्टर तयार", "islam" to "इस्लामिक पोस्टर तयार", "jokes" to "जोक्स पोस्टर तयार", "generic" to "पोस्टर तयार"), body = { "तपाईंको $it पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।" }, header = { name, label -> "$name, तपाईंको $label पोस्टर तयार छ" }, footer = "अहिले शेयर गर्नुहोस्")
+            "mni", "meitei" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "motivation", "evening" to "evening", "devotional" to "devotional", "weekday" to "today special", "bible" to "Bible", "islam" to "Islamic", "jokes" to "jokes", "generic" to "new"), titles = defaultCategoryTitles(), body = { "Nahanggi $it poster ready oire. App hangdok-u amasung share tou." }, header = { name, label -> "$name, nahakki $label poster ready oire" }, footer = "Houjik share tou")
+            "lus", "mizo" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "motivation", "evening" to "evening", "devotional" to "devotional", "weekday" to "vawiin special", "bible" to "Bible", "islam" to "Islamic", "jokes" to "jokes", "generic" to "new"), titles = defaultCategoryTitles(), body = { "I $it poster a peih tawh. App hawng la share rawh." }, header = { name, label -> "$name, i $label poster a peih tawh" }, footer = "Tunah share rawh")
+            "ks", "kashmiri" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "موٹیویشن", "evening" to "شام", "devotional" to "بھکتی", "weekday" to "ازک خاص", "bible" to "بائبل", "islam" to "اسلامک", "jokes" to "جوکس", "generic" to "نوو"), titles = mapOf("motivation" to "موٹیویشن پوسٹر تیار", "evening" to "شام بخیر", "devotional" to "بھکتی پوسٹر تیار", "weekday" to "ازک خاص پوسٹر", "bible" to "بائبل پوسٹر تیار", "islam" to "اسلامک پوسٹر تیار", "jokes" to "جوکس پوسٹر تیار", "generic" to "پوسٹر تیار"), body = { "تُہند $it پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔" }, header = { name, label -> "$name, تُہند $label پوسٹر تیار چھ" }, footer = "وُنہ شیئر کریو")
+            "lbj", "ladakhi" -> localizedIndicCategoryTemplate(labels = mapOf("motivation" to "motivation", "evening" to "evening", "devotional" to "devotional", "weekday" to "dering special", "bible" to "Bible", "islam" to "Islamic", "jokes" to "jokes", "generic" to "new"), titles = defaultCategoryTitles(), body = { "Khyod-kyi $it poster ready in. App phye nas share chos." }, header = { name, label -> "$name, khyod-kyi $label poster ready in" }, footer = "Da share chos")
+            else -> localizedIndicCategoryTemplate(labels = defaultCategoryLabels(), titles = defaultCategoryTitles(), body = { "Your $it poster is ready. Open and share it." }, header = { name, label -> "$name, your $label poster is ready" }, footer = "Share now")
+        }
+    }
+
+    private fun localizedIndicCategoryTemplate(
+        labels: Map<String, String>,
+        titles: Map<String, String>,
+        body: (String) -> String,
+        header: (String, String) -> String,
+        footer: String,
+    ): CategoryReminderTemplate {
+        return CategoryReminderTemplate(
+            titles = titles,
+            labels = labels,
+            body = body,
+            header = header,
+            footer = footer,
+        )
+    }
+
+    private fun defaultCategoryTitles(): Map<String, String> = mapOf(
+        "motivation" to "Motivational poster ready",
+        "evening" to "Good Evening",
+        "devotional" to "Devotional poster ready",
+        "weekday" to "Today special poster",
+        "bible" to "Bible poster ready",
+        "islam" to "Islamic poster ready",
+        "jokes" to "Jokes poster ready",
+        "generic" to "Poster ready",
+    )
+
+    private fun defaultCategoryLabels(): Map<String, String> = mapOf(
+        "motivation" to "motivational",
+        "evening" to "evening",
+        "devotional" to "devotional",
+        "weekday" to "today special",
+        "bible" to "Bible",
+        "islam" to "Islamic",
+        "jokes" to "jokes",
+        "generic" to "new",
+    )
+
+    private fun localizedDynamicEventCopy(eventNames: List<String>, languageCode: String): ReminderCopy {
+        val language = normalizeLanguageCode(languageCode)
+        val names = joinEventNames(eventNames, language)
+        val plural = eventNames.size > 1
+        val copy = when (language) {
+            "te" -> if (plural) EventCopy("$names \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D\u0C32\u0C41 \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02", "$names \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D\u0C32\u0C41 \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C28\u0C4D\u0C28\u0C3E\u0C2F\u0C3F. \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C1A\u0C47\u0C38\u0C3F \u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F.", "\u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F") else EventCopy("$names \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02", "$names \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C02\u0C26\u0C3F. \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C1A\u0C47\u0C38\u0C3F \u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F.", "\u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F")
+            "hi" -> if (plural) EventCopy("$names पोस्टर तैयार", "$names पोस्टर तैयार हैं। ऐप खोलें और शेयर करें।", "अभी शेयर करें") else EventCopy("$names पोस्टर तैयार", "$names पोस्टर तैयार है। ऐप खोलें और शेयर करें।", "अभी शेयर करें")
+            "ta" -> if (plural) EventCopy("$names போஸ்டர்கள் தயார்", "$names போஸ்டர்கள் தயாராக உள்ளன. ஆப்பை திறந்து பகிருங்கள்.", "இப்போது பகிருங்கள்") else EventCopy("$names போஸ்டர் தயார்", "$names போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.", "இப்போது பகிருங்கள்")
+            "kn" -> if (plural) EventCopy("$names ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧ", "$names ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.", "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ") else EventCopy("$names ಪೋಸ್ಟರ್ ಸಿದ್ಧ", "$names ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.", "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ")
+            "ml" -> if (plural) EventCopy("$names പോസ്റ്ററുകൾ തയ്യാറാണ്", "$names പോസ്റ്ററുകൾ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.", "ഇപ്പോൾ ഷെയർ ചെയ്യൂ") else EventCopy("$names പോസ്റ്റർ തയ്യാറാണ്", "$names പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.", "ഇപ്പോൾ ഷെയർ ചെയ്യൂ")
+            "mr" -> if (plural) EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार आहेत. अॅप उघडा आणि शेअर करा.", "आत्ताच शेअर करा") else EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.", "आत्ताच शेअर करा")
+            "gu" -> EventCopy("$names પોસ્ટર તૈયાર", "$names પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.", "હમણાં શેર કરો")
+            "bn" -> EventCopy("$names পোস্টার প্রস্তুত", "$names পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।", "এখনই শেয়ার করুন")
+            "pa" -> if (plural) EventCopy("$names ਪੋਸਟਰ ਤਿਆਰ", "$names ਪੋਸਟਰ ਤਿਆਰ ਹਨ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।", "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ") else EventCopy("$names ਪੋਸਟਰ ਤਿਆਰ", "$names ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।", "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ")
+            "or" -> EventCopy("$names ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", "$names ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।", "ଏବେ ଶେୟାର କରନ୍ତୁ")
+            "as" -> EventCopy("$names পোষ্টাৰ সাজু", "$names পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।", "এতিয়াই শ্বেয়াৰ কৰক")
+            "kok" -> if (plural) EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार आसात. अॅप उगडात आनी शेअर करात.", "आतां शेअर करात") else EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.", "आतां शेअर करात")
+            "ne" -> if (plural) EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार छन्। एप खोल्नुहोस् र शेयर गर्नुहोस्।", "अहिले शेयर गर्नुहोस्") else EventCopy("$names पोस्टर तयार", "$names पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।", "अहिले शेयर गर्नुहोस्")
+            "mni", "meitei" -> if (plural) EventCopy("$names posters ready", "$names posters ready oire. App hangdok-u amasung share tou.", "Houjik share tou") else EventCopy("$names poster ready", "$names poster ready oire. App hangdok-u amasung share tou.", "Houjik share tou")
+            "lus", "mizo" -> if (plural) EventCopy("$names posters ready", "$names posters an peih tawh. App hawng la share rawh.", "Tunah share rawh") else EventCopy("$names poster ready", "$names poster a peih tawh. App hawng la share rawh.", "Tunah share rawh")
+            "ks", "kashmiri" -> EventCopy("$names پوسٹر تیار", "$names پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔", "وُنہ شیئر کریو")
+            "lbj", "ladakhi" -> if (plural) EventCopy("$names posters ready", "$names posters ready in. App phye nas share chos.", "Da share chos") else EventCopy("$names poster ready", "$names poster ready in. App phye nas share chos.", "Da share chos")
+            else -> if (plural) EventCopy("$names posters ready", "$names posters are ready. Open and share them.", "Share now") else EventCopy("$names poster ready", "$names poster is ready. Open and share it.", "Share now")
+        }
+        return ReminderCopy(copy.title, copy.body, copy.body, copy.footer)
+    }
+
+    private fun joinEventNames(eventNames: List<String>, languageCode: String): String {
+        val names = eventNames.map { it.trim() }.filter { it.isNotEmpty() }
+        if (names.size <= 1) return names.firstOrNull().orEmpty().ifBlank { "Event" }
+        val joiner = when (languageCode) {
+            "te" -> " \u0C2E\u0C30\u0C3F\u0C2F\u0C41 "
+            "hi" -> " और "
+            "ta" -> " மற்றும் "
+            "kn" -> " ಮತ್ತು "
+            "ml" -> " ഒപ്പം "
+            "mr" -> " आणि "
+            "gu" -> " અને "
+            "bn" -> " এবং "
+            "pa" -> " ਅਤੇ "
+            "or" -> " ଏବଂ "
+            "as" -> " আৰু "
+            "kok" -> " आनी "
+            "ne" -> " र "
+            "mni", "meitei" -> " amasung "
+            "lus", "mizo" -> " leh "
+            "ks", "kashmiri" -> " تہ "
+            "lbj", "ladakhi" -> " dang "
+            else -> " and "
+        }
+        return names.dropLast(1).joinToString(", ") + joiner + names.last()
     }
 
     private fun normalizeLanguageCode(raw: String): String {
@@ -767,6 +970,20 @@ object ManaPosterNotificationRenderer {
         val title: String,
         val body: String,
         val header: String,
+        val footer: String,
+    )
+
+    private data class CategoryReminderTemplate(
+        val titles: Map<String, String>,
+        val labels: Map<String, String>,
+        val body: (String) -> String,
+        val header: (String, String) -> String,
+        val footer: String,
+    )
+
+    private data class EventCopy(
+        val title: String,
+        val body: String,
         val footer: String,
     )
 

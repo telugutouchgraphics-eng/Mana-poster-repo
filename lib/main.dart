@@ -42,6 +42,7 @@ const bool _enableNonEssentialProfileStartupServices = bool.fromEnvironment(
 );
 AppLifecycleListener? _subscriptionLifecycleListener;
 DateTime? _lastSubscriptionResumeRefreshAt;
+DateTime? _lastNotificationResumeSyncAt;
 
 bool get _shouldRunNonEssentialStartupServices =>
     !kProfileMode || kReleaseMode || _enableNonEssentialProfileStartupServices;
@@ -129,6 +130,17 @@ Future<void> _runDeferredPostSplashInitialization() async {
   try {
     await PostSplashStartupGate.whenReady.timeout(const Duration(seconds: 8));
   } catch (_) {}
+  if (!kIsWeb) {
+    unawaited(
+      _runStartupTask('notification_early_bootstrap', () async {
+        await FirebaseBootstrap.ensureInitialized(
+          activateAppCheck: kReleaseMode,
+        );
+        NotificationService.registerBackgroundHandler();
+        await NotificationService.instance.initialize();
+      }),
+    );
+  }
   await Future<void>.delayed(
     kReleaseMode ? const Duration(seconds: 60) : const Duration(seconds: 14),
   );
@@ -175,7 +187,7 @@ Future<void> _runPostLaunchInitialization() async {
           NotificationService.registerBackgroundHandler();
           await NotificationService.instance.initialize();
         },
-        delay: const Duration(seconds: 45),
+        delay: Duration.zero,
       );
     }
     if (_shouldRunNonEssentialStartupServices &&
@@ -223,7 +235,16 @@ Future<void> _runPostLaunchInitialization() async {
           await Future<void>.delayed(const Duration(seconds: 8));
           await _runStartupTask(
             'notification_preferences_resume_sync',
-            NotificationService.instance.syncCurrentPreferences,
+            () async {
+              final now = DateTime.now();
+              final lastRun = _lastNotificationResumeSyncAt;
+              if (lastRun != null &&
+                  now.difference(lastRun) < const Duration(minutes: 10)) {
+                return;
+              }
+              _lastNotificationResumeSyncAt = now;
+              await NotificationService.instance.syncCurrentPreferences();
+            },
           );
         }());
         unawaited(() async {
@@ -407,7 +428,9 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('cannot retrieve length of file') ||
       normalized.contains('mana_poster_network_images') ||
       normalized.contains('firebasestorage.googleapis.com') ||
-      normalized.contains('clientexception: software caused connection abort') ||
+      normalized.contains(
+        'clientexception: software caused connection abort',
+      ) ||
       normalized.contains('software caused connection abort') ||
       normalized.contains('failed host lookup') ||
       normalized.contains('handshakeexception') ||

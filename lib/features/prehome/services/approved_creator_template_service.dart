@@ -1360,7 +1360,7 @@ class ApprovedCreatorTemplateService {
       nowDate,
       selectedRegionId,
     );
-    final knownDynamicTags = _knownDynamicTags();
+    final knownExactDynamicCategoryIds = _knownExactDynamicCategoryIds();
     final publishMap = <String, int>{};
     final eventEndMap = <String, int>{};
     for (final doc in docs) {
@@ -1425,7 +1425,8 @@ class ApprovedCreatorTemplateService {
         continue;
       }
       final usesRollingRetention =
-          category.isNotEmpty && knownDynamicTags.contains(category);
+          category.isNotEmpty &&
+          knownExactDynamicCategoryIds.contains(category);
       final retentionMs = usesRollingRetention
           ? _posterRetentionWindowMillis
           : 365 * 24 * 60 * 60 * 1000;
@@ -1441,7 +1442,7 @@ class ApprovedCreatorTemplateService {
           _isTemplateDynamicCategoryVisible(
             template.categoryId,
             activeDynamicTags,
-            knownDynamicTags,
+            knownExactDynamicCategoryIds,
             nowDate,
           );
       if (!dynamicVisible) {
@@ -1996,11 +1997,12 @@ class ApprovedCreatorTemplateService {
   bool _isTemplateDynamicCategoryVisible(
     String categoryId,
     Set<String> activeDynamicTags,
-    Set<String> knownDynamicTags,
+    Set<String> knownExactDynamicCategoryIds,
     DateTime now,
   ) {
     final normalized = _normalizeTag(categoryId);
-    if (normalized.isEmpty || !knownDynamicTags.contains(normalized)) {
+    if (normalized.isEmpty ||
+        !knownExactDynamicCategoryIds.contains(normalized)) {
       return true;
     }
     return activeDynamicTags.contains(normalized);
@@ -2024,14 +2026,8 @@ class ApprovedCreatorTemplateService {
     return output.where((item) => item.isNotEmpty).toSet();
   }
 
-  Set<String> _knownDynamicTags() {
+  Set<String> _knownExactDynamicCategoryIds() {
     final output = <String>{
-      'festival',
-      'jayanthi',
-      'vardhanthi',
-      'important_day',
-      'regional_special',
-      'weekday_special',
       'weekday_monday_special',
       'weekday_tuesday_special',
       'weekday_wednesday_special',
@@ -2043,8 +2039,6 @@ class ApprovedCreatorTemplateService {
     for (final event in _dynamicEventRepository.loadEvents()) {
       output.add(_normalizeTag(event.id));
       output.add(_normalizeTag(event.slug));
-      output.addAll(event.tags.map(_normalizeTag));
-      output.addAll(_dynamicTypeFilterTags(event.type).map(_normalizeTag));
     }
     return output.where((item) => item.isNotEmpty).toSet();
   }

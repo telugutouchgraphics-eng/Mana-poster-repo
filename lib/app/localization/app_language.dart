@@ -3662,6 +3662,27 @@ class AppStrings {
     hindi: '\u0928\u093e\u092e \u0914\u0930 \u092b\u094b\u091f\u094b \u0915\u0947 \u092c\u093f\u0928\u093e \u0938\u093f\u0930\u094d\u092b \u092a\u094b\u0938\u094d\u091f\u0930',
   );
 
+  String get monthlyPlanStartsFromFour => localized(
+    telugu: 'నెలవారీ ప్లాన్ ₹4 నుండి ప్రారంభం',
+    english: 'Monthly plan starts from ₹4',
+    hindi: 'मासिक प्लान ₹4 से शुरू',
+    tamil: 'மாதாந்திர திட்டம் ₹4 முதல் தொடங்கும்',
+    kannada: 'ಮಾಸಿಕ ಪ್ಲಾನ್ ₹4 ರಿಂದ ಪ್ರಾರಂಭ',
+    malayalam: 'മാസ പ്ലാൻ ₹4 മുതൽ ആരംഭിക്കുന്നു',
+    marathi: 'मासिक പ്ലॅन ₹4 पासून सुरू',
+    gujarati: 'માસિક પ્લાન ₹4 થી શરૂ',
+    bengali: 'মাসিক প্ল্যান ₹4 থেকে শুরু',
+    punjabi: 'ਮਹੀਨਾਵਾਰ ਪਲਾਨ ₹4 ਤੋਂ ਸ਼ੁਰੂ',
+    odia: 'ମାସିକ ପ୍ଲାନ ₹4 ରୁ ଆରମ୍ଭ',
+    assamese: 'মাহেকীয়া প্লেন ₹4 ৰ পৰা আৰম্ভ',
+    konkani: 'म्हयन्याचो प्लॅन ₹4 पासून सुरू',
+    nepali: 'मासिक प्लान ₹4 बाट सुरु',
+    meitei: 'Tha gi plan ₹4 dagi hou-i',
+    mizo: 'Thla tin plan ₹4 atanga tan',
+    kashmiri: 'ماہانہ پلان ₹4 پؠٹھ شروع',
+    ladakhi: 'ཟླ་རེའི་འཆར་གཞི ₹4 ནས་འགོ་འཛུགས།',
+  );
+
   String get orLabel => localized(
     telugu: '\u0c32\u0c47\u0c26\u0c3e',
     english: 'or',

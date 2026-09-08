@@ -80,7 +80,7 @@ class _PermissionsScreenState extends State<PermissionsScreen>
         _snapshot = snapshot;
         _loading = false;
       });
-      await NotificationService.instance.syncCurrentPreferences();
+      await NotificationService.instance.syncCurrentPreferences(force: true);
       await _completeFlowAndGoHome();
     } catch (_) {
       if (!mounted) {
@@ -96,20 +96,33 @@ class _PermissionsScreenState extends State<PermissionsScreen>
                   'Permissions request could not be completed. Please try again.',
               hindi: 'अनुमति अनुरोध पूरा नहीं हो सका। कृपया पुन: प्रयास करें।',
               tamil: 'அனுமதி கோரிக்கையை முடிக்க முடியவில்லை. மீண்டும் முயல்க.',
-              kannada: 'ಅನುಮತಿ ವಿನಂತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
-              malayalam: 'അനുമതി അഭ്യർത്ഥന പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
-              marathi: 'परवानगी विनंती पूर्ण होऊ शकली नाही. कृपया पुन्हा प्रयत्न करा.',
+              kannada:
+                  'ಅನುಮತಿ ವಿನಂತಿಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+              malayalam:
+                  'അനുമതി അഭ്യർത്ഥന പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കുക.',
+              marathi:
+                  'परवानगी विनंती पूर्ण होऊ शकली नाही. कृपया पुन्हा प्रयत्न करा.',
               gujarati: 'પરવાનગી વિનંતી પૂર્ણ થઈ શકી નથી. ફરી પ્રયાસ કરો.',
-              bengali: 'অনুমতির অনুরোধ সম্পূর্ণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
-              punjabi: 'ਇਜਾਜ਼ਤ ਦੀ ਬੇਨਤੀ ਪੂਰੀ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
-              odia: 'ଅନୁମତି ଅନୁରୋଧ ସମ୍ପୂର୍ଣ୍ଣ ହୋଇପାରିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
-              assamese: 'অনুমতিৰ অনুৰোধ সম্পূৰ্ণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
-              konkani: 'परवांगी विनंती पूर्ण जाली ना. उपकार करून परत प्रयत्न करात.',
-              nepali: 'अनुमति अनुरोध पूरा हुन सकेन। कृपया पुन: प्रयास गर्नुहोस्।',
-              meitei: 'Permissions request loisinba ngamkhide. Amuk hanna hotnabiyu.',
-              mizo: 'Phalna dilna tihpuitlin theih a ni lo. Khawngaihin ti nawn leh rawh.',
-              kashmiri: 'اِجازتھ ہٕنٛز درخواست ہیکہِ نہٕ پوٗرٕ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
-              ladakhi: 'ཆོག་མཆན་རེ་འདུན་ལེགས་གྲུབ་མ་བྱུང། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
+              bengali:
+                  'অনুমতির অনুরোধ সম্পূর্ণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।',
+              punjabi:
+                  'ਇਜਾਜ਼ਤ ਦੀ ਬੇਨਤੀ ਪੂਰੀ ਨਹੀਂ ਹੋ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।',
+              odia:
+                  'ଅନୁମତି ଅନୁରୋଧ ସମ୍ପୂର୍ଣ୍ଣ ହୋଇପାରିଲା ନାହିଁ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।',
+              assamese:
+                  'অনুমতিৰ অনুৰোধ সম্পূৰ্ণ কৰিব পৰা নগ’ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।',
+              konkani:
+                  'परवांगी विनंती पूर्ण जाली ना. उपकार करून परत प्रयत्न करात.',
+              nepali:
+                  'अनुमति अनुरोध पूरा हुन सकेन। कृपया पुन: प्रयास गर्नुहोस्।',
+              meitei:
+                  'Permissions request loisinba ngamkhide. Amuk hanna hotnabiyu.',
+              mizo:
+                  'Phalna dilna tihpuitlin theih a ni lo. Khawngaihin ti nawn leh rawh.',
+              kashmiri:
+                  'اِجازتھ ہٕنٛز درخواست ہیکہِ نہٕ پوٗرٕ گژھِتھ۔ مہربٲنی کٔرتھ دۆبارٕ کٔریو کوشِش۔',
+              ladakhi:
+                  'ཆོག་མཆན་རེ་འདུན་ལེགས་གྲུབ་མ་བྱུང། ཡང་བསྐྱར་འབད་བརྩོན་གནང།',
             ),
           ),
         ),
@@ -553,7 +566,8 @@ class _PermissionIntroCopy {
       AppLanguage.hindi: 'आपके क्षेत्र के लिए प्रासंगिक सामग्री दिखाने के लिए।',
       AppLanguage.tamil: 'உங்கள் பகுதிக்கு ஏற்ற உள்ளடக்கத்தைக் காட்ட.',
       AppLanguage.kannada: 'ನಿಮ್ಮ ಪ್ರದೇಶಕ್ಕೆ ಸೂಕ್ತವಾದ ವಿಷಯವನ್ನು ತೋರಿಸಲು.',
-      AppLanguage.malayalam: 'നിങ്ങളുടെ പ്രദേശത്തിന് അനുയോജ്യമായ ഉള്ളടക്കം കാണിക്കാൻ.',
+      AppLanguage.malayalam:
+          'നിങ്ങളുടെ പ്രദേശത്തിന് അനുയോജ്യമായ ഉള്ളടക്കം കാണിക്കാൻ.',
       AppLanguage.marathi: 'तुमच्या भागाशी संबंधित सामग्री दाखवण्यासाठी.',
       AppLanguage.gujarati: 'તમારા વિસ્તારને સંબંધિત સામગ્રી દર્શાવવા માટે.',
       AppLanguage.bengali: 'আপনার এলাকার প্রাসঙ্গিক বিষয়বস্তু দেখানোর জন্য।',
@@ -561,7 +575,8 @@ class _PermissionIntroCopy {
       AppLanguage.odia: 'ଆପଣଙ୍କ ଅଞ୍ଚଳ ଉପଯୋଗୀ ବିଷୟବସ୍ତୁ ଦେଖାଇବା ପାଇଁ।',
       AppLanguage.assamese: 'আপোনাৰ অঞ্চলৰ উপযোগী সমল দেখুৱাবলৈ।',
       AppLanguage.konkani: 'तुमच्या वाठाराक उपेगाचो आशय दाखोवपाक.',
-      AppLanguage.nepali: 'तपाईंको क्षेत्रसँग सान्दर्भिक सामग्री देखाउनका लागि।',
+      AppLanguage.nepali:
+          'तपाईंको क्षेत्रसँग सान्दर्भिक सामग्री देखाउनका लागि।',
       AppLanguage.meitei: 'Nang-gi area ga channaba content utnaba.',
       AppLanguage.mizo: 'I awmna hmun mil thil tih chhuah nan.',
       AppLanguage.kashmiri: 'تہٕنٛدِ علاقَس سٟتۍ متعلِق مو مواد ہاونہٕ خٲطرٕ।',
@@ -570,21 +585,26 @@ class _PermissionIntroCopy {
     'footerHint': {
       AppLanguage.telugu: 'తర్వాత settings లో కూడా ఇవ్వొచ్చు.',
       AppLanguage.english: 'You can allow them later in settings.',
-      AppLanguage.hindi: 'आप इन्हें बाद में सेटिंग्स में भी अनुमति दे सकते हैं।',
+      AppLanguage.hindi:
+          'आप इन्हें बाद में सेटिंग्स में भी अनुमति दे सकते हैं।',
       AppLanguage.tamil: 'அமைப்புகளில் பின்னர் இவற்றை அனுமதிக்கலாம்.',
-      AppLanguage.kannada: 'ನೀವು ಇವುಗಳನ್ನು ನಂತರ ಸೆಟ್ಟಿಂಗ್ಸ್‌ನಲ್ಲಿಯೂ ಅನುಮತಿಸಬಹುದು.',
+      AppLanguage.kannada:
+          'ನೀವು ಇವುಗಳನ್ನು ನಂತರ ಸೆಟ್ಟಿಂಗ್ಸ್‌ನಲ್ಲಿಯೂ ಅನುಮತಿಸಬಹುದು.',
       AppLanguage.malayalam: 'സെറ്റിംഗ്സിൽ നിങ്ങൾക്ക് പിന്നീട് ഇവ അനുവദിക്കാം.',
       AppLanguage.marathi: 'तुम्ही नंतर सेटिंग्जमध्ये देखील परवानगी देऊ शकता.',
       AppLanguage.gujarati: 'તમે પછીથી સેટિંગ્સમાં પણ મંજૂરી આપી શકો છો.',
       AppLanguage.bengali: 'আপনি পরে সেটিংসে গিয়েও অনুমতি দিতে পারেন।',
-      AppLanguage.punjabi: 'ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਵੀ ਇਜਾਜ਼ਤ ਦੇ ਸਕਦੇ ਹੋ।',
+      AppLanguage.punjabi:
+          'ਤੁਸੀਂ ਬਾਅਦ ਵਿੱਚ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਵੀ ਇਜਾਜ਼ਤ ਦੇ ਸਕਦੇ ਹੋ।',
       AppLanguage.odia: 'ଆପଣ ଏହାକୁ ପରେ ସେଟିଙ୍ଗରେ ମଧ୍ୟ ଅନୁମତି ଦେଇପାରିବେ।',
       AppLanguage.assamese: 'আপুনি পিছত ছেটিংছতো অনুমতি দিব পাৰিব।',
-      AppLanguage.konkani: 'उपरांत मांडणींत (Settings) वचूनय तुमी परवांग्यो दिवंक शकतात.',
+      AppLanguage.konkani:
+          'उपरांत मांडणींत (Settings) वचूनय तुमी परवांग्यो दिवंक शकतात.',
       AppLanguage.nepali: 'तपाईं पछि सेटिङहरूमा पनि अनुमति दिन सक्नुहुन्छ।',
       AppLanguage.meitei: 'Matungda settings ta hairaga allow touba yai.',
       AppLanguage.mizo: 'A hnuah settings aṭangin i la phal thei ang.',
-      AppLanguage.kashmiri: 'تۄہہِ ہیکیو پتہٕ ترتیباتس (Settings) منز تہِ اِجازتھ دِتھ।',
+      AppLanguage.kashmiri:
+          'تۄہہِ ہیکیو پتہٕ ترتیباتس (Settings) منز تہِ اِجازتھ دِتھ।',
       AppLanguage.ladakhi: 'རྗེས་སུ་སྒྲིག་བཀོད་ནས་ཀྱང་ཆོག་མཆན་སྤྲོད་ཆོག',
     },
   };

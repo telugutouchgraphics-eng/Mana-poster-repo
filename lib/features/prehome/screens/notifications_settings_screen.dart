@@ -44,7 +44,7 @@ class _NotificationsSettingsScreenState
     });
     try {
       await NotificationPreferencesService.save(next);
-      await NotificationService.instance.syncCurrentPreferences();
+      await NotificationService.instance.syncCurrentPreferences(force: true);
     } catch (_) {
       // Keep the optimistic toggle state, but always release the saving UI.
     } finally {
@@ -381,27 +381,26 @@ class _NotificationsCopy {
     required String mizo,
     required String kashmiri,
     required String ladakhi,
-  }) =>
-      AppStrings(language).localized(
-        telugu: telugu,
-        english: english,
-        hindi: hindi,
-        tamil: tamil,
-        kannada: kannada,
-        malayalam: malayalam,
-        marathi: marathi,
-        gujarati: gujarati,
-        bengali: bengali,
-        punjabi: punjabi,
-        odia: odia,
-        assamese: assamese,
-        konkani: konkani,
-        nepali: nepali,
-        meitei: meitei,
-        mizo: mizo,
-        kashmiri: kashmiri,
-        ladakhi: ladakhi,
-      );
+  }) => AppStrings(language).localized(
+    telugu: telugu,
+    english: english,
+    hindi: hindi,
+    tamil: tamil,
+    kannada: kannada,
+    malayalam: malayalam,
+    marathi: marathi,
+    gujarati: gujarati,
+    bengali: bengali,
+    punjabi: punjabi,
+    odia: odia,
+    assamese: assamese,
+    konkani: konkani,
+    nepali: nepali,
+    meitei: meitei,
+    mizo: mizo,
+    kashmiri: kashmiri,
+    ladakhi: ladakhi,
+  );
 
   String get title => _localized(
     telugu: 'నోటిఫికేషన్ సెట్టింగ్స్',
@@ -449,20 +448,27 @@ class _NotificationsCopy {
     telugu: 'యాప్‌లో ఏ రకం అలర్ట్లు రావాలో ఇక్కడ నుంచి నియంత్రించవచ్చు.',
     english: 'Choose which app alerts you want to receive from here.',
     hindi: 'यहाँ से चुनें कि आप कौन से ऐप अलर्ट प्राप्त करना चाहते हैं।',
-    tamil: 'எந்த செயலி விழிப்பூட்டல்களைப் பெற விரும்புகிறீர்கள் என்பதை இங்கிருந்து தேர்ந்தெடுக்கவும்.',
-    kannada: 'ಇಲ್ಲಿಂದ ನೀವು ಯಾವ ಆಪ್ ಎಚ್ಚರಿಕೆಗಳನ್ನು ಸ್ವೀಕರಿಸಲು ಬಯಸುತ್ತೀರಿ ಎಂಬುದನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
-    malayalam: 'ഏതൊക്കെ ആപ്പ് അലേർട്ടുകൾ ലഭിക്കണമെന്ന് ഇവിടെ നിന്ന് തിരഞ്ഞെടുക്കുക.',
+    tamil:
+        'எந்த செயலி விழிப்பூட்டல்களைப் பெற விரும்புகிறீர்கள் என்பதை இங்கிருந்து தேர்ந்தெடுக்கவும்.',
+    kannada:
+        'ಇಲ್ಲಿಂದ ನೀವು ಯಾವ ಆಪ್ ಎಚ್ಚರಿಕೆಗಳನ್ನು ಸ್ವೀಕರಿಸಲು ಬಯಸುತ್ತೀರಿ ಎಂಬುದನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
+    malayalam:
+        'ഏതൊക്കെ ആപ്പ് അലേർട്ടുകൾ ലഭിക്കണമെന്ന് ഇവിടെ നിന്ന് തിരഞ്ഞെടുക്കുക.',
     marathi: 'तुम्हाला कोणते अ‍ॅप अलर्ट हवे आहेत ते येथून निवडा.',
-    gujarati: 'તમે અહીંથી કયા એપ્લિકેશન ચેતવણીઓ પ્રાપ્ત કરવા માંગો છો તે પસંદ કરો.',
+    gujarati:
+        'તમે અહીંથી કયા એપ્લિકેશન ચેતવણીઓ પ્રાપ્ત કરવા માંગો છો તે પસંદ કરો.',
     bengali: 'আপনি এখান থেকে কোন অ্যাপ সতর্কতা পেতে চান তা চয়ন করুন।',
     punjabi: 'ਇੱਥੋਂ ਚੁਣੋ ਕਿ ਤੁਸੀਂ ਕਿਹੜੀਆਂ ਐਪ ਚੇਤਾਵਨੀਆਂ ਪ੍ਰਾਪਤ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ।',
     odia: 'ଆପଣ ଏଠାରୁ କେଉଁ ଆପ୍ ସତର୍କତା ଗ୍ରହଣ କରିବାକୁ ଚାହାଁନ୍ତି ତାହା ବାଛନ୍ତୁ।',
     assamese: 'আপুনি ইয়াত কি কি এপ সতৰ্কবাৰ্তা পাব বিচাৰে বাছক।',
-    konkani: 'तुमी हांगाच्याਨ खंयचीं अ‍ॅप शिटकावणी मेळोवंक सोदतात तें वेंचून काडात.',
-    nepali: 'यहाँबाट तपाईं कुन एप अलर्टहरू प्राप्त गर्न चाहनुहुन्छ छनौट गर्नुहोस्।',
+    konkani:
+        'तुमी हांगाच्याਨ खंयचीं अ‍ॅप शिटकावणी मेळोवंक सोदतात तें वेंचून काडात.',
+    nepali:
+        'यहाँबाट तपाईं कुन एप अलर्टहरू प्राप्त गर्न चाहनुहुन्छ छनौट गर्नुहोस्।',
     meitei: 'Nangna aphaba app alert sing khallu.',
     mizo: 'App alert i dawn duh tur heta tang hian thlang rawh.',
-    kashmiri: 'ییٚتھ پیٹھہٕ کٔریو اِنتخاب زِ تۄہہِ کیتھ پٲٹھۍ نوٹیفکیشن چھِو یژھان۔',
+    kashmiri:
+        'ییٚتھ پیٹھہٕ کٔریو اِنتخاب زِ تۄہہِ کیتھ پٲٹھۍ نوٹیفکیشن چھِو یژھان۔',
     ladakhi: 'འདི་ནས་ཁྱེད་ཀྱིས་བརྡ་ཐོ་གང་ལེན་འདོད་པ་འདེམས་གནང།',
   );
 
@@ -554,7 +560,8 @@ class _NotificationsCopy {
     telugu: 'కొత్త డిజైన్లు లేదా టెంప్లేట్లు వచ్చినప్పుడు తెలియజేస్తుంది.',
     english: 'When new templates and poster designs are available.',
     hindi: 'जब नए टेम्पलेट और पोस्टर डिज़ाइन उपलब्ध हों।',
-    tamil: 'புதிய வார்ப்புருக்கள் மற்றும் போஸ்டர் வடிவமைப்புகள் கிடைக்கும் போது.',
+    tamil:
+        'புதிய வார்ப்புருக்கள் மற்றும் போஸ்டர் வடிவமைப்புகள் கிடைக்கும் போது.',
     kannada: 'ಹೊಸ ಟೆಂಪ್ಲೇಟ್‌ಗಳು ಮತ್ತು ಪೋಸ್ಟರ್ ವಿನ್ಯಾಸಗಳು ಲಭ್ಯವಿದ್ದಾಗ.',
     malayalam: 'പുതിയ ടെംപ്ലേറ്റുകളും പോസ്റ്റർ ഡിസൈനുകളും ലഭ്യമാകുമ്പോൾ.',
     marathi: 'जेव्हा नवीन टेम्पलेट्स आणि पोस्टर डिझाइन उपलब्ध असतील.',
@@ -596,7 +603,8 @@ class _NotificationsCopy {
     telugu: 'ప్రత్యేక ఆఫర్లు, ప్రోమోలు, ముఖ్యమైన యాప్ అప్‌డేట్లు.',
     english: 'Special offers, promos, and important app updates.',
     hindi: 'विशेष ऑफ़र, प्रोमो और महत्वपूर्ण ऐप अपडेट।',
-    tamil: 'சிறப்பு சலுகைகள், விளம்பரங்கள் மற்றும் முக்கியமான செயலி புதுப்பிப்புகள்.',
+    tamil:
+        'சிறப்பு சலுகைகள், விளம்பரங்கள் மற்றும் முக்கியமான செயலி புதுப்பிப்புகள்.',
     kannada: 'ವಿಶೇಷ ಕೊಡುಗೆಗಳು, ಪ್ರೋಮೋಗಳು ಮತ್ತು ಪ್ರಮುಖ ಆಪ್ ಅಪ್‌ಡೇಟ್‌ಗಳು.',
     malayalam: 'പ്രത്യേക ഓഫറുകൾ, പ്രൊമോകൾ, പ്രധാന ആപ്പ് അപ്‌ഡേറ്റുകൾ.',
     marathi: 'विशेष ऑफर्स, प्रोमोज आणि महत्त्वाचे अ‍ॅप अपडेट्स.',

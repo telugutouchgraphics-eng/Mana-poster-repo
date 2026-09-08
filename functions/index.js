@@ -72,6 +72,7 @@ const manualLifetimeWhitelistedEmails = new Set([
   "vkrseafoods901@gmail.com",
   "shaiknaziya973@gmail.com",
   "shaiknaziya71950@gmail.com",
+  "snsiva609@gmail.com",
 ]);
 const manualLifetimeWhitelistedPhones = new Set([]);
 const allowedCorsOrigins = parseAllowedOrigins(
@@ -108,6 +109,7 @@ const publicNotificationTokenScanLimit = readPositiveInt(
     5000,
     10000,
 );
+const welcomeNotificationDelayMillis = 15 * 60 * 1000;
 
 function parseAllowedOrigins(rawValue) {
   const raw = String(rawValue || "").trim();
@@ -1223,6 +1225,10 @@ function reminderCategoryKey(input) {
   }
   if (normalized.includes("bible") || normalized.includes("christian")) {
     return "bible";
+  }
+  if (normalized.includes("devotional") || normalized.includes("bhakti") ||
+      normalized.includes("hindu")) {
+    return "devotional";
   }
   if (normalized.includes("weekday") || normalized.includes("monday") ||
       normalized.includes("tuesday") || normalized.includes("wednesday") ||
@@ -2474,10 +2480,347 @@ function initialsSvgDataUri(name, palette) {
 }
 
 function reminderCopyLocalized(kind, language, userName, now = new Date()) {
+  if (reminderCategoryKey(kind) === "motivation") {
+    return motivationReminderCopyLocalized(language, userName);
+  }
+  const categoryCopy = categorySpecificReminderCopy(kind, language, userName);
+  if (categoryCopy) {
+    return categoryCopy;
+  }
   const variants = reminderCopyVariants(kind, language, userName);
   const dayKey = getIstDayKey(now);
   const index = stableHashNumber(`${kind}-${sanitizeLanguage(language) || "english"}-${dayKey}`) % variants.length;
   return variants[index];
+}
+
+function motivationReminderCopyLocalized(language, userName) {
+  const lang = sanitizeLanguage(language) || "english";
+  const name = notificationDisplayName(userName, lang);
+  const copy = {
+    telugu: {
+      title: "\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02",
+      body: `${name} \u0C17\u0C3E\u0C30\u0C41, \u0C2E\u0C40 \u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C02\u0C26\u0C3F. \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C1A\u0C47\u0C38\u0C3F \u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F.`,
+      footer: "\u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F",
+    },
+    english: {title: "Motivational poster ready", body: `${name}, your motivational poster is ready. Open and share it.`, footer: "Share now"},
+    hindi: {title: "मोटिवेशन पोस्टर तैयार", body: `${name} जी, आपका मोटिवेशन पोस्टर तैयार है। ऐप खोलें और शेयर करें।`, footer: "अभी शेयर करें"},
+    tamil: {title: "மோட்டிவேஷன் போஸ்டர் தயார்", body: `${name}, உங்கள் மோட்டிவேஷன் போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.`, footer: "இப்போது பகிருங்கள்"},
+    kannada: {title: "ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", body: `${name}, ನಿಮ್ಮ ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.`, footer: "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ"},
+    malayalam: {title: "മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്", body: `${name}, നിങ്ങളുടെ മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.`, footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ"},
+    marathi: {title: "मोटिवेशन पोस्टर तयार", body: `${name}, तुमचा मोटिवेशन पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.`, footer: "आत्ताच शेअर करा"},
+    gujarati: {title: "મોટિવેશન પોસ્ટર તૈયાર", body: `${name}, તમારું મોટિવેશન પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.`, footer: "હમણાં શેર કરો"},
+    bengali: {title: "মোটিভেশন পোস্টার প্রস্তুত", body: `${name}, আপনার মোটিভেশন পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।`, footer: "এখনই শেয়ার করুন"},
+    punjabi: {title: "ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ", body: `${name}, ਤੁਹਾਡਾ ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।`, footer: "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ"},
+    odia: {title: "ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", body: `${name}, ଆପଣଙ୍କ ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।`, footer: "ଏବେ ଶେୟାର କରନ୍ତୁ"},
+    assamese: {title: "মটিভেচন পোষ্টাৰ সাজু", body: `${name}, আপোনাৰ মটিভেচন পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।`, footer: "এতিয়াই শ্বেয়াৰ কৰক"},
+    konkani: {title: "मोटिवेशन पोस्टर तयार", body: `${name}, तुमचो मोटिवेशन पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.`, footer: "आतां शेअर करात"},
+    nepali: {title: "मोटिभेसन पोस्टर तयार", body: `${name}, तपाईंको मोटिभेसन पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।`, footer: "अहिले शेयर गर्नुहोस्"},
+    meitei: {title: "Motivation poster ready", body: `${name}, nahakki motivation poster ready oire. App hangdok-u amasung share tou.`, footer: "Houjik share tou"},
+    mizo: {title: "Motivation poster ready", body: `${name}, i motivation poster a peih tawh. App hawng la share rawh.`, footer: "Tunah share rawh"},
+    kashmiri: {title: "موٹیویشن پوسٹر تیار", body: `${name}, تُہند موٹیویشن پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔`, footer: "وُنہ شیئر کریو"},
+    ladakhi: {title: "Motivation poster ready", body: `${name}, khyod-kyi motivation poster ready in. App phye nas share chos.`, footer: "Da share chos"},
+  };
+  const resolved = copy[lang] || copy.english;
+  return {
+    title: resolved.title,
+    body: resolved.body,
+    header: resolved.body,
+    footer: resolved.footer,
+  };
+}
+
+function categorySpecificReminderCopy(kind, language, userName) {
+  const category = reminderCategoryKey(kind);
+  const normalizedKind = normalizeText(kind);
+  const isWeekday = category.startsWith("weekday_") ||
+      normalizedKind.includes("weekday");
+  const copyKey = isWeekday ? "weekday" : category;
+  if (!["devotional", "weekday", "bible", "islam"].includes(copyKey)) {
+    return null;
+  }
+
+  const lang = sanitizeLanguage(language) || "english";
+  const name = notificationDisplayName(userName, lang);
+  const text = {
+    telugu: {
+      titles: {
+        devotional: "భక్తి పోస్టర్ సిద్ధం",
+        weekday: "ఈరోజు ప్రత్యేకం",
+        bible: "బైబిల్ పోస్టర్ సిద్ధం",
+        islam: "ఇస్లామిక్ పోస్టర్ సిద్ధం",
+      },
+      labels: {
+        devotional: "భక్తి",
+        weekday: "ఈరోజు ప్రత్యేక",
+        bible: "బైబిల్",
+        islam: "ఇస్లామిక్",
+      },
+      body: (label) => `${name} గారు, మీ ${label} పోస్టర్ సిద్ధంగా ఉంది. ఓపెన్ చేసి షేర్ చేయండి.`,
+      footer: "షేర్ చేయండి",
+    },
+    english: {
+      titles: {
+        devotional: "Devotional poster ready",
+        weekday: "Today special poster",
+        bible: "Bible poster ready",
+        islam: "Islamic poster ready",
+      },
+      labels: {
+        devotional: "devotional",
+        weekday: "today's special",
+        bible: "Bible",
+        islam: "Islamic",
+      },
+      body: (label) => `${name}, your ${label} poster is ready. Open and share it.`,
+      footer: "Share now",
+    },
+    hindi: {
+      titles: {devotional: "भक्ति पोस्टर तैयार", weekday: "आज का विशेष पोस्टर", bible: "बाइबल पोस्टर तैयार", islam: "इस्लामिक पोस्टर तैयार"},
+      labels: {devotional: "भक्ति", weekday: "आज का विशेष", bible: "बाइबल", islam: "इस्लामिक"},
+      body: (label) => `${name} जी, आपका ${label} पोस्टर तैयार है। ऐप खोलें और शेयर करें।`,
+      footer: "अभी शेयर करें",
+    },
+    tamil: {
+      titles: {devotional: "பக்தி போஸ்டர் தயார்", weekday: "இன்றைய சிறப்பு போஸ்டர்", bible: "பைபிள் போஸ்டர் தயார்", islam: "இஸ்லாமிய போஸ்டர் தயார்"},
+      labels: {devotional: "பக்தி", weekday: "இன்றைய சிறப்பு", bible: "பைபிள்", islam: "இஸ்லாமிய"},
+      body: (label) => `${name} அவர்களே, உங்கள் ${label} போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.`,
+      footer: "இப்போது பகிருங்கள்",
+    },
+    kannada: {
+      titles: {devotional: "ಭಕ್ತಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", weekday: "ಇಂದಿನ ವಿಶೇಷ ಪೋಸ್ಟರ್", bible: "ಬೈಬಲ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ", islam: "ಇಸ್ಲಾಮಿಕ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ"},
+      labels: {devotional: "ಭಕ್ತಿ", weekday: "ಇಂದಿನ ವಿಶೇಷ", bible: "ಬೈಬಲ್", islam: "ಇಸ್ಲಾಮಿಕ್"},
+      body: (label) => `${name} ಅವರೇ, ನಿಮ್ಮ ${label} ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.`,
+      footer: "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ",
+    },
+    malayalam: {
+      titles: {devotional: "ഭക്തി പോസ്റ്റർ തയ്യാറാണ്", weekday: "ഇന്നത്തെ പ്രത്യേക പോസ്റ്റർ", bible: "ബൈബിൾ പോസ്റ്റർ തയ്യാറാണ്", islam: "ഇസ്ലാമിക് പോസ്റ്റർ തയ്യാറാണ്"},
+      labels: {devotional: "ഭക്തി", weekday: "ഇന്നത്തെ പ്രത്യേക", bible: "ബൈബിൾ", islam: "ഇസ്ലാമിക്"},
+      body: (label) => `${name}, നിങ്ങളുടെ ${label} പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.`,
+      footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ",
+    },
+    marathi: {
+      titles: {devotional: "भक्ती पोस्टर तयार", weekday: "आजचा विशेष पोस्टर", bible: "बायबल पोस्टर तयार", islam: "इस्लामिक पोस्टर तयार"},
+      labels: {devotional: "भक्ती", weekday: "आजचा विशेष", bible: "बायबल", islam: "इस्लामिक"},
+      body: (label) => `${name}, तुमचा ${label} पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.`,
+      footer: "आत्ताच शेअर करा",
+    },
+    gujarati: {
+      titles: {devotional: "ભક્તિ પોસ્ટર તૈયાર", weekday: "આજનું ખાસ પોસ્ટર", bible: "બાઇબલ પોસ્ટર તૈયાર", islam: "ઇસ્લામિક પોસ્ટર તૈયાર"},
+      labels: {devotional: "ભક્તિ", weekday: "આજનું ખાસ", bible: "બાઇબલ", islam: "ઇસ્લામિક"},
+      body: (label) => `${name}, તમારું ${label} પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.`,
+      footer: "હમણાં શેર કરો",
+    },
+    bengali: {
+      titles: {devotional: "ভক্তি পোস্টার প্রস্তুত", weekday: "আজকের বিশেষ পোস্টার", bible: "বাইবেল পোস্টার প্রস্তুত", islam: "ইসলামিক পোস্টার প্রস্তুত"},
+      labels: {devotional: "ভক্তি", weekday: "আজকের বিশেষ", bible: "বাইবেল", islam: "ইসলামিক"},
+      body: (label) => `${name}, আপনার ${label} পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।`,
+      footer: "এখনই শেয়ার করুন",
+    },
+    punjabi: {
+      titles: {devotional: "ਭਗਤੀ ਪੋਸਟਰ ਤਿਆਰ", weekday: "ਅੱਜ ਦਾ ਖਾਸ ਪੋਸਟਰ", bible: "ਬਾਈਬਲ ਪੋਸਟਰ ਤਿਆਰ", islam: "ਇਸਲਾਮਿਕ ਪੋਸਟਰ ਤਿਆਰ"},
+      labels: {devotional: "ਭਗਤੀ", weekday: "ਅੱਜ ਦਾ ਖਾਸ", bible: "ਬਾਈਬਲ", islam: "ਇਸਲਾਮਿਕ"},
+      body: (label) => `${name}, ਤੁਹਾਡਾ ${label} ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।`,
+      footer: "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ",
+    },
+    odia: {
+      titles: {devotional: "ଭକ୍ତି ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", weekday: "ଆଜିର ବିଶେଷ ପୋଷ୍ଟର", bible: "ବାଇବେଲ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ", islam: "ଇସ୍ଲାମିକ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ"},
+      labels: {devotional: "ଭକ୍ତି", weekday: "ଆଜିର ବିଶେଷ", bible: "ବାଇବେଲ", islam: "ଇସ୍ଲାମିକ"},
+      body: (label) => `${name}, ଆପଣଙ୍କ ${label} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।`,
+      footer: "ଏବେ ଶେୟାର କରନ୍ତୁ",
+    },
+    assamese: {
+      titles: {devotional: "ভক্তি পোষ্টাৰ সাজু", weekday: "আজিৰ বিশেষ পোষ্টাৰ", bible: "বাইবেল পোষ্টাৰ সাজু", islam: "ইছলামিক পোষ্টাৰ সাজু"},
+      labels: {devotional: "ভক্তি", weekday: "আজিৰ বিশেষ", bible: "বাইবেল", islam: "ইছলামিক"},
+      body: (label) => `${name}, আপোনাৰ ${label} পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।`,
+      footer: "এতিয়াই শ্বেয়াৰ কৰক",
+    },
+    konkani: {
+      titles: {devotional: "भक्ती पोस्टर तयार", weekday: "आयजचो खास पोस्टर", bible: "बायबल पोस्टर तयार", islam: "इस्लामिक पोस्टर तयार"},
+      labels: {devotional: "भक्ती", weekday: "आयजचो खास", bible: "बायबल", islam: "इस्लामिक"},
+      body: (label) => `${name}, तुमचो ${label} पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.`,
+      footer: "आतां शेअर करात",
+    },
+    nepali: {
+      titles: {devotional: "भक्ति पोस्टर तयार", weekday: "आजको विशेष पोस्टर", bible: "बाइबल पोस्टर तयार", islam: "इस्लामिक पोस्टर तयार"},
+      labels: {devotional: "भक्ति", weekday: "आजको विशेष", bible: "बाइबल", islam: "इस्लामिक"},
+      body: (label) => `${name}, तपाईंको ${label} पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।`,
+      footer: "अहिले शेयर गर्नुहोस्",
+    },
+    meitei: {
+      titles: {devotional: "Bhakti poster ready", weekday: "Ngasi special poster", bible: "Bible poster ready", islam: "Islamic poster ready"},
+      labels: {devotional: "bhakti", weekday: "ngasi special", bible: "Bible", islam: "Islamic"},
+      body: (label) => `${name}, nahakki ${label} poster ready oire. App hangdok-u amasung share tou.`,
+      footer: "Houjik share tou",
+    },
+    mizo: {
+      titles: {devotional: "Devotional poster ready", weekday: "Vawiin special poster", bible: "Bible poster ready", islam: "Islamic poster ready"},
+      labels: {devotional: "devotional", weekday: "vawiin special", bible: "Bible", islam: "Islamic"},
+      body: (label) => `${name}, i ${label} poster a peih tawh. App hawng la share rawh.`,
+      footer: "Tunah share rawh",
+    },
+    kashmiri: {
+      titles: {devotional: "بھکتی پوسٹر تیار", weekday: "ازک خاص پوسٹر", bible: "بائبل پوسٹر تیار", islam: "اسلامک پوسٹر تیار"},
+      labels: {devotional: "بھکتی", weekday: "ازک خاص", bible: "بائبل", islam: "اسلامک"},
+      body: (label) => `${name}, تُہند ${label} پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔`,
+      footer: "وُنہ شیئر کریو",
+    },
+    ladakhi: {
+      titles: {devotional: "Devotional poster ready", weekday: "Dering special poster", bible: "Bible poster ready", islam: "Islamic poster ready"},
+      labels: {devotional: "devotional", weekday: "dering special", bible: "Bible", islam: "Islamic"},
+      body: (label) => `${name}, khyod-kyi ${label} poster ready in. App phye nas share chos.`,
+      footer: "Da share chos",
+    },
+  };
+  const bucket = text[lang] || text.english;
+  const label = bucket.labels[copyKey];
+  const body = bucket.body(label);
+  return {
+    title: bucket.titles[copyKey],
+    body,
+    header: body,
+    footer: bucket.footer,
+  };
+}
+
+function notificationEventNameList(events) {
+  return events
+      .map((event) => String(event && event.title ? event.title : "").trim())
+      .filter((title) => title.length > 0);
+}
+
+function joinNotificationEventNames(eventNames, language) {
+  const names = eventNames.filter((name) => String(name || "").trim().length > 0);
+  if (names.length <= 1) {
+    return names[0] || "Event";
+  }
+  const lang = sanitizeLanguage(language) || "english";
+  const joinerByLanguage = {
+    telugu: " మరియు ",
+    english: " and ",
+    hindi: " और ",
+    tamil: " மற்றும் ",
+    kannada: " ಮತ್ತು ",
+    malayalam: " ഒപ്പം ",
+    marathi: " आणि ",
+    gujarati: " અને ",
+    bengali: " এবং ",
+    punjabi: " ਅਤੇ ",
+    odia: " ଏବଂ ",
+    assamese: " আৰু ",
+    konkani: " आनी ",
+    nepali: " र ",
+    meitei: " amasung ",
+    mizo: " leh ",
+    kashmiri: " تہ ",
+    ladakhi: " dang ",
+  };
+  const joiner = joinerByLanguage[lang] || joinerByLanguage.english;
+  return `${names.slice(0, -1).join(", ")}${joiner}${names[names.length - 1]}`;
+}
+
+function dynamicEventBroadcastCopy(eventNames, language) {
+  const lang = sanitizeLanguage(language) || "english";
+  const names = joinNotificationEventNames(eventNames, lang);
+  const plural = eventNames.length > 1;
+  const copyByLanguage = {
+    telugu: {
+      title: plural ? `${names} పోస్టర్లు సిద్ధం` : `${names} పోస్టర్ సిద్ధం`,
+      body: plural ? `${names} పోస్టర్లు సిద్ధంగా ఉన్నాయి. ఓపెన్ చేసి షేర్ చేయండి.` : `${names} పోస్టర్ సిద్ధంగా ఉంది. ఓపెన్ చేసి షేర్ చేయండి.`,
+      footer: "షేర్ చేయండి",
+    },
+    english: {
+      title: plural ? `${names} posters ready` : `${names} poster ready`,
+      body: plural ? `${names} posters are ready. Open and share them.` : `${names} poster is ready. Open and share it.`,
+      footer: "Share now",
+    },
+    hindi: {
+      title: plural ? `${names} पोस्टर तैयार` : `${names} पोस्टर तैयार`,
+      body: plural ? `${names} पोस्टर तैयार हैं। ऐप खोलें और शेयर करें।` : `${names} पोस्टर तैयार है। ऐप खोलें और शेयर करें।`,
+      footer: "अभी शेयर करें",
+    },
+    tamil: {
+      title: plural ? `${names} போஸ்டர்கள் தயார்` : `${names} போஸ்டர் தயார்`,
+      body: plural ? `${names} போஸ்டர்கள் தயாராக உள்ளன. ஆப்பை திறந்து பகிருங்கள்.` : `${names} போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.`,
+      footer: "இப்போது பகிருங்கள்",
+    },
+    kannada: {
+      title: plural ? `${names} ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧ` : `${names} ಪೋಸ್ಟರ್ ಸಿದ್ಧ`,
+      body: plural ? `${names} ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.` : `${names} ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.`,
+      footer: "ಈಗ ಹಂಚಿಕೊಳ್ಳಿ",
+    },
+    malayalam: {
+      title: plural ? `${names} പോസ്റ്ററുകൾ തയ്യാറാണ്` : `${names} പോസ്റ്റർ തയ്യാറാണ്`,
+      body: plural ? `${names} പോസ്റ്ററുകൾ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.` : `${names} പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.`,
+      footer: "ഇപ്പോൾ ഷെയർ ചെയ്യൂ",
+    },
+    marathi: {
+      title: plural ? `${names} पोस्टर तयार` : `${names} पोस्टर तयार`,
+      body: plural ? `${names} पोस्टर तयार आहेत. अॅप उघडा आणि शेअर करा.` : `${names} पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.`,
+      footer: "आत्ताच शेअर करा",
+    },
+    gujarati: {
+      title: plural ? `${names} પોસ્ટર તૈયાર` : `${names} પોસ્ટર તૈયાર`,
+      body: plural ? `${names} પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.` : `${names} પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.`,
+      footer: "હમણાં શેર કરો",
+    },
+    bengali: {
+      title: plural ? `${names} পোস্টার প্রস্তুত` : `${names} পোস্টার প্রস্তুত`,
+      body: plural ? `${names} পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।` : `${names} পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।`,
+      footer: "এখনই শেয়ার করুন",
+    },
+    punjabi: {
+      title: plural ? `${names} ਪੋਸਟਰ ਤਿਆਰ` : `${names} ਪੋਸਟਰ ਤਿਆਰ`,
+      body: plural ? `${names} ਪੋਸਟਰ ਤਿਆਰ ਹਨ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।` : `${names} ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।`,
+      footer: "ਹੁਣੇ ਸ਼ੇਅਰ ਕਰੋ",
+    },
+    odia: {
+      title: plural ? `${names} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ` : `${names} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ`,
+      body: plural ? `${names} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।` : `${names} ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।`,
+      footer: "ଏବେ ଶେୟାର କରନ୍ତୁ",
+    },
+    assamese: {
+      title: plural ? `${names} পোষ্টাৰ সাজু` : `${names} পোষ্টাৰ সাজু`,
+      body: plural ? `${names} পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।` : `${names} পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।`,
+      footer: "এতিয়াই শ্বেয়াৰ কৰক",
+    },
+    konkani: {
+      title: plural ? `${names} पोस्टर तयार` : `${names} पोस्टर तयार`,
+      body: plural ? `${names} पोस्टर तयार आसात. अॅप उगडात आनी शेअर करात.` : `${names} पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.`,
+      footer: "आतां शेअर करात",
+    },
+    nepali: {
+      title: plural ? `${names} पोस्टर तयार` : `${names} पोस्टर तयार`,
+      body: plural ? `${names} पोस्टर तयार छन्। एप खोल्नुहोस् र शेयर गर्नुहोस्।` : `${names} पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।`,
+      footer: "अहिले शेयर गर्नुहोस्",
+    },
+    meitei: {
+      title: plural ? `${names} posters ready` : `${names} poster ready`,
+      body: plural ? `${names} posters ready oire. App hangdok-u amasung share tou.` : `${names} poster ready oire. App hangdok-u amasung share tou.`,
+      footer: "Houjik share tou",
+    },
+    mizo: {
+      title: plural ? `${names} posters ready` : `${names} poster ready`,
+      body: plural ? `${names} posters an peih tawh. App hawng la share rawh.` : `${names} poster a peih tawh. App hawng la share rawh.`,
+      footer: "Tunah share rawh",
+    },
+    kashmiri: {
+      title: plural ? `${names} پوسٹر تیار` : `${names} پوسٹر تیار`,
+      body: plural ? `${names} پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔` : `${names} پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔`,
+      footer: "وُنہ شیئر کریو",
+    },
+    ladakhi: {
+      title: plural ? `${names} posters ready` : `${names} poster ready`,
+      body: plural ? `${names} posters ready in. App phye nas share chos.` : `${names} poster ready in. App phye nas share chos.`,
+      footer: "Da share chos",
+    },
+  };
+  const copy = copyByLanguage[lang] || copyByLanguage.english;
+  return {
+    title: copy.title,
+    body: copy.body,
+    header: copy.body,
+    footer: copy.footer,
+  };
 }
 
 function greetingReminderVariants(kind, language) {
@@ -3212,12 +3555,15 @@ async function sendReminderToTopic({
   body,
   imageUrl = null,
   posterBaseImageUrl = "",
+  headerText = "",
+  footerText = "",
   categoryKey = "",
   titleKey = "",
   bodyKey = "",
   route = "",
   openKind = "",
   languageCode = "",
+  extraData = {},
 }) {
   const normalizedTopic = String(topic || "").trim();
   if (!normalizedTopic) {
@@ -3239,6 +3585,8 @@ async function sendReminderToTopic({
       route: resolvedRoute,
       title: normalizedTitle,
       body: normalizedBody,
+      headerText: String(headerText || "").trim(),
+      footerText: String(footerText || "").trim(),
       title_key: titleKey || "",
       body_key: bodyKey || "",
       languageCode: String(languageCode || "").trim(),
@@ -3247,6 +3595,8 @@ async function sendReminderToTopic({
       posterPreviewImage: normalizedImageUrl,
       posterBaseImage: posterBaseImageUrl || "",
       posterImage: normalizedImageUrl,
+      ...Object.fromEntries(Object.entries(extraData || {})
+          .map(([key, value]) => [String(key), String(value || "")])),
     },
   };
 
@@ -3478,6 +3828,9 @@ function reminderCategoryAliases(input) {
   if (category === "bible") {
     return ["bible", "christian"];
   }
+  if (category === "devotional") {
+    return ["devotional", "bhakti", "hindu"];
+  }
   if (category.startsWith("weekday_") && category.endsWith("_special")) {
     const weekday = category
         .replace(/^weekday_/, "")
@@ -3516,6 +3869,11 @@ function posterIsCurrentlyVisible(data, nowMillis = Date.now()) {
   const eventEndAt = toMillis(data.eventEndAt);
   const visibleFrom = publishAt > 0 ? publishAt : (createdAt > 0 ? createdAt : nowMillis);
   if (visibleFrom > nowMillis) {
+    return false;
+  }
+  const dynamicWindow = dynamicEventVisibilityWindowMillis(data, nowMillis);
+  if (dynamicWindow &&
+      (nowMillis < dynamicWindow.startMillis || nowMillis >= dynamicWindow.endExclusiveMillis)) {
     return false;
   }
   if (eventEndAt > 0 && nowMillis > eventEndAt) {
@@ -3861,6 +4219,15 @@ function weekdaySpecialCategoryKey(now = new Date()) {
 
 function religionDailyTarget(religion, now = new Date()) {
   const target = normalizeReligionPreference(religion);
+  if (target === "all") {
+    const categoryKey = weekdaySpecialCategoryKey(now);
+    return {
+      religion: target,
+      categoryKey,
+      label: "Weekday",
+      topic: "religion_all",
+    };
+  }
   if (target === "muslim") {
     return {religion: target, categoryKey: "islam", label: "Islam"};
   }
@@ -3938,6 +4305,7 @@ async function sendDailyPersonalizedReminder({
   reminderSeed = "",
   targetReligion = "",
   displayLabel = "",
+  targetTopic = "",
 }) {
   const now = new Date();
   const dayKey = getIstDayKey(now);
@@ -3969,18 +4337,44 @@ async function sendDailyPersonalizedReminder({
 
   // 1. Broadcast via FCM Topic to 100% of devices with ZERO document limits and ZERO cost
   try {
-    const targetTopic = targetReligion ? `religion_${targetReligion}` : "all_users";
+    const resolvedTopic = String(targetTopic || "").trim() ||
+        (targetReligion ? `religion_${targetReligion}` : "all_users");
     broadcastImageUrl = await imageForRegion("andhra_pradesh") || await imageForRegion("") || "";
-    broadcastCopy = targetReligion ?
-        buildReligionNotificationCopy("te", "", targetReligion) :
-        reminderCopyLocalized(categoryKey, "te", "", now);
+    if (!broadcastImageUrl) {
+      logger.warn("sendDailyPersonalizedReminder skipped: no poster image", {
+        categoryKey,
+        topic: resolvedTopic,
+      });
+      await recordAutomatedPushNotificationHistory({
+        title: `${categoryKey} reminder`,
+        message: "Skipped because no approved poster image was available.",
+        titleKey: `${categoryKey}_title`,
+        bodyKey: `${categoryKey}_body`,
+        imageUrl: "",
+        category: categoryKey,
+        audience: "all_users",
+        targetReligion: targetReligion || "all",
+        status: "failed",
+        deliveredCount: 0,
+        failedCount: 1,
+        targetCount: 1,
+        errorMessage: "No approved poster image available",
+      });
+      return;
+    }
+    broadcastCopy = categorySpecificReminderCopy(categoryKey, "te", "") ||
+        (targetReligion && targetReligion !== "all" ?
+          buildReligionNotificationCopy("te", "", targetReligion) :
+          reminderCopyLocalized(categoryKey, "te", "", now));
 
     await sendReminderToTopic({
-      topic: targetTopic,
+      topic: resolvedTopic,
       title: broadcastCopy.title,
       body: broadcastCopy.body,
       imageUrl: broadcastImageUrl || null,
       posterBaseImageUrl: broadcastImageUrl || "",
+      headerText: broadcastCopy.header || "",
+      footerText: broadcastCopy.footer || "",
       categoryKey,
       titleKey: `${categoryKey}_title`,
       bodyKey: `${categoryKey}_body`,
@@ -3988,7 +4382,7 @@ async function sendDailyPersonalizedReminder({
     });
     deliveredCount++;
     logger.info("sendDailyPersonalizedReminder topic broadcast complete", {
-      topic: targetTopic,
+      topic: resolvedTopic,
       categoryKey,
       hasImage: Boolean(broadcastImageUrl),
     });
@@ -4074,18 +4468,24 @@ async function sendDailyPersonalizedReminder({
         });
         return;
       }
-      const copy = targetReligion ?
-        buildReligionNotificationCopy(
-            language || profile.preferredLanguage,
-            profile.name,
-            targetReligion,
-        ) :
-        reminderCopyLocalized(
+      const copy =
+        categorySpecificReminderCopy(
             categoryKey,
             language || profile.preferredLanguage,
             profile.name,
-            now,
-        );
+        ) ||
+        (targetReligion ?
+          buildReligionNotificationCopy(
+              language || profile.preferredLanguage,
+              profile.name,
+              targetReligion,
+          ) :
+          reminderCopyLocalized(
+              categoryKey,
+              language || profile.preferredLanguage,
+              profile.name,
+              now,
+          ));
       await sendReminderToToken({
         token,
         platform,
@@ -4098,7 +4498,6 @@ async function sendDailyPersonalizedReminder({
         categoryKey,
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
-        bodyKey: "",
         userName: profile.name || "",
         userPhotoUrl: profile.photoUrl || "",
         languageCode: language || profile.preferredLanguage || "",
@@ -4167,20 +4566,20 @@ async function sendDailyPersonalizedReminder({
         });
         return;
       }
-      const copy = targetReligion ?
-        buildReligionNotificationCopy(
-            language,
-            "Mana Poster User",
-            "",
-            targetReligion,
-        ) :
-        reminderCopyLocalized(
-            categoryKey,
-            language,
-            "Mana Poster User",
-            "",
-            now,
-        );
+      const copy =
+        categorySpecificReminderCopy(categoryKey, language, "Mana Poster User") ||
+        (targetReligion ?
+          buildReligionNotificationCopy(
+              language,
+              "Mana Poster User",
+              targetReligion,
+          ) :
+          reminderCopyLocalized(
+              categoryKey,
+              language,
+              "Mana Poster User",
+              now,
+          ));
       await sendReminderToToken({
         token,
         platform,
@@ -4194,8 +4593,6 @@ async function sendDailyPersonalizedReminder({
         titleKey: `${categoryKey}_title`,
         bodyKey: `${categoryKey}_body`,
         userName: "Mana Poster User",
-        bodyKey: "",
-        userName: "",
         languageCode: language,
       });
       deliveredCount++;
@@ -4669,6 +5066,40 @@ function daysUntilEvent(month, day, now = new Date()) {
   }
   const ms = eventDate.getTime() - today.getTime();
   return Math.floor(ms / (24 * 60 * 60 * 1000));
+}
+
+function dynamicEventBroadcastTopics(event) {
+  const religion = event && event.religion ?
+    normalizeReligionPreference(event.religion) : "";
+  if (religion && religion !== "all") {
+    return [`religion_${religion}`];
+  }
+  const regions = eventRegionIds(event);
+  if (regions.length > 0) {
+    const expandedRegions = new Set();
+    for (const regionId of regions) {
+      const sharedRegions = sharedContentRegionIdsFor(
+          regionId,
+          isPoliticalDynamicEvent(event) ? "party_dynamic_event" : "",
+      );
+      for (const sharedRegion of sharedRegions.length > 0 ? sharedRegions : [regionId]) {
+        expandedRegions.add(sharedRegion);
+      }
+    }
+    return Array.from(expandedRegions).map((regionId) => `region_${regionId}`);
+  }
+  return ["all_users"];
+}
+
+function dynamicEventPrimaryRegion(event) {
+  const regions = eventRegionIds(event);
+  if (regions.includes("andhra_pradesh")) {
+    return "andhra_pradesh";
+  }
+  if (regions.includes("telangana")) {
+    return "telangana";
+  }
+  return regions[0] || "andhra_pradesh";
 }
 
 function normalizeEmail(value) {
@@ -5840,12 +6271,126 @@ function posterExpiryBaseMillis(data) {
   return toMillis(data.createdAt);
 }
 
+function istDatePartsForMillis(ms) {
+  const istDate = new Date(ms + istOffsetMillis);
+  return {
+    year: istDate.getUTCFullYear(),
+    month: istDate.getUTCMonth() + 1,
+    day: istDate.getUTCDate(),
+  };
+}
+
+function istDayStartMillisForParts(year, month, day) {
+  const monthText = String(month).padStart(2, "0");
+  const dayText = String(day).padStart(2, "0");
+  return Date.parse(`${year}-${monthText}-${dayText}T00:00:00+05:30`);
+}
+
+function nextIstDayStartMillis(year, month, day) {
+  return Date.UTC(year, month - 1, day + 1) - istOffsetMillis;
+}
+
+const dynamicMetaCategoryIdsForCleanup = new Set([
+  "festival",
+  "jayanthi",
+  "vardhanthi",
+  "important_day",
+  "regional_special",
+  "weekday_special",
+]);
+
+function isWeekdaySpecialCategoryForCleanup(categoryId) {
+  return /^weekday_(monday|tuesday|wednesday|thursday|friday|saturday|sunday)_special$/
+      .test(normalizeRegionId(categoryId));
+}
+
+function dynamicEventVisibilityWindowMillis(data, nowMillis = Date.now()) {
+  const categoryId = normalizeRegionId(data.categoryId);
+  const visibleFrom = posterVisibleFromMillis(data);
+  if (!categoryId || visibleFrom <= 0) {
+    return null;
+  }
+
+  const visibleParts = istDatePartsForMillis(visibleFrom);
+  if (
+    isWeekdaySpecialCategoryForCleanup(categoryId) ||
+    dynamicMetaCategoryIdsForCleanup.has(categoryId)
+  ) {
+    return {
+      startMillis: istDayStartMillisForParts(
+          visibleParts.year,
+          visibleParts.month,
+          visibleParts.day,
+      ),
+      endExclusiveMillis: nextIstDayStartMillis(
+          visibleParts.year,
+          visibleParts.month,
+          visibleParts.day,
+      ),
+    };
+  }
+
+  const event = dynamicEventCatalog.find((item) => {
+    const keys = [
+      item && item.id,
+      item && item.slug,
+    ].map((value) => normalizeRegionId(value));
+    return keys.includes(categoryId);
+  });
+  if (!event || !event.month || !event.day) {
+    return null;
+  }
+
+  const nowParts = istDatePartsForMillis(nowMillis);
+  const eventStartMonth = Number(event.startMonth || event.month);
+  const eventStartDay = Number(event.startDay || event.day);
+  const eventEndMonth = Number(event.endMonth || event.month);
+  const eventEndDay = Number(event.endDay || event.day);
+  if (
+    !Number.isFinite(eventStartMonth) ||
+    !Number.isFinite(eventStartDay) ||
+    !Number.isFinite(eventEndMonth) ||
+    !Number.isFinite(eventEndDay)
+  ) {
+    return null;
+  }
+  const eventStartMillis = istDayStartMillisForParts(
+      nowParts.year,
+      eventStartMonth,
+      eventStartDay,
+  );
+  const eventEndExclusiveMillis = nextIstDayStartMillis(
+      nowParts.year,
+      eventEndMonth,
+      eventEndDay,
+  );
+  if (!Number.isFinite(eventStartMillis) || !Number.isFinite(eventEndExclusiveMillis)) {
+    return null;
+  }
+  return {
+    startMillis: eventStartMillis,
+    endExclusiveMillis: eventEndExclusiveMillis,
+  };
+}
+
+function dynamicEventCleanupCutoffMillis(data) {
+  const window = dynamicEventVisibilityWindowMillis(data);
+  if (!window) {
+    return 0;
+  }
+  return window.endExclusiveMillis;
+}
+
 function posterCleanupCutoffMillis(data) {
   const status = String(data.status || "").trim().toLowerCase();
   if (status === "approved") {
     const eventEndAt = toMillis(data.eventEndAt);
     if (eventEndAt > 0) {
       return eventEndAt;
+    }
+    const dynamicEventCutoff = dynamicEventCleanupCutoffMillis(data);
+    if (dynamicEventCutoff > 0) {
+      return dynamicEventCutoff;
     }
   }
   const expiryBase = posterExpiryBaseMillis(data);
@@ -6866,50 +7411,13 @@ exports.reminderToolSendTriple = onRequest(
 exports.processWelcomeNotifications = onSchedule(
     {
       region: "asia-south1",
-      schedule: "every 4 hours",
+      schedule: "every 15 minutes",
       timeZone: "Asia/Kolkata",
       memory: "512MiB",
       timeoutSeconds: 180,
     },
     async () => {
-      // Process public pre-login tokens.
-      const publicSnap = await db
-          .collection("publicDeviceTokens")
-          .limit(40)
-          .get();
-
-      for (const doc of publicSnap.docs) {
-        const data = doc.data() || {};
-        if (data.welcomeSent === true) {
-          continue;
-        }
-        const token = String(data.token || "").trim();
-        if (!token) {
-          continue;
-        }
-        try {
-          await sendWelcomeToToken(
-              token,
-              String(data.platform || "").trim(),
-              notificationLanguageFromTokenData(data),
-          );
-          await doc.ref.set({
-            welcomeSent: true,
-            welcomeSentAt: admin.firestore.FieldValue.serverTimestamp(),
-          }, {merge: true});
-        } catch (error) {
-          if (isMessagingTokenGoneError(error)) {
-            await cleanupInvalidTokenRef(doc.ref);
-            continue;
-          }
-          logger.error("public welcome send failed", {
-            token,
-            error: messagingErrorDetails(error),
-          });
-        }
-      }
-
-      // Process logged-in user tokens.
+      const eligibleBeforeMs = Date.now() - welcomeNotificationDelayMillis;
       const userTokenSnap = await db
           .collectionGroup("deviceTokens")
           .where("welcomeSent", "==", false)
@@ -6920,6 +7428,12 @@ exports.processWelcomeNotifications = onSchedule(
         const data = doc.data() || {};
         const token = String(data.token || "").trim();
         if (!token) {
+          continue;
+        }
+        const createdAtMs = toMillis(data.createdAt);
+        const updatedAtMs = toMillis(data.updatedAt);
+        const tokenCreatedMs = createdAtMs > 0 ? createdAtMs : updatedAtMs;
+        if (!tokenCreatedMs || tokenCreatedMs > eligibleBeforeMs) {
           continue;
         }
         try {
@@ -6990,7 +7504,7 @@ exports.dailyGoodMorningReminder0700 = onSchedule(
 exports.dailyMotivationReminder1030 = onSchedule(
     {
       region: "asia-south1",
-      schedule: "30 10 * * *",
+      schedule: "0 10 * * *",
       timeZone: "Asia/Kolkata",
       memory: "512MiB",
       timeoutSeconds: 300,
@@ -7005,7 +7519,7 @@ exports.dailyMotivationReminder1030 = onSchedule(
           "inspiration",
         ],
         categoryKey: "motivation",
-        reminderSeed: "1030",
+        reminderSeed: "1000",
       });
     },
 );
@@ -7104,7 +7618,7 @@ exports.dailyReligionReminder0815 = onSchedule(
     },
     async () => {
       const now = new Date();
-      const targets = ["hindu", "muslim", "christian"]
+      const targets = ["hindu", "all", "muslim", "christian"]
           .map((religion) => religionDailyTarget(religion, now))
           .filter(Boolean);
       for (const target of targets) {
@@ -7114,86 +7628,147 @@ exports.dailyReligionReminder0815 = onSchedule(
           reminderSeed: `religion-${target.religion}`,
           targetReligion: target.religion,
           displayLabel: target.label,
+          targetTopic: target.topic || "",
         });
       }
     },
 );
 
-exports.dailyDynamicEventReminder = onSchedule(
+exports.dailyDynamicEventReminder0730 = onSchedule(
     {
       region: "asia-south1",
       memory: "512MiB",
+      timeoutSeconds: 300,
       schedule: "30 7 * * *",
       timeZone: "Asia/Kolkata",
     },
     async () => {
       const now = new Date();
-      const matchingEvents = dynamicEventCatalog.filter((event) => {
-        const delta = daysUntilEvent(event.month, event.day, now);
-        return delta === 1 || delta === 0;
+      const dayKey = getIstDayKey(now);
+      const todayEvents = dynamicEventCatalog.filter((event) => {
+        const month = Number(event && (event.startMonth || event.month));
+        const day = Number(event && (event.startDay || event.day));
+        return Number.isFinite(month) && Number.isFinite(day) &&
+          daysUntilEvent(month, day, now) === 0;
       });
-
-      if (matchingEvents.length === 0) {
+      if (todayEvents.length === 0) {
         return;
       }
 
-      for (const event of matchingEvents) {
-        const delta = daysUntilEvent(event.month, event.day, now);
-        const eventTiming = delta === 1 ? "tomorrow" : "today";
-        const eventTimingLabel = delta === 1 ? "repu" : "ee roju";
-
-        const key = `${now.getFullYear()}-${event.id}-${eventTiming}-${now.getMonth() + 1}-${now.getDate()}`;
-        const sentRef = db.collection("notificationJobs").doc("dynamicEventReminders")
-            .collection("sent").doc(key);
-        const exists = await sentRef.get();
-        if (exists.exists) {
+      const topicGroups = new Map();
+      for (const event of todayEvents) {
+        const eventTitle = String(event && event.title ? event.title : "").trim();
+        if (!eventTitle) {
           continue;
         }
-
-        // STRICT POSTER CHECK:
-        // Only send notification if approved poster image actually exists for this event
-        const eventKeywords = event.keywords || [event.title];
-        const checkRegions = event.regionIds && event.regionIds.length > 0 ?
-            event.regionIds :
-            (event.regionId ? [event.regionId] : ["andhra_pradesh", "telangana"]);
-        let hasPoster = "";
-        for (const reg of checkRegions) {
-          hasPoster = await pickImageForReminder(
-              eventKeywords,
-              `${event.title}-${eventTiming}-check`,
-              reg,
-          );
-          if (hasPoster) {
-            break;
+        const topics = dynamicEventBroadcastTopics(event);
+        for (const topic of topics) {
+          const sentKey = `${dayKey}-${safeNotificationMetricKey(topic)}-${safeNotificationMetricKey(event.id || eventTitle)}`;
+          const sentRef = db.collection("notificationJobs")
+              .doc("dynamicEventReminders0730")
+              .collection("sent")
+              .doc(sentKey);
+          const sentSnap = await sentRef.get();
+          if (sentSnap.exists) {
+            continue;
           }
+          const topicRegion = topic.startsWith("region_") ?
+            topic.replace(/^region_/, "") :
+            dynamicEventPrimaryRegion(event);
+          const imageUrl = await pickImageForReminder(
+              Array.isArray(event.keywords) && event.keywords.length > 0 ?
+                event.keywords :
+                [eventTitle],
+              `${eventTitle}-${dayKey}-${topicRegion}`,
+              topicRegion,
+          );
+          if (!imageUrl) {
+            logger.info("dailyDynamicEventReminder0730 skipped event: no poster", {
+              eventTitle,
+              topic,
+              topicRegion,
+            });
+            continue;
+          }
+          const group = topicGroups.get(topic) || {events: [], imageUrl: ""};
+          group.events.push({event, sentRef});
+          if (!group.imageUrl) {
+            group.imageUrl = imageUrl;
+          }
+          topicGroups.set(topic, group);
         }
+      }
 
-        if (!hasPoster) {
-          logger.info("dailyDynamicEventReminder skipped: no poster found for event", {
-            eventTitle: event.title,
-            eventTiming,
-          });
+      for (const [topic, group] of topicGroups.entries()) {
+        const eventNames = notificationEventNameList(
+            group.events.map((item) => item.event),
+        );
+        if (eventNames.length === 0 || !group.imageUrl) {
           continue;
         }
-
-        await sendDirectReminderToEligibleTokens({
-          categoryKey: "dynamic_event",
-          title: `${event.title} reminder`,
-          body: `${event.title} ${eventTimingLabel} undi. Related poster ni share cheyyandi.`,
-          imageUrl: hasPoster,
-          eventTitle: event.title,
-          eventTiming,
-          eventKeywords,
-          dynamicEvent: event,
-        });
-
-        await sentRef.set({
-          eventId: event.id,
-          eventTitle: event.title,
-          eventTiming,
-          hasPosterImage: true,
-          sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        const copy = dynamicEventBroadcastCopy(eventNames, "te");
+        try {
+          await sendReminderToTopic({
+            topic,
+            title: copy.title,
+            body: copy.body,
+            imageUrl: group.imageUrl,
+            posterBaseImageUrl: group.imageUrl,
+            headerText: copy.header,
+            footerText: copy.footer,
+            categoryKey: "dynamic_event",
+            titleKey: "dynamic_event_title",
+            bodyKey: "dynamic_event_body",
+            route: "home",
+            openKind: "event",
+            languageCode: "te",
+            extraData: {
+              eventNames: eventNames.join("|"),
+              eventCount: String(eventNames.length),
+            },
+          });
+          await Promise.all(group.events.map((item) => item.sentRef.set({
+            eventId: String(item.event.id || ""),
+            eventTitle: String(item.event.title || ""),
+            topic,
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true})));
+          await recordAutomatedPushNotificationHistory({
+            title: copy.title,
+            message: copy.body,
+            titleKey: "dynamic_event_title",
+            bodyKey: "dynamic_event_body",
+            imageUrl: group.imageUrl,
+            category: "dynamic_event",
+            audience: topic,
+            targetReligion: "all",
+            status: "sent",
+            deliveredCount: 1,
+            failedCount: 0,
+            targetCount: 1,
+          });
+        } catch (error) {
+          logger.error("dailyDynamicEventReminder0730 broadcast failed", {
+            topic,
+            eventNames,
+            error: messagingErrorDetails(error),
+          });
+          await recordAutomatedPushNotificationHistory({
+            title: copy.title,
+            message: copy.body,
+            titleKey: "dynamic_event_title",
+            bodyKey: "dynamic_event_body",
+            imageUrl: group.imageUrl,
+            category: "dynamic_event",
+            audience: topic,
+            targetReligion: "all",
+            status: "failed",
+            deliveredCount: 0,
+            failedCount: 1,
+            targetCount: 1,
+            errorMessage: String(error && error.message ? error.message : error),
+          });
+        }
       }
     },
 );
@@ -8188,66 +8763,3 @@ exports.weeklyStaleTokenCleanup = onSchedule(
       logger.info(`Stale token cleanup complete — deleted ${totalDeleted} tokens older than 90 days`);
     },
 );
-
-// ─── Free User Trial Reminder Notification ──────────────────────────────────
-// Runs every Tuesday and Friday at 6:30 PM IST (13:00 UTC).
-// Broadcasts to topic "free_users" with ZERO Firestore reads and ₹0 cost.
-// Sends directly to all non-subscribers inviting them to start the ₹4 trial.
-exports.biweeklyFreeTrialReminder = onSchedule(
-    {
-      schedule: "0 13 * * 2,5", // Tuesday & Friday at 18:30 IST (13:00 UTC)
-      timeZone: "Asia/Kolkata",
-      region: "asia-south1",
-    },
-    async () => {
-      const message = {
-        topic: "free_users",
-        android: {
-          priority: "high",
-        },
-        data: {
-          click_action: "FLUTTER_NOTIFICATION_CLICK",
-          route: "/subscription",
-          title: "Download posters with your photo and name! 🎨",
-          body: "Start a 3-day trial for just ₹4. Get unlimited posters!",
-          title_key: "free_trial_reminder_title",
-          body_key: "free_trial_reminder_body",
-          languageCode: "en",
-          categoryKey: "subscription",
-          notificationKind: "subscription_offer",
-        },
-      };
-      try {
-        await admin.messaging().send(message);
-        logger.info("biweeklyFreeTrialReminder broadcast successfully to free_users topic");
-        await recordAutomatedPushNotificationHistory({
-          title: message.data.title,
-          message: message.data.body,
-          titleKey: message.data.title_key,
-          bodyKey: message.data.body_key,
-          category: "subscription",
-          audience: "all_users",
-          status: "sent",
-          deliveredCount: 1,
-          failedCount: 0,
-          targetCount: 1,
-        });
-      } catch (error) {
-        logger.error("biweeklyFreeTrialReminder broadcast failed", error);
-        await recordAutomatedPushNotificationHistory({
-          title: message.data.title,
-          message: message.data.body,
-          titleKey: message.data.title_key,
-          bodyKey: message.data.body_key,
-          category: "subscription",
-          audience: "all_users",
-          status: "failed",
-          deliveredCount: 0,
-          failedCount: 1,
-          targetCount: 1,
-          errorMessage: String(error && error.message ? error.message : error),
-        });
-      }
-    },
-);
-

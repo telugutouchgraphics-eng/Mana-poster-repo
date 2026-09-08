@@ -73,6 +73,7 @@ class NotificationService {
   StreamSubscription<User?>? _authStateSubscription;
   AppLifecycleListener? _nativeNotificationTapLifecycleListener;
   int? _lastHandledNativeNotificationTapAt;
+  DateTime? _lastPreferenceSyncAt;
 
   bool _initialized = false;
   Future<void>? _initializationFuture;
@@ -475,9 +476,18 @@ class NotificationService {
     }
   }
 
-  Future<void> syncCurrentPreferences() async {
+  Future<void> syncCurrentPreferences({bool force = false}) async {
     if (!_supportsNativeNotifications) {
       return;
+    }
+    if (!force) {
+      final now = DateTime.now();
+      final lastSync = _lastPreferenceSyncAt;
+      if (lastSync != null &&
+          now.difference(lastSync) < const Duration(minutes: 2)) {
+        return;
+      }
+      _lastPreferenceSyncAt = now;
     }
     final FirebaseMessaging messaging = FirebaseMessaging.instance;
     try {
@@ -567,9 +577,7 @@ class NotificationService {
     // 2. Subscribe to religion topic
     final AppReligionPreference? currentReligion =
         await AppReligionService.loadSelection();
-    final String? newReligionTopic =
-        (currentReligion != null &&
-            currentReligion != AppReligionPreference.all)
+    final String? newReligionTopic = currentReligion != null
         ? 'religion_${currentReligion.name}'
         : null;
     final String? lastReligionTopic = prefs?.getString(
@@ -856,6 +864,38 @@ class NotificationService {
         ? snapshot.language
         : AppLanguage.english;
 
+    final eventNames = _readDataValue(data, 'eventNames')
+        .split('|')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    final notificationKind = _readDataValue(
+      data,
+      'notificationKind',
+    ).trim().toLowerCase();
+    final categoryKey = _readDataValue(
+      data,
+      'categoryKey',
+    ).trim().toLowerCase();
+    if ((notificationKind == 'dynamic_event' ||
+            categoryKey == 'dynamic_event') &&
+        eventNames.isNotEmpty) {
+      return _localizedDynamicEventNotificationText(
+        eventNames: eventNames,
+        language: effectiveLanguage,
+      );
+    }
+
+    final categoryText = _localizedCategoryNotificationText(
+      categoryKey: categoryKey,
+      titleKey: titleKey,
+      bodyKey: bodyKey,
+      language: effectiveLanguage,
+    );
+    if (categoryText != null) {
+      return categoryText;
+    }
+
     if (titleKey.isNotEmpty || bodyKey.isNotEmpty) {
       final title = _localizedNotificationText(
         key: titleKey,
@@ -875,6 +915,685 @@ class NotificationService {
 
     return _ResolvedNotificationText(title: directTitle, body: directBody);
   }
+
+  static _ResolvedNotificationText _localizedDynamicEventNotificationText({
+    required List<String> eventNames,
+    required AppLanguage language,
+  }) {
+    final names = _joinDynamicEventNames(eventNames, language);
+    final plural = eventNames.length > 1;
+    final copy = <AppLanguage, ({String title, String body})>{
+      AppLanguage.telugu: (
+        title: plural ? '$names పోస్టర్లు సిద్ధం' : '$names పోస్టర్ సిద్ధం',
+        body: plural
+            ? '$names పోస్టర్లు సిద్ధంగా ఉన్నాయి. ఓపెన్ చేసి షేర్ చేయండి.'
+            : '$names పోస్టర్ సిద్ధంగా ఉంది. ఓపెన్ చేసి షేర్ చేయండి.',
+      ),
+      AppLanguage.english: (
+        title: plural ? '$names posters ready' : '$names poster ready',
+        body: plural
+            ? '$names posters are ready. Open and share them.'
+            : '$names poster is ready. Open and share it.',
+      ),
+      AppLanguage.hindi: (
+        title: '$names पोस्टर तैयार',
+        body: plural
+            ? '$names पोस्टर तैयार हैं। ऐप खोलें और शेयर करें।'
+            : '$names पोस्टर तैयार है। ऐप खोलें और शेयर करें।',
+      ),
+      AppLanguage.tamil: (
+        title: plural ? '$names போஸ்டர்கள் தயார்' : '$names போஸ்டர் தயார்',
+        body: plural
+            ? '$names போஸ்டர்கள் தயாராக உள்ளன. ஆப்பை திறந்து பகிருங்கள்.'
+            : '$names போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.',
+      ),
+      AppLanguage.kannada: (
+        title: plural ? '$names ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧ' : '$names ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+        body: plural
+            ? '$names ಪೋಸ್ಟರ್‌ಗಳು ಸಿದ್ಧವಾಗಿವೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.'
+            : '$names ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.',
+      ),
+      AppLanguage.malayalam: (
+        title: plural
+            ? '$names പോസ്റ്ററുകൾ തയ്യാറാണ്'
+            : '$names പോസ്റ്റർ തയ്യാറാണ്',
+        body: plural
+            ? '$names പോസ്റ്ററുകൾ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.'
+            : '$names പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.',
+      ),
+      AppLanguage.marathi: (
+        title: '$names पोस्टर तयार',
+        body: plural
+            ? '$names पोस्टर तयार आहेत. अॅप उघडा आणि शेअर करा.'
+            : '$names पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.',
+      ),
+      AppLanguage.gujarati: (
+        title: '$names પોસ્ટર તૈયાર',
+        body: '$names પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.',
+      ),
+      AppLanguage.bengali: (
+        title: '$names পোস্টার প্রস্তুত',
+        body: '$names পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।',
+      ),
+      AppLanguage.punjabi: (
+        title: '$names ਪੋਸਟਰ ਤਿਆਰ',
+        body: plural
+            ? '$names ਪੋਸਟਰ ਤਿਆਰ ਹਨ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।'
+            : '$names ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।',
+      ),
+      AppLanguage.odia: (
+        title: '$names ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+        body: '$names ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।',
+      ),
+      AppLanguage.assamese: (
+        title: '$names পোষ্টাৰ সাজু',
+        body: '$names পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।',
+      ),
+      AppLanguage.konkani: (
+        title: '$names पोस्टर तयार',
+        body: plural
+            ? '$names पोस्टर तयार आसात. अॅप उगडात आनी शेअर करात.'
+            : '$names पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.',
+      ),
+      AppLanguage.nepali: (
+        title: '$names पोस्टर तयार',
+        body: plural
+            ? '$names पोस्टर तयार छन्। एप खोल्नुहोस् र शेयर गर्नुहोस्।'
+            : '$names पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।',
+      ),
+      AppLanguage.meitei: (
+        title: plural ? '$names posters ready' : '$names poster ready',
+        body: plural
+            ? '$names posters ready oire. App hangdok-u amasung share tou.'
+            : '$names poster ready oire. App hangdok-u amasung share tou.',
+      ),
+      AppLanguage.mizo: (
+        title: plural ? '$names posters ready' : '$names poster ready',
+        body: plural
+            ? '$names posters an peih tawh. App hawng la share rawh.'
+            : '$names poster a peih tawh. App hawng la share rawh.',
+      ),
+      AppLanguage.kashmiri: (
+        title: '$names پوسٹر تیار',
+        body: '$names پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔',
+      ),
+      AppLanguage.ladakhi: (
+        title: plural ? '$names posters ready' : '$names poster ready',
+        body: plural
+            ? '$names posters ready in. App phye nas share chos.'
+            : '$names poster ready in. App phye nas share chos.',
+      ),
+    };
+    final resolved = copy[language] ?? copy[AppLanguage.english]!;
+    return _ResolvedNotificationText(
+      title: resolved.title,
+      body: resolved.body,
+    );
+  }
+
+  static String _joinDynamicEventNames(
+    List<String> eventNames,
+    AppLanguage language,
+  ) {
+    if (eventNames.length <= 1) {
+      return eventNames.isNotEmpty ? eventNames.first : 'Event';
+    }
+    final joiner =
+        <AppLanguage, String>{
+          AppLanguage.telugu: ' మరియు ',
+          AppLanguage.english: ' and ',
+          AppLanguage.hindi: ' और ',
+          AppLanguage.tamil: ' மற்றும் ',
+          AppLanguage.kannada: ' ಮತ್ತು ',
+          AppLanguage.malayalam: ' ഒപ്പം ',
+          AppLanguage.marathi: ' आणि ',
+          AppLanguage.gujarati: ' અને ',
+          AppLanguage.bengali: ' এবং ',
+          AppLanguage.punjabi: ' ਅਤੇ ',
+          AppLanguage.odia: ' ଏବଂ ',
+          AppLanguage.assamese: ' আৰু ',
+          AppLanguage.konkani: ' आनी ',
+          AppLanguage.nepali: ' र ',
+          AppLanguage.meitei: ' amasung ',
+          AppLanguage.mizo: ' leh ',
+          AppLanguage.kashmiri: ' تہ ',
+          AppLanguage.ladakhi: ' dang ',
+        }[language] ??
+        ' and ';
+    return '${eventNames.sublist(0, eventNames.length - 1).join(', ')}'
+        '$joiner${eventNames.last}';
+  }
+
+  static _ResolvedNotificationText? _localizedCategoryNotificationText({
+    required String categoryKey,
+    required String titleKey,
+    required String bodyKey,
+    required AppLanguage language,
+  }) {
+    final category = _normalizeReminderCategory(
+      categoryKey.isNotEmpty
+          ? categoryKey
+          : titleKey.isNotEmpty
+          ? titleKey
+          : bodyKey,
+    );
+    if (category.isEmpty ||
+        category == 'morning' ||
+        category == 'afternoon' ||
+        category == 'night' ||
+        category == 'welcome') {
+      return null;
+    }
+    final copy = _categoryNotificationTemplate(language);
+    final title = copy.titles[category] ?? copy.titles['generic']!;
+    final label = copy.labels[category] ?? copy.labels['generic']!;
+    return _ResolvedNotificationText(title: title, body: copy.body(label));
+  }
+
+  static String _normalizeReminderCategory(String raw) {
+    final value = raw.trim().toLowerCase();
+    if (value.isEmpty) {
+      return '';
+    }
+    if (value == 'good_morning' ||
+        value == 'morning' ||
+        value.contains('morning_')) {
+      return 'morning';
+    }
+    if (value == 'good_afternoon' ||
+        value == 'afternoon' ||
+        value.contains('afternoon_')) {
+      return 'afternoon';
+    }
+    if (value == 'good_evening' ||
+        value == 'evening' ||
+        value.contains('evening_')) {
+      return 'evening';
+    }
+    if (value == 'good_night' || value == 'night' || value.contains('night_')) {
+      return 'night';
+    }
+    if (value == 'motivational' ||
+        value == 'motivation' ||
+        value.contains('motivation')) {
+      return 'motivation';
+    }
+    if (value == 'devotional' || value == 'bhakti' || value == 'hindu') {
+      return 'devotional';
+    }
+    if (value == 'bible' || value == 'christian' || value == 'christianity') {
+      return 'bible';
+    }
+    if (value == 'islam' || value == 'muslim') {
+      return 'islam';
+    }
+    if (value == 'joke' || value == 'jokes') {
+      return 'jokes';
+    }
+    if (value.startsWith('weekday_') ||
+        value == 'weekday' ||
+        value == 'weekday_special' ||
+        value == 'today_special') {
+      return 'weekday';
+    }
+    return 'generic';
+  }
+
+  static ({
+    Map<String, String> titles,
+    Map<String, String> labels,
+    String Function(String label) body,
+  })
+  _categoryNotificationTemplate(AppLanguage language) {
+    if (language == AppLanguage.telugu) {
+      return (
+        titles: <String, String>{
+          'motivation':
+              '\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+          'evening':
+              '\u0C36\u0C41\u0C2D \u0C38\u0C3E\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C02',
+          'devotional':
+              '\u0C2D\u0C15\u0C4D\u0C24\u0C3F \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+          'weekday':
+              '\u0C08\u0C30\u0C4B\u0C1C\u0C41 \u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15 \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D',
+          'bible':
+              '\u0C2C\u0C48\u0C2C\u0C3F\u0C32\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+          'islam':
+              '\u0C07\u0C38\u0C4D\u0C32\u0C3E\u0C2E\u0C3F\u0C15\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+          'jokes':
+              '\u0C1C\u0C4B\u0C15\u0C4D\u0C38\u0C4D \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+          'generic':
+              '\u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02',
+        },
+        labels: <String, String>{
+          'motivation':
+              '\u0C2E\u0C4B\u0C1F\u0C3F\u0C35\u0C47\u0C37\u0C28\u0C4D',
+          'evening': '\u0C38\u0C3E\u0C2F\u0C02\u0C24\u0C4D\u0C30\u0C02',
+          'devotional': '\u0C2D\u0C15\u0C4D\u0C24\u0C3F',
+          'weekday':
+              '\u0C08\u0C30\u0C4B\u0C1C\u0C41 \u0C2A\u0C4D\u0C30\u0C24\u0C4D\u0C2F\u0C47\u0C15',
+          'bible': '\u0C2C\u0C48\u0C2C\u0C3F\u0C32\u0C4D',
+          'islam': '\u0C07\u0C38\u0C4D\u0C32\u0C3E\u0C2E\u0C3F\u0C15\u0C4D',
+          'jokes': '\u0C1C\u0C4B\u0C15\u0C4D\u0C38\u0C4D',
+          'generic': '\u0C15\u0C4A\u0C24\u0C4D\u0C24',
+        },
+        body: (label) =>
+            '\u0C2E\u0C40 $label \u0C2A\u0C4B\u0C38\u0C4D\u0C1F\u0C30\u0C4D \u0C38\u0C3F\u0C26\u0C4D\u0C27\u0C02\u0C17\u0C3E \u0C09\u0C02\u0C26\u0C3F. \u0C13\u0C2A\u0C46\u0C28\u0C4D \u0C1A\u0C47\u0C38\u0C3F \u0C37\u0C47\u0C30\u0C4D \u0C1A\u0C47\u0C2F\u0C02\u0C21\u0C3F.',
+      );
+    }
+    final localized = _localizedCategoryNotificationBuckets(language);
+    final titles = localized.titles;
+    final labels = localized.labels;
+    return (titles: titles, labels: labels, body: localized.body);
+  }
+
+  static ({
+    Map<String, String> titles,
+    Map<String, String> labels,
+    String Function(String label) body,
+  })
+  _localizedCategoryNotificationBuckets(AppLanguage language) {
+    return switch (language) {
+      AppLanguage.hindi => _categoryBucket(
+        titles: {
+          'motivation': 'मोटिवेशन पोस्टर तैयार',
+          'evening': 'शुभ संध्या',
+          'devotional': 'भक्ति पोस्टर तैयार',
+          'weekday': 'आज का विशेष पोस्टर',
+          'bible': 'बाइबल पोस्टर तैयार',
+          'islam': 'इस्लामिक पोस्टर तैयार',
+          'jokes': 'जोक्स पोस्टर तैयार',
+          'generic': 'पोस्टर तैयार',
+        },
+        labels: {
+          'motivation': 'मोटिवेशन',
+          'evening': 'शाम',
+          'devotional': 'भक्ति',
+          'weekday': 'आज का विशेष',
+          'bible': 'बाइबल',
+          'islam': 'इस्लामिक',
+          'jokes': 'जोक्स',
+          'generic': 'नया',
+        },
+        body: (label) => 'आपका $label पोस्टर तैयार है। ऐप खोलें और शेयर करें।',
+      ),
+      AppLanguage.tamil => _categoryBucket(
+        titles: {
+          'motivation': 'மோட்டிவேஷன் போஸ்டர் தயார்',
+          'evening': 'மாலை வணக்கம்',
+          'devotional': 'பக்தி போஸ்டர் தயார்',
+          'weekday': 'இன்றைய சிறப்பு போஸ்டர்',
+          'bible': 'பைபிள் போஸ்டர் தயார்',
+          'islam': 'இஸ்லாமிய போஸ்டர் தயார்',
+          'jokes': 'ஜோக்ஸ் போஸ்டர் தயார்',
+          'generic': 'போஸ்டர் தயார்',
+        },
+        labels: {
+          'motivation': 'மோட்டிவேஷன்',
+          'evening': 'மாலை',
+          'devotional': 'பக்தி',
+          'weekday': 'இன்றைய சிறப்பு',
+          'bible': 'பைபிள்',
+          'islam': 'இஸ்லாமிய',
+          'jokes': 'ஜோக்ஸ்',
+          'generic': 'புதிய',
+        },
+        body: (label) =>
+            'உங்கள் $label போஸ்டர் தயாராக உள்ளது. ஆப்பை திறந்து பகிருங்கள்.',
+      ),
+      AppLanguage.kannada => _categoryBucket(
+        titles: {
+          'motivation': 'ಮೋಟಿವೇಶನ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+          'evening': 'ಶುಭ ಸಂಜೆ',
+          'devotional': 'ಭಕ್ತಿ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+          'weekday': 'ಇಂದಿನ ವಿಶೇಷ ಪೋಸ್ಟರ್',
+          'bible': 'ಬೈಬಲ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+          'islam': 'ಇಸ್ಲಾಮಿಕ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+          'jokes': 'ಜೋಕ್ಸ್ ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+          'generic': 'ಪೋಸ್ಟರ್ ಸಿದ್ಧ',
+        },
+        labels: {
+          'motivation': 'ಮೋಟಿವೇಶನ್',
+          'evening': 'ಸಂಜೆ',
+          'devotional': 'ಭಕ್ತಿ',
+          'weekday': 'ಇಂದಿನ ವಿಶೇಷ',
+          'bible': 'ಬೈಬಲ್',
+          'islam': 'ಇಸ್ಲಾಮಿಕ್',
+          'jokes': 'ಜೋಕ್ಸ್',
+          'generic': 'ಹೊಸ',
+        },
+        body: (label) =>
+            'ನಿಮ್ಮ $label ಪೋಸ್ಟರ್ ಸಿದ್ಧವಾಗಿದೆ. ಆಪ್ ತೆರೆಯಿರಿ ಮತ್ತು ಹಂಚಿಕೊಳ್ಳಿ.',
+      ),
+      AppLanguage.malayalam => _categoryBucket(
+        titles: {
+          'motivation': 'മോട്ടിവേഷൻ പോസ്റ്റർ തയ്യാറാണ്',
+          'evening': 'ശുഭ സായാഹ്നം',
+          'devotional': 'ഭക്തി പോസ്റ്റർ തയ്യാറാണ്',
+          'weekday': 'ഇന്നത്തെ പ്രത്യേക പോസ്റ്റർ',
+          'bible': 'ബൈബിൾ പോസ്റ്റർ തയ്യാറാണ്',
+          'islam': 'ഇസ്ലാമിക് പോസ്റ്റർ തയ്യാറാണ്',
+          'jokes': 'ജോക്സ് പോസ്റ്റർ തയ്യാറാണ്',
+          'generic': 'പോസ്റ്റർ തയ്യാറാണ്',
+        },
+        labels: {
+          'motivation': 'മോട്ടിവേഷൻ',
+          'evening': 'വൈകുന്നേരം',
+          'devotional': 'ഭക്തി',
+          'weekday': 'ഇന്നത്തെ പ്രത്യേക',
+          'bible': 'ബൈബിൾ',
+          'islam': 'ഇസ്ലാമിക്',
+          'jokes': 'ജോക്സ്',
+          'generic': 'പുതിയ',
+        },
+        body: (label) =>
+            'നിങ്ങളുടെ $label പോസ്റ്റർ തയ്യാറാണ്. ആപ്പ് തുറന്ന് ഷെയർ ചെയ്യൂ.',
+      ),
+      AppLanguage.marathi => _categoryBucket(
+        titles: {
+          'motivation': 'मोटिवेशन पोस्टर तयार',
+          'evening': 'शुभ संध्याकाळ',
+          'devotional': 'भक्ती पोस्टर तयार',
+          'weekday': 'आजचा विशेष पोस्टर',
+          'bible': 'बायबल पोस्टर तयार',
+          'islam': 'इस्लामिक पोस्टर तयार',
+          'jokes': 'जोक्स पोस्टर तयार',
+          'generic': 'पोस्टर तयार',
+        },
+        labels: {
+          'motivation': 'मोटिवेशन',
+          'evening': 'संध्याकाळ',
+          'devotional': 'भक्ती',
+          'weekday': 'आजचा विशेष',
+          'bible': 'बायबल',
+          'islam': 'इस्लामिक',
+          'jokes': 'जोक्स',
+          'generic': 'नवीन',
+        },
+        body: (label) => 'तुमचा $label पोस्टर तयार आहे. अॅप उघडा आणि शेअर करा.',
+      ),
+      AppLanguage.gujarati => _categoryBucket(
+        titles: {
+          'motivation': 'મોટિવેશન પોસ્ટર તૈયાર',
+          'evening': 'શુભ સાંજ',
+          'devotional': 'ભક્તિ પોસ્ટર તૈયાર',
+          'weekday': 'આજનું ખાસ પોસ્ટર',
+          'bible': 'બાઇબલ પોસ્ટર તૈયાર',
+          'islam': 'ઇસ્લામિક પોસ્ટર તૈયાર',
+          'jokes': 'જોક્સ પોસ્ટર તૈયાર',
+          'generic': 'પોસ્ટર તૈયાર',
+        },
+        labels: {
+          'motivation': 'મોટિવેશન',
+          'evening': 'સાંજ',
+          'devotional': 'ભક્તિ',
+          'weekday': 'આજનું ખાસ',
+          'bible': 'બાઇબલ',
+          'islam': 'ઇસ્લામિક',
+          'jokes': 'જોક્સ',
+          'generic': 'નવું',
+        },
+        body: (label) => 'તમારું $label પોસ્ટર તૈયાર છે. એપ ખોલો અને શેર કરો.',
+      ),
+      AppLanguage.bengali => _categoryBucket(
+        titles: {
+          'motivation': 'মোটিভেশন পোস্টার প্রস্তুত',
+          'evening': 'শুভ সন্ধ্যা',
+          'devotional': 'ভক্তি পোস্টার প্রস্তুত',
+          'weekday': 'আজকের বিশেষ পোস্টার',
+          'bible': 'বাইবেল পোস্টার প্রস্তুত',
+          'islam': 'ইসলামিক পোস্টার প্রস্তুত',
+          'jokes': 'জোক্স পোস্টার প্রস্তুত',
+          'generic': 'পোস্টার প্রস্তুত',
+        },
+        labels: {
+          'motivation': 'মোটিভেশন',
+          'evening': 'সন্ধ্যা',
+          'devotional': 'ভক্তি',
+          'weekday': 'আজকের বিশেষ',
+          'bible': 'বাইবেল',
+          'islam': 'ইসলামিক',
+          'jokes': 'জোক্স',
+          'generic': 'নতুন',
+        },
+        body: (label) =>
+            'আপনার $label পোস্টার প্রস্তুত। অ্যাপ খুলে শেয়ার করুন।',
+      ),
+      AppLanguage.punjabi => _categoryBucket(
+        titles: {
+          'motivation': 'ਮੋਟੀਵੇਸ਼ਨ ਪੋਸਟਰ ਤਿਆਰ',
+          'evening': 'ਸ਼ੁਭ ਸ਼ਾਮ',
+          'devotional': 'ਭਗਤੀ ਪੋਸਟਰ ਤਿਆਰ',
+          'weekday': 'ਅੱਜ ਦਾ ਖਾਸ ਪੋਸਟਰ',
+          'bible': 'ਬਾਈਬਲ ਪੋਸਟਰ ਤਿਆਰ',
+          'islam': 'ਇਸਲਾਮਿਕ ਪੋਸਟਰ ਤਿਆਰ',
+          'jokes': 'ਜੋਕਸ ਪੋਸਟਰ ਤਿਆਰ',
+          'generic': 'ਪੋਸਟਰ ਤਿਆਰ',
+        },
+        labels: {
+          'motivation': 'ਮੋਟੀਵੇਸ਼ਨ',
+          'evening': 'ਸ਼ਾਮ',
+          'devotional': 'ਭਗਤੀ',
+          'weekday': 'ਅੱਜ ਦਾ ਖਾਸ',
+          'bible': 'ਬਾਈਬਲ',
+          'islam': 'ਇਸਲਾਮਿਕ',
+          'jokes': 'ਜੋਕਸ',
+          'generic': 'ਨਵਾਂ',
+        },
+        body: (label) =>
+            'ਤੁਹਾਡਾ $label ਪੋਸਟਰ ਤਿਆਰ ਹੈ। ਐਪ ਖੋਲ੍ਹੋ ਅਤੇ ਸ਼ੇਅਰ ਕਰੋ।',
+      ),
+      AppLanguage.odia => _categoryBucket(
+        titles: {
+          'motivation': 'ମୋଟିଭେସନ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+          'evening': 'ଶୁଭ ସନ୍ଧ୍ୟା',
+          'devotional': 'ଭକ୍ତି ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+          'weekday': 'ଆଜିର ବିଶେଷ ପୋଷ୍ଟର',
+          'bible': 'ବାଇବେଲ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+          'islam': 'ଇସ୍ଲାମିକ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+          'jokes': 'ଜୋକ୍ସ ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+          'generic': 'ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ',
+        },
+        labels: {
+          'motivation': 'ମୋଟିଭେସନ',
+          'evening': 'ସନ୍ଧ୍ୟା',
+          'devotional': 'ଭକ୍ତି',
+          'weekday': 'ଆଜିର ବିଶେଷ',
+          'bible': 'ବାଇବେଲ',
+          'islam': 'ଇସ୍ଲାମିକ',
+          'jokes': 'ଜୋକ୍ସ',
+          'generic': 'ନୂଆ',
+        },
+        body: (label) =>
+            'ଆପଣଙ୍କ $label ପୋଷ୍ଟର ପ୍ରସ୍ତୁତ ଅଛି। ଆପ୍ ଖୋଲନ୍ତୁ ଏବଂ ଶେୟାର କରନ୍ତୁ।',
+      ),
+      AppLanguage.assamese => _categoryBucket(
+        titles: {
+          'motivation': 'মটিভেচন পোষ্টাৰ সাজু',
+          'evening': 'শুভ সন্ধিয়া',
+          'devotional': 'ভক্তি পোষ্টাৰ সাজু',
+          'weekday': 'আজিৰ বিশেষ পোষ্টাৰ',
+          'bible': 'বাইবেল পোষ্টাৰ সাজু',
+          'islam': 'ইছলামিক পোষ্টাৰ সাজু',
+          'jokes': 'জোক্স পোষ্টাৰ সাজু',
+          'generic': 'পোষ্টাৰ সাজু',
+        },
+        labels: {
+          'motivation': 'মটিভেচন',
+          'evening': 'সন্ধিয়া',
+          'devotional': 'ভক্তি',
+          'weekday': 'আজিৰ বিশেষ',
+          'bible': 'বাইবেল',
+          'islam': 'ইছলামিক',
+          'jokes': 'জোক্স',
+          'generic': 'নতুন',
+        },
+        body: (label) =>
+            'আপোনাৰ $label পোষ্টাৰ সাজু আছে। এপ খুলি শ্বেয়াৰ কৰক।',
+      ),
+      AppLanguage.konkani => _categoryBucket(
+        titles: {
+          'motivation': 'मोटिवेशन पोस्टर तयार',
+          'evening': 'शुभ सांज',
+          'devotional': 'भक्ती पोस्टर तयार',
+          'weekday': 'आयजचो खास पोस्टर',
+          'bible': 'बायबल पोस्टर तयार',
+          'islam': 'इस्लामिक पोस्टर तयार',
+          'jokes': 'जोक्स पोस्टर तयार',
+          'generic': 'पोस्टर तयार',
+        },
+        labels: {
+          'motivation': 'मोटिवेशन',
+          'evening': 'सांज',
+          'devotional': 'भक्ती',
+          'weekday': 'आयजचो खास',
+          'bible': 'बायबल',
+          'islam': 'इस्लामिक',
+          'jokes': 'जोक्स',
+          'generic': 'नवो',
+        },
+        body: (label) =>
+            'तुमचो $label पोस्टर तयार आसा. अॅप उगडात आनी शेअर करात.',
+      ),
+      AppLanguage.nepali => _categoryBucket(
+        titles: {
+          'motivation': 'मोटिभेसन पोस्टर तयार',
+          'evening': 'शुभ साँझ',
+          'devotional': 'भक्ति पोस्टर तयार',
+          'weekday': 'आजको विशेष पोस्टर',
+          'bible': 'बाइबल पोस्टर तयार',
+          'islam': 'इस्लामिक पोस्टर तयार',
+          'jokes': 'जोक्स पोस्टर तयार',
+          'generic': 'पोस्टर तयार',
+        },
+        labels: {
+          'motivation': 'मोटिभेसन',
+          'evening': 'साँझ',
+          'devotional': 'भक्ति',
+          'weekday': 'आजको विशेष',
+          'bible': 'बाइबल',
+          'islam': 'इस्लामिक',
+          'jokes': 'जोक्स',
+          'generic': 'नयाँ',
+        },
+        body: (label) =>
+            'तपाईंको $label पोस्टर तयार छ। एप खोल्नुहोस् र शेयर गर्नुहोस्।',
+      ),
+      AppLanguage.meitei => _categoryBucket(
+        titles: _defaultCategoryTitles,
+        labels: {
+          'motivation': 'motivation',
+          'evening': 'evening',
+          'devotional': 'devotional',
+          'weekday': 'today special',
+          'bible': 'Bible',
+          'islam': 'Islamic',
+          'jokes': 'jokes',
+          'generic': 'new',
+        },
+        body: (label) =>
+            'Nahanggi $label poster ready oire. App hangdok-u amasung share tou.',
+      ),
+      AppLanguage.mizo => _categoryBucket(
+        titles: _defaultCategoryTitles,
+        labels: {
+          'motivation': 'motivation',
+          'evening': 'evening',
+          'devotional': 'devotional',
+          'weekday': 'vawiin special',
+          'bible': 'Bible',
+          'islam': 'Islamic',
+          'jokes': 'jokes',
+          'generic': 'new',
+        },
+        body: (label) =>
+            'I $label poster a peih tawh. App hawng la share rawh.',
+      ),
+      AppLanguage.kashmiri => _categoryBucket(
+        titles: {
+          'motivation': 'موٹیویشن پوسٹر تیار',
+          'evening': 'شام بخیر',
+          'devotional': 'بھکتی پوسٹر تیار',
+          'weekday': 'ازک خاص پوسٹر',
+          'bible': 'بائبل پوسٹر تیار',
+          'islam': 'اسلامک پوسٹر تیار',
+          'jokes': 'جوکس پوسٹر تیار',
+          'generic': 'پوسٹر تیار',
+        },
+        labels: {
+          'motivation': 'موٹیویشن',
+          'evening': 'شام',
+          'devotional': 'بھکتی',
+          'weekday': 'ازک خاص',
+          'bible': 'بائبل',
+          'islam': 'اسلامک',
+          'jokes': 'جوکس',
+          'generic': 'نوو',
+        },
+        body: (label) => 'تُہند $label پوسٹر تیار چھ۔ ایپ کھولیو تہ شیئر کریو۔',
+      ),
+      AppLanguage.ladakhi => _categoryBucket(
+        titles: _defaultCategoryTitles,
+        labels: {
+          'motivation': 'motivation',
+          'evening': 'evening',
+          'devotional': 'devotional',
+          'weekday': 'dering special',
+          'bible': 'Bible',
+          'islam': 'Islamic',
+          'jokes': 'jokes',
+          'generic': 'new',
+        },
+        body: (label) =>
+            'Khyod-kyi $label poster ready in. App phye nas share chos.',
+      ),
+      AppLanguage.english => _categoryBucket(
+        titles: _defaultCategoryTitles,
+        labels: _defaultCategoryLabels,
+        body: (label) => 'Your $label poster is ready. Open and share it.',
+      ),
+      AppLanguage.telugu => _categoryBucket(
+        titles: _defaultCategoryTitles,
+        labels: _defaultCategoryLabels,
+        body: (label) => 'Your $label poster is ready. Open and share it.',
+      ),
+    };
+  }
+
+  static ({
+    Map<String, String> titles,
+    Map<String, String> labels,
+    String Function(String label) body,
+  })
+  _categoryBucket({
+    required Map<String, String> titles,
+    required Map<String, String> labels,
+    required String Function(String label) body,
+  }) {
+    return (titles: titles, labels: labels, body: body);
+  }
+
+  static const Map<String, String> _defaultCategoryTitles = {
+    'motivation': 'Motivational poster ready',
+    'evening': 'Good Evening',
+    'devotional': 'Devotional poster ready',
+    'weekday': 'Today special poster',
+    'bible': 'Bible poster ready',
+    'islam': 'Islamic poster ready',
+    'jokes': 'Jokes poster ready',
+    'generic': 'Poster ready',
+  };
+
+  static const Map<String, String> _defaultCategoryLabels = {
+    'motivation': 'motivational',
+    'evening': 'evening',
+    'devotional': 'devotional',
+    'weekday': "today's special",
+    'bible': 'Bible',
+    'islam': 'Islamic',
+    'jokes': 'jokes',
+    'generic': 'new',
+  };
 
   static String _localizedNotificationText({
     required String key,
