@@ -1067,7 +1067,7 @@ class _DigitalVisitingCardScreenState extends State<DigitalVisitingCardScreen> {
           TextField(
             controller: _addressController,
             keyboardType: TextInputType.multiline,
-            maxLines: 2,
+            maxLines: 3,
             minLines: 1,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             onChanged: (_) => setState(() {}),

@@ -490,14 +490,14 @@ class DigitalVisitingCardWidget extends StatelessWidget {
               Flexible(
                 child: Text(
                   address,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     color: addressColor,
-                    fontSize: 8.5 * scale,
+                    fontSize: 7.7 * scale,
                     fontWeight: FontWeight.w600,
-                    height: 1.18,
+                    height: 1.08,
                   ),
                 ),
               ),
