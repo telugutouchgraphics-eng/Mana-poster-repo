@@ -62,6 +62,20 @@ class _PreparedNameStrip {
   final double bottom;
 }
 
+class _PreparedStripTextRun {
+  const _PreparedStripTextRun({required this.text, required this.fontFamily});
+
+  final String text;
+  final String? fontFamily;
+}
+
+class _PreparedStripText {
+  const _PreparedStripText(this.text, this.runs);
+
+  final String text;
+  final List<_PreparedStripTextRun> runs;
+}
+
 class _PhotoMaskConfig {
   const _PhotoMaskConfig({
     required this.shape,
@@ -808,22 +822,58 @@ class PersonalizedVideoExportService {
       displayNameSource,
       displayNameFontFamily,
     );
+    final displayNameRuns = await _legacyTextRunsForExport(
+      displayNameSource,
+      displayNameFontFamily,
+      latinFontFamily: _resolveEnglishPosterNameFontFamily(
+        displayNameSource,
+        previewSeed: previewSeed,
+        personalization: personalization,
+        stripGradientTapOffset: stripGradientTapOffset,
+      ),
+    );
+    final renderedDisplayName = displayNameRuns.text.isNotEmpty
+        ? displayNameRuns.text
+        : displayName;
     final displayPrimary = await _legacyTextForExport(
       primaryDesignation,
       primaryDesignationFontFamily,
     );
-    final displaySecondary = secondaryDesignation.isNotEmpty
-        ? await _legacyTextForExport(
+    final displayPrimaryRuns = await _legacyTextRunsForExport(
+      primaryDesignation,
+      primaryDesignationFontFamily,
+      latinFontFamily: 'Montserrat',
+    );
+    final displaySecondaryRuns = secondaryDesignation.isNotEmpty
+        ? await _legacyTextRunsForExport(
             secondaryDesignation,
             secondaryDesignationFontFamily,
+            latinFontFamily: 'Montserrat',
           )
-        : '';
+        : const _PreparedStripText('', <_PreparedStripTextRun>[]);
     final displayDesignation = hasBothPersonalDesignations
-        ? '$displayPrimary\n$displaySecondary'
-        : (displayPrimary.isNotEmpty ? displayPrimary : displaySecondary);
+        ? '${displayPrimaryRuns.text}\n${displaySecondaryRuns.text}'
+        : (displayPrimaryRuns.text.isNotEmpty
+              ? displayPrimaryRuns.text
+              : displaySecondaryRuns.text);
+    final displayDesignationRuns = hasBothPersonalDesignations
+        ? _combineStripTextRuns(displayPrimaryRuns, displaySecondaryRuns)
+        : (displayPrimary.isNotEmpty
+              ? displayPrimaryRuns
+              : displaySecondaryRuns);
     final displayTrailing = displayDesignation.isNotEmpty
         ? displayDesignation
         : rawPhone;
+    final displayTrailingRuns = displayDesignation.isNotEmpty
+        ? displayDesignationRuns
+        : _PreparedStripText(rawPhone, <_PreparedStripTextRun>[
+            _PreparedStripTextRun(
+              text: rawPhone,
+              fontFamily: _containsTelugu(rawPhone)
+                  ? 'Anek Telugu Condensed Medium'
+                  : 'Montserrat',
+            ),
+          ]);
     final nameUsesTeluguLayout = _containsTelugu(displayNameSource);
     final trailingUsesTeluguLayout =
         _containsTelugu(primaryDesignation) ||
@@ -863,7 +913,8 @@ class PersonalizedVideoExportService {
     final availableTextHeight = stripHeight * 0.82;
     final stripHeightScale = (stripHeight / 96).clamp(0.02, 1.0).toDouble();
     final nameStyle = _fitTextStyle(
-      displayName,
+      renderedDisplayName,
+      runs: displayNameRuns.runs,
       baseFontSize: nameFontSize,
       minFontSize: math
           .max(1, (nameUsesTeluguLayout ? 48 : 42) * stripHeightScale)
@@ -884,7 +935,8 @@ class PersonalizedVideoExportService {
           : ui.TextAlign.left,
     );
     final nameParagraph = _paragraph(
-      displayName,
+      renderedDisplayName,
+      runs: displayNameRuns.runs,
       style: nameStyle,
       maxWidth: nameMaxWidth,
       textAlign: displayTrailing.isEmpty
@@ -912,6 +964,7 @@ class PersonalizedVideoExportService {
         displayTrailing,
         style: _fitTextStyle(
           displayTrailing,
+          runs: displayTrailingRuns.runs,
           baseFontSize: trailingFontSize,
           minFontSize: math
               .max(1, (trailingUsesTeluguLayout ? 28 : 24) * stripHeightScale)
@@ -930,6 +983,7 @@ class PersonalizedVideoExportService {
           textAlign: ui.TextAlign.center,
         ),
         maxWidth: trailingMaxWidth,
+        runs: displayTrailingRuns.runs,
         textAlign: ui.TextAlign.center,
       );
       final trailingY = (stripHeight - trailingParagraph.height) / 2;
@@ -951,6 +1005,7 @@ class PersonalizedVideoExportService {
 
   ui.TextStyle _fitTextStyle(
     String text, {
+    List<_PreparedStripTextRun>? runs,
     required double baseFontSize,
     required double minFontSize,
     required ui.TextStyle Function(double fontSize) styleForFontSize,
@@ -963,6 +1018,7 @@ class PersonalizedVideoExportService {
       final candidate = styleForFontSize(fontSize);
       final paragraph = _paragraph(
         text,
+        runs: runs,
         style: candidate,
         maxWidth: maxWidth,
         textAlign: textAlign,
@@ -978,20 +1034,29 @@ class PersonalizedVideoExportService {
 
   ui.Paragraph _paragraph(
     String text, {
+    List<_PreparedStripTextRun>? runs,
     required ui.TextStyle style,
     required double maxWidth,
     ui.TextAlign textAlign = ui.TextAlign.left,
   }) {
-    final builder =
-        ui.ParagraphBuilder(
-            ui.ParagraphStyle(
-              maxLines: 1,
-              ellipsis: '...',
-              textAlign: textAlign,
-            ),
-          )
-          ..pushStyle(style)
-          ..addText(text);
+    final builder = ui.ParagraphBuilder(
+      ui.ParagraphStyle(maxLines: 1, ellipsis: '...', textAlign: textAlign),
+    )..pushStyle(style);
+    final textRuns = runs == null || runs.isEmpty
+        ? <_PreparedStripTextRun>[
+            _PreparedStripTextRun(text: text, fontFamily: null),
+          ]
+        : runs;
+    for (final run in textRuns) {
+      if (run.fontFamily == null) {
+        builder.addText(run.text);
+      } else {
+        builder
+          ..pushStyle(ui.TextStyle(fontFamily: run.fontFamily))
+          ..addText(run.text)
+          ..pop();
+      }
+    }
     final paragraph = builder.build();
     paragraph.layout(ui.ParagraphConstraints(width: maxWidth));
     return paragraph;
@@ -1111,8 +1176,18 @@ class PersonalizedVideoExportService {
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
     return fontFamily != null &&
         _teluguTextPattern.hasMatch(text) &&
+        !_isMixedTeluguAndLatinText(text) &&
         (_randomPosterNameFonts.contains(fontFamily) ||
             fontFamily == 'Pallavi Medium');
+  }
+
+  bool _isMixedTeluguAndLatinText(String text) {
+    return _teluguTextPattern.hasMatch(text) &&
+        _latinTextPattern.hasMatch(text);
+  }
+
+  bool _isTeluguCodeUnit(int codeUnit) {
+    return codeUnit >= 0x0C00 && codeUnit <= 0x0C7F;
   }
 
   Future<String> _legacyTextForExport(String text, String? fontFamily) async {
@@ -1133,6 +1208,66 @@ class PersonalizedVideoExportService {
       fontFamily: fontFamily,
     );
     return converted != null && converted.isNotEmpty ? converted : text;
+  }
+
+  Future<_PreparedStripText> _legacyTextRunsForExport(
+    String text,
+    String? legacyFontFamily, {
+    required String latinFontFamily,
+  }) async {
+    if (!_isMixedTeluguAndLatinText(text) || legacyFontFamily == null) {
+      final display = await _legacyTextForExport(text, legacyFontFamily);
+      return _PreparedStripText(display, <_PreparedStripTextRun>[
+        _PreparedStripTextRun(text: display, fontFamily: legacyFontFamily),
+      ]);
+    }
+
+    final runs = <_PreparedStripTextRun>[];
+    final buffer = StringBuffer();
+    bool? currentIsTelugu;
+
+    Future<void> flush() async {
+      if (buffer.isEmpty || currentIsTelugu == null) {
+        return;
+      }
+      final raw = buffer.toString();
+      final isTeluguRun = currentIsTelugu;
+      final display = isTeluguRun
+          ? await _legacyTextForExport(raw, legacyFontFamily)
+          : raw;
+      runs.add(
+        _PreparedStripTextRun(
+          text: display,
+          fontFamily: isTeluguRun ? legacyFontFamily : latinFontFamily,
+        ),
+      );
+      buffer.clear();
+    }
+
+    for (final rune in text.runes) {
+      final isTelugu = _isTeluguCodeUnit(rune);
+      if (currentIsTelugu != null && currentIsTelugu != isTelugu) {
+        await flush();
+      }
+      currentIsTelugu = isTelugu;
+      buffer.write(String.fromCharCode(rune));
+    }
+    await flush();
+    return _PreparedStripText(runs.map((run) => run.text).join(), runs);
+  }
+
+  _PreparedStripText _combineStripTextRuns(
+    _PreparedStripText first,
+    _PreparedStripText second,
+  ) {
+    return _PreparedStripText(
+      '${first.text}\n${second.text}',
+      <_PreparedStripTextRun>[
+        ...first.runs,
+        const _PreparedStripTextRun(text: '\n', fontFamily: null),
+        ...second.runs,
+      ],
+    );
   }
 
   List<_FfmpegExportAttempt> _buildFfmpegAttempts({

@@ -14710,9 +14710,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
     return fontFamily != null &&
         _teluguTextPattern.hasMatch(text) &&
+        !_isMixedTeluguAndLatinText(text) &&
         (_randomPosterNameFonts.contains(fontFamily) ||
             fontFamily == 'Pallavi Medium' ||
             fontFamily == 'Pallavi Bold');
+  }
+
+  bool _isMixedTeluguAndLatinText(String text) {
+    return _teluguTextPattern.hasMatch(text) &&
+        _latinTextPattern.hasMatch(text);
   }
 
   CreatorPosterPersonalization _plainPosterPersonalization(
@@ -22333,6 +22339,57 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
         _latinTextPattern.hasMatch(text);
   }
 
+  bool _isMixedTeluguAndLatinText(String text) {
+    return _teluguTextPattern.hasMatch(text) &&
+        _latinTextPattern.hasMatch(text);
+  }
+
+  bool _isTeluguCodeUnit(int codeUnit) {
+    return codeUnit >= 0x0C00 && codeUnit <= 0x0C7F;
+  }
+
+  TextSpan _mixedLegacyTextSpan({
+    required String text,
+    required TextStyle baseStyle,
+    required String legacyFontFamily,
+    required String latinFontFamily,
+  }) {
+    final spans = <TextSpan>[];
+    final buffer = StringBuffer();
+    bool? currentIsTelugu;
+
+    void flush() {
+      if (buffer.isEmpty || currentIsTelugu == null) {
+        return;
+      }
+      final raw = buffer.toString();
+      final isTeluguRun = currentIsTelugu;
+      final displayText = isTeluguRun
+          ? (_legacyOverrideFor(raw, legacyFontFamily) ?? raw)
+          : raw;
+      spans.add(
+        TextSpan(
+          text: displayText,
+          style: baseStyle.copyWith(
+            fontFamily: isTeluguRun ? legacyFontFamily : latinFontFamily,
+          ),
+        ),
+      );
+      buffer.clear();
+    }
+
+    for (final rune in text.runes) {
+      final isTelugu = _isTeluguCodeUnit(rune);
+      if (currentIsTelugu != null && currentIsTelugu != isTelugu) {
+        flush();
+      }
+      currentIsTelugu = isTelugu;
+      buffer.write(String.fromCharCode(rune));
+    }
+    flush();
+    return TextSpan(style: baseStyle, children: spans);
+  }
+
   Widget _buildNameDesignationSeparator({
     required Color fallbackColor,
     double fallbackWidth = 1.5,
@@ -22588,6 +22645,7 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
   bool _shouldConvertForLegacyTelugu(String text, String? fontFamily) {
     return fontFamily != null &&
         _teluguTextPattern.hasMatch(text) &&
+        !_isMixedTeluguAndLatinText(text) &&
         (_randomPosterNameFonts.contains(fontFamily) ||
             fontFamily == 'Pallavi Medium' ||
             fontFamily == 'Pallavi Bold');
@@ -22745,13 +22803,27 @@ class CreatorPosterPreviewState extends State<CreatorPosterPreview> {
     bool fitToWidth = false,
   }) {
     Widget buildText(String value, {String? resolvedFontFamily}) {
-      final textWidget = Text(
-        value,
-        maxLines: maxLines,
-        overflow: TextOverflow.ellipsis,
-        textAlign: textAlign,
-        style: style.copyWith(fontFamily: resolvedFontFamily ?? fontFamily),
-      );
+      final effectiveFontFamily = resolvedFontFamily ?? fontFamily;
+      final mixed = _isMixedTeluguAndLatinText(value) && fontFamily != null;
+      final textWidget = mixed
+          ? RichText(
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+              textAlign: textAlign,
+              text: _mixedLegacyTextSpan(
+                text: value,
+                baseStyle: style,
+                legacyFontFamily: fontFamily,
+                latinFontFamily: _resolveEnglishPosterNameFontFamily(value),
+              ),
+            )
+          : Text(
+              value,
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+              textAlign: textAlign,
+              style: style.copyWith(fontFamily: effectiveFontFamily),
+            );
       if (!fitToWidth) {
         return textWidget;
       }

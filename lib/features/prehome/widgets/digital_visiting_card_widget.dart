@@ -43,8 +43,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       VisitingCardStyle.dualToneObsidian => _buildDualToneObsidianCard(context),
       VisitingCardStyle.royalSapphire => _buildRoyalSapphireCard(context),
       VisitingCardStyle.emeraldCrest => _buildEmeraldCrestCard(context),
-      VisitingCardStyle.modernTitaniumSlate =>
-        _buildModernTitaniumSlateCard(context),
+      VisitingCardStyle.modernTitaniumSlate => _buildModernTitaniumSlateCard(
+        context,
+      ),
     };
 
     return AspectRatio(
@@ -209,13 +210,69 @@ class DigitalVisitingCardWidget extends StatelessWidget {
   }
 
   static final RegExp _teluguRegExp = RegExp(r'[\u0C00-\u0C7F]');
+  static final RegExp _latinRegExp = RegExp(r'[A-Za-z]');
+
+  bool _isMixedTeluguAndLatin(String text) {
+    return _teluguRegExp.hasMatch(text) && _latinRegExp.hasMatch(text);
+  }
+
+  bool _isTeluguCodeUnit(int codeUnit) {
+    return codeUnit >= 0x0C00 && codeUnit <= 0x0C7F;
+  }
+
+  TextSpan _mixedLegacySpan({
+    required String text,
+    required TextStyle baseStyle,
+    required String legacyFontFamily,
+    required String latinFontFamily,
+  }) {
+    final spans = <TextSpan>[];
+    final buffer = StringBuffer();
+    bool? currentIsTelugu;
+
+    void flush() {
+      if (buffer.isEmpty || currentIsTelugu == null) {
+        return;
+      }
+      final raw = buffer.toString();
+      final isTeluguRun = currentIsTelugu;
+      final displayText = isTeluguRun
+          ? (TeluguLegacyTextService.convertSync(
+                  raw,
+                  fontFamily: legacyFontFamily,
+                ) ??
+                raw)
+          : raw;
+      spans.add(
+        TextSpan(
+          text: displayText,
+          style: baseStyle.copyWith(
+            fontFamily: isTeluguRun ? legacyFontFamily : latinFontFamily,
+          ),
+        ),
+      );
+      buffer.clear();
+    }
+
+    for (final rune in text.runes) {
+      final isTelugu = _isTeluguCodeUnit(rune);
+      if (currentIsTelugu != null && currentIsTelugu != isTelugu) {
+        flush();
+      }
+      currentIsTelugu = isTelugu;
+      buffer.write(String.fromCharCode(rune));
+    }
+    flush();
+    return TextSpan(style: baseStyle, children: spans);
+  }
 
   Widget _buildNameWidget({required Color color, required double scale}) {
     final rawName = _effectiveName;
     final isTelugu = _teluguRegExp.hasMatch(rawName);
+    final isMixed = _isMixedTeluguAndLatin(rawName);
     String displayName = rawName;
     String? fontFamily;
-    if (isTelugu) {
+    if (!isMixed && isTelugu) {
       final converted = TeluguLegacyTextService.convertSync(
         rawName,
         fontFamily: 'Kranthi',
@@ -226,18 +283,32 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       }
     }
 
+    final textStyle = TextStyle(
+      color: color,
+      fontSize: (fontFamily != null || isMixed ? 24.0 : 18.0) * scale,
+      fontWeight: FontWeight.w400,
+      fontFamily: fontFamily,
+      letterSpacing: fontFamily != null || isMixed ? 0.0 : -0.2,
+      height: fontFamily != null || isMixed ? 1.05 : 1.15,
+    );
+    if (isMixed) {
+      return RichText(
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        text: _mixedLegacySpan(
+          text: rawName,
+          baseStyle: textStyle,
+          legacyFontFamily: 'Kranthi',
+          latinFontFamily: 'Poppins',
+        ),
+      );
+    }
+
     return Text(
       displayName,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: color,
-        fontSize: (fontFamily != null ? 24.0 : 18.0) * scale,
-        fontWeight: FontWeight.w400,
-        fontFamily: fontFamily,
-        letterSpacing: fontFamily != null ? 0.0 : -0.2,
-        height: fontFamily != null ? 1.05 : 1.15,
-      ),
+      style: textStyle,
     );
   }
 
@@ -257,9 +328,10 @@ class DigitalVisitingCardWidget extends StatelessWidget {
       Color? textColor,
     }) {
       final isTelugu = _teluguRegExp.hasMatch(text);
+      final isMixed = _isMixedTeluguAndLatin(text);
       String displayDesig = text;
       String? fontFamily;
-      if (isTelugu) {
+      if (!isMixed && isTelugu) {
         final converted = TeluguLegacyTextService.convertSync(
           text,
           fontFamily: 'Pallavi Medium',
@@ -270,18 +342,35 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         }
       }
 
+      final textStyle = TextStyle(
+        color: textColor ?? color,
+        fontSize:
+            (fontFamily != null || isMixed
+                ? baseFontSize * 1.12
+                : baseFontSize) *
+            scale,
+        fontWeight: FontWeight.w700,
+        fontFamily: fontFamily,
+        height: fontFamily != null || isMixed ? 1.05 : 1.2,
+      );
+      if (isMixed) {
+        return RichText(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          text: _mixedLegacySpan(
+            text: text,
+            baseStyle: textStyle,
+            legacyFontFamily: 'Pallavi Medium',
+            latinFontFamily: 'Montserrat',
+          ),
+        );
+      }
+
       return Text(
         displayDesig,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: textColor ?? color,
-          fontSize:
-              (fontFamily != null ? baseFontSize * 1.12 : baseFontSize) * scale,
-          fontWeight: FontWeight.w700,
-          fontFamily: fontFamily,
-          height: fontFamily != null ? 1.05 : 1.2,
-        ),
+        style: textStyle,
       );
     }
 
@@ -476,11 +565,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFFAF8F5),
-                Color(0xFFF4EFE6),
-                Color(0xFFEBE3D3),
-              ],
+              colors: [Color(0xFFFAF8F5), Color(0xFFF4EFE6), Color(0xFFEBE3D3)],
             ),
           ),
           child: Stack(
@@ -580,7 +665,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: const Color(0xFFB8860B).withValues(alpha: 0.28),
+                            color: const Color(
+                              0xFFB8860B,
+                            ).withValues(alpha: 0.28),
                             blurRadius: 10 * scale,
                             offset: Offset(0, 4 * scale),
                           ),
@@ -629,10 +716,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             width: 120 * scale,
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFFD4AF37),
-                                  Color(0x22D4AF37),
-                                ],
+                                colors: [Color(0xFFD4AF37), Color(0x22D4AF37)],
                               ),
                             ),
                           ),
@@ -671,9 +755,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
         final photoSize = cardH * 0.58;
 
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0C0D12),
-          ),
+          decoration: const BoxDecoration(color: Color(0xFF0C0D12)),
           child: Stack(
             children: <Widget>[
               // Right Midnight Slate Section
@@ -687,10 +769,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF181B24),
-                        Color(0xFF10131A),
-                      ],
+                      colors: [Color(0xFF181B24), Color(0xFF10131A)],
                     ),
                   ),
                 ),
@@ -756,7 +835,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             ),
                             boxShadow: <BoxShadow>[
                               BoxShadow(
-                                color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFFD4AF37,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 10 * scale,
                                 offset: Offset(0, 3 * scale),
                               ),
@@ -764,7 +845,10 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                           ),
                           child: _buildPhotoBox(
                             borderRadius: BorderRadius.circular(13.2 * scale),
-                            border: Border.all(color: Colors.transparent, width: 0),
+                            border: Border.all(
+                              color: Colors.transparent,
+                              width: 0,
+                            ),
                           ),
                         ),
                       ),
@@ -838,11 +922,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0A162B),
-                Color(0xFF0E2244),
-                Color(0xFF070F1E),
-              ],
+              colors: [Color(0xFF0A162B), Color(0xFF0E2244), Color(0xFF070F1E)],
             ),
           ),
           child: Stack(
@@ -923,7 +1003,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: const Color(0xFF0284C7).withValues(alpha: 0.35),
+                            color: const Color(
+                              0xFF0284C7,
+                            ).withValues(alpha: 0.35),
                             blurRadius: 10 * scale,
                             offset: Offset(0, 3 * scale),
                           ),
@@ -952,10 +1034,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          _buildNameWidget(
-                            color: Colors.white,
-                            scale: scale,
-                          ),
+                          _buildNameWidget(color: Colors.white, scale: scale),
                           SizedBox(height: 2.5 * scale),
                           if (_hasAnyDesignation) ...<Widget>[
                             _buildDesignationWidget(
@@ -971,10 +1050,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             width: 110 * scale,
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFF38BDF8),
-                                  Color(0x1138BDF8),
-                                ],
+                                colors: [Color(0xFF38BDF8), Color(0x1138BDF8)],
                               ),
                             ),
                           ),
@@ -1017,11 +1093,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF041C14),
-                Color(0xFF0A3326),
-                Color(0xFF03140E),
-              ],
+              colors: [Color(0xFF041C14), Color(0xFF0A3326), Color(0xFF03140E)],
             ),
           ),
           child: Stack(
@@ -1100,7 +1172,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: const Color(0xFFEAB308).withValues(alpha: 0.3),
+                            color: const Color(
+                              0xFFEAB308,
+                            ).withValues(alpha: 0.3),
                             blurRadius: 10 * scale,
                             offset: Offset(0, 3 * scale),
                           ),
@@ -1149,10 +1223,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             width: 110 * scale,
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFFEAB308),
-                                  Color(0x11EAB308),
-                                ],
+                                colors: [Color(0xFFEAB308), Color(0x11EAB308)],
                               ),
                             ),
                           ),
@@ -1195,11 +1266,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF181D26),
-                Color(0xFF222834),
-                Color(0xFF13171F),
-              ],
+              colors: [Color(0xFF181D26), Color(0xFF222834), Color(0xFF13171F)],
             ),
           ),
           child: Stack(
@@ -1282,7 +1349,9 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                         ),
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: const Color(0xFFF97316).withValues(alpha: 0.28),
+                            color: const Color(
+                              0xFFF97316,
+                            ).withValues(alpha: 0.28),
                             blurRadius: 10 * scale,
                             offset: Offset(0, 3 * scale),
                           ),
@@ -1311,10 +1380,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                               ),
                             ),
                           const Spacer(),
-                          _buildNameWidget(
-                            color: Colors.white,
-                            scale: scale,
-                          ),
+                          _buildNameWidget(color: Colors.white, scale: scale),
                           SizedBox(height: 2.5 * scale),
                           if (_hasAnyDesignation) ...<Widget>[
                             _buildDesignationWidget(
@@ -1330,10 +1396,7 @@ class DigitalVisitingCardWidget extends StatelessWidget {
                             width: 110 * scale,
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFFF97316),
-                                  Color(0x11F97316),
-                                ],
+                                colors: [Color(0xFFF97316), Color(0x11F97316)],
                               ),
                             ),
                           ),
