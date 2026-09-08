@@ -354,35 +354,35 @@ Future<void> _configureFirebaseMonitoring() async {
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
 
     FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
       if (_isRecoverableFlutterError(details)) {
         developer.log(
           'Recoverable Flutter error skipped for Crashlytics: '
-          '${details.exceptionAsString()}',
+          '${_safeErrorText(details.exception)}',
           name: 'app.recoverable',
           error: details.exception,
           stackTrace: details.stack,
         );
         return;
       }
-      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      FlutterError.presentError(details);
+      _recordFatalFlutterErrorSafely(details);
     };
 
-    PlatformDispatcher
-        .instance
-        .onError = (Object error, StackTrace stackTrace) {
-      if (_isRecoverableError(error)) {
-        developer.log(
-          'Recoverable platform error skipped for Crashlytics: $error',
-          name: 'app.recoverable',
-          error: error,
-          stackTrace: stackTrace,
-        );
-        return true;
-      }
-      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
-      return true;
-    };
+    PlatformDispatcher.instance.onError =
+        (Object error, StackTrace stackTrace) {
+          if (_isRecoverableError(error)) {
+            developer.log(
+              'Recoverable platform error skipped for Crashlytics: '
+              '${_safeErrorText(error)}',
+              name: 'app.recoverable',
+              error: error,
+              stackTrace: stackTrace,
+            );
+            return true;
+          }
+          _recordFatalErrorSafely(error, stackTrace);
+          return true;
+        };
   } catch (error, stackTrace) {
     developer.log(
       'Crashlytics monitoring setup skipped: $error',
@@ -394,7 +394,7 @@ Future<void> _configureFirebaseMonitoring() async {
 }
 
 bool _isRecoverableFlutterError(FlutterErrorDetails details) {
-  final exceptionStr = details.exceptionAsString().toWellFormed();
+  final exceptionStr = _safeErrorText(details.exception);
   final libStr = (details.library ?? '').toWellFormed();
   final contextStr = (details.context?.toDescription() ?? '').toWellFormed();
   final stackStr = (details.stack?.toString() ?? '').toWellFormed();
@@ -406,7 +406,7 @@ bool _isRecoverableFlutterError(FlutterErrorDetails details) {
 }
 
 bool _isRecoverableError(Object error) {
-  return _containsRecoverableSignal(error.toString().toWellFormed());
+  return _containsRecoverableSignal(_safeErrorText(error));
 }
 
 bool _containsRecoverableSignal(String value) {
@@ -451,6 +451,40 @@ bool _containsRecoverableSignal(String value) {
       normalized.contains('connection reset') ||
       normalized.contains('connection timed out') ||
       normalized.contains('socketexception');
+}
+
+String _safeErrorText(Object? error) {
+  try {
+    return (error?.toString() ?? '').toWellFormed();
+  } catch (_) {
+    return '';
+  }
+}
+
+void _recordFatalFlutterErrorSafely(FlutterErrorDetails details) {
+  try {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+  } catch (error, stackTrace) {
+    developer.log(
+      'Crashlytics fatal Flutter recording skipped: ${_safeErrorText(error)}',
+      name: 'app.monitoring',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+}
+
+void _recordFatalErrorSafely(Object error, StackTrace stackTrace) {
+  try {
+    FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: true);
+  } catch (recordingError, recordingStackTrace) {
+    developer.log(
+      'Crashlytics fatal recording skipped: ${_safeErrorText(recordingError)}',
+      name: 'app.monitoring',
+      error: recordingError,
+      stackTrace: recordingStackTrace,
+    );
+  }
 }
 
 extension SafeWellFormedStringExtension on String {

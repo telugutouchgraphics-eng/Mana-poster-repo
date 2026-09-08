@@ -151,59 +151,43 @@ class AppSurveyService {
         });
       }
 
-      // 2. Increment aggregate counts atomically using a transaction
-      await FirebaseFirestore.instance.runTransaction((tx) async {
-        final snap = await tx.get(surveyRef);
-        if (!snap.exists) return;
-        final data = snap.data() ?? <String, dynamic>{};
+      final updateData = <String, dynamic>{
+        'totalVotes': FieldValue.increment(1),
+        'updatedAt': now,
+      };
 
-        final rawQuestions = data['questions'];
+      final q0Opt = answers[0];
+      if (q0Opt != null) {
+        updateData['voteCounts.$q0Opt'] = FieldValue.increment(1);
+      }
+
+      if (survey.questions.isNotEmpty) {
         final updatedQuestions = <Map<String, dynamic>>[];
-        if (rawQuestions is List && rawQuestions.isNotEmpty) {
-          for (var i = 0; i < rawQuestions.length; i++) {
-            final qItem = rawQuestions[i];
-            if (qItem is Map) {
-              final qMap = Map<String, dynamic>.from(qItem);
-              final counts = Map<String, dynamic>.from(
-                (qMap['voteCounts'] as Map?) ?? {},
-              );
-              final chosenOpt = answers[i];
-              if (chosenOpt != null) {
-                counts['$chosenOpt'] =
-                    ((counts['$chosenOpt'] as num?)?.toInt() ?? 0) + 1;
-              }
-              qMap['voteCounts'] = counts;
-              updatedQuestions.add(qMap);
-            }
+        for (var i = 0; i < survey.questions.length; i++) {
+          final question = survey.questions[i];
+          final counts = Map<String, dynamic>.from(question.voteCounts);
+          final chosenOpt = answers[i];
+          if (chosenOpt != null) {
+            counts['$chosenOpt'] =
+                ((counts['$chosenOpt'] as num?)?.toInt() ?? 0) + 1;
           }
+          updatedQuestions.add({
+            'id': question.id,
+            'question': question.question,
+            'options': question.options,
+            'voteCounts': counts,
+          });
         }
+        updateData['questions'] = updatedQuestions;
+      }
 
-        final topCounts = Map<String, dynamic>.from(
-          (data['voteCounts'] as Map?) ?? {},
-        );
-        final q0Opt = answers[0];
-        if (q0Opt != null) {
-          topCounts['$q0Opt'] =
-              ((topCounts['$q0Opt'] as num?)?.toInt() ?? 0) + 1;
-        }
+      if (cleanComment.isNotEmpty) {
+        updateData['recentComments'] = FieldValue.arrayUnion([
+          {'userId': uid, 'comment': cleanComment, 'createdAt': now},
+        ]);
+      }
 
-        final curTotal = (data['totalVotes'] as num?)?.toInt() ?? 0;
-
-        final updateData = <String, dynamic>{
-          if (updatedQuestions.isNotEmpty) 'questions': updatedQuestions,
-          'voteCounts': topCounts,
-          'totalVotes': curTotal + 1,
-          'updatedAt': now,
-        };
-
-        if (cleanComment.isNotEmpty) {
-          updateData['recentComments'] = FieldValue.arrayUnion([
-            {'userId': uid, 'comment': cleanComment, 'createdAt': now},
-          ]);
-        }
-
-        tx.update(surveyRef, updateData);
-      });
+      await surveyRef.update(updateData);
 
       // 3. Mark as answered locally so it never asks again
       final prefs = await SharedPreferences.getInstance();

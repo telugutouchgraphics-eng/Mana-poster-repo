@@ -3807,7 +3807,10 @@ class _HomeScreenState extends State<HomeScreen>
     return false;
   }
 
-  bool _isInactiveExactDynamicTemplateCategory(String categoryId, DateTime now) {
+  bool _isInactiveExactDynamicTemplateCategory(
+    String categoryId,
+    DateTime now,
+  ) {
     final normalized = _normalizeTag(categoryId);
     if (normalized.isEmpty) {
       return false;
@@ -6798,17 +6801,9 @@ class _HomeScreenState extends State<HomeScreen>
         final ref = FirebaseFirestore.instance
             .collection('appBanners')
             .doc(bannerId);
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          final snapshot = await transaction.get(ref);
-          if (!snapshot.exists) {
-            return;
-          }
-          final data = snapshot.data();
-          final current = _readCounter(data?['viewCount']);
-          transaction.update(ref, <String, Object?>{
-            'viewCount': current + 1,
-            'lastViewedAt': FieldValue.serverTimestamp(),
-          });
+        await ref.update(<String, Object?>{
+          'viewCount': FieldValue.increment(1),
+          'lastViewedAt': FieldValue.serverTimestamp(),
         });
       } catch (error, stackTrace) {
         _homeDebugLogStack(
@@ -6817,16 +6812,6 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
     }());
-  }
-
-  int _readCounter(Object? value) {
-    if (value is num) {
-      return value.toInt();
-    }
-    if (value is String) {
-      return int.tryParse(value) ?? 0;
-    }
-    return 0;
   }
 
   String _templateSequenceKey(_TemplateItem item) {
