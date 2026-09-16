@@ -241,9 +241,11 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
       _isLoading = false;
       return;
     }
-    final adaptiveSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(
-      availableWidth.truncate(),
-    );
+    final adaptiveSize =
+        // ignore: deprecated_member_use
+        await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+          availableWidth.truncate(),
+        );
     if (!mounted || adaptiveSize == null) {
       _isLoading = false;
       _scheduleRetry();
@@ -306,11 +308,11 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
         width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: SizedBox(
           width: size.width.toDouble(),
           height: size.height.toDouble(),
