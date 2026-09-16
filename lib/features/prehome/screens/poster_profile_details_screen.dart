@@ -1248,6 +1248,7 @@ class _PosterProfileDetailsScreenState
           context,
           profile: updated,
         );
+        OnboardingVisitingCardDialog.show(context, profile: updated);
       }
       return;
     }
@@ -1262,6 +1263,7 @@ class _PosterProfileDetailsScreenState
           context,
           profile: updated,
         );
+        OnboardingVisitingCardDialog.show(context, profile: updated);
       } else if (widget.embeddedInProfileScreen) {
         widget.onSaved?.call(updated);
         setState(() {
@@ -1418,6 +1420,7 @@ class _PosterProfileDetailsScreenState
         automaticallyImplyLeading: false,
         leading:
             (!widget.embeddedInProfileScreen && Navigator.of(context).canPop())
+        leading: Navigator.of(context).canPop()
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),

@@ -4831,6 +4831,7 @@ class _HomeScreenState extends State<HomeScreen>
     final updatedProfile = await Navigator.of(context).push<PosterProfileData>(
       MaterialPageRoute<PosterProfileData>(
         builder: (_) => const ProfileScreen(),
+        builder: (_) => ProfileScreen(initialProfile: _viewerPosterProfile),
       ),
     );
     if (!mounted) {

@@ -42,6 +42,9 @@ import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.initialProfile});
+
+  final PosterProfileData? initialProfile;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -106,6 +109,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.initialProfile != null) {
+      _posterProfile = widget.initialProfile!;
+      _loadingProfile = false;
+    }
     _loadPosterProfile();
     unawaited(_loadSelectedRegionName());
     unawaited(_loadPrivacyChoicesVisibility());

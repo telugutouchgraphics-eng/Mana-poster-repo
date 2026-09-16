@@ -1,4 +1,3 @@
-// ignore_for_file: unused_element_parameter
 // ignore_for_file: unused_element_parameter, unused_element
 part of '../screens/home_screen.dart';
 
@@ -74,7 +73,7 @@ class _PosterSkeletonCard extends StatelessWidget {
   }
 }
 
-class _SkeletonBox extends StatelessWidget {
+class _SkeletonBox extends StatefulWidget {
   const _SkeletonBox({
     this.width = double.infinity,
     required this.height,
@@ -86,27 +85,52 @@ class _SkeletonBox extends StatelessWidget {
   final double radius;
 
   @override
+  State<_SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.55, end: 0.95),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeInOut,
-      builder: (context, value, child) {
-        return Opacity(opacity: value, child: child);
-      },
-      onEnd: () {},
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          gradient: const LinearGradient(
-            colors: <Color>[Color(0xFFE8EEF5), Color(0xFFF3F6FA)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final progress = _controller.value;
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment(-2.0 + (progress * 4.0), -0.3),
+              end: Alignment(0.0 + (progress * 4.0), 0.3),
+              colors: const <Color>[
+                Color(0xFFE2E8F0),
+                Color(0xFFFFFFFF),
+                Color(0xFFE2E8F0),
+              ],
+              stops: const <double>[0.0, 0.5, 1.0],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

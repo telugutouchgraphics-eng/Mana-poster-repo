@@ -3008,7 +3008,7 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return false;
     }
     return _resolveLatestSubscriptionAccess().timeout(
-      SubscriptionPlanConfig.paywallTimeout,
+      const Duration(milliseconds: 400),
       onTimeout: () async => false,
     );
   }
@@ -3682,12 +3682,17 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
           _resolvedPreviewAspectRatio ??
           item.pageConfig?.aspectRatio ??
           (item.isVideo ? 9 / 16 : 4 / 5);
-      final paidPreviewPath = item.isVideo
-          ? null
-          : await _ensurePreparedPosterFileForVisibility(true);
-      final plainPreviewPath = item.isVideo
-          ? null
-          : await _ensurePreparedPlainPosterFile();
+      final existingPaidPath = _preparedPosterFilePath;
+      final paidPreviewPath =
+          (!item.isVideo &&
+              existingPaidPath != null &&
+              File(existingPaidPath).existsSync())
+          ? existingPaidPath
+          : null;
+      const String? plainPreviewPath = null;
+      if (!item.isVideo) {
+        unawaited(_ensurePreparedPlainPosterFile());
+      }
       if (!context.mounted) {
         return _FreeExportChoice.none;
       }
@@ -4298,6 +4303,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<void> _onDownloadTap(BuildContext context) async {
+    if (!_beginAction('download')) {
+      return;
+    }
     if (!await _ensureAuthenticatedForPosterAction(
       context,
       actionLabel: context.strings.localized(
@@ -4321,12 +4329,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'ཕབ་ལེན།',
       ),
     )) {
+      _endAction();
       return;
     }
     if (!context.mounted) {
-      return;
-    }
-    if (!_beginAction('download')) {
+      _endAction();
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
@@ -4559,6 +4566,9 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   Future<void> _onShareTap(BuildContext context) async {
+    if (!_beginAction('share')) {
+      return;
+    }
     if (!await _ensureAuthenticatedForPosterAction(
       context,
       actionLabel: context.strings.localized(
@@ -4582,12 +4592,11 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
         ladakhi: 'བགོ་འགྲེམས།',
       ),
     )) {
+      _endAction();
       return;
     }
     if (!context.mounted) {
-      return;
-    }
-    if (!_beginAction('share')) {
+      _endAction();
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
@@ -5945,4 +5954,3 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   @override
   bool get wantKeepAlive => playbackEnabled;
 }
-
