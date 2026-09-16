@@ -3575,7 +3575,11 @@ class _HomeScreenState extends State<HomeScreen>
       if (norm.isEmpty || covered.contains(norm)) {
         continue;
       }
-      if (_isInactiveExactDynamicTemplateCategory(rawId, now)) {
+      if (_isInactiveExactDynamicTemplateCategory(
+        rawId,
+        now,
+        isServerConfirmed: true,
+      )) {
         continue;
       }
       if (_staticCategorySlugs.contains(rawId)) {
@@ -3815,18 +3819,26 @@ class _HomeScreenState extends State<HomeScreen>
           !_dynamicEventMatchesSelectedRegion(schedule.event)) {
         continue;
       }
-      if (!today.isBefore(schedule.startDate) &&
-          !today.isAfter(schedule.endDate)) {
+      // Event ended → never show
+      if (today.isAfter(schedule.endDate)) {
+        return false;
+      }
+      // Server has posters + event not yet ended → show immediately (instant upload)
+      if (_dynamicCategoryAvailabilityBySlug[slug] == true) {
         return true;
       }
+      // No server posters → only show on actual event day
+      return !today.isBefore(schedule.startDate) &&
+          !today.isAfter(schedule.endDate);
     }
     return false;
   }
 
   bool _isInactiveExactDynamicTemplateCategory(
     String categoryId,
-    DateTime now,
-  ) {
+    DateTime now, {
+    bool isServerConfirmed = false,
+  }) {
     final normalized = _normalizeTag(categoryId);
     if (normalized.isEmpty) {
       return false;
@@ -3854,10 +3866,18 @@ class _HomeScreenState extends State<HomeScreen>
       if (!_dynamicEventMatchesSelectedRegion(schedule.event)) {
         return true;
       }
-      final active =
-          !today.isBefore(schedule.startDate) &&
-          !today.isAfter(schedule.endDate);
-      return !active;
+      // Event ended → always inactive (hide)
+      if (today.isAfter(schedule.endDate)) {
+        return true;
+      }
+      // Server confirmed posters exist (template from _remoteApprovedTemplates or
+      // availability check) + event not yet ended → show immediately
+      if (isServerConfirmed ||
+          _dynamicCategoryAvailabilityBySlug[normalized] == true) {
+        return false;
+      }
+      // No server posters → inactive if before event start
+      return today.isBefore(schedule.startDate);
     }
 
     return false;
