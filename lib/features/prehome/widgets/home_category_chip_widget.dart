@@ -1,7 +1,7 @@
 // ignore_for_file: unused_element_parameter
 part of '../screens/home_screen.dart';
 
-class _CategoryChip extends StatelessWidget {
+class _CategoryChip extends StatefulWidget {
   const _CategoryChip({
     super.key,
     required this.data,
@@ -14,9 +14,52 @@ class _CategoryChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_CategoryChip> createState() => _CategoryChipState();
+}
+
+class _CategoryChipState extends State<_CategoryChip> {
+  bool _isPressed = false;
+
+  void _handleTapDown(TapDownDetails _) {
+    if (!_isPressed) {
+      setState(() => _isPressed = true);
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    if (_isPressed) {
+      setState(() => _isPressed = false);
+    }
+  }
+
+  void _handleTapCancel() {
+    if (_isPressed) {
+      setState(() => _isPressed = false);
+    }
+  }
+
+  void _handleTap() {
+    if (!_isPressed) {
+      HapticFeedback.selectionClick();
+    } else {
+      setState(() => _isPressed = false);
+    }
+    try {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        alignment: 0.2,
+      );
+    } catch (_) {}
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = this.data;
-    final isSelected = this.isSelected;
+    final data = widget.data;
+    final isSelected = widget.isSelected;
     final isAll = data.slug == _HomeScreenState._allCategorySlug;
     final displaySlug = data.selectionSlug ?? data.slug;
     final iconAssetPath =
@@ -53,83 +96,91 @@ class _CategoryChip extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.82)
         : textColor.withValues(alpha: 0.78);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
+    return AnimatedScale(
+      scale: _isPressed ? 0.93 : 1.0,
+      duration: const Duration(milliseconds: 90),
+      curve: Curves.easeOutCubic,
+      child: Material(
+        color: chipTint,
         borderRadius: BorderRadius.circular(999),
-        child: Container(
-          constraints: BoxConstraints(minHeight: showDate ? 29 : 27),
-          padding: EdgeInsets.symmetric(
-            horizontal: showDate ? 7 : 8,
-            vertical: showDate ? 2.5 : 3.5,
-          ),
-          decoration: BoxDecoration(
-            color: chipTint,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: borderColor),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: isSelected || isAll
-                    ? const Color(0x140F172A)
-                    : const Color(0x0A0F172A),
-                blurRadius: isSelected || isAll ? 5 : 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (iconAssetPath != null) ...<Widget>[
-                _CategoryChipAssetIcon(assetPath: iconAssetPath),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: showDate
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            cleanLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: false,
-                            style: TextStyle(
-                              fontSize: 9.8,
-                              height: 1.02,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
+        elevation: isSelected || isAll ? 1.0 : 0.0,
+        shadowColor: const Color(0x1F0F172A),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTapDown: _handleTapDown,
+          onTapUp: _handleTapUp,
+          onTapCancel: _handleTapCancel,
+          onTap: _handleTap,
+          borderRadius: BorderRadius.circular(999),
+          splashColor: isSelected
+              ? Colors.white.withValues(alpha: 0.32)
+              : const Color(0xFF6D28D9).withValues(alpha: 0.18),
+          highlightColor: isSelected
+              ? Colors.white.withValues(alpha: 0.18)
+              : const Color(0xFF6D28D9).withValues(alpha: 0.10),
+          child: Container(
+            constraints: BoxConstraints(minHeight: showDate ? 29 : 27),
+            padding: EdgeInsets.symmetric(
+              horizontal: showDate ? 7 : 8,
+              vertical: showDate ? 2.5 : 3.5,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                if (iconAssetPath != null) ...<Widget>[
+                  _CategoryChipAssetIcon(assetPath: iconAssetPath),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: showDate
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              cleanLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: 9.8,
+                                height: 1.02,
+                                fontWeight: FontWeight.w700,
+                                color: textColor,
+                              ),
                             ),
-                          ),
-                          Text(
-                            dateLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            softWrap: false,
-                            style: TextStyle(
-                              fontSize: 8.5,
-                              height: 1.0,
-                              fontWeight: FontWeight.w700,
-                              color: secondaryTextColor,
+                            Text(
+                              dateLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                height: 1.0,
+                                fontWeight: FontWeight.w700,
+                                color: secondaryTextColor,
+                              ),
                             ),
+                          ],
+                        )
+                      : Text(
+                          cleanLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontSize: 10.4,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
                           ),
-                        ],
-                      )
-                    : Text(
-                        cleanLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        softWrap: false,
-                        style: TextStyle(
-                          fontSize: 10.4,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
