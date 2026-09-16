@@ -297,7 +297,7 @@ const List<List<Object>> _fixedGregorianSeedRows = <List<Object>>[
     'Praja Palana Dinotsavam',
     'ప్రజా పాలన దినోత్సవం',
     DynamicCategoryType.importantDay,
-    DynamicEventScope.telangana,
+    DynamicEventScope.bothTeluguStates,
     70,
     9,
     17,

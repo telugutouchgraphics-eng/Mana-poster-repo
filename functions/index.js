@@ -3897,8 +3897,7 @@ function posterIsCurrentlyVisible(data, nowMillis = Date.now()) {
     return false;
   }
   const dynamicWindow = dynamicEventVisibilityWindowMillis(data, nowMillis);
-  if (dynamicWindow &&
-      (nowMillis < dynamicWindow.startMillis || nowMillis >= dynamicWindow.endExclusiveMillis)) {
+  if (dynamicWindow && nowMillis >= dynamicWindow.endExclusiveMillis) {
     return false;
   }
   if (eventEndAt > 0 && nowMillis > eventEndAt) {

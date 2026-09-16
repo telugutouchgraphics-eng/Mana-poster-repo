@@ -3512,13 +3512,11 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
 
-    final loadedDynamicCategories = _dynamicCategoryService
-        .categoriesForSlugs(loadedTemplateCategoryKeys, language: language)
-        .where((item) => _isDynamicCategoryActiveOnEventDay(item, now));
+    final loadedDynamicCategories = _dynamicCategoryService.categoriesForSlugs(
+      loadedTemplateCategoryKeys,
+      language: language,
+    );
     final templateDrivenManualCategories = _manualEventCategories.where((item) {
-      if (!_isCategoryActiveOnEventDay(item, now)) {
-        return false;
-      }
       final itemSignals = <String>{
         _normalizeTag(item.id),
         _normalizeTag(item.slug),
@@ -3575,9 +3573,6 @@ class _HomeScreenState extends State<HomeScreen>
       }
       final norm = _normalizeTag(rawId);
       if (norm.isEmpty || covered.contains(norm)) {
-        continue;
-      }
-      if (_isInactiveExactDynamicTemplateCategory(rawId, now)) {
         continue;
       }
       if (_staticCategorySlugs.contains(rawId)) {
@@ -3822,46 +3817,6 @@ class _HomeScreenState extends State<HomeScreen>
         return true;
       }
     }
-    return false;
-  }
-
-  bool _isInactiveExactDynamicTemplateCategory(
-    String categoryId,
-    DateTime now,
-  ) {
-    final normalized = _normalizeTag(categoryId);
-    if (normalized.isEmpty) {
-      return false;
-    }
-
-    for (final category in _manualEventCategories) {
-      final categoryId = _normalizeTag(category.id);
-      final categorySlug = _normalizeTag(category.slug);
-      if (normalized == categoryId || normalized == categorySlug) {
-        return !_isCategoryActiveOnEventDay(category, now);
-      }
-    }
-
-    final today = DateTime(now.year, now.month, now.day);
-    final schedules = const DynamicEventScheduleService().schedulesForYear(
-      now.year,
-      daysBeforeEvent: 0,
-    );
-    for (final schedule in schedules) {
-      final eventId = _normalizeTag(schedule.event.id);
-      final eventSlug = _normalizeTag(schedule.event.slug);
-      if (normalized != eventId && normalized != eventSlug) {
-        continue;
-      }
-      if (!_dynamicEventMatchesSelectedRegion(schedule.event)) {
-        return true;
-      }
-      final active =
-          !today.isBefore(schedule.startDate) &&
-          !today.isAfter(schedule.endDate);
-      return !active;
-    }
-
     return false;
   }
 

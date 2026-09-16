@@ -1439,6 +1439,7 @@ class ApprovedCreatorTemplateService {
       }
       final dynamicVisible =
           isImmediateDynamicTarget ||
+          visibleFrom <= now ||
           _isTemplateDynamicCategoryVisible(
             template.categoryId,
             activeDynamicTags,
