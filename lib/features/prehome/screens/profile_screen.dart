@@ -41,7 +41,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
   const ProfileScreen({super.key, this.initialProfile});
 
   final PosterProfileData? initialProfile;

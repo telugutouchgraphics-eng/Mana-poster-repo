@@ -1417,11 +1417,9 @@ class _PosterProfileDetailsScreenState
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
-        automaticallyImplyLeading: false,
         leading:
             (!widget.embeddedInProfileScreen && Navigator.of(context).canPop())
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
+                ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),
                 onPressed: () => Navigator.of(context).maybePop(_draftProfile),

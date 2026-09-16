@@ -1636,7 +1636,7 @@ class _HomeScreenState extends State<HomeScreen>
   List<_CategoryChipData>? _categoryListCache;
   Object? _categoryListIdentity;
   AppLanguage? _manualCategoryLanguage;
-  bool _adFallbackSlotEnabled = false;
+  bool _adFallbackSlotEnabled = true;
   bool _remoteHomeStartupAllowed = false;
   bool _remoteHomeStartupScheduled = false;
   HomeFeedTimeSlot _activeHomeFeedTimeSlot = TimeSlotService.homeFeedSlot(
@@ -4830,7 +4830,6 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openProfile() async {
     final updatedProfile = await Navigator.of(context).push<PosterProfileData>(
       MaterialPageRoute<PosterProfileData>(
-        builder: (_) => const ProfileScreen(),
         builder: (_) => ProfileScreen(initialProfile: _viewerPosterProfile),
       ),
     );
@@ -8082,10 +8081,6 @@ class _HomeScreenState extends State<HomeScreen>
       return false;
     }
     if (!_shouldRunFirebaseUiServices) {
-      return false;
-    }
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null && entitlement == null) {
       return false;
     }
     return true;

@@ -214,7 +214,6 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       await PostSplashStartupGate.whenReady.timeout(
         const Duration(seconds: 20),
       );
-      await Future<void>.delayed(const Duration(seconds: 10));
     } catch (_) {
       return;
     }
