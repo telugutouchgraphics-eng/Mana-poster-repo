@@ -168,37 +168,40 @@ class _HomeHeroBannerState extends State<_HomeHeroBanner> {
 }
 
 class _HomeBannerAdFallback extends StatefulWidget {
-  const _HomeBannerAdFallback();
+  const _HomeBannerAdFallback({super.key});
 
   @override
   State<_HomeBannerAdFallback> createState() => _HomeBannerAdFallbackState();
 }
 
-class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
-  static const int _maxLoadAttempts = 3;
+class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
+    with AutomaticKeepAliveClientMixin {
+  static BannerAd? _cachedBannerAd;
+  static AdSize? _cachedAdSize;
+  static bool _cachedIsLoaded = false;
+  static bool _isLoading = false;
 
-  BannerAd? _bannerAd;
-  AdSize? _adSize;
-  bool _loadAttempted = false;
-  bool _isLoaded = false;
-  int _loadAttemptCount = 0;
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_loadAttempted) {
+    if (_cachedBannerAd != null && _cachedIsLoaded) {
       return;
     }
-    _loadAttempted = true;
+    if (_isLoading) {
+      return;
+    }
     unawaited(_loadBanner());
   }
 
   void _scheduleRetry() {
-    if (!mounted || _isLoaded || _loadAttemptCount >= _maxLoadAttempts) {
+    if (!mounted || _cachedIsLoaded) {
       return;
     }
-    Future<void>.delayed(const Duration(seconds: 12), () {
-      if (!mounted || _isLoaded) {
+    Future<void>.delayed(const Duration(seconds: 20), () {
+      if (!mounted || _cachedIsLoaded || _isLoading) {
         return;
       }
       unawaited(_loadBanner());
@@ -209,15 +212,20 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     if (kIsWeb || !Platform.isAndroid || !AppPublicInfo.hasHomeBannerAdUnitId) {
       return;
     }
-    _loadAttemptCount += 1;
+    if (_isLoading) {
+      return;
+    }
+    _isLoading = true;
     try {
       await PostSplashStartupGate.whenReady.timeout(
         const Duration(seconds: 20),
       );
     } catch (_) {
+      _isLoading = false;
       return;
     }
     if (!mounted) {
+      _isLoading = false;
       return;
     }
     final availableWidth = MediaQuery.sizeOf(context).width - 32;
@@ -230,12 +238,14 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       await MobileAds.instance.initialize().timeout(const Duration(seconds: 8));
     } catch (_) {}
     if (!mounted) {
+      _isLoading = false;
       return;
     }
     final adaptiveSize = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(
       availableWidth.truncate(),
     );
     if (!mounted || adaptiveSize == null) {
+      _isLoading = false;
       _scheduleRetry();
       return;
     }
@@ -246,27 +256,25 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint('ManaPosterAdMob: home banner ad loaded successfully');
+          _cachedBannerAd = ad as BannerAd;
+          _cachedAdSize = adaptiveSize;
+          _cachedIsLoaded = true;
+          _isLoading = false;
           if (!mounted) {
-            ad.dispose();
             return;
           }
-          setState(() {
-            _bannerAd = ad as BannerAd;
-            _adSize = adaptiveSize;
-            _isLoaded = true;
-          });
+          setState(() {});
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint('ManaPosterAdMob: home banner ad failed: $error');
           ad.dispose();
-          if (!mounted) {
-            return;
+          _isLoading = false;
+          if (_cachedBannerAd == null) {
+            _cachedIsLoaded = false;
+            if (mounted) {
+              setState(() {});
+            }
           }
-          setState(() {
-            _bannerAd = null;
-            _adSize = null;
-            _isLoaded = false;
-          });
           _scheduleRetry();
         },
       ),
@@ -278,20 +286,18 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       await banner.load();
     } catch (error) {
       banner.dispose();
+      _isLoading = false;
       debugPrint('ManaPosterAdMob: home banner ad load exception: $error');
       _scheduleRetry();
     }
   }
 
   @override
-  void dispose() {
-    _bannerAd?.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!_isLoaded || _bannerAd == null || _adSize == null) {
+    super.build(context);
+    final ad = _cachedBannerAd;
+    final size = _cachedAdSize;
+    if (!_cachedIsLoaded || ad == null || size == null) {
       return const SizedBox.shrink();
     }
     return Padding(
@@ -306,9 +312,9 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: SizedBox(
-          width: _adSize!.width.toDouble(),
-          height: _adSize!.height.toDouble(),
-          child: AdWidget(ad: _bannerAd!),
+          width: size.width.toDouble(),
+          height: size.height.toDouble(),
+          child: AdWidget(key: ValueKey(ad.hashCode), ad: ad),
         ),
       ),
     );

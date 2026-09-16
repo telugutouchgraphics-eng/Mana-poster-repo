@@ -66,8 +66,11 @@ class _HomePinnedFeedControls extends StatelessWidget {
           ] else if (!compact &&
               showAdFallback &&
               shouldShowAdFallback) ...<Widget>[
-            const SizedBox(height: 3),
-            const RepaintBoundary(child: _HomeBannerAdFallback()),
+            const RepaintBoundary(
+              child: _HomeBannerAdFallback(
+                key: ValueKey<String>('home_banner_ad_fallback'),
+              ),
+            ),
           ],
           if (homeRefreshing)
             const Padding(
