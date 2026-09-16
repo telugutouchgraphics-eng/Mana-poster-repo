@@ -221,13 +221,11 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       return;
     }
     final availableWidth = MediaQuery.sizeOf(context).width - 32;
-    if (!await AdMobConsentService.instance.canRequestAds()) {
-      await AdMobConsentService.instance.prepareForAds();
-    }
-    if (!await AdMobConsentService.instance.canRequestAds()) {
-      _scheduleRetry();
-      return;
-    }
+    try {
+      if (!await AdMobConsentService.instance.canRequestAds()) {
+        await AdMobConsentService.instance.prepareForAds();
+      }
+    } catch (_) {}
     try {
       await MobileAds.instance.initialize().timeout(const Duration(seconds: 8));
     } catch (_) {}
@@ -247,6 +245,7 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       size: adaptiveSize,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          debugPrint('ManaPosterAdMob: home banner ad loaded successfully');
           if (!mounted) {
             ad.dispose();
             return;
@@ -258,9 +257,7 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
           });
         },
         onAdFailedToLoad: (ad, error) {
-          if (error.code != 3) {
-            _homeDebugLog('home banner ad failed: $error');
-          }
+          debugPrint('ManaPosterAdMob: home banner ad failed: $error');
           ad.dispose();
           if (!mounted) {
             return;
@@ -275,10 +272,13 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
       ),
     );
     try {
+      debugPrint(
+        'ManaPosterAdMob: requesting home banner ad load for unit: ${AppPublicInfo.adMobHomeBannerAdUnitId}',
+      );
       await banner.load();
     } catch (error) {
       banner.dispose();
-      _homeDebugLog('home banner ad load exception: $error');
+      debugPrint('ManaPosterAdMob: home banner ad load exception: $error');
       _scheduleRetry();
     }
   }
@@ -314,4 +314,3 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback> {
     );
   }
 }
-
