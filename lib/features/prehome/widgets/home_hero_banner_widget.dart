@@ -199,7 +199,9 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
   }
 
   void _scheduleRetry() {
-    if (!mounted || _cachedIsLoaded || _retryAttemptCount >= _maxRetryAttempts) {
+    if (!mounted ||
+        _cachedIsLoaded ||
+        _retryAttemptCount >= _maxRetryAttempts) {
       return;
     }
     _retryAttemptCount += 1;

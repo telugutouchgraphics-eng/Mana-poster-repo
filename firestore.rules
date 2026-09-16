@@ -812,8 +812,7 @@ service cloud.firestore {
     // Hindi language groups share only non-political content; party categories
     // stay state-specific.
     match /creatorPosters/{posterId} {
-      allow read: if signedIn() &&
-        resource.data.status == "approved" &&
+      allow read: if resource.data.status == "approved" &&
         resource.data.regionId is string &&
         resource.data.regionId.size() > 0;
       allow update: if signedIn() && validCreatorPosterEngagementUpdate();

@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 abstract final class AppTemporaryCleanup {
   static const Duration _minFileAge = Duration(seconds: 45);
   static const Duration _minCacheDirectoryAge = Duration(days: 1);
-  static const int _maxDeletesPerSweep = 40;
+  static const int _maxDeletesPerSweep = 150;
 
   /// Cold start: brief delay so in-flight writes can finish.
   static Future<void> runAfterColdStart() async {
@@ -82,7 +82,16 @@ abstract final class AppTemporaryCleanup {
         name.startsWith('mana_poster_status_') ||
         name.startsWith('mana_approved_upload_') ||
         name.startsWith('mana_political_poster_') ||
+        name.startsWith('mana_visiting_card_') ||
         name.startsWith('mana_poster_quiz_') ||
+        name.startsWith('temp_picker_original_') ||
+        name.startsWith('temp_picker_cutout_') ||
+        name.startsWith('temp_') ||
+        name.startsWith('screenshot') ||
+        name.startsWith('image_cropper_') ||
+        name.startsWith('scaled_') ||
+        name.startsWith('raw_') ||
+        name.startsWith('crop_') ||
         name.startsWith('poster_editor_template_') ||
         name.startsWith('poster_profile_pick_') ||
         name.startsWith('poster_profile_saved_cutout_') ||
@@ -93,6 +102,8 @@ abstract final class AppTemporaryCleanup {
         name.startsWith('bg_removed_') ||
         name.startsWith('mana_poster_share.') ||
         name == 'mana_poster_share_app.png' ||
+        name.endsWith('.tmp') ||
+        name.endsWith('.temp') ||
         RegExp(r'^mana_poster_\d+\.').hasMatch(name);
   }
 

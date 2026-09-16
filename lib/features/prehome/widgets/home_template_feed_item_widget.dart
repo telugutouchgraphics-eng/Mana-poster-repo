@@ -1255,6 +1255,15 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
     _globalPosterWarmupSignatures.add(signature);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
+        if (!mounted) {
+          return;
+        }
+        if (!force && Scrollable.recommendDeferredLoadingForContext(context)) {
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+          if (!mounted) {
+            return;
+          }
+        }
         if (_posterCaptureKey.currentContext == null) {
           _recordPosterCaptureTrace(
             'poster export warmup skipped: capture context unavailable',

@@ -824,21 +824,25 @@ class _PoliticalProtocolPhotoScreenState
   }
 
   Future<String?> _captureCustomPosterFile() async {
-    await WidgetsBinding.instance.endOfFrame;
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    await WidgetsBinding.instance.endOfFrame;
-    final bytes = await _customPosterScreenshotController.capture(
-      pixelRatio: 3,
-    );
-    if (bytes == null || bytes.isEmpty) {
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await WidgetsBinding.instance.endOfFrame;
+      final bytes = await _customPosterScreenshotController.capture(
+        pixelRatio: 3,
+      );
+      if (bytes == null || bytes.isEmpty) {
+        return null;
+      }
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}${Platform.pathSeparator}mana_political_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(path);
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (_) {
       return null;
     }
-    final dir = await getTemporaryDirectory();
-    final path =
-        '${dir.path}${Platform.pathSeparator}mana_political_poster_${DateTime.now().millisecondsSinceEpoch}.png';
-    final file = File(path);
-    await file.writeAsBytes(bytes, flush: true);
-    return file.path;
   }
 
   String get _customPosterShareText {
@@ -1784,4 +1788,3 @@ class _PoliticalProtocolPhotoScreenState
     );
   }
 }
-

@@ -124,6 +124,7 @@ class UserPosterUploadsService {
     return _uploadsQueryForUser(uid)
         .snapshots()
         .map((snapshot) => _mapUploadDocs(snapshot.docs))
+        .handleError((dynamic _) => const <UserPosterUpload>[])
         .asBroadcastStream();
   }
 
@@ -148,6 +149,9 @@ class UserPosterUploadsService {
         );
         return _mapUploadDocs(snapshot.docs);
       } on FirebaseException catch (error) {
+        if (error.code == 'permission-denied') {
+          return const <UserPosterUpload>[];
+        }
         final canRetry =
             _isTransientFirestoreReadError(error) &&
             attempt < _transientReadRetryDelays.length;
@@ -162,10 +166,10 @@ class UserPosterUploadsService {
             );
             return _mapUploadDocs(cachedSnapshot.docs);
           } on FirebaseException {
-            rethrow;
+            return const <UserPosterUpload>[];
           }
         }
-        rethrow;
+        return const <UserPosterUpload>[];
       }
     }
     return const <UserPosterUpload>[];
