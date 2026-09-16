@@ -179,6 +179,8 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
   static BannerAd? _cachedBannerAd;
   static AdSize? _cachedAdSize;
   static bool _cachedIsLoaded = false;
+  static const int _maxRetryAttempts = 3;
+  static int _retryAttemptCount = 0;
   static bool _isLoading = false;
 
   @override
@@ -197,10 +199,12 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
   }
 
   void _scheduleRetry() {
-    if (!mounted || _cachedIsLoaded) {
+    if (!mounted || _cachedIsLoaded || _retryAttemptCount >= _maxRetryAttempts) {
       return;
     }
-    Future<void>.delayed(const Duration(seconds: 20), () {
+    _retryAttemptCount += 1;
+    final delaySeconds = 20 * _retryAttemptCount;
+    Future<void>.delayed(Duration(seconds: delaySeconds), () {
       if (!mounted || _cachedIsLoaded || _isLoading) {
         return;
       }
@@ -262,6 +266,7 @@ class _HomeBannerAdFallbackState extends State<_HomeBannerAdFallback>
           _cachedAdSize = adaptiveSize;
           _cachedIsLoaded = true;
           _isLoading = false;
+          _retryAttemptCount = 0;
           if (!mounted) {
             return;
           }

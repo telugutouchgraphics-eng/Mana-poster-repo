@@ -98,7 +98,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 part '../widgets/home_banner_widget.dart';
 part '../widgets/home_referral_dialog_widget.dart';
 part '../widgets/home_header_widget.dart';
@@ -9054,4 +9053,3 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
-

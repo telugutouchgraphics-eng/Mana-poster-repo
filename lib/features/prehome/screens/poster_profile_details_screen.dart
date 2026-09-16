@@ -1244,10 +1244,6 @@ class _PosterProfileDetailsScreenState
     final updated = _currentProfileFromInputs();
     if (!_hasUnsavedChanges) {
       if (widget.completeToHomeOnSave) {
-        OnboardingVisitingCardDialog.show(
-          context,
-          profile: updated,
-        );
         OnboardingVisitingCardDialog.show(context, profile: updated);
       }
       return;
@@ -1259,10 +1255,6 @@ class _PosterProfileDetailsScreenState
         return;
       }
       if (widget.completeToHomeOnSave) {
-        OnboardingVisitingCardDialog.show(
-          context,
-          profile: updated,
-        );
         OnboardingVisitingCardDialog.show(context, profile: updated);
       } else if (widget.embeddedInProfileScreen) {
         widget.onSaved?.call(updated);
@@ -1419,7 +1411,7 @@ class _PosterProfileDetailsScreenState
         surfaceTintColor: Colors.transparent,
         leading:
             (!widget.embeddedInProfileScreen && Navigator.of(context).canPop())
-                ? IconButton(
+            ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 color: minimalSetup ? cs.onSurface : const Color(0xFF0F172A),
                 onPressed: () => Navigator.of(context).maybePop(_draftProfile),

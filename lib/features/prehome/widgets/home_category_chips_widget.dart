@@ -453,4 +453,3 @@ class _CategoryRowsScrollerState extends State<_CategoryRowsScroller> {
     return rawWidth.clamp(_CategoryRowsScroller._minChipWidth, maxWidth);
   }
 }
-
