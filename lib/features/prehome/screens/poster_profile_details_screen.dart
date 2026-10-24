@@ -4014,21 +4014,14 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Refined Title Row with glowing badge
+        // Clean Minimal Title Row
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.18),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                size: 11,
-                color: Color(0xFF818CF8),
-              ),
+            const Icon(
+              Icons.auto_awesome_rounded,
+              size: 13,
+              color: Color(0xFF64748B),
             ),
             const SizedBox(width: 6),
             Text(
@@ -4054,28 +4047,28 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
               ),
               style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF94A3B8),
-                letterSpacing: 0.3,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.2,
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
 
-        // Modern Segmented Control with Smooth Sliding Thumb
+        // Simple Flat Segmented Control (Zero shades, Zero shadows)
         Container(
           width: 250,
-          height: 44,
-          padding: const EdgeInsets.all(3.5),
+          height: 42,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
+            color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFF334155), width: 1.2),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Stack(
             children: [
-              // Sliding Animated Thumb with Rich Brand Gradient
+              // Clean Flat Animated Thumb (No gradient, No shadow)
               AnimatedAlign(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
@@ -4087,21 +4080,8 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
                   heightFactor: 1.0,
                   child: Container(
                     decoration: BoxDecoration(
+                      color: const Color(0xFF4F46E5),
                       borderRadius: BorderRadius.circular(20),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF6366F1,
-                          ).withValues(alpha: 0.45),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -4127,7 +4107,7 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
                               size: 15,
                               color: !effectiveIsOriginal
                                   ? Colors.white
-                                  : const Color(0xFF94A3B8),
+                                  : const Color(0xFF64748B),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -4158,7 +4138,7 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
                                     : FontWeight.w600,
                                 color: !effectiveIsOriginal
                                     ? Colors.white
-                                    : const Color(0xFF94A3B8),
+                                    : const Color(0xFF64748B),
                               ),
                             ),
                           ],
@@ -4192,8 +4172,8 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
                               color: hasOriginal
                                   ? (effectiveIsOriginal
                                         ? Colors.white
-                                        : const Color(0xFF94A3B8))
-                                  : const Color(0xFF64748B),
+                                        : const Color(0xFF64748B))
+                                  : const Color(0xFF94A3B8),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -4225,8 +4205,8 @@ class _ProfilePhotoStyleSegmentedSwitch extends StatelessWidget {
                                 color: hasOriginal
                                     ? (effectiveIsOriginal
                                           ? Colors.white
-                                          : const Color(0xFF94A3B8))
-                                    : const Color(0xFF64748B),
+                                          : const Color(0xFF64748B))
+                                    : const Color(0xFF94A3B8),
                               ),
                             ),
                           ],
