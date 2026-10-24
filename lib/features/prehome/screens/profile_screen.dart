@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -523,100 +522,6 @@ class _SettingsGroup extends StatelessWidget {
   }
 }
 
-class _DailyQuizStatsSummary {
-  const _DailyQuizStatsSummary({
-    required this.totalCorrect,
-    required this.totalAnswered,
-  });
-
-  final int totalCorrect;
-  final int totalAnswered;
-}
-
-class _DailyQuizStatsCard extends StatelessWidget {
-  const _DailyQuizStatsCard({required this.copy});
-
-  final _ProfileCopy copy;
-
-  Future<_DailyQuizStatsSummary> _loadStats() async {
-    if (Firebase.apps.isEmpty) {
-      return const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
-    }
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
-    }
-    final snap = await FirebaseFirestore.instance
-        .collection('userQuizStats')
-        .doc(user.uid)
-        .get()
-        .timeout(const Duration(seconds: 6));
-    final data = snap.data() ?? const <String, dynamic>{};
-    return _DailyQuizStatsSummary(
-      totalCorrect: (data['totalCorrect'] as num?)?.toInt() ?? 0,
-      totalAnswered: (data['totalAnswered'] as num?)?.toInt() ?? 0,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_DailyQuizStatsSummary>(
-      future: _loadStats(),
-      builder: (context, snapshot) {
-        final stats =
-            snapshot.data ??
-            const _DailyQuizStatsSummary(totalCorrect: 0, totalAnswered: 0);
-        return OnboardingSurfaceCard(
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.quiz_rounded, color: Color(0xFF2563EB)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      copy.quizStatsTitle,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      copy.quizStatsSubtitle(
-                        stats.totalCorrect,
-                        stats.totalAnswered,
-                      ),
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
 
 class _ProfileOptionTile extends StatelessWidget {
   const _ProfileOptionTile({required this.item, required this.showDivider});
@@ -870,8 +775,6 @@ class _ProfileMoreScreenState extends State<_ProfileMoreScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            _DailyQuizStatsCard(copy: copy),
             const SizedBox(height: 18),
             _SettingsGroup(
               title: copy.quickActionsTitle,
@@ -1420,7 +1323,6 @@ class _ProfileCopy {
 
   static const Map<String, String> _cleanTeluguOverrides = <String, String>{
     'Quick actions': 'త్వరిత ఎంపికలు',
-    'Daily Quiz Stats': 'రోజువారీ క్విజ్ స్టాట్స్',
     'Personal & Business Details': 'వ్యక్తిగత & బిజినెస్ వివరాలు',
     'Update photo, personal, and business details':
         'ఫోటో, వ్యక్తిగత, బిజినెస్ వివరాలు అప్డేట్ చేయండి',
@@ -1555,46 +1457,6 @@ class _ProfileCopy {
   );
   String get supportTitle => strings.supportSection;
 
-  String get quizStatsTitle => _localized(
-    telugu: 'రోజువారీ క్విజ్ స్టాట్స్',
-    english: 'Daily Quiz Stats',
-    hindi: 'दैनिक क्विज़ आंकड़े',
-    tamil: 'தினசரி வினாடி வினா புள்ளிவிவரங்கள்',
-    kannada: 'ದೈನಂದಿನ ರಸಪ್ರಶ್ನೆ ಅಂಕಿಅಂಶಗಳು',
-    malayalam: 'പ്രതിദിന ക്വിസ് സ്ഥിതിവിവരക്കണക്കുകൾ',
-    marathi: 'दैनिक क्विझ आकडेवारी',
-    gujarati: 'દૈનિક ક્વિઝ આંકડા',
-    bengali: 'দৈনিক কুইজ পরিসংখ্যান',
-    punjabi: 'ਰੋਜ਼ਾਨਾ ਕਵਿਜ਼ ਅੰਕੜੇ',
-    odia: 'ଦୈନିକ କ୍ୱିଜ୍ ପରିସଂଖ୍ୟାନ',
-    assamese: 'দৈনিক কুইজ পৰিসংখ্যা',
-    konkani: 'दिसावडें क्विझ आंकडेवारी',
-    nepali: 'दैनिक क्विज तथ्याङ्क',
-    meitei: 'Daily quiz stats',
-    mizo: 'Ni tin quiz dinhmun',
-    kashmiri: 'روزانہ کوئز شماریات',
-    ladakhi: 'ཉིན་རེའི་ quiz གྲངས་ཐོ།',
-  );
-  String quizStatsSubtitle(int correct, int total) => _localized(
-    telugu: '$correct/$total సరైన సమాధానాలు',
-    english: '$correct/$total correct answers',
-    hindi: '$correct/$total सही उत्तर',
-    tamil: '$correct/$total சரியான பதில்கள்',
-    kannada: '$correct/$total ಸರಿಯಾದ ಉತ್ತರಗಳು',
-    malayalam: '$correct/$total ശരിയായ ഉത്തരങ്ങൾ',
-    marathi: '$correct/$total अचूक उत्तरे',
-    gujarati: '$correct/$total સાચા જવાબો',
-    bengali: '$correct/$total সঠিক উত্তর',
-    punjabi: '$correct/$total ਸਹੀ ਉੱਤਰ',
-    odia: '$correct/$total ସଠିକ୍ ଉତ୍ତର',
-    assamese: '$correct/$total শুদ্ধ উত্তৰ',
-    konkani: '$correct/$total सारक्यो जापो',
-    nepali: '$correct/$total सही उत्तरहरू',
-    meitei: '$correct/$total achumba paokhum',
-    mizo: '$correct/$total chhanna dik',
-    kashmiri: '$correct/$total صحیح جواب',
-    ladakhi: '$correct/$total ལན་ཡང་དག',
-  );
 
   String get posterProfileTitle => _localized(
     telugu: 'వ్యక్తిగత & బిజినెస్ వివరాలు',

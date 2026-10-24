@@ -59,7 +59,6 @@ import 'package:mana_poster/features/prehome/models/approved_creator_template.da
 import 'package:mana_poster/features/prehome/models/app_home_banner.dart';
 import 'package:mana_poster/features/prehome/models/dynamic_category.dart';
 import 'package:mana_poster/features/prehome/models/political_party.dart';
-import 'package:mana_poster/features/prehome/screens/daily_quiz_screen.dart';
 import 'package:mana_poster/features/prehome/screens/political_parties_screen.dart';
 import 'package:mana_poster/features/prehome/screens/profile_screen.dart';
 import 'package:mana_poster/features/prehome/screens/subscription_plan_screen.dart';
@@ -1502,7 +1501,6 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _moreCategorySlug = 'new';
   static const String _selectedMoreCategorySlotSlug = 'selected_more_category';
   static const String _politicalCategorySlug = 'political';
-  static const String _dailyQuizCategorySlug = 'daily_quiz';
   static const Set<String> _morePopupCategorySlugs = <String>{
     'life_advice',
     'motivational',
@@ -1731,10 +1729,6 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(AppFlowService.recordZeroCostDailyHeartbeat());
     _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _selectedCategorySlug == _dailyQuizCategorySlug) {
-        setState(() => _selectedCategorySlug = _allCategorySlug);
-        unawaited(_openDailyQuiz());
-      }
       _searchFocusNode.unfocus();
       FocusManager.instance.primaryFocus?.unfocus();
       unawaited(_resolveAndScheduleRemoteHomeStartupTasks());
@@ -4618,7 +4612,6 @@ class _HomeScreenState extends State<HomeScreen>
       ...dynamicCategories,
       ...partyCategories,
       _politicalCategoryChip(),
-      _dailyQuizCategoryChip(),
     ]).map((chip) => _normalizeTag(chip.slug)).toSet();
     final seenSlugs = <String>{};
     final seenSelectionSlugs = <String>{};
@@ -4629,7 +4622,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (slug.isEmpty ||
           !allowedSlugs.contains(slug) ||
           (slug != _moreCategorySlug &&
-              slug != _dailyQuizCategorySlug &&
+              slug != _allCategorySlug &&
               !_categoryHasVisiblePosters(chip)) ||
           (slug == _moreCategorySlug &&
               _morePopupCategories(
@@ -4656,7 +4649,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     addChip(_politicalCategoryChip());
-    addChip(_dailyQuizCategoryChip());
     for (final chip in partyCategories) {
       addChip(chip);
     }
@@ -4719,13 +4711,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  _CategoryChipData _dailyQuizCategoryChip() {
-    return _CategoryChipData(
-      slug: _dailyQuizCategorySlug,
-      label: localizedDailyQuizTitle(context.strings),
-      matchTags: const <String>['daily_quiz', 'quiz'],
-    );
-  }
 
   List<String> _defaultCategoryTagsForSlug(String slug) {
     return switch (slug) {
@@ -7453,9 +7438,12 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   bool _categoryHasVisiblePosters(_CategoryChipData category) {
+    if (category.slug == _allCategorySlug) {
+      return true;
+    }
     final templates = _publishedCategoryTemplates ?? _remoteApprovedTemplates;
     if (templates.isEmpty) {
-      return true;
+      return false;
     }
     final slug = _normalizeTag(category.effectiveSelectionSlug);
     return templates.any((
@@ -8483,10 +8471,6 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_openPoliticalPartyPicker());
       return;
     }
-    if (slug == _dailyQuizCategorySlug) {
-      unawaited(_openDailyQuiz());
-      return;
-    }
     if (slug == _selectedCategorySlug) {
       return;
     }
@@ -8512,11 +8496,6 @@ class _HomeScreenState extends State<HomeScreen>
     unawaited(_loadSelectedCategoryUntilVisible(slug, generation, language));
   }
 
-  Future<void> _openDailyQuiz() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const DailyQuizScreen()),
-    );
-  }
 
   Future<void> _openPoliticalPartyPicker() async {
     final changed = await Navigator.of(context).push<bool>(

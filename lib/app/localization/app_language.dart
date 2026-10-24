@@ -1264,10 +1264,6 @@ const Map<String, String> _cleanTeluguUiFallbacks = <String, String>{
   'Photo': 'ఫోటో',
   'Edit': 'ఎడిట్',
   'Add Photo': 'ఫోటో జోడించండి',
-  'Daily Quiz':
-      '\u0C30\u0C4B\u0C1C\u0C41\u0C35\u0C3E\u0C30\u0C40 \u0C15\u0C4D\u0C35\u0C3F\u0C1C\u0C4D',
-  'Daily Quiz Stats':
-      '\u0C30\u0C4B\u0C1C\u0C41\u0C35\u0C3E\u0C30\u0C40 \u0C15\u0C4D\u0C35\u0C3F\u0C1C\u0C4D \u0C38\u0C4D\u0C1F\u0C3E\u0C1F\u0C4D\u0C38\u0C4D',
   'Views': '\u0C35\u0C4D\u0C2F\u0C42\u0C38\u0C4D',
   'Shares': '\u0C37\u0C47\u0C30\u0C4D\u0C38\u0C4D',
   'Downloads': '\u0C21\u0C4C\u0C28\u0C4D\u0C32\u0C4B\u0C21\u0C4D\u0C38\u0C4D',
