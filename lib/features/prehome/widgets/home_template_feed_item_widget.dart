@@ -24,6 +24,7 @@ class _TemplateFeedItem extends StatefulWidget {
     this.preferUltraLightImage = false,
     this.fillViewport = false,
     this.previewOnly = false,
+    this.keepAlive = false,
     this.onPreviewTap,
     this.onInteraction,
   });
@@ -49,6 +50,7 @@ class _TemplateFeedItem extends StatefulWidget {
   final bool preferUltraLightImage;
   final bool fillViewport;
   final bool previewOnly;
+  final bool keepAlive;
   final VoidCallback? onPreviewTap;
   final void Function(_TemplateItem item, String action)? onInteraction;
   static final SubscriptionBackendService _subscriptionBackendService =
@@ -452,7 +454,8 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   @override
   void didUpdateWidget(covariant _TemplateFeedItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.playbackEnabled != widget.playbackEnabled) {
+    if (oldWidget.playbackEnabled != widget.playbackEnabled ||
+        oldWidget.keepAlive != widget.keepAlive) {
       updateKeepAlive();
     }
     if (oldWidget.item.templateId != widget.item.templateId) {
@@ -523,6 +526,14 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
       return;
     }
     setState(() => _resolvedPreviewAspectRatio = aspectRatio);
+  }
+
+  @override
+  void deactivate() {
+    if (_photoDragInProgress) {
+      widget.onPosterPhotoDragStateChanged(false);
+    }
+    super.deactivate();
   }
 
   @override
@@ -5972,5 +5983,5 @@ class _TemplateFeedItemState extends State<_TemplateFeedItem>
   }
 
   @override
-  bool get wantKeepAlive => playbackEnabled;
+  bool get wantKeepAlive => widget.keepAlive || playbackEnabled;
 }

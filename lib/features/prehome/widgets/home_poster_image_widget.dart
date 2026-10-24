@@ -46,19 +46,29 @@ class _TemplatePosterImageState extends State<_TemplatePosterImage> {
   @override
   void didUpdateWidget(covariant _TemplatePosterImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl ||
+    final urlChanged = oldWidget.imageUrl != widget.imageUrl ||
         oldWidget.thumbnailUrl != widget.thumbnailUrl ||
-        oldWidget.preferOriginalPosterQuality !=
+        oldWidget.imageAssetPath != widget.imageAssetPath;
+    final layoutChanged = oldWidget.fixedAspectRatio != widget.fixedAspectRatio ||
+        oldWidget.onAspectRatioResolved != widget.onAspectRatioResolved;
+    final qualityChanged = oldWidget.preferOriginalPosterQuality !=
             widget.preferOriginalPosterQuality ||
-        oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode ||
-        oldWidget.fixedAspectRatio != widget.fixedAspectRatio ||
-        oldWidget.onAspectRatioResolved != widget.onAspectRatioResolved) {
+        oldWidget.preferUltraLightDecode != widget.preferUltraLightDecode;
+
+    if (urlChanged) {
       _mainNetworkProvider = null;
       _thumbnailProvider = null;
       _mainProviderUrl = null;
       _thumbnailProviderUrl = null;
       _mainProviderWidth = null;
       _thumbnailProviderWidth = null;
+      _resetAspectRatioResolution();
+    } else if (qualityChanged) {
+      if (!widget.preferUltraLightDecode && oldWidget.preferUltraLightDecode) {
+        _mainNetworkProvider = null;
+        _mainProviderWidth = null;
+      }
+    } else if (layoutChanged) {
       _resetAspectRatioResolution();
     }
   }

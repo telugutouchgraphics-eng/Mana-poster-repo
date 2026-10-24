@@ -1599,7 +1599,6 @@ class _HomeScreenState extends State<HomeScreen>
       const PoliticalPartyLogoService();
   final PoliticalPartyService _politicalPartyService =
       const PoliticalPartyService();
-  final ScrollController _posterScrollController = ScrollController();
   final ScrollController _categoryScrollController = ScrollController();
   final PageController _posterPageController = PageController();
   final TextEditingController _searchController = TextEditingController();
@@ -1708,7 +1707,6 @@ class _HomeScreenState extends State<HomeScreen>
   bool _allFeedRankingInFlight = false;
   bool _currentSlotAllFeedHydrationInFlight = false;
   bool _progressiveHydrationQueued = false;
-  bool _posterFeedLoadMoreArmed = true;
   String _startupFeedWarmupSignature = '';
   bool _startupSnapshotHydrationDeferred = false;
   bool _startupSnapshotAttemptCompleted = false;
@@ -1773,7 +1771,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
     _attachHomeAuthStateSubscriptionIfReady();
     unawaited(AppFlowService.recordZeroCostDailyHeartbeat());
-    _posterScrollController.addListener(_onPosterScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.unfocus();
       FocusManager.instance.primaryFocus?.unfocus();
@@ -2552,9 +2549,6 @@ class _HomeScreenState extends State<HomeScreen>
     _startupSnapshotPersistTimer?.cancel();
     _allFeedInterestSaveTimer?.cancel();
     unawaited(_persistAllFeedInterestScores());
-    _posterScrollController
-      ..removeListener(_onPosterScroll)
-      ..dispose();
     _categoryScrollController.dispose();
     _posterPageController.dispose();
     _activePosterPageNotifier.dispose();
@@ -5773,10 +5767,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) {
       return;
     }
-    if ((_posterPageController.hasClients &&
-            _posterPageController.position.isScrollingNotifier.value) ||
-        (_posterScrollController.hasClients &&
-            _posterScrollController.position.isScrollingNotifier.value)) {
+    if (_posterPageController.hasClients &&
+        _posterPageController.position.isScrollingNotifier.value) {
       await Future<void>.delayed(const Duration(milliseconds: 420));
     }
     if (!mounted) {
@@ -7409,36 +7401,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  void _onPosterScroll() {
-    if (!_posterScrollController.hasClients) {
-      return;
-    }
-    final position = _posterScrollController.position;
-    if (_selectedCategorySlug == _allCategorySlug &&
-        _lockedAllFeedTemplates == null &&
-        position.pixels > 24) {
-      _lockedAllFeedTemplates = List<_TemplateItem>.of(
-        _currentAllFeedDisplaySource(),
-      );
-    }
-    final hasScrollableExtent = position.maxScrollExtent > 0;
-    final userHasActuallyScrolled = position.pixels > 120;
-    if (hasScrollableExtent &&
-        position.pixels < position.maxScrollExtent - 520) {
-      _posterFeedLoadMoreArmed = true;
-    }
-    if (_posterFeedLoadMoreArmed &&
-        hasScrollableExtent &&
-        userHasActuallyScrolled &&
-        position.pixels >= position.maxScrollExtent - 320) {
-      _posterFeedLoadMoreArmed = false;
-      if (_selectedCategorySlug == _allCategorySlug) {
-        unawaited(_loadMoreApprovedCreatorTemplates());
-      } else {
-        unawaited(_loadMoreSelectedCategoryTemplates());
-      }
-    }
-  }
+
 
   Future<void> _loadViewerPosterProfile() async {
     final inFlight = _viewerProfileLoadFuture;
@@ -8987,35 +8950,7 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _posterPageController.hasClients) {
         _posterPageController.jumpToPage(0);
-        return;
       }
-      if (!mounted || !_posterScrollController.hasClients) {
-        return;
-      }
-      final position = _posterScrollController.position;
-      if (position.pixels <= 0) {
-        return;
-      }
-      final target = position.minScrollExtent;
-      if (!position.hasContentDimensions ||
-          !target.isFinite ||
-          !position.pixels.isFinite) {
-        _posterScrollController.jumpTo(0);
-        return;
-      }
-      unawaited(
-        _posterScrollController
-            .animateTo(
-              target,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-            )
-            .catchError((_) {
-              if (_posterScrollController.hasClients) {
-                _posterScrollController.jumpTo(0);
-              }
-            }),
-      );
     });
   }
 
@@ -9027,24 +8962,13 @@ class _HomeScreenState extends State<HomeScreen>
         duration: const Duration(milliseconds: 420),
         curve: Curves.easeOutCubic,
       );
-      return;
     }
-    if (!_posterScrollController.hasClients) {
-      return;
-    }
-    final position = _posterScrollController.position;
-    if (!position.hasContentDimensions ||
-        position.pixels <= position.minScrollExtent) {
-      return;
-    }
-    await _posterScrollController.animateTo(
-      position.minScrollExtent,
-      duration: const Duration(milliseconds: 850),
-      curve: Curves.easeInOutCubic,
-    );
   }
 
   void _handlePosterPageChanged(int index, List<_HomeFeedEntry> feedEntries) {
+    if (_posterPhotoDragInProgress) {
+      _setPosterPhotoDragInProgress(false);
+    }
     if (_activePosterPage != index) {
       _activePosterPage = index;
       _activePosterPageNotifier.value = index;
@@ -9399,7 +9323,10 @@ class _HomeScreenState extends State<HomeScreen>
                                       final isActivePoster =
                                           index == activePosterPage;
                                       final keepRichPosterPreview = isActivePoster;
+                                      final isAdjacentOrActive =
+                                          (index - activePosterPage).abs() <= 1;
                                       return _TemplateFeedItem(
+                                    keepAlive: isAdjacentOrActive,
                                     key: ValueKey<String>(
                                       item.templateId?.trim().isNotEmpty == true
                                           ? item.templateId!.trim()
