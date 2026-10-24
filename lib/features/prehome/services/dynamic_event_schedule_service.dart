@@ -52,7 +52,9 @@ class DynamicEventScheduleService {
     final output = <ResolvedDynamicEventSchedule>[];
 
     for (final event in _repository.loadEvents()) {
-      if (!event.enabled || !scopes.contains(event.scope)) {
+      final canEvaluate = event.enabled ||
+          event.calendarType == DynamicCalendarType.lunarPlaceholder;
+      if (!canEvaluate || !scopes.contains(event.scope)) {
         continue;
       }
       final resolved = _resolveEvent(event, year, daysBeforeEvent);
