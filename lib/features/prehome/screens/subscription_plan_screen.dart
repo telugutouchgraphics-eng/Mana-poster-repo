@@ -46,6 +46,22 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
   bool _busyRestore = false;
   bool _didAutoStartPurchase = false;
   bool _didAutoTriggerRestore = false;
+  bool _exitPromptAttempted = false;
+
+  Future<void> _handleBackPress() async {
+    if (_exitPromptAttempted || !mounted) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    _exitPromptAttempted = true;
+    await showSubscriptionExitVideoPromptIfAvailable(
+      context,
+      onSubscribe: (promptContext) => _subscribeYearlyPlan(),
+    );
+    if (mounted) {
+      Navigator.of(context).maybePop();
+    }
+  }
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   DateTime _screenShownAt = DateTime.now();
   DateTime? _lastStoreFlowAttemptAt;
@@ -2359,14 +2375,25 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
       _cancelTrialClean,
       _noEditorAssetsClean,
     ];
-    return Scaffold(
-      backgroundColor: pageBackground,
-      appBar: AppBar(
+    return PopScope(
+      canPop: _exitPromptAttempted,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _handleBackPress();
+        }
+      },
+      child: Scaffold(
         backgroundColor: pageBackground,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: appBarForeground),
-      ),
+        appBar: AppBar(
+          backgroundColor: pageBackground,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          iconTheme: IconThemeData(color: appBarForeground),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_rounded, color: appBarForeground),
+            onPressed: _handleBackPress,
+          ),
+        ),
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
@@ -2567,7 +2594,7 @@ class _SubscriptionPlanScreenState extends State<SubscriptionPlanScreen>
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

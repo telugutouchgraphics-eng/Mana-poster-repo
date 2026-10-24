@@ -162,10 +162,14 @@ class _RegionSelectionScreenState extends State<RegionSelectionScreen>
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 16,
             top: 0,
-            child: SafeArea(child: AppScreenBackButton()),
+            child: SafeArea(
+              child: widget.returnToPreviousOnSave || Navigator.canPop(context)
+                  ? const AppScreenBackButton()
+                  : const SizedBox.shrink(),
+            ),
           ),
         ],
       ),

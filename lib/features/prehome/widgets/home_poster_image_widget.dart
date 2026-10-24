@@ -715,8 +715,7 @@ class _ResolvedTemplatePosterImage extends StatefulWidget {
 }
 
 class _ResolvedTemplatePosterImageState
-    extends State<_ResolvedTemplatePosterImage>
-    with AutomaticKeepAliveClientMixin<_ResolvedTemplatePosterImage> {
+    extends State<_ResolvedTemplatePosterImage> {
   static final Map<String, String> _resolvedDownloadUrlCache =
       <String, String>{};
   static final Set<String> _failedResolveKeys = <String>{};
@@ -868,7 +867,6 @@ class _ResolvedTemplatePosterImageState
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final path = widget.imageStoragePath?.trim() ?? '';
     final thumbPath = widget.thumbnailStoragePath?.trim() ?? '';
     final thumb = widget.thumbnailUrl?.trim() ?? '';
@@ -910,7 +908,5 @@ class _ResolvedTemplatePosterImageState
     );
   }
 
-  @override
-  bool get wantKeepAlive => true;
 }
 

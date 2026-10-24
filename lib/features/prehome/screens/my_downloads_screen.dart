@@ -42,6 +42,55 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
     await next;
   }
 
+  void _viewPosterFullscreen(PosterDownloadListed item) {
+    final String path = item.absolutePath;
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: <Widget>[
+            Center(
+              child: InteractiveViewer(
+                child: Image.file(
+                  File(path),
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white),
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                      ),
+                    ),
+                    CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        icon: const Icon(Icons.share_rounded, color: Colors.white),
+                        onPressed: () {
+                          Navigator.of(dialogCtx).pop();
+                          _shareListed(item);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _shareListed(PosterDownloadListed item) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final strings = context.strings;
@@ -311,19 +360,23 @@ class _MyDownloadsScreenState extends State<MyDownloadsScreen> {
                           child: Stack(
                             fit: StackFit.expand,
                             children: <Widget>[
-                              ColoredBox(
-                                color: const Color(0xFFE2E8F0),
-                                child: Image.file(
-                                  File(path),
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (_, Object error, StackTrace? st) =>
-                                          const Center(
-                                            child: Icon(
-                                              Icons.broken_image_rounded,
-                                              color: Color(0xFF94A3B8),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => _viewPosterFullscreen(item),
+                                child: ColoredBox(
+                                  color: const Color(0xFFE2E8F0),
+                                  child: Image.file(
+                                    File(path),
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (_, Object error, StackTrace? st) =>
+                                            const Center(
+                                              child: Icon(
+                                                Icons.broken_image_rounded,
+                                                color: Color(0xFF94A3B8),
+                                              ),
                                             ),
-                                          ),
+                                  ),
                                 ),
                               ),
                               Align(

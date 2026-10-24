@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/screens/poster_profile_details_screen.dart';
 import 'package:mana_poster/features/prehome/services/poster_profile_service.dart';
@@ -42,9 +43,31 @@ class ProfileSetupScreen extends StatelessWidget {
                     }
                     Navigator.of(context).pushReplacementNamed(AppRoutes.home);
                   },
-                  child: const Text(
-                    'Skip',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  child: Text(
+                    context.strings.localized(
+                      telugu: 'దాటవేయి',
+                      english: 'Skip',
+                      hindi: 'छोड़ें',
+                      tamil: 'தவிர்',
+                      kannada: 'ಬಿಟ್ಟುಬಿಡಿ',
+                      malayalam: 'ഒഴിവാക്കുക',
+                      marathi: 'वगळा',
+                      gujarati: 'છોડી દો',
+                      bengali: 'এড়িয়ে যান',
+                      punjabi: 'ਛੱਡੋ',
+                      odia: 'ଛାଡ଼ନ୍ତୁ',
+                      assamese: 'এৰি যাওক',
+                      konkani: 'सोडात',
+                      nepali: 'छोड्नुहोस्',
+                      meitei: 'খোঙথাং থাদোকপা',
+                      mizo: 'Kalsan rawh',
+                      kashmiri: 'چھوڈٲو',
+                      ladakhi: 'མཆོང།',
+                    ),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

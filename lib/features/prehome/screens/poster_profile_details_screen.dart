@@ -2359,6 +2359,11 @@ class _PosterProfileDetailsScreenState
                         ladakhi: 'ཨང་གྲངས་ ༡༠ ཅན།',
                       ),
                       keyboardType: TextInputType.phone,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      maxLength: 10,
                       onChanged: (value) {
                         setState(() {
                           _draftProfile = _draftProfile.copyWith(
@@ -3933,6 +3938,8 @@ class _CleanInputField extends StatelessWidget {
     required this.label,
     required this.hintText,
     this.keyboardType,
+    this.inputFormatters,
+    this.maxLength,
     this.onChanged,
   });
 
@@ -3940,6 +3947,8 @@ class _CleanInputField extends StatelessWidget {
   final String label;
   final String hintText;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
   final ValueChanged<String>? onChanged;
 
   @override
@@ -3947,6 +3956,16 @@ class _CleanInputField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      maxLength: maxLength,
+      buildCounter: maxLength != null
+          ? (
+              context, {
+              required currentLength,
+              required isFocused,
+              maxLength,
+            }) => null
+          : null,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,

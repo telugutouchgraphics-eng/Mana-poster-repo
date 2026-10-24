@@ -55,7 +55,7 @@ class _FeedTapToPlayVideoPosterState extends State<_FeedTapToPlayVideoPoster> {
 
   @override
   Widget build(BuildContext context) {
-    if (_playing) {
+    if (_playing && widget.playbackEnabled) {
       return _TemplateVideoPlayer(
         videoUrl: widget.videoUrl,
         playbackEnabled: widget.playbackEnabled,
@@ -137,11 +137,13 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(_initialVideoInitDelay, () {
-        _initializeWhenSettled();
+    if (widget.playbackEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future<void>.delayed(_initialVideoInitDelay, () {
+          _initializeWhenSettled();
+        });
       });
-    });
+    }
   }
 
   @override
@@ -161,7 +163,18 @@ class _TemplateVideoPlayerState extends State<_TemplateVideoPlayer> {
         });
       });
     } else if (oldWidget.playbackEnabled != widget.playbackEnabled) {
-      unawaited(_applyPlaybackPolicy());
+      if (widget.playbackEnabled) {
+        if (_controller == null) {
+          _initializeWhenSettled();
+        } else {
+          unawaited(_applyPlaybackPolicy());
+        }
+      } else {
+        unawaited(_disposeController());
+        if (mounted) {
+          setState(() {});
+        }
+      }
     }
   }
 
