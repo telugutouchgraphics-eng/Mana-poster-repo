@@ -18,7 +18,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with AppLanguageStateMixin {
-  static const Duration _minimumSplashDuration = Duration.zero;
+  static const Duration _minimumSplashDuration = Duration(milliseconds: 2600);
   late final DateTime _startedAt;
   Timer? _navigationTimer;
   String _nextRoute = AppRoutes.language;
@@ -128,11 +128,18 @@ class _SplashScreenState extends State<SplashScreen>
   }) {
     return PageRouteBuilder<void>(
       settings: RouteSettings(name: routeName),
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, animation, secondaryAnimation) => child,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-          child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOutCubic,
+          ),
+          child: child,
+        );
+      },
     );
   }
 
