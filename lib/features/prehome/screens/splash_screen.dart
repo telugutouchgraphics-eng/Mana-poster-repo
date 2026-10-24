@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 
+import 'package:mana_poster/app/config/app_public_info.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
@@ -137,6 +138,30 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(color: Color(0xFFF8FAFF), child: SizedBox.expand());
+    return const Scaffold(
+      backgroundColor: Color(0xFFF8FAFF),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image(
+              image: AssetImage('assets/branding/mana_poster_logo.png'),
+              width: 100,
+              height: 100,
+            ),
+            SizedBox(height: 16),
+            Text(
+              AppPublicInfo.appName,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

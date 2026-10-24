@@ -6,6 +6,7 @@ import 'package:mana_poster/app/widgets/app_snack_bar.dart';
 import 'package:mana_poster/app/localization/app_language.dart';
 import 'package:mana_poster/app/routes/app_routes.dart';
 import 'package:mana_poster/features/prehome/services/app_flow_service.dart';
+import 'package:mana_poster/features/prehome/services/auth_service.dart';
 import 'package:mana_poster/features/prehome/services/app_religion_service.dart';
 import 'package:mana_poster/features/prehome/services/notification_service.dart';
 import 'package:mana_poster/features/prehome/services/onboarding_audio_service.dart';
@@ -526,11 +527,20 @@ class _ReligionSelectionScreenState extends State<ReligionSelectionScreen>
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             left: 16,
             top: 0,
             child: SafeArea(
-              child: AppScreenBackButton(fallbackRoute: AppRoutes.login),
+              child: AppScreenBackButton(
+                fallbackRouteResolver: () async {
+                  if (widget.returnToPreviousOnSave) {
+                    return AppRoutes.home;
+                  }
+                  final bool hasUser =
+                      FirebaseAuthService().currentUser != null;
+                  return hasUser ? AppRoutes.home : AppRoutes.login;
+                },
+              ),
             ),
           ),
         ],

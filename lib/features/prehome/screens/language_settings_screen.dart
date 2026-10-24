@@ -17,6 +17,47 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
     with AppLanguageStateMixin {
   late AppLanguage _selected;
 
+  static String _englishName(AppLanguage language) {
+    switch (language) {
+      case AppLanguage.telugu:
+        return 'Telugu';
+      case AppLanguage.hindi:
+        return 'Hindi';
+      case AppLanguage.english:
+        return 'English';
+      case AppLanguage.tamil:
+        return 'Tamil';
+      case AppLanguage.kannada:
+        return 'Kannada';
+      case AppLanguage.malayalam:
+        return 'Malayalam';
+      case AppLanguage.assamese:
+        return 'Assamese';
+      case AppLanguage.konkani:
+        return 'Konkani';
+      case AppLanguage.gujarati:
+        return 'Gujarati';
+      case AppLanguage.marathi:
+        return 'Marathi';
+      case AppLanguage.meitei:
+        return 'Manipuri (Meitei)';
+      case AppLanguage.mizo:
+        return 'Mizo';
+      case AppLanguage.odia:
+        return 'Odia';
+      case AppLanguage.punjabi:
+        return 'Punjabi';
+      case AppLanguage.nepali:
+        return 'Nepali';
+      case AppLanguage.bengali:
+        return 'Bengali';
+      case AppLanguage.kashmiri:
+        return 'Kashmiri';
+      case AppLanguage.ladakhi:
+        return 'Ladakhi';
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -87,12 +128,28 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen>
                             child: Row(
                               children: <Widget>[
                                 Expanded(
-                                  child: Text(
-                                    strings.languageName(language),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        strings.languageName(language),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _englishName(language),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: selected
+                                              ? const Color(0xFF1E3A8A)
+                                              : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 if (selected)

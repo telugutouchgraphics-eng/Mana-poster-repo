@@ -312,6 +312,18 @@ class _RegionHeader extends StatelessWidget {
               controller: controller,
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
+                suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: controller,
+                  builder: (context, value, _) {
+                    if (value.text.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 20),
+                      onPressed: () => controller.clear(),
+                    );
+                  },
+                ),
                 hintText: strings.localized(
                   telugu: 'రాష్ట్రం, యూటీ లేదా భాష వెతకండి',
                   english: 'Search State, UT or language',

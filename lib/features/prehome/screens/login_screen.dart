@@ -954,6 +954,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: Align(
                 alignment: Alignment.topCenter,
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: const EdgeInsets.fromLTRB(24, 88, 24, 24),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 380),
@@ -1223,9 +1224,13 @@ class _LoginScreenState extends State<LoginScreen>
                           OutlinedButton(
                             onPressed: _isBusy ? null : _skipNow,
                             style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(
-                                color: const Color(0x330F172A),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: const BorderSide(
+                                color: Color(0x330F172A),
                               ),
                               foregroundColor: const Color(0xFF0F172A),
                             ),
