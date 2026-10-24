@@ -699,6 +699,52 @@ Set<String> _expandCategoryAliasesWorker(String normalizedTag) {
     'festival': <String>['festival'],
     'jayanthi': <String>['jayanthi'],
     'vardhanthi': <String>['vardhanthi'],
+    'dasara': <String>[
+      'dasara',
+      'dasara_vijayadashami',
+      'dussehra',
+      'vijayadashami',
+    ],
+    'dasara_vijayadashami': <String>[
+      'dasara_vijayadashami',
+      'dasara',
+      'dussehra',
+      'vijayadashami',
+    ],
+    'dussehra': <String>[
+      'dasara_vijayadashami',
+      'dasara',
+      'dussehra',
+      'vijayadashami',
+    ],
+    'vijayadashami': <String>[
+      'dasara_vijayadashami',
+      'dasara',
+      'dussehra',
+      'vijayadashami',
+    ],
+    'deepavali': <String>['deepavali', 'diwali'],
+    'diwali': <String>['deepavali', 'diwali'],
+    'bathukamma': <String>[
+      'bathukamma',
+      'bathukamma_starting_day',
+      'saddula_bathukamma_maha_saptami',
+    ],
+    'vinayaka_chavithi': <String>[
+      'vinayaka_chavithi',
+      'vinayaka_chaturthi',
+      'ganesh_chaturthi',
+    ],
+    'ganesh_chaturthi': <String>[
+      'vinayaka_chavithi',
+      'vinayaka_chaturthi',
+      'ganesh_chaturthi',
+    ],
+    'vinayaka_chaturthi': <String>[
+      'vinayaka_chavithi',
+      'vinayaka_chaturthi',
+      'ganesh_chaturthi',
+    ],
   };
 
   final output = <String>{normalizedTag};
@@ -2804,6 +2850,83 @@ class _HomeScreenState extends State<HomeScreen>
         .toList(growable: false);
   }
 
+  bool _isPastEventTemplate(_TemplateItem item, [DateTime? referenceTime]) {
+    final now = referenceTime ?? IstTimeService.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final primary = (item.primaryFirestoreCategoryId ?? '').trim();
+    final candidateKeys = <String>{};
+    if (primary.isNotEmpty) {
+      final normPrimary = _normalizeTag(primary);
+      if (normPrimary.isNotEmpty) {
+        candidateKeys.add(normPrimary);
+        candidateKeys.addAll(_expandCategoryAliases(normPrimary));
+      }
+    }
+    for (final tag in item.categoryTags) {
+      final normTag = _normalizeTag(tag);
+      if (normTag.isNotEmpty) {
+        candidateKeys.add(normTag);
+        candidateKeys.addAll(_expandCategoryAliases(normTag));
+      }
+    }
+
+    if (candidateKeys.isEmpty) {
+      return false;
+    }
+
+    var matchedEventCount = 0;
+    var pastEventCount = 0;
+
+    // 1. Check manual event categories
+    for (final category in _manualEventCategories) {
+      final categoryId = _normalizeTag(category.id);
+      final categorySlug = _normalizeTag(category.slug);
+      if (candidateKeys.contains(categoryId) ||
+          candidateKeys.contains(categorySlug)) {
+        final end = category.eventEndDate;
+        if (end != null) {
+          matchedEventCount++;
+          final endDay = DateTime(end.year, end.month, end.day);
+          if (today.isAfter(endDay)) {
+            pastEventCount++;
+          }
+        }
+      }
+    }
+
+    // 2. Check dynamic calendar events
+    final schedules = const DynamicEventScheduleService().schedulesByTagForYear(
+      now.year,
+      daysBeforeEvent: 0,
+    );
+
+    final checkedSlugs = <String>{};
+    for (final key in candidateKeys) {
+      final schedule = schedules[key];
+      if (schedule != null) {
+        final slug = schedule.event.slug;
+        if (!checkedSlugs.add(slug)) {
+          continue;
+        }
+        matchedEventCount++;
+        if (today.isAfter(schedule.endDate)) {
+          if (now.month >= 11 && schedule.startDate.month <= 2) {
+            final nextYearSchedules = const DynamicEventScheduleService()
+                .schedulesByTagForYear(now.year + 1, daysBeforeEvent: 0);
+            final nextSchedule = nextYearSchedules[key];
+            if (nextSchedule != null && !today.isAfter(nextSchedule.endDate)) {
+              continue;
+            }
+          }
+          pastEventCount++;
+        }
+      }
+    }
+
+    return matchedEventCount > 0 && pastEventCount == matchedEventCount;
+  }
+
   bool _matchesTemplate(
     _TemplateItem item,
     AppLanguage language,
@@ -2811,6 +2934,10 @@ class _HomeScreenState extends State<HomeScreen>
     bool ignoreSearch = false,
   }) {
     if (_isTemplateHiddenForReligion(item)) {
+      return false;
+    }
+
+    if (_isPastEventTemplate(item)) {
       return false;
     }
 
@@ -4271,6 +4398,7 @@ class _HomeScreenState extends State<HomeScreen>
     for (final template
         in _publishedCategoryTemplates ?? _remoteApprovedTemplates) {
       if (_isTemplateHiddenForReligion(template)) continue;
+      if (_isPastEventTemplate(template)) continue;
       if (_templateMatchesDynamicCategoryExactly(template, category)) {
         return true;
       }
@@ -4826,6 +4954,52 @@ class _HomeScreenState extends State<HomeScreen>
       'festival': <String>['festival'],
       'jayanthi': <String>['jayanthi'],
       'vardhanthi': <String>['vardhanthi'],
+      'dasara': <String>[
+        'dasara',
+        'dasara_vijayadashami',
+        'dussehra',
+        'vijayadashami',
+      ],
+      'dasara_vijayadashami': <String>[
+        'dasara_vijayadashami',
+        'dasara',
+        'dussehra',
+        'vijayadashami',
+      ],
+      'dussehra': <String>[
+        'dasara_vijayadashami',
+        'dasara',
+        'dussehra',
+        'vijayadashami',
+      ],
+      'vijayadashami': <String>[
+        'dasara_vijayadashami',
+        'dasara',
+        'dussehra',
+        'vijayadashami',
+      ],
+      'deepavali': <String>['deepavali', 'diwali'],
+      'diwali': <String>['deepavali', 'diwali'],
+      'bathukamma': <String>[
+        'bathukamma',
+        'bathukamma_starting_day',
+        'saddula_bathukamma_maha_saptami',
+      ],
+      'vinayaka_chavithi': <String>[
+        'vinayaka_chavithi',
+        'vinayaka_chaturthi',
+        'ganesh_chaturthi',
+      ],
+      'ganesh_chaturthi': <String>[
+        'vinayaka_chavithi',
+        'vinayaka_chaturthi',
+        'ganesh_chaturthi',
+      ],
+      'vinayaka_chaturthi': <String>[
+        'vinayaka_chavithi',
+        'vinayaka_chaturthi',
+        'ganesh_chaturthi',
+      ],
     };
 
     final output = <String>{normalizedTag};
