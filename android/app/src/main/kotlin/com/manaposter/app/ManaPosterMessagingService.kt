@@ -53,11 +53,6 @@ object ManaPosterNotificationRenderer {
         val categoryKey = data["categoryKey"].orEmpty().trim().lowercase()
         val source = data["source"].orEmpty().trim()
         val notificationId = uniqueNotificationId(message, data)
-        val isQuizWinnerNotification =
-            categoryKey == "daily_quiz" ||
-                data["category"].orEmpty().trim().lowercase() == "daily_quiz" ||
-                data["notificationKind"].orEmpty().trim().lowercase() == "daily_quiz" ||
-                source == "admin_quiz_winner_push"
         val route = data["route"].orEmpty().trim().ifEmpty { "home" }
         val appName =
             context.applicationInfo.loadLabel(context.packageManager)?.toString().orEmpty().ifEmpty { "Mana Poster Ai" }
@@ -81,7 +76,7 @@ object ManaPosterNotificationRenderer {
         val header = sanitizeNotificationText(data["headerText"].orEmpty().trim(), localizedCopy.header)
         val footerText = sanitizeNotificationText(data["footerText"].orEmpty().trim(), localizedCopy.footer)
 
-        if (posterImageUrl.isBlank() && !isQuizWinnerNotification) {
+        if (posterImageUrl.isBlank()) {
             showFallbackNotification(context, title, body, route, categoryKey, notificationId)
             return
         }
@@ -92,43 +87,32 @@ object ManaPosterNotificationRenderer {
             val paletteIndex = notificationPaletteIndex(categoryKey, data["paletteIndex"].orEmpty())
             val headerBackgroundRes = headerBackgroundRes(categoryKey, paletteIndex)
             val shareBackgroundRes = shareBackgroundRes(categoryKey, paletteIndex)
-            val effectiveHeaderBackgroundRes =
-                if (isQuizWinnerNotification) R.drawable.notification_header_quiz_winner else headerBackgroundRes
-            compactViews.setInt(R.id.notification_compact_header, "setBackgroundResource", effectiveHeaderBackgroundRes)
+            compactViews.setInt(R.id.notification_compact_header, "setBackgroundResource", headerBackgroundRes)
             compactViews.setTextViewText(R.id.notification_compact_title, appName)
             compactViews.setTextViewText(R.id.notification_compact_text, header)
 
-            expandedViews.setInt(R.id.notification_expanded_header, "setBackgroundResource", effectiveHeaderBackgroundRes)
+            expandedViews.setInt(R.id.notification_expanded_header, "setBackgroundResource", headerBackgroundRes)
             expandedViews.setTextViewText(R.id.notification_expanded_title, appName)
             expandedViews.setTextViewText(R.id.notification_expanded_text, header)
             expandedViews.setTextViewText(R.id.notification_expanded_name, resolvedUserName.ifBlank { "User" })
             expandedViews.setTextViewText(R.id.notification_expanded_share_bg, footerText.ifBlank { "Share" })
             expandedViews.setInt(R.id.notification_expanded_share_bg, "setBackgroundResource", shareBackgroundRes)
             expandedViews.setImageViewResource(R.id.notification_expanded_avatar, R.mipmap.ic_launcher)
-            if (isQuizWinnerNotification) {
-                expandedViews.setViewVisibility(R.id.notification_expanded_title, View.GONE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_celebration_top, View.VISIBLE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_celebration_bottom, View.VISIBLE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_image_frame, View.GONE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_user_panel, View.GONE)
-                expandedViews.setInt(R.id.notification_expanded_text, "setMaxLines", 4)
-            } else {
-                expandedViews.setViewVisibility(R.id.notification_expanded_title, View.VISIBLE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_celebration_top, View.GONE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_celebration_bottom, View.GONE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_image_frame, View.VISIBLE)
-                expandedViews.setViewVisibility(R.id.notification_expanded_user_panel, View.VISIBLE)
-            }
+            expandedViews.setViewVisibility(R.id.notification_expanded_title, View.VISIBLE)
+            expandedViews.setViewVisibility(R.id.notification_expanded_celebration_top, View.GONE)
+            expandedViews.setViewVisibility(R.id.notification_expanded_celebration_bottom, View.GONE)
+            expandedViews.setViewVisibility(R.id.notification_expanded_image_frame, View.VISIBLE)
+            expandedViews.setViewVisibility(R.id.notification_expanded_user_panel, View.VISIBLE)
 
             val avatarBitmap = downloadBitmap(resolvedUserPhotoUrl)
             if (avatarBitmap != null) {
                 expandedViews.setImageViewBitmap(R.id.notification_expanded_avatar, circularAvatarBitmap(avatarBitmap))
             }
 
-            val posterBitmap = if (isQuizWinnerNotification) null else downloadBitmap(posterImageUrl)
-            if (!isQuizWinnerNotification && posterBitmap == null) {
-                    showFallbackNotification(context, title, body, route, categoryKey, notificationId)
-                    return
+            val posterBitmap = downloadBitmap(posterImageUrl)
+            if (posterBitmap == null) {
+                showFallbackNotification(context, title, body, route, categoryKey, notificationId)
+                return
             }
             if (posterBitmap != null) {
                 expandedViews.setImageViewBitmap(R.id.notification_expanded_image, posterBitmap)
